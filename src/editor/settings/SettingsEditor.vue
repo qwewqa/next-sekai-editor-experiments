@@ -9,6 +9,7 @@ import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import InfoModal from '../../modals/InfoModal.vue'
 import { settings } from '../../settings'
+import { themes } from '../../themes'
 import SettingsSection from './SettingsSection.vue'
 
 watch(
@@ -36,11 +37,12 @@ watch(
         <SelectField
             v-model="settings.theme"
             :label="i18n.settings.editor.theme.title"
-            :options="[
-                [i18n.settings.editor.theme.system, 'system'],
-                [i18n.settings.editor.theme.light, 'light'],
-                [i18n.settings.editor.theme.dark, 'dark'],
-            ]"
+            :options="
+                (['system', ...themes] as const).map((theme) => [
+                    i18n.settings.editor.theme[theme],
+                    theme,
+                ])
+            "
         />
 
         <SelectField

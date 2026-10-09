@@ -21,15 +21,17 @@
         <title>Sonolus Next SEKAI Editor</title>
         <script>
             // The theme before first paint; src/theme.ts takes over once the app loads.
-            try {
-                const stored = localStorage.getItem('sonolus-next-sekai-editor.theme')
-                const theme = stored === null ? 'system' : JSON.parse(stored)
-                document.documentElement.dataset.theme =
-                    theme === 'dark' ||
-                    (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
-                        ? 'dark'
-                        : 'light'
-            } catch {}
+            {
+                let theme = 'system'
+                try {
+                    theme = JSON.parse(localStorage.getItem(THEME_KEY)) ?? theme
+                } catch {}
+                document.documentElement.dataset.theme = THEMES.includes(theme)
+                    ? theme
+                    : matchMedia('(prefers-color-scheme: dark)').matches
+                      ? 'dark'
+                      : 'light'
+            }
         </script>
     </head>
     <body class="touch-none bg-bg fill-fg text-fg">

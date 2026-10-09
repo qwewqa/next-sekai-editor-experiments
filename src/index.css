@@ -206,3 +206,9 @@ html[data-app-inactive] *::after {
         }
     }
 }
+
+html[data-theme-switching] *,
+html[data-theme-switching] *::before,
+html[data-theme-switching] *::after {
+    transition: none !important;
+}

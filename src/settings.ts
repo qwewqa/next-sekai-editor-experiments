@@ -16,6 +16,7 @@ import {
     previewTransportPositions,
 } from './preview/options'
 import { storageGet, storageRemove, storageSet } from './storage'
+import { themes, type Theme } from './themes'
 import { clamp } from './utils/math'
 
 const number = (def: number, min: number, max: number) =>
@@ -227,7 +228,9 @@ const settingsProperties = {
         { default: defaultLocale },
     ) as never as Type.TString,
 
-    theme: Type.Union([Type.Literal('system'), Type.Literal('light'), Type.Literal('dark')]),
+    theme: Type.Unsafe<'system' | Theme>(
+        Type.Union(['system', ...themes].map((value) => Type.Literal(value))),
+    ),
 
     autoSave: Type.Boolean({ default: true }),
 
