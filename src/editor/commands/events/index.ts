@@ -14,7 +14,6 @@ export const event: Command = {
     icon: {
         is: EventIcon,
         props: {
-            fill: 'rgb(var(--color-button))',
             monochrome: true,
         },
     },

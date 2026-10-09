@@ -15,28 +15,33 @@ module.exports = {
                 // Ink a step stronger than fg.
                 'fg-strong': color('fg-strong'),
                 bg: color('bg'),
+                // Dims what lies behind dialogs and open toolbar flyouts.
+                scrim: color('scrim'),
                 button: color('button'),
                 accent: color('accent'),
                 'on-accent': color('on-accent'),
-                // Rows selected for an action.
+                // Tints rows selected for an action, and the folder a drag would join.
                 selected: color('selected'),
                 header: color('header'),
                 // Hover on header bands, opaque so sticky bands never show content
                 // scrolling beneath.
                 'header-hover': color('header-hover'),
-                // Hover on a button sitting on a band, hovered or not.
+                // Hover on buttons on a band, lighter than the band's own hover. Carries its
+                // own alpha, so no opacity modifier.
                 'band-hover': 'var(--color-band-hover)',
                 modal: color('modal'),
                 // Menus and select lists, and their row under the pointer or focus.
                 popup: color('popup'),
                 'popup-hover': color('popup-hover'),
+                // Their outline; carries its own alpha.
+                'popup-edge': 'var(--color-popup-edge)',
                 preview: color('preview'),
                 // Destructive actions and errors.
                 danger: color('danger'),
                 'on-danger': color('on-danger'),
-                // The toggle switch's knob.
+                // White handles: toggle knobs, slider thumbs and resize grabbers.
                 knob: color('knob'),
-                // The recessed track of a segmented control or slider.
+                // Recessed tracks of segmented controls and sliders; carries its own alpha.
                 recess: 'var(--color-recess)',
             },
             boxShadow: {

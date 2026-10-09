@@ -1,9 +1,13 @@
-/* Theme colours as RGB channels, so Tailwind's opacity modifiers apply; see tailwind.config.js. */
-:root {
+/* Theme colours as RGB channels, so Tailwind's opacity modifiers apply; see tailwind.config.js.
+   Other themes override these, and keep light's value for any they leave out. Dialog backdrops
+   don't inherit custom properties in older browsers, so they get the values directly. */
+:root,
+::backdrop {
     color-scheme: light;
     --color-fg: 68 68 102;
     --color-fg-strong: 48 51 77;
     --color-bg: 64 68 100;
+    --color-scrim: 64 68 100;
     --color-button: 255 255 255;
     --color-accent: 119 239 220;
     --color-on-accent: 48 51 77;
@@ -13,6 +17,7 @@
     --color-modal: 233 235 239;
     --color-popup: 255 255 255;
     --color-popup-hover: 233 235 239;
+    --color-popup-edge: rgb(68 68 102 / 0.1);
     --color-preview: 91 92 124;
     --color-danger: 185 28 28;
     --color-on-danger: 255 255 255;
@@ -21,30 +26,36 @@
     --color-recess: rgb(68 68 102 / 0.1);
     --shadow-track: inset 0 1px 2px rgb(48 51 77 / 0.2);
     --shadow-band: 0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35);
+    --dock-edge: rgb(0 0 0 / 0.3);
     --swatch-edge: transparent;
 }
 
-/* Surfaces step up from the chart as in light: panels, then bands and popups, then controls. */
-:root[data-theme='dark'] {
+/* Surfaces step up from the chart as in light: dark chrome, panels, then bands and popups, then
+   controls. Shadows barely show, so popups, docks and swatches get light edges instead. */
+:root[data-theme='dark'],
+:root[data-theme='dark'] ::backdrop {
     color-scheme: dark;
     --color-fg: 222 222 238;
     --color-fg-strong: 240 240 250;
     --color-bg: 35 37 57;
+    --color-scrim: 16 17 32;
     --color-button: 72 76 114;
-    --color-selected: 89 164 160;
+    --color-selected: 79 146 143;
     --color-header: 58 60 92;
     --color-header-hover: 68 71 106;
     --color-modal: 46 48 72;
     --color-popup: 58 61 94;
-    --color-popup-hover: 76 80 118;
-    --color-preview: 27 28 44;
-    --color-danger: 255 163 163;
+    --color-popup-hover: 69 72 108;
+    --color-popup-edge: rgb(222 222 238 / 0.25);
+    --color-preview: 41 43 66;
+    --color-danger: 255 184 184;
     --color-on-danger: 48 51 77;
     --color-band-hover: rgb(255 255 255 / 0.1);
     --color-recess: rgb(0 0 0 / 0.25);
     --shadow-track: inset 0 1px 2px rgb(0 0 0 / 0.35);
     --shadow-band: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 8px -6px rgb(0 0 0 / 0.5);
-    --swatch-edge: rgb(255 255 255 / 0.35);
+    --dock-edge: rgb(255 255 255 / 0.08);
+    --swatch-edge: rgb(255 255 255 / 0.45);
     /* Preset numbers stay dark on light note bodies; light inherits the surface's ink. */
-    --preset-ink: #444466;
+    --preset-ink: rgb(68 68 102);
 }

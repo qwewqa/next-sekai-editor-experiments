@@ -211,19 +211,19 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
 /* A soft edge where the dock meets the editor. */
 .workspace-dock-body-left {
     box-shadow:
-        1px 0 0 rgb(0 0 0 / 0.3),
+        1px 0 0 var(--dock-edge),
         6px 0 12px -6px rgb(0 0 0 / 0.45);
 }
 
 .workspace-dock-body-right {
     box-shadow:
-        -1px 0 0 rgb(0 0 0 / 0.3),
+        -1px 0 0 var(--dock-edge),
         -6px 0 12px -6px rgb(0 0 0 / 0.45);
 }
 
 .workspace-dock-body-top {
     box-shadow:
-        0 1px 0 rgb(0 0 0 / 0.3),
+        0 1px 0 var(--dock-edge),
         0 6px 12px -6px rgb(0 0 0 / 0.45);
 }
 

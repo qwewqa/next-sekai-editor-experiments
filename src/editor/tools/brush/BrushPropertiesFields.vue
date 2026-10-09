@@ -197,7 +197,7 @@ const clear = () => {
             <button
                 v-if="groups.length"
                 type="button"
-                class="brush-clear shrink-0 rounded-full px-4 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:[&:hover:not(:active)]:bg-header-hover [@media(pointer:coarse)]:py-2"
+                class="brush-clear shrink-0 rounded-full px-4 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover [@media(pointer:coarse)]:py-2"
                 @click="clear"
             >
                 {{ i18n.tools.brush.clear }}
@@ -225,7 +225,7 @@ const clear = () => {
                 />
                 <button
                     type="button"
-                    class="brush-remove absolute flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:[&:hover:not(:active)]:bg-header-hover [@media(pointer:coarse)]:size-11"
+                    class="brush-remove absolute flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover [@media(pointer:coarse)]:size-11"
                     :aria-label="
                         interpolateRaw(i18n.tools.brush.remove, fieldLabel(field, i18n, true))
                     "

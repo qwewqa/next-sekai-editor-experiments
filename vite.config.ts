@@ -2,7 +2,8 @@ import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
 import tailwind from 'tailwindcss'
 import { defineConfig } from 'vite'
-import { name, version } from './package.json'
+import { version } from './package.json'
+import { storageKey } from './src/storage'
 import { themes } from './src/themes'
 
 // https://vitejs.dev/config/
@@ -28,7 +29,10 @@ export default defineConfig({
                     throw new Error('index.html: theme script placeholders not found')
                 return html
                     .replace('THEMES.includes', `${JSON.stringify(themes)}.includes`)
-                    .replace('getItem(THEME_KEY)', `getItem(${JSON.stringify(`${name}.theme`)})`)
+                    .replace(
+                        'getItem(THEME_KEY)',
+                        `getItem(${JSON.stringify(storageKey('theme'))})`,
+                    )
             },
         },
     ],

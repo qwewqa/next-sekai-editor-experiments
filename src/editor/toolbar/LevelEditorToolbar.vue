@@ -384,7 +384,7 @@ onBeforeUnmount(() => {
 
     <div
         v-if="activeIndex !== -1"
-        class="absolute size-full bg-bg/75"
+        class="absolute size-full bg-scrim/75"
         @pointermove="onMoveBackdrop"
         @click="activeIndex = -1"
     />

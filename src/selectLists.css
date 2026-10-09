@@ -40,7 +40,7 @@
             overscroll-behavior: contain;
             border: none;
             border-radius: 0.5rem;
-            outline: 1px solid theme('colors.fg / 10%');
+            outline: 1px solid theme('colors.popup-edge');
             background-color: theme('colors.popup');
             color: theme('colors.fg');
             font-size: 0.875rem;

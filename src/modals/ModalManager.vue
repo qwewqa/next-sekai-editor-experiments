@@ -68,7 +68,7 @@ const vOpen = {
         :key="modal.id"
         v-open
         tabindex="-1"
-        class="flex max-h-[calc(100%-1rem)] w-[calc(100%-1rem)] max-w-2xl flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-bg/75"
+        class="flex max-h-[calc(100%-1rem)] w-[calc(100%-1rem)] max-w-2xl flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
         @click="onClick($event, modal)"
         @close="closeModal(modal)"
     >

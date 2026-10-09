@@ -172,7 +172,7 @@ html[data-app-inactive] *::after {
 /* Menus' shared surface; edges and focus are outlines, which high contrast keeps. */
 @layer components {
     .popup-surface {
-        @apply flex w-max min-w-[min(12rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline outline-1 outline-fg/10;
+        @apply flex w-max min-w-[min(12rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline outline-1 outline-popup-edge;
     }
 
     .popup-scroller {
@@ -207,8 +207,17 @@ html[data-app-inactive] *::after {
     }
 }
 
+/* A theme switch recolours at once; see src/theme.ts. */
 html[data-theme-switching] *,
 html[data-theme-switching] *::before,
 html[data-theme-switching] *::after {
+    transition: none !important;
+}
+
+html[data-theme-switching] ::-webkit-slider-thumb {
+    transition: none !important;
+}
+
+html[data-theme-switching] ::-moz-range-thumb {
     transition: none !important;
 }

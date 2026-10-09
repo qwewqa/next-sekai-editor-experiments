@@ -693,12 +693,12 @@ const onPlacementChange = () => {
 }
 
 .preview-range::-webkit-slider-thumb {
-    @apply -mt-[0.3125rem] size-4 rounded-full bg-button shadow-md transition-colors;
+    @apply -mt-[0.3125rem] size-4 rounded-full bg-knob shadow-md transition-colors;
     appearance: none;
 }
 
 .preview-range::-moz-range-thumb {
-    @apply size-4 rounded-full border-0 bg-button shadow-md transition-colors;
+    @apply size-4 rounded-full border-0 bg-knob shadow-md transition-colors;
 }
 
 @media (hover: hover) {

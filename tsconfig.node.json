@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
-  "include": ["*.config.ts", "src/themes.ts"],
+  "include": ["*.config.ts", "src/themes.ts", "src/storage.ts"],
   "compilerOptions": {
     "composite": true,
     "noEmit": true,
