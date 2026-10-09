@@ -40,7 +40,8 @@ const type = computed(() => {
         <!-- Dark on the note’s light body in every theme; an anchor’s open body shows the surface. -->
         <text
             v-if="index !== undefined"
-            :class="type === 'anchor' ? 'forced-colors:fill-on-accent' : 'fill-[#444466]'"
+            class="forced-colors:fill-on-accent"
+            :class="{ 'fill-[#444466]': type !== 'anchor' }"
             x="0"
             y="0"
             font-size="0.5"
