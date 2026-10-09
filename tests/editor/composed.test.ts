@@ -771,3 +771,27 @@ test('the displayed extent spans a moving stage and its notes', () => {
     assert.equal(edited.stages, createComposedLayout(source).stages)
     assert.deepEqual(edited.displayedExtent(), { min: -5, max: 10 })
 })
+
+test('the displayed extent follows eased overshoot between stage events across tempo changes', () => {
+    const source = state({
+        bpms: Array.from({ length: 40 }, (_, i) => ({ beat: i * 0.25, bpm: 60 + (i % 5) * 30 })),
+        stageMaskEvents: [mask(0, -2, 4)],
+        stageTransformEvents: [
+            transform(0, 0, { eventEase: 'outElastic' }),
+            transform(8, 6, { eventEase: 'inBack' }),
+            transform(12, -3),
+        ],
+    })
+    const layout = createComposedLayout(source)
+    let min = Infinity
+    let max = -Infinity
+    for (let i = 0; i <= 12000; i++) {
+        const props = layout.stage(stageA, i / 1000)!
+        min = Math.min(min, props.left)
+        max = Math.max(max, props.right)
+    }
+    // Stage B stays at lane 0, inside these bounds.
+    const extent = layout.displayedExtent()
+    assert.ok(extent.max >= max - 0.01 && extent.max <= max + 1e-9, `${extent.max} vs ${max}`)
+    assert.ok(extent.min <= min + 0.01 && extent.min >= min - 1e-9, `${extent.min} vs ${min}`)
+})

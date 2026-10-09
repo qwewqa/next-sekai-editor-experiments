@@ -17,6 +17,7 @@ import type { ConnectorEntity } from '../state/entities/slides/connector'
 import type { SlideInfos } from '../state/entities/slides/hiddenTicks'
 import type { NoteEntity } from '../state/entities/slides/note'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
+import { sampleComposed } from './canvas/composedSampling'
 
 export type ComposedPosition = { left: number; size: number }
 export type ComposedOptions = LimitOptions & { slideInfos?: readonly SlideInfos[number][] }
@@ -24,6 +25,8 @@ export type ComposedStage = {
     startBeat: number
     endBeat: number
     breakpoints: number[]
+    /** Breakpoints of the stage's own events; BPM changes only retime the curves between them. */
+    changes: number[]
     props: PreviewStage
 }
 
@@ -162,7 +165,7 @@ const buildComposedLayout = (state: State) => {
                 hasTransforms: false,
             }
             props.hasTransforms = props.transforms.length > 0
-            const breakpoints = new Set(state.bpms.map((bpm) => bpm.x))
+            const breakpoints = new Set<number>()
             // Preserve exact source beats at jumps. A time round trip can move
             // an event by one ulp and make its left-limit query select the right.
             for (const events of [stageMasks, stagePivots, stageStyles, stageTransforms]) {
@@ -186,10 +189,13 @@ const buildComposedLayout = (state: State) => {
                     breakpoints.add(timeToBeat(state.bpms, lerp(event.time, next.time, fraction)))
                 }
             }
+            const changes = [...breakpoints].sort((a, b) => a - b)
+            for (const bpm of state.bpms) breakpoints.add(bpm.x)
             stages.set(stageId, {
                 startBeat,
                 endBeat,
                 breakpoints: [...breakpoints].sort((a, b) => a - b),
+                changes,
                 props,
             })
         }
@@ -329,23 +335,24 @@ const buildComposedLayout = (state: State) => {
         let min = Infinity
         let max = -Infinity
         for (const [stageId, data] of stages) {
-            // Stages hold still after their last breakpoint; samples between them catch overshoot.
+            // Stages hold still after their last change; sampling between changes follows overshoot.
             const from = Math.max(0, data.startBeat)
-            const to = Math.min(data.endBeat, Math.max(from, data.breakpoints.at(-1) ?? from))
+            const to = Math.min(data.endBeat, Math.max(from, data.changes.at(-1) ?? from))
             // A stage with no mask events and From Start off is never drawn.
             if (!(to >= from) || !Number.isFinite(from)) continue
-            const beats = [from, ...data.breakpoints.filter((beat) => from < beat && beat < to), to]
-            for (const [index, beat] of beats.entries()) {
-                const next = beats[index + 1] ?? beat
-                for (let step = 0; step < 8; step++) {
-                    for (const rightLimit of [false, true]) {
-                        const props = stage(stageId, lerp(beat, next, step / 8), { rightLimit })
-                        if (props) min = Math.min(min, props.left, props.right)
-                        if (props) max = Math.max(max, props.left, props.right)
-                    }
-                    if (next === beat) break
-                }
+            const edges = (beat: number, rightLimit: boolean) => {
+                const props = stage(stageId, beat, { rightLimit })
+                if (!props) return { left: 0, size: 0 }
+                min = Math.min(min, props.left, props.right)
+                max = Math.max(max, props.left, props.right)
+                return { left: props.left, size: props.right - props.left }
             }
+            edges(from, false)
+            edges(from, true)
+            edges(to, true)
+            const beats = [from, ...data.changes.filter((beat) => from < beat && beat < to), to]
+            // Extremes need no quarter-point checks; an unbounded step keeps midpoint sampling.
+            sampleComposed(state.bpms, beats, edges, { maxTimeStep: Infinity })
         }
         const result = { min, max }
         stageExtents.set(stages, result)
