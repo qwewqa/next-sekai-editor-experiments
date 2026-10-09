@@ -15,12 +15,13 @@ import { createComposedLayout, divisionGridOffset } from '../../src/editor/compo
 import { buildPreviewChart } from '../../src/preview/engine/chart'
 import { getStageProps } from '../../src/preview/engine/stage'
 import { createState } from '../../src/state'
+import { createSlideId } from '../../src/state/entities/slides'
 import { toConnectorEntity } from '../../src/state/entities/slides/connector'
 import { toNoteEntity } from '../../src/state/entities/slides/note'
 import { beatToTime, calculateBpms } from '../../src/state/integrals/bpms'
 import { addBpm } from '../../src/state/mutations/bpm'
 import { addStagePivotEventJoint } from '../../src/state/mutations/events/stage/pivot'
-import { replaceNote } from '../../src/state/mutations/slides/note'
+import { addNote, replaceNote } from '../../src/state/mutations/slides/note'
 import { createTransaction } from '../../src/state/transaction'
 
 const groupId = 1 as GroupId
@@ -748,4 +749,25 @@ test('the displayed extent skips a stage that is never drawn', () => {
     const layout = createComposedLayout(source)
     assert.ok(!Number.isFinite(layout.stages.get(stageA)!.startBeat))
     assert.deepEqual(layout.displayedExtent(), { min: -1, max: 1 })
+})
+
+test('the displayed extent spans a moving stage and its notes', () => {
+    const source = state({
+        bpms: [
+            { beat: 0, bpm: 60 },
+            { beat: 2, bpm: 120 },
+            { beat: 5, bpm: 90 },
+        ],
+        stageMaskEvents: [mask(0, -2, 4)],
+        stageTransformEvents: [transform(0, 0), transform(8, 6)],
+        slides: [[note(4, 0, { size: 2 })], [note(3, -5, { stageId: stageB, size: 1 })]],
+    })
+    // The stage moves from -2..2 to 4..8; the stage B note reaches -5.
+    assert.deepEqual(createComposedLayout(source).displayedExtent(), { min: -5, max: 8 })
+    // A note-only edit keeps the stages and adds the note's lanes.
+    const transaction = createTransaction(source)
+    const [far] = addNote(transaction, createSlideId(), note(6, 9, { stageId: stageB, size: 1 }))
+    const edited = createComposedLayout(transaction.commit([far!]))
+    assert.equal(edited.stages, createComposedLayout(source).stages)
+    assert.deepEqual(edited.displayedExtent(), { min: -5, max: 10 })
 })
