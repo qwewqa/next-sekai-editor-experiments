@@ -18,7 +18,7 @@ const hover = computed(() => ({
     beat: timeToBeat(sceneBpms.value, view.hoverTime),
 }))
 
-// The grid leaves out its own labels under these.
+// The grid leaves out its own labels under these; a little inset keeps them clear of dock shadows.
 const time = useTemplateRef('time')
 const beat = useTemplateRef('beat')
 onMounted(() => {
@@ -37,8 +37,8 @@ onBeforeUnmount(() => {
         :class="{ invisible: view.isHoverHidden }"
         :style="{ top: `${hoverLabelCenter}px` }"
     >
-        <span ref="time">{{ formatTime(hover.time) }}</span>
-        <span ref="beat">{{
+        <span ref="time" class="pl-1">{{ formatTime(hover.time) }}</span>
+        <span ref="beat" class="pr-1">{{
             formatBeatPosition(sceneBpms, hover.beat, settings.beatDisplay, true)
         }}</span>
     </div>

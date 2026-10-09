@@ -13,7 +13,7 @@ import {
 } from './edgeLabels'
 import { sceneBpms } from './sceneState'
 
-// The grid leaves out its own labels under these.
+// The grid leaves out its own labels under these; a little inset keeps them clear of dock shadows.
 const labels = {
     top: { time: useTemplateRef('topTime'), beat: useTemplateRef('topBeat') },
     bottom: { time: useTemplateRef('bottomTime'), beat: useTemplateRef('bottomBeat') },
@@ -37,20 +37,26 @@ onBeforeUnmount(() => {
         class="absolute flex size-full flex-col justify-between text-white/70 forced-color-adjust-none"
     >
         <div class="flex justify-between">
-            <span ref="topTime" :class="{ invisible: coveredEdgeLabels.top.time }">{{
+            <span ref="topTime" class="pl-1" :class="{ invisible: coveredEdgeLabels.top.time }">{{
                 formatTime(times.max)
             }}</span>
-            <span ref="topBeat" :class="{ invisible: coveredEdgeLabels.top.beat }">{{
+            <span ref="topBeat" class="pr-1" :class="{ invisible: coveredEdgeLabels.top.beat }">{{
                 formatBeatPosition(sceneBpms, beats.max, settings.beatDisplay, true)
             }}</span>
         </div>
         <div class="flex justify-between" :class="{ invisible: lowerEdgeLabelsCovered }">
-            <span ref="bottomTime" :class="{ invisible: coveredEdgeLabels.bottom.time }">{{
-                formatTime(times.min)
-            }}</span>
-            <span ref="bottomBeat" :class="{ invisible: coveredEdgeLabels.bottom.beat }">{{
-                formatBeatPosition(sceneBpms, beats.min, settings.beatDisplay, true)
-            }}</span>
+            <span
+                ref="bottomTime"
+                class="pl-1"
+                :class="{ invisible: coveredEdgeLabels.bottom.time }"
+                >{{ formatTime(times.min) }}</span
+            >
+            <span
+                ref="bottomBeat"
+                class="pr-1"
+                :class="{ invisible: coveredEdgeLabels.bottom.beat }"
+                >{{ formatBeatPosition(sceneBpms, beats.min, settings.beatDisplay, true) }}</span
+            >
         </div>
     </div>
 </template>
