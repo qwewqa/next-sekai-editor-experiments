@@ -46,17 +46,23 @@ export const getElevationStageProps = (stageId: StageId, beat: number) => {
     const chart = compiledChart.value.chart
     const index = [...current.stages.keys()].indexOf(stageId)
     const stage = current.isDynamicStages ? chart.stages[index] : undefined
-    return stage
+    const props = stage
         ? getStageProps(stage, beatToTime(current.bpms, beat))
-        : { elevation: 0, pivotLane: 0 }
+        : { elevation: 0, pivotLane: 0, xLaneTranslate: 0 }
+    // Lanes move by pivot and X translation, as in Composed.
+    return { ...props, laneOffset: props.pivotLane + props.xLaneTranslate }
 }
 export const elevationNotes = computed(() => {
     const { chart, bySource } = compiledChart.value
     const props = chart.stages.map((stage) =>
         getStageProps(stage, beatToTime(bpms.value, elevationBeat.value)),
     )
+    const offset = (index: number) => {
+        const stage = props[index]
+        return stage ? stage.pivotLane + stage.xLaneTranslate : 0
+    }
     const basic = (note: PreviewNote) => ({
-        lane: note.lane + (props[note.stageIndex]?.pivotLane ?? 0),
+        lane: note.lane + offset(note.stageIndex),
         elevation: (note.elevation ?? 0) + (props[note.stageIndex]?.elevation ?? 0),
     })
     const notes: ElevationNote[] = []

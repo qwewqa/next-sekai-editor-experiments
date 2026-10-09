@@ -45,7 +45,7 @@ export const previewElevationNote = (
             {
                 ...properties,
                 beat,
-                left: alignComputed(lane - stage.pivotLane),
+                left: alignComputed(lane - stage.laneOffset),
                 elevation: elevation - stage.elevation,
                 size: size ?? properties.size,
             },
@@ -102,7 +102,7 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
             ...moved,
             left: shiftComputed(
                 moved.left,
-                direction * (source.pivotLane - firstStage.pivotLane) - destination.pivotLane,
+                direction * (source.laneOffset - firstStage.laneOffset) - destination.laneOffset,
             ),
             elevation:
                 note.elevation +

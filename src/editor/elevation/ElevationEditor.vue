@@ -385,7 +385,7 @@ const ghostRows = (entities: NoteEntity[]) =>
             const stage = getElevationStageProps(note.stageId, note.beat)
             return {
                 note,
-                lane: note.left + note.size / 2 + stage.pivotLane,
+                lane: note.left + note.size / 2 + stage.laneOffset,
                 size: note.size,
                 elevation: note.elevation + stage.elevation,
                 attached: false,
