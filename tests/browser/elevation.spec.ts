@@ -996,6 +996,8 @@ const showStageStep = (page: Page) =>
             3,
         )
         view.cursorTime = 3
+        // Lanes follow the layout; only Composed offsets them by the pivot.
+        view.layout = 'composed'
     })
 
 test('placing a note on a stage step uses the held pivot and elevation', async ({ page }) => {

@@ -260,7 +260,8 @@ export const scalingTool: Tool = {
             const baseline = getScalingBaselineEntity(entity)
             if (!baseline) return false
             const navigation = editorNavigation.value
-            const composed = navigation ? undefined : getComposedLayout(sceneState.value)
+            // The Elevation Editor shows the same lanes as the chart, so both project alike.
+            const composed = getComposedLayout(sceneState.value)
             const row =
                 navigation && entity.type === 'note'
                     ? elevationNotes.value.find((row) => row.note === entity)
