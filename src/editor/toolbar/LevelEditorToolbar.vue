@@ -230,14 +230,8 @@ const groupAt = ({ clientX: x, clientY: y }: PointerEvent) =>
         return !!cell && cell.left <= x && x < cell.right && cell.top <= y && y < cell.bottom
     })
 
-// Entering over another tool leaves it to the move that follows, so a resting pointer opens nothing.
-const onOverBackdrop = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse' || groupAt(event) !== -1) return
-
-    activeIndex.value = -1
-}
-
 // Tools under the backdrop take no input; moving onto one opens it at once, and off all closes.
+// Only movement counts: the backdrop appearing under a resting pointer leaves a keyboard-opened flyout.
 const onMoveBackdrop = (event: PointerEvent) => {
     if (event.pointerType !== 'mouse') return
 
@@ -371,10 +365,11 @@ onBeforeUnmount(() => {
                         }
                     "
                 >
+                    <!-- Rows split the gaps between them, and the last takes the one above its tool. -->
                     <LevelEditorToolbarTool
                         v-for="(name, j) in toolbar[i]"
                         :key="j"
-                        class="mb-1 w-full"
+                        class="relative mb-1 w-full before:absolute before:-inset-y-0.5 before:inset-x-0 last:before:-bottom-1"
                         :name
                         :state="stateOf(name, i)"
                         :check-column="hasValues(i)"
@@ -390,7 +385,6 @@ onBeforeUnmount(() => {
     <div
         v-if="activeIndex !== -1"
         class="absolute size-full bg-bg/75"
-        @pointerover="onOverBackdrop"
         @pointermove="onMoveBackdrop"
         @click="activeIndex = -1"
     />

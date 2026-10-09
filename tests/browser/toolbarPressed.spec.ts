@@ -1134,6 +1134,55 @@ test('moving from one tool onto the next opens the next at once, even resting on
     await expect.poll(open).toBe(below)
 })
 
+test('a flyout’s rows meet each other and its tool', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [['undo', 'redo', 'select']]
+    })
+    const face = shown(page).and(page.getByTitle('Select', { exact: true }))
+    const box = (await face.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 2 })
+    await expect(face).toHaveAttribute('aria-expanded', 'true')
+    // Down the rows at their rounded ends and middle, and on to the tool below the
+    // middle, every point is on a row or the tool.
+    const hits = await face.evaluate((face) => {
+        const rows = [...face.parentElement!.querySelectorAll(':scope > div button')]
+        const boxes = rows.map((row) => row.getBoundingClientRect())
+        const { left, right } = boxes[0]!
+        const tool = face.getBoundingClientRect()
+        return [
+            [left + 2, boxes.at(-1)!.bottom - 1],
+            [(left + right) / 2, tool.top + 4],
+            [right - 2, boxes.at(-1)!.bottom - 1],
+        ].map(([x, end]) => {
+            const seen: string[] = []
+            for (let y = boxes[0]!.top + 4; y < end!; y += 0.25) {
+                const button = document.elementFromPoint(x!, y)?.closest('button')
+                const hit = button === face ? 'tool' : `${rows.indexOf(button!)}`
+                if (seen.at(-1) !== hit) seen.push(hit)
+            }
+            return seen.join(' ')
+        })
+    })
+    expect(hits).toEqual(['0 1 2', '0 1 2 tool', '0 1 2'])
+})
+
+test('a flyout opened from the keyboard stays open under a resting pointer', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [['redo', 'select']]
+    })
+    const group = shown(page).and(page.getByTitle('Select', { exact: true }))
+    // The pointer rests over the chart as the backdrop appears under it.
+    await page.mouse.move(800, 300)
+    await group.focus()
+    await page.keyboard.press('Enter')
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    await page.waitForTimeout(300)
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    // Moving it there closes the flyout, as for one opened by hovering.
+    await page.mouse.move(810, 300)
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
