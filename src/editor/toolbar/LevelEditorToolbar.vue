@@ -126,6 +126,11 @@ watch(
 
 const activeIndex = ref(-1)
 const flyoutId = useId()
+// A flyout belongs to a group, so a new layout closes it.
+watch(
+    () => layoutOf(toolbar.value),
+    () => (activeIndex.value = -1),
+)
 
 /** A group's main tool discloses its flyout, if it has other members. */
 const flyoutAttributes = (index: number) =>
@@ -140,9 +145,11 @@ const flyoutAttributes = (index: number) =>
 const root = useTemplateRef<HTMLDivElement>('root')
 const room = ref(0)
 const short = ref(false)
+const height = ref(0)
 const observer = new ResizeObserver(([entry]) => {
     if (!entry) return
     room.value = entry.contentRect.width
+    height.value = entry.contentRect.height
     short.value = entry.contentRect.height < shortPaneHeight
 })
 watch(root, (element, previous) => {
@@ -238,6 +245,20 @@ const onMoveBackdrop = (event: PointerEvent) => {
     activeIndex.value = groupAt(event)
 }
 
+// Moving straight off the pane from the open tool or its flyout closes it too; only movement counts.
+const backdrop = useTemplateRef<HTMLDivElement>('backdrop')
+const onMoveOutside = (event: PointerEvent) => {
+    const target = event.target
+    if (event.pointerType !== 'mouse' || activeIndex.value === -1 || !(target instanceof Node))
+        return
+    if (root.value?.contains(target) || backdrop.value?.contains(target)) return
+    activeIndex.value = -1
+}
+window.addEventListener('pointermove', onMoveOutside, { passive: true })
+onBeforeUnmount(() => {
+    window.removeEventListener('pointermove', onMoveOutside)
+})
+
 // A flyout rises from its tool's top edge, centered on the tool and kept 8px
 // inside the pane, so it stays attached to the tool that opened it and is never
 // clipped at either edge.
@@ -282,7 +303,8 @@ watch(activeIndex, async () => {
     await nextTick()
     revealChecked()
 })
-watch([room, short], place)
+// After the rows rewrap, so the flyout follows its tool.
+watch([room, short, height, isCoarsePointer], () => void nextTick(place))
 
 // Escape closes an open flyout and returns focus to its tool.
 const onKeydown = (event: KeyboardEvent) => {
@@ -382,6 +404,7 @@ onBeforeUnmount(() => {
 
     <div
         v-if="activeIndex !== -1"
+        ref="backdrop"
         class="absolute size-full bg-scrim/75"
         @pointermove="onMoveBackdrop"
         @click="activeIndex = -1"

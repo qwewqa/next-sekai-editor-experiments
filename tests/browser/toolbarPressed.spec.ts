@@ -1572,3 +1572,59 @@ test('moving across the toolbar either way shows each flyout above its own tool'
         }
     }
 })
+
+// The open flyout and the scrim behind it.
+const openFlyout = (page: Page) => toolbar(page).locator(':scope > div > div > div')
+const scrim = (page: Page) => page.locator('[data-editor-toolbar] + div')
+
+const hoverLast = async (page: Page) => {
+    const box = (await shown(page).last().boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 })
+    await expect(openFlyout(page)).toBeVisible()
+}
+
+test('a resize keeps the open flyout on its tool and inside the pane', async ({ page }) => {
+    await hoverLast(page)
+    for (const size of [
+        { width: 500, height: 1000 },
+        { width: 900, height: 1000 },
+        { width: 1600, height: 400 },
+        { width: 1600, height: 300 },
+    ]) {
+        await page.setViewportSize(size)
+        await expect(openFlyout(page)).toBeVisible()
+        await expect
+            .poll(async () => {
+                const tool = (await shown(page).last().boundingBox())!
+                const list = (await openFlyout(page).boundingBox())!
+                const pane = (await toolbar(page).boundingBox())!
+                return (
+                    Math.abs(list.y + list.height - tool.y) < 1 &&
+                    list.x < tool.x + tool.width &&
+                    list.x + list.width > tool.x &&
+                    list.y >= pane.y
+                )
+            })
+            .toBe(true)
+    }
+})
+
+test('a new toolbar layout closes the open flyout', async ({ page }) => {
+    await hoverLast(page)
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.toolbar = settings.toolbar.slice(0, 3)
+    })
+    await expect(openFlyout(page)).toHaveCount(0)
+    await expect(scrim(page)).toHaveCount(0)
+    await expect(toolbar(page).locator('[inert]')).toHaveCount(0)
+})
+
+test('leaving the pane in one move closes the open flyout', async ({ page }) => {
+    await hoverLast(page)
+    const pane = (await toolbar(page).boundingBox())!
+    const tool = (await shown(page).last().boundingBox())!
+    await page.mouse.move(tool.x + tool.width / 2, pane.y + pane.height + 12)
+    await expect(openFlyout(page)).toHaveCount(0)
+    await expect(scrim(page)).toHaveCount(0)
+})
