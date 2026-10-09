@@ -111,6 +111,27 @@ test('non-dynamic charts omit the layout field and composed pressed state', asyn
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
+test('the layout command leaves non-dynamic charts and the next chart in Basic', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        show(fixtures.interaction, 3)
+    })
+    const bounds = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.click(bounds.x + 10, bounds.y + 10)
+    await page.keyboard.press('l')
+    await expect(page.locator('.notification')).toHaveText('Dynamic stages are off for this level.')
+    expect(await layout(page)).toBe('basic')
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        show(fixtures.events, 3)
+    })
+    expect(await layout(page)).toBe('basic')
+    await expect(choice(page, 'Basic')).toBeChecked()
+    expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+})
+
 test('switching layout cancels an active gesture and clears transient editing state', async ({
     page,
 }) => {
