@@ -30,10 +30,12 @@ export const sampleComposed = <T extends { left: number; size: number }>(
         if (options.coordinates) {
             const aValues = options.coordinates(a)
             const bValues = options.coordinates(b)
-            for (const [index, value] of options.coordinates(point).entries()) {
+            const values = options.coordinates(point)
+            for (let index = 0; index < values.length; index++) {
+                const value = values[index]
                 const start = aValues[index]
                 const end = bValues[index]
-                if (start === undefined || end === undefined) continue
+                if (value === undefined || start === undefined || end === undefined) continue
                 error = Math.max(error, Math.abs(value - chord(start, end)))
             }
         }
@@ -58,10 +60,11 @@ export const sampleComposed = <T extends { left: number; size: number }>(
             middle ??= sample((a.time + b.time) / 2, false)
             let first: Point | undefined
             let second: Point | undefined
+            const span = b.time - a.time
             let split =
-                b.time - a.time > (options.maxTimeStep ?? Infinity) ||
-                deviation(middle, a, b, 0.5) > 0.01
-            if (!split) {
+                span > (options.maxTimeStep ?? Infinity) || deviation(middle, a, b, 0.5) > 0.01
+            // A time step already bounds a chord's height; within it the midpoint decides.
+            if (!split && !(span <= (options.maxTimeStep ?? 0))) {
                 first = sample((a.time + middle.time) / 2, false)
                 second = sample((middle.time + b.time) / 2, false)
                 split = deviation(first, a, b, 0.25) > 0.01 || deviation(second, a, b, 0.75) > 0.01
