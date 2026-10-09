@@ -734,3 +734,18 @@ test('equivalent divider phases add no guide switches, and static or missing sta
     assert.equal(basic.gridOffset(stageA, 2), 0)
     assert.equal(basic.offset(stageA, 2), 0)
 })
+
+test('the displayed extent skips a stage that is never drawn', () => {
+    const source = state({
+        stages: new Map([
+            [
+                stageA,
+                { name: 'A', isFromStart: false, isUntilEnd: true, generateSimLines: 'global' },
+            ],
+        ]),
+        slides: [[note(2, -1)]],
+    })
+    const layout = createComposedLayout(source)
+    assert.ok(!Number.isFinite(layout.stages.get(stageA)!.startBeat))
+    assert.deepEqual(layout.displayedExtent(), { min: -1, max: 1 })
+})

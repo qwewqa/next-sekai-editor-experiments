@@ -335,7 +335,8 @@ const buildComposedLayout = (state: State) => {
             // Stages hold still after their last breakpoint; samples between them catch overshoot.
             const from = Math.max(0, data.startBeat)
             const to = Math.min(data.endBeat, Math.max(from, data.breakpoints.at(-1) ?? from))
-            if (!(to >= from)) continue
+            // A stage with no mask events and From Start off is never drawn.
+            if (!(to >= from) || !Number.isFinite(from)) continue
             const beats = [from, ...data.breakpoints.filter((beat) => from < beat && beat < to), to]
             for (const [index, beat] of beats.entries()) {
                 const next = beats[index + 1] ?? beat
