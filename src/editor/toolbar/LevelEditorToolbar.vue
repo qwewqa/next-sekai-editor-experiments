@@ -240,23 +240,29 @@ const groupAt = ({ clientX: x, clientY: y }: PointerEvent) =>
 // Tools under the backdrop take no input; moving onto one opens it at once, and off all closes.
 // Only movement counts: the backdrop appearing under a resting pointer leaves a keyboard-opened flyout.
 const onMoveBackdrop = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse') return
+    if (event.pointerType !== 'mouse' || inPlace) return
 
     activeIndex.value = groupAt(event)
 }
 
-// Moving straight off the pane from the open tool or its flyout closes it too; only movement counts.
+// Moving straight off the pane from the open tool or its flyout closes it too. Only movement
+// counts: WebKit also sends a move in place when content scrolls under a resting pointer.
 const backdrop = useTemplateRef<HTMLDivElement>('backdrop')
+let lastMove: { x: number; y: number } | undefined
+let inPlace = false
 const onMoveOutside = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return
+    inPlace = lastMove?.x === event.clientX && lastMove.y === event.clientY
+    lastMove = { x: event.clientX, y: event.clientY }
     const target = event.target
-    if (event.pointerType !== 'mouse' || activeIndex.value === -1 || !(target instanceof Node))
-        return
+    if (inPlace || activeIndex.value === -1 || !(target instanceof Node)) return
     if (root.value?.contains(target) || backdrop.value?.contains(target)) return
     activeIndex.value = -1
 }
-window.addEventListener('pointermove', onMoveOutside, { passive: true })
+// Capturing, as resize handles stop moves from bubbling; it runs before the backdrop’s handler.
+window.addEventListener('pointermove', onMoveOutside, { capture: true, passive: true })
 onBeforeUnmount(() => {
-    window.removeEventListener('pointermove', onMoveOutside)
+    window.removeEventListener('pointermove', onMoveOutside, { capture: true })
 })
 
 // A flyout rises from its tool's top edge, centered on the tool and kept 8px

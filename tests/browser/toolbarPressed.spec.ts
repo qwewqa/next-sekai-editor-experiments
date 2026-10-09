@@ -1628,3 +1628,46 @@ test('leaving the pane in one move closes the open flyout', async ({ page }) => 
     await expect(openFlyout(page)).toHaveCount(0)
     await expect(scrim(page)).toHaveCount(0)
 })
+
+test('a move in place, as WebKit sends after a scroll, leaves a keyboard-opened flyout open', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [['redo', 'select']]
+    })
+    const group = shown(page).and(page.getByTitle('Select', { exact: true }))
+    for (const [x, y] of [
+        [800, 300],
+        [5, 500],
+    ]) {
+        await page.mouse.move(x, y)
+        await group.focus()
+        await page.keyboard.press('Enter')
+        await expect(group).toHaveAttribute('aria-expanded', 'true')
+        // The browser's own move at the pointer's unchanged position.
+        await page.evaluate(
+            ([x, y]) => {
+                const target = document.elementFromPoint(x, y)!
+                const init = { bubbles: true, clientX: x, clientY: y, pointerType: 'mouse' }
+                target.dispatchEvent(new PointerEvent('pointermove', init))
+            },
+            [x, y],
+        )
+        await page.waitForTimeout(100)
+        await expect(group).toHaveAttribute('aria-expanded', 'true')
+        await page.keyboard.press('Escape')
+    }
+})
+
+test('a move straight onto a dock resize handle closes the open flyout', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.showSidebar = true
+    })
+    const handle = page.locator('.resize-handle').first()
+    await expect(handle).toBeVisible()
+    await hoverLast(page)
+    const box = (await handle.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(openFlyout(page)).toHaveCount(0)
+    await expect(scrim(page)).toHaveCount(0)
+})
