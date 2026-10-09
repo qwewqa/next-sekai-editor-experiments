@@ -35,11 +35,11 @@ const type = computed(() => {
 <template>
     <svg viewBox="-0.55 -0.55 1.1 1.1" :style="noteStyleVariables(properties.noteStyle)">
         <component :is="iconComponents[type]" :properties />
-        <!-- Stays dark on light note bodies; anchor and damage bodies leave the surface's ink. -->
+        <!-- Stays dark on light note bodies; open and thin bodies leave the surface's ink. -->
         <text
             v-if="index !== undefined"
             class="forced-colors:fill-on-accent"
-            :class="{ 'fill-[--preset-ink]': type !== 'anchor' && type !== 'damage' }"
+            :class="{ 'fill-[--preset-ink]': !['anchor', 'damage', 'tick'].includes(type) }"
             x="0"
             y="0"
             font-size="0.5"

@@ -1,6 +1,6 @@
 import { readonly, shallowRef } from 'vue'
 
-// The chart background (theme `bg`), under translucent fills; src/theme.ts keeps it current.
+// The chart background (theme `bg`; light's until src/theme.ts reads it), under translucent fills.
 const background = shallowRef('#404464')
 
 /** The chart background as #rrggbb; drawing that blends over it redraws when it changes. */
