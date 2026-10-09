@@ -1115,12 +1115,22 @@ test('moving from one tool onto the next opens the next at once, even resting on
 
     // Across wrapped rows too.
     await page.setViewportSize({ width: 390, height: 844 })
-    const rows = await boxes()
-    const below = rows.findIndex((box) => box.top > rows[0]!.top)
-    expect(rows[below]!.left).toBe(rows[0]!.left)
-    await hover(rows[0]!)
+    // Rows balance once the resize is measured, lining up their first tools.
+    const rows = async () => {
+        const all = await boxes()
+        const below = all.findIndex((box) => box.top > all[0]!.top)
+        return { first: all[0]!, below, under: all[below] }
+    }
+    await expect
+        .poll(async () => {
+            const { first, under } = await rows()
+            return under?.left === first.left
+        })
+        .toBe(true)
+    const { first, below, under } = await rows()
+    await hover(first)
     await expect.poll(open).toBe(0)
-    await page.mouse.move(rows[below]!.left + rows[below]!.width / 2, rows[below]!.top)
+    await page.mouse.move(under!.left + under!.width / 2, under!.top)
     await expect.poll(open).toBe(below)
 })
 
