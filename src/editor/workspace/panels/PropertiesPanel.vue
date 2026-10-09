@@ -369,10 +369,11 @@ const onTabKeydown = (event: KeyboardEvent) => {
                     class="sticky top-0 z-10 bg-modal transition-shadow"
                     :class="{ 'shadow-band': raisedSection === section }"
                 >
+                    <!-- The header takes the divider above it, so collapsed headers meet. -->
                     <button
                         :id="headerId(section)"
                         type="button"
-                        class="flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        class="flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold transition-colors before:absolute before:inset-x-0 before:-top-px before:h-px hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
                         :aria-expanded="isExpanded(section)"
                         :aria-controls="bodyId(section)"
                         @click="toggle($event, section)"

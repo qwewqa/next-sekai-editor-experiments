@@ -90,6 +90,18 @@ test('manager rows and their buttons meet', async ({ page }) => {
     expect(await second.evaluate((row) => row.matches(':hover'))).toBe(true)
 })
 
+test('collapsed properties headers meet across their dividers', async ({ page }) => {
+    await page.evaluate(() => Object.assign(window.editorTest.settings, { showSidebar: true }))
+    const headers = page.locator('[id^="properties-section-"][id$="-header"]')
+    await expect(headers).toHaveCount(3)
+    for (let i = 0; i < 3; i++)
+        if ((await headers.nth(i).getAttribute('aria-expanded')) === 'true')
+            await headers.nth(i).click()
+    await page.mouse.move(5, 5)
+    await meet(headers.nth(0), headers.nth(1))
+    await meet(headers.nth(1), headers.nth(2))
+})
+
 const toolbarPairs = (page: Page) =>
     page.getByRole('dialog').evaluate((dialog) => {
         // Neighbours down a column, and across the gap between columns.
@@ -99,18 +111,27 @@ const toolbarPairs = (page: Page) =>
         const down = [...columns[0]!.children].slice(0, 2).map(index)
         const tops = (column: Element) =>
             [...column.children].map((child) => child.getBoundingClientRect().top)
+        // The trailing add button, wrapped under a column's last tool.
+        const grid = [...dialog.querySelectorAll('.flex-wrap button')]
+        const last = grid.at(-1)!.getBoundingClientRect()
+        const over = grid.find((button) => {
+            const box = button.getBoundingClientRect()
+            const centre = box.left + box.width / 2
+            return last.top - box.bottom === 4 && centre > last.left && centre < last.right
+        })
+        const wrapped = over && [index(over), index(grid.at(-1)!)]
         for (let i = 0; i + 1 < columns.length; i++) {
             const [left, right] = [columns[i]!, columns[i + 1]!]
             const shared = tops(left).find((top) => tops(right).includes(top))
             if (shared === undefined) continue
             const at = (column: Element) =>
                 [...column.children].find((child) => child.getBoundingClientRect().top === shared)!
-            return { down, across: [index(at(left)), index(at(right))] }
+            return { down, across: [index(at(left)), index(at(right))], wrapped }
         }
         throw new Error('no columns side by side')
     })
 
-const settingsToolbarMeets = async (page: Page) => {
+const settingsToolbarMeets = async (page: Page, wraps = true) => {
     await page.evaluate(async () => {
         const { commands } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands')
@@ -120,11 +141,15 @@ const settingsToolbarMeets = async (page: Page) => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByText('Toolbar', { exact: true }).scrollIntoViewIfNeeded()
-    const { down, across } = await toolbarPairs(page)
+    const { down, across, wrapped } = await toolbarPairs(page)
     const button = (index: number) => dialog.locator('button').nth(index)
-    // A column's add button meets the tool below it, and tools meet across columns.
+    // A column's add button meets the tool below it, tools meet across columns,
+    // and wrapped lines meet across the gap between them.
     await meet(button(down[0]!), button(down[1]!))
     await meet(button(across[0]!), button(across[1]!))
+    if (!wraps) return
+    expect(wrapped).toBeDefined()
+    await meet(button(wrapped![0]!), button(wrapped![1]!))
 }
 
 test('the settings toolbar editor’s buttons meet', async ({ page }) => {
@@ -141,6 +166,6 @@ test.describe('on a phone', () => {
     })
 
     test('the settings toolbar editor’s buttons meet at touch sizes', async ({ page }) => {
-        await settingsToolbarMeets(page)
+        await settingsToolbarMeets(page, false)
     })
 })
