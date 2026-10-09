@@ -119,3 +119,24 @@ test('Settings offers the theme after the language', async ({ page }) => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
 })
+
+test('dialog backdrops get theme colours without inheriting them, as older browsers need', async ({
+    page,
+}) => {
+    await open(page)
+    await page.evaluate(async () => {
+        const { settings } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/settings')
+        >('/src/editor/commands/settings/index.ts')
+        settings.execute()
+    })
+    const backdrop = () =>
+        page.locator('dialog').evaluate((dialog) => {
+            // What a browser that doesn't pass custom properties into ::backdrop would see.
+            dialog.style.setProperty('--color-scrim', 'initial')
+            return getComputedStyle(dialog, '::backdrop').backgroundColor
+        })
+    expect(await backdrop()).toBe('rgba(64, 68, 100, 0.75)')
+    await page.evaluate(() => (window.editorTest.settings.theme = 'dark'))
+    expect(await backdrop()).toBe('rgba(16, 17, 32, 0.75)')
+})
