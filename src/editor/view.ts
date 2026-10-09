@@ -11,6 +11,7 @@ import { computedArray } from '../utils/array'
 import { align, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
 import { requestAudioPreview } from './audioPreview'
+import { getComposedLayout } from './composedView'
 import type { Modifiers } from './controls/gestures/pointer'
 import { integrateScrollInertia } from './inertia'
 import { editorNavigation, getControlBounds } from './navigation'
@@ -227,10 +228,27 @@ export const viewBox = computed(() => {
 
 export const ups = computed(() => viewBox.value.ups)
 
+// Composed also reaches the displayed chart, which stages can move past Max Scroll X.
+const scrollLanes = () => {
+    const limit = settings.maxScrollX
+    const extent = getComposedLayout()?.displayedExtent()
+    if (!extent) return { min: -limit, max: limit }
+    const half = settings.width / 2
+    return { min: Math.min(-limit, extent.min + half), max: Math.max(limit, extent.max - half) }
+}
+
+/** Returns a view scrolled past Basic's range, as Composed allows, into it. */
+export const clampViewLane = () => {
+    if (getComposedLayout() || Math.abs(view.lane) <= settings.maxScrollX) return
+    view.scrollingX = undefined
+    view.lane = clamp(view.lane, -settings.maxScrollX, settings.maxScrollX)
+}
+
 export const scrollViewXBy = (dx: number, smooth = false) => {
     updateViewLastActive()
     const laneScale =
         editorNavigation.value?.getScaleX?.() ?? getControlBounds(view).w / settings.width
+    const lanes = scrollLanes()
 
     if (smooth) {
         view.scrollingX = {
@@ -244,13 +262,13 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
                 viewLane: clamp(
                     (view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : view.lane) +
                         dx / laneScale,
-                    -settings.maxScrollX,
-                    settings.maxScrollX,
+                    lanes.min,
+                    lanes.max,
                 ),
             },
         }
     } else {
-        view.lane = clamp(view.lane + dx / laneScale, -settings.maxScrollX, settings.maxScrollX)
+        view.lane = clamp(view.lane + dx / laneScale, lanes.min, lanes.max)
     }
 }
 

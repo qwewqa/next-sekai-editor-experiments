@@ -10,7 +10,7 @@ import { editorNavigation, type EditorNavigation } from '../navigation'
 import { isEntityShown, scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { tool } from '../tools'
-import { view } from '../view'
+import { clampViewLane, view } from '../view'
 import { dragCursor, lockedCursor } from './cursor'
 import { isDragging } from './gestures/recognizers/drag'
 import { cancelMouseControls, hasMouseControls, mouseControlListeners } from './mouse'
@@ -92,6 +92,8 @@ export const useControlLifecycle = () => {
         },
         { flush: 'sync' },
     )
+    // Leaving Composed, by layout or by chart, returns to Basic's scroll range.
+    watch(() => view.layout === 'composed' && state.value.isDynamicStages, clampViewLane)
     watch(
         [tool, state],
         ([currentTool, currentState], [previousTool, previousState]) => {

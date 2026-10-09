@@ -321,6 +321,42 @@ const buildComposedLayout = (state: State) => {
         const center = lerp(a.left + a.size / 2, b.left + b.size / 2, blend)
         return { left: center - size / 2, size }
     }
+    let extent: { min: number; max: number } | undefined
+    /** Lanes spanned by drawn stages and notes over the whole chart. */
+    const displayedExtent = () => {
+        if (extent) return extent
+        let min = Infinity
+        let max = -Infinity
+        const include = (left: number, right: number) => {
+            min = Math.min(min, left, right)
+            max = Math.max(max, left, right)
+        }
+        for (const [stageId, data] of stages) {
+            // Stages hold still after their last breakpoint; samples between them catch overshoot.
+            const from = Math.max(0, data.startBeat)
+            const to = Math.min(data.endBeat, Math.max(from, data.breakpoints.at(-1) ?? from))
+            if (!(to >= from)) continue
+            const beats = [from, ...data.breakpoints.filter((beat) => from < beat && beat < to), to]
+            for (const [index, beat] of beats.entries()) {
+                const next = beats[index + 1] ?? beat
+                for (let step = 0; step < 8; step++) {
+                    for (const rightLimit of [false, true]) {
+                        const props = stage(stageId, lerp(beat, next, step / 8), { rightLimit })
+                        if (props) include(props.left, props.right)
+                    }
+                    if (next === beat) break
+                }
+            }
+        }
+        for (const notes of state.store.slides.note.values()) {
+            for (const note of notes) {
+                const position = notePosition(note)
+                include(position.left, position.left + position.size)
+            }
+        }
+        extent = { min, max }
+        return extent
+    }
 
     return {
         stages,
@@ -331,6 +367,7 @@ const buildComposedLayout = (state: State) => {
         noteLeft,
         hitbox,
         connectorPosition,
+        displayedExtent,
     }
 }
 
