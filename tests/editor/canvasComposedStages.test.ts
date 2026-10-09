@@ -7,8 +7,9 @@ import { drawComposedStages } from '../../src/editor/canvas/stages'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import { createComposedLayout } from '../../src/editor/composed'
 import { createScopeLookup, fullScope } from '../../src/editor/scopeRules'
+import { ease, EaseType } from '../../src/preview/engine/math'
 import { createState } from '../../src/state'
-import { calculateBpms } from '../../src/state/integrals/bpms'
+import { calculateBpms, timeToBeat } from '../../src/state/integrals/bpms'
 
 const stageId = 1 as StageId
 const chart = (): Chart => ({
@@ -408,6 +409,28 @@ test('an In-Out Step jump beside another breakpoint draws no horizontal border s
     for (const { points } of borders) {
         const [[ax, ay], [bx, by]] = points as [number[], number[]]
         assert.ok(ay !== by || ax === bx, `${ax},${ay} -> ${bx},${by}`)
+    }
+})
+
+test('composed sampling keeps elastic curves within tolerance between its vertices', () => {
+    const bpms = calculateBpms([{ x: 0, y: 0, s: 0.5 }])
+    for (const type of [EaseType.inElastic, EaseType.outElastic, EaseType.outInElastic]) {
+        const at = (beat: number) => ({ left: 8 * ease(type, beat / 4), size: 1 })
+        for (const points of sampleComposed(bpms, [0, 4], at)) {
+            for (let i = 1; i < points.length; i++) {
+                const a = points[i - 1]!
+                const b = points[i]!
+                // A midpoint on the chord can hide an inflection; the quarter points cannot.
+                for (let j = 1; j < 16; j++) {
+                    const time = a.time + ((b.time - a.time) * j) / 16
+                    const chord = a.left + ((b.left - a.left) * j) / 16
+                    assert.ok(
+                        Math.abs(at(timeToBeat(bpms, time)).left - chord) <= 0.0125,
+                        `${type}`,
+                    )
+                }
+            }
+        }
     }
 })
 
