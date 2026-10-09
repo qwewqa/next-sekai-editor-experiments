@@ -304,7 +304,7 @@ const narrowKind = async (event: MouseEvent) => {
 <style>
 /* Blocks of different kinds are set apart more than field groups are. */
 .properties-block + .properties-block {
-    border-top: 1px solid rgb(68 68 102 / 0.3);
+    border-top: 1px solid theme('colors.fg / 30%');
     padding-top: 0.5rem;
 }
 </style>

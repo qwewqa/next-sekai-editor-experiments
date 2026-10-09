@@ -629,7 +629,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-row-heading .manager-icon-button-open:not(:active) {
-    @apply bg-white/40;
+    @apply bg-header-hover;
 }
 
 /* A toggle that is on, such as the band's Select while selecting. */
@@ -771,7 +771,7 @@ const onRenameBlur = (event: FocusEvent) => {
 
     /* Icon buttons on the lavender band lighten, like other band buttons. */
     .manager-row-heading .manager-icon-button:hover:not(:active):not(.manager-icon-button-pressed) {
-        @apply bg-white/40;
+        @apply bg-header-hover;
     }
 
     .manager-row:hover .manager-slot-hover .manager-inline {

@@ -501,7 +501,7 @@ watchEffect(
     margin-top: 0.375rem;
     font-size: 0.75rem;
     line-height: 1rem;
-    color: #30334d;
+    color: theme('colors.fg-strong');
 }
 
 /* Coverage alone sits in the label's column, leaving the control where it is. */
@@ -558,7 +558,7 @@ watchEffect(
     margin-top: 0.25rem;
     font-size: 0.75rem;
     line-height: 1rem;
-    color: rgb(68 68 102 / 0.8);
+    color: theme('colors.fg / 80%');
 }
 
 /* Under a label with an icon, notes start with the label's text. */
@@ -572,7 +572,7 @@ watchEffect(
     border-radius: 9999px;
     outline: 2px solid transparent;
     padding: 0.125rem 0.5rem;
-    background-color: rgb(68 68 102 / 0.08);
+    background-color: theme('colors.fg / 8%');
     transition-property: color, background-color;
     transition-duration: 150ms;
 }
@@ -580,7 +580,7 @@ watchEffect(
 /* Tabular digits keep its width as counts change, which the fit relies on. */
 .form-field-coverage-chip {
     background-color: transparent;
-    color: rgb(68 68 102 / 0.8);
+    color: theme('colors.fg / 80%');
     font-variant-numeric: tabular-nums;
 }
 
@@ -593,18 +593,18 @@ watchEffect(
 }
 
 .form-field-mixed-value:focus-visible {
-    box-shadow: 0 0 0 2px #444466;
+    box-shadow: 0 0 0 2px theme('colors.fg');
 }
 
 @media (hover: hover) {
     .form-field-mixed-value:enabled:hover {
-        background-color: #d7d7e3;
+        background-color: theme('colors.header-hover');
     }
 }
 
 .form-field-mixed-value:enabled:active {
-    background-color: #77efdc;
-    color: #30334d;
+    background-color: theme('colors.accent');
+    color: theme('colors.on-accent');
 }
 
 /* Labels wrap in full; a word too long for its line still breaks. */

@@ -12,7 +12,7 @@
 }
 
 .properties-field-group:not(:empty) ~ .properties-field-group:not(:empty) {
-    border-top: 1px solid rgb(68 68 102 / 0.15);
+    border-top: 1px solid theme('colors.fg / 15%');
     padding-top: 0.75rem;
 }
 </style>

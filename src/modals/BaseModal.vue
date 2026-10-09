@@ -35,7 +35,7 @@ const titleId = useId()
         <span :id="titleId" class="min-w-0 truncate" data-modal-title :title>{{ title }}</span>
         <button
             type="button"
-            class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
             :aria-label="i18n.modals.close"
             :title="i18n.modals.close"
             @click="$emit('close')"

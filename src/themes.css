@@ -1,0 +1,21 @@
+/* Theme colours as RGB channels, so Tailwind's opacity modifiers apply; see tailwind.config.js. */
+:root {
+    color-scheme: light;
+    --color-fg: 68 68 102;
+    --color-fg-strong: 48 51 77;
+    --color-bg: 64 68 100;
+    --color-button: 255 255 255;
+    --color-accent: 119 239 220;
+    --color-on-accent: 48 51 77;
+    --color-header: 188 188 209;
+    --color-header-hover: 215 215 227;
+    --color-modal: 233 235 239;
+    --color-popup: 255 255 255;
+    --color-popup-hover: 233 235 239;
+    --color-preview: 91 92 124;
+    --color-danger: 185 28 28;
+    --color-on-danger: 255 255 255;
+    --color-knob: 255 255 255;
+    --shadow-track: inset 0 1px 2px rgb(48 51 77 / 0.2);
+    --shadow-band: 0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35);
+}

@@ -1,3 +1,5 @@
+const color = (name) => `rgb(var(--color-${name}) / <alpha-value>)`
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     // Touch screens must not keep hover styles after a tap.
@@ -7,31 +9,36 @@ module.exports = {
     content: ['./index.html', './src/**/*.vue', './src/**/*.ts'],
     theme: {
         extend: {
+            // Values per theme are in src/themes.css.
             colors: {
-                fg: '#444466',
-                bg: '#404464',
-                button: '#fff',
-                accent: '#77efdc',
-                'on-accent': '#30334d',
-                header: '#bcbcd1',
+                fg: color('fg'),
+                // Ink a step stronger than fg.
+                'fg-strong': color('fg-strong'),
+                bg: color('bg'),
+                button: color('button'),
+                accent: color('accent'),
+                'on-accent': color('on-accent'),
+                header: color('header'),
                 // white/40 over header: hover on lavender bands, opaque so
                 // sticky bands never show content scrolling beneath.
-                'header-hover': '#d7d7e3',
-                modal: '#e9ebef',
+                'header-hover': color('header-hover'),
+                modal: color('modal'),
                 // Menus and select lists, and their row under the pointer or focus.
-                popup: '#fff',
-                // The modal grey.
-                'popup-hover': '#e9ebef',
-                preview: '#5b5c7c',
+                popup: color('popup'),
+                'popup-hover': color('popup-hover'),
+                preview: color('preview'),
                 // Destructive actions and errors (6.47:1 on white).
-                danger: '#b91c1c',
+                danger: color('danger'),
+                'on-danger': color('on-danger'),
+                // The toggle switch's knob.
+                knob: color('knob'),
             },
             boxShadow: {
                 // The recessed track of a segmented control.
-                track: 'inset 0 1px 2px rgb(48 51 77 / 0.2)',
+                track: 'var(--shadow-track)',
                 // A sticky band raised over content scrolled beneath it: a
                 // hairline and a soft shadow.
-                band: '0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35)',
+                band: 'var(--shadow-band)',
             },
             width: {
                 screen: ['100vw', '100dvw'],

@@ -31,7 +31,7 @@ defineEmits<{
             <button
                 type="button"
                 class="h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-button active:text-fg [@media(pointer:coarse)]:h-11"
-                :class="destructive ? 'bg-danger text-white' : 'bg-accent text-on-accent'"
+                :class="destructive ? 'bg-danger text-on-danger' : 'bg-accent text-on-accent'"
                 data-autofocus
                 @click="$emit('close', true)"
             >

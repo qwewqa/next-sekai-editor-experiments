@@ -14,7 +14,8 @@ defineProps<{
             cy="8"
             r="6"
             :fill="color"
-            :stroke="edge ?? 'rgb(68 68 102 / 0.45)'"
+            :class="{ 'stroke-fg/45': !edge }"
+            :stroke="edge"
             stroke-width="1"
         />
         <circle

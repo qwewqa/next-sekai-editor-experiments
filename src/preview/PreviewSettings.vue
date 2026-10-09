@@ -441,7 +441,7 @@ const onPlacementChange = () => {
                         i18n.settings.preview.aspectRatio
                     }}</span>
                     <span
-                        class="preview-setting-control flex rounded-full bg-fg/10 p-0.5 shadow-[inset_0_1px_2px_rgb(48_51_77/0.2)] outline-none"
+                        class="preview-setting-control flex rounded-full bg-fg/10 p-0.5 shadow-track outline-none"
                         role="radiogroup"
                         :aria-labelledby="`${id}-aspect`"
                     >
@@ -458,7 +458,7 @@ const onPlacementChange = () => {
                                 :value
                             />
                             <span
-                                class="flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-white/50 peer-checked:peer-hover:bg-button peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-active:bg-accent peer-active:text-on-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"
+                                class="flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-active:bg-accent peer-active:text-on-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"
                             >
                                 {{ label }}
                             </span>

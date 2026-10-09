@@ -51,7 +51,7 @@ const top = computed(() => hasToolModal(props.pane))
 
     100% {
         color: rgb(255 255 255 / 0.25);
-        background-color: rgb(119 239 220 / 0);
+        background-color: theme('colors.accent / 0%');
     }
 }
 </style>

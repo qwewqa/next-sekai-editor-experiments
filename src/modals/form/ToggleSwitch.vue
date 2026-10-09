@@ -15,7 +15,7 @@ defineProps<{
             :class="value ? 'bg-accent' : 'bg-fg/25'"
         >
             <span
-                class="absolute top-0.5 size-2.5 rounded-full bg-white shadow-sm transition-[left] forced-colors:bg-[ButtonText]"
+                class="absolute top-0.5 size-2.5 rounded-full bg-knob shadow-sm transition-[left] forced-colors:bg-[ButtonText]"
                 :class="value === undefined ? 'left-[0.4375rem]' : value ? 'left-3' : 'left-0.5'"
             />
         </span>
