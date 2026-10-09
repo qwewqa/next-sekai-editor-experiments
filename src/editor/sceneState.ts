@@ -4,13 +4,21 @@ import { cullAllEntities, hitAllEntities, hitEntities } from '../history/store'
 import { isToolModalOpen } from '../modals'
 import { getPreviewState } from '../preview/edit'
 import type { EntityType } from '../state/entities'
+import type { BpmIntegral } from '../state/integrals/bpms'
 import { view } from './view'
 
-export const sceneState = computed(() =>
-    isToolModalOpen.value || (view.layout === 'composed' && state.value.isDynamicStages)
-        ? getPreviewState(state.value)
-        : state.value,
-)
+const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
+    a === b ||
+    (a.length === b.length &&
+        a.every((bpm, i) => bpm.x === b[i]?.x && bpm.y === b[i].y && bpm.s === b[i].s))
+
+export const sceneState = computed(() => {
+    if (isToolModalOpen.value) return getPreviewState(state.value)
+    if (view.layout !== 'composed' || !state.value.isDynamicStages) return state.value
+    // Pointers map through the committed tempo, so a retimed preview would slide away from them.
+    const preview = getPreviewState(state.value)
+    return isSameTempo(preview.bpms, state.value.bpms) ? preview : state.value
+})
 export const sceneBpms = computed(() => sceneState.value.bpms)
 export const isScenePreview = computed(() => sceneState.value !== state.value)
 
