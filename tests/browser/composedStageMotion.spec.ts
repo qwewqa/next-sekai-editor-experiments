@@ -118,3 +118,101 @@ for (const dpr of [1, 1.25, 1.5]) {
         })
     })
 }
+
+// The chart canvas's own pixels once the pointer has left and activity has settled.
+const pixels = async (page: Page) => {
+    await page.mouse.move(8, 300)
+    await page.waitForTimeout(800)
+    await frames(page, 4)
+    const url = await page
+        .locator('canvas.editor-chart')
+        .evaluate((element) => (element as HTMLCanvasElement).toDataURL())
+    return Buffer.from(url.split(',')[1]!, 'base64')
+}
+
+// The same view drawn from scratch.
+const freshPixels = async (page: Page) => {
+    const place = await page.evaluate(() => {
+        const { view } = window.editorTest
+        return { time: view.time, lane: view.lane, cursorTime: view.cursorTime }
+    })
+    await seed(page, place.time)
+    await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
+    return pixels(page)
+}
+
+const scrollWhile = async (page: Page, change: () => Promise<unknown>) => {
+    const scroll = (steps: number) =>
+        page.evaluate(async (steps) => {
+            const { appImport, view } = window.editorTest
+            const { scrollViewYBy } =
+                await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+            for (let i = 0; i < steps; i++) {
+                scrollViewYBy(-37, true)
+                for (let f = 0; f < 3; f++) await new Promise((r) => requestAnimationFrame(r))
+            }
+            while (view.scrollingY) await new Promise((r) => requestAnimationFrame(r))
+        }, steps)
+    const moving = scroll(8)
+    await frames(page, 6)
+    await change()
+    await moving
+}
+
+test.describe('changes during motion', () => {
+    test.use({ deviceScaleFactor: 1.25 })
+
+    test.beforeEach(async ({ page }) => {
+        await page.addInitScript(installCanvasCounters)
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await seed(page, 5)
+        await frames(page, 4)
+    })
+
+    test('a theme switch mid-scroll still settles on an exact frame', async ({ page }) => {
+        await scrollWhile(page, () =>
+            page.evaluate(() => {
+                window.editorTest.settings.theme = 'light'
+            }),
+        )
+        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+    })
+
+    test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {
+        const cdp = await page.context().newCDPSession(page)
+        await scrollWhile(page, () =>
+            cdp.send('Emulation.setDeviceMetricsOverride', {
+                width: 1600,
+                height: 1000,
+                deviceScaleFactor: 1.5,
+                mobile: false,
+            }),
+        )
+        expect(await page.evaluate(() => devicePixelRatio)).toBe(1.5)
+        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+    })
+
+    test('hiding the app during playback leaves no shifted stage pixels', async ({ page }) => {
+        const command = (name: 'play' | 'stop') =>
+            page.evaluate(async (name) => {
+                const { commands } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/commands')
+                >('/src/editor/commands/index.ts')
+                await commands[name].execute()
+            }, name)
+        await command('play')
+        await frames(page, 20)
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        await page.waitForTimeout(300)
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        await frames(page, 20)
+        // Stopped while inactive, right after moving frames.
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        await command('stop')
+        await page.waitForTimeout(300)
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+    })
+})
