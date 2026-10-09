@@ -45,6 +45,8 @@ const fontMiddle = ref(0.25)
 const figureMiddle = ref(FIGURE_MIDDLE)
 const redrawVersion = ref(0)
 const waveformVersion = ref(0)
+// Bumped after a frame drew shifted stage pixels, so the first still frame redraws them exactly.
+const stageSettle = ref(0)
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
@@ -211,6 +213,7 @@ watchEffect(
         const currentWaveform = settings.waveform === 'off' ? undefined : inputs.state.bgm.waveform
         const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
         void waveformVersion.value
+        void stageSettle.value
         chartFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
             const ctx = prepareSurface(
@@ -234,7 +237,10 @@ watchEffect(
             }
             const context = { ...base, names: createNameLayer() }
             waveform.draw(context, currentWaveform, offset, currentTimes)
-            stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
+            if (
+                stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
+            )
+                stageSettle.value++
             drawGrid(
                 context,
                 currentBeats,

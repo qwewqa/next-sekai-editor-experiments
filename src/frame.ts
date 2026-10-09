@@ -4,6 +4,7 @@
 // and smooth scrolling would redraw on only every other frame.
 let open: { timestamp: number; callbacks: Map<number, FrameRequestCallback> } | undefined
 let nextId = -1
+let clockCallbacks = false
 
 /** `requestAnimationFrame`, joining the current clock frame when one is open. */
 export const requestFrame = (callback: FrameRequestCallback) => {
@@ -30,6 +31,7 @@ export const openFrame = (timestamp: number) => {
     return () => {
         if (open === current) open = undefined
         // Later requests from these callbacks go to the next frame.
+        clockCallbacks = true
         for (const callback of current.callbacks.values()) {
             try {
                 callback(current.timestamp)
@@ -37,5 +39,9 @@ export const openFrame = (timestamp: number) => {
                 reportError(error)
             }
         }
+        clockCallbacks = false
     }
 }
+
+/** Whether a draw runs for a clock tick, as playback and eased scrolling do every frame. */
+export const isClockFrame = () => clockCallbacks
