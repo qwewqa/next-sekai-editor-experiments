@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import type { Chart } from '../../src/chart'
 import type { StageMaskEventObject } from '../../src/chart/events/stage/mask'
 import type { StagePivotEventObject } from '../../src/chart/events/stage/pivot'
@@ -143,6 +145,11 @@ const state = (overrides: Partial<Chart> = {}) =>
     )
 const close = (actual: number, expected: number) =>
     assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`)
+// Whether stage A's surface is drawn at the beat, by its first and last mask events.
+const isDrawn = (layout: ReturnType<typeof createComposedLayout>, beat: number) => {
+    const data = layout.stages.get(stageA)!
+    return beat >= data.startBeat && beat <= data.endBeat
+}
 
 test('composed notes add pivot and horizontal translation; masks only add translation', () => {
     const source = state({
@@ -229,7 +236,7 @@ test('draw lifetime follows mask endpoints and missing masks stay collapsed', ()
         [6, true],
         [7, false],
     ] as const)
-        assert.equal(layout.stage(stageA, beat)!.visible, visible)
+        assert.equal(isDrawn(layout, beat), visible)
     const empty = createComposedLayout(state()).stage(stageA, 1)!
     assert.equal(empty.width, 0)
     assert.equal(empty.laneAlpha, 0)
@@ -374,6 +381,25 @@ test('stage geometry is reused across note selections and invalidated by tempo c
     assert.equal(changed.offset(stageA, 2), 4)
 })
 
+test('stage geometry is shared between layouts of the same stages and released with its chart', async () => {
+    setFlagsFromString('--expose-gc')
+    const gc = runInNewContext('gc') as () => void
+    const open = () => {
+        const source = state({ stagePivotEvents: [pivot(0, 0), pivot(4, 6)] })
+        const first = createComposedLayout(source)
+        // A note-only edit builds a new layout over the same stages.
+        const edited = createComposedLayout({ ...source, store: { ...source.store } })
+        assert.notEqual(edited, first)
+        assert.equal(edited.stages, first.stages)
+        return new WeakRef(source.bpms)
+    }
+    // A Basic chart opened next builds no layout of its own.
+    const bpms = open()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    gc()
+    assert.equal(bpms.deref(), undefined)
+})
+
 test('selection layout reuse invalidates for note, tempo, stage-event and stage-metadata edits', () => {
     const source = state({
         slides: [[note(2), note(4, 0, { isAttached: true }), note(6, 2)]],
@@ -415,8 +441,8 @@ test('selection layout reuse invalidates for note, tempo, stage-event and stage-
     stages.set(stageA, { ...stages.get(stageA)!, isUntilEnd: false })
     const metadataLayout = createComposedLayout({ ...source, stages })
     assert.notEqual(metadataLayout, first)
-    assert.equal(metadataLayout.stage(stageA, 10)?.visible, false)
-    assert.equal(first.stage(stageA, 10)?.visible, true)
+    assert.equal(isDrawn(metadataLayout, 10), false)
+    assert.equal(isDrawn(first, 10), true)
 
     const staticLayout = createComposedLayout({ ...source, isDynamicStages: false })
     assert.notEqual(staticLayout, first)
@@ -583,10 +609,11 @@ test('authoring grid phase follows odd parity and odd division size independentl
             })
             const layout = createComposedLayout(source)
             assert.equal(layout.gridOffset(stageA, 2), phase)
-            assert.equal(layout.gridOrigin(stageA, 2), 1 + phase)
+            const origin = layout.offset(stageA, 2) + layout.gridOffset(stageA, 2)
+            assert.equal(origin, 1 + phase)
             for (const entity of [...source.store.slides.note.values()].flat()) {
                 const position = layout.notePosition(entity)
-                assert.equal(position.left, layout.gridOrigin(stageA, 2))
+                assert.equal(position.left, origin)
                 assert.equal(layout.hitbox(entity)!.lane, 1 + phase + entity.size / 2)
             }
         }
@@ -702,8 +729,8 @@ test('equivalent divider phases add no guide switches, and static or missing sta
     const layout = createComposedLayout(source)
     assert.deepEqual(layout.stages.get(stageA)!.breakpoints, [0, 8])
     assert.equal(layout.gridOffset(999 as StageId, 2), 0)
-    assert.equal(layout.gridOrigin(999 as StageId, 2), 0)
+    assert.equal(layout.offset(999 as StageId, 2), 0)
     const basic = createComposedLayout({ ...source, isDynamicStages: false })
     assert.equal(basic.gridOffset(stageA, 2), 0)
-    assert.equal(basic.gridOrigin(stageA, 2), 0)
+    assert.equal(basic.offset(stageA, 2), 0)
 })

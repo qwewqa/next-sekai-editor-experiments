@@ -32,7 +32,9 @@ const borders = ['default', 'light', 'disabled', 'medium']
 type LayoutRecord = { source: State; layout: ComposedLayout }
 const layouts = new WeakMap<State, LayoutRecord>()
 let lastLayout: WeakRef<LayoutRecord> | undefined
-let stageCache: { dependencies: unknown[]; stages: Map<StageId, ComposedStage> } | undefined
+// Layouts hold their stages, so a closed chart's stages and inputs are released.
+const stageDependencies = new WeakMap<Map<StageId, ComposedStage>, unknown[]>()
+let lastStages: WeakRef<Map<StageId, ComposedStage>> | undefined
 const unique = <T>(grid: Map<number, Set<T>>) => [
     ...new Set([...grid.values()].flatMap((set) => [...set])),
 ]
@@ -94,9 +96,11 @@ const buildComposedLayout = (state: State) => {
         state.store.grid.stageStyleEventJoint,
         state.store.grid.stageTransformEventJoint,
     ]
-    const cachedStages = stageCache?.dependencies.every((value, i) => value === dependencies[i])
-        ? stageCache.stages
-        : undefined
+    const previous = lastStages?.deref()
+    const cachedStages =
+        previous && stageDependencies.get(previous)?.every((value, i) => value === dependencies[i])
+            ? previous
+            : undefined
     const stages = cachedStages ?? new Map<StageId, ComposedStage>()
     if (!cachedStages && state.isDynamicStages) {
         const masks = unique(state.store.grid.stageMaskEventJoint)
@@ -189,7 +193,10 @@ const buildComposedLayout = (state: State) => {
             })
         }
     }
-    stageCache = { dependencies, stages }
+    if (!cachedStages) {
+        stageDependencies.set(stages, dependencies)
+        lastStages = new WeakRef(stages)
+    }
 
     const stage = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
         const data = stages.get(stageId)
@@ -199,7 +206,6 @@ const buildComposedLayout = (state: State) => {
             ...props,
             left: props.lane - props.width + props.xLaneTranslate,
             right: props.lane + props.width + props.xLaneTranslate,
-            visible: beat >= data.startBeat && beat <= data.endBeat,
         }
     }
     const offset = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
@@ -213,12 +219,6 @@ const buildComposedLayout = (state: State) => {
         return data
             ? divisionGridOffset(getStageProps(data.props, toTime(beat), options).division)
             : 0
-    }
-    const gridOrigin = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
-        const data = stages.get(stageId)
-        if (!data) return 0
-        const props = getStageProps(data.props, toTime(beat), options)
-        return props.pivotLane + props.xLaneTranslate + divisionGridOffset(props.division)
     }
     const between = (
         head: NoteEntity,
@@ -327,7 +327,6 @@ const buildComposedLayout = (state: State) => {
         stage,
         offset,
         gridOffset,
-        gridOrigin,
         notePosition,
         noteLeft,
         hitbox,

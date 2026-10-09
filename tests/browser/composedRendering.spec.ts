@@ -180,15 +180,14 @@ test('odd division parity aligns one-lane guides with odd and even note edges', 
             )
         const state = window.editorTest.history.state.value
         const layout = createComposedLayout(state)
+        const origin = (note: import('../../src/state/entities/slides/note').NoteEntity) =>
+            layout.offset(note.stageId, note.beat) + layout.gridOffset(note.stageId, note.beat)
         return [...window.editorTest.store.getAllEntities()]
             .filter((entity) => entity.type === 'note')
             .map((note) => ({
                 size: note.size,
-                left: layout.notePosition(note).left - layout.gridOrigin(note.stageId, note.beat),
-                right:
-                    layout.notePosition(note).left +
-                    note.size -
-                    layout.gridOrigin(note.stageId, note.beat),
+                left: layout.notePosition(note).left - origin(note),
+                right: layout.notePosition(note).left + note.size - origin(note),
             }))
     })
     expect(parity.map(({ size }) => size).sort()).toEqual([1, 2, 3])
