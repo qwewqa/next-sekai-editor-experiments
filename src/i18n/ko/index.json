@@ -634,6 +634,12 @@
     "editor": {
       "title": "편집기",
       "locale": "언어",
+      "theme": {
+        "title": "테마",
+        "system": "시스템",
+        "light": "라이트",
+        "dark": "다크"
+      },
       "elevationSideBySide": "높이 편집기 나란히 표시",
       "autoSave": "자동 저장",
       "autoSaveDelay": "자동 저장 주기 (초)",

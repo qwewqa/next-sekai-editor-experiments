@@ -634,6 +634,12 @@
     "editor": {
       "title": "エディター",
       "locale": "言語",
+      "theme": {
+        "title": "テーマ",
+        "system": "システム",
+        "light": "ライト",
+        "dark": "ダーク"
+      },
       "elevationSideBySide": "高さエディターを並べて表示",
       "autoSave": "自動保存",
       "autoSaveDelay": "自動保存の間隔 (秒)",

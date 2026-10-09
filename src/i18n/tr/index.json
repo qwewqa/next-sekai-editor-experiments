@@ -634,6 +634,12 @@
     "editor": {
       "title": "Editör",
       "locale": "Dil",
+      "theme": {
+        "title": "Tema",
+        "system": "Sistem",
+        "light": "Açık",
+        "dark": "Koyu"
+      },
       "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
       "autoSave": "Otomatik Kaydet",
       "autoSaveDelay": "Otomatik Kaydetme Gecikmesi (sn)",

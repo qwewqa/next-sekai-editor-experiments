@@ -634,6 +634,12 @@
         "editor": {
             "title": "Editor",
             "locale": "Language",
+            "theme": {
+                "title": "Theme",
+                "system": "System",
+                "light": "Light",
+                "dark": "Dark"
+            },
             "elevationSideBySide": "Elevation Editor Side by Side",
             "autoSave": "Auto Save",
             "autoSaveDelay": "Auto Save Delay (s)",

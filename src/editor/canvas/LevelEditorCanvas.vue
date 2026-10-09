@@ -23,6 +23,7 @@ import { edgeLabelBoxes } from '../edgeLabels'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
 import { coveredLabelYs, drawGrid, gridLabels, timeScaleEdgeLabelYs } from './grid'
+import { chartBackground } from './nameColors'
 import { clearNameWidths, createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
 import { orderEntities, toDrawSteps, type DrawStep } from './ordering'
@@ -126,6 +127,8 @@ const contextInputs = computed(() => ({
     showStageName: settings.showStageName,
     showGroupName: settings.showGroupName,
     nameContrast: settings.nameContrast,
+    // Name contrast is measured against it.
+    chartBackground: chartBackground.value,
     recentlyActive: isViewRecentlyActive.value,
     fontFamily: fontFamily.value,
     fontMiddle: fontMiddle.value,

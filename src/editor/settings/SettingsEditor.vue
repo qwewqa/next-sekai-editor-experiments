@@ -34,6 +34,16 @@ watch(
         />
 
         <SelectField
+            v-model="settings.theme"
+            :label="i18n.settings.editor.theme.title"
+            :options="[
+                [i18n.settings.editor.theme.system, 'system'],
+                [i18n.settings.editor.theme.light, 'light'],
+                [i18n.settings.editor.theme.dark, 'dark'],
+            ]"
+        />
+
+        <SelectField
             v-model="settings.elevationEditorSideBySide"
             :label="i18n.settings.editor.elevationSideBySide"
             :options="[

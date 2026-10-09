@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { type TestContext } from 'node:test'
 import {
     blendOverChart,
-    CHART_BACKGROUND,
+    chartBackground,
     contrast,
     nameColorOn,
 } from '../../src/editor/canvas/nameColors'
@@ -98,8 +98,8 @@ const fill = (owner: Entity | undefined, l: number, r: number, b: number, color:
 }
 
 test('names keep their colour on the chart background and darken on light note bodies', () => {
-    assert.equal(nameColorOn('#f6f', [CHART_BACKGROUND]), '#f6f')
-    assert.equal(nameColorOn('#0aa', [CHART_BACKGROUND]), '#0aa')
+    assert.equal(nameColorOn('#f6f', [chartBackground.value]), '#f6f')
+    assert.equal(nameColorOn('#0aa', [chartBackground.value]), '#0aa')
     // The dark pair on a light note body, darker steps where it falls short.
     assert.equal(nameColorOn('#f6f', ['#dafdf1']), '#a0a')
     assert.equal(nameColorOn('#0aa', ['#dafdf1']), '#077')

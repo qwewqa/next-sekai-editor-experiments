@@ -634,6 +634,12 @@
     "editor": {
       "title": "編輯器",
       "locale": "語言",
+      "theme": {
+        "title": "主題",
+        "system": "跟隨系統",
+        "light": "淺色",
+        "dark": "深色"
+      },
       "elevationSideBySide": "高度編輯器並排顯示",
       "autoSave": "自動儲存",
       "autoSaveDelay": "自動儲存週期（秒）",

@@ -227,6 +227,8 @@ const settingsProperties = {
         { default: defaultLocale },
     ) as never as Type.TString,
 
+    theme: Type.Union([Type.Literal('system'), Type.Literal('light'), Type.Literal('dark')]),
+
     autoSave: Type.Boolean({ default: true }),
 
     autoSaveDelay: number(1, 0, 5),

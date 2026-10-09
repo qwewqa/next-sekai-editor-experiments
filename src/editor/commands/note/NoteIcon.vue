@@ -35,10 +35,10 @@ const type = computed(() => {
 <template>
     <svg viewBox="-0.55 -0.55 1.1 1.1" :style="noteStyleVariables(properties.noteStyle)">
         <component :is="iconComponents[type]" :properties />
-        <!-- Stays dark on the note's light body in high contrast. -->
+        <!-- Dark on the note’s light body in every theme; an anchor’s open body shows the surface. -->
         <text
             v-if="index !== undefined"
-            class="forced-colors:fill-on-accent"
+            :class="type === 'anchor' ? 'forced-colors:fill-on-accent' : 'fill-[#444466]'"
             x="0"
             y="0"
             font-size="0.5"

@@ -31,6 +31,10 @@ const highlight = (page: Page) =>
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' })
     await page.addInitScript(installCanvasCounters)
+    // Colour schemes below are emulated for high contrast, not to switch the theme.
+    await page.addInitScript(() =>
+        localStorage.setItem('sonolus-next-sekai-editor.theme', JSON.stringify('light')),
+    )
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)

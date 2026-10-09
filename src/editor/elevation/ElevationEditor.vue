@@ -33,6 +33,7 @@ import { isComposingKey } from '../../utils/composition'
 import { alignComputed, alignNear, clamp, shiftComputed } from '../../utils/math'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createNoteRenderer } from '../canvas/notes'
+import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
@@ -916,6 +917,8 @@ watchEffect(() => {
     const showGroupName = settings.showGroupName
     const showStageName = settings.showStageName
     const nameContrast = settings.nameContrast
+    // Name contrast is measured against it.
+    void chartBackground.value
     const elevationSnap = settings.elevationSnap
     // Axis labels move right of any left badges, which would cover them.
     const leftBadges = offscreenGroups.value.filter(({ side }) => side === 'left')

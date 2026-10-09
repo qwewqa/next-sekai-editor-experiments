@@ -1,5 +1,10 @@
-// The chart background (Tailwind `bg`), under translucent fills.
-export const CHART_BACKGROUND = '#404464'
+import { readonly, shallowRef } from 'vue'
+
+// The chart background (theme `bg`), under translucent fills; src/theme.ts keeps it current.
+const background = shallowRef('#404464')
+
+/** The chart background as #rrggbb; drawing that blends over it redraws when it changes. */
+export const chartBackground = readonly(background)
 
 type Rgb = [number, number, number]
 
@@ -30,9 +35,9 @@ export const contrast = (a: string, b: string) => {
 export const blendOverChart = (color: string, alpha: number) => {
     if (alpha >= 1) return color
     const fill = parse(color)
-    const background = parse(CHART_BACKGROUND)
+    const chart = parse(background.value)
     const a = Math.max(0, alpha)
-    return format(fill.map((v, i) => v * a + (background[i] ?? 0) * (1 - a)) as Rgb)
+    return format(fill.map((v, i) => v * a + (chart[i] ?? 0) * (1 - a)) as Rgb)
 }
 
 // Darker steps of each name's hue, the dark pair first. Connectors stop at the
@@ -48,6 +53,12 @@ const TARGET = 4.5
 const isLight = (fill: string) => luminance(fill) > Math.sqrt(1.05 * 0.05) - 0.05
 const cache = new Map<string, string>()
 
+export const setChartBackground = (color: string) => {
+    if (color === background.value) return
+    background.value = color
+    cache.clear()
+}
+
 /**
  * The colour a name takes over a fill of one or more colours: its own wherever
  * it reads at least as well as on the chart background. Over its own light body
@@ -61,7 +72,7 @@ export const nameColorOn = (color: string, fills: readonly string[], isConnector
     if (result) return result
     const ladder = ladders[color]
     const worst = (step: string) => Math.min(...fills.map((fill) => contrast(step, fill)))
-    const plain = contrast(color, CHART_BACKGROUND)
+    const plain = contrast(color, background.value)
     if (!ladder || worst(color) >= Math.min(TARGET, plain)) {
         result = color
     } else if (isConnector) {

@@ -19,6 +19,18 @@
         <meta property="og:url" content="https://next-sekai-editor-test.qwewqa.xyz/" />
         <link rel="icon" href="/favicon.ico" />
         <title>Sonolus Next SEKAI Editor</title>
+        <script>
+            // The theme before first paint; src/theme.ts takes over once the app loads.
+            try {
+                const stored = localStorage.getItem('sonolus-next-sekai-editor.theme')
+                const theme = stored === null ? 'system' : JSON.parse(stored)
+                document.documentElement.dataset.theme =
+                    theme === 'dark' ||
+                    (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+                        ? 'dark'
+                        : 'light'
+            } catch {}
+        </script>
     </head>
     <body class="touch-none bg-bg fill-fg text-fg">
         <div id="app" class="bg-bg"></div>

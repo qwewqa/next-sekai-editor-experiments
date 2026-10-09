@@ -634,6 +634,12 @@
     "editor": {
       "title": "编辑器",
       "locale": "语言",
+      "theme": {
+        "title": "主题",
+        "system": "跟随系统",
+        "light": "浅色",
+        "dark": "深色"
+      },
       "elevationSideBySide": "高度编辑器并排显示",
       "autoSave": "自动保存",
       "autoSaveDelay": "自动保存延迟（秒）",
