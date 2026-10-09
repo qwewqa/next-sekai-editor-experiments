@@ -284,7 +284,7 @@ const stripStyle = computed(() => ({
 /* Steppers share a recessed track, like a segmented control, filling the rest
    of the strip up to a comfortable size. */
 .transport-track {
-    @apply flex min-w-0 flex-1 items-center gap-0.5 rounded-full bg-fg/10 p-0.5 shadow-track;
+    @apply flex min-w-0 flex-1 items-center gap-0.5 rounded-full bg-recess p-0.5 shadow-track;
 }
 
 .transport-steps {

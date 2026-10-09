@@ -18,20 +18,26 @@ module.exports = {
                 button: color('button'),
                 accent: color('accent'),
                 'on-accent': color('on-accent'),
+                // Rows selected for an action.
+                selected: color('selected'),
                 header: color('header'),
-                // white/40 over header: hover on lavender bands, opaque so
-                // sticky bands never show content scrolling beneath.
+                // Hover on header bands, opaque so sticky bands never show content
+                // scrolling beneath.
                 'header-hover': color('header-hover'),
+                // Hover on a button sitting on a band, hovered or not.
+                'band-hover': 'var(--color-band-hover)',
                 modal: color('modal'),
                 // Menus and select lists, and their row under the pointer or focus.
                 popup: color('popup'),
                 'popup-hover': color('popup-hover'),
                 preview: color('preview'),
-                // Destructive actions and errors (6.47:1 on white).
+                // Destructive actions and errors.
                 danger: color('danger'),
                 'on-danger': color('on-danger'),
                 // The toggle switch's knob.
                 knob: color('knob'),
+                // The recessed track of a segmented control or slider.
+                recess: 'var(--color-recess)',
             },
             boxShadow: {
                 // The recessed track of a segmented control.

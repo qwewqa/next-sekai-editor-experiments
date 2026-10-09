@@ -326,7 +326,7 @@ onUnmounted(() => {
                                 :class="
                                     isPunctuationShortcut(shortcut)
                                         ? 'text-sm font-bold leading-4'
-                                        : 'text-xs text-fg/80'
+                                        : 'text-xs opacity-80'
                                 "
                                 aria-hidden="true"
                                 >{{ shortcut }}</span

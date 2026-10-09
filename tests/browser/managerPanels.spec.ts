@@ -164,7 +164,7 @@ for (const [device, options] of Object.entries(viewports)) {
                 panel.getByRole('button', { name: 'Show Third', exact: true }),
             ).toBeVisible()
             await expect(nameButton(panel, 'Third').locator('.manager-label')).toHaveClass(
-                /text-fg\/80/,
+                /opacity-80/,
             )
             await expect(panel.locator('.manager-all .manager-meta')).toHaveText('2/3')
 

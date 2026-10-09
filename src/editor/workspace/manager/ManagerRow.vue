@@ -443,7 +443,7 @@ const onRenameBlur = (event: FocusEvent) => {
                     :class="{
                         'font-bold': heading,
                         'font-semibold': folder,
-                        'text-fg/80': muted && !heading,
+                        'opacity-80': muted && !heading,
                     }"
                     >{{ name }}</span
                 >
@@ -629,7 +629,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-row-heading .manager-icon-button-open:not(:active) {
-    @apply bg-header-hover;
+    @apply bg-band-hover;
 }
 
 /* A toggle that is on, such as the band's Select while selecting. */
@@ -664,7 +664,7 @@ const onRenameBlur = (event: FocusEvent) => {
 
 /* Selected rows while selecting; the target keeps its white pill, ringed. */
 .manager-row-selected:not(.manager-row-current) {
-    @apply bg-accent/40;
+    @apply bg-selected/40;
 }
 
 .manager-row-selected.manager-row-current {
@@ -709,7 +709,7 @@ const onRenameBlur = (event: FocusEvent) => {
 
 /* The folder a dragged entry would join. */
 .manager-row-drop {
-    @apply bg-accent/35 ring-2 ring-inset ring-accent;
+    @apply bg-selected/35 ring-2 ring-inset ring-accent;
 }
 
 /* One trailing column for counts, which inline actions overlay in place; a
@@ -769,9 +769,9 @@ const onRenameBlur = (event: FocusEvent) => {
         @apply bg-fg/10;
     }
 
-    /* Icon buttons on the lavender band lighten, like other band buttons. */
+    /* Icon buttons on a band lighten, like other band buttons. */
     .manager-row-heading .manager-icon-button:hover:not(:active):not(.manager-icon-button-pressed) {
-        @apply bg-header-hover;
+        @apply bg-band-hover;
     }
 
     .manager-row:hover .manager-slot-hover .manager-inline {

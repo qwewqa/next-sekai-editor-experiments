@@ -81,7 +81,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             >
                 <slot name="leading" />
             </span>
-            <!-- Unset reads like an empty number field's placeholder; the list stays dark. -->
+            <!-- Unset reads like an empty number field's placeholder; the list keeps the usual ink. -->
             <select
                 v-model.lazy="modelValue"
                 :disabled

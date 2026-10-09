@@ -155,7 +155,7 @@ watch(
 <template>
     <BaseField v-if="segmented && !unknown" ref="field" :label :label-id="`${id}-label`" :mixed>
         <div
-            class="form-field-segmented flex min-w-0 rounded-full bg-fg/10 p-0.5 shadow-track outline-none"
+            class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-none"
             :class="{ 'pointer-events-none opacity-40': disabled, 'text-fg/80': isMixed }"
             role="radiogroup"
             :aria-labelledby="isMixed ? `${id}-label ${id}-mixed` : `${id}-label`"

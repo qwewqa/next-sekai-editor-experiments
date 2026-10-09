@@ -3,7 +3,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const key = 'sonolus-next-sekai-editor.theme'
 const light = 'rgb(64, 68, 100)'
-const dark = 'rgb(45, 48, 75)'
+const dark = 'rgb(35, 37, 57)'
 
 const open = async (page: Page) => {
     await page.addInitScript(installCanvasCounters)
@@ -43,7 +43,7 @@ test('the setting picks the theme, and System follows the device live', async ({
             theme: 'dark',
             scheme: 'dark',
             chart: dark,
-            names: '#2d304b',
+            names: '#232539',
         })
 
     await page.evaluate(() => (window.editorTest.settings.theme = 'light'))
@@ -56,25 +56,27 @@ test('the setting picks the theme, and System follows the device live', async ({
         theme: 'dark',
         scheme: 'dark',
         chart: dark,
-        names: '#2d304b',
+        names: '#232539',
     })
 })
 
+// Stored as written: JSON, or text that is not.
 for (const [stored, colorScheme, theme] of [
-    ['dark', 'light', 'dark'],
-    ['light', 'dark', 'light'],
+    ['"dark"', 'light', 'dark'],
+    ['"light"', 'dark', 'light'],
     [undefined, 'dark', 'dark'],
-    ['unknown', 'dark', 'dark'],
+    ['"unknown"', 'light', 'light'],
+    ['{', 'dark', 'dark'],
 ] as const)
     test(`the theme applies before the app loads (${stored ?? 'unset'}, ${colorScheme} device)`, async ({
         page,
     }) => {
         await page.emulateMedia({ colorScheme })
         if (stored)
-            await page.addInitScript(
-                ([key, stored]) => localStorage.setItem(key, JSON.stringify(stored)),
-                [key, stored] as const,
-            )
+            await page.addInitScript(([key, stored]) => localStorage.setItem(key, stored), [
+                key,
+                stored,
+            ] as const)
         let release!: () => void
         const held = new Promise<void>((resolve) => (release = resolve))
         await page.route(/\/src\/index\.ts$/, async (route) => {
@@ -85,6 +87,7 @@ for (const [stored, colorScheme, theme] of [
         await page.goto('/', { waitUntil: 'commit' })
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
         release()
+        await page.waitForLoadState('load')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
         await expect(page.locator('body')).toHaveCSS(
@@ -109,4 +112,10 @@ test('Settings offers the theme after the language', async ({ page }) => {
     expect(await select.locator('option').allInnerTexts()).toEqual(['System', 'Light', 'Dark'])
     await select.selectOption('dark')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+    // Reset Settings returns to System, on this light device.
+    await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await expect(select).toHaveValue('system')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
 })

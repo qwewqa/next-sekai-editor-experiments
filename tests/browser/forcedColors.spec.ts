@@ -31,10 +31,6 @@ const highlight = (page: Page) =>
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' })
     await page.addInitScript(installCanvasCounters)
-    // Colour schemes below are emulated for high contrast, not to switch the theme.
-    await page.addInitScript(() =>
-        localStorage.setItem('sonolus-next-sekai-editor.theme', JSON.stringify('light')),
-    )
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
@@ -458,9 +454,11 @@ for (const colorScheme of ['light', 'dark'] as const)
             .poll(ring)
             .toEqual({ fill: clear, stroke: await systemColor(page, 'HighlightText') })
 
-        // Outside high contrast it stays a white disc.
+        // Outside high contrast it is a disc of the button colour, which follows the device.
         await page.emulateMedia({ forcedColors: 'none' })
-        await expect.poll(async () => (await ring()).fill).toBe('rgb(255, 255, 255)')
+        await expect
+            .poll(async () => (await ring()).fill)
+            .toBe(colorScheme === 'dark' ? 'rgb(72, 76, 114)' : 'rgb(255, 255, 255)')
     })
 
 test('the BPM and Time Scale tools keep their chip colours', async ({ page }) => {
@@ -495,7 +493,8 @@ for (const colorScheme of ['light', 'dark'] as const)
             page
                 .locator(selector)
                 .evaluate((element) => getComputedStyle(element, '::before').backgroundColor)
-        const bg = 'rgb(64, 68, 100)'
+        // The theme follows the device: the dark theme darkens the chart.
+        const bg = colorScheme === 'dark' ? 'rgb(35, 37, 57)' : 'rgb(64, 68, 100)'
         expect(await backdrop('.chart-pane:has(canvas.editor-chart)')).toBe(bg)
         // The time and beat labels on it stay light.
         const label = page.locator('.chart-pane > div:first-of-type span').first()

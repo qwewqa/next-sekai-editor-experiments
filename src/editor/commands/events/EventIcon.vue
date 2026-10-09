@@ -9,8 +9,8 @@ defineProps<{
 <template>
     <svg viewBox="-0.5 -0.5 1 1">
         <circle
-            class="stroke-fg"
-            :class="{ 'forced-colors:fill-transparent forced-colors:stroke-current': monochrome }"
+            class="stroke-current"
+            :class="{ 'forced-colors:fill-transparent': monochrome }"
             cx="0"
             cy="0"
             r="0.25"

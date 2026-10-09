@@ -441,7 +441,7 @@ const onPlacementChange = () => {
                         i18n.settings.preview.aspectRatio
                     }}</span>
                     <span
-                        class="preview-setting-control flex rounded-full bg-fg/10 p-0.5 shadow-track outline-none"
+                        class="preview-setting-control flex rounded-full bg-recess p-0.5 shadow-track outline-none"
                         role="radiogroup"
                         :aria-labelledby="`${id}-aspect`"
                     >
@@ -685,11 +685,11 @@ const onPlacementChange = () => {
 }
 
 .preview-range::-webkit-slider-runnable-track {
-    @apply h-1.5 rounded-full bg-fg/10 shadow-track;
+    @apply h-1.5 rounded-full bg-recess shadow-track;
 }
 
 .preview-range::-moz-range-track {
-    @apply h-1.5 rounded-full bg-fg/10 shadow-track;
+    @apply h-1.5 rounded-full bg-recess shadow-track;
 }
 
 .preview-range::-webkit-slider-thumb {

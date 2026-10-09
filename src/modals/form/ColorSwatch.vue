@@ -18,6 +18,17 @@ defineProps<{
             :stroke="edge"
             stroke-width="1"
         />
+        <!-- Dark surfaces add a hairline, so dark swatches keep their outline. -->
+        <circle
+            v-if="color"
+            class="stroke-[--swatch-edge]"
+            data-swatch-edge
+            cx="8"
+            cy="8"
+            r="7"
+            fill="none"
+            stroke-width="1"
+        />
         <circle
             v-else
             cx="8"

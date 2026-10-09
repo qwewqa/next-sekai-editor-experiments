@@ -81,19 +81,30 @@ const select = (page: Page, type: string, indices: number[]) =>
 test('color and flick fields show the current value as the canvas draws it', async ({ page }) => {
     await open(page)
     await select(page, 'note', [0])
-    await expect(lead(page, 'Note Color').locator('circle')).toHaveAttribute('fill', '#dfaaff')
-    await expect(lead(page, 'Note Color').locator('circle')).toHaveAttribute('stroke', '#bd66ee')
-    await expect(lead(page, 'Color').locator('circle')).toHaveAttribute('fill', '#d6737b')
+    await expect(
+        lead(page, 'Note Color').locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('fill', '#dfaaff')
+    await expect(
+        lead(page, 'Note Color').locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('stroke', '#bd66ee')
+    await expect(lead(page, 'Color').locator('circle:not([data-swatch-edge])')).toHaveAttribute(
+        'fill',
+        '#d6737b',
+    )
     await expect(lead(page, 'Flick Direction').locator('polygon')).toHaveCount(1)
     await expect(lead(page, 'Flick Direction')).toHaveAttribute('aria-hidden', 'true')
     // The shared list repeats each value's picture before its name, unannounced.
     const color = field(page, 'Note Color').locator('select')
     await expect(
-        color.locator('option .select-option-glyph[aria-hidden="true"] circle'),
+        color.locator(
+            'option .select-option-glyph[aria-hidden="true"] circle:not([data-swatch-edge])',
+        ),
     ).toHaveCount(9)
     await expect(color.getByRole('option', { name: 'Purple', exact: true })).toHaveCount(1)
     await expect(
-        color.getByRole('option', { name: 'Purple', exact: true }).locator('circle'),
+        color
+            .getByRole('option', { name: 'Purple', exact: true })
+            .locator('circle:not([data-swatch-edge])'),
     ).toHaveAttribute('fill', '#dfaaff')
     // None has no arrow, but keeps the column's slot.
     const flick = field(page, 'Flick Direction').locator('select')
@@ -106,15 +117,17 @@ test('color and flick fields show the current value as the canvas draws it', asy
     await expect(flick.locator('.select-option-glyph polygon')).toHaveCount(6)
     // Black connectors use the styled connector base; None has no arrow.
     await select(page, 'note', [2])
-    await expect(lead(page, 'Color').locator('circle')).toHaveAttribute('fill', '#555555')
+    await expect(lead(page, 'Color').locator('circle:not([data-swatch-edge])')).toHaveAttribute(
+        'fill',
+        '#555555',
+    )
     await expect(lead(page, 'Flick Direction')).toHaveCount(0)
 
     // Default resolves per object: a dashed ring.
     await select(page, 'note', [4])
-    await expect(lead(page, 'Note Color').locator('circle')).toHaveAttribute(
-        'stroke-dasharray',
-        '2.2 2',
-    )
+    await expect(
+        lead(page, 'Note Color').locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('stroke-dasharray', '2.2 2')
 
     // Unknown values have no glyph.
     await select(page, 'note', [6])
@@ -176,7 +189,9 @@ test('tool presets show glyphs only for values that are set', async ({ page }) =
         const { switchToolTo } = await import('/src/editor/tools/index.ts')
         switchToolTo('note')
     })
-    await expect(lead(page, 'Note Color').locator('circle')).toHaveAttribute('fill', '#83e5ff')
+    await expect(
+        lead(page, 'Note Color').locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('fill', '#83e5ff')
     await expect(lead(page, 'Flick Direction')).toHaveCount(0)
 })
 
@@ -189,7 +204,7 @@ test.describe('time scale transition', () => {
         await select(page, 'timeScale', [1])
         await expect(segments(page)).toBeVisible()
         await expect(segments(page).locator('[aria-hidden="true"] svg')).toHaveCount(2)
-        await expect(segments(page).locator('circle')).toHaveCount(1)
+        await expect(segments(page).locator('circle:not([data-swatch-edge])')).toHaveCount(1)
         await expect(segments(page).locator('polygon')).toHaveCount(1)
         await expect(segments(page).getByRole('radio', { name: 'Scroll' })).toBeChecked()
     })
@@ -214,7 +229,7 @@ test.describe('time scale transition', () => {
         await expect(lead(page, transition)).toHaveCount(0)
         // The list has the room the field lacks.
         const options = field(page, transition).locator('select .select-option-glyph')
-        await expect(options.locator('circle')).toHaveCount(1)
+        await expect(options.locator('circle:not([data-swatch-edge])')).toHaveCount(1)
         await expect(options.locator('polygon')).toHaveCount(1)
     })
 
