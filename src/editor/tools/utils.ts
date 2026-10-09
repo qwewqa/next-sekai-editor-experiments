@@ -1,15 +1,16 @@
+import type { StageId } from '../../chart/stages'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
 import type { Entity, EntityType } from '../../state/entities'
 import { editChanges } from '../../state/operations/properties/plan'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
-import { getComposedLayout } from '../composedView'
+import { getComposedGridOffset, getComposedLayout, getComposedOffset } from '../composedView'
 import type { CanvasCursor } from '../controls/cursor'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
 import { isEntityInScope } from '../scope'
 import { snappedOffset } from '../snapping'
-import { view, xToLane, yToTime, type Selection } from '../view'
+import { alignLane, view, xToLane, yToTime, type Selection } from '../view'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
 
@@ -21,6 +22,19 @@ export const placementCursors: Record<'add' | 'edit' | 'move', CanvasCursor> = {
 
 export const offset = (startLane: number, lane: number, anchor = startLane, origin = 0) =>
     snappedOffset(startLane, lane, anchor - origin, view.laneDivision, view.laneSnapping)
+
+/** An add-drag's pressed edge at the current beat; in Composed it keeps its displayed lane. */
+export const addDragAnchor = (
+    press: { lane: number; beat: number; stageId: StageId },
+    beat: number,
+    stageId: StageId,
+) => {
+    if (!getComposedLayout() || (beat === press.beat && stageId === press.stageId))
+        return press.lane
+    const displayed = press.lane + getComposedOffset(press.stageId, press.beat)
+    const origin = getComposedGridOffset(stageId, beat)
+    return alignLane(displayed - getComposedOffset(stageId, beat) - origin) + origin
+}
 
 // A lane moved by the drag's offset, without float noise; unmoved, it stays exact.
 export const moveLane = (

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type { Tool } from '..'
 import type { NoteObject } from '../../../chart/note'
+import type { StageId } from '../../../chart/stages'
 import { applyEaseEdit, type Ease, type WithEaseEdits } from '../../../ease'
 import { pushState, replaceState, state } from '../../../history'
 import { defaultGroupId } from '../../../history/groups.ts'
@@ -40,6 +41,7 @@ import {
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
 import {
+    addDragAnchor,
     commitDrop,
     hitEntitiesAtPoint,
     isNoteResizeStart,
@@ -67,6 +69,8 @@ let active:
     | {
           type: 'add'
           lane: number
+          beat: number
+          stageId: StageId
       }
     | {
           type: 'edit'
@@ -185,6 +189,8 @@ export const note: Tool = {
             active = {
                 type: 'add',
                 lane: target.lane,
+                beat: target.beat,
+                stageId: getPropertiesFromSelection().stageId,
             }
         } else {
             const { entity, lane } = target
@@ -233,12 +239,13 @@ export const note: Tool = {
                 const beat = yToValidBeat(y)
                 const properties = getPropertiesFromSelection()
                 const lane = xToLane(x) - getComposedOffset(properties.stageId, beat)
+                const anchor = addDragAnchor(active, beat, properties.stageId)
                 const [left, size] = resize(
-                    active.lane,
+                    anchor,
                     lane,
                     minimumNoteSize(properties.noteType),
                     Number.POSITIVE_INFINITY,
-                    active.lane,
+                    anchor,
                     undefined,
                     getComposedGridOffset(properties.stageId, beat),
                 )
@@ -322,12 +329,13 @@ export const note: Tool = {
                 const beat = yToValidBeat(y)
                 const properties = getPropertiesFromSelection()
                 const lane = xToLane(x) - getComposedOffset(properties.stageId, beat)
+                const anchor = addDragAnchor(active, beat, properties.stageId)
                 const [left, size] = resize(
-                    active.lane,
+                    anchor,
                     lane,
                     minimumNoteSize(properties.noteType),
                     Number.POSITIVE_INFINITY,
-                    active.lane,
+                    anchor,
                     undefined,
                     getComposedGridOffset(properties.stageId, beat),
                 )
