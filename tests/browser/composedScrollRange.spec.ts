@@ -57,9 +57,17 @@ const scroll = (page: import('@playwright/test').Page, layout: 'basic' | 'compos
         const stillRight = lanes(100)
         const left = lanes(-100)
         lanes(100)
+        // Zooming out shrinks the reach below the view; it eases back instead of jumping.
+        settings.width = 40
+        const before = view.lane
+        scrollViewXBy(1)
+        const outward = view.lane - before + 0
+        scrollViewXBy(-1)
+        const inward = view.lane - before + 0
+        settings.width = 16
         view.layout = 'basic'
         await nextTick()
-        return { right, stillRight, left, afterBasic: view.lane + 0 }
+        return { right, stillRight, left, outward, inward, afterBasic: view.lane + 0 }
     }, layout)
 
 test('composed scrolls sideways to stages and notes moved past Max Scroll X', async ({ page }) => {
@@ -69,6 +77,9 @@ test('composed scrolls sideways to stages and notes moved past Max Scroll X', as
     expect(result.stillRight).toBeCloseTo(26 - 8, 6)
     // The left reach stays Basic's, since the chart starts inside the view.
     expect(result.left).toBe(0)
+    expect(result.outward).toBe(0)
+    expect(result.inward).toBeLessThan(0)
+    expect(result.inward).toBeGreaterThan(-1)
     // Back in Basic, the view returns to its own range.
     expect(result.afterBasic).toBe(0)
 })
@@ -78,6 +89,8 @@ test('basic keeps Max Scroll X for the same chart', async ({ page }) => {
         right: 0,
         stillRight: 0,
         left: 0,
+        outward: 0,
+        inward: 0,
         afterBasic: 0,
     })
 })

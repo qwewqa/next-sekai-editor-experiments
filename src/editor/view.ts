@@ -229,12 +229,16 @@ export const viewBox = computed(() => {
 export const ups = computed(() => viewBox.value.ups)
 
 // Composed also reaches the displayed chart, which stages can move past Max Scroll X.
-const scrollLanes = () => {
+const scrollLanes = (lane: number) => {
     const limit = settings.maxScrollX
     const extent = getComposedLayout()?.displayedExtent()
     if (!extent) return { min: -limit, max: limit }
     const half = settings.width / 2
-    return { min: Math.min(-limit, extent.min + half), max: Math.max(limit, extent.max - half) }
+    // A view left outside by an edit or zoom scrolls back without a jump.
+    return {
+        min: Math.min(-limit, extent.min + half, lane),
+        max: Math.max(limit, extent.max - half, lane),
+    }
 }
 
 /** Returns a view scrolled past Basic's range, as Composed allows, into it. */
@@ -248,9 +252,10 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
     updateViewLastActive()
     const laneScale =
         editorNavigation.value?.getScaleX?.() ?? getControlBounds(view).w / settings.width
-    const lanes = scrollLanes()
 
     if (smooth) {
+        const base = view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : view.lane
+        const lanes = scrollLanes(base)
         view.scrollingX = {
             type: 'ease',
             from: {
@@ -259,15 +264,11 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
             },
             to: {
                 time: time.value.now + 0.25,
-                viewLane: clamp(
-                    (view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : view.lane) +
-                        dx / laneScale,
-                    lanes.min,
-                    lanes.max,
-                ),
+                viewLane: clamp(base + dx / laneScale, lanes.min, lanes.max),
             },
         }
     } else {
+        const lanes = scrollLanes(view.lane)
         view.lane = clamp(view.lane + dx / laneScale, lanes.min, lanes.max)
     }
 }
