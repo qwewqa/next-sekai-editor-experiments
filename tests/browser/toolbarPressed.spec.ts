@@ -1073,6 +1073,57 @@ test('round toolbar faces take input over their whole square', async ({ page }) 
     await expect(face('Brush')).toHaveAttribute('aria-expanded', 'true')
 })
 
+test('moving from one tool onto the next opens the next at once, even resting on their edge', async ({
+    page,
+}) => {
+    // The group whose flyout is open, or -1.
+    const open = () =>
+        toolbar(page)
+            .locator(':scope > div > div')
+            .evaluateAll((groups) =>
+                groups.findIndex((group) => group.querySelector(':scope > div')),
+            )
+    const boxes = () =>
+        shown(page).evaluateAll((buttons) =>
+            buttons.map((button) => button.getBoundingClientRect().toJSON() as DOMRect),
+        )
+    const hover = async (box: DOMRect) => {
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 2 })
+    }
+
+    const [a, b, c] = await boxes()
+    await hover(a!)
+    await expect.poll(open).toBe(0)
+    // One move onto the next tool's first column opens it, with no further movement.
+    await page.mouse.move(b!.left, b!.top + b!.height / 2)
+    await expect.poll(open).toBe(1)
+    await page.waitForTimeout(300)
+    expect(await open()).toBe(1)
+
+    // A slow sweep across an edge, through the corners outside the circles, always has a tool open.
+    for (const y of [c!.top + 1, c!.top + c!.height / 2, c!.bottom - 1]) {
+        await hover(b!)
+        for (let x = c!.left - 2; x <= c!.left + 2; x += 0.5) {
+            await page.mouse.move(x, y)
+            expect(await open()).toBe(x < c!.left ? 1 : 2)
+        }
+    }
+
+    // Moving off the toolbar onto the chart still closes.
+    await page.mouse.move(a!.left - 8, a!.top + a!.height / 2)
+    await expect.poll(open).toBe(-1)
+
+    // Across wrapped rows too.
+    await page.setViewportSize({ width: 390, height: 844 })
+    const rows = await boxes()
+    const below = rows.findIndex((box) => box.top > rows[0]!.top)
+    expect(rows[below]!.left).toBe(rows[0]!.left)
+    await hover(rows[0]!)
+    await expect.poll(open).toBe(0)
+    await page.mouse.move(rows[below]!.left + rows[below]!.width / 2, rows[below]!.top)
+    await expect.poll(open).toBe(below)
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 

@@ -223,10 +223,25 @@ const onKeydownRepeat = (event: KeyboardEvent, name: CommandName, opens = false)
     if (opens || !repeatsWhenHeld.has(name)) event.preventDefault()
 }
 
+// The group whose cell holds the pointer, or -1; cells tile, each owning its left and top edges.
+const groupAt = ({ clientX: x, clientY: y }: PointerEvent) =>
+    activeNames.value.findIndex((_, index) => {
+        const cell = groups.value[index]?.getBoundingClientRect()
+        return !!cell && cell.left <= x && x < cell.right && cell.top <= y && y < cell.bottom
+    })
+
+// Entering over another tool leaves it to the move that follows, so a resting pointer opens nothing.
 const onOverBackdrop = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse') return
+    if (event.pointerType !== 'mouse' || groupAt(event) !== -1) return
 
     activeIndex.value = -1
+}
+
+// Tools under the backdrop take no input; moving onto one opens it at once, and off all closes.
+const onMoveBackdrop = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return
+
+    activeIndex.value = groupAt(event)
 }
 
 // A flyout rises from its tool's top edge, centered on the tool and kept 8px
@@ -376,6 +391,7 @@ onBeforeUnmount(() => {
         v-if="activeIndex !== -1"
         class="absolute size-full bg-bg/75"
         @pointerover="onOverBackdrop"
+        @pointermove="onMoveBackdrop"
         @click="activeIndex = -1"
     />
 </template>
