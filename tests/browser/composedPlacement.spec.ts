@@ -206,11 +206,14 @@ for (const [tool, shortcut] of [
         }
     })
 
-    test(`${tool}: drag creation uses local lanes at the destination beat`, async ({ page }) => {
+    test(`${tool}: drag creation keeps the pressed displayed edge at the destination beat`, async ({
+        page,
+    }) => {
         await seed(page, { empty: true })
         await page.keyboard.press(shortcut)
+        // Displayed 3..8 at beat 6, where the stage offset is 7.
         await startDrag(page, [3, 4], [8, 6])
-        const created = [{ type: 'note', beat: 6, left: -2, size: 3 }]
+        const created = [{ type: 'note', beat: 6, left: -4, size: 5 }]
         expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual(created)
         await page.mouse.up()
         expect(await page.evaluate(() => window.editorTest.snapshot().notes)).toEqual(created)

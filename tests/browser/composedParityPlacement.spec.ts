@@ -158,13 +158,14 @@ for (const [name, shortcut] of [
         })
     }
 
-    test(`${name}: drag creation keeps its fixed raw edge across pivot and parity changes`, async ({
+    test(`${name}: drag creation snaps its pressed edge to the destination grid across pivot and parity changes`, async ({
         page,
     }) => {
         await seed(page, { changing: true })
         await page.keyboard.press(shortcut)
+        // Pressed at displayed 2.5; the beat-6 grid holds whole displayed lanes (offset 3).
         await drag(page, [2.5, 2], [6.2, 6])
-        const expected = [{ beat: 6, left: 1.5, size: 1.5 }]
+        const expected = [{ beat: 6, left: 0, size: 3 }]
         expect(await ghost(page)).toEqual(expected)
         await page.mouse.up()
         expect(await notes(page)).toEqual(expected)
