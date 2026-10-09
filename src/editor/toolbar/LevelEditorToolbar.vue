@@ -243,15 +243,13 @@ const onMoveBackdrop = (event: PointerEvent) => {
 // clipped at either edge.
 const flyoutMargin = 8
 const groups = ref<HTMLElement[]>([])
-let flyout: HTMLElement | undefined
-const setFlyout = (element: unknown) => {
-    flyout = element instanceof HTMLElement ? element : undefined
-}
+// Found by id: switching groups mounts one flyout and unmounts another in either order.
+const openFlyout = () => document.getElementById(flyoutId) ?? undefined
 const placement = ref<{ left: number; bottom: number; maxHeight: number }>()
 
 const place = () => {
     const group = groups.value[activeIndex.value]
-    const element = flyout
+    const element = openFlyout()
     if (!root.value || !group || !element) return
     const pane = root.value.getBoundingClientRect()
     const tool = group.getBoundingClientRect()
@@ -269,6 +267,7 @@ const place = () => {
 
 // A flyout opens with its checked value centred, without moving focus.
 const revealChecked = () => {
+    const flyout = openFlyout()
     const row = flyout?.querySelector('[data-value-check]')?.closest('button')
     if (!flyout || !row) return
     const top = row.offsetTop - (flyout.clientHeight - row.offsetHeight) / 2
@@ -353,7 +352,6 @@ onBeforeUnmount(() => {
                 <div
                     v-if="activeIndex === i"
                     :id="flyoutId"
-                    :ref="setFlyout"
                     v-scroll-edges
                     class="absolute w-max overflow-y-auto"
                     :class="{ invisible: !placement }"

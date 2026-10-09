@@ -1542,3 +1542,33 @@ test('a held Enter or Space on a toolbar tool repeats only the commands that rep
     await page.keyboard.up('Enter')
     await expect.poll(undos).toBe(0)
 })
+
+test('moving across the toolbar either way shows each flyout above its own tool', async ({
+    page,
+}) => {
+    const boxes = await shown(page).evaluateAll((buttons) =>
+        buttons.map((button) => {
+            const box = button.getBoundingClientRect()
+            return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        }),
+    )
+    const check = async (index: number) => {
+        const group = toolbar(page).locator(':scope > div > div').nth(index)
+        const flyout = group.locator(':scope > div')
+        if (!(await flyout.count())) return
+        // Placed and shown, rising from this tool rather than left hidden for a previous group.
+        await expect(flyout).toBeVisible()
+        const tool = (await group.locator(':scope > button').boundingBox())!
+        const list = (await flyout.boundingBox())!
+        expect(list.y + list.height).toBeCloseTo(tool.y, 0)
+        expect(list.x).toBeLessThan(tool.x + tool.width)
+        expect(list.x + list.width).toBeGreaterThan(tool.x)
+    }
+    for (const order of [boxes.keys(), [...boxes.keys()].reverse()]) {
+        for (const index of order) {
+            const { x, y } = boxes[index]!
+            await page.mouse.move(x, y, { steps: 4 })
+            await check(index)
+        }
+    }
+})
