@@ -3,10 +3,6 @@ import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 
 export type ComposedSample = { time: number; left: number; size: number }
 
-// Each seed probes three points, so 8 seeds sample as densely as 16 midpoints; the finest step is unchanged.
-const SEEDS = 8
-const DEPTH = 11
-
 /** Sample smooth stretches separately, retaining both limits at every event jump. */
 export const sampleComposed = <T extends { left: number; size: number }>(
     bpms: BpmIntegral[],
@@ -16,16 +12,21 @@ export const sampleComposed = <T extends { left: number; size: number }>(
 ): (T & { time: number })[][] => {
     type Point = T & { time: number }
     const strips: Point[][] = []
+    // A time step already bounds chord height, so only unbounded chords test quarter points.
+    // Those probe three points per seed: 8 seeds sample as densely as 16 midpoints, to the same finest step.
+    const quarters = options.maxTimeStep === undefined
+    const seeds = quarters ? 8 : 16
+    const maxDepth = quarters ? 11 : 10
     const sample = (time: number, rightLimit: boolean) => ({
         ...at(timeToBeat(bpms, time), rightLimit),
         time,
     })
     // Largest distance, in lanes, of a sample from the chord at fraction u.
     const deviation = (point: Point, a: Point, b: Point, u: number) => {
-        const chord = (start: number, end: number) => start + (end - start) * u
+        const right = a.left + a.size
         let error = Math.max(
-            Math.abs(point.left - chord(a.left, b.left)),
-            Math.abs(point.left + point.size - chord(a.left + a.size, b.left + b.size)),
+            Math.abs(point.left - (a.left + (b.left - a.left) * u)),
+            Math.abs(point.left + point.size - (right + (b.left + b.size - right) * u)),
         )
         if (options.coordinates) {
             const aValues = options.coordinates(a)
@@ -36,7 +37,7 @@ export const sampleComposed = <T extends { left: number; size: number }>(
                 const start = aValues[index]
                 const end = bValues[index]
                 if (value === undefined || start === undefined || end === undefined) continue
-                error = Math.max(error, Math.abs(value - chord(start, end)))
+                error = Math.max(error, Math.abs(value - (start + (end - start) * u)))
             }
         }
         return error
@@ -53,18 +54,17 @@ export const sampleComposed = <T extends { left: number; size: number }>(
         const points = [previous]
         // Quarter points catch curves a matching midpoint hides; they become the halves' midpoints.
         const append = (a: Point, b: Point, depth: number, middle?: Point) => {
-            if (depth >= DEPTH) {
+            if (depth >= maxDepth) {
                 points.push(b)
                 return
             }
             middle ??= sample((a.time + b.time) / 2, false)
             let first: Point | undefined
             let second: Point | undefined
-            const span = b.time - a.time
             let split =
-                span > (options.maxTimeStep ?? Infinity) || deviation(middle, a, b, 0.5) > 0.01
-            // A time step already bounds a chord's height; within it the midpoint decides.
-            if (!split && !(span <= (options.maxTimeStep ?? 0))) {
+                b.time - a.time > (options.maxTimeStep ?? Infinity) ||
+                deviation(middle, a, b, 0.5) > 0.01
+            if (!split && quarters) {
                 first = sample((a.time + middle.time) / 2, false)
                 second = sample((middle.time + b.time) / 2, false)
                 split = deviation(first, a, b, 0.25) > 0.01 || deviation(second, a, b, 0.75) > 0.01
@@ -75,11 +75,11 @@ export const sampleComposed = <T extends { left: number; size: number }>(
             } else points.push(b)
         }
         // Seed oscillating and compound eases so a coincident midpoint cannot hide a curve.
-        for (let seed = 1; seed <= SEEDS; seed++) {
+        for (let seed = 1; seed <= seeds; seed++) {
             const next =
-                seed === SEEDS
+                seed === seeds
                     ? { ...at(toBeat, false), time: to }
-                    : sample(from + ((to - from) * seed) / SEEDS, false)
+                    : sample(from + ((to - from) * seed) / seeds, false)
             append(previous, next, 0)
             previous = next
         }
