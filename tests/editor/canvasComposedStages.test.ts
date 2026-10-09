@@ -368,6 +368,49 @@ test('oscillating parity transitions draw every discrete grid change without dia
     }
 })
 
+test('an In-Out Step jump beside another breakpoint draws no horizontal border sliver', () => {
+    const source = chart()
+    source.bpms = [{ beat: 0, bpm: 150 }]
+    source.stages = new Map([
+        [
+            stageId,
+            { name: 'Stage', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
+        ],
+    ])
+    source.stageMaskEvents = [0, 1.5].map((beat) => ({
+        stageId,
+        beat,
+        maskLeft: -4,
+        maskSize: 8,
+        isMaskNotes: false,
+        eventEase: 'linear',
+    }))
+    source.stageTransformEvents = (
+        [
+            [0.5, 0, 'inOutStep'],
+            [2.5, 4, 'linear'],
+        ] as const
+    ).map(([beat, xTranslation, eventEase]) => ({
+        stageId,
+        beat,
+        rotation: 0,
+        xTranslation,
+        yTranslation: 0,
+        elevation: 0,
+        anchor: 'default',
+        eventEase,
+    }))
+    const { context, strokes } = fixture(source)
+    drawComposedStages(context, { min: 0, max: 4 }, fullScope)
+    // Borders are the unclipped strokes; the jump at beat 1.5 must not flatten into one.
+    const borders = strokes.filter(({ clip }) => !clip)
+    assert.ok(borders.length > 0)
+    for (const { points } of borders) {
+        const [[ax, ay], [bx, by]] = points as [number[], number[]]
+        assert.ok(ay !== by || ax === bx, `${ax},${ay} -> ${bx},${by}`)
+    }
+})
+
 test('stage sampling resolves curved pivots even when both mask edges remain static', () => {
     const bpms = calculateBpms([{ x: 0, y: 0, s: 0.5 }])
     const [points] = sampleComposed(

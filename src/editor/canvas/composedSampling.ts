@@ -21,7 +21,8 @@ export const sampleComposed = <T extends { left: number; size: number }>(
         if (fromBeat === undefined || toBeat === undefined) continue
         const from = beatToTime(bpms, fromBeat)
         const to = beatToTime(bpms, toBeat)
-        if (!(to > from)) continue
+        // Strips within the jump tolerance would draw a jump as a horizontal line.
+        if (!(to - from > Math.max(1, Math.abs(to)) * 2 ** -21)) continue
         let previous = { ...at(fromBeat, true), time: from }
         const points = [previous]
         const append = (a: T & { time: number }, b: T & { time: number }, depth: number) => {
