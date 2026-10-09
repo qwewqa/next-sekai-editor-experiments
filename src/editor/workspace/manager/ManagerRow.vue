@@ -535,6 +535,25 @@ const onRenameBlur = (event: FocusEvent) => {
     touch-action: manipulation;
 }
 
+/* Listed rows split the 4px gaps between them, in bands clear of their contents and under their buttons. */
+.manager-row:not(.manager-row-heading) {
+    isolation: isolate;
+}
+
+.manager-row:not(.manager-row-heading)::before,
+.manager-row:not(.manager-row-heading)::after {
+    content: '';
+    @apply absolute inset-x-0 -z-10 h-0.5;
+}
+
+.manager-row:not(.manager-row-heading)::before {
+    @apply -top-0.5;
+}
+
+.manager-row:not(.manager-row-heading)::after {
+    @apply -bottom-0.5;
+}
+
 /* The authoring target reads like a white pill field; the band row has its own marker. */
 .manager-row-current:not(.manager-row-heading) {
     @apply bg-button shadow-md;
@@ -588,7 +607,20 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-icon-button {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 forced-colors:disabled:opacity-100;
+    @apply relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 forced-colors:disabled:opacity-100;
+}
+
+/* Round buttons and names take their square corners, so neighbours meet. */
+.manager-icon-button::before,
+.manager-name::before {
+    content: '';
+    @apply absolute inset-0;
+}
+
+/* In listed rows they also reach halfway into the gaps between rows. */
+.manager-row:not(.manager-row-heading) .manager-icon-button::before,
+.manager-row:not(.manager-row-heading) .manager-name::before {
+    @apply -inset-y-1;
 }
 
 /* A button whose menu is open holds its hover look. */
@@ -649,7 +681,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-name {
-    @apply flex h-9 min-w-0 flex-1 items-center rounded-full px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none;
+    @apply relative flex h-9 min-w-0 flex-1 items-center rounded-full px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none;
 }
 
 .manager-rename {

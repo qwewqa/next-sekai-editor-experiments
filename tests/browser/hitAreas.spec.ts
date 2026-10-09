@@ -1,0 +1,146 @@
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { resource } from './previewResourceFixture'
+
+// Controls that sit together take input up to each other: a pointer moving
+// between neighbours is always over one of them.
+
+test.beforeEach(async ({ page }) => {
+    await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
+    await page.route('**/resource/particle.scp*', (route) =>
+        route.fulfill({ body: resource('particles') }),
+    )
+    await page.addInitScript(installCanvasCounters)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(() => {
+        const { history, fixtures, settings } = window.editorTest
+        history.resetState(false, structuredClone(fixtures.interaction), 0, 'hits.json')
+        Object.assign(settings, { showPreview: true, showGroups: true })
+    })
+})
+
+/**
+ * What each point hits on lines from the centre of `a` to the centre of `b`,
+ * across their shared extent: 'a', 'b', or what else is there. Each line
+ * collapses repeats, so neighbours that meet read 'a b'.
+ */
+const sweep = async (a: Locator, b: Locator) => {
+    const handles = [await a.elementHandle(), await b.elementHandle()]
+    return a.page().evaluate(([a, b]) => {
+        const ra = a!.getBoundingClientRect()
+        const rb = b!.getBoundingClientRect()
+        const across = rb.left >= ra.right - 0.5
+        const [lo, hi] = across
+            ? [Math.max(ra.top, rb.top), Math.min(ra.bottom, rb.bottom)]
+            : [Math.max(ra.left, rb.left), Math.min(ra.right, rb.right)]
+        const [from, to] = across
+            ? [ra.left + ra.width / 2, rb.left + rb.width / 2]
+            : [ra.top + ra.height / 2, rb.top + rb.height / 2]
+        return [0.05, 0.5, 0.95].map((f) => {
+            const along = lo + (hi - lo) * f
+            const seen: string[] = []
+            for (let t = from; t <= to; t += 0.25) {
+                const element = across
+                    ? document.elementFromPoint(t, along)
+                    : document.elementFromPoint(along, t)
+                const owner = a!.contains(element)
+                    ? 'a'
+                    : b!.contains(element)
+                      ? 'b'
+                      : `${element?.tagName}.${element?.className}`
+                if (seen.at(-1) !== owner) seen.push(owner)
+            }
+            return seen.join(' ')
+        })
+    }, handles)
+}
+
+const meet = async (a: Locator, b: Locator) =>
+    expect(await sweep(a, b)).toEqual(['a b', 'a b', 'a b'])
+
+test('rail tabs meet', async ({ page }) => {
+    const tabs = page.locator('[data-workspace-dock="left"] [data-panel-tab]')
+    await expect(tabs.nth(1)).toBeVisible()
+    await meet(tabs.nth(0), tabs.nth(1))
+})
+
+test('preview steppers meet', async ({ page }) => {
+    const steps = page.locator('.transport-step')
+    await expect(steps).toHaveCount(6)
+    for (let i = 0; i < 5; i++) await meet(steps.nth(i), steps.nth(i + 1))
+})
+
+test('manager rows and their buttons meet', async ({ page }) => {
+    const rows = page.locator('#workspace-panel-groups .manager-entry')
+    await expect(rows).toHaveCount(2)
+    const [first, second] = [rows.nth(0), rows.nth(1)]
+    // Round buttons beside each other, and each column down the list.
+    await meet(first.locator('.manager-eye'), first.locator('.manager-name'))
+    await meet(first.locator('.manager-name'), second.locator('.manager-name'))
+    await meet(first.locator('.manager-eye'), second.locator('.manager-eye'))
+    await meet(first.locator('.manager-more'), second.locator('.manager-more'))
+    // Between them, the row takes the gap's half beside it, and shows as hovered.
+    const [top, bottom] = await Promise.all([first.boundingBox(), second.boundingBox()])
+    const x = top!.x + top!.width - 60
+    await page.mouse.move(x, top!.y + top!.height + 1)
+    expect(await first.evaluate((row) => row.matches(':hover'))).toBe(true)
+    await page.mouse.move(x, bottom!.y - 1)
+    expect(await second.evaluate((row) => row.matches(':hover'))).toBe(true)
+})
+
+const toolbarPairs = (page: Page) =>
+    page.getByRole('dialog').evaluate((dialog) => {
+        // Neighbours down a column, and across the gap between columns.
+        const columns = [...dialog.querySelectorAll('.flex-wrap > .flex-col')]
+        const index = (element: Element) =>
+            [...dialog.querySelectorAll('button')].indexOf(element as HTMLButtonElement)
+        const down = [...columns[0]!.children].slice(0, 2).map(index)
+        const tops = (column: Element) =>
+            [...column.children].map((child) => child.getBoundingClientRect().top)
+        for (let i = 0; i + 1 < columns.length; i++) {
+            const [left, right] = [columns[i]!, columns[i + 1]!]
+            const shared = tops(left).find((top) => tops(right).includes(top))
+            if (shared === undefined) continue
+            const at = (column: Element) =>
+                [...column.children].find((child) => child.getBoundingClientRect().top === shared)!
+            return { down, across: [index(at(left)), index(at(right))] }
+        }
+        throw new Error('no columns side by side')
+    })
+
+const settingsToolbarMeets = async (page: Page) => {
+    await page.evaluate(async () => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        await commands.settings.execute()
+    })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await dialog.getByText('Toolbar', { exact: true }).scrollIntoViewIfNeeded()
+    const { down, across } = await toolbarPairs(page)
+    const button = (index: number) => dialog.locator('button').nth(index)
+    // A column's add button meets the tool below it, and tools meet across columns.
+    await meet(button(down[0]!), button(down[1]!))
+    await meet(button(across[0]!), button(across[1]!))
+}
+
+test('the settings toolbar editor’s buttons meet', async ({ page }) => {
+    await settingsToolbarMeets(page)
+})
+
+test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+    test('top rail tabs meet', async ({ page }) => {
+        const tabs = page.locator('[data-workspace-dock="top"] [data-panel-tab]')
+        await expect(tabs.nth(1)).toBeVisible()
+        await meet(tabs.nth(0), tabs.nth(1))
+    })
+
+    test('the settings toolbar editor’s buttons meet at touch sizes', async ({ page }) => {
+        await settingsToolbarMeets(page)
+    })
+})

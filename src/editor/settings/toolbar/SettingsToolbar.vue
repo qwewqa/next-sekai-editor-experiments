@@ -30,12 +30,14 @@ const onAddGroup = async () => {
 
 <template>
     <SettingsSection :title="i18n.settings.toolbar.title">
+        <!-- Centred pseudo-elements fill each column and half the gaps beside it; the faces stay unpositioned. -->
         <div class="flex flex-wrap items-end justify-center gap-1">
             <div v-for="(names, i) in settings.toolbar" :key="i" class="flex flex-col items-center">
                 <SettingsToolbarAddButton @click="onAddToGroup(i)" />
                 <LevelEditorToolbarTool
                     v-for="(name, j) in names"
                     :key="j"
+                    class="justify-center before:absolute before:h-8 before:w-9 [@media(pointer:coarse)]:before:w-12"
                     :name
                     @click="onRemoveFromGroup(i, j)"
                 />

@@ -312,21 +312,25 @@ const stripStyle = computed(() => ({
     width: 3rem;
 }
 
+/* Steppers take input across the track's full height and up to their neighbours. */
+.transport-track .transport-button {
+    @apply relative;
+}
+
+.transport-track .transport-button::before {
+    content: '';
+    position: absolute;
+    inset: -2px -1px;
+}
+
 /* Touch: Play, the frequent control, is 44 px in a 52 px strip; the steppers,
-   used less often, are drawn at 40 px but take touches across the track's full
-   44 px height and up to their neighbours. */
+   used less often, are drawn at 40 px across the track's 44 px. */
 .is-coarse .transport-play {
     @apply h-11 w-11;
 }
 
 .is-coarse .transport-track .transport-button {
-    @apply relative h-10;
-}
-
-.is-coarse .transport-track .transport-button::before {
-    content: '';
-    position: absolute;
-    inset: -2px -1px;
+    @apply h-10;
 }
 
 .is-coarse .transport-step,
