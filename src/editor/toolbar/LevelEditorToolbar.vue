@@ -310,7 +310,12 @@ watch(activeIndex, async () => {
     revealChecked()
 })
 // After the rows rewrap, so the flyout follows its tool.
-watch([room, short, height, isCoarsePointer], () => void nextTick(place))
+watch([room, short, height, isCoarsePointer], async () => {
+    await nextTick()
+    place()
+    await nextTick()
+    revealChecked()
+})
 
 // Escape closes an open flyout and returns focus to its tool.
 const onKeydown = (event: KeyboardEvent) => {

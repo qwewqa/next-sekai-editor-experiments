@@ -1639,7 +1639,7 @@ test('a move in place, as WebKit sends after a scroll, leaves a keyboard-opened 
     for (const [x, y] of [
         [800, 300],
         [5, 500],
-    ]) {
+    ] as const) {
         await page.mouse.move(x, y)
         await group.focus()
         await page.keyboard.press('Enter')
@@ -1651,7 +1651,7 @@ test('a move in place, as WebKit sends after a scroll, leaves a keyboard-opened 
                 const init = { bubbles: true, clientX: x, clientY: y, pointerType: 'mouse' }
                 target.dispatchEvent(new PointerEvent('pointermove', init))
             },
-            [x, y],
+            [x, y] as const,
         )
         await page.waitForTimeout(100)
         await expect(group).toHaveAttribute('aria-expanded', 'true')
@@ -1670,4 +1670,26 @@ test('a move straight onto a dock resize handle closes the open flyout', async (
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await expect(openFlyout(page)).toHaveCount(0)
     await expect(scrim(page)).toHaveCount(0)
+})
+
+test('a resize that re-places a value flyout keeps its checked value in view', async ({ page }) => {
+    const face = shown(page).and(page.getByTitle('1/4 Division', { exact: true }))
+    const box = (await face.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 })
+    const checked = openFlyout(page).locator('button:has([data-value-check])')
+    await expect(checked).toHaveCount(1)
+    await page.setViewportSize({ width: 1600, height: 320 })
+    await expect
+        .poll(() =>
+            checked.evaluate((row) => {
+                const list = row.parentElement!.getBoundingClientRect()
+                const { top, bottom } = row.getBoundingClientRect()
+                return (
+                    row.parentElement!.scrollHeight > row.parentElement!.clientHeight &&
+                    top >= list.top &&
+                    bottom <= list.bottom
+                )
+            }),
+        )
+        .toBe(true)
 })
