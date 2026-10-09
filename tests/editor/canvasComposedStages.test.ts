@@ -412,6 +412,29 @@ test('an In-Out Step jump beside another breakpoint draws no horizontal border s
     }
 })
 
+test('a collapsed stage draws its borders without a surface or dividers', () => {
+    const source = chart()
+    source.stageMaskEvents = source.stageMaskEvents.map((event) => ({
+        ...event,
+        maskLeft: 2,
+        maskSize: 0,
+    }))
+    source.stageStyleEvents = source.stageStyleEvents.map((event) => ({
+        ...event,
+        rightBorderStyle: 'default',
+    }))
+    const { context, fills, strokes } = fixture(source)
+    drawComposedStages(context, { min: 0, max: 8 }, fullScope)
+    assert.equal(fills.length, 0)
+    assert.ok(strokes.length > 0)
+    for (const { points, clip } of strokes) {
+        assert.equal(clip, undefined)
+        assert.ok(points.every(([x]) => x === 2))
+    }
+    assert.ok(strokes.some(({ points }) => points[0]![1] === -1))
+    assert.ok(strokes.some(({ points }) => points.at(-1)![1] === -3))
+})
+
 test('composed sampling keeps elastic curves within tolerance between its vertices', () => {
     const bpms = calculateBpms([{ x: 0, y: 0, s: 0.5 }])
     for (const type of [EaseType.inElastic, EaseType.outElastic, EaseType.outInElastic]) {

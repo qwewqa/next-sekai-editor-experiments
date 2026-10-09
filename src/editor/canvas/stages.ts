@@ -23,7 +23,12 @@ const drawSlice = (
 ) => {
     const { ctx, ups, scale, bounds } = context
     const alpha = clamp((a.laneAlpha * (1 - a.fullWidth) + b.laneAlpha * (1 - b.fullWidth)) / 2)
-    if (alpha <= 0 || (a.size <= 0 && b.size <= 0)) return
+    if (alpha <= 0) return
+    // A collapsed stage keeps only its borders, as in the engine.
+    if (a.size <= 0 && b.size <= 0) {
+        drawBorders(context, a, b, opacity * alpha)
+        return
+    }
     const yA = a.time * ups
     const yB = b.time * ups
     ctx.save()
@@ -102,9 +107,13 @@ const drawSlice = (
         )
     }
     ctx.restore()
+    drawBorders(context, a, b, opacity * alpha)
+}
 
+const drawBorders = (context: EditorDrawContext, a: StagePoint, b: StagePoint, alpha: number) => {
+    const { ctx, ups, scale } = context
     ctx.save()
-    ctx.globalAlpha = opacity * alpha * 0.65
+    ctx.globalAlpha = alpha * 0.65
     ctx.strokeStyle = '#b4d6e8'
     for (const side of ['left', 'right'] as const) {
         const style = side === 'left' ? 'leftBorderStyle' : 'rightBorderStyle'
@@ -112,8 +121,8 @@ const drawSlice = (
         if (width <= 0) continue
         ctx.lineWidth = width
         ctx.beginPath()
-        ctx.moveTo(a[side], yA)
-        ctx.lineTo(b[side], yB)
+        ctx.moveTo(a[side], a.time * ups)
+        ctx.lineTo(b[side], b.time * ups)
         ctx.stroke()
     }
     ctx.restore()
