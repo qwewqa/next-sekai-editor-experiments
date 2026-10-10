@@ -444,3 +444,12 @@ test('Flip Vertical of a whole slide leaves its tick attached on the path', () =
     const flipped = brief(flipVertical(source, all(source)))
     assert.deepEqual(flipped[1], { ...brief(source)[1], beat: 4 })
 })
+
+test('the cross-stage fixture places its tick as the whole-chart compile does', () => {
+    const source = crossStage()
+    const notes = all(source)
+    const expected = compiledPositions(source, notes)
+    assert.equal(expected.size, 1)
+    assertSame(getMaterializedNotePositions(source, notes), expected)
+    assert.deepEqual([...expected.values()], [{ left: -5.25, size: 2.5, elevation: 2 }])
+})
