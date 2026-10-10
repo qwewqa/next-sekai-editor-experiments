@@ -32,7 +32,7 @@ import { FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
 import { createComposedLayout } from '../composed'
-import { createStageSurface } from './stageSurface'
+import { createStageSurface, SUSTAINED_MS } from './stageSurface'
 
 const container = useTemplateRef('container')
 const { cursor, cursorListeners } = useCanvasCursor(() => undefined)
@@ -45,8 +45,9 @@ const fontMiddle = ref(0.25)
 const figureMiddle = ref(FIGURE_MIDDLE)
 const redrawVersion = ref(0)
 const waveformVersion = ref(0)
-// Bumped after a frame drew shifted stage pixels, so the first still frame redraws them exactly.
+// Bumped once shifted stage pixels have held still for a motion's gap, to redraw them exactly.
 const stageSettle = ref(0)
+let stageSettleTimer: ReturnType<typeof setTimeout> | undefined
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
@@ -239,8 +240,11 @@ watchEffect(
             waveform.draw(context, currentWaveform, offset, currentTimes)
             if (
                 stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
-            )
-                stageSettle.value++
+            ) {
+                // Not the next frame: stepped input and slow frames would alternate exact redraws.
+                clearTimeout(stageSettleTimer)
+                stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
+            }
             drawGrid(
                 context,
                 currentBeats,
@@ -400,6 +404,7 @@ onMounted(() => {
     document.fonts.addEventListener('loadingdone', updateFont)
 })
 onUnmounted(() => {
+    clearTimeout(stageSettleTimer)
     chartFrame.cancel()
     overlayFrame.cancel()
     notes.clear()

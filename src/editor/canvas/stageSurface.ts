@@ -13,7 +13,7 @@ const MAX_PIXELS = 8 * 1024 * 1024
 const AHEAD = 1
 const BEHIND = 0.25
 // Frames closer together than this are one motion; spaced steps each draw exactly.
-const SUSTAINED_MS = 100
+export const SUSTAINED_MS = 100
 
 type Motion = {
     canvas: HTMLCanvasElement

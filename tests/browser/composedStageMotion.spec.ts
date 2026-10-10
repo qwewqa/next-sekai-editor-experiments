@@ -102,6 +102,8 @@ for (const dpr of [1, 1.25, 1.5]) {
                 while (view.scrollingY) await new Promise((r) => requestAnimationFrame(r))
                 return view.time
             })
+            // The still frame comes once the view has held still for longer than a motion's gap.
+            await page.waitForTimeout(150)
             await frames(page, 4)
             const after = await counters()
             const moved = after.frames - step.frames
