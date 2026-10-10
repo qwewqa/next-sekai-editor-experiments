@@ -240,7 +240,8 @@ export const createStageSurface = () => {
             last = { key: viewKey, l: bounds.l, t: bounds.t, moving: moved, time: now }
             if (moved) {
                 clearTimeout(release)
-                release = undefined
+                // An exact last moving frame has no still frame after it to start the release.
+                release = motion ? setTimeout(clearMotion, RELEASE_MS) : undefined
             } else if (motion && !release) release = setTimeout(clearMotion, RELEASE_MS)
             // A single step redraws exactly; sustained motion reuses a larger window.
             if (!sameKey(previous, key) && moved && wasMoving) {

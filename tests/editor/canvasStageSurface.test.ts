@@ -102,3 +102,63 @@ test('stage cache is lazy, bounded and releases lost or unused backing stores', 
     assert.deepEqual([allocated[3]!.width, allocated[3]!.height], [0, 0])
     assert.equal(allocated.length, 4)
 })
+
+test('a motion window is released after an exact last moving frame', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    let now = 0
+    t.mock.method(performance, 'now', () => now)
+    const allocated: { width: number; height: number }[] = []
+    const canvas = () => {
+        const ctx = {
+            globalAlpha: 1,
+            save() {},
+            restore() {},
+            setTransform() {},
+            fillRect() {},
+            drawImage() {},
+            isContextLost: () => false,
+        }
+        return { width: 0, height: 0, getContext: () => ctx, ctx }
+    }
+    const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
+    Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: {
+            createElement: () => {
+                const item = canvas()
+                allocated.push(item)
+                return item
+            },
+        },
+    })
+    t.after(() => {
+        if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
+        else Reflect.deleteProperty(globalThis, 'document')
+    })
+    const context = {
+        ctx: canvas().ctx,
+        pixelRatio: 1,
+        scale: 25,
+        ups: -2,
+        bounds: { l: -4, r: 4, t: -4, b: 0, w: 8, h: 4 },
+        state: { bpms: [{ x: 0, y: 0, s: 1 }] },
+        composed: { stages: new Map([[1 as StageId, { startBeat: 20, endBeat: 24 }]]) },
+    } as unknown as EditorDrawContext
+    const surface = createStageSurface()
+    const draw = (time: number, t: number) => {
+        now = time
+        context.bounds = { ...context.bounds, t, b: t + 4 }
+        return surface.draw(context, 200, 100, { min: 0, max: 8 }, fullScope, 1)
+    }
+    draw(0, -4)
+    assert.equal(draw(10, -4.01), false, 'a single step draws exactly')
+    assert.equal(draw(20, -4.02), true, 'sustained motion shifts a window')
+    const window = allocated.find((item) => item.height > 100)
+    assert.ok(window)
+    // Spaced past a motion's gap, the last moving frame draws exactly and nothing draws after it.
+    assert.equal(draw(200, -4.03), false)
+    t.mock.timers.tick(2499)
+    assert.ok(window.height > 0, 'kept through a pause')
+    t.mock.timers.tick(1)
+    assert.deepEqual([window.width, window.height], [0, 0])
+})
