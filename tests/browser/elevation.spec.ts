@@ -713,7 +713,12 @@ test('a restored canvas context redraws the scene', async ({ page }) => {
 test('a dialog opening over a body drag cancels it, as it does a chart drag', async ({ page }) => {
     await open(page)
     const initial = await notes(page)
-    await mouseDrag(page, await point(page), await displacement(page, 2, 0.5))
+    const previewing = () =>
+        page.evaluate(() => window.elevationTest.preview.previewEdit.value !== undefined)
+    const start = await point(page)
+    await mouseDrag(page, start, await displacement(page, 2, 0.5))
+    // The drag previews its edit until the dialog opens.
+    expect(await previewing()).toBe(true)
     await page.evaluate(async () => {
         const { appImport } = window.editorTest
         const { showModal } =
@@ -725,7 +730,13 @@ test('a dialog opening over a body drag cancels it, as it does a chart drag', as
     })
     const dialog = page.getByRole('dialog', { name: 'Dialog', exact: true })
     await expect(dialog).toBeVisible()
-    expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual([])
+    expect(await previewing()).toBe(false)
+    // Moving on under the dialog previews nothing.
+    const further = await displacement(page, 3, 1)
+    await page.mouse.move(start.x + further.x, start.y + further.y, { steps: 4 })
+    await settle(page)
+    expect(await previewing()).toBe(false)
+    expect(await notes(page)).toEqual(initial)
     await page.mouse.up()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
