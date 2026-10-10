@@ -61,26 +61,22 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             (stage ? getStageProps(stage, beatToTime(source.bpms, note.beat)).elevation : 0)
         )
     }
-    // A slide ending at the beat joins before one wholly at it, and both before one starting there.
-    const join = (notes: typeof unordered) => {
+    // Slides ending at the beat come first and slides starting there last, so the fewest
+    // attachment spans take in another slide's notes; elevation orders each group.
+    const rank = (notes: typeof unordered) => {
         const first = notes.some((item) => item.first)
         const last = notes.some((item) => item.last)
-        return { joins: first || last, rank: first === last ? 1 : last ? 0 : 2 }
+        return first === last ? 1 : last ? 0 : 2
     }
     const notes = [...byBeat]
         .sort(([a], [b]) => a - b)
         .flatMap(([, slides]) => {
             const blocks = [...slides.values()]
             if (blocks.length < 2) return blocks.flat()
-            const sorted = blocks
-                .map((notes) => ({ notes, elevation: elevation(notes[0]), ...join(notes) }))
-                .sort((a, b) => a.elevation - b.elevation || a.rank - b.rank)
-            // Joining blocks reorder among their own elevation-order places; others keep theirs.
-            const joining = sorted.filter(({ joins }) => joins).sort((a, b) => a.rank - b.rank)
-            let next = 0
-            return sorted.flatMap(
-                (block) => (block.joins ? (joining[next++] ?? block) : block).notes,
-            )
+            return blocks
+                .map((notes) => ({ notes, elevation: elevation(notes[0]), rank: rank(notes) }))
+                .sort((a, b) => a.rank - b.rank || a.elevation - b.elevation)
+                .flatMap(({ notes }) => notes)
         })
 
     // A tick stays attached while nothing from another slide comes between its anchors,
