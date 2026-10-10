@@ -140,3 +140,30 @@ test('dialog backdrops get theme colours without inheriting them, as older brows
     await page.evaluate(() => (window.editorTest.settings.theme = 'dark'))
     expect(await backdrop()).toBe('rgba(16, 17, 32, 0.75)')
 })
+
+for (const forcedColors of ['none', 'active'] as const) {
+    test(`chart panes draw no focus frame after a key and a click (forced colors ${forcedColors})`, async ({
+        page,
+    }) => {
+        await page.emulateMedia({ colorScheme: 'dark', forcedColors })
+        await open(page)
+        const frame = async (selector: string) => {
+            const pane = page.locator(selector)
+            const box = (await pane.boundingBox())!
+            // A key first, so the browser treats the click's focus as from the keyboard.
+            await page.keyboard.press('ArrowUp')
+            await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+            return pane.evaluate((element) => ({
+                focused: element.matches(':focus-visible'),
+                outline: getComputedStyle(element).outlineStyle,
+            }))
+        }
+        expect(await frame('.chart-pane:has(canvas.editor-chart)')).toEqual({
+            focused: true,
+            outline: 'none',
+        })
+        await page.keyboard.press('t')
+        await expect(page.locator('.elevation-canvas')).toBeVisible()
+        expect(await frame('.elevation-editor')).toEqual({ focused: true, outline: 'none' })
+    })
+}
