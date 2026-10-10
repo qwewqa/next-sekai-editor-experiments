@@ -254,6 +254,14 @@ const buildComposedLayout = (state: State) => {
         readonly SlideInfos[number][],
         Map<NoteEntity, SlideInfos[number]>
     >()
+    // A note's own-beat position, computed once per layout.
+    const positions = new WeakMap<NoteEntity, Readonly<ComposedPosition>>()
+    const hitboxes = new WeakMap<NoteEntity, Readonly<EntityHitbox>>()
+    const isDefault = (note: NoteEntity, beat: number, options: ComposedOptions) =>
+        beat === note.beat &&
+        !options.rightLimit &&
+        (options.slideInfos === undefined ||
+            options.slideInfos === state.store.slides.info.get(note.slideId))
     const notePosition = (
         note: NoteEntity,
         beat = note.beat,
@@ -261,6 +269,19 @@ const buildComposedLayout = (state: State) => {
     ): ComposedPosition => {
         // Basic charts retain the store's exact, rounded attached-note positions.
         if (!state.isDynamicStages) return { left: note.left, size: note.size }
+        if (!isDefault(note, beat, options)) return computeNotePosition(note, beat, options)
+        let position = positions.get(note)
+        if (!position) {
+            position = Object.freeze(computeNotePosition(note, beat, options))
+            positions.set(note, position)
+        }
+        return position
+    }
+    const computeNotePosition = (
+        note: NoteEntity,
+        beat: number,
+        options: ComposedOptions,
+    ): ComposedPosition => {
         const infos = options.slideInfos ?? state.store.slides.info.get(note.slideId)
         if (note.isAttached && infos && infos[0]?.note !== note && infos.at(-1)?.note !== note) {
             let lookup = infoLookups.get(infos)
@@ -277,8 +298,17 @@ const buildComposedLayout = (state: State) => {
         notePosition(note, note.beat, options).left
     const hitbox = (entity: Entity, options: ComposedOptions = {}): EntityHitbox | undefined => {
         if (entity.type !== 'note' || !entity.hitbox || !state.isDynamicStages) return entity.hitbox
+        const cacheable = isDefault(entity, entity.beat, options)
+        const cached = cacheable ? hitboxes.get(entity) : undefined
+        if (cached) return cached
         const position = notePosition(entity, entity.beat, options)
-        return { ...entity.hitbox, lane: position.left + position.size / 2, w: position.size / 2 }
+        const hitbox = {
+            ...entity.hitbox,
+            lane: position.left + position.size / 2,
+            w: position.size / 2,
+        }
+        if (cacheable) hitboxes.set(entity, Object.freeze(hitbox))
+        return hitbox
     }
     const connectorPosition = (
         connector: ConnectorEntity,

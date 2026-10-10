@@ -454,6 +454,64 @@ test('selection layout reuse invalidates for note, tempo, stage-event and stage-
     assert.equal(createComposedLayout({ ...source, selectedEntities: [notes[1]!] }), first)
 })
 
+test('note positions are cached per layout, never across edits, undo or non-default queries', () => {
+    const source = state({
+        slides: [[note(2), note(4, 0, { isAttached: true }), note(6, 2)]],
+        // A same-beat pair jumps at the head note.
+        stagePivotEvents: [pivot(0, 0), pivot(2, 1), pivot(2, 4), pivot(8, 8)],
+    })
+    const [head, attached, tail] = [...source.store.slides.note.values()][0]!
+    const slideId = [...source.store.slides.note.keys()][0]!
+    // A copy of the store's infos takes the uncached path to the same answer.
+    const fresh = (layout: ReturnType<typeof createComposedLayout>, from: typeof source) =>
+        layout.notePosition(attached!, attached!.beat, {
+            slideInfos: [...from.store.slides.info.get(slideId)!],
+        })
+    const first = createComposedLayout(source)
+    const position = first.notePosition(attached!)
+    assert.equal(first.notePosition(attached!), position)
+    assert.equal(first.notePosition(attached!, attached!.beat, {}), position)
+    assert.equal(first.notePosition(attached!, attached!.beat, { slideInfos: undefined }), position)
+    assert.ok(Object.isFrozen(position))
+    assert.notEqual(fresh(first, source), position)
+    assert.deepEqual(fresh(first, source), position)
+    assert.equal(first.hitbox(attached!), first.hitbox(attached!))
+    assert.equal(first.hitbox(attached!)!.lane, position.left + position.size / 2)
+
+    // Limits, other beats and foreign slide infos are computed, not cached.
+    assert.equal(first.notePosition(head!).left, 1)
+    assert.equal(first.notePosition(head!, head!.beat, { rightLimit: true }).left, 4)
+    assert.equal(first.notePosition(head!).left, 1)
+    assert.equal(first.notePosition(head!, 8).left, 8)
+    const slideInfos = [head!, attached!, tail!].map((entity) => ({
+        note: entity,
+        attachHead: entity,
+        attachTail: entity,
+        segmentHead: head!,
+        segmentTail: tail!,
+    }))
+    const foreign = first.notePosition(attached!, attached!.beat, { slideInfos })
+    assert.equal(foreign.left, attached!.left + first.offset(stageA, attached!.beat))
+    assert.notDeepEqual(foreign, position)
+    assert.equal(first.notePosition(attached!), position)
+
+    // A stage edit keeps the note entities but moves them.
+    const transaction = createTransaction(source)
+    const event = addStagePivotEventJoint(transaction, pivot(5, -5))
+    const edited = transaction.commit(event)
+    assert.equal([...edited.store.slides.note.values()][0]![1], attached)
+    const second = createComposedLayout(edited)
+    assert.notEqual(second, first)
+    assert.notDeepEqual(second.notePosition(attached!), position)
+    assert.deepEqual(second.notePosition(attached!), fresh(second, edited))
+    assert.notDeepEqual(second.hitbox(attached!), first.hitbox(attached!))
+
+    // Undo returns to the first layout and its positions.
+    assert.equal(createComposedLayout(source), first)
+    assert.equal(first.notePosition(attached!), position)
+    assert.deepEqual(position, fresh(first, source))
+})
+
 test('event breakpoints preserve the source beat on either side of a rounded time conversion', () => {
     for (const beat of [1322 / 480, 2.975]) {
         const source = state({
