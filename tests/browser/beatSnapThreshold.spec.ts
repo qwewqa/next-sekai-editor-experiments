@@ -175,3 +175,80 @@ test('relative beat snapping is unchanged', async ({ page }) => {
         expect(await beatsOf(page)).toEqual([beat])
     }
 })
+
+// Absolute beat snapping moves the grabbed beat by the pointer's movement, as for lanes.
+for (const tool of ['select', 'note', 'slide'] as const) {
+    test(`${tool}: a grab away from an off-grid beat never snaps against the pointer`, async ({
+        page,
+    }) => {
+        for (const [press, db, beat] of [
+            [5.1, -0.13, 4.75],
+            [5.1, 0.13, 5],
+            [4.65, 0.13, 5],
+            [4.65, -0.13, 4.75],
+        ] as const) {
+            await setup(page, { tool, beats: [4.875] })
+            await page.evaluate(() => {
+                window.editorTest.settings.pps = 200
+            })
+            await drag(page, -1, db, press)
+            expect(await beatsOf(page), `${press} ${db}`).toEqual([beat])
+        }
+    })
+}
+
+test('Composed and attached ticks snap from the grabbed beat', async ({ page }) => {
+    for (const layout of ['basic', 'composed'] as const) {
+        for (const [press, db, beat] of [
+            [5.1, -0.13, 4.75],
+            [4.65, 0.13, 5],
+        ] as const) {
+            await page.evaluate(async (layout) => {
+                const { show, fixtures, view, settings, history, appImport } = window.editorTest
+                const base = fixtures.interaction.slides[0]![0]!
+                show(
+                    {
+                        ...fixtures.interaction,
+                        isDynamicStages: layout === 'composed',
+                        slides: [
+                            [
+                                { ...base, beat: 3, left: -2, size: 2 },
+                                { ...base, beat: 4.875, left: -2, size: 2, isAttached: true },
+                                { ...base, beat: 7, left: -2, size: 2 },
+                            ],
+                        ],
+                    },
+                    3,
+                )
+                view.layout = layout
+                view.division = 4
+                view.snapping = 'absolute'
+                settings.pps = 200
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo('select')
+                const source = history.state.value
+                history.replaceState({
+                    ...source,
+                    selectedEntities: [...source.store.slides.note.values()]
+                        .flat()
+                        .filter((note) => note.isAttached),
+                })
+            }, layout)
+            await drag(page, -1, db, press)
+            expect(
+                await page.evaluate(() =>
+                    [...window.editorTest.history.state.value.store.slides.note.values()]
+                        .flat()
+                        .map((note) => [note.beat, note.isAttached]),
+                ),
+                `${layout} ${press} ${db}`,
+            ).toEqual([
+                [3, false],
+                [beat, true],
+                [7, false],
+            ])
+        }
+    }
+})
