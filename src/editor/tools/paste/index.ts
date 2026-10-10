@@ -267,6 +267,8 @@ let ghost:
       }
     | undefined
 let composedGhostKeys: unknown[] | undefined
+// The Composed paste's lane response, for one beat offset and flip.
+let pasteProbe: { keys: unknown[]; response: ReturnType<typeof probePaste> } | undefined
 
 /** The ghost's slides, for drawing their notes as they'll land. */
 export const pasteGhostInfos = () => ghost?.infos
@@ -278,6 +280,7 @@ export const pasteGhostState = () => ghost?.state
 export const clearPasteGhost = () => {
     ghost = undefined
     composedGhostKeys = undefined
+    pasteProbe = undefined
 }
 
 const isSameSlides = (a: NoteObject[][], b: NoteObject[][]) =>
@@ -439,7 +442,7 @@ export const showNoteGhost = (slides: NoteObject[][]) => {
         ghost.pastedBpms.length ||
         !isSameSlides(ghost.slides, slides)
     ) {
-        clearPasteGhost()
+        composedGhostKeys = undefined
         const { slides: built } = createStore({ ...emptyChart(), slides }, bpms)
         ghost = {
             slides,
@@ -657,6 +660,47 @@ export const getComposedPasteDelta = (
     anchorIndex?: number,
     anchorBeat = 0,
 ) => {
+    const keys = [
+        state.value,
+        entities,
+        startLane,
+        beatOffset,
+        flip,
+        anchorIndex,
+        anchorBeat,
+        view.groupId,
+        view.stageId,
+    ]
+    // The probes don't depend on the pointer lane, so moves within a beat reuse them.
+    if (!pasteProbe?.keys.every((key, index) => key === keys[index]))
+        pasteProbe = {
+            keys,
+            response: probePaste(entities, startLane, beatOffset, flip, anchorIndex, anchorBeat),
+        }
+    const { response } = pasteProbe
+    if (!response) return
+    const solved = inverseAffine(
+        lane - response.grasp,
+        { input: 0, output: response.zero },
+        { input: 1, output: response.one },
+    )
+    // A cancelled response cannot follow the pointer; retain the baseline instead
+    // of inventing a different translation for the note and its stage controls.
+    if (solved === undefined) return 0
+    const snappedLeft =
+        response.phase + align(response.left + solved - response.phase, view.laneDivision)
+    return snappedLeft - response.left
+}
+
+// The focus's displayed left with every note pasted at authored delta 0 and 1.
+const probePaste = (
+    entities: Entity[],
+    startLane: number,
+    beatOffset: number,
+    flip: boolean,
+    anchorIndex?: number,
+    anchorBeat = 0,
+) => {
     const notes = entities.filter((entity) => entity.type === 'note')
     const focus = getPasteFocus(notes, startLane, anchorIndex, anchorBeat)
     if (!focus) return
@@ -675,18 +719,13 @@ export const getComposedPasteDelta = (
     ]
     if (!probeTarget) return
     const sourceLeft = flip ? 2 * startLane - focus.left - focus.size : focus.left
-    const grasp = startLane - sourceLeft
-    const solved = inverseAffine(
-        lane - grasp,
-        { input: 0, output: position.left },
-        { input: 1, output: createComposedLayout(probe).notePosition(probeTarget).left },
-    )
-    // A cancelled response cannot follow the pointer; retain the baseline instead
-    // of inventing a different translation for the note and its stage controls.
-    if (solved === undefined) return 0
-    const phase = layout.gridOffset(target.stageId, target.beat)
-    const snappedLeft = phase + align(target.left + solved - phase, view.laneDivision)
-    return snappedLeft - target.left
+    return {
+        grasp: startLane - sourceLeft,
+        left: target.left,
+        zero: position.left,
+        one: createComposedLayout(probe).notePosition(probeTarget).left,
+        phase: layout.gridOffset(target.stageId, target.beat),
+    }
 }
 
 /** The same raw edit for every pasted position, with limits only at publication. */
@@ -888,11 +927,19 @@ const transform = ({ chart, source }: ClipboardChart) => {
     ]
 }
 
+let pasteNotes: { entities: Entity[]; notes: NoteEntity[] } | undefined
+
+/** The clipboard's notes; the same list until the clipboard or its mappings change. */
 export const getPasteNoteEntities = () => {
     const data = clipboardEntry.value?.data
-    return data
-        ? cachedTransform(data).filter((entity): entity is NoteEntity => entity.type === 'note')
-        : []
+    if (!data) return []
+    const entities = cachedTransform(data)
+    if (pasteNotes?.entities !== entities)
+        pasteNotes = {
+            entities,
+            notes: entities.filter((entity): entity is NoteEntity => entity.type === 'note'),
+        }
+    return pasteNotes.notes
 }
 
 let transformCache:

@@ -184,7 +184,9 @@ export const previewElevationPaste = (
     const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
     for (const note of paste.notes) {
         const object = paste.mapNote(note, note.beat + paste.beatOffset)
-        slides.set(note.slideId, [...(slides.get(note.slideId) ?? []), object])
+        const slide = slides.get(note.slideId)
+        if (slide) slide.push(object)
+        else slides.set(note.slideId, [object])
     }
     // Built as the store will place it, so attached notes show where they land.
     return showNoteGhost([...slides.values()])
