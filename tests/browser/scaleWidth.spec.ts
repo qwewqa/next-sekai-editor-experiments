@@ -436,43 +436,49 @@ test('camera width limits reject invalid factors without destroying the valid pr
     expect((await snapshot(page)).sourceUnchanged).toBe(true)
 })
 
-test('elevation width drags use the visible note bounds after stage pivots', async ({ page }) => {
-    await page.evaluate(() => {
-        const { fixtures, show, history, settings, view } = window.editorTest
-        // Lanes follow the layout; only Composed offsets them by the pivot.
-        view.layout = 'composed'
-        const note = fixtures.interaction.slides[0]![0]!
-        const pivot = fixtures.events.stagePivotEvents[0]!
-        settings.elevationEditorSideBySide = 'allow'
-        show(
-            {
-                ...fixtures.interaction,
-                isDynamicStages: true,
-                slides: [[{ ...note, beat: 3, left: -4, size: 2, elevation: 3 }]],
-                stagePivotEvents: [{ ...pivot, stageId: note.stageId, beat: 0, pivotLane: 5 }],
-            },
-            3,
-        )
-        history.replaceState({
-            ...history.state.value,
-            selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
-        })
-        window.widthTest.source = history.state.value
+for (const layout of ['basic', 'composed'] as const) {
+    test(`${layout}: elevation width drags use the visible note bounds after stage pivots`, async ({
+        page,
+    }) => {
+        await page.evaluate((layout) => {
+            const { fixtures, show, history, settings, view } = window.editorTest
+            // Lanes follow the layout; only Composed offsets them by the pivot.
+            view.layout = layout
+            const note = fixtures.interaction.slides[0]![0]!
+            const pivot = fixtures.events.stagePivotEvents[0]!
+            settings.elevationEditorSideBySide = 'allow'
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: true,
+                    slides: [[{ ...note, beat: 3, left: -4, size: 2, elevation: 3 }]],
+                    stagePivotEvents: [{ ...pivot, stageId: note.stageId, beat: 0, pivotLane: 5 }],
+                },
+                3,
+            )
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
+            })
+            window.widthTest.source = history.state.value
+        }, layout)
+        await settle(page)
+        // The note shows at 1 to 3 in Composed, and as authored, at -4 to -2, in Basic.
+        const shown = (lane: number) => (layout === 'composed' ? lane : lane - 5)
+        await page.keyboard.press('t')
+        await expect(page.locator('.elevation-canvas')).toBeVisible()
+        const hit = await point(page, shown(2), true)
+        await page.mouse.click(hit.x, hit.y, { button: 'right' })
+        await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
+        await drag(page, shown(2), shown(3), true)
+        await expectWidths(page, [[-3, 2]])
+        await expect(factor(page)).toHaveValue('1')
+        await drag(page, shown(4), shown(5), true)
+        await expectWidths(page, [[-3, 3]])
+        await expect(factor(page)).toHaveValue('1.5')
+        await panel(page).getByRole('button', { name: 'Cancel', exact: true }).click()
     })
-    await settle(page)
-    await page.keyboard.press('t')
-    await expect(page.locator('.elevation-canvas')).toBeVisible()
-    const hit = await point(page, 2, true)
-    await page.mouse.click(hit.x, hit.y, { button: 'right' })
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
-    await drag(page, 2, 3, true)
-    await expectWidths(page, [[-3, 2]])
-    await expect(factor(page)).toHaveValue('1')
-    await drag(page, 4, 5, true)
-    await expectWidths(page, [[-3, 3]])
-    await expect(factor(page)).toHaveValue('1.5')
-    await panel(page).getByRole('button', { name: 'Cancel', exact: true }).click()
-})
+}
 
 test('an attached interior moves selected endpoints while keeping its attachment', async ({
     page,
