@@ -41,7 +41,7 @@ test('lane controls have their own default toolbar group and custom division lea
     ).toEqual({
         laneDivision: 7,
         beatDivision: 4,
-        laneSnapping: 'relative',
+        laneSnapping: 'absolute',
         beatSnapping: 'absolute',
     })
     await page.getByRole('button', { name: 'Lane Snapping', exact: true }).click()
@@ -50,7 +50,7 @@ test('lane controls have their own default toolbar group and custom division lea
             window.editorTest.view.laneSnapping,
             window.editorTest.view.snapping,
         ]),
-    ).toEqual(['absolute', 'absolute'])
+    ).toEqual(['relative', 'absolute'])
 })
 
 test('main editor placement and resizing use fractional lane divisions and undo', async ({

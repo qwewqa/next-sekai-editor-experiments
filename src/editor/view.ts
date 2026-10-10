@@ -48,7 +48,7 @@ export const view = shallowReactive({
     snapping: 'absolute' as 'absolute' | 'relative',
     laneDivision: 1,
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    laneSnapping: 'relative' as 'absolute' | 'relative',
+    laneSnapping: 'absolute' as 'absolute' | 'relative',
 
     groupId: optional<GroupId>(),
     stageId: optional<StageId>(),
