@@ -13,11 +13,19 @@ import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operati
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
+import { align } from '../../../utils/math'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
-import { focusEntityAtBeat, setViewHover, snapYToBeat, view, yToValidBeat } from '../../view'
+import {
+    focusEntityAtBeat,
+    setViewHover,
+    snapYToBeat,
+    view,
+    yToTime,
+    yToValidBeat,
+} from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
 import { commitDrop, hitEntitiesAtPoint } from '../utils'
 
@@ -119,10 +127,10 @@ export const bpm: Tool = {
         }
     },
 
-    cursor: (x, y) => (tryFind(x, y)[0] ? 'ns-resize' : 'crosshair'),
+    cursor: (x, y) => (tryFind(x, y, true)[0] ? 'ns-resize' : 'crosshair'),
 
     dragStart(x, y) {
-        const [entity, beat] = tryFind(x, y)
+        const [entity, beat] = tryFind(x, y, true)
         if (entity) {
             replaceState({
                 ...state.value,
@@ -276,17 +284,24 @@ const tempoAt = (beat: number): Omit<BpmObject, 'beat'> => {
     return entity ? { bpm: entity.bpm, meter: entity.meter } : { bpm: 60 }
 }
 
-const tryFind = (x: number, y: number): [BpmEntity] | [undefined, number] => {
+const tryFind = (x: number, y: number, grab = false): [BpmEntity] | [undefined, number] => {
     const [hit] = hitEntitiesAtPoint('bpm', x, y).sort(
         (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
     )
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)
+    // Every press below beat 0 snaps to it; only one within snapping of its line grabs it.
+    if (grab && isBelowSnapping(y)) return [undefined, beat]
     const nearest = find(beat)
     if (nearest) return [nearest]
 
     return [undefined, beat]
+}
+
+const isBelowSnapping = (y: number) => {
+    const first = state.value.bpms[0]
+    return !!first && align(yToTime(y) / first.s, view.division) < 0
 }
 
 const previewMove = (entity: BpmEntity, object: BpmObject) => {
