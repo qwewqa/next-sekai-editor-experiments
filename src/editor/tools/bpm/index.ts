@@ -13,17 +13,16 @@ import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operati
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
-import { align } from '../../../utils/math'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
 import {
     focusEntityAtBeat,
+    isBelowSnapping,
     setViewHover,
     snapYToBeat,
     view,
-    yToTime,
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
@@ -297,11 +296,6 @@ const tryFind = (x: number, y: number, grab = false): [BpmEntity] | [undefined, 
     if (nearest) return [nearest]
 
     return [undefined, beat]
-}
-
-const isBelowSnapping = (y: number) => {
-    const first = state.value.bpms[0]
-    return !!first && align(yToTime(y) / first.s, view.division) < 0
 }
 
 const previewMove = (entity: BpmEntity, object: BpmObject) => {

@@ -379,6 +379,12 @@ const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
 
 export const yToValidBeat = (y: number) => align(yToBeat(y), view.division)
 
+// Further below beat 0 than snapping reaches; yToValidBeat clamps such presses to 0.
+export const isBelowSnapping = (y: number) => {
+    const first = bpms.value[0]
+    return !!first && align(yToTime(y) / first.s, view.division) < 0
+}
+
 export const yToBeatOffset = (y: number, beat: number) =>
     view.snapping === 'absolute'
         ? align(yToBeat(y), view.division) - beat

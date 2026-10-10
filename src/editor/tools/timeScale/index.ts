@@ -26,6 +26,7 @@ import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
 import {
     focusEntityAtBeat,
+    isBelowSnapping,
     setViewHover,
     snapYToBeat,
     view,
@@ -149,10 +150,10 @@ export const timeScale: Tool = {
         }
     },
 
-    cursor: (x, y) => (tryFind(x, y)[0] ? 'move' : 'crosshair'),
+    cursor: (x, y) => (tryFind(x, y, true)[0] ? 'move' : 'crosshair'),
 
     dragStart(x, y) {
-        const [entity, beat] = tryFind(x, y)
+        const [entity, beat] = tryFind(x, y, true)
         if (entity) {
             replaceState({
                 ...state.value,
@@ -348,13 +349,19 @@ const find = (
             filter(entity),
     )
 
-const tryFind = (x: number, y: number): [TimeScaleEntity] | [undefined, number, number] => {
+const tryFind = (
+    x: number,
+    y: number,
+    grab = false,
+): [TimeScaleEntity] | [undefined, number, number] => {
     const [hit] = hitEntitiesAtPoint('timeScale', x, y).sort(
         (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
     )
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)
+    // Every press below beat 0 snaps to it; only one within snapping of its line grabs there.
+    if (grab && isBelowSnapping(y)) return [undefined, beat, xToValidLane(x)]
     const nearest = find(view.groupId, beat, isVisible)
     if (nearest) return [nearest]
 
