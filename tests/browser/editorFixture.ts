@@ -70,8 +70,16 @@ export const installEditorFixture = async () => {
     )
     // Reuse the live Vite URL, including any HMR timestamp, to avoid importing a
     // second copy of a module that owns reactive state.
-    const appImport = <T>(pathname: string): Promise<T> =>
-        import(moduleUrls.get(pathname) ?? pathname)
+    const deps = '/node_modules/.vite/deps/'
+    const resolve = (pathname: string) => {
+        const url = moduleUrls.get(pathname)
+        if (url || !pathname.startsWith(deps)) return url ?? pathname
+        // A custom Vite cacheDir serves prebundled deps from another path.
+        const suffix = `/deps/${pathname.slice(deps.length)}`
+        for (const [path, url] of moduleUrls) if (path.endsWith(suffix)) return url
+        return pathname
+    }
+    const appImport = <T>(pathname: string): Promise<T> => import(resolve(pathname))
     const history = await appImport<typeof import('../../src/history')>('/src/history/index.ts')
     const store = await appImport<typeof import('../../src/history/store')>('/src/history/store.ts')
     const { settings } = await appImport<typeof import('../../src/settings')>('/src/settings.ts')
