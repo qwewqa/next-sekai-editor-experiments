@@ -13,7 +13,7 @@ import {
     noteFieldsApply,
 } from '../../state/operations/properties/applicability'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
-import { isEditInRange, planEdit } from '../../state/operations/properties/plan'
+import { isEditInRange, planEdit, type EachEdit } from '../../state/operations/properties/plan'
 import { editSelectedEditableEntities } from '../sidebars/default'
 import { aggregateValues, type ValueUsage } from './aggregate'
 import type { NoteFields } from './noteFields'
@@ -52,14 +52,31 @@ export const useEntitiesProperties = (
     let ownedPreview: PreviewEdit | undefined
     let previewing = false
     let valid = false
+    // A mixed field's preview: the value each value in use changes to, and the one being set.
+    let steps: { key?: keyof EditableObject; values: Map<unknown, unknown> } | undefined
+    let stepping: { from: unknown } | undefined
 
     const only = (object: EditableObject, from = store.value) => {
         const scope = new Set(entities.value)
         const applies = appliesToEditIn(from, object)
         return (entity: Entity) => scope.has(entity) && applies(entity)
     }
-    const edit = (object: EditableObject) => {
-        editSelectedEditableEntities(object, only(object))
+    const edit = (object: EditableObject, each?: EachEdit) => {
+        editSelectedEditableEntities(object, only(object), each)
+    }
+    // The edit a preview stands for: one value, or each value in use stepped on its own.
+    const pending = (): { object: EditableObject; each?: EachEdit } | undefined => {
+        if (draft.value) return { object: draft.value }
+        const key = steps?.key
+        if (!steps || !key || !steps.values.size) return
+        const values = steps.values
+        return {
+            object: { [key]: values.values().next().value },
+            each: (entity) => {
+                const value = values.get(entity[key as keyof typeof entity])
+                return value === undefined ? {} : { [key]: value }
+            },
+        }
     }
 
     const clearOwnedPreview = () => {
@@ -71,42 +88,70 @@ export const useEntitiesProperties = (
         owner = undefined
         source = undefined
         draft.value = undefined
+        steps = undefined
         valid = false
         revision.value++
+    }
+    const show = () => {
+        const plan = pending()
+        if (!plan || !source) {
+            clearOwnedPreview()
+            return
+        }
+        const current = source
+        const scope = only(plan.object, current.store)
+        // A beat past the supported range is invalid, like one past a field's limits.
+        if (!isEditInRange(current, current.selectedEntities, plan.object, scope, plan.each)) {
+            valid = false
+            clearOwnedPreview()
+            return
+        }
+        // The preview is exactly what the commit will do.
+        setPreviewEdit(
+            current,
+            () =>
+                planEdit(current, current.selectedEntities, plan.object, {
+                    only: scope,
+                    each: plan.each,
+                }).state,
+        )
+        ownedPreview = previewEdit.value
+    }
+    const begin = (field: symbol) => {
+        if (owner !== undefined && owner !== field) reset()
+        owner = field
+        source ??= historyState.value
+        valid = true
     }
 
     provide(numberEditKey, {
         revision,
         preview: (field, update) => {
-            if (owner !== undefined && owner !== field) reset()
-            owner = field
-            source ??= historyState.value
-            valid = true
+            begin(field)
+            steps = undefined
             previewing = true
             try {
                 update()
             } finally {
                 previewing = false
             }
-            const object = draft.value
-            if (!object) return
-            const current = source
-            const scope = only(object, current.store)
-            // A beat past the supported range is invalid, like one past a field's limits.
-            if (!isEditInRange(current, current.selectedEntities, object, scope)) {
-                valid = false
-                clearOwnedPreview()
-                return
+            if (draft.value) show()
+        },
+        previewEach: (field, values, update) => {
+            begin(field)
+            draft.value = undefined
+            steps = { values: new Map() }
+            previewing = true
+            try {
+                for (const from of values) {
+                    stepping = { from }
+                    update(from)
+                }
+            } finally {
+                previewing = false
+                stepping = undefined
             }
-            // The preview is exactly what the commit will do.
-            setPreviewEdit(
-                current,
-                () =>
-                    planEdit(current, current.selectedEntities, object, {
-                        only: scope,
-                    }).state,
-            )
-            ownedPreview = previewEdit.value
+            show()
         },
         invalidate: (field) => {
             if (owner !== field) return
@@ -115,9 +160,9 @@ export const useEntitiesProperties = (
         },
         commit: (field) => {
             if (owner !== field) return
-            const object = valid && source === historyState.value ? draft.value : undefined
+            const plan = valid && source === historyState.value ? pending() : undefined
             reset()
-            if (object) edit(object)
+            if (plan) edit(plan.object, plan.each)
         },
         cancel: (field) => {
             if (owner === field) reset()
@@ -134,6 +179,11 @@ export const useEntitiesProperties = (
                     if (value === undefined) return
 
                     if (previewing && source) {
+                        if (stepping && steps) {
+                            steps.key = key
+                            if (value !== stepping.from) steps.values.set(stepping.from, value)
+                            return
+                        }
                         if (aggregate.value.model[key] === value) {
                             draft.value = undefined
                             clearOwnedPreview()

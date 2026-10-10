@@ -29,6 +29,7 @@ import { isDragging } from '../controls/gestures/recognizers/drag'
 import { isCoarsePointer } from '../workspace'
 import type { ToolModalPane } from '../toolModals'
 import { vScrollEdges } from '../../directives/scrollEdges'
+import { blurPointerClick } from '../../utils/blurPointerClick'
 import LevelEditorToolbarTool from './LevelEditorToolbarTool.vue'
 import {
     maxCoarseToolSize,
@@ -193,12 +194,8 @@ const onOverMain = (event: PointerEvent, index: number) => {
     activeIndex.value = index
 }
 
-// Pointer clicks return shortcuts to the editor, so Space cannot click the tool again.
-const blurPointerClick = (event: MouseEvent) => {
-    if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
-}
-
 const onClickMain = (event: MouseEvent, index: number, name: CommandName) => {
+    // Pointer clicks return shortcuts to the editor, so Space cannot click the tool again.
     blurPointerClick(event)
     if (activeIndex.value === -1 && toolbar.value[index] && toolbar.value[index].length > 1) {
         activeIndex.value = index

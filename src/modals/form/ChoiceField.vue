@@ -13,6 +13,7 @@ import {
     type ComponentPublicInstance,
 } from 'vue'
 import { i18n } from '../../i18n'
+import { blurPointerClick } from '../../utils/blurPointerClick'
 import BaseField from './BaseField.vue'
 import { useEmptyLabel, useUnsetChoice } from './emptyLabel'
 import { isUnknownValue, mixedOptions, useFieldUsage } from './fieldUsage'
@@ -66,10 +67,9 @@ const segment =
     'flex h-7 items-center justify-center rounded-full px-2 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight]'
 const choice =
     'rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent'
-// Pointer clicks return shortcuts to the editor, so a swap to the select can't take them; a modal keeps focus.
-const blurPointerClick = (event: MouseEvent) => {
-    const target = event.currentTarget as HTMLElement
-    if (event.detail > 0 && !target.closest('dialog')) target.blur()
+// Pointer clicks return shortcuts to the editor, so a swap to the select can't take them; a dialog keeps focus.
+const onClick = (event: MouseEvent) => {
+    blurPointerClick(event, 'dialog, [data-tool-dialog]')
 }
 
 const input = 'peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none'
@@ -184,7 +184,7 @@ watch(
                     :disabled
                     :aria-label="notSet"
                     @change="resyncRadios($event, () => modelValue)"
-                    @click="blurPointerClick"
+                    @click="onClick"
                 />
                 <span :class="segment" aria-hidden="true">—</span>
             </label>
@@ -203,7 +203,7 @@ watch(
                     :value
                     :disabled
                     @change="resyncRadios($event, () => modelValue)"
-                    @click="blurPointerClick"
+                    @click="onClick"
                 />
                 <span :class="segment"
                     ><span

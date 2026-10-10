@@ -235,3 +235,34 @@ test('a pointer click on a segment returns shortcuts to the editor before a swap
     await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 336))
     await expect(select).toBeFocused()
 })
+
+test('a pointer click on a segment in a tool dialog keeps focus there, so Escape returns it to the tool', async ({
+    page,
+}) => {
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(async () => {
+        const { settings, nextTick } = window.editorTest
+        Object.assign(settings, { showSidebar: false, toolbar: [['select'], ['note']] })
+        await nextTick()
+    })
+    // Opened by keyboard from its tool.
+    const tool = page.locator('[data-editor-toolbar] > div > div > button').nth(1)
+    await tool.focus()
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    const dialog = page.getByRole('dialog', { name: 'Default Note Properties' })
+    await expect(dialog).toBeVisible()
+    const box = (await dialog.boundingBox())!
+    expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height)
+
+    const fullscreen = dialog.getByRole('radio', { name: 'Fullscreen', exact: true })
+    await fullscreen.click()
+    await expect(fullscreen).toBeChecked()
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-tool-dialog]'))).toBe(
+        true,
+    )
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(tool).toBeFocused()
+})

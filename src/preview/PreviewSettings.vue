@@ -13,6 +13,7 @@ import { vScrollEdges } from '../directives/scrollEdges'
 import { getPanelPosition, setPanelPosition, workspaceDockAttribute } from '../editor/workspace'
 import type { PanelPosition } from '../editor/workspace/layout'
 import { i18n } from '../i18n'
+import { blurPointerClick } from '../utils/blurPointerClick'
 import { settings } from '../settings'
 import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from './options'
 import { panelPositionOptions, previewTransportOptions } from './settingsOptions'
@@ -84,11 +85,6 @@ const setExpanded = (value: boolean, event?: MouseEvent | KeyboardEvent) => {
         return
     }
     if (!value) void nextTick(() => toggle.value?.focus({ preventScroll: true }))
-}
-
-// A pointer click on the checked segment changes nothing, so it returns shortcuts here.
-const blurPointerClick = (event: MouseEvent) => {
-    if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
 
 // The form is rendered at the end of the document so it can rise above the
@@ -455,6 +451,7 @@ const onPlacementChange = () => {
                             :key="label"
                             class="relative min-w-0 flex-1 rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent"
                         >
+                            <!-- A pointer click on the checked segment changes nothing, so it returns shortcuts here. -->
                             <input
                                 v-model="settings.previewAspectRatio"
                                 class="peer absolute inset-0 size-full cursor-pointer opacity-0"

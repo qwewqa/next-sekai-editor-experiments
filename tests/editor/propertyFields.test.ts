@@ -16,7 +16,6 @@ import {
 } from '../../src/editor/workspace/properties/fields'
 import { summarizeSelection } from '../../src/editor/workspace/properties/summary'
 import {
-    formatNumber,
     isUnknownValue,
     isUnset,
     mixedOptions,
@@ -24,6 +23,7 @@ import {
     mixedValues,
 } from '../../src/modals/form/fieldUsage'
 import type { Entity } from '../../src/state/entities'
+import { formatNumber } from '../../src/utils/formatNumber'
 
 type Row = { kind: string; a?: number; b?: string; hidden?: number }
 

@@ -78,7 +78,7 @@ export const revertOnEscape = (event: KeyboardEvent, text: string) => {
 const typingChecks = new WeakMap<Element, () => boolean>()
 
 /** Registers how a field tells uncommitted typing from its committed value. */
-const trackTyping = (input: Ref<HTMLInputElement | null>, isTyping: () => boolean) => {
+export const trackTyping = (input: Ref<HTMLInputElement | null>, isTyping: () => boolean) => {
     onMounted(() => {
         if (input.value) typingChecks.set(input.value, isTyping)
     })

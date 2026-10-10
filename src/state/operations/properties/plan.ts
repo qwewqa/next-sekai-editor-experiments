@@ -24,7 +24,11 @@ export type PlanOptions = {
     only?: (entity: Entity) => boolean
     /** A lone object edits as its tool would, moving or replacing by beat. */
     single?: boolean
+    /** Each object's own edit, as a mixed field's step; the edit then only names its keys. */
+    each?: EachEdit
 }
+
+export type EachEdit = (entity: EditableEntity) => EditableObject
 
 const edits = {
     bpm: editSelectedBpm,
@@ -79,13 +83,15 @@ export const isEditInRange = (
     selected: Entity[],
     object: EditableObject,
     only?: (entity: Entity) => boolean,
+    each?: EachEdit,
 ) => {
-    const { beat } = object
-    if (beat === undefined) return true
-    const moved = selected.filter(
-        (entity): entity is EditableEntity => isEditableEntity(entity) && (!only || only(entity)),
-    )
-    return isWithinBeatRange(source, new Map(moved.map((entity) => [entity, beat])))
+    if (object.beat === undefined) return true
+    const moved = selected.flatMap((entity) => {
+        if (!isEditableEntity(entity) || (only && !only(entity))) return []
+        const { beat } = each ? each(entity) : object
+        return beat === undefined ? [] : [[entity, beat] as const]
+    })
+    return isWithinBeatRange(source, new Map(moved))
 }
 
 /** What an edit of the selection does: the new state and the objects it changed. */
@@ -93,14 +99,15 @@ export const planEdit = (
     source: State,
     selected: Entity[],
     object: EditableObject,
-    { only, single = true }: PlanOptions = {},
+    { only, single = true, each }: PlanOptions = {},
 ) => {
-    if (!isEditInRange(source, selected, object, only)) return { state: source, changed: [] }
+    if (!isEditInRange(source, selected, object, only, each)) return { state: source, changed: [] }
+    const objectOf = (entity: EditableEntity) => (each ? each(entity) : object)
     const changed = selected.filter(
-        (entity) =>
+        (entity): entity is EditableEntity =>
             isEditableEntity(entity) &&
             (!only || only(entity)) &&
-            editChanges(source.store, entity, object),
+            editChanges(source.store, entity, objectOf(entity)),
     )
     const transaction = createTransaction(source)
     const editable = selected.filter(isEditableEntity)
@@ -112,13 +119,14 @@ export const planEdit = (
     // Moved same-beat objects land in their stored order, whatever the selection order.
     for (const entity of inStoredOrder(source, changed, (entity) => entity)) {
         if (results.has(entity)) continue
+        const own = objectOf(entity)
         results.set(
             entity,
             entity === lone && entity.type === 'bpm'
-                ? editBpm(transaction, entity, object)
+                ? editBpm(transaction, entity, own)
                 : entity === lone && entity.type === 'timeScale'
-                  ? editTimeScale(transaction, entity, object)
-                  : edits[entity.type as keyof typeof edits](transaction, entity as never, object),
+                  ? editTimeScale(transaction, entity, own)
+                  : edits[entity.type](transaction, entity as never, own),
         )
     }
     // The chart keeps a tempo at 0, as moves and flips do.

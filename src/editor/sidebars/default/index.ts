@@ -3,7 +3,7 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import { isEditableEntity, type EditableObject } from '../../../state/operations/editable'
-import { isEditInRange, planEdit } from '../../../state/operations/properties/plan'
+import { isEditInRange, planEdit, type EachEdit } from '../../../state/operations/properties/plan'
 import { interpolate } from '../../../utils/interpolate'
 import { notify } from '../../notification'
 import { revealAuthoringTarget } from '../../scope'
@@ -68,15 +68,17 @@ export const editLabel = (object: EditableObject, changed: readonly Entity[]) =>
     return interpolate(messages.edited, count, kind)
 }
 
-/** Edits the selected objects, or only those `only` accepts. */
+/** Edits the selected objects, or only those `only` accepts; `each` edits each its own way. */
 export const editSelectedEditableEntities = (
     object: EditableObject,
     only?: (entity: Entity) => boolean,
+    each?: EachEdit,
 ) => {
     // Refused without a notice, as fields refuse out-of-range values.
-    if (!isEditInRange(state.value, selectedEntities.value, object, only)) return
+    if (!isEditInRange(state.value, selectedEntities.value, object, only, each)) return
     const { state: edited, changed } = planEdit(state.value, selectedEntities.value, object, {
         only,
+        each,
     })
     if (!changed.length) {
         notify(() => i18n.value.sidebars.default.noChange)
@@ -88,17 +90,18 @@ export const editSelectedEditableEntities = (
 
     // A lone BPM or time scale moving by beat says so, as its tool does.
     const [entity] = changed
+    const own = entity && each ? each(entity) : object
     if (
         selectedEntities.value.filter(isEditableEntity).length === 1 &&
-        object.beat !== undefined &&
-        object.beat !== entity?.beat
+        own.beat !== undefined &&
+        own.beat !== entity?.beat
     ) {
         if (entity?.type === 'bpm') {
-            editBpm(entity, object)
+            editBpm(entity, own)
             return
         }
         if (entity?.type === 'timeScale') {
-            editTimeScale(entity, object)
+            editTimeScale(entity, own)
             return
         }
     }
