@@ -292,9 +292,11 @@ export const note: Tool = {
 
                 view.entities = {
                     hovered: [],
-                    creating: [toNoteEntity(active.entity.slideId, object, active.entity)],
+                    creating: [
+                        previewEdit(active.entity, object) ??
+                            toNoteEntity(active.entity.slideId, object, active.entity),
+                    ],
                 }
-                previewEdit(active.entity, object)
                 break
             }
             case 'move': {
@@ -315,9 +317,11 @@ export const note: Tool = {
 
                 view.entities = {
                     hovered: [],
-                    creating: [toNoteEntity(active.entity.slideId, object, active.entity)],
+                    creating: [
+                        previewEdit(active.entity, object) ??
+                            toNoteEntity(active.entity.slideId, object, active.entity),
+                    ],
                 }
-                previewEdit(active.entity, object)
                 focusEntityAtBeat(beat)
                 break
             }
@@ -533,12 +537,17 @@ const edit = (entity: NoteEntity, object: Partial<WithEaseEdits<NoteObject>>) =>
     )
 }
 
+// An attached note takes its lane from the connector, so it previews as edited.
 const previewEdit = (entity: NoteEntity, object: NoteObject) => {
     const source = state.value
-    setPreviewEdit(source, () => {
+    const build = () => {
         const transaction = createTransaction(source)
         return transaction.commit(editSelectedNote(transaction, entity, object))
-    }, [entity, object.beat, object.left, object.size])
+    }
+    const built = entity.isAttached ? build() : undefined
+    setPreviewEdit(source, () => built ?? build(), [entity, object.beat, object.left, object.size])
+    const note = built?.selectedEntities[0]
+    return note?.type === 'note' ? note : undefined
 }
 
 const move = (entity: NoteEntity, object: NoteObject) => {

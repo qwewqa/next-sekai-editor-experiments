@@ -306,6 +306,15 @@ export const select: Tool = {
                 if (active.last === last) break
                 active.last = last
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
+                const source = state.value
+                const move = active
+                // Attached notes take their lane from the connector, so their
+                // previews come from the moved chart, showing where they drop.
+                const moved = active.entities.some(
+                    (entity) => entity.type === 'note' && entity.isAttached,
+                )
+                    ? moveEntities(source, move, lane, beatOffset, rawMove)
+                    : undefined
 
                 const creating: Entity[] = []
                 let focusBeat = active.focus.beat
@@ -324,7 +333,11 @@ export const select: Tool = {
                     )
                     if (!result) continue
 
-                    creating.push(result)
+                    creating.push(
+                        (entity.type === 'note' && entity.isAttached
+                            ? moved?.note(entity)
+                            : undefined) ?? result,
+                    )
                     if (entity === active.focus) focusBeat = result.beat
                 }
 
@@ -350,11 +363,9 @@ export const select: Tool = {
                     hovered: [],
                     creating,
                 }
-                const source = state.value
-                const move = active
                 setPreviewEdit(
                     source,
-                    () => moveEntities(source, move, lane, beatOffset, rawMove).state,
+                    () => (moved ?? moveEntities(source, move, lane, beatOffset, rawMove)).state,
                 )
                 focusEntityAtBeat(focusBeat)
                 break
@@ -489,6 +500,7 @@ const moveEntities = (
     )
     const selectedEntities: Entity[] = []
     let focusIndex = -1
+    const placed = new Map<Entity, number>()
     const movingBeats = composed
         ? new Map(
               entities
@@ -502,6 +514,7 @@ const moveEntities = (
         if (isPinned(entity, beatOffset)) continue
         const beat = entity.beat + beatOffset
         if (entity === active.focus) focusIndex = selectedEntities.length
+        if (entity.type === 'note') placed.set(entity, selectedEntities.length)
 
         // Notes and their stage events can move together. The grabbed note is
         // inverted against the resulting stage geometry; other notes retain
@@ -553,7 +566,16 @@ const moveEntities = (
         if (result) selectedEntities.push(...result)
     }
     const result = transaction.commit(selectedEntities)
-    return { state: result, focus: result.selectedEntities[focusIndex] }
+    return {
+        state: result,
+        focus: result.selectedEntities[focusIndex],
+        // A moved note as committed.
+        note: (entity: NoteEntity) => {
+            const index = placed.get(entity)
+            const note = index === undefined ? undefined : result.selectedEntities[index]
+            return note?.type === 'note' ? note : undefined
+        },
+    }
 }
 
 const getRawMove = (
