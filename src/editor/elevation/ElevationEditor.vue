@@ -36,6 +36,7 @@ import { createNoteRenderer } from '../canvas/notes'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
+import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { cancelMouseControls } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
@@ -260,10 +261,15 @@ let drag:
           deltaLane: number
           deltaElevation: number
           resizing: boolean
-          anchor: number
+          // The grabbed side: every resized note keeps its left edge.
+          fixedLeft: boolean
           movingEdge: number
-          // Authored phase of the grabbed note's stage lattice.
+          // Raw pointer lane delta, and each resized note's result.
+          shift: number
+          resized: string
+          // Authored phase of the grabbed note's stage lattice, and whether lanes are Composed.
           origin: number
+          composed: boolean
           attachment?: AttachedElevationDrag
       }
     | undefined
@@ -312,15 +318,17 @@ const cancel = () => {
 const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     if (!getNoteFieldsIn(active.source.store, note).left)
         return { elevation: note.elevation + active.deltaElevation }
+    const edge = note.left + (active.fixedLeft ? note.size : 0)
+    // As the chart's select resize; in Composed every edge takes the grabbed edge's snap.
     const [left, size] = active.resizing
         ? resize(
-              active.anchor,
-              active.movingEdge + active.deltaLane,
+              shiftComputed(note.left, active.fixedLeft ? 0 : note.size),
+              edge + active.shift,
               minimumNoteSize(note.noteType),
               Number.POSITIVE_INFINITY,
-              active.movingEdge,
-              undefined,
-              active.origin,
+              edge,
+              [note.left, note.size],
+              active.composed ? active.origin + edge - active.movingEdge : 0,
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -617,24 +625,24 @@ const controls: Pick<
                 .filter((item) => getNoteFieldsIn(state.value.store, item.note).elevation)
                 .map((item) => item.note),
         )
-        const resizing = target.type === 'resize'
         drag = {
             source: state.value,
             row,
-            targets: resizing
-                ? [row.note]
-                : state.value.selectedEntities.filter(
-                      (entity): entity is NoteEntity =>
-                          entity.type === 'note' && eligible.has(entity),
-                  ),
+            // Moves and resizes take the selected notes shown here.
+            targets: state.value.selectedEntities.filter(
+                (entity): entity is NoteEntity => entity.type === 'note' && eligible.has(entity),
+            ),
             lane: xToLane(x),
             elevation: yToElevation(y),
             deltaLane: 0,
             deltaElevation: 0,
-            resizing,
-            anchor: shiftComputed(row.note.left, xToLane(x) < row.lane ? row.note.size : 0),
+            resizing: target.type === 'resize',
+            fixedLeft: xToLane(x) >= row.lane,
             movingEdge: xToLane(x) < row.lane ? row.note.left : row.note.left + row.note.size,
+            shift: 0,
+            resized: '',
             origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
+            composed: !!getComposedLayout(state.value),
         }
         if (row.attached) {
             const info = state.value.store.slides.info
@@ -735,14 +743,37 @@ const controls: Pick<
                   drag.deltaElevation,
               )
             : displayedDelta
-        if (deltaLane === drag.deltaLane && deltaElevation === drag.deltaElevation) return
+        // Resized notes can snap on their own, so their results key the preview.
+        const next = {
+            ...drag,
+            deltaLane,
+            deltaElevation,
+            shift: drag.resizing ? xToLane(x) - drag.lane : 0,
+        }
+        const resized = drag.resizing
+            ? next.targets
+                  .map((note) => {
+                      const object = editedObject(next, note)
+                      return 'left' in object ? `${object.left} ${object.size}` : ''
+                  })
+                  .join()
+            : ''
+        if (
+            deltaLane === drag.deltaLane &&
+            deltaElevation === drag.deltaElevation &&
+            resized === drag.resized
+        )
+            return
         drag.deltaLane = deltaLane
         drag.deltaElevation = deltaElevation
+        drag.shift = next.shift
+        drag.resized = resized
         const active = { ...drag }
         setPreviewEdit(active.source, () => edit(active), [
             active.targets,
             deltaLane,
             deltaElevation,
+            resized,
         ])
     },
     dragEnd(x, y, modifiers) {
@@ -781,7 +812,7 @@ const controls: Pick<
         // A drop that changes nothing adds no undo step.
         if (
             active &&
-            (active.deltaLane || active.deltaElevation) &&
+            (active.resizing || active.deltaLane || active.deltaElevation) &&
             active.targets.some((note) =>
                 editChanges(active.source.store, note, editedObject(active, note)),
             )
