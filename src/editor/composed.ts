@@ -32,7 +32,9 @@ export type ComposedStage = {
 
 const colors = ['neutral', 'red', 'green', 'blue', 'yellow', 'purple', 'cyan', 'black']
 const borders = ['default', 'light', 'disabled', 'medium']
-type LayoutRecord = { source: State; layout: ComposedLayout }
+// Only the geometry inputs, so a reused layout doesn't keep the state it was built for.
+type LayoutSource = Pick<State, 'isDynamicStages' | 'store' | 'bpms' | 'stages'>
+type LayoutRecord = { source: LayoutSource; layout: ComposedLayout }
 const layouts = new WeakMap<State, LayoutRecord>()
 let lastLayout: WeakRef<LayoutRecord> | undefined
 // Layouts hold their stages, so a closed chart's stages and inputs are released.
@@ -82,7 +84,7 @@ const gridCrossings = (type: EaseTypeValue) => {
 }
 
 /** Horizontal geometry of the engine's beat-versus-lane Preview mode. */
-const buildComposedLayout = (state: State) => {
+const buildComposedLayout = (state: LayoutSource) => {
     const toTime = (beat: number) => {
         const first = state.bpms[0]
         return first && beat < first.x
@@ -423,6 +425,11 @@ const buildComposedLayout = (state: State) => {
 
 export type ComposedLayout = ReturnType<typeof buildComposedLayout>
 
+const buildRecord = (source: LayoutSource): LayoutRecord => ({
+    source,
+    layout: buildComposedLayout(source),
+})
+
 /** States are immutable snapshots, so discarded drag/undo snapshots release their geometry. */
 export const createComposedLayout = (state: State): ComposedLayout => {
     let record = layouts.get(state)
@@ -430,15 +437,16 @@ export const createComposedLayout = (state: State): ComposedLayout => {
     if (!record) {
         // Selection, names and audio changes leave the geometry untouched. Keeping
         // its identity also preserves connector paths through those state changes.
+        const { isDynamicStages, store, bpms, stages } = state
         const source = previous?.source
         record =
             previous &&
-            source?.store === state.store &&
-            source.bpms === state.bpms &&
-            source.stages === state.stages &&
-            source.isDynamicStages === state.isDynamicStages
+            source?.store === store &&
+            source.bpms === bpms &&
+            source.stages === stages &&
+            source.isDynamicStages === isDynamicStages
                 ? previous
-                : { source: state, layout: buildComposedLayout(state) }
+                : buildRecord({ isDynamicStages, store, bpms, stages })
         layouts.set(state, record)
     }
     // Weak ownership avoids retaining a closed chart when Basic is opened next.
