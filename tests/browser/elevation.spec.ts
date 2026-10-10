@@ -651,10 +651,74 @@ test('body drags edit lane and snapped elevation live with one undo step', async
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
+test('the canvas follows a pixel ratio change without a resize', async ({ page }) => {
+    // Headless Chromium fires no resolution query change, so the page's ratio and query are faked.
+    await page.evaluate(() => {
+        const listeners = new Set<() => void>()
+        let ratio = 1
+        Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => ratio })
+        const original = window.matchMedia.bind(window)
+        window.matchMedia = (query: string) =>
+            query.startsWith('(resolution:')
+                ? ({
+                      matches: true,
+                      addEventListener: (_: string, listener: () => void) =>
+                          listeners.add(listener),
+                      removeEventListener: (_: string, listener: () => void) =>
+                          listeners.delete(listener),
+                  } as unknown as MediaQueryList)
+                : original(query)
+        ;(window as unknown as { setRatio: (value: number) => void }).setRatio = (value) => {
+            ratio = value
+            for (const listener of [...listeners]) listener()
+        }
+    })
+    await open(page)
+    const canvas = page.locator('.elevation-canvas')
+    const width = await canvas.evaluate((element: HTMLCanvasElement) => element.width)
+    await page.evaluate(() =>
+        (window as unknown as { setRatio: (value: number) => void }).setRatio(2),
+    )
+    await expect
+        .poll(() => canvas.evaluate((element: HTMLCanvasElement) => element.width))
+        .toBe(width * 2)
+})
+
+test('a restored canvas context redraws the scene', async ({ page }) => {
+    await open(page)
+    const redrawn = await page.locator('.elevation-canvas').evaluate(async (element) => {
+        const canvas = element as HTMLCanvasElement
+        const ctx = canvas.getContext('2d')!
+        let clears = 0
+        const clearRect = ctx.clearRect.bind(ctx)
+        ctx.clearRect = (...args: Parameters<typeof ctx.clearRect>) => {
+            clears++
+            clearRect(...args)
+        }
+        const frames = () =>
+            new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            )
+        await frames()
+        const before = clears
+        canvas.dispatchEvent(new Event('contextrestored'))
+        await frames()
+        return { before, after: clears }
+    })
+    // Still until the restore, which repaints the lost pixels.
+    expect(redrawn.before).toBe(0)
+    expect(redrawn.after).toBeGreaterThan(0)
+})
+
 test('a dialog opening over a body drag cancels it, as it does a chart drag', async ({ page }) => {
     await open(page)
     const initial = await notes(page)
-    await mouseDrag(page, await point(page), await displacement(page, 2, 0.5))
+    const previewing = () =>
+        page.evaluate(() => window.elevationTest.preview.previewEdit.value !== undefined)
+    const start = await point(page)
+    await mouseDrag(page, start, await displacement(page, 2, 0.5))
+    // The drag previews its edit until the dialog opens.
+    expect(await previewing()).toBe(true)
     await page.evaluate(async () => {
         const { appImport } = window.editorTest
         const { showModal } =
@@ -666,7 +730,13 @@ test('a dialog opening over a body drag cancels it, as it does a chart drag', as
     })
     const dialog = page.getByRole('dialog', { name: 'Dialog', exact: true })
     await expect(dialog).toBeVisible()
-    expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual([])
+    expect(await previewing()).toBe(false)
+    // Moving on under the dialog previews nothing.
+    const further = await displacement(page, 3, 1)
+    await page.mouse.move(start.x + further.x, start.y + further.y, { steps: 4 })
+    await settle(page)
+    expect(await previewing()).toBe(false)
+    expect(await notes(page)).toEqual(initial)
     await page.mouse.up()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)

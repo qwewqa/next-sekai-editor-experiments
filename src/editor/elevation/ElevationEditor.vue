@@ -91,7 +91,7 @@ import {
     elevationAddOrigin,
     elevationNoteMinimum,
     pasteElevationNotes,
-    previewElevationNote,
+    previewElevationNoteRow,
     previewElevationPasteRows,
 } from './actions'
 import { elevationLayout, elevationNotes, elevationState, getElevationStageProps } from './scene'
@@ -227,6 +227,20 @@ const frame = createFrameScheduler()
 const notes = createNoteRenderer()
 const nameSprites = createLabelSprites()
 const pixelRatio = ref(devicePixelRatio || 1)
+let pixelRatioQuery: MediaQueryList | undefined
+const updatePixelRatio = () => {
+    pixelRatio.value = devicePixelRatio || 1
+    pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
+    pixelRatioQuery = matchMedia(`(resolution: ${pixelRatio.value}dppx)`)
+    pixelRatioQuery.addEventListener('change', updatePixelRatio)
+}
+const redrawVersion = ref(0)
+const restoreContext = () => {
+    notes.clear()
+    nameSprites.clear()
+    // A restored surface has lost its pixels.
+    redrawVersion.value++
+}
 const hovered = ref<NoteEntity>()
 const offscreenGroups = computed(() => {
     const selected = new Set(elevationState.value.selectedEntities)
@@ -319,7 +333,9 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
         isOnNoteArtwork(
             row.size,
             getNoteVisualType(
-                row.size === row.note.size ? row.note : { ...row.note, size: row.size },
+                row.size === row.note.size
+                    ? row.note
+                    : { ...row.note, size: row.size, useInfoOf: row.note.useInfoOf ?? row.note },
                 elevationState.value.store.slides.info.get(row.note.slideId),
             ),
             (x - elevationBounds.x - row.x + row.w / 2) / scale,
@@ -373,8 +389,12 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
             elevation: note.elevation + active.deltaElevation,
         },
         {
+            // A resize clamps on any pointer movement, as the chart's does.
             enabled:
-                note === active.row.note && (active.deltaLane !== 0 || active.deltaElevation !== 0),
+                note === active.row.note &&
+                (active.resizing
+                    ? active.shift !== 0
+                    : active.deltaLane !== 0 || active.deltaElevation !== 0),
             resizing: active.resizing,
         },
     )
@@ -423,20 +443,6 @@ const positionAtPoint = (x: number, y: number) => ({
     beat: elevationBeat.value,
     elevation: snapElevation(yToElevation(y), settings.elevationSnap),
 })
-const ghostRows = (entities: NoteEntity[]) =>
-    entities
-        .filter((note) => sameBeat(note.beat, elevationBeat.value))
-        .map((note, order) => {
-            const stage = getElevationStageProps(note.stageId, note.beat)
-            return {
-                note,
-                lane: note.left + note.size / 2 + stage.laneOffset,
-                size: note.size,
-                elevation: note.elevation + stage.elevation,
-                attached: false,
-                order,
-            }
-        })
 const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers) => {
     const source = state.value
     const position = positionAtPoint(x, y)
@@ -524,14 +530,14 @@ const controls: Pick<
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
-            creating.value = ghostRows([
-                previewElevationNote(
+            creating.value = [
+                previewElevationNoteRow(
                     position.lane,
                     position.elevation,
                     position.beat,
                     toolName.value === 'slide',
                 ),
-            ])
+            ]
         else if (toolName.value === 'paste')
             creating.value = previewElevationPasteRows(
                 position.lane,
@@ -708,15 +714,15 @@ const controls: Pick<
                 undefined,
                 adding.origin,
             )
-            creating.value = ghostRows([
-                previewElevationNote(
+            creating.value = [
+                previewElevationNoteRow(
                     left,
                     snapElevation(yToElevation(y), settings.elevationSnap),
                     elevationBeat.value,
                     adding.slide,
                     size,
                 ),
-            ])
+            ]
             view.entities = { hovered: [], creating: creating.value.map((row) => row.note) }
             return
         }
@@ -793,6 +799,7 @@ const controls: Pick<
                   })
                   .join()
             : ''
+        drag.shift = next.shift
         if (
             deltaLane === drag.deltaLane &&
             deltaElevation === drag.deltaElevation &&
@@ -801,7 +808,6 @@ const controls: Pick<
             return
         drag.deltaLane = deltaLane
         drag.deltaElevation = deltaElevation
-        drag.shift = next.shift
         drag.resized = resized
         const active = { ...drag }
         setPreviewEdit(active.source, () => edit(active), [
@@ -1019,6 +1025,7 @@ watchEffect(() => {
     // Name contrast is measured against it.
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
+    void redrawVersion.value
     // Axis labels move right of any left badges, which would cover them.
     const leftBadges = offscreenGroups.value.filter(({ side }) => side === 'left')
     const axisLabelLeft = leftBadges.length
@@ -1206,6 +1213,8 @@ onMounted(() => {
         window.removeEventListener('scroll', updateBounds, true)
     }
     window.addEventListener('keydown', onKeydown, true)
+    updatePixelRatio()
+    window.addEventListener('resize', updatePixelRatio)
     view.scrollingY = undefined
     view.scrollingX = undefined
     fitViewport()
@@ -1259,6 +1268,8 @@ onUnmounted(() => {
     mounted = false
     cleanupBounds?.()
     window.removeEventListener('keydown', onKeydown, true)
+    window.removeEventListener('resize', updatePixelRatio)
+    pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
     cancel()
     frame.cancel()
     notes.clear()
@@ -1290,6 +1301,7 @@ onUnmounted(() => {
                 ref="canvas"
                 class="elevation-canvas pointer-events-none absolute size-full"
                 :aria-label="i18n.elevation.canvas"
+                @contextrestored="restoreContext"
             />
             <OffscreenNoteIndicators :groups="offscreenGroups" :hovered="hoveredOffscreenGroup" />
         </div>

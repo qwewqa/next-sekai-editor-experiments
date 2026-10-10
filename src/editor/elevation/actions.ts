@@ -26,6 +26,7 @@ import {
     showNoteGhost,
     toMovedNoteObject,
     toPasteBeatOffset,
+    toPastedBeat,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
 import { alignLane, view } from '../view'
@@ -69,6 +70,56 @@ export const previewElevationNote = (
     )
 }
 
+/** The add ghost's row; an attached note added inside a slide shows on its path, where it lands. */
+export const previewElevationNoteRow = (
+    lane: number,
+    elevation: number,
+    beat: number,
+    asSlide: boolean,
+    size?: number,
+): ElevationNote => {
+    const note = previewElevationNote(lane, elevation, beat, asSlide, size)
+    const { laneOffset } = getElevationStageProps(note.stageId, beat)
+    const shown = (point: NoteEntity) =>
+        point.elevation + getElevationStageProps(point.stageId, beat).elevation
+    const row = {
+        note,
+        lane: note.left + note.size / 2 + laneOffset,
+        size: note.size,
+        elevation: shown(note),
+        attached: false,
+        order: 0,
+    }
+    if (!note.isAttached || !state.value.store.slides.note.has(note.slideId)) return row
+    // As the chart's Slide ghost: placed by a throwaway add.
+    const transaction = createTransaction(state.value)
+    const result = transaction.commit(addNote(transaction, note.slideId, note))
+    const [landed] = result.selectedEntities
+    if (landed?.type !== 'note') return row
+    const slide = result.store.slides.info.get(note.slideId) ?? []
+    const index = slide.findIndex((info) => info.note === landed)
+    const info = index > 0 && index < slide.length - 1 ? slide[index] : undefined
+    const position =
+        getComposedLayout(elevationState.value)?.notePosition(landed, landed.beat, {
+            slideInfos: slide,
+        }) ?? landed
+    return {
+        // Its own stage's offset puts it there on the chart too.
+        note: toNoteEntity(note.slideId, {
+            ...note,
+            left: position.left - laneOffset,
+            size: position.size,
+        }),
+        lane: position.left + position.size / 2,
+        size: position.size,
+        elevation: info
+            ? attachedElevation(landed, info.attachHead, info.attachTail, 0, shown)
+            : shown(landed),
+        attached: !!info,
+        order: 0,
+    }
+}
+
 export const createElevationNote = (
     lane: number,
     elevation: number,
@@ -92,7 +143,7 @@ export const createElevationNote = (
 
 // A pasted note's shown elevation before the change; an attached one follows its pasted head and tail.
 const pastedElevation = (note: NoteEntity, notes: NoteEntity[], beatOffset: number) => {
-    const beat = note.beat + beatOffset
+    const beat = toPastedBeat(note.beat, beatOffset)
     const shown = (point: NoteEntity) =>
         point.elevation + getElevationStageProps(view.stageId ?? point.stageId, beat).elevation
     const slide = notes.filter((other) => other.slideId === note.slideId)
@@ -122,9 +173,9 @@ const attachedElevation = (
                 head.connectorEase,
                 attachFraction(
                     state.value.bpms,
-                    head.beat + beatOffset,
-                    tail.beat + beatOffset,
-                    note.beat + beatOffset,
+                    toPastedBeat(head.beat, beatOffset),
+                    toPastedBeat(tail.beat, beatOffset),
+                    toPastedBeat(note.beat, beatOffset),
                 ),
             ),
     )
@@ -183,8 +234,10 @@ export const previewElevationPaste = (
     if (!paste) return { notes: [], infos: undefined }
     const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
     for (const note of paste.notes) {
-        const object = paste.mapNote(note, note.beat + paste.beatOffset)
-        slides.set(note.slideId, [...(slides.get(note.slideId) ?? []), object])
+        const object = paste.mapNote(note, toPastedBeat(note.beat, paste.beatOffset))
+        const slide = slides.get(note.slideId)
+        if (slide) slide.push(object)
+        else slides.set(note.slideId, [object])
     }
     // Built as the store will place it, so attached notes show where they land.
     return showNoteGhost([...slides.values()])

@@ -295,3 +295,72 @@ test('Note Shift click expands its target before preserving selected-target quic
     await expect(page.locator('[data-tool-dialog]')).toBeVisible()
     expect((await selected(page)).sort()).toEqual(['blue:3', 'blue:5'])
 })
+
+test('a body-drawn attached note keeps its drawn-on-top hit when its shown size has float noise', async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, view, appImport, nextTick } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: true,
+                slides: [
+                    [
+                        {
+                            ...base,
+                            beat: 2,
+                            left: 0,
+                            size: 0.7,
+                            elevation: 0.2,
+                            connectorType: 'active',
+                        },
+                        {
+                            ...base,
+                            beat: 3,
+                            left: 0,
+                            size: 1,
+                            isAttached: true,
+                            noteType: 'forceNonTick',
+                            noteStyle: 'red',
+                        },
+                        { ...base, beat: 5, left: 0, size: 1.9, elevation: 0.2 },
+                    ],
+                    // Under the attached note's body, right of its centre.
+                    [{ ...base, beat: 3, left: 0.75, size: 2, elevation: 0, noteStyle: 'green' }],
+                ],
+            },
+            3,
+        )
+        view.layout = 'composed'
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(3)
+        await nextTick()
+    })
+    await settle(page)
+    const target = await page.evaluate(async () => {
+        const { elevationLayout } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const rows = elevationLayout.value.rows
+        const red = rows.find((row) => row.note.noteStyle === 'red')!
+        const green = rows.find((row) => row.note.noteStyle === 'green')!
+        return {
+            x: red.x + 0.45 * elevationLayout.value.laneScale,
+            // Between the rows, on both bodies.
+            y: (red.y + green.y) / 2,
+            noise: red.size !== red.note.size,
+            redOnTop: rows.indexOf(red) > rows.indexOf(green),
+        }
+    })
+    // Shown and stored sizes differ by float noise, and the attached note is drawn over green.
+    expect(target.noise).toBe(true)
+    expect(target.redOnTop).toBe(true)
+    const box = (await page.locator('.elevation-canvas').boundingBox())!
+    await page.mouse.click(box.x + target.x, box.y + target.y)
+    await settle(page)
+    expect(await selected(page)).toEqual(['red:3'])
+})
