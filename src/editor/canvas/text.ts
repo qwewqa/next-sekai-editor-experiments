@@ -46,6 +46,44 @@ export const measureText = (
     return width / scale
 }
 
+// Labels are measured on every frame; keep widths for each canvas's font and zoom.
+const widths = new Map<string, Map<number, Map<string, number>>>()
+const maxWidthKeys = 4
+// The widths last measured in; a NaN zoom matches none.
+const unset = () => ({ fontFamily: '', scale: NaN, bySize: new Map<number, Map<string, number>>() })
+let last = unset()
+
+/** Forgets measured widths, as a loaded font changes them. */
+export const clearTextWidths = () => {
+    widths.clear()
+    last = unset()
+}
+
+/** A label's width as measureText gives it, remembered per font, zoom, size and text. */
+export const measureCachedText = (context: EditorDrawContext, text: string, size = 0.4) => {
+    const { fontFamily, scale } = context
+    if (last.fontFamily !== fontFamily || last.scale !== scale) {
+        const key = `${fontFamily}|${scale}`
+        // Most recently used last; old zooms go first.
+        const bySize = widths.get(key) ?? new Map<number, Map<string, number>>()
+        widths.delete(key)
+        widths.set(key, bySize)
+        for (const old of widths.keys()) {
+            if (widths.size <= maxWidthKeys) break
+            widths.delete(old)
+        }
+        last = { fontFamily, scale, bySize }
+    }
+    let byText = last.bySize.get(size)
+    if (!byText) last.bySize.set(size, (byText = new Map<string, number>()))
+    let width = byText.get(text)
+    if (width === undefined) {
+        width = measureText(context, text, size)
+        byText.set(text, width)
+    }
+    return width
+}
+
 /** Draws a label centred `middle` ems above its baseline: SVG middle by default. */
 export const drawText = (
     { ctx, scale, fontFamily, fontMiddle }: EditorDrawContext,

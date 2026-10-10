@@ -1,6 +1,6 @@
 import type { Entity } from '../../state/entities'
 import { nameColorOn } from './nameColors'
-import { drawText, measureText, normalizeSvgText } from './text'
+import { clearTextWidths, drawText, measureCachedText, normalizeSvgText } from './text'
 import type { EditorDrawContext } from './types'
 
 type Box = { l: number; r: number; t: number; b: number }
@@ -105,33 +105,9 @@ const drawSplitName = (
     }
 }
 
-// Every shown name is measured on every frame; keep widths for each canvas's font and zoom.
-const widths = new Map<string, Map<number, Map<string, number>>>()
-const maxWidthKeys = 4
-
 /** Forgets measured names, as a loaded font changes their widths. */
 export const clearNameWidths = () => {
-    widths.clear()
-}
-
-const measureName = (context: EditorDrawContext, text: string, size: number) => {
-    const key = `${context.fontFamily}|${context.scale}`
-    // Most recently used last; old zooms go first.
-    const byKey = widths.get(key) ?? new Map<number, Map<string, number>>()
-    widths.delete(key)
-    widths.set(key, byKey)
-    for (const old of widths.keys()) {
-        if (widths.size <= maxWidthKeys) break
-        widths.delete(old)
-    }
-    let bySize = byKey.get(size)
-    if (!bySize) byKey.set(size, (bySize = new Map<string, number>()))
-    let width = bySize.get(text)
-    if (width === undefined) {
-        width = measureText(context, text, size)
-        bySize.set(text, width)
-    }
-    return width
+    clearTextWidths()
 }
 
 const ellipsis = '…'
@@ -142,7 +118,7 @@ const fitName = <T extends Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>>
     context: EditorDrawContext,
     name: T,
 ): T | undefined => {
-    const box = nameBox(name, measureName(context, name.text, name.size))
+    const box = nameBox(name, measureCachedText(context, name.text, name.size))
     const { l, r } = context.bounds
     if (box.l >= l && box.r <= r) return name
     // Keep the start unless only the start runs past.
@@ -154,7 +130,7 @@ const fitName = <T extends Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>>
         keepStart
             ? parts.slice(0, count).join('') + ellipsis
             : ellipsis + parts.slice(parts.length - count).join('')
-    const fits = (count: number) => measureText(context, cut(count), name.size) <= room
+    const fits = (count: number) => measureCachedText(context, cut(count), name.size) <= room
     if (!fits(0)) return
     let low = 0
     let high = parts.length - 1
@@ -195,7 +171,12 @@ export const drawName = (
         if (!name) return
         if (!body.length) drawText(context, name.text, name.x, y, color, size, name.align)
         else
-            drawSplitName(context, name, nameBox(name, measureName(context, name.text, size)), body)
+            drawSplitName(
+                context,
+                name,
+                nameBox(name, measureCachedText(context, name.text, size)),
+                body,
+            )
         return
     }
     const alpha = context.ctx.globalAlpha
@@ -220,7 +201,7 @@ export const placeNames = (context: EditorDrawContext, { names, fills }: NameLay
         drawSplitName(
             context,
             name,
-            nameBox(name, measureName(context, name.text, name.size)),
+            nameBox(name, measureCachedText(context, name.text, name.size)),
             fills.filter(({ owner }) => !owner || owner === name.owner),
         )
     }
