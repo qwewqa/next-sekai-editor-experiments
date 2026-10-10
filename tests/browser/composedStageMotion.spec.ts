@@ -4,6 +4,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 declare global {
     interface Window {
         stageMotionTest: { strokes: number; shifted: number }
+        windowTest: { windows: number; resizes: number; shifted: number }
     }
 }
 
@@ -181,7 +182,7 @@ test.describe('window sizing', () => {
         await page.addInitScript(installCanvasCounters)
         await page.addInitScript(() => {
             const counts = { windows: 0, resizes: 0, shifted: 0 }
-            ;(window as unknown as { windowTest: typeof counts }).windowTest = counts
+            window.windowTest = counts
             const chart = () => document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
             const fillRect = CanvasRenderingContext2D.prototype.fillRect
             CanvasRenderingContext2D.prototype.fillRect = function (...args: number[]) {
@@ -227,7 +228,7 @@ test.describe('window sizing', () => {
                     }
                     await new Promise((r) => requestAnimationFrame(r))
                     return {
-                        ...(window as unknown as { windowTest: Record<string, number> }).windowTest,
+                        ...window.windowTest,
                     }
                 },
                 { step, count },
