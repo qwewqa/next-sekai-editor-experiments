@@ -3,11 +3,11 @@ import { timeToBeat } from '../../state/integrals/bpms'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { drawComposedStages } from './stages'
-import { prepareSurface } from './surface'
+import { deviceSize, prepareSurface } from './surface'
 import type { EditorDrawContext } from './types'
 
-// One viewport, at most 32 MiB of RGBA pixels. Larger screens draw directly
-// instead of retaining another unbounded backing store beside the chart.
+// Each retained store (the exact view and the moving window) holds at most 32 MiB
+// of RGBA pixels, so up to twice that beside the chart. Larger screens draw directly.
 const MAX_PIXELS = 8 * 1024 * 1024
 // A moving window reaches this far ahead of the view and a quarter of it behind.
 const AHEAD = 1
@@ -66,8 +66,7 @@ export const createStageSurface = () => {
         laneDivision: number,
     ) => {
         const { bounds, pixelRatio, scale, ups } = context
-        const w = Math.max(1, Math.round(width * pixelRatio))
-        const h = Math.max(1, Math.round(height * pixelRatio))
+        const [w, h] = deviceSize(width, height, pixelRatio)
         const sx = scale * (w / width)
         const sy = scale * (h / height)
         // Margins in whole device pixels; scene x grows right and scene y grows down.
@@ -85,12 +84,12 @@ export const createStageSurface = () => {
         const bottom = margin(dy, h, true)
         const W = w + left + right
         const H = h + top + bottom
-        const target = motion?.canvas ?? document.createElement('canvas')
-        motion = undefined
         if (W * H > MAX_PIXELS) {
-            target.width = target.height = 0
+            clearMotion()
             return
         }
+        const target = motion?.canvas ?? document.createElement('canvas')
+        motion = undefined
         if (target.width !== W) target.width = W
         if (target.height !== H) target.height = H
         const ctx = target.getContext('2d')
@@ -133,8 +132,7 @@ export const createStageSurface = () => {
     ) => {
         if (!motion || !sameKey(motion.key, key)) return false
         const { bounds, pixelRatio, scale } = context
-        const w = Math.max(1, Math.round(width * pixelRatio))
-        const h = Math.max(1, Math.round(height * pixelRatio))
+        const [w, h] = deviceSize(width, height, pixelRatio)
         const x = Math.round(motion.e + bounds.l * scale * (w / width))
         const y = Math.round(motion.f + bounds.t * scale * (h / height))
         if (x < 0 || y < 0 || x + w > motion.canvas.width || y + h > motion.canvas.height)
@@ -166,9 +164,8 @@ export const createStageSurface = () => {
             /* eslint-disable @typescript-eslint/no-unnecessary-condition */
             if (surfaceContext?.isContextLost?.() || motion?.ctx.isContextLost?.()) clear()
             /* eslint-enable @typescript-eslint/no-unnecessary-condition */
-            const pixels =
-                Math.max(1, Math.round(width * pixelRatio)) *
-                Math.max(1, Math.round(height * pixelRatio))
+            const [w, h] = deviceSize(width, height, pixelRatio)
+            const pixels = w * h
             if (
                 !Number.isFinite(pixels) ||
                 pixels > MAX_PIXELS ||

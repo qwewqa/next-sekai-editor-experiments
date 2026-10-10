@@ -15,6 +15,13 @@ export const clearSurface = (ctx: CanvasRenderingContext2D, width: number, heigh
     ctx.restore()
 }
 
+/** Backing dimensions of a surface at least one device pixel across. */
+export const deviceSize = (width: number, height: number, pixelRatio: number) =>
+    [
+        Math.max(1, Math.round(width * pixelRatio)),
+        Math.max(1, Math.round(height * pixelRatio)),
+    ] as const
+
 // Changing the backing dimensions clears all Canvas state and allocates a new
 // surface. Only do that on a real resize, never on an ordinary scroll or edit.
 export const prepareSurface = (
@@ -24,8 +31,7 @@ export const prepareSurface = (
     pixelRatio: number,
     bounds: CanvasBounds,
 ) => {
-    const w = Math.max(1, Math.round(width * pixelRatio))
-    const h = Math.max(1, Math.round(height * pixelRatio))
+    const [w, h] = deviceSize(width, height, pixelRatio)
     if (canvas.width !== w) canvas.width = w
     if (canvas.height !== h) canvas.height = h
     const ctx = canvas.getContext('2d')
