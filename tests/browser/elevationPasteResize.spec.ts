@@ -25,7 +25,7 @@ type Config = { layout: Layout; snapping: 'absolute' | 'relative'; division: num
 // Stage 1: pivot 0.25 plus a 0 to 8 translation over beats 0 to 8, whole lanes.
 // Stage 2: pivot -4 on half lanes, raised 0.5.
 // A (stage 1, beat 2) and B (stage 2, beat 3) are copied with B as the anchor.
-// At beat 3: B, C (off the lattice), D (a slide's anchor) and an attached tick.
+// At beat 3: B, C (off the lattice), D (a slide's anchor) and an attached tick shown at 2.
 const seed = (page: Page, config: Config) =>
     page.evaluate(async (config) => {
         const { fixtures, show, view, settings, history } = window.editorTest
@@ -70,9 +70,9 @@ const seed = (page: Page, config: Config) =>
                         { ...base, beat: 5, left: -10, size: 2 },
                     ],
                     [
-                        { ...base, beat: 2, left: 0, size: 2 },
+                        { ...base, beat: 2, left: 0, size: 2, elevation: 1 },
                         { ...base, beat: 3, left: 0, size: 2, isAttached: true },
-                        { ...base, beat: 4, left: 0, size: 2 },
+                        { ...base, beat: 4, left: 0, size: 2, elevation: 3 },
                     ],
                 ],
             },
@@ -313,7 +313,7 @@ for (const layout of ['basic', 'composed'] as const) {
         const added = (await notes(page)).filter(
             (note) => !before.some((old) => JSON.stringify(old) === JSON.stringify(note)),
         )
-        // B (stage 2, raised 0.5) lands at 2; A keeps its displayed offset 0.5 above B.
+        // B (stage 2, raised 0.5) shows at 2; A keeps its authored offset 1 above B.
         expect(added.map(({ beat, stageId, elevation }) => ({ beat, stageId, elevation }))).toEqual(
             [
                 { beat: 2, stageId: 1, elevation: 2.5 },
@@ -324,6 +324,76 @@ for (const layout of ['basic', 'composed'] as const) {
         const b = added.find((note) => note.stageId === 2)!
         const shownB = await shown(page, b.left)
         expect((shownB.left + shownB.right) / 2).toBe(layout === 'basic' ? 8 : 8.5)
+        await page.evaluate(() => window.editorTest.history.undoState())
+        // Into stage 1, not raised: B shows at 2 and A stays 1 above it.
+        await pasteAt(8.3, { stageId: 1 })(page, 'elevation')
+        const intoStage1 = (await notes(page)).filter(
+            (note) => !before.some((old) => JSON.stringify(old) === JSON.stringify(note)),
+        )
+        expect(
+            intoStage1.map(({ beat, stageId, elevation }) => ({ beat, stageId, elevation })),
+        ).toEqual([
+            { beat: 2, stageId: 1, elevation: 3 },
+            { beat: 3, stageId: 1, elevation: 2 },
+        ])
+    })
+
+    test(`${layout}: a paste anchored on an attached tick shows the tick at the pointer's elevation`, async ({
+        page,
+    }) => {
+        await seed(page, { layout, snapping: 'absolute', division: 1 })
+        await openAt(page, 3)
+        // The whole slide, copied while hovering its tick (shown at 2) in the Elevation Editor.
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            const all = [...history.state.value.store.slides.note.values()].flat()
+            const tick = all.find((note) => note.isAttached)!
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: all.filter((note) => note.slideId === tick.slideId),
+            })
+        })
+        const tick = await page.evaluate(async () => {
+            const { appImport } = window.editorTest
+            const scene = await appImport<typeof import('../../src/editor/elevation/scene')>(
+                '/src/editor/elevation/scene.ts',
+            )
+            const row = scene.elevationNotes.value.find((row) => row.attached)!
+            return { lane: row.lane, elevation: row.elevation }
+        })
+        expect(tick.elevation).toBe(2)
+        const hover = await at(page, 'elevation', tick.lane, tick.elevation)
+        await page.mouse.move(hover.x - 2, hover.y)
+        await page.mouse.move(hover.x, hover.y)
+        await page.keyboard.press('c')
+        await setup(page, 'paste')
+        const point = await at(page, 'elevation', -8, 3)
+        await page.mouse.move(point.x - 2, point.y)
+        await page.mouse.move(point.x, point.y)
+        await page.mouse.click(point.x, point.y)
+        await expect.poll(async () => (await notes(page)).length).toBe(12)
+        const pasted = await page.evaluate(async () => {
+            const { appImport, history } = window.editorTest
+            const scene = await appImport<typeof import('../../src/editor/elevation/scene')>(
+                '/src/editor/elevation/scene.ts',
+            )
+            const original = [...history.state.value.store.slides.note.values()]
+                .flat()
+                .filter((note) => note.isAttached)
+            const row = scene.elevationNotes.value.find(
+                (row) => row.attached && row.note.left !== 0,
+            )!
+            const slide = history.state.value.store.slides.note.get(row.note.slideId)!
+            return {
+                count: original.length,
+                shown: row.elevation,
+                elevations: slide.map((note) => note.elevation),
+            }
+        })
+        // One authored change of 1 for the whole slide: head 2, tail 4, tick shown at 3.
+        expect(pasted.count).toBe(2)
+        expect(pasted.shown).toBeCloseTo(3, 9)
+        expect([pasted.elevations[0], pasted.elevations[2]]).toEqual([2, 4])
     })
 }
 
@@ -475,3 +545,37 @@ test('a Beat field arrow step at a non-binary division stores the grid beat', as
         .poll(async () => (await notes(page)).filter((note) => note.beat === 7 / 3).length)
         .toBe(1)
 })
+
+for (const layout of ['basic', 'composed'] as const)
+    for (const pane of ['main', 'elevation'] as const)
+        for (const command of ['cut', 'copy'] as const)
+            test(`${layout}: a ${command} on the ${pane === 'main' ? 'chart' : 'Elevation Editor'} pastes back exactly where it was`, async ({
+                page,
+            }) => {
+                // Half lanes keep B on its stage's lattice.
+                await seed(page, { layout, snapping: 'absolute', division: 2 })
+                await openAt(page, 3)
+                await setup(page, 'select', [1])
+                const before = await notes(page)
+                const b = await shown(page, 1)
+                const point = await at(page, pane, (b.left + b.right) / 2, b.elevation)
+                await page.mouse.move(point.x - 2, point.y)
+                await page.mouse.move(point.x, point.y)
+                if (command === 'cut') await page.keyboard.press('x')
+                else {
+                    await page.keyboard.press('c')
+                    await page.keyboard.press('Delete')
+                }
+                await expect.poll(async () => (await notes(page)).length).toBe(8)
+                const removed = await notes(page)
+                await page.keyboard.press('v')
+                await page.mouse.move(point.x - 2, point.y)
+                await page.mouse.move(point.x, point.y)
+                await page.mouse.click(point.x, point.y)
+                await expect.poll(async () => (await notes(page)).length).toBe(9)
+                expect(await notes(page)).toEqual(before)
+                await page.evaluate(() => window.editorTest.history.undoState())
+                expect(await notes(page)).toEqual(removed)
+                await page.evaluate(() => window.editorTest.history.redoState())
+                expect(await notes(page)).toEqual(before)
+            })
