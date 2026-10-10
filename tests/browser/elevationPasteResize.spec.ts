@@ -232,7 +232,8 @@ const resizeBy =
         await openAt(page, 3)
         await setup(page, 'select', [1, 4.3, -10, 0])
         const note = await shown(page, left)
-        const lane = side === 'left' ? note.left + 0.1 : note.right - 0.1
+        // In the edge zone, clear of the attached tick's diamond drawn over B's left edge in Basic.
+        const lane = side === 'left' ? note.left + 0.4 : note.right - 0.4
         const start = await at(page, pane, lane, note.elevation)
         const end = await at(page, pane, lane + by, note.elevation)
         await page.mouse.move(start.x, start.y - 2)
