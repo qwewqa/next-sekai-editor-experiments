@@ -7,6 +7,7 @@ import { i18n } from '../../../i18n'
 import { clearPreviewEdit, setPreviewEdit } from '../../../preview/edit'
 import type { Entity } from '../../../state/entities'
 import { toBpmEntity, type BpmEntity } from '../../../state/entities/bpm'
+import { findIntegral } from '../../../state/integrals'
 import { addBpm } from '../../../state/mutations/bpm'
 import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operations/bpm'
 import { getInStoreGrid } from '../../../state/store/grid'
@@ -46,7 +47,7 @@ export const bpm: Tool = {
                 creating: [
                     toBpmEntity({
                         beat,
-                        bpm: 60,
+                        bpm: tempoAt(beat),
                     }),
                 ],
             }
@@ -103,7 +104,7 @@ export const bpm: Tool = {
         } else {
             const object: BpmObject = {
                 beat,
-                bpm: 60,
+                bpm: tempoAt(beat),
             }
 
             const overlap = find(object.beat)
@@ -172,7 +173,7 @@ export const bpm: Tool = {
                         creating: [
                             toBpmEntity({
                                 beat,
-                                bpm: 60,
+                                bpm: tempoAt(beat),
                             }),
                         ],
                     }
@@ -222,7 +223,7 @@ export const bpm: Tool = {
                 } else {
                     const object: BpmObject = {
                         beat,
-                        bpm: 60,
+                        bpm: tempoAt(beat),
                     }
 
                     const overlap = find(object.beat)
@@ -265,6 +266,14 @@ export const editBpm = (entity: BpmEntity, object: Partial<BpmObject>) => {
 
 const find = (beat: number) =>
     getInStoreGrid(store.value.grid, 'bpm', beat)?.find((entity) => entity.beat === beat)
+
+// New changes keep the tempo already in effect at their beat.
+const tempoAt = (beat: number) => {
+    const bpms = state.value.bpms
+    const first = bpms[0]
+    const integral = first && beat >= first.x ? findIntegral(bpms, 'x', beat) : first
+    return (integral && find(integral.x)?.bpm) ?? 60
+}
 
 const tryFind = (x: number, y: number): [BpmEntity] | [undefined, number] => {
     const [hit] = hitEntitiesAtPoint('bpm', x, y).sort(

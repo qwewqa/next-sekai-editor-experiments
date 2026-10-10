@@ -300,3 +300,76 @@ test('an add drag released on an existing BPM change or time scale selects it as
         ).toEqual([6])
     }
 })
+
+test('a new BPM change starts at the tempo already in effect at its beat', async ({ page }) => {
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: 4, bpm: 157.3, meter: 3 },
+                ],
+            },
+            2,
+        )
+    })
+    const settle = () => page.evaluate(() => window.editorTest.nextTick())
+    // Through the chart's tempo, which changes at beat 4.
+    const point = (lane: number, beat: number) =>
+        page.evaluate(
+            async ({ lane, beat }) => {
+                const { view, settings, history, appImport } = window.editorTest
+                const { beatToTime } = await appImport<
+                    typeof import('../../src/state/integrals/bpms')
+                >('/src/state/integrals/bpms.ts')
+                const time = beatToTime(history.state.value.bpms, beat)
+                return {
+                    x: view.x + view.w * (0.5 + (lane - view.lane) / settings.width),
+                    y: view.y + view.h / 2 - (time - view.time) * settings.pps,
+                }
+            },
+            { lane, beat },
+        )
+    const ghost = () =>
+        page.evaluate(() =>
+            window.editorTest.view.entities.creating.map((entity) => ({
+                beat: entity.beat,
+                bpm: entity.type === 'bpm' ? entity.bpm : undefined,
+            })),
+        )
+    const bpms = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.grid.bpm.values()]
+                .flatMap((entities) => [...entities])
+                .map(({ beat, bpm }) => ({ beat, bpm }))
+                .sort((a, b) => a.beat - b.beat),
+        )
+    await page.keyboard.press('q')
+    const tap = await point(4, 2)
+    await page.mouse.move(tap.x, tap.y)
+    await settle()
+    expect(await ghost()).toEqual([{ beat: 2, bpm: 120 }])
+    await page.mouse.click(tap.x, tap.y)
+    await settle()
+    await page.keyboard.press('Escape')
+    await settle()
+    const start = await point(4, 7)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await settle()
+    // The press brings its beat into view.
+    const end = await point(4, 6)
+    await page.mouse.move(end.x, end.y, { steps: 8 })
+    await settle()
+    expect(await ghost()).toEqual([{ beat: 6, bpm: 157.3 }])
+    await page.mouse.up()
+    await settle()
+    expect(await bpms()).toEqual([
+        { beat: 0, bpm: 120 },
+        { beat: 2, bpm: 120 },
+        { beat: 4, bpm: 157.3 },
+        { beat: 6, bpm: 157.3 },
+    ])
+})
