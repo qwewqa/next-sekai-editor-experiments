@@ -218,7 +218,7 @@ const buildComposedLayout = (state: LayoutSource) => {
         }
     }
     // A connector's ends usually share a stage and ask for it at the same beat.
-    let lastOffset = {
+    const lastOffset = {
         data: undefined as ComposedStage | undefined,
         beat: 0,
         right: false,
@@ -231,7 +231,10 @@ const buildComposedLayout = (state: LayoutSource) => {
         if (lastOffset.data === data && lastOffset.beat === beat && lastOffset.right === right)
             return lastOffset.value
         const value = getStageOffset(data.props, toTime(beat), options)
-        lastOffset = { data, beat, right, value }
+        lastOffset.data = data
+        lastOffset.beat = beat
+        lastOffset.right = right
+        lastOffset.value = value
         return value
     }
     const gridOffset = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
