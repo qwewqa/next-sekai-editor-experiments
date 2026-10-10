@@ -319,7 +319,9 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
         isOnNoteArtwork(
             row.size,
             getNoteVisualType(
-                row.size === row.note.size ? row.note : { ...row.note, size: row.size },
+                row.size === row.note.size
+                    ? row.note
+                    : { ...row.note, size: row.size, useInfoOf: row.note.useInfoOf ?? row.note },
                 elevationState.value.store.slides.info.get(row.note.slideId),
             ),
             (x - elevationBounds.x - row.x + row.w / 2) / scale,
