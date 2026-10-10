@@ -17,6 +17,7 @@ import type { Modifiers } from './controls/gestures/pointer'
 import { integrateScrollInertia } from './inertia'
 import { editorNavigation, getControlBounds } from './navigation'
 import type { ScopeOverride } from './scope'
+import { snappedOffset } from './snapping'
 
 export type Selection = {
     laneMin: number
@@ -394,7 +395,7 @@ export const xToValidLane = (x: number) => alignLane(xToLane(x))
 
 export const yToTime = (y: number) => (0.5 * view.h - y + view.y) / settings.pps + view.time
 
-const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
+export const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
 
 export const yToValidBeat = (y: number) => align(yToBeat(y), view.division)
 
@@ -409,4 +410,15 @@ export const yToBeatOffset = (y: number, beat: number) =>
         ? align(yToBeat(y), view.division) - beat
         : align(yToBeat(y) - beat, view.division)
 
-export const snapYToBeat = (y: number, beat: number) => Math.max(0, beat + yToBeatOffset(y, beat))
+/**
+ * A move's beat offset. Absolute snapping, as for lanes, snaps the grabbed beat
+ * moved by the pointer's movement from its press, once that reaches half a step.
+ */
+export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) => {
+    if (view.snapping !== 'absolute') return yToBeatOffset(y, beat)
+    const pointer = yToBeat(y)
+    return snappedOffset(pressBeat, pointer, beat, view.division, 'absolute', pointer - pressBeat)
+}
+
+export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
+    Math.max(0, beat + yToMoveBeatOffset(y, beat, pressBeat))

@@ -73,16 +73,17 @@ for (const layout of ['basic', 'composed'] as const) {
         await page.evaluate((layout) => {
             window.editorTest.view.layout = layout
         }, layout)
+        // Of the same-beat notes, blue is drawn on top.
         const expected = [
-            'note:red',
             'note:blue',
+            'note:red',
             'stageTransformEventJoint',
             'stageStyleEventJoint',
             'stagePivotEventJoint',
             'stageMaskEventJoint',
             'cameraEventJoint',
             'timeScale',
-            'note:red',
+            'note:blue',
         ]
         for (const entity of expected) {
             await click(page)
@@ -120,7 +121,7 @@ for (const layout of ['basic', 'composed'] as const) {
             view.layout = layout
         }, layout)
         const at = await page.evaluate(() => window.editorTest.point(6.5, 4))
-        for (const entity of ['note:red', 'note:blue', 'timeScale', 'bpm', 'note:red']) {
+        for (const entity of ['note:blue', 'note:red', 'timeScale', 'bpm', 'note:blue']) {
             await page.mouse.click(at.x, at.y)
             expect(await selected(page)).toEqual([entity])
         }
@@ -154,7 +155,7 @@ test('category sorting preserves typed-note and box hit order and excludes conne
             pointTypes: all.map((entity) => entity.type),
         }
     })
-    expect(result.pointNotes).toEqual(['red', 'blue'])
+    expect(result.pointNotes).toEqual(['blue', 'red'])
     expect(result.pointNotes).toEqual(result.typedNotes)
     expect(result.pointTypes).not.toContain('connector')
     expect(result.boxTypes).not.toEqual(result.pointTypes)
@@ -224,7 +225,7 @@ test('an already selected event keeps context-menu and drag ownership over notes
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
-test('Eraser chooses the first note ahead of overlapping events', async ({ page }) => {
+test('Eraser chooses the top note ahead of overlapping events', async ({ page }) => {
     await page.evaluate(async () => {
         const { switchToolTo } = await window.editorTest.appImport<
             typeof import('../../src/editor/tools')
@@ -239,7 +240,7 @@ test('Eraser chooses the first note ahead of overlapping events', async ({ page 
                 .filter((note) => note.beat === 4)
                 .map((note) => note.noteStyle),
         ),
-    ).toEqual(['blue'])
+    ).toEqual(['red'])
     expect(
         await page.evaluate(
             () =>

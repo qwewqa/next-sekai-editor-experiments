@@ -199,7 +199,11 @@ const mouseleave = (event: MouseEvent) => {
     isHovering = false
     contextClick = undefined
     // A press continues outside the pane; only its release lands it.
-    if (!pressedPane) mouseup(event)
+    if (pressedPane) return
+    mouseup(event)
+    // Off the pane, a click lands nowhere, so no ghost shows where.
+    if (!isDragging.value && view.entities.creating.length)
+        view.entities = { hovered: view.entities.hovered, creating: [] }
 }
 
 const wheel = (event: WheelEvent) => {
@@ -279,14 +283,32 @@ const wheel = (event: WheelEvent) => {
     event.preventDefault()
 }
 
-// Scrolling under a still mouse, as playback, the wheel or a pan does, moves what it hovers.
-watch([viewBox, () => view.x, () => view.y], () => {
-    if (!isHovering || view.isHoverHidden || editorNavigation.value) return
+const hoverAgain = () => {
+    if (!isHovering || view.isHoverHidden) return
     if (mouseGesture.pointerCount || isDragging.value) return
     const { x, y, modifiers } = view.pointer
     setViewHover(y)
     void tool.value.hover?.(x, y, modifiers)
+}
+
+// Scrolling under a still mouse, as playback, the wheel or a pan does, moves what it hovers.
+watch([viewBox, () => view.x, () => view.y], () => {
+    if (!editorNavigation.value) hoverAgain()
 })
+
+// A snapping, lane limit or layout change under a still mouse moves where a click lands, in either pane.
+watch(
+    [
+        () => view.division,
+        () => view.snapping,
+        () => view.laneDivision,
+        () => view.laneSnapping,
+        () => settings.elevationSnap,
+        () => settings.maxLane,
+        () => view.layout,
+    ],
+    hoverAgain,
+)
 
 export const mouseControlListeners = {
     mousedown,

@@ -103,7 +103,8 @@ for (const tool of ['select', 'elevation'] as const) {
             >('/src/editor/tools/index.ts')
             switchToolTo(tool)
         }, tool)
-        for (const style of ['red', 'green', 'blue', 'red', 'green']) {
+        // The top row first: later rows are drawn over earlier ones.
+        for (const style of ['blue', 'green', 'red', 'blue', 'green']) {
             await click(page)
             expect(await selected(page)).toEqual([`${style}:3`])
         }
@@ -135,7 +136,7 @@ test('Shift expands the cycled target slide and Ctrl+Shift toggles all expanded 
     page,
 }) => {
     await click(page, 'Shift')
-    expect((await selected(page)).sort()).toEqual(['red:3', 'red:5'])
+    expect((await selected(page)).sort()).toEqual(['blue:3', 'blue:5'])
     await click(page, 'Shift')
     expect((await selected(page)).sort()).toEqual(['green:3', 'green:5'])
     await click(page, 'Control+Shift')
@@ -158,7 +159,7 @@ test('hidden and dimmed overlap rows never enter the cycle or Ctrl target set', 
         const { view } = window.editorTest
         view.groupVisibility = new Map([[2 as NonNullable<typeof view.groupId>, 'hidden']])
     })
-    for (const style of ['red', 'green', 'red']) {
+    for (const style of ['green', 'red', 'green']) {
         await click(page)
         expect(await selected(page)).toEqual([`${style}:3`])
     }
@@ -257,6 +258,9 @@ test('a visible read-only attachment participates in cycling but cannot be dragg
         switchToolTo('select')
     })
     await settle(page)
+    // The attached tick's row is drawn over the earlier one.
+    await click(page)
+    expect(await selected(page)).toEqual(['purple:3'])
     await click(page)
     expect(await selected(page)).toEqual(['red:3'])
     await click(page)
@@ -283,11 +287,11 @@ test('Note Shift click expands its target before preserving selected-target quic
         switchToolTo('note')
     })
     await click(page)
-    expect(await selected(page)).toEqual(['red:3'])
+    expect(await selected(page)).toEqual(['blue:3'])
     await click(page, 'Shift')
-    expect((await selected(page)).sort()).toEqual(['red:3', 'red:5'])
+    expect((await selected(page)).sort()).toEqual(['blue:3', 'blue:5'])
     await expect(page.locator('[data-tool-dialog]')).toHaveCount(0)
     await click(page, 'Shift')
     await expect(page.locator('[data-tool-dialog]')).toBeVisible()
-    expect((await selected(page)).sort()).toEqual(['red:3', 'red:5'])
+    expect((await selected(page)).sort()).toEqual(['blue:3', 'blue:5'])
 })

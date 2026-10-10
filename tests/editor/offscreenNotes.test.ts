@@ -208,3 +208,10 @@ test('groupings compare equal only with the same badges and targets', () => {
         ),
     )
 })
+
+test('no badge reaches further in than the widest possible count', () => {
+    // The hover path skips badge lookups beyond this reach.
+    const reach = offscreenBadgeHitWidth(Number.MAX_SAFE_INTEGER)
+    for (let count = 1; count < Number.MAX_SAFE_INTEGER; count *= 7)
+        assert.ok(offscreenBadgeHitWidth(count) <= reach)
+})

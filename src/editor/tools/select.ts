@@ -86,7 +86,8 @@ import {
     setViewHover,
     view,
     xToLane,
-    yToBeatOffset,
+    yToBeat,
+    yToMoveBeatOffset,
     yToTime,
     yToValidBeat,
 } from '../view'
@@ -109,6 +110,8 @@ type MoveActive = {
     focus: Entity
     entities: Entity[]
     onlyType: EntityType | undefined
+    // The pointer's beat at the press.
+    pressBeat: number
     // The pointer and lane snapping the preview was last built for.
     last?: string
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
@@ -148,6 +151,7 @@ const resolveDrag = (
             focus,
             entities: moving,
             onlyType: getOnlyEntityType(moving),
+            pressBeat: yToBeat(y),
             isSelected: true,
         }
     }
@@ -161,6 +165,7 @@ const resolveDrag = (
         focus: entity,
         entities: [entity],
         onlyType: entity.type,
+        pressBeat: yToBeat(y),
         isSelected: false,
     }
 }
@@ -292,12 +297,24 @@ export const select: Tool = {
                 const lane =
                     xToLane(x) -
                     (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(active, yToBeatOffset(y, active.focus.beat))
+                const beatOffset = toMoveBeatOffset(
+                    active,
+                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
+                )
 
                 const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping}`
                 if (active.last === last) break
                 active.last = last
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
+                const source = state.value
+                const move = active
+                // Attached notes take their lane from the connector, so their
+                // previews come from the moved chart, showing where they drop.
+                const moved = active.entities.some(
+                    (entity) => entity.type === 'note' && entity.isAttached,
+                )
+                    ? moveEntities(source, move, lane, beatOffset, rawMove)
+                    : undefined
 
                 const creating: Entity[] = []
                 let focusBeat = active.focus.beat
@@ -316,7 +333,11 @@ export const select: Tool = {
                     )
                     if (!result) continue
 
-                    creating.push(result)
+                    creating.push(
+                        (entity.type === 'note' && entity.isAttached
+                            ? moved?.note(entity)
+                            : undefined) ?? result,
+                    )
                     if (entity === active.focus) focusBeat = result.beat
                 }
 
@@ -342,11 +363,9 @@ export const select: Tool = {
                     hovered: [],
                     creating,
                 }
-                const source = state.value
-                const move = active
                 setPreviewEdit(
                     source,
-                    () => moveEntities(source, move, lane, beatOffset, rawMove).state,
+                    () => (moved ?? moveEntities(source, move, lane, beatOffset, rawMove)).state,
                 )
                 focusEntityAtBeat(focusBeat)
                 break
@@ -385,7 +404,10 @@ export const select: Tool = {
                 const lane =
                     xToLane(x) -
                     (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(active, yToBeatOffset(y, active.focus.beat))
+                const beatOffset = toMoveBeatOffset(
+                    active,
+                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
+                )
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
                 // Dropping everything where it started adds no undo step.
                 if (isUnmoved(active, lane, beatOffset, rawMove)) {
@@ -478,6 +500,7 @@ const moveEntities = (
     )
     const selectedEntities: Entity[] = []
     let focusIndex = -1
+    const placed = new Map<Entity, number>()
     const movingBeats = composed
         ? new Map(
               entities
@@ -491,6 +514,7 @@ const moveEntities = (
         if (isPinned(entity, beatOffset)) continue
         const beat = entity.beat + beatOffset
         if (entity === active.focus) focusIndex = selectedEntities.length
+        if (entity.type === 'note') placed.set(entity, selectedEntities.length)
 
         // Notes and their stage events can move together. The grabbed note is
         // inverted against the resulting stage geometry; other notes retain
@@ -542,7 +566,16 @@ const moveEntities = (
         if (result) selectedEntities.push(...result)
     }
     const result = transaction.commit(selectedEntities)
-    return { state: result, focus: result.selectedEntities[focusIndex] }
+    return {
+        state: result,
+        focus: result.selectedEntities[focusIndex],
+        // A moved note as committed.
+        note: (entity: NoteEntity) => {
+            const index = placed.get(entity)
+            const note = index === undefined ? undefined : result.selectedEntities[index]
+            return note?.type === 'note' ? note : undefined
+        },
+    }
 }
 
 const getRawMove = (
@@ -592,7 +625,12 @@ const getRawMove = (
     )
     // An attached anchor can have no horizontal response. Keeping the raw
     // baseline avoids moving controls that cannot move the grabbed point.
-    return { delta: delta === undefined ? 0 : offset(0, delta, focus.left, response.origin) }
+    return {
+        delta:
+            delta === undefined
+                ? 0
+                : offset(0, delta, focus.left, response.origin, lane - active.lane),
+    }
 }
 
 const moveSelectedLane = (
@@ -935,6 +973,7 @@ const toMovedNoteObject = (
                 composed && focus.type === 'note'
                     ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
                     : 0,
+                lane - startLane,
             ),
         },
         {

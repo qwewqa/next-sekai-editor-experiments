@@ -1,8 +1,14 @@
 import type { StageId } from '../../chart/stages'
+import { state } from '../../history'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
+import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
+import type { NoteEntity } from '../../state/entities/slides/note'
+import { beatToTime } from '../../state/integrals/bpms'
 import { editChanges } from '../../state/operations/properties/plan'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
+import { getNoteVisualType, isOnNoteArtwork } from '../canvas/notes'
+import type { ComposedLayout } from '../composed'
 import { getComposedGridOffset, getComposedLayout, getComposedOffset } from '../composedView'
 import type { CanvasCursor } from '../controls/cursor'
 import type { Modifiers } from '../controls/gestures/pointer'
@@ -10,7 +16,7 @@ import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
 import { isEntityInScope } from '../scope'
 import { snappedOffset } from '../snapping'
-import { alignLane, view, xToLane, yToTime, type Selection } from '../view'
+import { alignLane, ups, view, xToLane, yToTime, type Selection } from '../view'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
 
@@ -20,8 +26,13 @@ export const placementCursors: Record<'add' | 'edit' | 'move', CanvasCursor> = {
     move: 'move',
 }
 
-export const offset = (startLane: number, lane: number, anchor = startLane, origin = 0) =>
-    snappedOffset(startLane, lane, anchor - origin, view.laneDivision, view.laneSnapping)
+export const offset = (
+    startLane: number,
+    lane: number,
+    anchor = startLane,
+    origin = 0,
+    moved?: number,
+) => snappedOffset(startLane, lane, anchor - origin, view.laneDivision, view.laneSnapping, moved)
 
 /** An add-drag's pressed edge at the current beat; in Composed it keeps its displayed lane. */
 export const addDragAnchor = (
@@ -37,13 +48,15 @@ export const addDragAnchor = (
 }
 
 // A lane moved by the drag's offset, without float noise; unmoved, it stays exact.
+// Moved is the pointer's displayed lane movement, when lane also carries a stage shift.
 export const moveLane = (
     value: number,
     startLane: number,
     lane: number,
     anchor?: number,
     origin = 0,
-) => shiftComputed(value, offset(startLane, lane, anchor, origin))
+    moved = lane - startLane,
+) => shiftComputed(value, offset(startLane, lane, anchor, origin, moved))
 
 /** Commits a drop; one that changes nothing adds no undo step, and its notice goes. */
 export const commitDrop = <E extends Entity, O extends object>(
@@ -125,11 +138,12 @@ export const hitEntitiesAtPoint = <T extends EntityType>(
             minimumNoteWidth,
         ),
         x,
+        y,
         minimumNoteWidth,
     )
 }
 
-// Point priority is independent of storage and drawing order; ties keep their order.
+// Point priority by type, independent of storage and drawing order.
 const pointHitOrder: EntityType[] = [
     'note',
     'stageTransformEventJoint',
@@ -155,11 +169,56 @@ export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1
             minimumNoteWidth,
         ),
         x,
+        y,
         minimumNoteWidth,
-    ).sort(comparePointHits)
+    )
 }
 
-const filterPointHits = <T extends Entity>(entities: T[], x: number, minimumNoteWidth: number) => {
+/**
+ * Point hits, the one drawn on top first: notes whose artwork lies under the
+ * point, then by type, then in reverse drawing order, where an earlier beat and
+ * then a later entity in the grid are drawn over the rest. Selection, which also
+ * draws on top, is left to the tools, so cycling through the hits stays stable.
+ */
+export const orderPointHits = <T extends Entity>(
+    hits: T[],
+    x: number,
+    y: number,
+    source: State = state.value,
+    composed: ComposedLayout | undefined = getComposedLayout(source),
+) => {
+    const lane = xToLane(x)
+    const units = Math.max(0, yToTime(y)) * ups.value
+    const isUnder = (note: NoteEntity) => {
+        const position = composed?.notePosition(note) ?? note
+        const type = getNoteVisualType(
+            position.size === note.size ? note : { ...note, size: position.size },
+            source.store.slides.info.get(note.slideId),
+        )
+        return isOnNoteArtwork(
+            position.size,
+            type,
+            lane - position.left,
+            units - beatToTime(source.bpms, note.beat) * ups.value,
+        )
+    }
+    const under = new Set(hits.filter((entity) => entity.type === 'note' && isUnder(entity)))
+    const index = new Map(hits.map((entity, i) => [entity, i]))
+    return [...hits].sort(
+        (a, b) =>
+            +under.has(b) - +under.has(a) ||
+            comparePointHits(a, b) ||
+            a.beat - b.beat ||
+            (index.get(b) ?? 0) - (index.get(a) ?? 0),
+    )
+}
+
+const filterPointHits = <T extends Entity>(
+    entities: T[],
+    x: number,
+    y: number,
+    minimumNoteWidth: number,
+) => {
     const hits = entities.filter(isVisible)
     const lane = xToLane(x)
     const composed = getComposedLayout()
@@ -172,9 +231,13 @@ const filterPointHits = <T extends Entity>(entities: T[], x: number, minimumNote
             lane <= hitbox.lane + Math.max(hitbox.w, minimumNoteWidth / 2)
         )
     }
-    return hits.some(isDirectNote)
-        ? hits.filter((entity) => entity.type !== 'note' || isDirectNote(entity))
-        : hits
+    return orderPointHits(
+        hits.some(isDirectNote)
+            ? hits.filter((entity) => entity.type !== 'note' || isDirectNote(entity))
+            : hits,
+        x,
+        y,
+    )
 }
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>

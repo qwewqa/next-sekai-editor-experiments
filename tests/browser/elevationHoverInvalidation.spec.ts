@@ -91,7 +91,8 @@ test('main-canvas overlap changes redraw all hover highlights while stable hits 
         await page.evaluate(() =>
             window.editorTest.view.entities.hovered
                 .filter((entity) => entity.type === 'note')
-                .map((note) => note.elevation),
+                .map((note) => note.elevation)
+                .sort(),
         ),
     ).toEqual([0, 2])
     expect(await frames(page)).toBeGreaterThan(before)

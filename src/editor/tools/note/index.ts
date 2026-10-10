@@ -37,6 +37,7 @@ import {
     snapYToBeat,
     view,
     xToLane,
+    yToBeat,
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
@@ -80,6 +81,7 @@ let active:
     | {
           type: 'move'
           entity: NoteEntity
+          pressBeat: number
           lane: number
       }
     | undefined
@@ -210,6 +212,7 @@ export const note: Tool = {
                 active = {
                     type: 'move',
                     entity,
+                    pressBeat: yToBeat(y),
                     lane,
                 }
             } else {
@@ -289,13 +292,15 @@ export const note: Tool = {
 
                 view.entities = {
                     hovered: [],
-                    creating: [toNoteEntity(active.entity.slideId, object, active.entity)],
+                    creating: [
+                        previewEdit(active.entity, object) ??
+                            toNoteEntity(active.entity.slideId, object, active.entity),
+                    ],
                 }
-                previewEdit(active.entity, object)
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
                 const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
                 const object = constrainLaneObject({
                     ...active.entity,
@@ -306,14 +311,17 @@ export const note: Tool = {
                         lane,
                         active.entity.left,
                         getComposedGridOffset(active.entity.stageId, beat),
+                        xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                     ),
                 })
 
                 view.entities = {
                     hovered: [],
-                    creating: [toNoteEntity(active.entity.slideId, object, active.entity)],
+                    creating: [
+                        previewEdit(active.entity, object) ??
+                            toNoteEntity(active.entity.slideId, object, active.entity),
+                    ],
                 }
-                previewEdit(active.entity, object)
                 focusEntityAtBeat(beat)
                 break
             }
@@ -382,7 +390,7 @@ export const note: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
                 const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
 
                 commitDrop(
@@ -397,6 +405,7 @@ export const note: Tool = {
                             lane,
                             active.entity.left,
                             getComposedGridOffset(active.entity.stageId, beat),
+                            xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                         ),
                     }),
                 )
@@ -528,12 +537,17 @@ const edit = (entity: NoteEntity, object: Partial<WithEaseEdits<NoteObject>>) =>
     )
 }
 
+// An attached note takes its lane from the connector, so it previews as edited.
 const previewEdit = (entity: NoteEntity, object: NoteObject) => {
     const source = state.value
-    setPreviewEdit(source, () => {
+    const build = () => {
         const transaction = createTransaction(source)
         return transaction.commit(editSelectedNote(transaction, entity, object))
-    }, [entity, object.beat, object.left, object.size])
+    }
+    const built = entity.isAttached ? build() : undefined
+    setPreviewEdit(source, () => built ?? build(), [entity, object.beat, object.left, object.size])
+    const note = built?.selectedEntities[0]
+    return note?.type === 'note' ? note : undefined
 }
 
 const move = (entity: NoteEntity, object: NoteObject) => {
