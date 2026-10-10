@@ -6,7 +6,12 @@ import { interpolate } from '../utils/interpolate'
 import type { Modifiers } from './controls/gestures/pointer'
 import { editorNavigation, type EditorNavigation } from './navigation'
 import { notify } from './notification'
-import { combineSelection, hitOffscreenGroup, type OffscreenNoteGroup } from './offscreenNotes'
+import {
+    combineSelection,
+    hitOffscreenGroup,
+    offscreenBadgeHitWidth,
+    type OffscreenNoteGroup,
+} from './offscreenNotes'
 import { modifyEntities } from './tools/utils'
 import { view } from './view'
 
@@ -26,11 +31,16 @@ export const useOffscreenIndicators = (layer: IndicatorLayer) => {
     })
 }
 
+// No badge reaches further in from its side, whatever its count.
+const badgeReach = offscreenBadgeHitWidth(Number.MAX_SAFE_INTEGER)
+
 /** The active pane's badge with selectable notes at a client point. */
 export const hitOffscreenIndicator = (x: number, y: number) => {
     for (const layer of layers.value) {
         if (layer.navigation() !== editorNavigation.value) continue
         const bounds = layer.bounds()
+        // Hovering asks on every frame; away from the sides, no badge is in reach.
+        if (x - bounds.x > badgeReach && x - bounds.x < bounds.w - badgeReach) continue
         const group = hitOffscreenGroup(layer.groups(), x - bounds.x, y - bounds.y, bounds.w)
         if (group) return group
     }
