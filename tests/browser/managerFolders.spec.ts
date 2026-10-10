@@ -588,6 +588,35 @@ test('dragging joins, reorders and leaves folders', async ({ page }) => {
     expect(await tree(page)).toBe('[Verse: Bass Fill Outro] Default Lead')
 })
 
+test('leaving the window cancels a row drag, and its release drops nothing', async ({ page }) => {
+    await seedGroups(page, [['Default'], ['Lead', 'Verse'], ['Fill', 'Verse'], ['Outro']])
+    const rows = panel(page).locator('[data-row]')
+    const boxes = () =>
+        rows.evaluateAll((elements) =>
+            elements.map((element) => {
+                const { top, height } = element.getBoundingClientRect()
+                return { top, height, transform: (element as HTMLElement).style.transform }
+            }),
+        )
+    const before = await boxes()
+    const outro = (await nameButton(panel(page), 'Outro').boundingBox())!
+    const verse = (await folderRow(page, 'Verse').boundingBox())!
+    const x = outro.x + outro.width / 2
+    await page.mouse.move(x, outro.y + outro.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(x, verse.y + verse.height / 2, { steps: 10 })
+    await expect(panel(page).locator('.manager-row-dragging')).toHaveCount(1)
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await expect(panel(page).locator('.manager-row-dragging')).toHaveCount(0)
+    await expect.poll(boxes).toEqual(before)
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await page.mouse.move(x, verse.y + verse.height / 2 + 4)
+    await page.mouse.up()
+    expect(await tree(page)).toBe('Default [Verse: Lead Fill] Outro')
+    expect(await canUndo(page)).toBe(false)
+    expect(await page.evaluate(() => window.editorTest.view.groupId)).toBeUndefined()
+})
+
 test('a drag held still near the list edge keeps scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 600 })
     await seedGroups(page, [

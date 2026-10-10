@@ -10,6 +10,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
+import { isAppActive } from '../../../activity'
 import {
     entriesInTreeOrder,
     type FolderId,
@@ -810,7 +811,10 @@ const isStuck = (folder: HTMLElement) => {
 }
 const updateStuck = () => {
     const element = list.value
-    const folders = element?.querySelectorAll<HTMLElement>(':scope > .manager-folder') ?? []
+    // Folders don't nest; WebKit is slow at a :scope query here.
+    const folders = [...(element?.children ?? [])].filter((child) =>
+        child.classList.contains('manager-folder'),
+    ) as HTMLElement[]
     // Folders lie in order, so only the last one starting above the list's edge can be stuck.
     const edge = (element?.getBoundingClientRect().top ?? 0) + (element?.clientTop ?? 0)
     let above = 0
@@ -1264,6 +1268,14 @@ onUnmounted(stopDragListeners)
 watch(tree, () => {
     if (drag.value) onDragCancel()
 })
+// Leaving the app cancels a drag, as it does elsewhere: the release may never come back.
+watch(
+    isAppActive,
+    (active) => {
+        if (!active && drag.value) onDragCancel()
+    },
+    { flush: 'sync' },
+)
 
 const isDragged = (key: RowKey) => !!drag.value?.started && drag.value.dragged.has(rowKey(key))
 const isDroppingInto = computed(() => {
