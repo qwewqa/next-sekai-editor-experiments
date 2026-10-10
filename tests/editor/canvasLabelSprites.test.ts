@@ -206,8 +206,9 @@ test('names look the same at the device scale: sprites are drawn as drawText sha
 
 test('a new text, colour, size, font, device scale or language makes a new sprite', (t) => {
     const { context, sprites, created } = scene(t)
+    let frame = 0
     const draw = (overrides: Partial<EditorDrawContext> = {}, color = '#f6f', text = 'Stage') => {
-        sprites.beginFrame(1)
+        sprites.beginFrame(++frame)
         const at = { ...context, ...overrides }
         placeNames(at, queue(at, [[text, 0, 0, color]]))
     }
@@ -217,10 +218,12 @@ test('a new text, colour, size, font, device scale or language makes a new sprit
     draw({}, '#a0a')
     draw({}, '#f6f', 'Group')
     draw({ fontFamily: 'serif' })
-    // A wider pane: a larger font for the same lanes.
+    // A wider pane: a larger font for the same lanes, once the scale holds a frame.
+    draw({ scale: 20 })
     draw({ scale: 20 })
     assert.equal(created.length, 6)
     context.ctx.setTransform(20, 0, 0, 20, 0, 0)
+    draw()
     draw()
     assert.equal(created.length, 7)
     ;(
@@ -232,6 +235,40 @@ test('a new text, colour, size, font, device scale or language makes a new sprit
     // Drawing it again reuses it.
     draw()
     assert.equal(created.length, 8)
+})
+
+test('while the scale changes every frame, as in a pinch zoom, new names draw as text', (t) => {
+    const { context, ctx, sprites, created } = scene(t)
+    let frame = 0
+    const draw = (scale: number, pixelRatio = 1, text = 'Stage') => {
+        sprites.beginFrame(++frame)
+        ctx.calls = []
+        ctx.setTransform(scale * pixelRatio, 0, 0, scale * pixelRatio, 0.3, 0.6)
+        const at = { ...context, scale }
+        // The chart and its overlay share a frame.
+        placeNames(at, queue(at, [[text, 0, 0]]))
+        placeNames(at, queue(at, [[text, 0, 2]]))
+        const op = (name: string) => ctx.calls.filter((call) => call.op === name).length
+        return { sprites: op('drawImage'), text: op('fillText') }
+    }
+    // The first frame rasterises at once.
+    assert.deepEqual(draw(10), { sprites: 2, text: 0 })
+    assert.equal(created.length, 2)
+    // Each frame at a new scale draws text, as drawText would, and makes no sprite.
+    for (const scale of [11, 12, 13]) assert.deepEqual(draw(scale), { sprites: 0, text: 2 })
+    assert.equal(created.length, 2)
+    // A scale it already holds a sprite for still draws from it.
+    assert.deepEqual(draw(10), { sprites: 2, text: 0 })
+    // Once the scale holds a frame, as on the next still frame, the name rasterises.
+    assert.deepEqual(draw(14), { sprites: 0, text: 2 })
+    assert.deepEqual(draw(14), { sprites: 2, text: 0 })
+    assert.equal(created.length, 3)
+    // The same for a device scale change, which keeps the font size.
+    assert.deepEqual(draw(14, 1.25), { sprites: 0, text: 2 })
+    assert.deepEqual(draw(14, 1.25), { sprites: 2, text: 0 })
+    // A new text at a scale that holds rasterises at once.
+    assert.deepEqual(draw(14, 1.25, 'Group'), { sprites: 2, text: 0 })
+    assert.equal(created.length, 5)
 })
 
 test('clearing releases every sprite', (t) => {

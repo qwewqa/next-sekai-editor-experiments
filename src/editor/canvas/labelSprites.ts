@@ -25,7 +25,11 @@ export const createLabelSprites = () => {
     const sprites = new Map<string, Sprite>()
     let cachedPixels = 0
     let frame = 0
+    // Distinct frames drawn, to tell a scale that holds from one changing every frame.
+    let frames = 0
     let lang = ''
+    // The scale names last drew at, and the frame it changed on.
+    let zoom = { kx: NaN, ky: NaN, scale: NaN, since: -1 }
 
     const release = (sprite: Sprite) => {
         cachedPixels -= sprite.pixels
@@ -93,6 +97,7 @@ export const createLabelSprites = () => {
 
     return {
         beginFrame(timestamp: number) {
+            if (timestamp !== frame) frames++
             frame = timestamp
             lang = document.documentElement.lang
         },
@@ -116,6 +121,10 @@ export const createLabelSprites = () => {
             const kx = a / scale
             const ky = d / scale
             const fontSize = size * scale
+            if (zoom.kx !== kx || zoom.ky !== ky || zoom.scale !== scale) {
+                const first = Number.isNaN(zoom.scale)
+                zoom = { kx, ky, scale, since: first ? -1 : frames }
+            }
             if (
                 style.kx !== kx ||
                 style.ky !== ky ||
@@ -136,6 +145,8 @@ export const createLabelSprites = () => {
             } else {
                 const normalized = normalizeSvgText(text)
                 if (!normalized) return true
+                // Pinch zoom and pane resizes change the scale every frame; draw text until it holds.
+                if (zoom.since === frames) return false
                 sprite = create(normalized, color, fontSize, fontFamily, middle, align, kx, ky)
                 if (!sprite) return false
                 sprites.set(key, sprite)

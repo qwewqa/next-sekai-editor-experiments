@@ -180,4 +180,15 @@ test('a motion window is released after an exact last moving frame', (t) => {
     // Slower motion still shifts a window.
     assert.equal(draw(6030, -1.75), true)
     assert.equal(allocated.length, count + 1)
+    const slow = allocated.at(-1)!
+
+    // Speeding past what a window holds releases it at once, not seconds after the motion.
+    assert.equal(draw(6040, -0.65), true)
+    assert.equal(draw(6050, 0.45), true)
+    assert.equal(draw(6060, 1.55), true)
+    assert.ok(slow.height > 0)
+    assert.equal(draw(6070, 2.65), false)
+    assert.deepEqual([slow.width, slow.height], [0, 0])
+    assert.equal(draw(6080, 3.75), false)
+    assert.equal(allocated.length, count + 1)
 })

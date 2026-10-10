@@ -111,8 +111,11 @@ export const createStageSurface = () => {
         if (
             (dx !== 0 && (dx > 0 ? right : left) < stepX * MIN_FRAMES) ||
             (dy !== 0 && (dy > 0 ? bottom : top) < stepY * MIN_FRAMES)
-        )
+        ) {
+            // Too fast for any window: release the last one rather than hold it through the motion.
+            clearMotion()
             return false
+        }
         // The canvas only grows, so speed and direction changes reuse it.
         const target = motion?.canvas ?? document.createElement('canvas')
         motion = undefined

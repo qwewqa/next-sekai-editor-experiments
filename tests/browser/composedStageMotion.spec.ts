@@ -219,7 +219,7 @@ const coveredAreas = (page: Page) =>
         })
     })
 
-// A new store can antialias stroke ends a little differently; stale pixels differ by far more.
+// The settled frame matches a fresh chart; a few pixels allow for rasteriser rounding.
 const expectFresh = async (page: Page, settled: Buffer) => {
     // Left out as they were for the settled shot and are for the fresh one.
     const covered = await coveredAreas(page)
@@ -238,29 +238,24 @@ const expectFresh = async (page: Page, settled: Buffer) => {
             }
             const [x, y] = await Promise.all([read(a), read(b)])
             let pixels = 0
-            let row = 0
             for (let j = 0; j < x.height; j++) {
-                let count = 0
                 for (let n = 0; n < x.width; n++) {
                     if (covered.some(({ l, r, t, b }) => l <= n && n < r && t <= j && j < b))
                         continue
                     const i = (j * x.width + n) * 4
                     for (let k = 0; k < 4; k++) {
                         if (Math.abs(x.data[i + k]! - y.data[i + k]!) > 24) {
-                            count++
+                            pixels++
                             break
                         }
                     }
                 }
-                pixels += count
-                row = Math.max(row, count)
             }
-            return { pixels, row }
+            return pixels
         },
         { a: settled.toString('base64'), b: fresh.toString('base64'), covered },
     )
-    expect(difference.pixels).toBeLessThanOrEqual(64)
-    expect(difference.row).toBeLessThanOrEqual(16)
+    expect(difference).toBeLessThanOrEqual(4)
 }
 
 // Hides or shows every stage.

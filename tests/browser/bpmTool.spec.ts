@@ -179,14 +179,18 @@ for (const layout of ['basic', 'composed'] as const)
                 { beat: 4, bpm: 150.123456789, meter: 4 },
             ])
 
-            const { labelEnd, boxEnd } = await page.evaluate(() => {
-                const { view, settings, history } = window.editorTest
+            const { labelEnd, boxEnd } = await page.evaluate(async () => {
+                const { view, settings, history, appImport } = window.editorTest
+                // Where the chart draws the label, and at what size.
+                const { BPM_LABEL } = await appImport<
+                    typeof import('../../src/state/entities/bpm')
+                >('/src/state/entities/bpm.ts')
                 const entity = history.state.value.selectedEntities[0]!
                 const lanePx = view.w / settings.width
                 const ctx = document.createElement('canvas').getContext('2d')!
-                ctx.font = `${0.5 * lanePx}px ${getComputedStyle(document.querySelector('.editor')!).fontFamily}`
+                ctx.font = `${BPM_LABEL.size * lanePx}px ${getComputedStyle(document.querySelector('.editor')!).fontFamily}`
                 return {
-                    labelEnd: 6.1 + ctx.measureText('150.1235').width / lanePx,
+                    labelEnd: BPM_LABEL.lane + ctx.measureText('150.1235').width / lanePx,
                     boxEnd: entity.hitbox!.lane + entity.hitbox!.w,
                 }
             })
