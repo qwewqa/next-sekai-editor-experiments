@@ -311,6 +311,28 @@ export const getStageProps = (
     return props
 }
 
+/** getStageProps' pivotLane + xLaneTranslate alone, without the other properties. */
+export const getStageOffset = (
+    stage: PreviewStage,
+    t: number,
+    { rightLimit = false }: LimitOptions = {},
+) => {
+    let pivotLane = 0
+    const [pivotA, pivotB, pivotProgress] = queryEvents(stage.pivots, t, rightLimit)
+    if (pivotA) pivotLane = pivotB ? lerp(pivotA.lane, pivotB.lane, pivotProgress) : pivotA.lane
+    else if (pivotB) pivotLane = pivotB.lane
+
+    let xLaneTranslate = 0
+    const [transformA, transformB, transformProgress] = queryEvents(stage.transforms, t, rightLimit)
+    if (transformA)
+        xLaneTranslate = transformB
+            ? lerp(transformA.xLaneTranslate, transformB.xLaneTranslate, transformProgress)
+            : transformA.xLaneTranslate
+    else if (transformB) xLaneTranslate = transformB.xLaneTranslate
+
+    return pivotLane + xLaneTranslate
+}
+
 export const stagePropsHasTransform = (props: StageProps) =>
     props.rotate !== 0 ||
     props.xLaneTranslate !== 0 ||

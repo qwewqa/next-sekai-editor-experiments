@@ -2112,7 +2112,9 @@ test('names draw after every row, overlapping, with selected rows on top', async
                     drawn.push(entry)
             }
             prototype.drawImage = function (...args: unknown[]) {
-                record(this.canvas, 'body')
+                // Names draw from their sprites.
+                const label = window.editorLabels.get(args[0] as HTMLCanvasElement)?.text
+                record(this.canvas, label === 'Center' || label === 'Side stage' ? label : 'body')
                 return (drawImage as (...args: unknown[]) => void).apply(this, args)
             }
             prototype.fill = function (...args: unknown[]) {

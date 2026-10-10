@@ -14,7 +14,7 @@ import type { Range } from '../../utils/range'
 import { getPathD, getRangePathDs } from '../entities/events/path'
 import type { ScopeLookup } from '../scopeRules'
 import { drawName, stageNameColor } from './names'
-import { drawText, measureText } from './text'
+import { drawText, measureCachedText } from './text'
 import type { CanvasBounds, EditorDrawContext } from './types'
 
 type DrawnEventEntity = Exclude<Entity, { type: 'note' | 'connector' }>
@@ -193,7 +193,7 @@ export const timeScaleLabel = (context: EditorDrawContext, entity: TimeScaleEnti
     const text = (stack ?? [entity])
         .map(({ timeScale, skip }) => formatTimeScale(timeScale, skip))
         .join('→')
-    const textWidth = measureText(context, text, 0.5)
+    const textWidth = measureCachedText(context, text, 0.5)
     const width = LABEL_OFFSET + EASE_GLYPH.width + EASE_GLYPH.gap + textWidth
     const direction = timeScaleLabelDirection(x, width, context.bounds)
     // From the ease glyph to the text's far end.
