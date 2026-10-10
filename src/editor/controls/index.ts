@@ -2,6 +2,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { isAppActive } from '../../activity'
 import { replaceState, state } from '../../history'
 import { isBlockingModalOpen } from '../../modals'
+import { settings } from '../../settings'
 import { hasSameChartData } from '../../state/data'
 import type { EntityType } from '../../state/entities'
 import { isComposingKey } from '../../utils/composition'
@@ -10,7 +11,7 @@ import { editorNavigation, type EditorNavigation } from '../navigation'
 import { isEntityShown, scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { tool } from '../tools'
-import { clampViewLane, view } from '../view'
+import { clampViewLane, clampViewToReach, view } from '../view'
 import { dragCursor, lockedCursor } from './cursor'
 import { isDragging } from './gestures/recognizers/drag'
 import { cancelMouseControls, hasMouseControls, mouseControlListeners } from './mouse'
@@ -94,6 +95,13 @@ export const useControlLifecycle = () => {
     )
     // Leaving Composed, by layout or by chart, returns to Basic's scroll range.
     watch(() => view.layout === 'composed' && state.value.isDynamicStages, clampViewLane)
+    // A lower Max Scroll X applies at once, in either layout.
+    watch(
+        () => settings.maxScrollX,
+        (limit, previous) => {
+            if (limit < previous) clampViewToReach()
+        },
+    )
     watch(
         [tool, state],
         ([currentTool, currentState], [previousTool, previousState]) => {

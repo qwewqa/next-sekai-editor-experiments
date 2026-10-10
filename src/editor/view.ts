@@ -3,6 +3,7 @@ import { times } from '.'
 import type { GroupId } from '../chart/groups'
 import type { StageId } from '../chart/stages'
 import { bpms } from '../history/bpms'
+import { onResetState } from '../history/resetHooks'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
@@ -229,19 +230,21 @@ export const viewBox = computed(() => {
 export const ups = computed(() => viewBox.value.ups)
 
 // Composed also reaches the displayed chart, which stages can move past Max Scroll X.
-const scrollLanes = (lane: number) => {
+const scrollReach = () => {
     const limit = settings.maxScrollX
     const extent = getComposedLayout()?.displayedExtent()
     if (!extent) return { min: -limit, max: limit }
     const half = settings.width / 2
-    // A view left outside by an edit or zoom scrolls back without a jump.
-    return {
-        min: Math.min(-limit, extent.min + half, lane),
-        max: Math.max(limit, extent.max - half, lane),
-    }
+    return { min: Math.min(-limit, extent.min + half), max: Math.max(limit, extent.max - half) }
 }
 
-// The reach always includes the lane itself, so a zero step skips computing it.
+const scrollLanes = (lane: number) => {
+    const { min, max } = scrollReach()
+    // A view left outside by an edit or zoom scrolls back without a jump.
+    return { min: Math.min(min, lane), max: Math.max(max, lane) }
+}
+
+// A zero step keeps the lane without computing the reach, even past Basic's Max Scroll X.
 const scrolledLane = (lane: number, delta: number) => {
     if (delta === 0) return lane
     const lanes = scrollLanes(lane)
@@ -254,6 +257,22 @@ export const clampViewLane = () => {
     view.scrollingX = undefined
     view.lane = clamp(view.lane, -settings.maxScrollX, settings.maxScrollX)
 }
+
+/** Brings the view, and any eased sideways scroll, within a reach that has just shrunk. */
+export const clampViewToReach = () => {
+    const { min, max } = scrollReach()
+    if (view.scrollingX?.type === 'ease')
+        view.scrollingX.to.viewLane = clamp(view.scrollingX.to.viewLane, min, max)
+    if (view.lane >= min && view.lane <= max) return
+    view.scrollingX = undefined
+    view.lane = clamp(view.lane, min, max)
+}
+
+// A newly loaded chart opens within its own reach, with no sideways scroll left from the last one.
+onResetState(() => {
+    view.scrollingX = undefined
+    clampViewToReach()
+})
 
 export const scrollViewXBy = (dx: number, smooth = false) => {
     updateViewLastActive()

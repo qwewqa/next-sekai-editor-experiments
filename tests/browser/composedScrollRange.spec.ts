@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { gzipSync } from 'node:zlib'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 test.beforeEach(async ({ page }) => {
@@ -8,43 +9,55 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
 })
 
-const scroll = (page: import('@playwright/test').Page, layout: 'basic' | 'composed') =>
-    page.evaluate(async (layout) => {
-        const { fixtures, show, view, settings, appImport, nextTick } = window.editorTest
-        const base = fixtures.interaction.slides[0]![0]!
-        // The stage moves from lane 0 to 24 over 8 beats; it and its notes leave Basic's range.
-        show(
-            {
-                ...fixtures.interaction,
-                isDynamicStages: true,
-                stageTransformEvents: [0, 8].map((beat) => ({
-                    stageId: base.stageId,
-                    beat,
-                    rotation: 0,
-                    xTranslation: beat * 3,
-                    yTranslation: 0,
-                    elevation: 0,
-                    anchor: 'default' as const,
-                    eventEase: 'linear' as const,
-                })),
-                stageMaskEvents: [
-                    {
+// A stage that moves past Basic's range, with Max Scroll X at 0.
+const seed = (page: Page, layout: 'basic' | 'composed', travel = 3) =>
+    page.evaluate(
+        async ({ layout, travel }) => {
+            const { fixtures, show, view, settings, nextTick } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            // The stage moves from lane 0 to 8 * travel over 8 beats; it and its notes leave Basic's range.
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: true,
+                    stageTransformEvents: [0, 8].map((beat) => ({
                         stageId: base.stageId,
-                        beat: 0,
-                        maskLeft: -2,
-                        maskSize: 4,
-                        isMaskNotes: false,
-                        eventEase: 'linear',
-                    },
-                ],
-                slides: [[{ ...base, beat: 4, left: -1, size: 2 }]],
-            },
-            2,
-        )
-        settings.width = 16
-        settings.maxScrollX = 0
-        view.layout = layout
-        await nextTick()
+                        beat,
+                        rotation: 0,
+                        xTranslation: beat * travel,
+                        yTranslation: 0,
+                        elevation: 0,
+                        anchor: 'default' as const,
+                        eventEase: 'linear' as const,
+                    })),
+                    stageMaskEvents: [
+                        {
+                            stageId: base.stageId,
+                            beat: 0,
+                            maskLeft: -2,
+                            maskSize: 4,
+                            isMaskNotes: false,
+                            eventEase: 'linear',
+                        },
+                    ],
+                    slides: [[{ ...base, beat: 4, left: -1, size: 2 }]],
+                },
+                2,
+            )
+            settings.width = 16
+            settings.maxScrollX = 0
+            view.layout = layout
+            await nextTick()
+        },
+        { layout, travel },
+    )
+
+const scroll = (page: Page, layout: 'basic' | 'composed') =>
+    seed(page, layout).then(() => scrolled(page))
+
+const scrolled = (page: Page) =>
+    page.evaluate(async () => {
+        const { view, settings, appImport, nextTick } = window.editorTest
         const { scrollViewXBy, scrollViewYBy } =
             await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
         const lanes = (dx: number) => {
@@ -68,7 +81,7 @@ const scroll = (page: import('@playwright/test').Page, layout: 'basic' | 'compos
         view.layout = 'basic'
         await nextTick()
         return { right, stillRight, left, outward, inward, afterBasic: view.lane + 0 }
-    }, layout)
+    })
 
 test('composed scrolls sideways to stages and notes moved past Max Scroll X', async ({ page }) => {
     const result = await scroll(page, 'composed')
@@ -127,8 +140,17 @@ test('vertical wheels leave the sideways reach uncomputed, smooth or not', async
             window.editorTest.view.lane = 0
         }, smooth)
         await calls()
+        const time = await page.evaluate(() => window.editorTest.view.time)
         await page.mouse.wheel(0, 100)
-        await page.waitForTimeout(100)
+        // Handled, and any eased scroll has come to rest.
+        await expect
+            .poll(() =>
+                page.evaluate((time) => {
+                    const { view } = window.editorTest
+                    return view.time !== time && !view.scrollingY
+                }, time),
+            )
+            .toBe(true)
         expect(
             await page.evaluate(() => ({
                 calls: (window as unknown as { extentCalls: () => number }).extentCalls(),
@@ -137,11 +159,114 @@ test('vertical wheels leave the sideways reach uncomputed, smooth or not', async
         ).toEqual({ calls: 0, lane: 0 })
         // A sideways wheel still reaches by it.
         await page.mouse.wheel(100, 0)
-        await page.waitForTimeout(400)
-        expect(
-            await page.evaluate(() =>
-                (window as unknown as { extentCalls: () => number }).extentCalls(),
-            ),
-        ).toBeGreaterThan(0)
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    (window as unknown as { extentCalls: () => number }).extentCalls(),
+                ),
+            )
+            .toBeGreaterThan(0)
     }
+})
+
+test('a lower Max Scroll X brings the view within the reach at once, in either layout', async ({
+    page,
+}) => {
+    const lane = () => page.evaluate(() => window.editorTest.view.lane)
+    const place = (lane: number, limit: number) =>
+        page.evaluate(
+            ({ lane, limit }) => {
+                const { view, settings } = window.editorTest
+                settings.maxScrollX = limit
+                view.lane = lane
+            },
+            { lane, limit },
+        )
+    // Through the Settings dialog, as the user would.
+    const setLimit = async (limit: number) => {
+        await page.mouse.move(800, 500)
+        await page.keyboard.press(',')
+        const field = page.getByRole('spinbutton', { name: 'Max Scroll X (lanes)', exact: true })
+        await field.fill(`${limit}`)
+        await field.press('Enter')
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    }
+
+    await seed(page, 'basic')
+    await place(8, 10)
+    await setLimit(3)
+    expect(await lane()).toBe(3)
+    await place(-8, 10)
+    await setLimit(3)
+    expect(await lane()).toBe(-3)
+    // Raising it leaves the view where it is.
+    await setLimit(10)
+    expect(await lane()).toBe(-3)
+
+    // Composed keeps the stage's reach: its right edge stops at lane 26, as a sideways scroll does.
+    await seed(page, 'composed')
+    await place(25, 30)
+    await setLimit(5)
+    expect(await lane()).toBeCloseTo(26 - 8, 6)
+    await place(-20, 30)
+    await setLimit(5)
+    expect(await lane()).toBe(-5)
+
+    // An eased sideways scroll ends within the new limit.
+    await seed(page, 'basic')
+    await place(0, 10)
+    await page.evaluate(async () => {
+        const { view, settings, appImport } = window.editorTest
+        const { scrollViewXBy } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        scrollViewXBy(10_000, true)
+        settings.maxScrollX = 4
+        ;(window as unknown as { easing: boolean }).easing = !!view.scrollingX
+    })
+    expect(await page.evaluate(() => (window as unknown as { easing: boolean }).easing)).toBe(true)
+    await expect.poll(() => page.evaluate(() => !window.editorTest.view.scrollingX)).toBe(true)
+    expect(await lane()).toBe(4)
+})
+
+test('a chart opened in Composed starts within its own reach', async ({ page }) => {
+    // A chart whose stage only travels to lane 8, so its reach ends at lane 10 - 8.
+    await seed(page, 'composed', 1)
+    const level = await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { serializeToLevelData } = await appImport<
+            typeof import('../../src/levelData/serialize')
+        >('/src/levelData/serialize.ts')
+        const { store, groups, stages } = history.state.value
+        return serializeToLevelData(1000, true, 0, store, groups, stages)
+    })
+    // Scrolled to the right edge of a chart that reaches further.
+    await seed(page, 'composed')
+    const right = await page.evaluate(async () => {
+        const { view, appImport } = window.editorTest
+        const { scrollViewXBy } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        for (let i = 0; i < 40; i++) scrollViewXBy(100)
+        // The file input path, as in browsers without the File System Access API.
+        Object.defineProperty(window, 'showOpenFilePicker', {
+            configurable: true,
+            value: undefined,
+        })
+        return view.lane
+    })
+    expect(right).toBeCloseTo(26 - 8, 6)
+
+    const opening = page.waitForEvent('filechooser')
+    await page.keyboard.press('o')
+    await (
+        await opening
+    ).setFiles({
+        name: 'narrow',
+        mimeType: 'application/octet-stream',
+        buffer: gzipSync(JSON.stringify(level)),
+    })
+    await expect
+        .poll(() => page.evaluate(() => window.editorTest.history.state.value.filename))
+        .toBe('narrow')
+    expect(await page.evaluate(() => window.editorTest.view.lane)).toBeCloseTo(10 - 8, 6)
 })

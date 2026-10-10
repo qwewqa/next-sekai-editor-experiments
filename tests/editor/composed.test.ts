@@ -401,6 +401,25 @@ test('stage geometry is shared between layouts of the same stages and released w
     assert.equal(bpms.deref(), undefined)
 })
 
+test('a reused layout does not keep the state it was first built for', async () => {
+    setFlagsFromString('--expose-gc')
+    const gc = runInNewContext('gc') as () => void
+    const source = state({ stagePivotEvents: [pivot(0, 0), pivot(4, 6)] })
+    const open = () => {
+        const first = { ...source, selectedEntities: [...source.selectedEntities] }
+        const layout = createComposedLayout(first)
+        // A selection change reuses the layout, and history then drops the first state.
+        const later = { ...source, selectedEntities: [] }
+        assert.equal(createComposedLayout(later), layout)
+        return { first: new WeakRef(first), later }
+    }
+    const { first, later } = open()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    gc()
+    assert.equal(first.deref(), undefined)
+    assert.ok(createComposedLayout(later))
+})
+
 test('selection layout reuse invalidates for note, tempo, stage-event and stage-metadata edits', () => {
     const source = state({
         slides: [[note(2), note(4, 0, { isAttached: true }), note(6, 2)]],
