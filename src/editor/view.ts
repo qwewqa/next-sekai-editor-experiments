@@ -9,7 +9,7 @@ import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
 import { time } from '../time'
 import { computedArray } from '../utils/array'
-import { align, clamp, lerp, unlerp } from '../utils/math'
+import { align, alignNear, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
 import { requestAudioPreview } from './audioPreview'
 import { getComposedLayout } from './composedView'
@@ -427,5 +427,9 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
     )
 }
 
+// A beat moved by an offset, without float noise on the division's grid; unmoved, it stays exact.
+export const toMovedBeat = (beat: number, offset: number) =>
+    offset === 0 ? beat : alignNear(beat + offset, view.division)
+
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
-    Math.max(0, beat + yToMoveBeatOffset(y, beat, pressBeat))
+    Math.max(0, toMovedBeat(beat, yToMoveBeatOffset(y, beat, pressBeat)))

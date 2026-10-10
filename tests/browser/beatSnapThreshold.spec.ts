@@ -277,3 +277,21 @@ test('Composed and attached ticks snap from the grabbed beat', async ({ page }) 
         }
     }
 })
+
+// Moved beats land exactly on the grid: 4/3 + 1/3 in floating point is 1 ulp off 5/3.
+test('a move by a third lands exactly on the next third', async ({ page }) => {
+    for (const [tool, mode, beats, landed] of [
+        ['select', 'relative', [4 / 3], [5 / 3]],
+        ['note', 'relative', [4 / 3], [5 / 3]],
+        ['slide', 'relative', [4 / 3], [5 / 3]],
+        // The grabbed note moves by 2/3 - 1/3; the other note by that offset.
+        ['select', 'absolute', [1 / 3, 4 / 3], [2 / 3, 5 / 3]],
+    ] as const) {
+        await setup(page, { tool, mode, beats: [...beats] })
+        await page.evaluate(() => {
+            window.editorTest.view.division = 3
+        })
+        await drag(page, -1, 1 / 3, beats[0])
+        expect(await beatsOf(page), `${tool} ${mode}`).toEqual(landed)
+    }
+})

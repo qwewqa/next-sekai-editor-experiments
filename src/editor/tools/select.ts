@@ -84,6 +84,7 @@ import {
     focusEntityAtBeat,
     focusViewAtBeat,
     setViewHover,
+    toMovedBeat,
     view,
     xToLane,
     yToBeat,
@@ -321,7 +322,7 @@ export const select: Tool = {
                 let focusBeat = active.focus.beat
                 for (const entity of active.entities) {
                     if (isPinned(entity, beatOffset)) continue
-                    const beat = entity.beat + beatOffset
+                    const beat = toMovedBeat(entity.beat, beatOffset)
 
                     const result = creates[entity.type]?.(
                         active.onlyType,
@@ -445,7 +446,7 @@ export const select: Tool = {
                           active.focus as never,
                           active.lane,
                           lane,
-                          active.focus.beat + beatOffset,
+                          toMovedBeat(active.focus.beat, beatOffset),
                           active.focus,
                           rawMove,
                       )
@@ -522,7 +523,7 @@ const moveEntities = (
         ? new Map(
               entities
                   .filter((entity) => entity.type === 'note')
-                  .map((note) => [note, note.beat + beatOffset]),
+                  .map((note) => [note, toMovedBeat(note.beat, beatOffset)]),
           )
         : undefined
     const bases = getMoveBases(source, active, beatOffset)
@@ -530,7 +531,7 @@ const moveEntities = (
     let destinationNotes: Map<NoteEntity, NoteEntity> | undefined
     for (const entity of entities) {
         if (isPinned(entity, beatOffset)) continue
-        const beat = entity.beat + beatOffset
+        const beat = toMovedBeat(entity.beat, beatOffset)
         if (entity === active.focus) focusIndex = selectedEntities.length
         if (entity.type === 'note') placed.set(entity, selectedEntities.length)
 
@@ -663,7 +664,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     if (cached?.source === source && cached.beatOffset === beatOffset) return cached.bases
     const beats = new Map<NoteEntity, number>()
     for (const entity of active.entities)
-        if (entity.type === 'note') beats.set(entity, entity.beat + beatOffset)
+        if (entity.type === 'note') beats.set(entity, toMovedBeat(entity.beat, beatOffset))
     const bases = getMovedEndBases(source, beats)
     active.bases = { source, beatOffset, bases }
     return bases
@@ -709,7 +710,7 @@ const isUnmoved = (active: MoveActive, lane: number, beatOffset: number, rawMove
             entity as never,
             active.lane,
             lane,
-            entity.beat + beatOffset,
+            toMovedBeat(entity.beat, beatOffset),
             active.focus,
             rawMove,
         )
@@ -1006,7 +1007,8 @@ const toMovedNoteObject = (
 
     const composed = getComposedLayout()
     const anchor = composed && focus.type === 'note' ? (bases?.get(focus) ?? focus) : from
-    const anchorBeat = anchor.beat + beat - entity.beat
+    const anchorBeat =
+        anchor.beat === entity.beat ? beat : toMovedBeat(anchor.beat, beat - entity.beat)
     // Only the grabbed note is inverted into its destination stage. Every
     // selected note receives that same authored delta, so animated stages can
     // change their displayed spacing without changing the chart's shape.
