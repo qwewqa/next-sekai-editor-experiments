@@ -7,15 +7,19 @@ export const formatTime = (time: number) => {
     return `${`${Math.floor(ms / 60000)}`.padStart(2, '0')}:${((ms % 60000) / 1000).toFixed(3).padStart(6, '0')}`
 }
 
-// As Properties shows it.
-export const formatBpm = (value: number) => `${+value.toFixed(4)}`
+// Rounds as Properties shows numbers.
+const round = (value: number) => +value.toFixed(4)
+
+export const formatBpm = (value: number) => `${round(value)}`
 
 export const formatTimeScale = (value: number, skip: number) => {
-    let text = `${value}x`
+    let text = `${round(value)}x`
 
-    if (skip) {
-        if (skip > 0) text += '+'
-        text += `${skip}`
+    // A skip that rounds to 0 shows none.
+    const shownSkip = round(skip)
+    if (shownSkip) {
+        if (shownSkip > 0) text += '+'
+        text += `${shownSkip}`
     }
 
     return text

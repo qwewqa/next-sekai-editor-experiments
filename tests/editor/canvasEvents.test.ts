@@ -757,6 +757,28 @@ test('a same-beat pair draws one label in the order it plays', () => {
     )
 })
 
+test('a same-beat pair rounds each value in its one label', () => {
+    const timeScale = (value: number): TimeScaleObject => ({
+        groupId,
+        beat: 2,
+        editorLane: 7,
+        timeScale: value,
+        skip: 1.23456789,
+        timeScaleEase: 'inStep',
+        timeScaleTransition: 'timeScale',
+        hideNotes: false,
+    })
+    const { context, canvas } = makeContext({
+        timeScales: [timeScale(1.123456789), timeScale(0.333333333)],
+    })
+    for (const entities of context.state.store.grid.timeScale.values())
+        for (const entity of entities) drawEvent(context, entity, false)
+    assert.deepEqual(
+        canvas.labels.map(({ text }) => text),
+        ['1.1235x+1.2346→0.3333x+1.2346'],
+    )
+})
+
 test('time-scale labels turn inward only where outward would leave the view', () => {
     const timeScale = (beat: number, editorLane: number, value: number): TimeScaleObject => ({
         groupId: 2 as GroupId,
