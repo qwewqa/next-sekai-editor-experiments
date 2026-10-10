@@ -87,6 +87,9 @@ const installStageCounters = () => {
     }
 }
 
+// Longer than the gap that ends one motion (stageSurface SUSTAINED_MS).
+const SPACED_MS = 200
+
 const counters = (page: Page) =>
     page.evaluate(() => {
         const { strokes, shifted, windows, resizes, last, strokesAtShift, shiftedAt, releasedAt } =
@@ -176,25 +179,99 @@ const seed = (page: Page, time: number) =>
         await nextTick()
     }, time)
 
-// Draws the stages exactly again, on the same store: a new store can antialias stroke ends differently.
-const redrawStages = (page: Page) =>
-    page.evaluate(async () => {
-        const { view, nextTick } = window.editorTest
-        const division = view.laneDivision
-        view.laneDivision = division === 1 ? 2 : 1
-        await nextTick()
-        await new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        )
-        view.laneDivision = division
-        await nextTick()
+// Unmasked: a mask repaints the page, which can hide stale stage pixels.
+const chartShot = (page: Page) => page.locator('canvas.editor-chart').screenshot()
+
+// The chart once the pointer has left and the stages are drawn exactly again.
+const stillShot = async (page: Page) => {
+    await page.mouse.move(8, 300)
+    await stillStages(page)
+    await frames(page, 4)
+    return chartShot(page)
+}
+
+// The same view drawn from a new chart, so with new stage stores and caches.
+const freshShot = async (page: Page) => {
+    const place = await page.evaluate(() => {
+        const { view } = window.editorTest
+        return { time: view.time, lane: view.lane, cursorTime: view.cursorTime }
+    })
+    await seed(page, place.time)
+    await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
+    return stillShot(page)
+}
+
+// Areas of the toolbar and notifications over the chart, which can be mid-transition.
+const coveredAreas = (page: Page) =>
+    page.evaluate(() => {
+        const chart = document.querySelector('canvas.editor-chart')!.getBoundingClientRect()
+        const covers = document.querySelectorAll('[data-editor-toolbar] > *, .notification')
+        return [...covers].map((element) => {
+            const box = element.getBoundingClientRect()
+            const edge = (value: number, origin: number, margin: number) =>
+                (value - origin + margin) * devicePixelRatio
+            return {
+                l: edge(box.left, chart.left, -8),
+                r: edge(box.right, chart.left, 8),
+                t: edge(box.top, chart.top, -8),
+                b: edge(box.bottom, chart.top, 8),
+            }
+        })
     })
 
-// The toolbar over the chart can be mid-transition, so it is masked out.
-const chartShot = (page: Page) =>
-    page
-        .locator('canvas.editor-chart')
-        .screenshot({ mask: [page.locator('[data-editor-toolbar]')] })
+// A new store can antialias stroke ends a little differently; stale pixels differ by far more.
+const expectFresh = async (page: Page, settled: Buffer) => {
+    // Left out as they were for the settled shot and are for the fresh one.
+    const covered = await coveredAreas(page)
+    const fresh = await freshShot(page)
+    covered.push(...(await coveredAreas(page)))
+    const difference = await page.evaluate(
+        async ({ a, b, covered }) => {
+            const read = async (png: string) => {
+                const bitmap = await createImageBitmap(
+                    await (await fetch(`data:image/png;base64,${png}`)).blob(),
+                )
+                const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+                const ctx = canvas.getContext('2d')!
+                ctx.drawImage(bitmap, 0, 0)
+                return ctx.getImageData(0, 0, bitmap.width, bitmap.height)
+            }
+            const [x, y] = await Promise.all([read(a), read(b)])
+            let pixels = 0
+            let row = 0
+            for (let j = 0; j < x.height; j++) {
+                let count = 0
+                for (let n = 0; n < x.width; n++) {
+                    if (covered.some(({ l, r, t, b }) => l <= n && n < r && t <= j && j < b))
+                        continue
+                    const i = (j * x.width + n) * 4
+                    for (let k = 0; k < 4; k++) {
+                        if (Math.abs(x.data[i + k]! - y.data[i + k]!) > 24) {
+                            count++
+                            break
+                        }
+                    }
+                }
+                pixels += count
+                row = Math.max(row, count)
+            }
+            return { pixels, row }
+        },
+        { a: settled.toString('base64'), b: fresh.toString('base64'), covered },
+    )
+    expect(difference.pixels).toBeLessThanOrEqual(64)
+    expect(difference.row).toBeLessThanOrEqual(16)
+}
+
+// Hides or shows every stage.
+const hideStages = (page: Page, hidden: boolean) =>
+    page.evaluate(async (hidden) => {
+        const { view, history, nextTick } = window.editorTest
+        view.stageVisibility = new Map(
+            hidden ? [...history.state.value.stages.keys()].map((id) => [id, 'hidden']) : [],
+        )
+        await nextTick()
+    }, hidden)
 
 for (const dpr of [1, 1.25, 1.5]) {
     test.describe(`DPR ${dpr}`, () => {
@@ -211,13 +288,18 @@ for (const dpr of [1, 1.25, 1.5]) {
             await seed(page, 5)
             await frames(page, 3)
 
-            // One scroll step redraws exactly, as before.
+            // One scroll step redraws exactly, as before, and so does one spaced past a motion's gap.
             const before = await counters(page)
             await page.evaluate(() => (window.editorTest.view.time += 0.0137))
             await frames(page, 3)
-            const step = await counters(page)
-            const perDraw = step.strokes - before.strokes
+            const first = await counters(page)
+            const perDraw = first.strokes - before.strokes
             expect(perDraw).toBeGreaterThan(0)
+            await page.waitForTimeout(SPACED_MS)
+            await page.evaluate(() => (window.editorTest.view.time += 0.0137))
+            await frames(page, 3)
+            const step = await counters(page)
+            expect(step.strokes - first.strokes).toBe(perDraw)
             expect(step.shifted).toBe(before.shifted)
 
             // Clock-driven motion, as in eased scrolling, moves on every tick: frames shift one drawn window.
@@ -232,13 +314,15 @@ for (const dpr of [1, 1.25, 1.5]) {
             expect(after.shifted - step.shifted).toBeGreaterThan(moved / 2)
             // Far fewer exact redraws than frames, including the still frame's.
             expect(after.strokes - step.strokes).toBeLessThan((perDraw * moved) / 2)
-            const settled = await chartShot(page)
+            await expectFresh(page, await stillShot(page))
 
-            // An exact redraw of the same view draws the same pixels.
-            await redrawStages(page)
-            await frames(page, 4)
-            const exact = await chartShot(page)
-            expect(settled.equals(exact)).toBe(true)
+            // Stages hidden, shown again and then scrolled out of view leave nothing on the reused stores.
+            await hideStages(page, true)
+            await frames(page, 3)
+            await hideStages(page, false)
+            await frames(page, 3)
+            await page.evaluate(() => (window.editorTest.view.lane += 2000))
+            await expectFresh(page, await stillShot(page))
         })
     })
 }
@@ -268,26 +352,25 @@ const pixels = async (page: Page) => {
     return Buffer.from(url.split(',')[1]!, 'base64')
 }
 
-// The same view with its stages drawn exactly.
-const exactPixels = async (page: Page) => {
-    await redrawStages(page)
-    return pixels(page)
-}
-
 // Applies `change` while clock-driven scrolling keeps shifting stage pixels.
 const scrollWhile = async (page: Page, change: () => Promise<unknown>) => {
     const moving = moveOnTicks(page, -0.05)
-    await expect
-        .poll(() => page.evaluate(() => window.stageTest.last), { timeout: 15_000 })
-        .toBe('shift')
-    await change()
-    // Moving frames follow the change before the scroll ends.
-    const shifted = await page.evaluate(() => window.stageTest.shifted)
-    await expect
-        .poll(() => page.evaluate(() => window.stageTest.shifted), { timeout: 15_000 })
-        .toBeGreaterThan(shifted)
-    await page.evaluate(() => (window.moving = false))
-    await moving
+    // Awaited below; a failure here stops the scroll first.
+    moving.catch(() => {})
+    try {
+        await expect
+            .poll(() => page.evaluate(() => window.stageTest.last), { timeout: 15_000 })
+            .toBe('shift')
+        await change()
+        // Moving frames follow the change before the scroll ends.
+        const shifted = await page.evaluate(() => window.stageTest.shifted)
+        await expect
+            .poll(() => page.evaluate(() => window.stageTest.shifted), { timeout: 15_000 })
+            .toBeGreaterThan(shifted)
+    } finally {
+        await page.evaluate(() => (window.moving = false))
+        await moving
+    }
 }
 
 test.describe('window sizing', () => {
@@ -425,7 +508,7 @@ test.describe('changes during motion', () => {
             }),
         )
         expect(await page.evaluate(() => devicePixelRatio)).toBe(1.5)
-        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
+        await expectFresh(page, await stillShot(page))
     })
 
     test('hiding the app during playback leaves no shifted stage pixels', async ({ page }) => {
@@ -450,6 +533,6 @@ test.describe('changes during motion', () => {
         await command('stop')
         await page.waitForTimeout(300)
         await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
+        await expectFresh(page, await stillShot(page))
     })
 })

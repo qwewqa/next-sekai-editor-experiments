@@ -127,8 +127,17 @@ test('vertical wheels leave the sideways reach uncomputed, smooth or not', async
             window.editorTest.view.lane = 0
         }, smooth)
         await calls()
+        const time = await page.evaluate(() => window.editorTest.view.time)
         await page.mouse.wheel(0, 100)
-        await page.waitForTimeout(100)
+        // Handled, and any eased scroll has come to rest.
+        await expect
+            .poll(() =>
+                page.evaluate((time) => {
+                    const { view } = window.editorTest
+                    return view.time !== time && !view.scrollingY
+                }, time),
+            )
+            .toBe(true)
         expect(
             await page.evaluate(() => ({
                 calls: (window as unknown as { extentCalls: () => number }).extentCalls(),
@@ -137,11 +146,12 @@ test('vertical wheels leave the sideways reach uncomputed, smooth or not', async
         ).toEqual({ calls: 0, lane: 0 })
         // A sideways wheel still reaches by it.
         await page.mouse.wheel(100, 0)
-        await page.waitForTimeout(400)
-        expect(
-            await page.evaluate(() =>
-                (window as unknown as { extentCalls: () => number }).extentCalls(),
-            ),
-        ).toBeGreaterThan(0)
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    (window as unknown as { extentCalls: () => number }).extentCalls(),
+                ),
+            )
+            .toBeGreaterThan(0)
     }
 })
