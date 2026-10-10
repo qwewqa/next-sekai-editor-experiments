@@ -137,6 +137,27 @@ for (const layout of ['basic', 'composed'] as const) {
         expect(note!.left + note!.size / 2).toBeGreaterThan(-5)
     })
 
+    test(`${layout}: the attached drag-add ghost shows where the tick lands`, async ({ page }) => {
+        await setup(page, layout, true)
+        await page.keyboard.press('f')
+        const head = await point(page, heads[layout], 2)
+        await page.mouse.click(head.x, head.y)
+        await page.keyboard.press('s')
+        const start = await point(page, -6, 3)
+        const end = await point(page, -9, 3)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(end.x, end.y, { steps: 4 })
+        await expect.poll(async () => (await drawn(page, 3)).ghost).toBeDefined()
+        const { ghost } = await drawn(page, 3)
+        await page.mouse.up()
+        await expect.poll(async () => (await drawn(page, 3)).note).toBeDefined()
+        const { note } = await drawn(page, 3)
+        expect(ghost!.left).toBeCloseTo(note!.left, 9)
+        expect(ghost!.size).toBeCloseTo(note!.size, 9)
+        expect(note!.left + note!.size / 2).toBeGreaterThan(-5)
+    })
+
     test(`${layout}: a free add ghost stays at the pointer`, async ({ page }) => {
         await setup(page, layout, false)
         await page.keyboard.press('f')
