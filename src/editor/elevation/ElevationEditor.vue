@@ -32,7 +32,7 @@ import { createTransaction } from '../../state/transaction'
 import { isComposingKey } from '../../utils/composition'
 import { alignComputed, alignNear, clamp, shiftComputed } from '../../utils/math'
 import { createNameLayer, placeNames } from '../canvas/names'
-import { createNoteRenderer } from '../canvas/notes'
+import { createNoteRenderer, getNoteVisualType, isOnNoteArtwork } from '../canvas/notes'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
@@ -293,8 +293,26 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
             Math.abs(x - elevationBounds.x - row.x) <=
             Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2,
     )
+    // The row drawn on top first: rows whose artwork lies under the point, later
+    // rows drawn over earlier ones; then the nearest.
+    const scale = elevationLayout.value.laneScale
+    const isUnder = (row: ElevationRow) =>
+        isOnNoteArtwork(
+            row.size,
+            getNoteVisualType(
+                row.size === row.note.size ? row.note : { ...row.note, size: row.size },
+                elevationState.value.store.slides.info.get(row.note.slideId),
+            ),
+            (x - elevationBounds.x - row.x + row.w / 2) / scale,
+            (y - elevationBounds.y - row.y) / scale,
+        )
+    const under = new Set(matches.filter(isUnder))
+    const index = new Map(rows.map((row, i) => [row, i]))
     return (direct.length ? direct : matches).sort(
-        (a, b) => Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y),
+        (a, b) =>
+            +under.has(b) - +under.has(a) ||
+            (under.has(a) ? (index.get(b) ?? 0) - (index.get(a) ?? 0) : 0) ||
+            Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y),
     )
 }
 const hit = (x: number, y: number, minimum = 1.5) => {
