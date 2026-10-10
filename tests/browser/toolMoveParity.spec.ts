@@ -384,12 +384,13 @@ const seed = (page: Page, options: Seed) =>
                 ...fixtures.interaction,
                 isDynamicStages: o.layout === 'composed',
                 slides: notes.length ? [notes] : [],
+                // Away from an event's press, so Select doesn't take the pivot drawn on top.
                 stagePivotEvents:
                     o.layout === 'composed'
                         ? [0, 8].map((beat) => ({
                               ...pivot,
                               beat,
-                              pivotLane: 0.2 + beat / 4,
+                              pivotLane: (isNote ? 0.2 : -4) + beat / 4,
                               eventEase: 'linear' as const,
                           }))
                         : [],
@@ -515,11 +516,9 @@ const parityCases: { family: Family; layout: 'basic' | 'composed'; tick: boolean
             [false, true].map((tick) => ({ family, layout, tick })),
         ),
     ),
-    ...(['bpm', ...Object.keys(kinds)] as Family[]).map((family) => ({
-        family,
-        layout: 'basic' as const,
-        tick: false,
-    })),
+    ...(['bpm', ...Object.keys(kinds)] as Family[]).flatMap((family) =>
+        (['basic', 'composed'] as const).map((layout) => ({ family, layout, tick: false })),
+    ),
 ]
 
 for (const { family, layout, tick } of parityCases) {
