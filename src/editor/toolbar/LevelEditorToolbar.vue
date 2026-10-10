@@ -340,6 +340,10 @@ watch(activeIndex, async () => {
     await nextTick()
     revealChecked()
 })
+// A drag in either pane hides the toolbar, so it closes the flyout and its scrim too.
+watch(isDragging, (count) => {
+    if (count) activeIndex.value = -1
+})
 // After the rows rewrap, so the flyout follows its tool.
 watch([room, short, height, isCoarsePointer], async () => {
     await nextTick()

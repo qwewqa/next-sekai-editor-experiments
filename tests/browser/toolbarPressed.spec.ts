@@ -1776,3 +1776,45 @@ test('an open flyout re-centres on its tool as its own width changes', async ({ 
     await expect.poll(async () => Math.abs((await measure()).offset)).toBeLessThan(1)
     expect(await placedFlyout(page)).toBe(9)
 })
+
+test.describe('with touch', () => {
+    test.use({ hasTouch: true })
+
+    test('a drag in the other pane closes an open flyout and its scrim', async ({ page }) => {
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.elevationEditorSideBySide = 'allow'
+            settings.toolbar = [
+                ['paste', 'undo'],
+                ['eraser', 'select'],
+            ]
+        })
+        await page.mouse.click(700, 300)
+        await page.keyboard.press('t')
+        await expect(toolbar(page)).toHaveCount(2)
+        const flyouts = page.locator('[data-editor-toolbar] > div > div > div')
+        const scrims = page.locator('[data-editor-toolbar] + div[class*="bg-scrim"]')
+        await shown(page).first().tap()
+        await expect(flyouts).toHaveCount(1)
+        await expect(flyouts).toBeVisible()
+        await expect(scrims).toHaveCount(1)
+
+        // A touch drag on the Elevation Editor, away from the open flyout's pane.
+        const pane = (await page.locator('.elevation-editor').boundingBox())!
+        const client = await page.context().newCDPSession(page)
+        const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) =>
+            client.send('Input.dispatchTouchEvent', {
+                type,
+                touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+            })
+        const x = pane.x + pane.width / 2
+        const y = pane.y + pane.height / 3
+        await touch('touchStart', x, y)
+        for (let step = 1; step <= 6; step++) await touch('touchMove', x, y + step * 10)
+        await expect(flyouts).toHaveCount(0)
+        await expect(scrims).toHaveCount(0)
+        await touch('touchEnd', x, y + 60)
+        await expect(flyouts).toHaveCount(0)
+        await expect(scrims).toHaveCount(0)
+    })
+})
