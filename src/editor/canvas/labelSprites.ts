@@ -34,12 +34,16 @@ export const createLabelSprites = () => {
     }
 
     // A detached canvas doesn't inherit the page's language, which picks CJK glyphs.
-    const canvasFor = () => {
+    const canvasFor = (width: number, height: number) => {
         const canvas = document.createElement('canvas')
         canvas.lang = lang
+        canvas.width = width
+        canvas.height = height
         return canvas
     }
     let measurer: CanvasRenderingContext2D | undefined
+    // The keys' font and scale part, rebuilt only when it changes.
+    let style = { kx: NaN, ky: NaN, fontSize: NaN, middle: NaN, fontFamily: '', lang: '', key: '' }
 
     const create = (
         text: string,
@@ -57,7 +61,7 @@ export const createLabelSprites = () => {
             ctx.textBaseline = 'alphabetic'
             ctx.textAlign = align
         }
-        measurer ??= canvasFor().getContext('2d') ?? undefined
+        measurer ??= canvasFor(1, 1).getContext('2d') ?? undefined
         if (!measurer) return
         measurer.canvas.lang = lang
         setup(measurer)
@@ -76,9 +80,7 @@ export const createLabelSprites = () => {
             sprites.delete(oldest[0])
             release(oldest[1])
         }
-        const canvas = canvasFor()
-        canvas.width = width
-        canvas.height = height
+        const canvas = canvasFor(width, height)
         const ctx = canvas.getContext('2d')
         if (!ctx) return
         setup(ctx)
@@ -109,20 +111,31 @@ export const createLabelSprites = () => {
             align: CanvasTextAlign = 'center',
             middle = context.fontMiddle,
         ) {
-            const normalized = normalizeSvgText(text)
-            if (!normalized) return true
             const { ctx, scale, fontFamily } = context
             const { a, d, e, f } = transform
             const kx = a / scale
             const ky = d / scale
             const fontSize = size * scale
-            const key = `${kx} ${ky} ${fontSize} ${middle} ${align} ${color} ${lang} ${fontFamily}\n${normalized}`
+            if (
+                style.kx !== kx ||
+                style.ky !== ky ||
+                style.fontSize !== fontSize ||
+                style.middle !== middle ||
+                style.fontFamily !== fontFamily ||
+                style.lang !== lang
+            ) {
+                const key = `${kx} ${ky} ${fontSize} ${middle} ${lang} ${fontFamily}`
+                style = { kx, ky, fontSize, middle, fontFamily, lang, key }
+            }
+            const key = `${style.key}\n${align}\n${color}\n${text}`
             let sprite = sprites.get(key)
             if (sprite) {
                 sprites.delete(key)
                 sprites.set(key, sprite)
                 sprite.frame = frame
             } else {
+                const normalized = normalizeSvgText(text)
+                if (!normalized) return true
                 sprite = create(normalized, color, fontSize, fontFamily, middle, align, kx, ky)
                 if (!sprite) return false
                 sprites.set(key, sprite)
