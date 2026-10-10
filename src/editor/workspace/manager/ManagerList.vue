@@ -10,7 +10,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { isAppActive } from '../../../activity'
+import { interruptsDrags } from '../../../activity'
 import {
     entriesInTreeOrder,
     type FolderId,
@@ -1268,11 +1268,11 @@ onUnmounted(stopDragListeners)
 watch(tree, () => {
     if (drag.value) onDragCancel()
 })
-// Leaving the app cancels a drag, as it does elsewhere: the release may never come back.
+// Leaving the app or a dialog opening cancels a drag, as for chart drags.
 watch(
-    isAppActive,
-    (active) => {
-        if (!active && drag.value) onDragCancel()
+    interruptsDrags,
+    (interrupted) => {
+        if (interrupted && drag.value) onDragCancel()
     },
     { flush: 'sync' },
 )
