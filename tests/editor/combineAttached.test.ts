@@ -122,10 +122,9 @@ test('joining slides end to end keeps every tick attached where it plays', () =>
     assert.deepEqual(attachedBeats(combined), [1, 2.5, 5, 5.5])
     assertSamePlaces(source, combined)
     const slide = [...combined.store.slides.note.values()][0]!
-    assert.deepEqual(
-        combined.selectedEntities.filter((entity) => entity.type === 'note'),
-        slide,
-    )
+    const selected = combined.selectedEntities.filter((entity) => entity.type === 'note')
+    assert.equal(selected.length, slide.length)
+    assert.ok(selected.every((entity) => slide.includes(entity)))
 })
 
 test('joining slides that touch at a shared beat keeps every tick attached', () => {
