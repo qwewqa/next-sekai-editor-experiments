@@ -428,7 +428,7 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
     )
 }
 
-// A beat moved by an offset, without float noise on the division's grid; unmoved, it stays exact.
+// A moved or pasted beat, without float noise on the division's grid; unmoved, it stays exact.
 export const toMovedBeat = (beat: number, offset: number) =>
     offset === 0 ? beat : alignNear(beat + offset, view.division)
 

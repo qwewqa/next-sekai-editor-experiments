@@ -24,6 +24,7 @@ import { showToolModal } from '../../../../toolModals'
 import {
     focusEntityAtBeat,
     setViewHover,
+    snapYToBeat,
     view,
     xToLane,
     xToValidLane,
@@ -31,7 +32,7 @@ import {
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, snapYToMovedBeat } from '../../../toolMove'
+import { constrainMoved } from '../../../toolMove'
 import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
 import StagePivotEventSidebar from './StagePivotEventSidebar.vue'
 
@@ -310,7 +311,7 @@ const toMovedObject = (move: MoveActive, x: number, y: number): StagePivotEventO
     return constrainMoved(
         {
             ...move.entity,
-            beat: snapYToMovedBeat(y, move.entity.beat, move.pressBeat),
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
             pivotLane: moveLane(move.entity.pivotLane, move.lane, lane, move.entity.pivotLane),
         },
         move.entity.beat,

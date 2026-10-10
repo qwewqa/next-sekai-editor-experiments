@@ -25,6 +25,7 @@ import { showToolModal } from '../../../../toolModals'
 import {
     focusEntityAtBeat,
     setViewHover,
+    snapYToBeat,
     view,
     xToLane,
     xToValidLane,
@@ -32,7 +33,7 @@ import {
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, snapYToMovedBeat } from '../../../toolMove'
+import { constrainMoved, constrainResized } from '../../../toolMove'
 import {
     commitDrop,
     hitEntitiesAtPoint,
@@ -70,6 +71,8 @@ let active:
           type: 'edit'
           entity: StageMaskEventJointEntity
           lane: number
+          pressBeat: number
+          pressLane: number
       }
     | MoveActive
     | undefined
@@ -221,6 +224,8 @@ export const stageMaskEvent: Tool = {
                 active = {
                     type: 'edit',
                     entity,
+                    pressBeat: yToBeat(y),
+                    pressLane: lane,
                     lane: shiftComputed(
                         entity.maskLeft,
                         lane >= entity.maskLeft + entity.maskSize / 2 ? 0 : entity.maskSize,
@@ -293,13 +298,17 @@ export const stageMaskEvent: Tool = {
                     hovered: [],
                     creating: [
                         toStageMaskEventJointEntity(
-                            constrainLaneObject(
+                            constrainResized(
                                 {
                                     ...active.entity,
                                     maskLeft,
                                     maskSize,
                                 },
-                                { resizing: true },
+                                active.entity.beat,
+                                active.pressBeat,
+                                active.pressLane,
+                                lane,
+                                y,
                             ),
                         ),
                     ],
@@ -372,13 +381,17 @@ export const stageMaskEvent: Tool = {
                 commitDrop(
                     edit,
                     active.entity,
-                    constrainLaneObject(
+                    constrainResized(
                         {
                             ...active.entity,
                             maskLeft,
                             maskSize,
                         },
-                        { resizing: true },
+                        active.entity.beat,
+                        active.pressBeat,
+                        active.pressLane,
+                        lane,
+                        y,
                     ),
                 )
                 break
@@ -407,7 +420,7 @@ const toMovedObject = (move: MoveActive, x: number, y: number): StageMaskEventOb
     return constrainMoved(
         {
             ...move.entity,
-            beat: snapYToMovedBeat(y, move.entity.beat, move.pressBeat),
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
             maskLeft: moveLane(move.entity.maskLeft, move.lane, lane, move.entity.maskLeft),
         },
         move.entity.beat,

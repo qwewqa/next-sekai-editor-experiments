@@ -26,10 +26,9 @@ import {
     showNoteGhost,
     toMovedNoteObject,
     toPasteBeatOffset,
-    toPastedBeat,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
-import { alignLane, view } from '../view'
+import { alignLane, toMovedBeat, view } from '../view'
 import { sameBeat, type ElevationNote } from './layout'
 import { elevationState, getElevationStageProps } from './scene'
 
@@ -143,7 +142,7 @@ export const createElevationNote = (
 
 // A pasted note's shown elevation before the change; an attached one follows its pasted head and tail.
 const pastedElevation = (note: NoteEntity, notes: NoteEntity[], beatOffset: number) => {
-    const beat = toPastedBeat(note.beat, beatOffset)
+    const beat = toMovedBeat(note.beat, beatOffset)
     const shown = (point: NoteEntity) =>
         point.elevation + getElevationStageProps(view.stageId ?? point.stageId, beat).elevation
     const slide = notes.filter((other) => other.slideId === note.slideId)
@@ -173,9 +172,9 @@ const attachedElevation = (
                 head.connectorEase,
                 attachFraction(
                     state.value.bpms,
-                    toPastedBeat(head.beat, beatOffset),
-                    toPastedBeat(tail.beat, beatOffset),
-                    toPastedBeat(note.beat, beatOffset),
+                    toMovedBeat(head.beat, beatOffset),
+                    toMovedBeat(tail.beat, beatOffset),
+                    toMovedBeat(note.beat, beatOffset),
                 ),
             ),
     )
@@ -234,7 +233,7 @@ export const previewElevationPaste = (
     if (!paste) return { notes: [], infos: undefined }
     const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
     for (const note of paste.notes) {
-        const object = paste.mapNote(note, toPastedBeat(note.beat, paste.beatOffset))
+        const object = paste.mapNote(note, toMovedBeat(note.beat, paste.beatOffset))
         const slide = slides.get(note.slideId)
         if (slide) slide.push(object)
         else slides.set(note.slideId, [object])

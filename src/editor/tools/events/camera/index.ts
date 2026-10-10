@@ -23,6 +23,7 @@ import { showToolModal } from '../../../toolModals'
 import {
     focusEntityAtBeat,
     setViewHover,
+    snapYToBeat,
     view,
     xToLane,
     xToValidLane,
@@ -30,7 +31,7 @@ import {
     yToValidBeat,
 } from '../../../view'
 import SelectionPropertiesModal from '../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, snapYToMovedBeat } from '../../toolMove'
+import { constrainMoved, constrainResized } from '../../toolMove'
 import {
     commitDrop,
     hitEntitiesAtPoint,
@@ -73,6 +74,8 @@ let active:
           type: 'edit'
           entity: CameraEventJointEntity
           lane: number
+          pressBeat: number
+          pressLane: number
       }
     | MoveActive
     | undefined
@@ -222,6 +225,8 @@ export const cameraEvent: Tool = {
                 active = {
                     type: 'edit',
                     entity,
+                    pressBeat: yToBeat(y),
+                    pressLane: lane,
                     lane: shiftComputed(
                         entity.cameraLeft,
                         lane >= entity.cameraLeft + entity.cameraSize / 2 ? 0 : entity.cameraSize,
@@ -294,13 +299,17 @@ export const cameraEvent: Tool = {
                     hovered: [],
                     creating: [
                         toCameraEventJointEntity(
-                            constrainLaneObject(
+                            constrainResized(
                                 {
                                     ...active.entity,
                                     cameraLeft,
                                     cameraSize,
                                 },
-                                { resizing: true },
+                                active.entity.beat,
+                                active.pressBeat,
+                                active.pressLane,
+                                lane,
+                                y,
                             ),
                         ),
                     ],
@@ -373,13 +382,17 @@ export const cameraEvent: Tool = {
                 commitDrop(
                     edit,
                     active.entity,
-                    constrainLaneObject(
+                    constrainResized(
                         {
                             ...active.entity,
                             cameraLeft,
                             cameraSize,
                         },
-                        { resizing: true },
+                        active.entity.beat,
+                        active.pressBeat,
+                        active.pressLane,
+                        lane,
+                        y,
                     ),
                 )
                 break
@@ -408,7 +421,7 @@ const toMovedObject = (move: MoveActive, x: number, y: number): CameraEventObjec
     return constrainMoved(
         {
             ...move.entity,
-            beat: snapYToMovedBeat(y, move.entity.beat, move.pressBeat),
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
             cameraLeft: moveLane(move.entity.cameraLeft, move.lane, lane, move.entity.cameraLeft),
         },
         move.entity.beat,

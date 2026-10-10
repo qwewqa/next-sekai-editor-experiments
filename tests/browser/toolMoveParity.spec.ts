@@ -267,9 +267,9 @@ test('bpm: a tool move lands exactly on the beat grid', async ({ page }) => {
     ).toEqual([0, 2.3])
 })
 
-// Enable once moveBase.ts's toDraggedNoteObject gates lane limits as Select does (fix4-drag merge).
+// Note and Slide moves gate lane limits as Select does.
 for (const tool of ['note', 'slide', 'select'] as const) {
-    test.fixme(`${tool}: a drop that moves nothing leaves a note outside the lane limits`, async ({
+    test(`${tool}: a drop that moves nothing leaves a note outside the lane limits`, async ({
         page,
     }) => {
         await page.evaluate(
@@ -304,5 +304,323 @@ for (const tool of ['note', 'slide', 'select'] as const) {
         await drag(page, 3.37, 0, 0.45)
         expect(await notes()).toEqual([{ beat: 4, left: 2.37 }])
         expect(await canUndo(page)).toBe(false)
+    })
+}
+
+// Every tool family: its own tool's drag of one object stores exactly what Select's does.
+type Family = Kind | 'note' | 'slide' | 'bpm'
+type Seed = {
+    family: Family
+    tool: Family | 'select'
+    layout: 'basic' | 'composed'
+    tick: boolean
+    beat: number
+    time: number
+    laneDivision: number
+    division: number
+    laneSnapping: 'absolute' | 'relative'
+    snapping: 'absolute' | 'relative'
+}
+
+// Shows one object of the family at beat (a note on a slide from beat 0, as an attached tick if
+// asked; Composed adds a moving pivot) and returns the lane to press inside it.
+const seed = (page: Page, options: Seed) =>
+    page.evaluate(async (o) => {
+        const { show, fixtures, view, settings, appImport } = window.editorTest
+        const events = fixtures.events
+        const base = fixtures.interaction.slides[0]![0]!
+        const pivot = events.stagePivotEvents[0]!
+        const isNote = o.family === 'note' || o.family === 'slide'
+        const notes = !isNote
+            ? []
+            : o.tick
+              ? [
+                    { ...base, beat: 0, left: -4, size: 2 },
+                    { ...base, beat: o.beat, left: 0, size: 2, isAttached: true },
+                    { ...base, beat: o.beat + 2, left: 2, size: 2 },
+                ]
+              : [{ ...base, beat: o.beat, left: 0.37, size: 2 }]
+        const one = {
+            bpm: {
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: o.beat, bpm: 120 },
+                ],
+            },
+            stagePivotEvent: { stagePivotEvents: [{ ...pivot, beat: o.beat, pivotLane: 0.37 }] },
+            stageTransformEvent: {
+                stageTransformEvents: [
+                    { ...events.stageTransformEvents[0]!, beat: o.beat, xTranslation: 0.37 },
+                ],
+            },
+            stageStyleEvent: {
+                stageStyleEvents: [
+                    { ...events.stageStyleEvents[0]!, beat: o.beat, editorLane: 0.37 },
+                ],
+            },
+            timeScale: {
+                timeScales: [
+                    {
+                        ...events.timeScales[0]!,
+                        groupId: 1 as never,
+                        beat: o.beat,
+                        editorLane: 0.37,
+                    },
+                ],
+            },
+            stageMaskEvent: {
+                stageMaskEvents: [
+                    { ...events.stageMaskEvents[0]!, beat: o.beat, maskLeft: 0.37, maskSize: 2 },
+                ],
+            },
+            cameraEvent: {
+                cameraEvents: [
+                    { ...events.cameraEvents[0]!, beat: o.beat, cameraLeft: 0.37, cameraSize: 6 },
+                ],
+            },
+        }[o.family as string]
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: o.layout === 'composed',
+                slides: notes.length ? [notes] : [],
+                stagePivotEvents:
+                    o.layout === 'composed'
+                        ? [0, 8].map((beat) => ({
+                              ...pivot,
+                              beat,
+                              pivotLane: 0.2 + beat / 4,
+                              eventEase: 'linear' as const,
+                          }))
+                        : [],
+                ...one,
+            },
+            o.time,
+        )
+        view.layout = o.layout
+        view.laneDivision = o.laneDivision
+        view.laneSnapping = o.laneSnapping
+        view.division = o.division
+        view.snapping = o.snapping
+        settings.maxLane = 0
+        settings.pps = 400
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo(o.tool)
+        if (!isNote)
+            return (
+                ({ bpm: 6.4, stageMaskEvent: 1.37, cameraEvent: 3.37 } as Record<string, number>)[
+                    o.family
+                ] ?? 0.37
+            )
+        // The note's displayed middle, in the scene the canvas draws.
+        const { sceneState } = await appImport<typeof import('../../src/editor/sceneState')>(
+            '/src/editor/sceneState.ts',
+        )
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const layout = createComposedLayout(sceneState.value)
+        const note = [...window.editorTest.history.state.value.store.slides.note.values()]
+            .flat()
+            .find((note) => note.beat === o.beat)!
+        const shown = layout?.notePosition(note) ?? note
+        return shown.left + shown.size / 2
+    }, options)
+
+// The family's stored objects' fields, and whether there is an undo step.
+const stored = (page: Page, family: Family) =>
+    page.evaluate(
+        async ({ family, grid }) => {
+            const { history, appImport } = window.editorTest
+            const { canUndo } =
+                await appImport<typeof import('../../src/history')>('/src/history/index.ts')
+            const { store } = history.state.value
+            const entities: object[] =
+                family === 'note' || family === 'slide'
+                    ? [...store.slides.note.values()].flat()
+                    : [...store.grid[grid as 'bpm'].values()].flatMap((bucket) => [...bucket])
+            return {
+                objects: entities
+                    .map((entity) =>
+                        // A rebuilt slide gets a new id.
+                        Object.fromEntries(
+                            Object.entries(entity).filter(
+                                ([key, value]) => typeof value !== 'object' && key !== 'slideId',
+                            ),
+                        ),
+                    )
+                    .sort((a, b) => a.beat - b.beat),
+                canUndo: canUndo.value,
+            }
+        },
+        { family, grid: family in kinds ? kinds[family as Kind].grid : 'bpm' },
+    )
+
+type Scenario = {
+    name: string
+    beat?: number
+    // How far above the object's beat the press lands.
+    pressAt?: number
+    dx: number
+    beats: number
+    laneDivision?: number
+    division?: number
+    laneSnapping?: 'absolute' | 'relative'
+    snapping?: 'absolute' | 'relative'
+    moves: boolean
+    ticksOnly?: boolean
+}
+
+const scenarios: Scenario[] = [
+    { name: 'a step sideways and down', dx: 0.55, beats: 1, moves: true },
+    { name: 'under half a step each way', dx: -0.45, beats: 0.4, division: 1, moves: false },
+    { name: 'two lane divisions', dx: 0.3, beats: 2, laneDivision: 2, moves: true },
+    {
+        name: 'relative snapping from an off-centre press',
+        pressAt: 0.09,
+        dx: 1.1,
+        beats: 0.66,
+        division: 8,
+        laneSnapping: 'relative',
+        snapping: 'relative',
+        moves: true,
+    },
+    {
+        name: 'an exact landing on the grid',
+        beat: 0.1,
+        dx: 0,
+        beats: 2.2,
+        division: 10,
+        snapping: 'relative',
+        moves: true,
+    },
+    { name: 'thirds', beat: 4 / 3, dx: 0, beats: 0.4, division: 3, moves: true },
+    {
+        name: 'a stop at beat 0',
+        beat: 1,
+        pressAt: 0.09,
+        dx: 0,
+        beats: -1.15,
+        division: 50,
+        snapping: 'relative',
+        moves: true,
+    },
+    { name: 'past the slide end', beat: 4, dx: 0, beats: 3, moves: true, ticksOnly: true },
+]
+
+const parityCases: { family: Family; layout: 'basic' | 'composed'; tick: boolean }[] = [
+    ...(['note', 'slide'] as const).flatMap((family) =>
+        (['basic', 'composed'] as const).flatMap((layout) =>
+            [false, true].map((tick) => ({ family, layout, tick })),
+        ),
+    ),
+    ...(['bpm', ...Object.keys(kinds)] as Family[]).map((family) => ({
+        family,
+        layout: 'basic' as const,
+        tick: false,
+    })),
+]
+
+for (const { family, layout, tick } of parityCases) {
+    test(`${family}${tick ? ' tick' : ''}, ${layout}: a tool move stores what a Select move does`, async ({
+        page,
+    }) => {
+        for (const scenario of scenarios) {
+            if (scenario.ticksOnly && !tick) continue
+            const beat = scenario.beat ?? 4
+            const pressAt = scenario.pressAt ?? 0
+            const results = []
+            for (const tool of [family, 'select'] as const) {
+                const lane = await seed(page, {
+                    family,
+                    tool,
+                    layout,
+                    tick,
+                    beat,
+                    time: (beat + pressAt + scenario.beats / 2) / 2,
+                    laneDivision: scenario.laneDivision ?? 1,
+                    division: scenario.division ?? 4,
+                    laneSnapping: scenario.laneSnapping ?? 'absolute',
+                    snapping: scenario.snapping ?? 'absolute',
+                })
+                const before = await stored(page, family)
+                await drag(page, lane, scenario.dx, scenario.beats, beat + pressAt)
+                const after = await stored(page, family)
+                if (scenario.moves)
+                    expect(after.objects, `${scenario.name}, ${tool}`).not.toEqual(before.objects)
+                else expect(after, `${scenario.name}, ${tool}`).toEqual(before)
+                results.push(after)
+            }
+            expect(results[1], scenario.name).toEqual(results[0])
+        }
+    })
+}
+
+// An edge resize of an object outside lane limits of 3, pressed at this lane near its on-grid edge.
+const resizes = {
+    note: { value: 2, press: 3.9 },
+    slide: { value: 2, press: 3.9 },
+    stageMaskEvent: { value: 2, press: 3.9 },
+    cameraEvent: { value: 0, press: 0.1 },
+} as const
+
+for (const family of Object.keys(resizes) as (keyof typeof resizes)[]) {
+    test(`${family}: a tool edge resize applies lane limits once something moves, as Select's does`, async ({
+        page,
+    }) => {
+        const { value, press } = resizes[family]
+        for (const [dx, beats, moves] of [
+            [0, 0.45, false],
+            [0, 2, true],
+            [0.6, 0, true],
+        ] as const) {
+            const results = []
+            for (const tool of [family, 'select'] as const) {
+                if (family === 'note' || family === 'slide')
+                    await page.evaluate(
+                        async ({ tool, value }) => {
+                            const { show, fixtures, view, settings, appImport } = window.editorTest
+                            const base = fixtures.interaction.slides[0]![0]!
+                            show(
+                                {
+                                    ...fixtures.interaction,
+                                    slides: [[{ ...base, beat: 4, left: value, size: 2 }]],
+                                },
+                                3,
+                            )
+                            view.laneDivision = 1
+                            view.laneSnapping = 'absolute'
+                            view.division = 1
+                            view.snapping = 'absolute'
+                            settings.maxLane = 3
+                            const { switchToolTo } = await appImport<
+                                typeof import('../../src/editor/tools')
+                            >('/src/editor/tools/index.ts')
+                            switchToolTo(tool)
+                        },
+                        { tool, value },
+                    )
+                else
+                    await setup(page, {
+                        kind: family,
+                        tool: tool === 'select' ? tool : family,
+                        value,
+                        division: 1,
+                        maxLane: 3,
+                    })
+                const before = await stored(page, family)
+                await drag(page, press, dx, beats)
+                const after = await stored(page, family)
+                const label = `dx ${dx}, beats ${beats}, ${tool}`
+                if (moves) {
+                    expect(after.objects, label).not.toEqual(before.objects)
+                    // A resize, not a move.
+                    expect(after.objects.map((object) => object.beat)).toEqual([4])
+                } else expect(after, label).toEqual(before)
+                results.push(after)
+            }
+            expect(results[1], `dx ${dx}, beats ${beats}`).toEqual(results[0])
+        }
     })
 }

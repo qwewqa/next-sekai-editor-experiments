@@ -36,6 +36,7 @@ import {
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
 import { createEditPreview, toDraggedNoteObject } from '../moveBase'
+import { constrainResized } from '../toolMove'
 import {
     addDragAnchor,
     commitDrop,
@@ -71,6 +72,8 @@ let active:
           type: 'edit'
           entity: NoteEntity
           lane: number
+          pressBeat: number
+          pressLane: number
       }
     | {
           type: 'move'
@@ -215,6 +218,8 @@ export const note: Tool = {
                 active = {
                     type: 'edit',
                     entity,
+                    pressBeat: yToBeat(y),
+                    pressLane: lane,
                     lane: shiftComputed(
                         entity.left,
                         lane >= entity.left + entity.size / 2 ? 0 : entity.size,
@@ -279,9 +284,13 @@ export const note: Tool = {
                     [active.entity.left, active.entity.size],
                     getComposedGridOffset(active.entity.stageId, active.entity.beat),
                 )
-                const object = constrainLaneObject(
+                const object = constrainResized(
                     { ...active.entity, left, size },
-                    { resizing: true },
+                    active.entity.beat,
+                    active.pressBeat,
+                    active.pressLane,
+                    lane,
+                    y,
                 )
 
                 view.entities = {
@@ -360,13 +369,17 @@ export const note: Tool = {
                 commitDrop(
                     edit,
                     active.entity,
-                    constrainLaneObject(
+                    constrainResized(
                         {
                             ...active.entity,
                             left,
                             size,
                         },
-                        { resizing: true },
+                        active.entity.beat,
+                        active.pressBeat,
+                        active.pressLane,
+                        lane,
+                        y,
                     ),
                 )
                 break

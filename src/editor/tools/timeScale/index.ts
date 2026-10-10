@@ -28,6 +28,7 @@ import {
     focusEntityAtBeat,
     isBelowSnapping,
     setViewHover,
+    snapYToBeat,
     view,
     xToLane,
     xToValidLane,
@@ -35,7 +36,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, snapYToMovedBeat } from '../toolMove'
+import { constrainMoved } from '../toolMove'
 import { commitDrop, hitEntitiesAtPoint, isVisible, moveLane } from '../utils'
 
 type MoveActive = {
@@ -356,7 +357,7 @@ const toMovedObject = (move: MoveActive, x: number, y: number): TimeScaleObject 
     return constrainMoved(
         {
             groupId: entity.groupId,
-            beat: snapYToMovedBeat(y, entity.beat, move.pressBeat),
+            beat: snapYToBeat(y, entity.beat, move.pressBeat),
             editorLane: moveLane(entity.editorLane, move.lane, lane, entity.editorLane),
             timeScale: entity.timeScale,
             skip: entity.skip,

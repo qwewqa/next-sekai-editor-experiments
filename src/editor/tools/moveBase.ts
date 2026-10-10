@@ -12,8 +12,8 @@ import {
     getComposedMoveOffset,
     getComposedNoteOffset,
 } from '../composedView'
-import { constrainLaneObject } from '../laneLimits'
 import { xToLane } from '../view'
+import { constrainMoved } from './toolMove'
 import { moveLane } from './utils'
 
 type Place = { left: number; size: number; elevation: number }
@@ -73,20 +73,26 @@ export const toDraggedNoteObject = (
 ): NoteObject => {
     const from = getMovedEndBases(state.value, new Map([[entity, beat]])).get(entity) ?? entity
     const lane = xToLane(x) - getComposedMoveOffset(entity, beat)
-    return constrainLaneObject({
-        ...entity,
-        beat,
-        left: moveLane(
-            from.left,
-            pressLane + getComposedNoteOffset(entity) - getComposedNoteOffset(from),
-            lane,
-            from.left,
-            getComposedGridOffset(entity.stageId, beat),
-            xToLane(x) - getComposedNoteOffset(entity) - pressLane,
-        ),
-        size: from.size,
-        elevation: from.elevation,
-    })
+    const pointerLane = xToLane(x) - getComposedNoteOffset(entity)
+    return constrainMoved(
+        {
+            ...entity,
+            beat,
+            left: moveLane(
+                from.left,
+                pressLane + getComposedNoteOffset(entity) - getComposedNoteOffset(from),
+                lane,
+                from.left,
+                getComposedGridOffset(entity.stageId, beat),
+                pointerLane - pressLane,
+            ),
+            size: from.size,
+            elevation: from.elevation,
+        },
+        entity.beat,
+        pressLane,
+        pointerLane,
+    )
 }
 
 /** A Note or Slide tool drag's preview; an attached note previews as edited, on its connector. */
