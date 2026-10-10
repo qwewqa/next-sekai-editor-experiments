@@ -59,7 +59,7 @@ import { getInStoreGrid } from '../../../state/store/grid'
 import type { StoreSlides } from '../../../state/store/slides'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
-import { align, alignComputed, shiftComputed } from '../../../utils/math'
+import { align, alignComputed, alignNear, shiftComputed } from '../../../utils/math'
 import { bisect } from '../../../utils/ordered'
 import { createComposedLayout } from '../../composed'
 import { inverseAffine } from '../../composedPointer'
@@ -218,7 +218,7 @@ export const paste: Tool = {
 
         const selectedEntities: Entity[] = []
         for (const entity of active.entities) {
-            const beat = entity.beat + beatOffset
+            const beat = toPastedBeat(entity.beat, beatOffset)
 
             const result = pastes[entity.type]?.(
                 transaction,
@@ -344,6 +344,7 @@ const showGhost = (
             view.stageId,
             settings.maxLane,
             view.laneDivision,
+            view.division,
         ]
         if (ghost?.state && composedGhostKeys?.every((key, index) => key === keys[index])) {
             view.entities = { hovered: [], creating: ghost.entities }
@@ -382,7 +383,7 @@ const showGhost = (
     const slides = new Map<SlideId, NoteObject[]>()
     const pastedBpms: BpmObject[] = []
     for (const entity of entities) {
-        const beat = entity.beat + beatOffset
+        const beat = toPastedBeat(entity.beat, beatOffset)
         if (!isLanding(entity)) continue
         if (entity.type === 'bpm') pastedBpms.push(toMovedBpmObject(entity, beat))
         if (entity.type === 'note') {
@@ -498,6 +499,10 @@ const landing = (entities: Entity[]) => entities.filter(isLanding)
 export const toPasteBeatOffset = (entities: readonly { beat: number }[], beatOffset: number) =>
     entities.reduce((offset, entity) => Math.max(offset, -entity.beat), beatOffset)
 
+/** A pasted beat without float noise, exact on the beat grid; unshifted, it stays. */
+export const toPastedBeat = (beat: number, beatOffset: number) =>
+    beatOffset === 0 ? beat : alignNear(beat + beatOffset, view.division)
+
 export type PastePositionOptions = {
     /** The main chart canvas supplies display lanes; elevation keeps its own mapping. */
     composed?: boolean
@@ -545,7 +550,7 @@ export const pasteAtPosition = async (
 
     const selectedEntities: Entity[] = []
     for (const entity of entities) {
-        const beat = entity.beat + shiftedOffset
+        const beat = toPastedBeat(entity.beat, shiftedOffset)
 
         if (entity.type === 'note' && options.mapNote) {
             selectedEntities.push(
@@ -616,7 +621,7 @@ const buildComposedPaste = (
                 entity as never,
                 startLane,
                 lane,
-                entity.beat + beatOffset,
+                toPastedBeat(entity.beat, beatOffset),
                 flip,
                 selected,
             )
@@ -670,6 +675,7 @@ export const getComposedPasteDelta = (
         anchorBeat,
         view.groupId,
         view.stageId,
+        view.division,
     ]
     // The probes don't depend on the pointer lane, so moves within a beat reuse them.
     if (!pasteProbe?.keys.every((key, index) => key === keys[index]))
@@ -746,7 +752,7 @@ const pasteAuthored = (
                 : shiftComputed(left, delta)
             : (flip ? 2 * anchor - left - size : left) + delta
     for (const entity of entities) {
-        const common = { ...entity, beat: entity.beat + beatOffset }
+        const common = { ...entity, beat: toPastedBeat(entity.beat, beatOffset) }
         const stageId =
             'stageId' in entity ? (view.stageId ?? entity.stageId) : defaultStageId.value
         const limit = <T extends Parameters<typeof constrainLaneObject>[0]>(object: T) =>
