@@ -656,6 +656,81 @@ test('a dialog opening over a row drag cancels it, as it does a chart drag', asy
     expect(await canUndo(page)).toBe(false)
 })
 
+test('in the Manage Groups dialog, leaving the window or another dialog opening cancels a row drag', async ({
+    page,
+}) => {
+    await seedGroups(page, [['Default'], ['Lead', 'Verse'], ['Fill', 'Verse'], ['Outro']])
+    // A disabled panel keeps the manager reachable as a dialog, which holds the editor.
+    await page.evaluate(() => {
+        window.editorTest.settings.groupsPosition = 'disabled'
+    })
+    await page.keyboard.press('e')
+    const host = page.getByRole('dialog')
+    await expect(host).toBeVisible()
+    const rows = host.locator('[data-row]')
+    const boxes = () =>
+        rows.evaluateAll((elements) =>
+            elements.map((element) => {
+                const { top, height } = element.getBoundingClientRect()
+                return { top, height, transform: (element as HTMLElement).style.transform }
+            }),
+        )
+    const before = await boxes()
+    const dragging = host.locator('.manager-row-dragging')
+    const outro = (await nameButton(host, 'Outro').boundingBox())!
+    const verse = (await host
+        .locator('.manager-folder-row')
+        .filter({ has: page.locator('.manager-label', { hasText: /^Verse$/ }) })
+        .boundingBox())!
+    const x = outro.x + outro.width / 2
+    const startDrag = async () => {
+        await page.mouse.move(x, outro.y + outro.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(x, verse.y + verse.height / 2, { steps: 10 })
+        await expect(dragging).toHaveCount(1)
+    }
+    const expectUnchanged = async () => {
+        expect(await tree(page)).toBe('Default [Verse: Lead Fill] Outro')
+        expect(await canUndo(page)).toBe(false)
+    }
+
+    await startDrag()
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await expect(dragging).toHaveCount(0)
+    await expect.poll(boxes).toEqual(before)
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await page.mouse.move(x, verse.y + verse.height / 2 + 4)
+    await page.mouse.up()
+    await expectUnchanged()
+
+    // A dialog over the one hosting the list cancels it too.
+    await startDrag()
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { showModal } =
+            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+        const { default: ConfirmModal } = await appImport<{
+            default: typeof import('../../src/modals/ConfirmModal.vue').default
+        }>('/src/modals/ConfirmModal.vue')
+        void showModal(ConfirmModal, { title: () => 'Dialog', message: () => 'Body' })
+    })
+    const nested = page.getByRole('dialog', { name: 'Dialog', exact: true })
+    await expect(nested).toBeVisible()
+    await expect(dragging).toHaveCount(0)
+    await expect.poll(boxes).toEqual(before)
+    await page.mouse.move(x, verse.y + verse.height / 2 + 4)
+    await page.mouse.up()
+    await page.keyboard.press('Escape')
+    await expect(nested).toHaveCount(0)
+    await expectUnchanged()
+
+    // With nothing interrupting it, the same drag still drops into the folder.
+    await expect(host).toBeVisible()
+    await startDrag()
+    await page.mouse.up()
+    expect(await tree(page)).toBe('Default [Verse: Lead Fill Outro]')
+})
+
 test('a drag held still near the list edge keeps scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 600 })
     await seedGroups(page, [
@@ -1357,6 +1432,54 @@ test.describe('touch', () => {
         // Two taps on the target's name still rename it.
         await doubleTap(outro.locator('.manager-label'))
         await expect(rename).toBeFocused()
+    })
+
+    test("a second touch leaves a live row drag alone, and only the drag's own pointer cancels it", async ({
+        page,
+    }) => {
+        await seedGroups(page, [['Default'], ['Lead'], ['Outro']])
+        await page.evaluate(() => {
+            window.editorTest.settings.topDockHeight = 600
+        })
+        const grip = (name: string) => entryRow(page, name).locator('.manager-grip')
+        const center = async (name: string) => {
+            const box = (await grip(name).boundingBox())!
+            return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        }
+        const outro = await center('Outro')
+        const other = await center('Lead')
+        const to = (await entryRow(page, 'Default').boundingBox())!.y + 4
+        const client = await page.context().newCDPSession(page)
+        // Points left out of a touch event are released.
+        const touch = (
+            type: 'touchStart' | 'touchMove' | 'touchEnd',
+            points: { x: number; y: number }[],
+        ) =>
+            client.send('Input.dispatchTouchEvent', {
+                type,
+                touchPoints: points.map((point, id) => ({ ...point, id })),
+            })
+        const dragging = panel(page).locator('.manager-row-dragging')
+        await touch('touchStart', [outro])
+        const at = (step: number) => ({ x: outro.x, y: outro.y + ((to - outro.y) * step) / 8 })
+        for (let step = 1; step <= 4; step++) await touch('touchMove', [at(step)])
+        await expect(dragging).toHaveCount(1)
+        await expect(dragging).toContainText('Outro')
+        // A second finger presses another row's handle, then lifts.
+        await touch('touchStart', [at(4), other])
+        await touch('touchMove', [at(4), { x: other.x, y: other.y + 20 }])
+        await touch('touchMove', [at(4)])
+        await expect(dragging).toHaveCount(1)
+        await expect(dragging).toContainText('Outro')
+        // Another pointer's cancel leaves it too.
+        await page.evaluate(() =>
+            window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 9999 })),
+        )
+        await expect(dragging).toHaveCount(1)
+        for (let step = 5; step <= 8; step++) await touch('touchMove', [at(step)])
+        await touch('touchEnd', [])
+        await expect(dragging).toHaveCount(0)
+        expect(await tree(page)).toBe('Outro Default Lead')
     })
 
     test('a long press on a folder opens its menu', async ({ page }) => {

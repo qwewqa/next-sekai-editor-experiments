@@ -10,7 +10,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { interruptsDrags } from '../../../activity'
+import { isAppActive } from '../../../activity'
 import {
     entriesInTreeOrder,
     type FolderId,
@@ -923,6 +923,8 @@ type Drag = {
     /** Where the drop goes: into a folder, or before a remaining row (or at the end). */
     target: { into: FolderId } | { gap: number; end?: FolderId }
     started: boolean
+    /** Blocking dialogs open at the press, such as one hosting this list. */
+    dialogs: number
 }
 
 const drag = shallowRef<Drag>()
@@ -1057,6 +1059,11 @@ const targetOf = (current: Drag): Drag['target'] => {
 const onDragStart = (key: RowKey, event: PointerEvent) => {
     const container = list.value
     if (event.button !== 0 || renaming.value !== undefined || !container) return
+    // A second touch leaves a live drag alone; the same pointer again means its release was lost.
+    if (drag.value) {
+        if (drag.value.pointerId !== event.pointerId) return
+        onDragCancel()
+    }
     const rows = measureRows(container, () => 0)
     if (rows.length < 2) return
     const dragged = new Set([rowKey(key)])
@@ -1074,10 +1081,11 @@ const onDragStart = (key: RowKey, event: PointerEvent) => {
         offset: 0,
         target: { gap: -1 },
         started: false,
+        dialogs: blockingDialogs.value,
     }
     window.addEventListener('pointermove', onDragMove)
     window.addEventListener('pointerup', onDragEnd)
-    window.addEventListener('pointercancel', onDragCancel)
+    window.addEventListener('pointercancel', onDragPointerCancel)
     window.addEventListener('keydown', onDragKeydown, true)
 }
 
@@ -1094,7 +1102,7 @@ const settleRows = () => {
 const stopDragListeners = () => {
     window.removeEventListener('pointermove', onDragMove)
     window.removeEventListener('pointerup', onDragEnd)
-    window.removeEventListener('pointercancel', onDragCancel)
+    window.removeEventListener('pointercancel', onDragPointerCancel)
     window.removeEventListener('keydown', onDragKeydown, true)
     clearTimeout(expandTimer)
     cancelAnimationFrame(scrollFrame)
@@ -1255,6 +1263,10 @@ const onDragCancel = () => {
     void nextTick(settleRows)
 }
 
+const onDragPointerCancel = (event: PointerEvent) => {
+    if (event.pointerId === drag.value?.pointerId) onDragCancel()
+}
+
 const onDragKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || !drag.value?.started) return
     event.preventDefault()
@@ -1268,11 +1280,15 @@ onUnmounted(stopDragListeners)
 watch(tree, () => {
     if (drag.value) onDragCancel()
 })
-// Leaving the app or a dialog opening cancels a drag, as for chart drags.
+const blockingDialogs = computed(
+    () => modals.filter((modal) => modal.presentation !== 'tool').length,
+)
+// Leaving the app or a dialog opening over the list cancels a drag, as for chart drags.
 watch(
-    interruptsDrags,
-    (interrupted) => {
-        if (interrupted && drag.value) onDragCancel()
+    [isAppActive, blockingDialogs],
+    ([active, dialogs]) => {
+        const current = drag.value
+        if (current && (!active || dialogs > current.dialogs)) onDragCancel()
     },
     { flush: 'sync' },
 )
