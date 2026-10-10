@@ -241,7 +241,7 @@ const scrollLanes = (lane: number) => {
     }
 }
 
-// The reach always includes the lane itself, so a zero step skips computing it.
+// A zero step keeps the lane without computing the reach, even past Basic's Max Scroll X.
 const scrolledLane = (lane: number, delta: number) => {
     if (delta === 0) return lane
     const lanes = scrollLanes(lane)
