@@ -249,6 +249,34 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
     expect(released).toEqual([0, 0])
 })
 
+test('other stages draw on a new store and release the old one', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+        const { fixtures, show, view, nextTick } = window.editorTest
+        const frame = () =>
+            new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            )
+        const old = window.stageSurfaceTest.surface!
+        // A 'copy' clear could leave the old chart's stages showing through.
+        show(
+            {
+                ...fixtures.events,
+                stageTransformEvents: fixtures.events.stageTransformEvents.map((event) => ({
+                    ...event,
+                    xTranslation: -1.5,
+                })),
+            },
+            5,
+        )
+        view.layout = 'composed'
+        await nextTick()
+        await frame()
+        const current = window.stageSurfaceTest.surface!
+        return { released: [old.width, old.height], replaced: current !== old }
+    })
+    expect(result).toEqual({ released: [0, 0], replaced: true })
+})
+
 test('cached stage bitmap matches direct rendering across fractional DPR, viewport and style changes', async ({
     page,
 }) => {

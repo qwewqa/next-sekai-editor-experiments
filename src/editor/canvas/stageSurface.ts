@@ -37,6 +37,7 @@ export const createStageSurface = () => {
     let surfaceContext: CanvasRenderingContext2D | undefined
     let previous: readonly unknown[] | undefined
     let motion: Motion | undefined
+    let stageSet: unknown
     // The last frame's view, to tell motion from a still or changed view.
     let last:
         { key: readonly unknown[]; l: number; t: number; moving: boolean; time: number } | undefined
@@ -52,6 +53,7 @@ export const createStageSurface = () => {
         previous = undefined
         clearMotion()
         last = undefined
+        stageSet = undefined
     }
 
     // Draws a window around the view, extended along the motion, at the chart's device scale.
@@ -164,6 +166,11 @@ export const createStageSurface = () => {
             /* eslint-disable @typescript-eslint/no-unnecessary-condition */
             if (surfaceContext?.isContextLost?.() || motion?.ctx.isContextLost?.()) clear()
             /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+            // New stages reallocate the stores: a 'copy' clear can keep old pixels once a canvas has been read.
+            if (composed.stages !== stageSet) {
+                clear()
+                stageSet = composed.stages
+            }
             const [w, h] = deviceSize(width, height, pixelRatio)
             const pixels = w * h
             if (

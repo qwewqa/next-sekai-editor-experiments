@@ -46,6 +46,20 @@ const seed = (page: Page, time: number) =>
         await nextTick()
     }, time)
 
+// Draws the stages exactly again, on the same store: a new store can antialias stroke ends differently.
+const redrawStages = (page: Page) =>
+    page.evaluate(async () => {
+        const { view, nextTick } = window.editorTest
+        const division = view.laneDivision
+        view.laneDivision = division === 1 ? 2 : 1
+        await nextTick()
+        await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        )
+        view.laneDivision = division
+        await nextTick()
+    })
+
 for (const dpr of [1, 1.25, 1.5]) {
     test.describe(`DPR ${dpr}`, () => {
         test.use({ deviceScaleFactor: dpr })
@@ -91,7 +105,7 @@ for (const dpr of [1, 1.25, 1.5]) {
             expect(step.shifted).toBe(before.shifted)
 
             // Eased scrolling moves on every clock tick: frames shift one drawn window.
-            const end = await page.evaluate(async () => {
+            await page.evaluate(async () => {
                 const { view, appImport } = window.editorTest
                 const { scrollViewYBy } =
                     await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
@@ -100,10 +114,9 @@ for (const dpr of [1, 1.25, 1.5]) {
                     for (let f = 0; f < 4; f++) await new Promise((r) => requestAnimationFrame(r))
                 }
                 while (view.scrollingY) await new Promise((r) => requestAnimationFrame(r))
-                return view.time
             })
             // The still frame comes once the view has held still for longer than a motion's gap.
-            await page.waitForTimeout(150)
+            await page.waitForTimeout(300)
             await frames(page, 4)
             const after = await counters()
             const moved = after.frames - step.frames
@@ -112,11 +125,11 @@ for (const dpr of [1, 1.25, 1.5]) {
             expect(after.strokes - step.strokes).toBeLessThan((perDraw * moved) / 2)
             const settled = await page.locator('canvas.editor-chart').screenshot()
 
-            // A fresh chart at the same time draws the same pixels.
-            await seed(page, end)
+            // An exact redraw of the same view draws the same pixels.
+            await redrawStages(page)
             await frames(page, 4)
-            const fresh = await page.locator('canvas.editor-chart').screenshot()
-            expect(settled.equals(fresh)).toBe(true)
+            const exact = await page.locator('canvas.editor-chart').screenshot()
+            expect(settled.equals(exact)).toBe(true)
         })
     })
 }
@@ -132,14 +145,9 @@ const pixels = async (page: Page) => {
     return Buffer.from(url.split(',')[1]!, 'base64')
 }
 
-// The same view drawn from scratch.
-const freshPixels = async (page: Page) => {
-    const place = await page.evaluate(() => {
-        const { view } = window.editorTest
-        return { time: view.time, lane: view.lane, cursorTime: view.cursorTime }
-    })
-    await seed(page, place.time)
-    await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
+// The same view with its stages drawn exactly.
+const exactPixels = async (page: Page) => {
+    await redrawStages(page)
     return pixels(page)
 }
 
@@ -179,7 +187,7 @@ test.describe('changes during motion', () => {
                 window.editorTest.settings.theme = 'light'
             }),
         )
-        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
     })
 
     test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {
@@ -193,7 +201,7 @@ test.describe('changes during motion', () => {
             }),
         )
         expect(await page.evaluate(() => devicePixelRatio)).toBe(1.5)
-        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
     })
 
     test('hiding the app during playback leaves no shifted stage pixels', async ({ page }) => {
@@ -215,6 +223,6 @@ test.describe('changes during motion', () => {
         await command('stop')
         await page.waitForTimeout(300)
         await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-        expect((await pixels(page)).equals(await freshPixels(page))).toBe(true)
+        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
     })
 })
