@@ -74,8 +74,11 @@ for (const switches of [false, true]) {
         await page.evaluate((switches) => {
             window.editorTest.settings.deselectSwitchesToSelect = switches
         }, switches)
+        // Chosen from the keyboard; a pointer click returns focus to the editor.
         const composed = panel(page).getByRole('radio', { name: 'Composed', exact: true })
-        await composed.check()
+        await panel(page).getByRole('radio', { name: 'Basic', exact: true }).focus()
+        await page.keyboard.press('ArrowRight')
+        await expect(composed).toBeChecked()
         await expect(composed).toBeFocused()
         await page.keyboard.down('Escape')
         expect(await selected(page)).toBe(0)
