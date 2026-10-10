@@ -52,7 +52,9 @@ watch(modelValue, () => {
 if (edit) watch(edit.revision, reset)
 onBeforeUnmount(() => edit?.cancel(owner))
 
-const isValid = () => input.value?.validity.valid && Number.isFinite(input.value.valueAsNumber)
+// Parsed from the text: Firefox's valueAsNumber keeps only 15 digits.
+const typed = () => Number(input.value?.value)
+const isValid = () => input.value?.validity.valid && Number.isFinite(typed())
 
 const onInput = () => {
     if (!input.value) return
@@ -62,7 +64,7 @@ const onInput = () => {
     dirty = true
     if (!edit) return
     if (isValid()) {
-        const value = input.value.valueAsNumber
+        const value = typed()
         edit.preview(owner, () => (modelValue.value = value))
     } else {
         edit.invalidate(owner)
@@ -75,7 +77,7 @@ const onChange = async () => {
         if (edit) {
             edit.commit(owner)
         } else {
-            modelValue.value = input.value.valueAsNumber
+            modelValue.value = typed()
         }
     } else {
         edit?.cancel(owner)
@@ -108,7 +110,7 @@ const onEscape = (event: KeyboardEvent) => {
 // Arrow keys step from the exact value: the shown one is rounded, and so are native steps.
 const onStepKey = (event: KeyboardEvent) => {
     const element = input.value
-    const from = dirty ? element?.valueAsNumber : modelValue.value
+    const from = dirty ? (isValid() ? typed() : undefined) : modelValue.value
     if (props.step !== 'any' || !element || from === undefined || !Number.isFinite(from)) return
     event.preventDefault()
     let next = from + (event.key === 'ArrowUp' ? 1 : -1)
