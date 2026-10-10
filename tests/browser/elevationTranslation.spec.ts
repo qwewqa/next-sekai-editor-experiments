@@ -75,7 +75,10 @@ const run = (page: import('@playwright/test').Page, dynamic: boolean) =>
             }))
             view.stageId = stage1
             const added = actions.previewElevationNote(7, 0.5, 4, false)
-            const pasted = actions.previewElevationPaste(7, 0.5, 4, { ctrl: false, shift: false })
+            const pasted = actions.previewElevationPaste(7, 0.5, 4, {
+                ctrl: false,
+                shift: false,
+            }).notes
             view.stageId = undefined
             return {
                 lanes,

@@ -429,6 +429,29 @@ const showGhost = (
     }
 }
 
+/** Another pane's notes-only paste ghost, placed as the store will place it (attached notes included). */
+export const showNoteGhost = (slides: NoteObject[][]) => {
+    const { bpms } = state.value
+    if (
+        !ghost ||
+        ghost.state ||
+        ghost.bpms !== bpms ||
+        ghost.pastedBpms.length ||
+        !isSameSlides(ghost.slides, slides)
+    ) {
+        clearPasteGhost()
+        const { slides: built } = createStore({ ...emptyChart(), slides }, bpms)
+        ghost = {
+            slides,
+            bpms,
+            pastedBpms: [],
+            entities: [...[...built.connector.values()].flat(), ...[...built.note.values()].flat()],
+            infos: built.info,
+        }
+    }
+    return { notes: ghost.entities.filter((entity) => entity.type === 'note'), infos: ghost.infos }
+}
+
 const emptyChart = (): Chart => ({
     initialLife: 1000,
     isDynamicStages: false,

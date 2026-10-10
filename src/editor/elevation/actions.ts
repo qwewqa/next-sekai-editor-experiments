@@ -1,3 +1,4 @@
+import type { NoteObject } from '../../chart/note'
 import { clipboardEntry } from '../../clipboard'
 import { ease } from '../../ease'
 import { pushState, state } from '../../history'
@@ -22,11 +23,13 @@ import {
     getPasteFocus,
     getPasteNoteEntities,
     pasteAtPosition,
+    showNoteGhost,
     toMovedNoteObject,
     toPasteBeatOffset,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
 import { alignLane, view } from '../view'
+import { sameBeat, type ElevationNote } from './layout'
 import { elevationState, getElevationStageProps } from './scene'
 
 const getElevationProperties = (beat: number, asSlide: boolean) =>
@@ -100,14 +103,31 @@ const pastedElevation = (note: NoteEntity, notes: NoteEntity[], beatOffset: numb
     const head = slide.slice(0, index).reverse().find(isEnd)
     const tail = slide.slice(index + 1).find(isEnd)
     if (!note.isAttached || !head || !tail) return shown(note)
-    const fraction =
-        sameBeatAttachmentFraction(head, tail, note) ??
-        ease(
-            head.connectorEase,
-            attachFraction(state.value.bpms, head.beat + beatOffset, tail.beat + beatOffset, beat),
-        )
-    return lerp(shown(head), shown(tail), fraction)
+    return attachedElevation(note, head, tail, beatOffset, shown)
 }
+
+// An attached note's shown elevation between its head and tail, as the editor draws it.
+const attachedElevation = (
+    note: NoteEntity,
+    head: NoteEntity,
+    tail: NoteEntity,
+    beatOffset: number,
+    shown: (point: NoteEntity) => number,
+) =>
+    lerp(
+        shown(head),
+        shown(tail),
+        sameBeatAttachmentFraction(head, tail, note) ??
+            ease(
+                head.connectorEase,
+                attachFraction(
+                    state.value.bpms,
+                    head.beat + beatOffset,
+                    tail.beat + beatOffset,
+                    note.beat + beatOffset,
+                ),
+            ),
+    )
 
 const getElevationPaste = (lane: number, elevation: number, beat: number, modifiers: Modifiers) => {
     const data = clipboardEntry.value?.data
@@ -160,11 +180,45 @@ export const previewElevationPaste = (
     modifiers: Modifiers,
 ) => {
     const paste = getElevationPaste(lane, elevation, beat, modifiers)
-    if (!paste) return []
-    return paste.notes.map((note) => {
-        const destinationBeat = note.beat + paste.beatOffset
-        return toNoteEntity(note.slideId, paste.mapNote(note, destinationBeat))
-    })
+    if (!paste) return { notes: [], infos: undefined }
+    const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
+    for (const note of paste.notes) {
+        const object = paste.mapNote(note, note.beat + paste.beatOffset)
+        slides.set(note.slideId, [...(slides.get(note.slideId) ?? []), object])
+    }
+    // Built as the store will place it, so attached notes show where they land.
+    return showNoteGhost([...slides.values()])
+}
+
+/** The paste ghost's rows at a beat: lanes and elevations as they will show once pasted. */
+export const previewElevationPasteRows = (
+    lane: number,
+    elevation: number,
+    beat: number,
+    modifiers: Modifiers,
+): ElevationNote[] => {
+    const { notes, infos } = previewElevationPaste(lane, elevation, beat, modifiers)
+    const composed = getComposedLayout(elevationState.value)
+    return notes
+        .filter((note) => sameBeat(note.beat, beat))
+        .map((note, order) => {
+            const slide = infos?.get(note.slideId) ?? []
+            const index = slide.findIndex((info) => info.note === note)
+            const info = note.isAttached && index > 0 && index < slide.length - 1 && slide[index]
+            const shown = (point: NoteEntity) =>
+                point.elevation + getElevationStageProps(point.stageId, note.beat).elevation
+            const position = composed?.notePosition(note, note.beat, { slideInfos: slide }) ?? note
+            return {
+                note,
+                lane: position.left + position.size / 2,
+                size: position.size,
+                elevation: info
+                    ? attachedElevation(note, info.attachHead, info.attachTail, 0, shown)
+                    : shown(note),
+                attached: !!info,
+                order,
+            }
+        })
 }
 
 export const pasteElevationNotes = async (

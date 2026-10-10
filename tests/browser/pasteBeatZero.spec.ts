@@ -131,7 +131,7 @@ test('an elevation paste before beat 0 shifts the same way, ghost included', asy
         await actions.pasteElevationNotes(-1, 0, 1, modifiers)
         const beats = (notes: { beat: number }[]) => notes.map((note) => note.beat).sort()
         return {
-            preview: beats(preview),
+            preview: beats(preview.notes),
             pasted: beats(history.state.value.selectedEntities),
         }
     })
