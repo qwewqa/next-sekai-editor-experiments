@@ -92,6 +92,7 @@ import {
     yToValidBeat,
 } from '../view'
 import { getOnlyEntityType } from './entityType'
+import { getMovedEndBases } from './moveBase'
 import {
     getLaneAnchor,
     hitAllEntitiesAtPoint,
@@ -115,9 +116,12 @@ type MoveActive = {
     // The pointer and lane snapping the preview was last built for.
     last?: string
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
+    bases?: { source: State; beatOffset: number; bases: Bases }
 }
 
 type RawMove = { delta: number; unconstrained?: boolean }
+
+type Bases = ReadonlyMap<NoteEntity, NoteEntity>
 
 let active:
     | MoveActive
@@ -315,6 +319,7 @@ export const select: Tool = {
                 )
                     ? moveEntities(source, move, lane, beatOffset, rawMove)
                     : undefined
+                const bases = getMoveBases(source, active, beatOffset)
 
                 const creating: Entity[] = []
                 let focusBeat = active.focus.beat
@@ -330,6 +335,7 @@ export const select: Tool = {
                         beat,
                         active.focus,
                         rawMove,
+                        bases,
                     )
                     if (!result) continue
 
@@ -508,6 +514,7 @@ const moveEntities = (
                   .map((note) => [note, note.beat + beatOffset]),
           )
         : undefined
+    const bases = getMoveBases(source, active, beatOffset)
     let destination: State | undefined
     let destinationNotes: Map<NoteEntity, NoteEntity> | undefined
     for (const entity of entities) {
@@ -546,6 +553,7 @@ const moveEntities = (
                         rawMove,
                         destination,
                         movingBeats,
+                        bases,
                     ),
                 ),
             )
@@ -562,6 +570,7 @@ const moveEntities = (
             active.focus,
             selectedEntities,
             rawMove,
+            bases,
         )
         if (result) selectedEntities.push(...result)
     }
@@ -618,6 +627,8 @@ const getRawMove = (
         }
     }
     const target = composed.noteLeft(focus) + lane - active.lane
+    // A tick taken past its slide's end snaps from its gameplay place.
+    const anchor = getMoveBases(source, active, beatOffset).get(focus) ?? focus
     const delta = inverseAffine(
         target,
         { input: 0, output: response.zero },
@@ -629,8 +640,22 @@ const getRawMove = (
         delta:
             delta === undefined
                 ? 0
-                : offset(0, delta, focus.left, response.origin, lane - active.lane),
+                : offset(0, delta, anchor.left, response.origin, lane - active.lane),
     }
+}
+
+/** The selected ticks this move takes past their slide's ends, at their gameplay place. */
+const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Bases => {
+    // Without a beat change, or in a resize, no tick crosses an end.
+    if (!beatOffset || isSelectResize(active.onlyType, active.focus, active.lane)) return new Map()
+    const cached = active.bases
+    if (cached?.source === source && cached.beatOffset === beatOffset) return cached.bases
+    const beats = new Map<NoteEntity, number>()
+    for (const entity of active.entities)
+        if (entity.type === 'note') beats.set(entity, entity.beat + beatOffset)
+    const bases = getMovedEndBases(source, beats)
+    active.bases = { source, beatOffset, bases }
+    return bases
 }
 
 const moveSelectedLane = (
@@ -897,15 +922,20 @@ const toMovedNoteObject = (
     rawMove?: RawMove,
     destination = state.value,
     movingBeats?: ReadonlyMap<NoteEntity, number>,
+    bases?: Bases,
 ): NoteObject => {
+    // A tick taken past its slide's end moves as the note it becomes, from its gameplay place.
+    const from = bases?.get(entity) ?? entity
     if (rawMove) {
         return constrainLaneObject(
             {
                 ...entity,
                 beat,
                 left: rawMove.unconstrained
-                    ? entity.left + rawMove.delta
-                    : shiftComputed(entity.left, rawMove.delta),
+                    ? from.left + rawMove.delta
+                    : shiftComputed(from.left, rawMove.delta),
+                size: from.size,
+                elevation: from.elevation,
             },
             {
                 enabled:
@@ -948,7 +978,7 @@ const toMovedNoteObject = (
     }
 
     const composed = getComposedLayout()
-    const anchor = composed && focus.type === 'note' ? focus : entity
+    const anchor = composed && focus.type === 'note' ? (bases?.get(focus) ?? focus) : from
     const anchorBeat = anchor.beat + beat - entity.beat
     // Only the grabbed note is inverted into its destination stage. Every
     // selected note receives that same authored delta, so animated stages can
@@ -966,15 +996,17 @@ const toMovedNoteObject = (
             ...entity,
             beat,
             left: moveLane(
-                entity.left,
+                from.left,
                 startLane,
                 lane + correction,
-                getLaneAnchor(focus),
+                getLaneAnchor(focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus),
                 composed && focus.type === 'note'
                     ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
                     : 0,
                 lane - startLane,
             ),
+            size: from.size,
+            elevation: from.elevation,
         },
         {
             enabled: entity === focus && (lane !== startLane || beat !== entity.beat),
@@ -990,6 +1022,7 @@ type Create<T extends Entity> = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ) => Entity | undefined
 
 const creates: {
@@ -1031,10 +1064,21 @@ const creates: {
         ),
     stageTransformEventConnection: undefined,
 
-    note: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    note: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toNoteEntity(
             entity.slideId,
-            toMovedNoteObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedNoteObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                undefined,
+                undefined,
+                bases,
+            ),
             entity,
         ),
     connector: undefined,
@@ -1051,6 +1095,7 @@ type Move<T extends Entity> = (
     /** Objects already placed by this move; they never replace each other. */
     batch: readonly Entity[],
     rawMove?: RawMove,
+    bases?: Bases,
 ) => Entity[] | undefined
 
 const moves: {
@@ -1228,8 +1273,19 @@ const moves: {
     },
     stageTransformEventConnection: undefined,
 
-    note: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove) => {
-        const object = toMovedNoteObject(onlyType, entity, startLane, lane, beat, focus, rawMove)
+    note: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, bases) => {
+        const object = toMovedNoteObject(
+            onlyType,
+            entity,
+            startLane,
+            lane,
+            beat,
+            focus,
+            rawMove,
+            undefined,
+            undefined,
+            bases,
+        )
 
         return replaceNote(transaction, entity, object)
     },
