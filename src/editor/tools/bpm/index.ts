@@ -21,12 +21,12 @@ import {
     focusEntityAtBeat,
     isBelowSnapping,
     setViewHover,
-    snapYToBeat,
     view,
     yToBeat,
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
+import { snapYToMovedBeat } from '../toolMove'
 import { commitDrop, hitEntitiesAtPoint } from '../utils'
 
 let active:
@@ -192,7 +192,7 @@ export const bpm: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const beat = snapYToMovedBeat(y, active.entity.beat, active.pressBeat)
                 const object: BpmObject = {
                     beat,
                     bpm: active.entity.bpm,
@@ -249,7 +249,7 @@ export const bpm: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const beat = snapYToMovedBeat(y, active.entity.beat, active.pressBeat)
 
                 commitDrop(editMoveOrReplace, active.entity, {
                     beat,

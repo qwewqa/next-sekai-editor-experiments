@@ -19,7 +19,7 @@ const kinds = {
 } as const
 type Kind = keyof typeof kinds
 
-// Shows one object of the kind at beat 4 with its lane field at value, and picks the tool.
+// Shows one object of the kind at beat (4) with its lane field at value, and picks the tool.
 const setup = (
     page: Page,
     options: {
@@ -29,82 +29,86 @@ const setup = (
         laneDivision?: number
         division?: number
         maxLane?: number
+        beat?: number
     },
 ) =>
-    page.evaluate(async ({ kind, tool, value, laneDivision = 1, division = 4, maxLane = 0 }) => {
-        const { show, fixtures, view, settings, appImport } = window.editorTest
-        const events = fixtures.events
-        show(
-            {
-                ...fixtures.interaction,
-                slides: [],
-                ...(kind === 'stagePivotEvent'
-                    ? {
-                          stagePivotEvents: [
-                              { ...events.stagePivotEvents[0]!, beat: 4, pivotLane: value },
-                          ],
-                      }
-                    : kind === 'stageTransformEvent'
-                      ? {
-                            stageTransformEvents: [
-                                {
-                                    ...events.stageTransformEvents[0]!,
-                                    beat: 4,
-                                    xTranslation: value,
-                                },
-                            ],
-                        }
-                      : kind === 'stageStyleEvent'
+    page.evaluate(
+        async ({ kind, tool, value, laneDivision = 1, division = 4, maxLane = 0, beat = 4 }) => {
+            const { show, fixtures, view, settings, appImport } = window.editorTest
+            const events = fixtures.events
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [],
+                    ...(kind === 'stagePivotEvent'
                         ? {
-                              stageStyleEvents: [
-                                  { ...events.stageStyleEvents[0]!, beat: 4, editorLane: value },
+                              stagePivotEvents: [
+                                  { ...events.stagePivotEvents[0]!, beat, pivotLane: value },
                               ],
                           }
-                        : kind === 'timeScale'
+                        : kind === 'stageTransformEvent'
                           ? {
-                                timeScales: [
+                                stageTransformEvents: [
                                     {
-                                        ...events.timeScales[0]!,
-                                        groupId: 1 as never,
-                                        beat: 4,
-                                        editorLane: value,
+                                        ...events.stageTransformEvents[0]!,
+                                        beat,
+                                        xTranslation: value,
                                     },
                                 ],
                             }
-                          : kind === 'stageMaskEvent'
+                          : kind === 'stageStyleEvent'
                             ? {
-                                  stageMaskEvents: [
-                                      {
-                                          ...events.stageMaskEvents[0]!,
-                                          beat: 4,
-                                          maskLeft: value,
-                                          maskSize: 2,
-                                      },
+                                  stageStyleEvents: [
+                                      { ...events.stageStyleEvents[0]!, beat, editorLane: value },
                                   ],
                               }
-                            : {
-                                  cameraEvents: [
-                                      {
-                                          ...events.cameraEvents[0]!,
-                                          beat: 4,
-                                          cameraLeft: value,
-                                          cameraSize: 6,
-                                      },
-                                  ],
-                              }),
-            },
-            3,
-        )
-        view.laneDivision = laneDivision
-        view.laneSnapping = 'absolute'
-        view.division = division
-        view.snapping = 'absolute'
-        settings.maxLane = maxLane
-        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
-            '/src/editor/tools/index.ts',
-        )
-        switchToolTo(tool)
-    }, options)
+                            : kind === 'timeScale'
+                              ? {
+                                    timeScales: [
+                                        {
+                                            ...events.timeScales[0]!,
+                                            groupId: 1 as never,
+                                            beat,
+                                            editorLane: value,
+                                        },
+                                    ],
+                                }
+                              : kind === 'stageMaskEvent'
+                                ? {
+                                      stageMaskEvents: [
+                                          {
+                                              ...events.stageMaskEvents[0]!,
+                                              beat,
+                                              maskLeft: value,
+                                              maskSize: 2,
+                                          },
+                                      ],
+                                  }
+                                : {
+                                      cameraEvents: [
+                                          {
+                                              ...events.cameraEvents[0]!,
+                                              beat,
+                                              cameraLeft: value,
+                                              cameraSize: 6,
+                                          },
+                                      ],
+                                  }),
+                },
+                3,
+            )
+            view.laneDivision = laneDivision
+            view.laneSnapping = 'absolute'
+            view.division = division
+            view.snapping = 'absolute'
+            settings.maxLane = maxLane
+            const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                '/src/editor/tools/index.ts',
+            )
+            switchToolTo(tool)
+        },
+        options,
+    )
 
 const objects = (page: Page, kind: Kind) =>
     page.evaluate(
@@ -127,18 +131,18 @@ const canUndo = (page: Page) =>
         return canUndo.value
     })
 
-// Presses lane at beat 4, moves dx lanes sideways and beats down the chart, and releases.
-const drag = async (page: Page, lane: number, dx: number, beats: number) => {
+// Presses lane at beat from (4), moves dx lanes sideways and beats down the chart, and releases.
+const drag = async (page: Page, lane: number, dx: number, beats: number, from = 4) => {
     const { start, end, width } = await page.evaluate(
-        ({ lane, beats }) => {
+        ({ lane, beats, from }) => {
             const { point, view, settings } = window.editorTest
             return {
-                start: point(lane, 4),
-                end: point(lane, 4 + beats),
+                start: point(lane, from),
+                end: point(lane, from + beats),
                 width: view.w / settings.width,
             }
         },
-        { lane, beats },
+        { lane, beats, from },
     )
     await page.mouse.move(start.x, start.y)
     await page.mouse.down()
@@ -219,6 +223,49 @@ for (const kind of Object.keys(kinds) as Kind[]) {
         })
     }
 }
+
+// 0.1 + 2.2 is 2.3000000000000003 in floats.
+const pressLanes = { stageMaskEvent: 1.37, cameraEvent: 3.37 } as Partial<Record<Kind, number>>
+for (const kind of Object.keys(kinds) as Kind[]) {
+    test(`${kind}: a tool move lands exactly on the beat grid`, async ({ page }) => {
+        await setup(page, { kind, tool: kind, value: 0.37, division: 10, beat: 0.1 })
+        await page.evaluate(() => (window.editorTest.view.snapping = 'relative'))
+        await drag(page, pressLanes[kind] ?? 0.37, 0, 2.2, 0.1)
+        expect(await objects(page, kind)).toEqual([{ beat: 2.3, lane: 0.37 }])
+    })
+}
+
+test('bpm: a tool move lands exactly on the beat grid', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { show, fixtures, view, appImport } = window.editorTest
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [],
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: 0.1, bpm: 120 },
+                ],
+            },
+            3,
+        )
+        view.division = 10
+        view.snapping = 'relative'
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo('bpm')
+    })
+    await drag(page, 0, 0, 2.2, 0.1)
+    expect(
+        await page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.grid.bpm.values()]
+                .flatMap((bucket) => [...bucket])
+                .map((bpm) => bpm.beat)
+                .sort((a, b) => a - b),
+        ),
+    ).toEqual([0, 2.3])
+})
 
 // Enable once moveBase.ts's toDraggedNoteObject gates lane limits as Select does (fix4-drag merge).
 for (const tool of ['note', 'slide', 'select'] as const) {

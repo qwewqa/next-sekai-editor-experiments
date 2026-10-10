@@ -23,7 +23,6 @@ import { showToolModal } from '../../../toolModals'
 import {
     focusEntityAtBeat,
     setViewHover,
-    snapYToBeat,
     view,
     xToLane,
     xToValidLane,
@@ -31,7 +30,7 @@ import {
     yToValidBeat,
 } from '../../../view'
 import SelectionPropertiesModal from '../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved } from '../../toolMove'
+import { constrainMoved, snapYToMovedBeat } from '../../toolMove'
 import {
     commitDrop,
     hitEntitiesAtPoint,
@@ -409,7 +408,7 @@ const toMovedObject = (move: MoveActive, x: number, y: number): CameraEventObjec
     return constrainMoved(
         {
             ...move.entity,
-            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
+            beat: snapYToMovedBeat(y, move.entity.beat, move.pressBeat),
             cameraLeft: moveLane(move.entity.cameraLeft, move.lane, lane, move.entity.cameraLeft),
         },
         move.entity.beat,
