@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { formatNumber } from '../../src/modals/form/fieldUsage'
 import { addDecimal, createStepTrail, stepNumber } from '../../src/modals/form/numberStep'
+import { formatNumber } from '../../src/utils/formatNumber'
 
 test('steps add in decimal, without float noise', () => {
     assert.equal(addDecimal(1.1, -1), 0.1)

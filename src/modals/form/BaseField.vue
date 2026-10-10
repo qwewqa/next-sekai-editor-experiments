@@ -18,7 +18,8 @@ import { useStackLongValues, useStackLongWords, valueOverflows, wordOverflows } 
 import { cancelFit, queueFit } from './fitBatch'
 import { holdsTyping } from './resync'
 import { observeWidth, unobserveWidth } from './widthObserver'
-import { formatNumber, mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
+import { formatNumber } from '../../utils/formatNumber'
+import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
 
 const props = defineProps<{
     label: string

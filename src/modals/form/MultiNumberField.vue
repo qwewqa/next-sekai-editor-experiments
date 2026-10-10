@@ -13,7 +13,8 @@ import {
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import BaseField from './BaseField.vue'
-import { formatNumber, formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
+import { formatNumber } from '../../utils/formatNumber'
+import { formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
 import { createStepTrail } from './numberStep'
 import { confirmOnEnter, isTyped, trackTyping } from './resync'
@@ -149,11 +150,22 @@ const onEscape = (event: KeyboardEvent) => {
 
 // Arrow keys step from the exact value, as the shown one is rounded, and preview until the field is left.
 const onStepKey = (event: KeyboardEvent) => {
+    event.preventDefault()
+    stepBy(event.key === 'ArrowUp' ? 1 : -1)
+}
+
+// Chromium steps a focused number input under the wheel natively, from the shown text; it steps as the arrows do.
+const stepsOnWheel = 'userAgentData' in navigator
+const onWheel = (event: WheelEvent) => {
+    if (!stepsOnWheel || !event.deltaY || document.activeElement !== event.currentTarget) return
+    event.preventDefault()
+    stepBy(event.deltaY < 0 ? 1 : -1)
+}
+
+const stepBy = (direction: number) => {
     const element = input.value
     if (!element) return
-    event.preventDefault()
-    const delta =
-        (event.key === 'ArrowUp' ? 1 : -1) * (typeof props.step === 'number' ? props.step : 1)
+    const delta = direction * (typeof props.step === 'number' ? props.step : 1)
     if (isTyped(element, committed)) {
         if (element.validity.badInput || element.value === '') return
         stepFrom(typed(), delta)
@@ -239,6 +251,7 @@ const onFocus = (event: FocusEvent) => {
             @keydown.esc="onEscape"
             @keydown.up="onStepKey"
             @keydown.down="onStepKey"
+            @wheel="onWheel"
             @keydown.enter="confirmOnEnter"
         />
     </BaseField>

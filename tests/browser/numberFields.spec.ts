@@ -231,6 +231,90 @@ test('arrow steps stop at a limit, and a meter stays above 0', async ({ page }) 
     await expect.poll(async () => (await values(page, 'bpm', 'meter')).slice(1)).toEqual([1, 1.5])
 })
 
+test.describe('the wheel', () => {
+    // The scrolling ancestor of a field, and how far it has scrolled.
+    const scrolled = (page: Page, label: string) =>
+        field(page, label).evaluate((element) => {
+            let parent = element.parentElement
+            while (parent && !/auto|scroll/.test(getComputedStyle(parent).overflowY))
+                parent = parent.parentElement
+            return parent?.scrollTop ?? 0
+        })
+    const wheelOver = async (page: Page, label: string, deltaY: number) => {
+        const box = (await field(page, label).boundingBox())!
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.wheel(0, deltaY)
+    }
+
+    test('over a focused field steps from the exact value where it stepped natively', async ({
+        page,
+        browserName,
+    }) => {
+        const exact = 0.123456789
+        await showNotes(page, [{ left: exact }])
+        const lane = field(page, 'Lane')
+        await lane.focus()
+        await wheelOver(page, 'Lane', -100)
+        if (browserName !== 'chromium') {
+            // Other browsers never stepped by the wheel.
+            await page.waitForTimeout(100)
+            await expect(lane).toHaveValue('0.1235')
+            return
+        }
+        await expect(lane).toHaveValue('1.123456789')
+        await expect.poll(() => previewed(page, 'left')).toEqual([1.123456789])
+        expect(await lanes(page)).toEqual([exact])
+        // Stepping back changes nothing.
+        await wheelOver(page, 'Lane', 100)
+        await expect(lane).toHaveValue('0.1235')
+        await wheelOver(page, 'Lane', 100)
+        await page.keyboard.press('Escape')
+        await expect(lane).toHaveValue('0.1235')
+        await wheelOver(page, 'Lane', -100)
+        await wheelOver(page, 'Lane', -100)
+        await page.keyboard.press('Tab')
+        await expect.poll(() => lanes(page)).toEqual([2.123456789])
+        await page.keyboard.press('ControlOrMeta+z')
+        await expect.poll(() => lanes(page)).toEqual([exact])
+        expect(await canUndo(page)).toBe(false)
+
+        // A mixed field steps each value on its own.
+        await showNotes(page, [{ left: -4 }, { left: 0 }, { left: 2 }])
+        await lane.focus()
+        await wheelOver(page, 'Lane', -100)
+        await expect(lane).toHaveAttribute('placeholder', '-3 … 3')
+        await page.keyboard.press('Enter')
+        await expect.poll(() => lanes(page)).toEqual([-3, 1, 3])
+    })
+
+    test('over a field not focused scrolls the panel and leaves the field alone', async ({
+        page,
+        browserName,
+    }) => {
+        await page.setViewportSize({ width: 1600, height: 500 })
+        await showNotes(page, [{ left: 1 }, { left: 2 }])
+        const lane = field(page, 'Lane')
+        await expect(lane).toHaveAttribute('placeholder', '1 … 2')
+        await wheelOver(page, 'Lane', 100)
+        await expect.poll(() => scrolled(page, 'Lane')).toBeGreaterThan(0)
+        expect(await lanes(page)).toEqual([1, 2])
+        await expect(lane).toHaveValue('')
+
+        // Focused, only Chromium keeps the wheel; other browsers scroll on.
+        await field(page, 'Beat').evaluate((element) => element.scrollIntoView({ block: 'start' }))
+        await lane.focus()
+        const before = await scrolled(page, 'Lane')
+        await wheelOver(page, 'Lane', 100)
+        if (browserName === 'chromium') {
+            await expect(lane).toHaveAttribute('placeholder', '0 … 1')
+            expect(await scrolled(page, 'Lane')).toBe(before)
+        } else {
+            await expect.poll(() => scrolled(page, 'Lane')).toBeGreaterThan(before)
+            await expect(lane).toHaveAttribute('placeholder', '1 … 2')
+        }
+    })
+})
+
 test('a small value shows its digits, not 0', async ({ page }) => {
     await showNotes(page, [{ left: 0.00001 }])
     await expect(field(page, 'Lane')).toHaveValue('0.00001')

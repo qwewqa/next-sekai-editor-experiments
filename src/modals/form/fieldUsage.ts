@@ -1,5 +1,6 @@
 import { inject, type InjectionKey, type Ref } from 'vue'
 import { countOptions, valueRange, type ValueUsage } from '../../editor/utils/aggregate'
+import { formatNumber } from '../../utils/formatNumber'
 
 /** What the selected objects hold for one field, provided around the field. */
 export type FieldUsage = {
@@ -40,12 +41,6 @@ export const optionName = (value: unknown, options: readonly (readonly [string, 
 
 /** No selected object holds a value, as for a BPM change without a meter. */
 export const isUnset = (field: FieldUsage | undefined) => field?.usage?.values.size === 0
-
-// Typed like the number inputs show them, with a plain minus; a value too small for 4 decimals keeps 4 digits.
-export const formatNumber = (value: number) => {
-    const rounded = +value.toFixed(4)
-    return `${rounded === 0 && value !== 0 ? +value.toPrecision(4) : rounded}`
-}
 
 /** A range of numbers, as "-4 … 6"; one number alone when it holds only that. */
 export const formatRange = (min: number, max: number) =>
