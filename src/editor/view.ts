@@ -229,16 +229,18 @@ export const viewBox = computed(() => {
 export const ups = computed(() => viewBox.value.ups)
 
 // Composed also reaches the displayed chart, which stages can move past Max Scroll X.
-const scrollLanes = (lane: number) => {
+const scrollReach = () => {
     const limit = settings.maxScrollX
     const extent = getComposedLayout()?.displayedExtent()
     if (!extent) return { min: -limit, max: limit }
     const half = settings.width / 2
+    return { min: Math.min(-limit, extent.min + half), max: Math.max(limit, extent.max - half) }
+}
+
+const scrollLanes = (lane: number) => {
+    const { min, max } = scrollReach()
     // A view left outside by an edit or zoom scrolls back without a jump.
-    return {
-        min: Math.min(-limit, extent.min + half, lane),
-        max: Math.max(limit, extent.max - half, lane),
-    }
+    return { min: Math.min(min, lane), max: Math.max(max, lane) }
 }
 
 // A zero step keeps the lane without computing the reach, even past Basic's Max Scroll X.
@@ -253,6 +255,16 @@ export const clampViewLane = () => {
     if (getComposedLayout() || Math.abs(view.lane) <= settings.maxScrollX) return
     view.scrollingX = undefined
     view.lane = clamp(view.lane, -settings.maxScrollX, settings.maxScrollX)
+}
+
+/** Brings the view, and any eased sideways scroll, within a reach that has just shrunk. */
+export const clampViewToReach = () => {
+    const { min, max } = scrollReach()
+    if (view.scrollingX?.type === 'ease')
+        view.scrollingX.to.viewLane = clamp(view.scrollingX.to.viewLane, min, max)
+    if (view.lane >= min && view.lane <= max) return
+    view.scrollingX = undefined
+    view.lane = clamp(view.lane, min, max)
 }
 
 export const scrollViewXBy = (dx: number, smooth = false) => {
