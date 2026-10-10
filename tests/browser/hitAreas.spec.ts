@@ -124,13 +124,13 @@ const setRootFontSize = (page: Page, size: number) =>
 test('rail tabs meet', async ({ page }) => {
     const tabs = page.locator('[data-workspace-dock="left"] [data-panel-tab]')
     await expect(tabs.nth(1)).toBeVisible()
-    await meet(tabs.nth(0), tabs.nth(1))
+    await meetHalfway(tabs.nth(0), tabs.nth(1))
 })
 
 test('preview steppers meet', async ({ page }) => {
     const steps = page.locator('.transport-step')
     await expect(steps).toHaveCount(6)
-    for (let i = 0; i < 5; i++) await meet(steps.nth(i), steps.nth(i + 1))
+    for (let i = 0; i < 5; i++) await meetHalfway(steps.nth(i), steps.nth(i + 1))
 })
 
 test('manager rows and their buttons meet', async ({ page }) => {
@@ -437,7 +437,7 @@ test.describe('on a phone', () => {
     test('top rail tabs meet', async ({ page }) => {
         const tabs = page.locator('[data-workspace-dock="top"] [data-panel-tab]')
         await expect(tabs.nth(1)).toBeVisible()
-        await meet(tabs.nth(0), tabs.nth(1))
+        await meetHalfway(tabs.nth(0), tabs.nth(1))
     })
 
     test('the settings toolbar editor’s buttons meet at touch sizes', async ({ page }) => {
