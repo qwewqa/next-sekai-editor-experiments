@@ -359,15 +359,19 @@ const buildComposedLayout = (state: State) => {
         return result
     }
     let extent: { min: number; max: number } | undefined
-    /** Lanes of every stage's mask and every note, hidden or not, over the whole chart. */
+    /** Lanes of every stage's mask and of every note, hidden or not, over the whole chart. */
     const displayedExtent = () => {
         if (extent) return extent
         let { min, max } = stageExtent()
         for (const notes of state.store.slides.note.values()) {
             for (const note of notes) {
                 const position = notePosition(note)
-                min = Math.min(min, position.left, position.left + position.size)
-                max = Math.max(max, position.left, position.left + position.size)
+                const left = Math.min(position.left, position.left + position.size)
+                const right = Math.max(position.left, position.left + position.size)
+                // Up to a lane of a note past its near edge, so wide notes don't stretch the reach.
+                const shown = Math.min(right - left, 1)
+                min = Math.min(min, right - shown)
+                max = Math.max(max, left + shown)
             }
         }
         extent = { min, max }

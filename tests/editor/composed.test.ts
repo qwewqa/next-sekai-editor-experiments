@@ -744,11 +744,11 @@ test('the displayed extent skips a stage that is never drawn', () => {
                 { name: 'A', isFromStart: false, isUntilEnd: true, generateSimLines: 'global' },
             ],
         ]),
-        slides: [[note(2, -1)]],
+        slides: [[note(2, -1, { size: 1 })]],
     })
     const layout = createComposedLayout(source)
     assert.ok(!Number.isFinite(layout.stages.get(stageA)!.startBeat))
-    assert.deepEqual(layout.displayedExtent(), { min: -1, max: 1 })
+    assert.deepEqual(layout.displayedExtent(), { min: -1, max: 0 })
 })
 
 test('the displayed extent spans a moving stage and its notes', () => {
@@ -794,4 +794,22 @@ test('the displayed extent follows eased overshoot between stage events across t
     const extent = layout.displayedExtent()
     assert.ok(extent.max >= max - 0.01 && extent.max <= max + 1e-9, `${extent.max} vs ${max}`)
     assert.ok(extent.min <= min + 0.01 && extent.min >= min - 1e-9, `${extent.min} vs ${min}`)
+})
+
+test('wide notes stretch the displayed extent only until a lane of them shows', () => {
+    const source = state({
+        stageMaskEvents: [mask(0, -2, 4)],
+        slides: [
+            // Wide anchors around the stage add nothing.
+            [note(1, -120, { size: 120 })],
+            [note(1, 5, { size: 240 })],
+            [note(1, -120, { size: 240 })],
+            // Far ones reach a lane inside their near edge; narrow ones show whole.
+            [note(2, 50, { size: 100 })],
+            [note(2, -160, { size: 40 })],
+            [note(3, 30, { size: 0.5 })],
+            [note(3, -40, { size: 0 })],
+        ],
+    })
+    assert.deepEqual(createComposedLayout(source).displayedExtent(), { min: -121, max: 51 })
 })
