@@ -130,6 +130,11 @@ test('materialized ticks keep their drawn lane across translated stages', () => 
     assert.deepEqual([position.left, position.size], [-3.75, 2])
     // Stage A is translated by 4 at beat 4.
     assert.equal(position.left + position.size / 2 + 4, drawn(source))
+    // Lane limits read the slide's authored lanes without translation.
+    const authored = getMaterializedNotePositions(source, [attached], undefined, {
+        translation: false,
+    }).get(attached)!
+    assert.deepEqual([authored.left, authored.size], [-1.75, 2])
 })
 
 test('Split Slide, Combine Notes and Make Vertical place the tick where it was drawn', () => {

@@ -9,6 +9,7 @@ export const getMaterializedNotePositions = (
     source: State,
     notes: NoteEntity[],
     compiledChart?: ReturnType<typeof buildPreviewChart>,
+    { translation = true } = {},
 ) => {
     const attached = notes.filter((note) => {
         const slide = source.store.slides.note.get(note.slideId)
@@ -43,10 +44,11 @@ export const getMaterializedNotePositions = (
         const headLane = head.lane + headStage.pivotLane
         const tailLane = tail.lane + tailStage.pivotLane
         // Gameplay applies X translation through the blended stage transforms; 0 for a shared X.
-        const translate =
-            headStage.xLaneTranslate +
-            (tailStage.xLaneTranslate - headStage.xLaneTranslate) * frac -
-            stage.xLaneTranslate
+        const translate = translation
+            ? headStage.xLaneTranslate +
+              (tailStage.xLaneTranslate - headStage.xLaneTranslate) * frac -
+              stage.xLaneTranslate
+            : 0
         const headElevation = (head.elevation ?? 0) + headStage.elevation
         const tailElevation = (tail.elevation ?? 0) + tailStage.elevation
         positions.set(note, {
