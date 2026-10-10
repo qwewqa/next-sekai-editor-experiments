@@ -30,6 +30,7 @@ import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
 import { coveredLabelYs, drawGrid, gridLabels, timeScaleEdgeLabelYs } from './grid'
 import { chartBackground } from './nameColors'
+import { createLabelSprites } from './labelSprites'
 import { clearNameWidths, createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
 import { orderEntities, toDrawSteps, type DrawStep } from './ordering'
@@ -57,6 +58,7 @@ let stageSettleTimer: ReturnType<typeof setTimeout> | undefined
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
+const nameSprites = createLabelSprites()
 const connectors = createConnectorRenderer()
 const stages = createStageSurface()
 const composed = computed(() =>
@@ -249,6 +251,7 @@ watchEffect(
         void stageSettle.value
         chartFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
+            nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
                 canvas,
                 inputs.width,
@@ -260,6 +263,7 @@ watchEffect(
             const base = {
                 ...inputs,
                 ctx,
+                nameSprites,
                 isHighlighted: (entity: Entity) => selected.has(entity) || !!hovered?.has(entity),
             }
             // Measured with the frame's font and bounds, as the labels are drawn.
@@ -324,6 +328,7 @@ watchEffect(
             inputs.composed && tool.value === tools.paste ? pasteGhostState() : undefined
         overlayFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
+            nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
                 canvas,
                 inputs.width,
@@ -349,6 +354,7 @@ watchEffect(
                         state: ghostState ?? inputs.state,
                         composed: ghostState ? createComposedLayout(ghostState) : inputs.composed,
                         ctx: creatingContext,
+                        nameSprites,
                         slideInfos: tool.value === tools.paste ? pasteGhostInfos() : undefined,
                     }
                     for (const entity of creating) {
@@ -419,10 +425,12 @@ const updateFont = () => {
         figureMiddle.value = measureFigureMiddle(fontFamily.value)
     }
     clearNameWidths()
+    nameSprites.clear()
     redrawVersion.value++
 }
 const restoreContext = () => {
     notes.clear()
+    nameSprites.clear()
     connectors.clear()
     stages.clear()
     // A restored surface has lost its pixels even if chart time is paused.
@@ -440,6 +448,7 @@ onUnmounted(() => {
     chartFrame.cancel()
     overlayFrame.cancel()
     notes.clear()
+    nameSprites.clear()
     connectors.clear()
     stages.clear()
     waveform.clear()

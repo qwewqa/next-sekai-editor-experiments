@@ -28,6 +28,8 @@ type NameRequest = {
     alpha: number
 }
 
+type PlacedName = Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>
+
 /** A frame's stage and group names, drawn after every object. */
 export type NameLayer = {
     names: NameRequest[]
@@ -39,7 +41,7 @@ export const createNameLayer = (): NameLayer => ({ names: [], fills: [] })
 
 const overlaps = (a: Box, b: Box) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b
 
-const nameBox = (name: Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>, width: number) => {
+const nameBox = (name: PlacedName, width: number) => {
     const l =
         name.align === 'center'
             ? name.x - width / 2
@@ -68,16 +70,49 @@ const union = (shapes: Path2D[]) => {
     return path
 }
 
+type NamePen = ReturnType<typeof namePen>
+
+// Sprites draw in device pixels; clips and names without one keep the scene transform.
+const namePen = (context: EditorDrawContext) => {
+    const { ctx, nameSprites } = context
+    const scene = nameSprites && ctx.getTransform()
+    return {
+        begin() {
+            ctx.save()
+            if (scene) ctx.setTransform(1, 0, 0, 1, 0, 0)
+        },
+        end() {
+            ctx.restore()
+        },
+        clip(clip: () => void) {
+            if (scene) ctx.setTransform(scene)
+            clip()
+            if (scene) ctx.setTransform(1, 0, 0, 1, 0, 0)
+        },
+        text(name: PlacedName, color: string) {
+            const { text, x, y, size, align } = name
+            if (!scene) {
+                drawText(context, text, x, y, color, size, align)
+                return
+            }
+            if (nameSprites.draw(context, scene, text, x, y, color, size, align)) return
+            // Too large for a sprite.
+            ctx.save()
+            ctx.setTransform(scene)
+            drawText(context, text, x, y, color, size, align)
+            ctx.restore()
+        },
+    }
+}
+
 /** Draws a name in its colour, and in a darker or lighter one over each fill it would not read on. */
 const drawSplitName = (
     context: EditorDrawContext,
-    name: Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>,
+    pen: NamePen,
+    name: PlacedName,
     box: Box,
     fills: NameFill[],
 ) => {
-    const draw = (color: string) => {
-        drawText(context, name.text, name.x, name.y, color, name.size, name.align)
-    }
     const over = (box.r > box.l ? fills : [])
         .filter((fill) => overlaps(fill.box, box))
         .map((fill) => ({
@@ -85,22 +120,26 @@ const drawSplitName = (
             color: nameColorOn(name.color, fill.colorsAt(name.y), !fill.owner),
         }))
     if (over.every(({ color }) => color === name.color)) {
-        draw(name.color)
+        pen.text(name, name.color)
         return
     }
     const { ctx } = context
     const shapes = over.map(({ fill }) => fill.shapes())
     ctx.save()
-    clipOut(ctx, shapes.flat(), box)
-    draw(name.color)
+    pen.clip(() => {
+        clipOut(ctx, shapes.flat(), box)
+    })
+    pen.text(name, name.color)
     ctx.restore()
     // Later fills cover earlier ones.
     for (const [index, { color }] of over.entries()) {
         ctx.save()
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        ctx.clip(union(shapes[index]!))
-        clipOut(ctx, shapes.slice(index + 1).flat(), box)
-        draw(color)
+        pen.clip(() => {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            ctx.clip(union(shapes[index]!))
+            clipOut(ctx, shapes.slice(index + 1).flat(), box)
+        })
+        pen.text(name, color)
         ctx.restore()
     }
 }
@@ -114,10 +153,7 @@ const ellipsis = '…'
 const graphemes = new Intl.Segmenter()
 
 /** Cuts a name at the pane's side with an ellipsis; none when even that has no room. */
-const fitName = <T extends Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>>(
-    context: EditorDrawContext,
-    name: T,
-): T | undefined => {
+const fitName = <T extends PlacedName>(context: EditorDrawContext, name: T): T | undefined => {
     const box = nameBox(name, measureCachedText(context, name.text, name.size))
     const { l, r } = context.bounds
     if (box.l >= l && box.r <= r) return name
@@ -169,14 +205,18 @@ export const drawName = (
     if (!context.names) {
         const name = fitName(context, { text, x, y, color, size, align })
         if (!name) return
-        if (!body.length) drawText(context, name.text, name.x, y, color, size, name.align)
+        const pen = namePen(context)
+        pen.begin()
+        if (!body.length) pen.text(name, color)
         else
             drawSplitName(
                 context,
+                pen,
                 name,
                 nameBox(name, measureCachedText(context, name.text, size)),
                 body,
             )
+        pen.end()
         return
     }
     const alpha = context.ctx.globalAlpha
@@ -186,7 +226,8 @@ export const drawName = (
 /** Draws the queued names, selected and hovered ones last so they lie on top. */
 export const placeNames = (context: EditorDrawContext, { names, fills }: NameLayer) => {
     const { ctx } = context
-    ctx.save()
+    const pen = namePen(context)
+    pen.begin()
     for (const queued of [
         ...names.filter(({ highlighted }) => !highlighted),
         ...names.filter(({ highlighted }) => highlighted),
@@ -195,15 +236,16 @@ export const placeNames = (context: EditorDrawContext, { names, fills }: NameLay
         if (!name) continue
         ctx.globalAlpha = name.alpha
         if (!context.nameContrast) {
-            drawText(context, name.text, name.x, name.y, name.color, name.size, name.align)
+            pen.text(name, name.color)
             continue
         }
         drawSplitName(
             context,
+            pen,
             name,
             nameBox(name, measureCachedText(context, name.text, name.size)),
             fills.filter(({ owner }) => !owner || owner === name.owner),
         )
     }
-    ctx.restore()
+    pen.end()
 }

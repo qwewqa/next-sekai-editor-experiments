@@ -32,6 +32,7 @@ import { createTransaction } from '../../state/transaction'
 import { isComposingKey } from '../../utils/composition'
 import { alignComputed, alignNear, clamp, shiftComputed } from '../../utils/math'
 import { createNameLayer, placeNames } from '../canvas/names'
+import { createLabelSprites } from '../canvas/labelSprites'
 import { createNoteRenderer } from '../canvas/notes'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
@@ -213,6 +214,7 @@ const fitViewport = () => {
 }
 const frame = createFrameScheduler()
 const notes = createNoteRenderer()
+const nameSprites = createLabelSprites()
 const pixelRatio = ref(devicePixelRatio || 1)
 const hovered = ref<NoteEntity>()
 const offscreenGroups = computed(() => {
@@ -1034,8 +1036,10 @@ watchEffect(() => {
             fontMiddle: 0.25,
             figureMiddle: 0.35,
             names,
+            nameSprites,
         }
         notes.beginFrame(timestamp)
+        nameSprites.beginFrame(timestamp)
         const padding = layout.laneScale * 1.6 + 8
         const visibleRows = [...layout.rows, ...ghosts].filter(
             (row) =>
@@ -1177,6 +1181,7 @@ onUnmounted(() => {
     cancel()
     frame.cancel()
     notes.clear()
+    nameSprites.clear()
     panelTools.value = {}
     if (editorNavigation.value === navigation) editorNavigation.value = undefined
     view.scrollingX = undefined

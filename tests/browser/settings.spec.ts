@@ -647,15 +647,24 @@ test('Name Contrast is off by default, persists and recolours names', async ({ p
         page.evaluate(async () => {
             const { show, fixtures, history } = window.editorTest
             const drawn: Record<string, string[]> = {}
-            const fillText = CanvasRenderingContext2D.prototype.fillText
-            CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+            const record = (canvas: unknown, text: string | undefined, color: string) => {
                 if (
-                    this.canvas instanceof HTMLCanvasElement &&
-                    this.canvas.classList.contains('editor-chart') &&
+                    canvas instanceof HTMLCanvasElement &&
+                    canvas.classList.contains('editor-chart') &&
                     (text === 'Center' || text === 'Other group')
                 )
-                    (drawn[text] ??= []).push(String(this.fillStyle))
+                    (drawn[text] ??= []).push(color)
+            }
+            const { drawImage, fillText } = CanvasRenderingContext2D.prototype
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+                record(this.canvas, text, String(this.fillStyle))
                 return fillText.call(this, text, ...args)
+            }
+            // Names draw from their sprites.
+            CanvasRenderingContext2D.prototype.drawImage = function (...args: unknown[]) {
+                const label = window.editorLabels.get(args[0] as HTMLCanvasElement)
+                if (label) record(this.canvas, label.text, label.color)
+                return (drawImage as (...args: unknown[]) => void).apply(this, args)
             }
             show(fixtures.connectors, 8)
             history.replaceState({
@@ -665,7 +674,7 @@ test('Name Contrast is off by default, persists and recolours names', async ({ p
             await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             )
-            CanvasRenderingContext2D.prototype.fillText = fillText
+            Object.assign(CanvasRenderingContext2D.prototype, { drawImage, fillText })
             return Object.fromEntries(
                 Object.entries(drawn).map(([text, colors]) => [text, [...new Set(colors)]]),
             )

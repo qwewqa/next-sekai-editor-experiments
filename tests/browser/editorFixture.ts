@@ -10,6 +10,8 @@ type BriefEntity = { type: string; beat: number; left?: number; size?: number }
 declare global {
     interface Window {
         editorFrames: { chart: number; overlay: number }
+        /** The text and colour each detached canvas was drawn with, such as a name's sprite. */
+        editorLabels: WeakMap<HTMLCanvasElement, { text: string; color: string }>
         editorTest: {
             history: typeof import('../../src/history')
             store: typeof import('../../src/history/store')
@@ -54,6 +56,14 @@ export const installCanvasCounters = () => {
     CanvasRenderingContext2D.prototype.fillRect = function (...args) {
         if (this.globalCompositeOperation === 'copy') count(this)
         return fillRect.apply(this, args)
+    }
+    // Names are drawn once onto sprites and copied from there; remember what each shows.
+    window.editorLabels = new WeakMap()
+    const fillText = CanvasRenderingContext2D.prototype.fillText
+    CanvasRenderingContext2D.prototype.fillText = function (...args) {
+        if (this.canvas instanceof HTMLCanvasElement && !this.canvas.isConnected)
+            window.editorLabels.set(this.canvas, { text: args[0], color: String(this.fillStyle) })
+        return fillText.apply(this, args)
     }
     for (const setting of ['showPreview', 'showSidebar', 'autoSave']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
