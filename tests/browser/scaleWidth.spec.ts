@@ -438,7 +438,9 @@ test('camera width limits reject invalid factors without destroying the valid pr
 
 test('elevation width drags use the visible note bounds after stage pivots', async ({ page }) => {
     await page.evaluate(() => {
-        const { fixtures, show, history, settings } = window.editorTest
+        const { fixtures, show, history, settings, view } = window.editorTest
+        // Lanes follow the layout; only Composed offsets them by the pivot.
+        view.layout = 'composed'
         const note = fixtures.interaction.slides[0]![0]!
         const pivot = fixtures.events.stagePivotEvents[0]!
         settings.elevationEditorSideBySide = 'allow'
