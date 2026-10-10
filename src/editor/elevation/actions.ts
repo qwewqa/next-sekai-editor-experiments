@@ -7,7 +7,7 @@ import { toNoteEntity } from '../../state/entities/slides/note'
 import { addNote } from '../../state/mutations/slides/note'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
-import { align, shiftComputed } from '../../utils/math'
+import { alignComputed, shiftComputed } from '../../utils/math'
 import { getComposedLayout } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
@@ -15,6 +15,8 @@ import { notify } from '../notification'
 import { revealAuthoringTarget } from '../scope'
 import { getNotePropertiesFromSelection } from '../tools/note'
 import {
+    getComposedPasteDelta,
+    getPasteFocus,
     getPasteNoteEntities,
     pasteAtPosition,
     toMovedNoteObject,
@@ -85,34 +87,25 @@ export const createElevationNote = (
 const getElevationPaste = (lane: number, elevation: number, beat: number, modifiers: Modifiers) => {
     const data = clipboardEntry.value?.data
     const notes = getPasteNoteEntities()
-    const first = notes.reduce<(typeof notes)[number] | undefined>(
-        (first, note) => (!first || note.beat < first.beat ? note : first),
-        undefined,
-    )
-    if (!data || !first) return
-    const firstStage = getElevationStageProps(first.stageId, first.beat)
-    const total = first.elevation + firstStage.elevation
+    // The chart paste's focus lands under the pointer.
+    const focus = data && getPasteFocus(notes, data.lane, data.anchor, data.beat)
+    if (!data || !focus) return
+    const focusStage = getElevationStageProps(focus.stageId, focus.beat)
+    const total = focus.elevation + focusStage.elevation
     const baseElevation = Number.isFinite(total) ? total : 0
-    const direction = modifiers.shift ? -1 : 1
     const beatOffset = toPasteBeatOffset(notes, beat - data.beat)
-    // In Composed the first note lands on its stage's lattice, as a chart paste does.
-    const landing = getElevationStageProps(view.stageId ?? first.stageId, first.beat + beatOffset)
-    const shifted = toMovedNoteObject(
-        first,
-        data.lane,
-        lane,
-        first.beat + beatOffset,
-        modifiers.shift,
-        false,
-    ).left
-    const pointed = modifiers.shift
-        ? -(first.left + first.size) + data.lane + lane
-        : first.left + lane - data.lane
-    const snap = getComposedLayout(elevationState.value)
-        ? landing.gridOffset +
-          align(pointed - landing.laneOffset - landing.gridOffset, view.laneDivision) -
-          (shifted - landing.laneOffset)
-        : 0
+    // In Composed every note takes the chart paste's one authored lane delta.
+    const delta = getComposedLayout(elevationState.value)
+        ? (getComposedPasteDelta(
+              notes,
+              data.lane,
+              lane,
+              beatOffset,
+              modifiers.shift,
+              data.anchor,
+              data.beat,
+          ) ?? 0)
+        : undefined
     const mapNote = (note: NoteEntity, destinationBeat: number) => {
         const source = getElevationStageProps(note.stageId, note.beat)
         const destination = getElevationStageProps(view.stageId ?? note.stageId, destinationBeat)
@@ -126,12 +119,12 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
         )
         return constrainLaneObject({
             ...moved,
-            left: shiftComputed(
-                moved.left,
-                direction * (source.laneOffset - firstStage.laneOffset) -
-                    destination.laneOffset +
-                    snap,
-            ),
+            ...(delta !== undefined && {
+                left: modifiers.shift
+                    ? alignComputed(2 * data.lane - note.left - note.size + delta)
+                    : shiftComputed(note.left, delta),
+                size: note.size,
+            }),
             elevation:
                 note.elevation +
                 source.elevation +
