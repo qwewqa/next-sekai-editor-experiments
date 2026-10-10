@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 test.beforeEach(async ({ page }) => {
@@ -247,11 +248,137 @@ test('the Elevation Editor hits the row drawn on top', async ({ page }) => {
     ).toEqual([target.top])
 })
 
-const level =
-    'D:/sonolus/sonolus-next-sekai-engine/.cache/next-sekai/resources/levels/coconut-next-sekai-15003/data'
+// Hit = drawn on top: an attached tick's diamond drawn over another selected note's edge is
+// what a press takes, so it moves the tick rather than resizing the note beneath.
+test("a press on a selected tick's diamond over a selected note's edge moves the tick", async ({
+    page,
+}) => {
+    const show = (gap: number) =>
+        page.evaluate((gap) => {
+            const { show, fixtures, settings, history } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [
+                        [
+                            { ...base, beat: 3, left: 1, size: 2 },
+                            { ...base, beat: 4, left: 1, size: 2, isAttached: true },
+                            { ...base, beat: 5, left: 1, size: 2 },
+                        ],
+                        // Its right edge runs under the tick's diamond, centred at lane 2.
+                        [{ ...base, beat: 4 + gap, left: 0, size: 2 }],
+                    ],
+                },
+                3,
+            )
+            settings.pps = 400
+            const source = history.state.value
+            history.replaceState({
+                ...source,
+                selectedEntities: [...source.store.slides.note.values()]
+                    .flat()
+                    .filter((note) => note.beat !== 3 && note.beat !== 5),
+            })
+        }, gap)
+    await show(0.1)
+    // The note sits 0.1 lane above the tick (120 BPM): earlier beats draw on top.
+    const gap = await page.evaluate(async () => {
+        const { ups } =
+            await window.editorTest.appImport<typeof import('../../src/editor/view')>(
+                '/src/editor/view.ts',
+            )
+        return (0.1 / Math.abs(ups.value)) * 2
+    })
+    await show(gap)
+    await useTool(page, 'select')
+    const press = await at(page, 1.9, 4)
+    await page.mouse.move(press.x - 2, press.y)
+    await page.mouse.move(press.x, press.y)
+    await expect(editor(page)).toHaveCSS('cursor', 'move')
+    // With only the note selected, the same press resizes it.
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: source.selectedEntities.filter(
+                (note) => note.type === 'note' && !note.isAttached,
+            ),
+        })
+    })
+    await page.mouse.move(press.x - 2, press.y)
+    await page.mouse.move(press.x, press.y)
+    await expect(editor(page)).toHaveCSS('cursor', 'ew-resize')
+
+    await show(gap)
+    await page.mouse.move(press.x - 2, press.y)
+    await page.mouse.move(press.x, press.y)
+    const end = await page.evaluate(() => window.editorTest.point(1.9, 4.5))
+    await page.mouse.down()
+    await page.mouse.move(press.x, end.y, { steps: 6 })
+    await page.mouse.up()
+    const notes = await slideNotes(page)
+    expect(notes.find((note) => note.isAttached)).toMatchObject({ beat: 4.5, size: 2 })
+    const note = notes.find((note) => note.left === 0)!
+    expect(note.beat).toBeCloseTo(4.5 + gap, 9)
+    expect(note).toMatchObject({ left: 0, size: 2, isAttached: false })
+})
+
+// The drawn size differs in Composed; the hit still classifies the note as drawn.
+test('a forceNonTick attached note shown at another size is hit on its body', async ({ page }) => {
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [
+                        { ...base, beat: 2, left: 0, size: 4 },
+                        {
+                            ...base,
+                            beat: 4,
+                            left: 0,
+                            size: 4,
+                            noteType: 'forceNonTick',
+                            isAttached: true,
+                        },
+                        { ...base, beat: 6, left: 0, size: 4 },
+                    ],
+                ],
+            },
+            3,
+        )
+    })
+    const point = await at(page, 4, 4)
+    const order = await page.evaluate(async (point) => {
+        const { history, appImport } = window.editorTest
+        const { orderPointHits } = await appImport<typeof import('../../src/editor/tools/utils')>(
+            '/src/editor/tools/utils.ts',
+        )
+        const source = history.state.value
+        const [head, tick] = [...source.store.slides.note.values()].flat()
+        // Shown a lane wider; the point is on its body, a lane and a half from its diamond.
+        const composed = {
+            notePosition: (note: { left: number; size: number }) => ({
+                left: note.left,
+                size: note.size + 1,
+            }),
+        }
+        return orderPointHits([head!, tick!], point.x, point.y, source, composed as never).map(
+            (note) => note.beat,
+        )
+    }, point)
+    expect(order).toEqual([4, 2])
+})
+
+// Real levels from the engine's resource cache: SEKAI_LEVELS=<...>/resources/levels.
+const levels = process.env.SEKAI_LEVELS
+const level = levels && join(levels, 'coconut-next-sekai-15003', 'data')
 
 test('level 15003: a press on slide tails at pps 400 resizes the tail', async ({ page }) => {
-    test.skip(!existsSync(level), 'needs the engine cache')
+    test.skip(!level || !existsSync(level), 'Set SEKAI_LEVELS to the engine level cache')
     await page.evaluate(async (data) => {
         const { history, nextTick, appImport } = window.editorTest
         const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
@@ -266,7 +393,7 @@ test('level 15003: a press on slide tails at pps 400 resizes the tail', async ({
         const levelData = parseLevelData(JSON.parse(text))
         history.resetState(false, parseLevelDataChart(levelData.entities), levelData.bgmOffset)
         await nextTick()
-    }, readFileSync(level).toString('base64'))
+    }, readFileSync(level!).toString('base64'))
     await useTool(page, 'select')
     for (const layout of ['basic', 'composed'] as const) {
         // Slides 1593 and 1974 when the editor loads it.
