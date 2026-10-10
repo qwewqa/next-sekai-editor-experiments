@@ -135,6 +135,85 @@ test('the Elevation Editor ghost follows lane division changes under a still mou
     await expect.poll(left).toEqual([1])
 })
 
+test('the Elevation Editor ghost follows elevation snap changes under a still mouse', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { show, fixtures, settings } = window.editorTest
+        show({ ...fixtures.interaction, slides: [] }, 3)
+        Object.assign(settings, { elevationSnap: 8 })
+        settings.elevationEditorSideBySide = 'disallow'
+    })
+    await page.keyboard.press('t')
+    await expect(page.locator('canvas.elevation-canvas')).toBeVisible()
+    await page.locator('.elevation-editor').focus()
+    await page.keyboard.press('a')
+    const at = await page.evaluate(async () => {
+        const { elevationLayout } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const layout = elevationLayout.value
+        const box = document.querySelector('canvas.elevation-canvas')!.getBoundingClientRect()
+        return { x: box.x + layout.xAt(1), y: box.y + layout.yAt(2.3) }
+    })
+    await page.mouse.move(at.x - 4, at.y)
+    await page.mouse.move(at.x, at.y)
+    const elevation = () =>
+        page.evaluate(() =>
+            window.editorTest.view.entities.creating.map((note) =>
+                note.type === 'note' ? note.elevation : undefined,
+            ),
+        )
+    await expect.poll(elevation).toEqual([2.25])
+    await page.evaluate(() => {
+        Object.assign(window.editorTest.settings, { elevationSnap: 1 })
+    })
+    await expect.poll(elevation).toEqual([2])
+})
+
+// No hover ghost reads the lane snapping mode (paste keeps its lanes), so only beat snapping is checked.
+for (const layout of ['basic', 'composed'] as const) {
+    test(`${layout} paste: a still hover ghost follows the beat snapping mode`, async ({
+        page,
+    }) => {
+        await page.evaluate((layout) => {
+            const { show, fixtures, view, history } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: layout === 'composed',
+                    slides: [[{ ...base, beat: 1.1, left: 4 }]],
+                },
+                3,
+            )
+            view.layout = layout
+            view.division = 8
+            const source = history.state.value
+            history.replaceState({
+                ...source,
+                selectedEntities: [...source.store.slides.note.values()].flat(),
+            })
+        }, layout)
+        await page.keyboard.press('Control+c')
+        await useTool(page, 'paste')
+        const at = await page.evaluate(() => window.editorTest.point(-2.6, 4.375))
+        await page.mouse.move(at.x - 4, at.y)
+        await page.mouse.move(at.x, at.y)
+        const beat = async () => (await ghost(page))[0]?.beat
+        await expect.poll(beat).toBe(4.375)
+        // Relative snapping keeps the copied note's 0.1 beat off the grid.
+        await page.evaluate(() => {
+            window.editorTest.view.snapping = 'relative'
+        })
+        await expect.poll(beat).toBe(4.35)
+        await page.evaluate(() => new Promise(requestAnimationFrame))
+        const [shown] = await ghost(page)
+        await page.mouse.click(at.x, at.y)
+        expect(await notes(page)).toContainEqual(shown)
+    })
+}
+
 for (const tool of ['note', 'stagePivotEvent', 'bpm', 'paste'] as const) {
     test(`${tool}: the hover ghost goes when the pointer leaves the chart and comes back with it`, async ({
         page,
