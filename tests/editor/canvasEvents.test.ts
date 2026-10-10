@@ -437,6 +437,16 @@ test('time-scale dashes stay in CSS pixels and stage labels respond to highlight
     assert.deepEqual(canvas.labels, [{ text: 'Stage A', x: 0, y: -9.9, align: 'center', alpha: 1 }])
 })
 
+test('a BPM label rounds as Properties shows it', () => {
+    const { context, canvas } = makeContext()
+    drawEvent(context, { type: 'bpm', beat: 2, bpm: 150.123456789, meter: 4 }, false)
+    drawEvent(context, { type: 'bpm', beat: 2, bpm: 150.5, meter: 4 }, false)
+    assert.deepEqual(
+        canvas.labels.map(({ text }) => text),
+        ['150.1235', '150.5'],
+    )
+})
+
 test('number labels centre on their figures and names on the x-height', () => {
     const { context, canvas } = makeContext()
     context.showStageName = false

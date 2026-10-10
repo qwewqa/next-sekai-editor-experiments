@@ -2,6 +2,7 @@ import type { StageId } from '../../chart/stages'
 import { isNoneEase } from '../../ease'
 import { easeGlyphPoints } from '../../easeGlyph'
 import type { Entity, EntityType } from '../../state/entities'
+import { BPM_LABEL } from '../../state/entities/bpm'
 import type { EventConnectionEntity } from '../../state/entities/events/connections'
 import type { EventJointEntity } from '../../state/entities/events/joints'
 import type { StageEventJointEntity } from '../../state/entities/events/joints/stage'
@@ -328,10 +329,10 @@ export const drawEvent = (
             drawText(
                 context,
                 formatBpm(entity.bpm),
-                6.1,
+                BPM_LABEL.lane,
                 y,
                 '#f0f',
-                0.5,
+                BPM_LABEL.size,
                 'start',
                 context.figureMiddle,
             )

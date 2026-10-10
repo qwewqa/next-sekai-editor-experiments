@@ -7,7 +7,8 @@ export const formatTime = (time: number) => {
     return `${`${Math.floor(ms / 60000)}`.padStart(2, '0')}:${((ms % 60000) / 1000).toFixed(3).padStart(6, '0')}`
 }
 
-export const formatBpm = (value: number) => `${value}`
+// As Properties shows it.
+export const formatBpm = (value: number) => `${+value.toFixed(4)}`
 
 export const formatTimeScale = (value: number, skip: number) => {
     let text = `${value}x`
