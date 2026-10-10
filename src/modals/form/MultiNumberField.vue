@@ -16,7 +16,7 @@ import BaseField from './BaseField.vue'
 import { formatNumber } from '../../utils/formatNumber'
 import { formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
-import { createStepTrail } from './numberStep'
+import { createStepTrail, isChromium, stepValues } from './numberStep'
 import { confirmOnEnter, isTyped, trackTyping } from './resync'
 
 const props = defineProps<{
@@ -26,6 +26,8 @@ const props = defineProps<{
     step?: number | 'any'
     /** `min` stands in for "above 0", so arrow steps never stop at it. */
     exclusiveMin?: boolean
+    /** Sets a stepped value in place of the model, as Beat does to keep it on its grid. */
+    setStep?: (value: number) => void
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -52,6 +54,8 @@ let exact = modelValue.value
 let dirty = false
 // The last edit was an arrow step, which native undo can't take back.
 let stepped = false
+// The text the last arrow step wrote; native undo back to it is a step again.
+let steppedText: string | undefined
 // Each value's arrow steps, so stepping back returns exactly; the lone value's under `owner`.
 let trails = new Map<unknown, ReturnType<typeof createStepTrail>>()
 const trail = (key: unknown) => {
@@ -66,6 +70,7 @@ trackTyping(input, isPending)
 const reset = () => {
     dirty = false
     stepped = false
+    steppedText = undefined
     steps.value = undefined
     trails = new Map()
     text.value = shown()
@@ -79,19 +84,29 @@ watch(modelValue, () => {
     if (!dirty) reset()
 })
 if (edit) watch(edit.revision, reset)
-onBeforeUnmount(() => edit?.cancel(owner))
+onBeforeUnmount(() => {
+    edit?.cancel(owner)
+    input.value?.removeEventListener('wheel', onWheel)
+})
 
 // Parsed from the text: Firefox's valueAsNumber keeps only 15 digits.
 const typed = () => Number(input.value?.value)
 const isValid = () => input.value?.validity.valid && Number.isFinite(typed())
 
-const onInput = () => {
+const setModel = (value: number) => {
+    modelValue.value = value
+}
+
+const onInput = (event?: Event, step = false) => {
     if (!input.value) return
     // Number inputs expose an empty value for intermediate text such as "-"
     // or "1e". Writing that empty value back would erase the user's typing.
     if (!input.value.validity.badInput) text.value = input.value.value
     steps.value = undefined
-    stepped = false
+    stepped =
+        (event as InputEvent | undefined)?.inputType === 'historyUndo' &&
+        input.value.value === steppedText
+    const set = (step || stepped ? props.setStep : undefined) ?? setModel
     // Text back at the shown value, by typing or native undo, changes nothing though it is rounded.
     if (!isTyped(input.value, committed)) {
         dirty = false
@@ -102,7 +117,9 @@ const onInput = () => {
     if (!edit) return
     if (isValid()) {
         const value = typed()
-        edit.preview(owner, () => (modelValue.value = value))
+        edit.preview(owner, () => {
+            set(value)
+        })
     } else {
         edit.invalidate(owner)
     }
@@ -155,7 +172,7 @@ const onStepKey = (event: KeyboardEvent) => {
 }
 
 // Chromium steps a focused number input under the wheel natively, from the shown text; it steps as the arrows do.
-const stepsOnWheel = 'userAgentData' in navigator
+const stepsOnWheel = isChromium(navigator)
 const onWheel = (event: WheelEvent) => {
     if (!stepsOnWheel || !event.deltaY || document.activeElement !== event.currentTarget) return
     event.preventDefault()
@@ -182,7 +199,8 @@ const stepFrom = (from: number, delta: number) => {
     if (!element || next === from) return
     // Back at the committed value, the committed text shows it, so nothing changes.
     element.value = next === exact ? committed : `${next}`
-    onInput()
+    steppedText = next === exact ? undefined : element.value
+    onInput(undefined, true)
     stepped = true
 }
 
@@ -190,26 +208,40 @@ const stepFrom = (from: number, delta: number) => {
 const stepEach = (delta: number) => {
     const usage = field?.value
     if (!edit || !usage?.usage) return
-    const next = new Map<unknown, number>()
+    const origins = new Map<unknown, number>()
     for (const value of usage.usage.values.keys()) {
         if (typeof value !== 'number') continue
-        const from = steps.value?.get(value) ?? (usage.map ? (usage.map(value) as number) : value)
-        next.set(value, trail(value)(from, delta, props))
+        origins.set(value, usage.map ? (usage.map(value) as number) : value)
     }
-    if (!next.size) return
+    if (!origins.size) return
+    const { next, changed } = stepValues(origins, steps.value, (value, from) =>
+        trail(value)(from, delta, props),
+    )
+    steppedText = undefined
+    // Every value back at its own leaves nothing to commit.
+    if (!changed.length) {
+        steps.value = undefined
+        dirty = false
+        stepped = false
+        edit.cancel(owner)
+        return
+    }
     dirty = true
     stepped = true
     steps.value = next
-    // A value stepped back to its own is left as it is.
-    const changed = [...next.keys()].filter(
-        (value) => next.get(value) !== (usage.map ? usage.map(value) : value),
-    )
-    edit.previewEach(owner, changed, (value) => (modelValue.value = next.get(value)))
+    const set = props.setStep ?? setModel
+    edit.previewEach(owner, changed, (value) => {
+        const to = next.get(value)
+        if (to !== undefined) set(to)
+    })
 }
 
 // Native undo would reach past a step to another field's typing, so undo reverts steps instead.
 const onHistoryKey = (event: KeyboardEvent) => {
-    const key = event.key.toLowerCase()
+    // A non-Latin layout's Z key still undoes natively; a Latin one's letter is the shortcut.
+    const key = /^[a-z]$/i.test(event.key)
+        ? event.key.toLowerCase()
+        : ({ KeyZ: 'z', KeyY: 'y' } as Record<string, string>)[event.code]
     if (!stepped || !(event.ctrlKey || event.metaKey) || event.altKey) return
     if (key !== 'z' && key !== 'y') return
     event.preventDefault()
@@ -217,8 +249,16 @@ const onHistoryKey = (event: KeyboardEvent) => {
     if (key === 'z' && !event.shiftKey) void cancel()
 }
 
+// The wheel listener can't be passive, so only a focused field holds it.
 const onFocus = (event: FocusEvent) => {
-    ;(event.currentTarget as HTMLInputElement | null)?.select()
+    const element = event.currentTarget as HTMLInputElement | null
+    element?.select()
+    if (stepsOnWheel) element?.addEventListener('wheel', onWheel, { passive: false })
+}
+
+const onBlur = () => {
+    input.value?.removeEventListener('wheel', onWheel)
+    void onChange()
 }
 </script>
 
@@ -246,12 +286,11 @@ const onFocus = (event: FocusEvent) => {
             @focus="onFocus"
             @input="onInput"
             @change="onChange"
-            @blur="onChange"
+            @blur="onBlur"
             @keydown="onHistoryKey"
             @keydown.esc="onEscape"
             @keydown.up="onStepKey"
             @keydown.down="onStepKey"
-            @wheel="onWheel"
             @keydown.enter="confirmOnEnter"
         />
     </BaseField>
