@@ -306,6 +306,7 @@ export const note: Tool = {
                         lane,
                         active.entity.left,
                         getComposedGridOffset(active.entity.stageId, beat),
+                        xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                     ),
                 })
 
@@ -397,6 +398,7 @@ export const note: Tool = {
                             lane,
                             active.entity.left,
                             getComposedGridOffset(active.entity.stageId, beat),
+                            xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                         ),
                     }),
                 )

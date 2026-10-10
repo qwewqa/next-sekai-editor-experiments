@@ -592,7 +592,12 @@ const getRawMove = (
     )
     // An attached anchor can have no horizontal response. Keeping the raw
     // baseline avoids moving controls that cannot move the grabbed point.
-    return { delta: delta === undefined ? 0 : offset(0, delta, focus.left, response.origin) }
+    return {
+        delta:
+            delta === undefined
+                ? 0
+                : offset(0, delta, focus.left, response.origin, lane - active.lane),
+    }
 }
 
 const moveSelectedLane = (
@@ -935,6 +940,7 @@ const toMovedNoteObject = (
                 composed && focus.type === 'note'
                     ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
                     : 0,
+                lane - startLane,
             ),
         },
         {

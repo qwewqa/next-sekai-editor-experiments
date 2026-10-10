@@ -720,6 +720,7 @@ const controls: Pick<
                   xToLane(x),
                   drag.resizing ? drag.movingEdge : drag.row.note.left,
                   drag.origin,
+                  drag.resizing ? undefined : xToLane(x) - drag.lane,
               )
         const delta = yToElevation(y) - drag.elevation
         const displayedDelta = drag.resizing

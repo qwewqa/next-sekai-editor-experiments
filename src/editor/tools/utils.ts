@@ -20,8 +20,13 @@ export const placementCursors: Record<'add' | 'edit' | 'move', CanvasCursor> = {
     move: 'move',
 }
 
-export const offset = (startLane: number, lane: number, anchor = startLane, origin = 0) =>
-    snappedOffset(startLane, lane, anchor - origin, view.laneDivision, view.laneSnapping)
+export const offset = (
+    startLane: number,
+    lane: number,
+    anchor = startLane,
+    origin = 0,
+    moved?: number,
+) => snappedOffset(startLane, lane, anchor - origin, view.laneDivision, view.laneSnapping, moved)
 
 /** An add-drag's pressed edge at the current beat; in Composed it keeps its displayed lane. */
 export const addDragAnchor = (
@@ -37,13 +42,15 @@ export const addDragAnchor = (
 }
 
 // A lane moved by the drag's offset, without float noise; unmoved, it stays exact.
+// Moved is the pointer's displayed lane movement, when lane also carries a stage shift.
 export const moveLane = (
     value: number,
     startLane: number,
     lane: number,
     anchor?: number,
     origin = 0,
-) => shiftComputed(value, offset(startLane, lane, anchor, origin))
+    moved = lane - startLane,
+) => shiftComputed(value, offset(startLane, lane, anchor, origin, moved))
 
 /** Commits a drop; one that changes nothing adds no undo step, and its notice goes. */
 export const commitDrop = <E extends Entity, O extends object>(

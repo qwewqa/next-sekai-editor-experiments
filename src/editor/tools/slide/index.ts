@@ -308,6 +308,7 @@ export const slide: Tool = {
                         lane,
                         active.entity.left,
                         getComposedGridOffset(active.entity.stageId, beat),
+                        xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                     ),
                 })
 
@@ -400,6 +401,7 @@ export const slide: Tool = {
                             lane,
                             active.entity.left,
                             getComposedGridOffset(active.entity.stageId, beat),
+                            xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
                         ),
                     }),
                 )
