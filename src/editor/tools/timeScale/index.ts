@@ -30,22 +30,27 @@ import {
     setViewHover,
     snapYToBeat,
     view,
+    xToLane,
     xToValidLane,
     yToBeat,
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { commitDrop, hitEntitiesAtPoint, isVisible } from '../utils'
+import { constrainMoved } from '../toolMove'
+import { commitDrop, hitEntitiesAtPoint, isVisible, moveLane } from '../utils'
+
+type MoveActive = {
+    type: 'move'
+    entity: TimeScaleEntity
+    pressBeat: number
+    lane: number
+}
 
 let active:
     | {
           type: 'add'
       }
-    | {
-          type: 'move'
-          entity: TimeScaleEntity
-          pressBeat: number
-      }
+    | MoveActive
     | undefined
 
 export const timeScale: Tool = {
@@ -173,6 +178,7 @@ export const timeScale: Tool = {
                 type: 'move',
                 entity,
                 pressBeat: yToBeat(y),
+                lane: xToLane(x),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -192,11 +198,9 @@ export const timeScale: Tool = {
 
         setViewHover(y)
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
-                const [entity, beat] = tryFind(x, y)
+                const [entity, beat, lane] = tryFind(x, y)
                 if (entity) {
                     view.entities = {
                         hovered: [entity],
@@ -226,24 +230,14 @@ export const timeScale: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
-                const object: TimeScaleObject = constrainLaneObject({
-                    groupId: active.entity.groupId,
-                    beat,
-                    editorLane: lane,
-                    timeScale: active.entity.timeScale,
-                    skip: active.entity.skip,
-                    timeScaleEase: active.entity.timeScaleEase,
-                    timeScaleTransition: active.entity.timeScaleTransition,
-                    hideNotes: active.entity.hideNotes,
-                })
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
                     creating: [toTimeScaleEntity(object)],
                 }
                 previewMove(active.entity, object)
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -253,11 +247,9 @@ export const timeScale: Tool = {
         clearPreviewEdit()
         if (!active) return
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
-                const [entity, beat] = tryFind(x, y)
+                const [entity, beat, lane] = tryFind(x, y)
                 if (entity) {
                     replaceState({
                         ...state.value,
@@ -298,23 +290,10 @@ export const timeScale: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    editMoveOrReplace,
-                    active.entity,
-                    constrainLaneObject({
-                        groupId: active.entity.groupId,
-                        beat,
-                        editorLane: lane,
-                        timeScale: active.entity.timeScale,
-                        skip: active.entity.skip,
-                        timeScaleEase: active.entity.timeScaleEase,
-                        timeScaleTransition: active.entity.timeScaleTransition,
-                        hideNotes: active.entity.hideNotes,
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(editMoveOrReplace, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -369,6 +348,27 @@ const tryFind = (
     if (nearest) return [nearest]
 
     return [undefined, beat, xToValidLane(x)]
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): TimeScaleObject => {
+    const { entity } = move
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            groupId: entity.groupId,
+            beat: snapYToBeat(y, entity.beat, move.pressBeat),
+            editorLane: moveLane(entity.editorLane, move.lane, lane, entity.editorLane),
+            timeScale: entity.timeScale,
+            skip: entity.skip,
+            timeScaleEase: entity.timeScaleEase,
+            timeScaleTransition: entity.timeScaleTransition,
+            hideNotes: entity.hideNotes,
+        },
+        entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const previewMove = (entity: TimeScaleEntity, object: TimeScaleObject) => {

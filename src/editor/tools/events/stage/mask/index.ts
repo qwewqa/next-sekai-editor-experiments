@@ -33,6 +33,7 @@ import {
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
+import { constrainMoved } from '../../../toolMove'
 import {
     commitDrop,
     hitEntitiesAtPoint,
@@ -54,6 +55,13 @@ export const defaultStageMaskEventProperties = ref<DefaultStageMaskEventProperti
     copyProperties: true,
 })
 
+type MoveActive = {
+    type: 'move'
+    entity: StageMaskEventJointEntity
+    pressBeat: number
+    lane: number
+}
+
 let active:
     | {
           type: 'add'
@@ -64,12 +72,7 @@ let active:
           entity: StageMaskEventJointEntity
           lane: number
       }
-    | {
-          type: 'move'
-          entity: StageMaskEventJointEntity
-          pressBeat: number
-          lane: number
-      }
+    | MoveActive
     | undefined
 
 export const stageMaskEvent: Tool = {
@@ -305,26 +308,13 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toStageMaskEventJointEntity(
-                            constrainLaneObject({
-                                ...active.entity,
-                                beat,
-                                maskLeft: moveLane(
-                                    active.entity.maskLeft,
-                                    active.lane,
-                                    lane,
-                                    active.entity.maskLeft,
-                                ),
-                            }),
-                        ),
-                    ],
+                    creating: [toStageMaskEventJointEntity(object)],
                 }
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -395,23 +385,10 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    move,
-                    active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        maskLeft: moveLane(
-                            active.entity.maskLeft,
-                            active.lane,
-                            lane,
-                            active.entity.maskLeft,
-                        ),
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(move, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -423,6 +400,21 @@ export const stageMaskEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): StageMaskEventObject => {
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            ...move.entity,
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
+            maskLeft: moveLane(move.entity.maskLeft, move.lane, lane, move.entity.maskLeft),
+        },
+        move.entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const getStageMaskEventJointFromSelection = () => {

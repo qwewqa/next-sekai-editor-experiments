@@ -31,6 +31,7 @@ import {
     yToValidBeat,
 } from '../../../view'
 import SelectionPropertiesModal from '../../../workspace/properties/SelectionPropertiesModal.vue'
+import { constrainMoved } from '../../toolMove'
 import {
     commitDrop,
     hitEntitiesAtPoint,
@@ -57,6 +58,13 @@ export const defaultCameraEventProperties = ref<DefaultCameraEventProperties>({
     copyProperties: true,
 })
 
+type MoveActive = {
+    type: 'move'
+    entity: CameraEventJointEntity
+    pressBeat: number
+    lane: number
+}
+
 let active:
     | {
           type: 'add'
@@ -67,12 +75,7 @@ let active:
           entity: CameraEventJointEntity
           lane: number
       }
-    | {
-          type: 'move'
-          entity: CameraEventJointEntity
-          pressBeat: number
-          lane: number
-      }
+    | MoveActive
     | undefined
 
 export const cameraEvent: Tool = {
@@ -306,26 +309,13 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toCameraEventJointEntity(
-                            constrainLaneObject({
-                                ...active.entity,
-                                beat,
-                                cameraLeft: moveLane(
-                                    active.entity.cameraLeft,
-                                    active.lane,
-                                    lane,
-                                    active.entity.cameraLeft,
-                                ),
-                            }),
-                        ),
-                    ],
+                    creating: [toCameraEventJointEntity(object)],
                 }
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -396,23 +386,10 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    move,
-                    active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        cameraLeft: moveLane(
-                            active.entity.cameraLeft,
-                            active.lane,
-                            lane,
-                            active.entity.cameraLeft,
-                        ),
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(move, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -424,6 +401,21 @@ export const cameraEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): CameraEventObject => {
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            ...move.entity,
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
+            cameraLeft: moveLane(move.entity.cameraLeft, move.lane, lane, move.entity.cameraLeft),
+        },
+        move.entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const getCameraEventJointFromSelection = () => {

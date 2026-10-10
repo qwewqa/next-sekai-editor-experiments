@@ -26,12 +26,14 @@ import {
     setViewHover,
     snapYToBeat,
     view,
+    xToLane,
     xToValidLane,
     yToBeat,
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { commitDrop, hitEntitiesAtPoint } from '../../../utils'
+import { constrainMoved } from '../../../toolMove'
+import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
 import StageTransformEventSidebar from './StageTransformEventSidebar.vue'
 
 type DefaultStageTransformEventProperties = {
@@ -47,15 +49,18 @@ export const defaultStageTransformEventProperties = ref<DefaultStageTransformEve
     copyProperties: true,
 })
 
+type MoveActive = {
+    type: 'move'
+    entity: StageTransformEventJointEntity
+    pressBeat: number
+    lane: number
+}
+
 let active:
     | {
           type: 'add'
       }
-    | {
-          type: 'move'
-          entity: StageTransformEventJointEntity
-          pressBeat: number
-      }
+    | MoveActive
     | undefined
 
 export const stageTransformEvent: Tool = {
@@ -190,6 +195,7 @@ export const stageTransformEvent: Tool = {
                 type: 'move',
                 entity,
                 pressBeat: yToBeat(y),
+                lane: xToLane(x),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -215,11 +221,10 @@ export const stageTransformEvent: Tool = {
 
         setViewHover(y)
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 view.entities = {
                     hovered: [],
@@ -237,21 +242,13 @@ export const stageTransformEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toStageTransformEventJointEntity(
-                            constrainLaneObject({
-                                ...active.entity,
-                                beat,
-                                xTranslation: lane,
-                            }),
-                        ),
-                    ],
+                    creating: [toStageTransformEventJointEntity(object)],
                 }
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -275,11 +272,10 @@ export const stageTransformEvent: Tool = {
         clearPreviewEdit()
         if (!active) return
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 add(
                     constrainLaneObject({
@@ -292,18 +288,10 @@ export const stageTransformEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    move,
-                    active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        xTranslation: lane,
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(move, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -315,6 +303,26 @@ export const stageTransformEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): StageTransformEventObject => {
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            ...move.entity,
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
+            xTranslation: moveLane(
+                move.entity.xTranslation,
+                move.lane,
+                lane,
+                move.entity.xTranslation,
+            ),
+        },
+        move.entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const getStageTransformEventJointFromSelection = () => {

@@ -31,12 +31,14 @@ import {
     setViewHover,
     snapYToBeat,
     view,
+    xToLane,
     xToValidLane,
     yToBeat,
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { commitDrop, hitEntitiesAtPoint } from '../../../utils'
+import { constrainMoved } from '../../../toolMove'
+import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
 import StageStyleEventSidebar from './StageStyleEventSidebar.vue'
 
 type DefaultStageStyleEventProperties = {
@@ -57,15 +59,18 @@ export const defaultStageStyleEventProperties = ref<DefaultStageStyleEventProper
     copyProperties: true,
 })
 
+type MoveActive = {
+    type: 'move'
+    entity: StageStyleEventJointEntity
+    pressBeat: number
+    lane: number
+}
+
 let active:
     | {
           type: 'add'
       }
-    | {
-          type: 'move'
-          entity: StageStyleEventJointEntity
-          pressBeat: number
-      }
+    | MoveActive
     | undefined
 
 export const stageStyleEvent: Tool = {
@@ -200,6 +205,7 @@ export const stageStyleEvent: Tool = {
                 type: 'move',
                 entity,
                 pressBeat: yToBeat(y),
+                lane: xToLane(x),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -225,11 +231,10 @@ export const stageStyleEvent: Tool = {
 
         setViewHover(y)
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 view.entities = {
                     hovered: [],
@@ -247,21 +252,13 @@ export const stageStyleEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toStageStyleEventJointEntity(
-                            constrainLaneObject({
-                                ...active.entity,
-                                beat,
-                                editorLane: lane,
-                            }),
-                        ),
-                    ],
+                    creating: [toStageStyleEventJointEntity(object)],
                 }
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -285,11 +282,10 @@ export const stageStyleEvent: Tool = {
         clearPreviewEdit()
         if (!active) return
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 add(
                     constrainLaneObject({
@@ -302,18 +298,10 @@ export const stageStyleEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    move,
-                    active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        editorLane: lane,
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(move, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -325,6 +313,21 @@ export const stageStyleEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): StageStyleEventObject => {
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            ...move.entity,
+            beat: snapYToBeat(y, move.entity.beat, move.pressBeat),
+            editorLane: moveLane(move.entity.editorLane, move.lane, lane, move.entity.editorLane),
+        },
+        move.entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const getStageStyleEventJointFromSelection = () => {

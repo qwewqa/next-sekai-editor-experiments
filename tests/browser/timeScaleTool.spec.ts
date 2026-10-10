@@ -175,9 +175,8 @@ for (const layout of ['basic', 'composed'] as const)
                 expect(await cursor(page), `lane ${lane}, beat ${beat}`).toBe('move')
                 await drag(page, from, await point(page, lane!, 1))
                 await expect(notice(page)).toHaveText('Moved 1 time scale')
-                expect(await timeScales(page)).toEqual([
-                    { beat: 1, editorLane: lane, timeScale: 2 },
-                ])
+                // A straight-down drag keeps its lane, wherever it was grabbed.
+                expect(await timeScales(page)).toEqual([{ beat: 1, editorLane: 4, timeScale: 2 }])
                 await page.keyboard.press('Control+z')
                 await settle(page)
                 expect(await timeScales(page)).toEqual(initial)
