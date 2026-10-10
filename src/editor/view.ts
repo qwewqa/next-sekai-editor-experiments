@@ -241,6 +241,13 @@ const scrollLanes = (lane: number) => {
     }
 }
 
+// The reach always includes the lane itself, so a zero step skips computing it.
+const scrolledLane = (lane: number, delta: number) => {
+    if (delta === 0) return lane
+    const lanes = scrollLanes(lane)
+    return clamp(lane + delta, lanes.min, lanes.max)
+}
+
 /** Returns a view scrolled past Basic's range, as Composed allows, into it. */
 export const clampViewLane = () => {
     if (getComposedLayout() || Math.abs(view.lane) <= settings.maxScrollX) return
@@ -255,7 +262,6 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
 
     if (smooth) {
         const base = view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : view.lane
-        const lanes = scrollLanes(base)
         view.scrollingX = {
             type: 'ease',
             from: {
@@ -264,12 +270,11 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
             },
             to: {
                 time: time.value.now + 0.25,
-                viewLane: clamp(base + dx / laneScale, lanes.min, lanes.max),
+                viewLane: scrolledLane(base, dx / laneScale),
             },
         }
     } else {
-        const lanes = scrollLanes(view.lane)
-        view.lane = clamp(view.lane + dx / laneScale, lanes.min, lanes.max)
+        view.lane = scrolledLane(view.lane, dx / laneScale)
     }
 }
 

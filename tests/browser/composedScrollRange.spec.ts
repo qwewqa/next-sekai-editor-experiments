@@ -94,3 +94,54 @@ test('basic keeps Max Scroll X for the same chart', async ({ page }) => {
         afterBasic: 0,
     })
 })
+
+test('vertical wheels leave the sideways reach uncomputed, smooth or not', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, view, settings, nextTick } = window.editorTest
+        show(fixtures.events, 2)
+        settings.maxScrollX = 0
+        view.layout = 'composed'
+        await nextTick()
+    })
+    const box = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    // Counts the current layout's reach computations, as the first wheel after an edit makes.
+    const calls = () =>
+        page.evaluate(async () => {
+            const { appImport } = window.editorTest
+            const { getComposedLayout } = await appImport<
+                typeof import('../../src/editor/composedView')
+            >('/src/editor/composedView.ts')
+            const layout = getComposedLayout()!
+            let calls = 0
+            const extent = layout.displayedExtent
+            layout.displayedExtent = () => {
+                calls++
+                return extent()
+            }
+            ;(window as unknown as { extentCalls: () => number }).extentCalls = () => calls
+        })
+    for (const smooth of [false, true]) {
+        await page.evaluate((smooth) => {
+            window.editorTest.settings.mouseSmoothScrolling = smooth
+            window.editorTest.view.lane = 0
+        }, smooth)
+        await calls()
+        await page.mouse.wheel(0, 100)
+        await page.waitForTimeout(100)
+        expect(
+            await page.evaluate(() => ({
+                calls: (window as unknown as { extentCalls: () => number }).extentCalls(),
+                lane: window.editorTest.view.lane,
+            })),
+        ).toEqual({ calls: 0, lane: 0 })
+        // A sideways wheel still reaches by it.
+        await page.mouse.wheel(100, 0)
+        await page.waitForTimeout(400)
+        expect(
+            await page.evaluate(() =>
+                (window as unknown as { extentCalls: () => number }).extentCalls(),
+            ),
+        ).toBeGreaterThan(0)
+    }
+})
