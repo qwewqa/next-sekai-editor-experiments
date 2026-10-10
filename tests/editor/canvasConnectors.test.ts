@@ -556,3 +556,63 @@ test('connectors with ends at one time draw finite geometry for every ease', () 
         assert.ok(values.every(Number.isFinite), connectorEase)
     }
 })
+
+test('composed connectors reuse samples across layouts of the same stages and across zoom', () => {
+    const first = note(0, 0, 2, { connectorIsFake: true, connectorEase: 'outBack' })
+    const last = note(4, 6, 2)
+    const entity = toConnectorEntity(first, last, first, last, first, last)
+    let calls = 0
+    const layout = (stages: Map<unknown, unknown>, shift = 0) =>
+        ({
+            stages,
+            connectorPosition: (_entity: unknown, beat: number) => {
+                calls++
+                return { left: shift + Math.sin(beat) * 3, size: 2 }
+            },
+        }) as unknown as NonNullable<EditorDrawContext['composed']>
+    const stages = new Map([[first.stageId, { breakpoints: [] }]])
+    // A fresh renderer's draw, not counted.
+    const draw = (composed: NonNullable<EditorDrawContext['composed']>, ups: number) => {
+        const { context, fills, strokes, renderer } = fixture()
+        const saved = calls
+        renderer.draw({ ...context, composed, ups }, entity, false)
+        calls = saved
+        return { body: fills[0]!.path.commands, cross: strokes.at(-1)!.path.commands }
+    }
+
+    const { context, fills, strokes, renderer } = fixture()
+    renderer.draw({ ...context, composed: layout(stages) }, entity, false)
+    const sampled = calls
+    assert.ok(sampled > 0)
+    // A new layout with the same stages, as a drag preview of another slide makes.
+    renderer.draw({ ...context, composed: layout(stages, 5) }, entity, false)
+    assert.equal(calls, sampled)
+    assert.equal(fills[1]!.path, fills[0]!.path)
+
+    // Zoom rebuilds the paths from the same samples, exactly as a fresh draw.
+    renderer.draw({ ...context, composed: layout(stages), ups: -5 }, entity, false)
+    assert.equal(calls, sampled)
+    assert.notEqual(fills[2]!.path, fills[0]!.path)
+    const zoomed = draw(layout(new Map(stages)), -5)
+    assert.deepEqual(fills[2]!.path.commands, zoomed.body)
+    assert.deepEqual(strokes.at(-1)!.path.commands, zoomed.cross)
+    renderer.draw({ ...context, composed: layout(stages) }, entity, false)
+    assert.equal(calls, sampled)
+    assert.deepEqual(fills[3]!.path.commands, fills[0]!.path.commands)
+
+    // New stages or tempo resample.
+    renderer.draw({ ...context, composed: layout(new Map(stages), 5) }, entity, false)
+    assert.ok(calls > sampled)
+    assert.deepEqual(fills[4]!.path.commands, draw(layout(new Map(stages), 5), -2).body)
+    const resampled = calls
+    renderer.draw(
+        {
+            ...context,
+            state: { ...context.state, bpms: calculateBpms([{ x: 0, y: 0, s: 1 }]) },
+            composed: layout(stages, 5),
+        },
+        entity,
+        false,
+    )
+    assert.ok(calls > resampled)
+})

@@ -452,6 +452,14 @@ test('selection layout reuse invalidates for note, tempo, stage-event and stage-
     // Revisiting an undo snapshot also refreshes the reusable geometry record.
     assert.equal(createComposedLayout(source), first)
     assert.equal(createComposedLayout({ ...source, selectedEntities: [notes[1]!] }), first)
+
+    // Connector paths are cached by stages, so every geometry edit needs new ones.
+    const editedStages = [tempoLayout, stageLayout, metadataLayout, staticLayout].map(
+        (layout) => layout.stages,
+    )
+    for (const map of editedStages) assert.notEqual(map, first.stages)
+    assert.equal(new Set(editedStages).size, editedStages.length)
+    assert.equal(createComposedLayout(source).stages, first.stages)
 })
 
 test('note positions are cached per layout, never across edits, undo or non-default queries', () => {

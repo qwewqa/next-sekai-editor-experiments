@@ -14,7 +14,7 @@ import { clamp, lerp, remap, safeUnlerp, safeUnlerpClamped } from '../../utils/m
 import { isConnectorVisible } from '../entities/visibility'
 import { connectorColors } from '../utils/connectorColors'
 import { guideElevationFraction } from '../utils/guideAlpha'
-import { sampleComposed } from './composedSampling'
+import { sampleComposed, type ComposedSample } from './composedSampling'
 import { blendOverChart } from './nameColors'
 import { markFill } from './names'
 import type { EditorDrawContext } from './types'
@@ -30,8 +30,19 @@ type Region = {
     straight: boolean
 }
 
+type ComposedLayout = NonNullable<EditorDrawContext['composed']>
+
+/** Composed body strips in lanes and seconds, so zoom reuses them. */
+type ComposedGeometry = {
+    strips: ComposedSample[][]
+    /** Each strip's fake-marker cross points, at CROSS_SAMPLES steps. */
+    crosses?: Omit<Edge, 'time'>[][]
+}
+
 type ConnectorGraphic = {
-    composed?: EditorDrawContext['composed']
+    /** Composed geometry depends only on the entity, tempo and stages. */
+    stages?: ComposedLayout['stages']
+    geometry?: ComposedGeometry
     bpms: BpmIntegral[]
     ups: number
     path: Path2D
@@ -307,12 +318,59 @@ const appendCross = (marker: Path2D, { yHead, yTail, at, straight }: Region) => 
     }
 }
 
+const isFake = ({ segmentHead }: ConnectorEntity) =>
+    segmentHead.connectorType !== 'guide' && segmentHead.connectorIsFake
+
+const sampleConnector = (
+    entity: ConnectorEntity,
+    bpms: BpmIntegral[],
+    composed: ComposedLayout,
+): ComposedGeometry => {
+    const { attachHead, attachTail, head, tail } = entity
+    const breaks = new Set([head.beat, tail.beat])
+    for (const note of [attachHead, attachTail]) {
+        for (const beat of composed.stages.get(note.stageId)?.breakpoints ?? []) {
+            if (head.beat < beat && beat < tail.beat) breaks.add(beat)
+        }
+    }
+    if (attachHead.connectorEase === 'inOutStep') {
+        const tAttachHead = beatToTime(bpms, attachHead.beat)
+        const tAttachTail = beatToTime(bpms, attachTail.beat)
+        const middle = timeToBeat(bpms, (tAttachHead + tAttachTail) / 2)
+        if (head.beat < middle && middle < tail.beat) breaks.add(middle)
+    }
+    const strips = sampleComposed(
+        bpms,
+        [...breaks].sort((a, b) => a - b),
+        (beat, rightLimit) => composed.connectorPosition(entity, beat, { rightLimit }),
+    )
+    if (!isFake(entity)) return { strips }
+    const crosses = strips.map((points) => {
+        const first = points[0]
+        const last = points.at(-1)
+        if (!first || !last) return []
+        return Array.from({ length: CROSS_SAMPLES + 1 }, (_, index) => {
+            const u = index / CROSS_SAMPLES
+            return u <= 0
+                ? first
+                : u >= 1
+                  ? last
+                  : composed.connectorPosition(
+                        entity,
+                        timeToBeat(bpms, lerp(first.time, last.time, u)),
+                    )
+        })
+    })
+    return { strips, crosses }
+}
+
 const createGraphic = (
     entity: ConnectorEntity,
     bpms: BpmIntegral[],
     ups: number,
-    composed?: EditorDrawContext['composed'],
+    composed?: ComposedLayout,
     infos?: SlideInfos,
+    geometry = composed && sampleConnector(entity, bpms, composed),
 ): ConnectorGraphic => {
     const { attachHead, attachTail, head, tail, segmentHead, segmentTail } = entity
     const tAttachHead = beatToTime(bpms, attachHead.beat)
@@ -329,22 +387,8 @@ const createGraphic = (
 
     const regions: Region[] = []
     const composedPoints: { left: number; size: number }[] = []
-    if (composed) {
-        const breaks = new Set([head.beat, tail.beat])
-        for (const note of [attachHead, attachTail]) {
-            for (const beat of composed.stages.get(note.stageId)?.breakpoints ?? []) {
-                if (head.beat < beat && beat < tail.beat) breaks.add(beat)
-            }
-        }
-        if (attachHead.connectorEase === 'inOutStep') {
-            const middle = timeToBeat(bpms, (tAttachHead + tAttachTail) / 2)
-            if (head.beat < middle && middle < tail.beat) breaks.add(middle)
-        }
-        for (const points of sampleComposed(
-            bpms,
-            [...breaks].sort((a, b) => a - b),
-            (beat, rightLimit) => composed.connectorPosition(entity, beat, { rightLimit }),
-        )) {
+    if (geometry) {
+        for (const [strip, points] of geometry.strips.entries()) {
             composedPoints.push(...points)
             for (const [index, { left, time }] of points.entries()) {
                 if (index) {
@@ -363,20 +407,14 @@ const createGraphic = (
             path.closePath()
             const first = points[0]
             const last = points.at(-1)
-            if (!first || !last) continue
+            const cross = geometry.crosses?.[strip]
+            if (!first || !last || !cross) continue
             regions.push({
                 yHead: first.time * ups,
                 yTail: last.time * ups,
                 straight: false,
-                at: (u) =>
-                    u <= 0
-                        ? first
-                        : u >= 1
-                          ? last
-                          : composed.connectorPosition(
-                                entity,
-                                timeToBeat(bpms, lerp(first.time, last.time, u)),
-                            ),
+                // Crosses sample at u = index / CROSS_SAMPLES.
+                at: (u) => cross[Math.round(u * CROSS_SAMPLES)] ?? last,
             })
         }
     } else {
@@ -503,7 +541,7 @@ const createGraphic = (
     }
 
     let fakeMarker: Path2D | undefined
-    if (segmentHead.connectorType !== 'guide' && segmentHead.connectorIsFake) {
+    if (isFake(entity)) {
         fakeMarker = new Path2D()
         for (const region of regions) appendCross(fakeMarker, region)
     }
@@ -527,7 +565,8 @@ const createGraphic = (
     }
 
     return {
-        composed,
+        stages: composed?.stages,
+        geometry,
         bpms,
         ups,
         box,
@@ -563,11 +602,9 @@ export const createConnectorRenderer = () => {
 
             const { ctx, state, ups, scale } = context
             let graphic = graphics.get(entity)
-            if (
-                graphic?.bpms !== state.bpms ||
-                graphic.ups !== ups ||
-                graphic.composed !== context.composed
-            ) {
+            // Keyed on stages, not the layout: drag previews keep untouched slides' paths.
+            const stages = context.composed?.stages
+            if (graphic?.bpms !== state.bpms || graphic.ups !== ups || graphic.stages !== stages) {
                 graphic = createGraphic(
                     entity,
                     state.bpms,
@@ -576,6 +613,10 @@ export const createConnectorRenderer = () => {
                     entity.segmentHead.connectorType === 'guide' &&
                         entity.segmentHead.beat === entity.segmentTail.beat
                         ? state.store.slides.info.get(entity.head.slideId)
+                        : undefined,
+                    // Zoom only rescales the sampled geometry.
+                    graphic?.bpms === state.bpms && graphic.stages === stages
+                        ? graphic.geometry
                         : undefined,
                 )
                 graphics.set(entity, graphic)
