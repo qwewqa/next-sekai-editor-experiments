@@ -651,6 +651,29 @@ test('body drags edit lane and snapped elevation live with one undo step', async
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
+test('a dialog opening over a body drag cancels it, as it does a chart drag', async ({ page }) => {
+    await open(page)
+    const initial = await notes(page)
+    await mouseDrag(page, await point(page), await displacement(page, 2, 0.5))
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { showModal } =
+            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+        const { default: ConfirmModal } = await appImport<{
+            default: typeof import('../../src/modals/ConfirmModal.vue').default
+        }>('/src/modals/ConfirmModal.vue')
+        void showModal(ConfirmModal, { title: () => 'Dialog', message: () => 'Body' })
+    })
+    const dialog = page.getByRole('dialog', { name: 'Dialog', exact: true })
+    await expect(dialog).toBeVisible()
+    expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual([])
+    await page.mouse.up()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    expect(await notes(page)).toEqual(initial)
+    expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+})
+
 test('Escape cancels move and paste drags only, and their release does nothing', async ({
     page,
 }) => {

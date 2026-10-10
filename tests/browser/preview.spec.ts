@@ -678,7 +678,7 @@ test.describe('preview transport', () => {
         expect(await cursor(page)).toBe(released)
     })
 
-    for (const reason of ['pointercancel', 'blur', 'unmount'] as const) {
+    for (const reason of ['pointercancel', 'blur', 'dialog', 'unmount'] as const) {
         test(`${reason} cancels a hold without resuming it later`, async ({ page }) => {
             await page.evaluate(() => (window.editorTest.view.cursorTime = 3.123456))
             const button = page.getByRole('button', { name: 'Forward 10 ms', exact: true })
@@ -695,6 +695,19 @@ test.describe('preview transport', () => {
                     })
                     window.dispatchEvent(new Event('blur'))
                 })
+            } else if (reason === 'dialog') {
+                await page.evaluate(async () => {
+                    const { appImport } = window.editorTest
+                    const { showModal } =
+                        await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+                    const { default: ConfirmModal } = await appImport<{
+                        default: typeof import('../../src/modals/ConfirmModal.vue').default
+                    }>('/src/modals/ConfirmModal.vue')
+                    void showModal(ConfirmModal, { title: () => 'Dialog', message: () => 'Body' })
+                })
+                await expect(
+                    page.getByRole('dialog', { name: 'Dialog', exact: true }),
+                ).toBeVisible()
             } else {
                 await page.evaluate(() => (window.editorTest.settings.showPreview = false))
             }
