@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { fromDisplayedBeat, toDisplayedBeat } from '../../editor/beatDisplay'
 import { i18n } from '../../i18n'
+import { fromSteppedBeat } from './beatField'
 import MultiNumberField from './MultiNumberField.vue'
 
 const modelValue = defineModel<number | undefined>({ required: true })
@@ -11,6 +12,9 @@ const displayedBeat = computed({
         modelValue.value = value === undefined ? undefined : fromDisplayedBeat(value)
     },
 })
+const setStep = (value: number) => {
+    modelValue.value = fromSteppedBeat(value)
+}
 </script>
 
 <template>
@@ -19,5 +23,6 @@ const displayedBeat = computed({
         :label="i18n.modals.form.beat.label"
         :min="1"
         step="any"
+        :set-step
     />
 </template>

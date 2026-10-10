@@ -170,6 +170,27 @@ test('arrow steps add in decimal, and stepping back changes nothing', async ({ p
     await page.keyboard.press('Tab')
     expect(await values(page, 'note', 'beat')).toEqual([10 / 3])
     expect(await canUndo(page)).toBe(false)
+
+    // A beat stepped by whole beats stays on its grid, alone and mixed.
+    await showNotes(page, [{ beat: 1 / 3 }])
+    await beat.focus()
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([4 / 3])
+    await showNotes(page, [{ beat: 1 / 3 }, { beat: 10 / 3 }])
+    await beat.focus()
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([4 / 3, 13 / 3])
+
+    // Typed, a beat holds its decimals, alone and mixed: 1.01 - 1 alone would be 0.010000000000000009.
+    await beat.fill('1.01')
+    await beat.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([0.01, 0.01])
+    await showNotes(page, [{ beat: 0.14 }])
+    await beat.fill('2.14')
+    await beat.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([1.14])
 })
 
 test('undo after a step reverts it in the field, not another field', async ({ page }) => {
@@ -192,6 +213,87 @@ test('undo after a step reverts it in the field, not another field', async ({ pa
     await lane.focus()
     await page.keyboard.press('ControlOrMeta+z')
     await expect.poll(() => values(page, 'note', 'size')).toEqual([2])
+})
+
+test('undo back to stepped text reverts the step, not another field', async ({
+    page,
+    browserName,
+}) => {
+    await showNotes(page, [{ left: 3 }])
+    const size = field(page, 'Size')
+    await size.fill('3')
+    await size.press('Enter')
+    await expect.poll(() => values(page, 'note', 'size')).toEqual([3])
+    const lane = field(page, 'Lane')
+    await lane.focus()
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('End')
+    await page.keyboard.type('5')
+    await expect(lane).toHaveValue('45')
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect(lane).toHaveValue('4')
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect(lane).toHaveValue('3')
+    await expect(lane).toBeFocused()
+    await expect(size).toHaveValue('3')
+    await lane.blur()
+    expect(await lanes(page)).toEqual([3])
+    expect(await values(page, 'note', 'size')).toEqual([3])
+
+    // Undo by the Z key's place on a non-Latin layout, and by its letter on QWERTZ.
+    if (browserName !== 'chromium') return
+    for (const [key, code] of [
+        ['я', 'KeyZ'],
+        ['z', 'KeyY'],
+    ]) {
+        await lane.focus()
+        await page.keyboard.press('ArrowUp')
+        await expect(lane).toHaveValue('4')
+        const prevented = await lane.evaluate(
+            (element, [key, code]) =>
+                !element.dispatchEvent(
+                    new KeyboardEvent('keydown', {
+                        key,
+                        code,
+                        ctrlKey: true,
+                        bubbles: true,
+                        cancelable: true,
+                    }),
+                ),
+            [key, code],
+        )
+        expect(prevented).toBe(true)
+        await expect(lane).toHaveValue('3')
+        await lane.blur()
+        expect(await lanes(page)).toEqual([3])
+    }
+})
+
+test('only a focused field holds a wheel listener, which is not passive', async ({
+    page,
+    browserName,
+}) => {
+    test.skip(browserName !== 'chromium', 'Listeners are read over CDP')
+    await showNotes(page, [{ left: 1 }])
+    const session = await page.context().newCDPSession(page)
+    const wheelListeners = async () => {
+        const { result } = await session.send('Runtime.evaluate', {
+            expression: "document.querySelector('[data-wheel-probe]')",
+        })
+        const { listeners } = await session.send('DOMDebugger.getEventListeners', {
+            objectId: result.objectId!,
+        })
+        return listeners.filter((listener) => listener.type === 'wheel')
+    }
+    const lane = field(page, 'Lane')
+    await lane.evaluate((element) => {
+        element.setAttribute('data-wheel-probe', '')
+    })
+    expect(await wheelListeners()).toEqual([])
+    await lane.focus()
+    expect((await wheelListeners()).map((listener) => listener.passive)).toEqual([false])
+    await lane.blur()
+    expect(await wheelListeners()).toEqual([])
 })
 
 test('arrow steps stop at a limit, and a meter stays above 0', async ({ page }) => {
@@ -409,6 +511,22 @@ test.describe('a mixed number field', () => {
         await expect.poll(() => lanes(page)).toEqual([-4, 0, 2])
         expect(await values(page, 'note', 'size')).toEqual([3, 3, 3])
     })
+
+    test('steps back at the start leave nothing pending, so undo reaches the chart', async ({
+        page,
+    }) => {
+        const size = field(page, 'Size')
+        await size.fill('3')
+        await size.press('Enter')
+        await expect.poll(() => values(page, 'note', 'size')).toEqual([3, 3, 3])
+        const lane = field(page, 'Lane')
+        await lane.focus()
+        await page.keyboard.press('ArrowUp')
+        await page.keyboard.press('ArrowDown')
+        await page.keyboard.press('ControlOrMeta+z')
+        await expect.poll(() => values(page, 'note', 'size')).toEqual([2, 2, 2])
+        expect(await lanes(page)).toEqual([-4, 0, 2])
+    })
 })
 
 test('Division Size steps preview until left, like other number fields', async ({ page }) => {
@@ -449,4 +567,12 @@ test('Division Size steps preview until left, like other number fields', async (
     await page.keyboard.press('ControlOrMeta+z')
     await expect.poll(sizes).toEqual(before)
     expect(await canUndo(page)).toBe(false)
+
+    // A typed fraction steps to whole numbers, as native steps did.
+    await division.fill('2.5')
+    await page.keyboard.press('ArrowUp')
+    await expect(division).toHaveValue('3')
+    await division.fill('2.5')
+    await page.keyboard.press('ArrowDown')
+    await expect(division).toHaveValue('2')
 })
