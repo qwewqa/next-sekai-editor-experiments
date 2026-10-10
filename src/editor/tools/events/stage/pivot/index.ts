@@ -27,6 +27,7 @@ import {
     snapYToBeat,
     view,
     xToValidLane,
+    yToBeat,
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
@@ -53,6 +54,7 @@ let active:
     | {
           type: 'move'
           entity: StagePivotEventJointEntity
+          pressBeat: number
       }
     | undefined
 
@@ -187,6 +189,7 @@ export const stagePivotEvent: Tool = {
             active = {
                 type: 'move',
                 entity,
+                pressBeat: yToBeat(y),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -234,7 +237,7 @@ export const stagePivotEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
 
                 view.entities = {
                     hovered: [],
@@ -289,7 +292,7 @@ export const stagePivotEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
 
                 commitDrop(
                     move,

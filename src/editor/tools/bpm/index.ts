@@ -17,7 +17,14 @@ import { revealSelectionProperties } from '../../editSelectionProperties'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
-import { focusEntityAtBeat, setViewHover, snapYToBeat, view, yToValidBeat } from '../../view'
+import {
+    focusEntityAtBeat,
+    setViewHover,
+    snapYToBeat,
+    view,
+    yToBeat,
+    yToValidBeat,
+} from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
 import { commitDrop, hitEntitiesAtPoint } from '../utils'
 
@@ -28,6 +35,7 @@ let active:
     | {
           type: 'move'
           entity: BpmEntity
+          pressBeat: number
       }
     | undefined
 
@@ -139,6 +147,7 @@ export const bpm: Tool = {
             active = {
                 type: 'move',
                 entity,
+                pressBeat: yToBeat(y),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -182,7 +191,7 @@ export const bpm: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
                 const object: BpmObject = {
                     beat,
                     bpm: active.entity.bpm,
@@ -239,7 +248,7 @@ export const bpm: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
 
                 commitDrop(editMoveOrReplace, active.entity, {
                     beat,

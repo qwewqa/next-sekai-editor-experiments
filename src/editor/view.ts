@@ -375,7 +375,7 @@ export const xToValidLane = (x: number) => alignLane(xToLane(x))
 
 export const yToTime = (y: number) => (0.5 * view.h - y + view.y) / settings.pps + view.time
 
-const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
+export const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
 
 export const yToValidBeat = (y: number) => align(yToBeat(y), view.division)
 
@@ -384,4 +384,11 @@ export const yToBeatOffset = (y: number, beat: number) =>
         ? align(yToBeat(y), view.division) - beat
         : align(yToBeat(y) - beat, view.division)
 
-export const snapYToBeat = (y: number, beat: number) => Math.max(0, beat + yToBeatOffset(y, beat))
+/** A move's beat offset; absolute snapping waits for half a step of the pointer's movement from its press. */
+export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
+    view.snapping === 'absolute' && Math.abs(yToBeat(y) - pressBeat) * view.division < 0.5
+        ? 0
+        : yToBeatOffset(y, beat)
+
+export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
+    Math.max(0, beat + yToMoveBeatOffset(y, beat, pressBeat))

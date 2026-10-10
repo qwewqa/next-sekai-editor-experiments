@@ -29,6 +29,7 @@ import {
     view,
     xToLane,
     xToValidLane,
+    yToBeat,
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
@@ -66,6 +67,7 @@ let active:
     | {
           type: 'move'
           entity: StageMaskEventJointEntity
+          pressBeat: number
           lane: number
       }
     | undefined
@@ -202,6 +204,7 @@ export const stageMaskEvent: Tool = {
                 active = {
                     type: 'move',
                     entity,
+                    pressBeat: yToBeat(y),
                     lane,
                 }
             } else {
@@ -302,7 +305,7 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
 
                 view.entities = {
                     hovered: [],
@@ -392,7 +395,7 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
 
                 commitDrop(
                     move,

@@ -86,7 +86,8 @@ import {
     setViewHover,
     view,
     xToLane,
-    yToBeatOffset,
+    yToBeat,
+    yToMoveBeatOffset,
     yToTime,
     yToValidBeat,
 } from '../view'
@@ -109,6 +110,8 @@ type MoveActive = {
     focus: Entity
     entities: Entity[]
     onlyType: EntityType | undefined
+    // The pointer's beat at the press.
+    pressBeat: number
     // The pointer and lane snapping the preview was last built for.
     last?: string
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
@@ -148,6 +151,7 @@ const resolveDrag = (
             focus,
             entities: moving,
             onlyType: getOnlyEntityType(moving),
+            pressBeat: yToBeat(y),
             isSelected: true,
         }
     }
@@ -161,6 +165,7 @@ const resolveDrag = (
         focus: entity,
         entities: [entity],
         onlyType: entity.type,
+        pressBeat: yToBeat(y),
         isSelected: false,
     }
 }
@@ -292,7 +297,10 @@ export const select: Tool = {
                 const lane =
                     xToLane(x) -
                     (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(active, yToBeatOffset(y, active.focus.beat))
+                const beatOffset = toMoveBeatOffset(
+                    active,
+                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
+                )
 
                 const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping}`
                 if (active.last === last) break
@@ -385,7 +393,10 @@ export const select: Tool = {
                 const lane =
                     xToLane(x) -
                     (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(active, yToBeatOffset(y, active.focus.beat))
+                const beatOffset = toMoveBeatOffset(
+                    active,
+                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
+                )
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
                 // Dropping everything where it started adds no undo step.
                 if (isUnmoved(active, lane, beatOffset, rawMove)) {

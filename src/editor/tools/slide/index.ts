@@ -38,6 +38,7 @@ import {
     snapYToBeat,
     view,
     xToLane,
+    yToBeat,
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
@@ -81,6 +82,7 @@ let active:
     | {
           type: 'move'
           entity: NoteEntity
+          pressBeat: number
           lane: number
       }
     | undefined
@@ -212,6 +214,7 @@ export const slide: Tool = {
                 active = {
                     type: 'move',
                     entity,
+                    pressBeat: yToBeat(y),
                     lane,
                 }
             } else {
@@ -297,7 +300,7 @@ export const slide: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
                 const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
                 const object = constrainLaneObject({
                     ...active.entity,
@@ -386,7 +389,7 @@ export const slide: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat)
+                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
                 const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
 
                 commitDrop(
