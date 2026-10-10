@@ -126,8 +126,8 @@ test('select predicts attached endpoints after multiple selected notes cross an 
     })
     expect(result).toEqual([
         { beat: 8, left: 4, size: 2 },
-        // The grabbed head anchors the raw move. Its attached companion keeps
-        // the same authored lane when it becomes the new endpoint.
-        { beat: 10, left: 4, size: 3 },
+        // The grabbed head anchors the move. Its attached companion becomes the new
+        // endpoint from where gameplay drew it, as detaching keeps it.
+        { beat: 10, left: 0, size: 3 },
     ])
 })
