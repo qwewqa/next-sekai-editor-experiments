@@ -1833,6 +1833,34 @@ test.describe('with touch', () => {
             await expect(flyouts).toHaveCount(0)
         }
     })
+
+    test('a second touch on the flyout leaves the first touch’s drag closing it', async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.toolbar = [['paste', 'undo']]
+        })
+        const flyouts = page.locator('[data-editor-toolbar] > div > div > div')
+        const scrims = page.locator('[data-editor-toolbar] + div[class*="bg-scrim"]')
+        await shown(page).first().tap()
+        await expect(flyouts).toBeVisible()
+        await expect(scrims).toHaveCount(1)
+        const row = (await flyouts.locator('button').first().boundingBox())!
+        const inside = { x: row.x + row.width / 2, y: row.y + row.height / 2, id: 1 }
+        const client = await page.context().newCDPSession(page)
+        const touch = (
+            type: 'touchStart' | 'touchMove' | 'touchEnd',
+            points: { x: number; y: number; id: number }[],
+        ) => client.send('Input.dispatchTouchEvent', { type, touchPoints: points })
+        // The first finger on the backdrop over the chart, then a second on the flyout.
+        await touch('touchStart', [{ x: 800, y: 300, id: 0 }])
+        await touch('touchStart', [{ x: 800, y: 300, id: 0 }, inside])
+        for (let step = 1; step <= 4; step++)
+            await touch('touchMove', [{ x: 800, y: 300 + step * 10, id: 0 }, inside])
+        await expect(flyouts).toHaveCount(0)
+        await expect(scrims).toHaveCount(0)
+        await touch('touchEnd', [])
+    })
 })
 
 test('a drag with a button held crosses the toolbar without opening flyouts', async ({ page }) => {
@@ -1874,5 +1902,30 @@ test('a drag with a button held crosses the toolbar without opening flyouts', as
     const first = centers[0]!
     await page.mouse.move(first.x, first.y, { steps: 6 })
     expect(await placedFlyout(page)).toBe(-1)
+    await page.mouse.up()
+})
+
+test('a press held from before a flyout closed leaves the reopened one open as it moves', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [['redo', 'select']]
+    })
+    const group = shown(page).and(page.getByTitle('Select', { exact: true }))
+    await page.mouse.move(800, 300)
+    await group.focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => placedFlyout(page)).toBe(0)
+    // Pressed on the backdrop and held while the flyout closes and opens again.
+    await page.mouse.down()
+    await page.keyboard.press('Escape')
+    await expect.poll(() => placedFlyout(page)).toBe(-1)
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => placedFlyout(page)).toBe(0)
+    await page.mouse.move(815, 300, { steps: 3 })
+    await page.waitForTimeout(100)
+    expect(await placedFlyout(page)).toBe(0)
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
     await page.mouse.up()
 })

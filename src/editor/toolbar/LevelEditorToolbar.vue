@@ -259,10 +259,8 @@ const backdrop = useTemplateRef<HTMLDivElement>('backdrop')
 let lastMove: { x: number; y: number } | undefined
 let inPlace = false
 const onMoveOutside = (event: PointerEvent) => {
-    if (
-        press?.id === event.pointerId &&
-        Math.hypot(event.clientX - press.x, event.clientY - press.y) > pressJitter
-    )
+    const press = presses.get(event.pointerId)
+    if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > pressJitter)
         endPress(event)
     if (event.pointerType !== 'mouse') return
     inPlace = lastMove?.x === event.clientX && lastMove.y === event.clientY
@@ -273,21 +271,26 @@ const onMoveOutside = (event: PointerEvent) => {
     activeIndex.value = -1
 }
 // A drag that starts anywhere but the open flyout and its tools closes it, by any pointer;
-// so does a touch the browser takes over to scroll.
+// so does a touch the browser takes over to scroll. Each pointer's press counts for one flyout.
 const pressJitter = 10
-let press: { id: number; x: number; y: number } | undefined
+const presses = new Map<number, { x: number; y: number }>()
 const onPressOutside = (event: PointerEvent) => {
     const target = event.target
-    press =
-        activeIndex.value !== -1 && target instanceof Node && !root.value?.contains(target)
-            ? { id: event.pointerId, x: event.clientX, y: event.clientY }
-            : undefined
+    if (activeIndex.value !== -1 && target instanceof Node && !root.value?.contains(target))
+        presses.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    else presses.delete(event.pointerId)
 }
 const endPress = (event: PointerEvent) => {
-    if (press?.id !== event.pointerId) return
-    press = undefined
+    if (!presses.delete(event.pointerId)) return
     if (event.type !== 'pointerup') activeIndex.value = -1
 }
+watch(
+    activeIndex,
+    () => {
+        presses.clear()
+    },
+    { flush: 'sync' },
+)
 // Capturing, as resize handles stop moves from bubbling; it runs before the backdrop’s handler.
 const listeners = [
     ['pointermove', onMoveOutside],
