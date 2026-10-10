@@ -10,6 +10,7 @@ const modelValue = defineModel<number | undefined>({ required: true })
         v-model="modelValue"
         :label="i18n.modals.form.meter.label"
         :min="Number.EPSILON"
+        exclusive-min
         step="any"
     />
 </template>

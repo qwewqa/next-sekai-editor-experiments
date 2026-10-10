@@ -41,8 +41,15 @@ export const optionName = (value: unknown, options: readonly (readonly [string, 
 /** No selected object holds a value, as for a BPM change without a meter. */
 export const isUnset = (field: FieldUsage | undefined) => field?.usage?.values.size === 0
 
-// Typed like the number inputs show them, with a plain minus.
-export const formatNumber = (value: number) => `${+value.toFixed(4)}`
+// Typed like the number inputs show them, with a plain minus; a value too small for 4 decimals keeps 4 digits.
+export const formatNumber = (value: number) => {
+    const rounded = +value.toFixed(4)
+    return `${rounded === 0 && value !== 0 ? +value.toPrecision(4) : rounded}`
+}
+
+/** A range of numbers, as "-4 … 6"; one number alone when it holds only that. */
+export const formatRange = (min: number, max: number) =>
+    min === max ? formatNumber(min) : `${formatNumber(min)} … ${formatNumber(max)}`
 
 /** The range a mixed number field spans, as "-4 … 6". */
 export const mixedRange = (field: FieldUsage | undefined) => {
@@ -50,7 +57,7 @@ export const mixedRange = (field: FieldUsage | undefined) => {
     const range = valueRange(field.usage, (value) =>
         field.map ? (field.map(value) as number) : value,
     )
-    return range && `${formatNumber(range[0])} … ${formatNumber(range[1])}`
+    return range && formatRange(...range)
 }
 
 /** Counts the objects behind each option; all zero when nothing is mixed. */
