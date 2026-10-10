@@ -162,6 +162,55 @@ for (const layout of ['basic', 'composed'] as const)
                 expect(await bpms(page)).toEqual(initial)
             }
         })
+
+        test('the BPM label rounds as Properties does and its box covers it', async ({ page }) => {
+            const at = await point(page, 0, 4)
+            await page.mouse.click(at.x, at.y)
+            const dialog = page.getByRole('dialog', { name: 'BPM Properties' })
+            const field = dialog.getByRole('spinbutton', { name: 'BPM' })
+            await field.fill('150.123456789')
+            await field.press('Enter')
+            await expect(notice(page)).toHaveText('Set BPM on 1 BPM change')
+            await page.keyboard.press('Escape')
+            await expect(dialog).toHaveCount(0)
+            // Only the label rounds.
+            expect(await bpms(page)).toEqual([
+                ...initial,
+                { beat: 4, bpm: 150.123456789, meter: 4 },
+            ])
+
+            const { labelEnd, boxEnd } = await page.evaluate(() => {
+                const { view, settings, history } = window.editorTest
+                const entity = history.state.value.selectedEntities[0]!
+                const lanePx = view.w / settings.width
+                const ctx = document.createElement('canvas').getContext('2d')!
+                ctx.font = `${0.5 * lanePx}px ${getComputedStyle(document.querySelector('.editor')!).fontFamily}`
+                return {
+                    labelEnd: 6.1 + ctx.measureText('150.1235').width / lanePx,
+                    boxEnd: entity.hitbox!.lane + entity.hitbox!.w,
+                }
+            })
+            expect(boxEnd).toBeGreaterThanOrEqual(labelEnd)
+
+            // Pointing at the label's last figure selects its change.
+            await page.evaluate(async () => {
+                const { appImport, history } = window.editorTest
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo('select')
+                history.replaceState({ ...history.state.value, selectedEntities: [] })
+            })
+            const end = await point(page, labelEnd - 0.1, 4)
+            await page.mouse.move(end.x, end.y)
+            await settle(page)
+            expect(await page.evaluate(() => window.editorTest.snapshot().hovered)).toEqual([
+                { type: 'bpm', beat: 4 },
+            ])
+            await page.mouse.click(end.x, end.y)
+            await settle(page)
+            expect(await selected(page)).toEqual([{ type: 'bpm', beat: 4 }])
+        })
     })
 
 test.describe('with touch', () => {
@@ -192,49 +241,20 @@ test.describe('with touch', () => {
     })
 })
 
-test('the BPM label rounds as Properties does and its box covers it', async ({ page }) => {
+test('the Properties panel shows a new change with the meter in effect', async ({ page }) => {
+    await page.evaluate(() => {
+        const { fixtures, settings, show } = window.editorTest
+        settings.showSidebar = true
+        show({ ...fixtures.interaction, bpms: [{ beat: 0, bpm: 120, meter: 3 }] }, 3)
+    })
     await page.keyboard.press('q')
-    const at = await point(page, 0, 4)
+    const at = await point(page, 0, 5)
     await page.mouse.click(at.x, at.y)
-    const dialog = page.getByRole('dialog', { name: 'BPM Properties' })
-    const field = dialog.getByRole('spinbutton', { name: 'BPM' })
-    await field.fill('150.123456789')
-    await field.press('Enter')
-    await expect(notice(page)).toHaveText('Set BPM on 1 BPM change')
-    await page.keyboard.press('Escape')
-    await expect(dialog).toHaveCount(0)
-    // Only the label rounds.
-    expect(await bpms(page)).toEqual([...initial, { beat: 4, bpm: 150.123456789, meter: 4 }])
-
-    const { labelEnd, boxEnd } = await page.evaluate(() => {
-        const { view, settings, history } = window.editorTest
-        const entity = history.state.value.selectedEntities[0]!
-        const lanePx = view.w / settings.width
-        const ctx = document.createElement('canvas').getContext('2d')!
-        ctx.font = `${0.5 * lanePx}px ${getComputedStyle(document.querySelector('.editor')!).fontFamily}`
-        return {
-            labelEnd: 6.1 + ctx.measureText('150.1235').width / lanePx,
-            boxEnd: entity.hitbox!.lane + entity.hitbox!.w,
-        }
-    })
-    expect(boxEnd).toBeGreaterThanOrEqual(labelEnd)
-
-    // Pointing at the label's last figure selects its change.
-    await page.evaluate(async () => {
-        const { appImport, history } = window.editorTest
-        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
-            '/src/editor/tools/index.ts',
-        )
-        switchToolTo('select')
-        history.replaceState({ ...history.state.value, selectedEntities: [] })
-    })
-    const end = await point(page, labelEnd - 0.1, 4)
-    await page.mouse.move(end.x, end.y)
-    await settle(page)
-    expect(await page.evaluate(() => window.editorTest.snapshot().hovered)).toEqual([
-        { type: 'bpm', beat: 4 },
+    const panel = page.locator('#workspace-panel-properties')
+    await expect(panel.getByRole('spinbutton', { name: 'BPM' })).toHaveValue('120')
+    await expect(panel.getByRole('spinbutton', { name: 'Meter' })).toHaveValue('3')
+    expect(await bpms(page)).toEqual([
+        { beat: 0, bpm: 120, meter: 3 },
+        { beat: 5, bpm: 120, meter: 3 },
     ])
-    await page.mouse.click(end.x, end.y)
-    await settle(page)
-    expect(await selected(page)).toEqual([{ type: 'bpm', beat: 4 }])
 })
