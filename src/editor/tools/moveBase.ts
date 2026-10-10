@@ -20,12 +20,12 @@ type Place = { left: number; size: number; elevation: number }
 
 const places = new WeakMap<State, Map<NoteEntity, Place | undefined>>()
 
-// Gameplay places at the move's start; a miss places every moving tick, so a drag builds once.
-const placesOf = (source: State, notes: NoteEntity[], moving: Iterable<NoteEntity>) => {
+// Gameplay places at the move's start, built once per state.
+const placesOf = (source: State, notes: NoteEntity[]) => {
     let known = places.get(source)
     if (!known) places.set(source, (known = new Map<NoteEntity, Place | undefined>()))
-    if (notes.some((note) => !known.has(note))) {
-        const missing = [...moving].filter((note) => note.isAttached && !known.has(note))
+    const missing = notes.filter((note) => !known.has(note))
+    if (missing.length) {
         const positions = getDetachedNotePositions(source, missing)
         for (const note of missing) known.set(note, positions.get(note))
     }
@@ -55,7 +55,7 @@ export const getMovedEndBases = (source: State, beats: ReadonlyMap<NoteEntity, n
         }
     }
     if (!ends.length) return bases
-    const known = placesOf(source, ends, beats.keys())
+    const known = placesOf(source, ends)
     for (const note of ends) {
         const place = known.get(note)
         if (place)
