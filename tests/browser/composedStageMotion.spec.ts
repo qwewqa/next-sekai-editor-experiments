@@ -105,7 +105,7 @@ for (const dpr of [1, 1.25, 1.5]) {
             expect(step.shifted).toBe(before.shifted)
 
             // Eased scrolling moves on every clock tick: frames shift one drawn window.
-            await page.evaluate(async () => {
+            const stopped = await page.evaluate(async () => {
                 const { view, appImport } = window.editorTest
                 const { scrollViewYBy } =
                     await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
@@ -114,9 +114,12 @@ for (const dpr of [1, 1.25, 1.5]) {
                     for (let f = 0; f < 4; f++) await new Promise((r) => requestAnimationFrame(r))
                 }
                 while (view.scrollingY) await new Promise((r) => requestAnimationFrame(r))
+                return window.stageMotionTest.strokes
             })
-            // The still frame comes once the view has held still for longer than a motion's gap.
-            await page.waitForTimeout(300)
+            // The still frame redraws the stages exactly once the view has held still a while.
+            await expect
+                .poll(() => page.evaluate(() => window.stageMotionTest.strokes))
+                .toBeGreaterThan(stopped)
             await frames(page, 4)
             const after = await counters()
             const moved = after.frames - step.frames
@@ -168,6 +171,80 @@ const scrollWhile = async (page: Page, change: () => Promise<unknown>) => {
     await change()
     await moving
 }
+
+test.describe('window sizing', () => {
+    test.use({ deviceScaleFactor: 2 })
+
+    test('motion faster than the window holds draws the view exactly; a reversal reuses the window', async ({
+        page,
+    }) => {
+        await page.addInitScript(installCanvasCounters)
+        await page.addInitScript(() => {
+            const counts = { windows: 0, resizes: 0, shifted: 0 }
+            ;(window as unknown as { windowTest: typeof counts }).windowTest = counts
+            const chart = () => document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
+            const fillRect = CanvasRenderingContext2D.prototype.fillRect
+            CanvasRenderingContext2D.prototype.fillRect = function (...args: number[]) {
+                const target = chart()
+                if (
+                    target &&
+                    !this.canvas.isConnected &&
+                    this.globalCompositeOperation === 'copy' &&
+                    args[2]! * args[3]! > target.width * target.height
+                )
+                    counts.windows++
+                return Reflect.apply(fillRect, this, args)
+            }
+            for (const name of ['width', 'height'] as const) {
+                const property = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, name)!
+                Object.defineProperty(HTMLCanvasElement.prototype, name, {
+                    ...property,
+                    set(this: HTMLCanvasElement, value: number) {
+                        const target = chart()
+                        if (target && !this.isConnected && value > target[name]) counts.resizes++
+                        property.set!.call(this, value)
+                    },
+                })
+            }
+            const drawImage = CanvasRenderingContext2D.prototype.drawImage
+            CanvasRenderingContext2D.prototype.drawImage = function (...args: unknown[]) {
+                if (this.canvas.classList.contains('editor-chart') && args.length === 9)
+                    counts.shifted++
+                return Reflect.apply(drawImage, this, args)
+            }
+        })
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await seed(page, 5)
+        await frames(page, 4)
+        const move = (step: number, count: number) =>
+            page.evaluate(
+                async ({ step, count }) => {
+                    for (let i = 0; i < count; i++) {
+                        window.editorTest.view.time += step
+                        await new Promise((r) => requestAnimationFrame(r))
+                    }
+                    await new Promise((r) => requestAnimationFrame(r))
+                    return {
+                        ...(window as unknown as { windowTest: Record<string, number> }).windowTest,
+                    }
+                },
+                { step, count },
+            )
+        // Each frame moves most of a view: no window can hold two frames of it.
+        expect(await move(0.6, 20)).toEqual({ windows: 0, resizes: 0, shifted: 0 })
+        await page.waitForTimeout(300)
+        // Slow motion draws one window and shifts it.
+        const slow = await move(0.01, 20)
+        expect(slow.windows).toBe(1)
+        expect(slow.shifted).toBeGreaterThan(0)
+        // Turning back draws it the other way, on the same canvas.
+        const back = await move(-0.05, 30)
+        expect(back.windows).toBeGreaterThan(slow.windows)
+        expect(back.resizes).toBe(slow.resizes)
+    })
+})
 
 test.describe('changes during motion', () => {
     test.use({ deviceScaleFactor: 1.25 })

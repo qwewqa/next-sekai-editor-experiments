@@ -9,9 +9,12 @@ import type { EditorDrawContext } from './types'
 // Each retained store (the exact view and the moving window) holds at most 32 MiB
 // of RGBA pixels, so up to twice that beside the chart. Larger screens draw directly.
 const MAX_PIXELS = 8 * 1024 * 1024
-// A moving window reaches this far ahead of the view and a quarter of it behind.
+// A moving window reaches a view ahead, or this many frames of fast motion, and a quarter view behind.
 const AHEAD = 1
+const AHEAD_FRAMES = 4
 const BEHIND = 0.25
+// A window too shallow for this many frames of motion would be redrawn about every frame.
+const MIN_FRAMES = 2
 // Frames closer together than this are one motion; spaced steps each draw exactly.
 export const SUSTAINED_MS = 100
 
@@ -19,9 +22,11 @@ type Motion = {
     canvas: HTMLCanvasElement
     ctx: CanvasRenderingContext2D
     key: readonly unknown[]
-    // Device-pixel translation the window was drawn with.
+    // Device-pixel translation and size the window was drawn with.
     e: number
     f: number
+    w: number
+    h: number
 }
 
 const sameKey = (a: readonly unknown[] | undefined, b: readonly unknown[]) =>
@@ -57,6 +62,7 @@ export const createStageSurface = () => {
     }
 
     // Draws a window around the view, extended along the motion, at the chart's device scale.
+    // Returns false when no window fits the motion and the view should draw exactly.
     const drawMotion = (
         context: EditorDrawContext,
         key: readonly unknown[],
@@ -71,31 +77,50 @@ export const createStageSurface = () => {
         const [w, h] = deviceSize(width, height, pixelRatio)
         const sx = scale * (w / width)
         const sy = scale * (h / height)
+        // Device pixels the view moved this frame.
+        const stepX = Math.abs(dx) * sx
+        const stepY = Math.abs(dy) * sy
         // Margins in whole device pixels; scene x grows right and scene y grows down.
         // Large screens get a shallower window within the same pixel budget.
         let reach = 1
-        const margin = (delta: number, size: number, forward: boolean) =>
-            delta === 0 ? 0 : Math.round(size * reach * (delta > 0 === forward ? AHEAD : BEHIND))
+        const margin = (delta: number, size: number, step: number, forward: boolean) =>
+            delta === 0
+                ? 0
+                : Math.round(
+                      reach *
+                          (delta > 0 === forward
+                              ? Math.max(size * AHEAD, step * AHEAD_FRAMES)
+                              : size * BEHIND),
+                  )
         const area = () =>
-            (w + margin(dx, w, false) + margin(dx, w, true)) *
-            (h + margin(dy, h, false) + margin(dy, h, true))
+            (w + margin(dx, w, stepX, false) + margin(dx, w, stepX, true)) *
+            (h + margin(dy, h, stepY, false) + margin(dy, h, stepY, true))
         while (area() > MAX_PIXELS && reach > 1 / 16) reach /= 2
-        const left = margin(dx, w, false)
-        const right = margin(dx, w, true)
-        const top = margin(dy, h, false)
-        const bottom = margin(dy, h, true)
+        const left = margin(dx, w, stepX, false)
+        const right = margin(dx, w, stepX, true)
+        const top = margin(dy, h, stepY, false)
+        const bottom = margin(dy, h, stepY, true)
         const W = w + left + right
         const H = h + top + bottom
         if (W * H > MAX_PIXELS) {
             clearMotion()
-            return
+            return false
         }
+        if (
+            (dx !== 0 && (dx > 0 ? right : left) < stepX * MIN_FRAMES) ||
+            (dy !== 0 && (dy > 0 ? bottom : top) < stepY * MIN_FRAMES)
+        )
+            return false
+        // The canvas only grows, so speed and direction changes reuse it.
         const target = motion?.canvas ?? document.createElement('canvas')
         motion = undefined
-        if (target.width !== W) target.width = W
-        if (target.height !== H) target.height = H
+        if (target.width < W || target.height < H) {
+            const grown = Math.max(target.width, W) * Math.max(target.height, H) <= MAX_PIXELS
+            target.width = grown ? Math.max(target.width, W) : W
+            target.height = grown ? Math.max(target.height, H) : H
+        }
         const ctx = target.getContext('2d')
-        if (!ctx) return
+        if (!ctx) return false
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.save()
         ctx.globalAlpha = 1
@@ -122,7 +147,8 @@ export const createStageSurface = () => {
             max: timeToBeat(bpms, extended.t / ups),
         }
         drawComposedStages({ ...context, ctx, bounds: extended }, beats, scope, laneDivision)
-        motion = { canvas: target, ctx, key, e, f }
+        motion = { canvas: target, ctx, key, e, f, w: W, h: H }
+        return true
     }
 
     // Copies the moving window at the view's offset, rounded to whole device pixels.
@@ -137,8 +163,7 @@ export const createStageSurface = () => {
         const [w, h] = deviceSize(width, height, pixelRatio)
         const x = Math.round(motion.e + bounds.l * scale * (w / width))
         const y = Math.round(motion.f + bounds.t * scale * (h / height))
-        if (x < 0 || y < 0 || x + w > motion.canvas.width || y + h > motion.canvas.height)
-            return false
+        if (x < 0 || y < 0 || x + w > motion.w || y + h > motion.h) return false
         context.ctx.save()
         context.ctx.setTransform(1, 0, 0, 1, 0, 0)
         context.ctx.globalAlpha = 1
@@ -211,8 +236,11 @@ export const createStageSurface = () => {
             // A single step redraws exactly; sustained motion reuses a larger window.
             if (!sameKey(previous, key) && moved && wasMoving) {
                 if (blitMotion(context, viewKey, width, height)) return true
-                drawMotion(context, viewKey, width, height, dx, dy, scope, laneDivision)
-                if (blitMotion(context, viewKey, width, height)) return true
+                if (
+                    drawMotion(context, viewKey, width, height, dx, dy, scope, laneDivision) &&
+                    blitMotion(context, viewKey, width, height)
+                )
+                    return true
             }
             if (!sameKey(previous, key)) {
                 canvas ??= document.createElement('canvas')
