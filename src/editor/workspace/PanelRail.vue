@@ -54,15 +54,17 @@ const tabs = () => [...(scroller.value?.querySelectorAll<HTMLButtonElement>('[ro
 // rather than scrolling behind a fade that makes the last label look clipped.
 const compact = ref(false)
 
-// Fade whichever end of the rail has labels scrolled out of view.
+// Fade whichever end of the rail has labels scrolled out of view; a tab's end
+// padding, 0.5rem when trimmed, may hide alone, plus 1px for rounding.
 const overflow = ref({ start: false, end: false })
+let slack = 1
 const updateFades = () => {
     const element = scroller.value
     if (!element) return
     const size = vertical.value ? element.clientHeight : element.clientWidth
     const position = vertical.value ? element.scrollTop : element.scrollLeft
     const content = vertical.value ? element.scrollHeight : element.scrollWidth
-    overflow.value = { start: position > 1, end: position + size < content - 1 }
+    overflow.value = { start: position > slack, end: position + size < content - slack }
 }
 const updateOverflow = () => {
     const element = scroller.value
@@ -83,8 +85,9 @@ const updateOverflow = () => {
             natural += vertical.value ? label.height : label.width
         }
         const saving = list.length * 0.5 * rem
-        // Half a pixel either way is rounding.
-        const next = natural > size + 0.5 && natural - saving <= size + 0.5
+        slack = 0.5 * rem + 1
+        // Trimmed, every label shows in full while only the last tab's end padding overflows.
+        const next = natural > size + 0.5 && natural - saving <= size + 0.5 * rem
         if (next !== compact.value) {
             compact.value = next
             // Measure the overflow once the new padding is laid out.

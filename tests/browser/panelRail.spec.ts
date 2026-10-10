@@ -383,7 +383,6 @@ test('the top rail picks its padding by width alone, and a strip that fits shows
             return {
                 padding: getComputedStyle(tabs[0]!).paddingLeft,
                 fade: element.classList.contains('fade-end'),
-                scroll: element.scrollWidth - element.clientWidth,
                 inside: labels.at(-1)!.right <= box.right + 0.5,
                 // How far the strip overflows at full padding, and at the trimmed one.
                 full: full - box.width,
@@ -396,37 +395,46 @@ test('the top rail picks its padding by width alone, and a strip that fits shows
             window.editorTest.settings.locale = locale as never
         }, locale)
 
-    for (const locale of ['fr', 'ko']) {
+    // French with four tabs reaches the trim threshold at 390px in Chromium.
+    for (const [locale, showGroups] of [
+        ['fr', true],
+        ['ko', false],
+    ] as const) {
+        await page.evaluate((showGroups) => {
+            window.editorTest.settings.showGroups = showGroups
+        }, showGroups)
         await setLocale(locale)
-        // The widths where the full and then the trimmed padding stop fitting.
+        // The widths where the full padding stops fitting, and then where trimming no
+        // longer shows every label: its end padding, 0.5rem, may overflow.
         await setWidth(600)
         const wide = await state()
         expect(wide.full).toBeLessThan(-10)
-        const thresholds = [Math.round(600 + wide.full), Math.round(600 + wide.trimmed)]
-        for (const threshold of thresholds)
-            for (let width = threshold - 2; width <= threshold + 2; width++) {
-                const arrivals = []
-                for (const before of [320, 600]) {
-                    await setWidth(before)
-                    await state()
-                    await setWidth(width)
-                    arrivals.push(await state())
-                }
-                await setLocale('en')
+        const widths = new Set(locale === 'fr' ? [388, 389, 390, 391, 392] : [])
+        for (const threshold of [600 + wide.full, 600 + wide.trimmed - 10])
+            for (let offset = -2; offset <= 2; offset++) widths.add(Math.round(threshold) + offset)
+        for (const width of widths) {
+            const arrivals = []
+            for (const before of [320, 600]) {
+                await setWidth(before)
                 await state()
-                await setLocale(locale)
+                await setWidth(width)
                 arrivals.push(await state())
-                const label = `${locale} at ${width}px`
-                const [first] = arrivals
-                for (const arrival of arrivals) expect(arrival.padding, label).toBe(first!.padding)
-                const fits = first!.padding === '15px' ? first!.full : first!.trimmed
-                if (fits <= 0.5) {
-                    expect(first, label).toMatchObject({ fade: false, inside: true })
-                    expect(first!.scroll, label).toBeLessThanOrEqual(1)
-                }
-                // Overflowing at full padding trims it whenever trimming fits.
-                if (first!.full > 0.5 && first!.trimmed <= 0.5)
-                    expect(first!.padding, label).toBe('10px')
             }
+            await setLocale('en')
+            await state()
+            await setLocale(locale)
+            arrivals.push(await state())
+            const label = `${locale} at ${width}px`
+            const [first] = arrivals
+            for (const arrival of arrivals) expect(arrival.padding, label).toBe(first!.padding)
+            const trimmed = first!.padding === '10px'
+            if (trimmed || first!.full <= 0.5) {
+                expect(first, label).toMatchObject({ fade: false, inside: true })
+                expect(first!.trimmed, label).toBeLessThanOrEqual(10.5)
+            } else {
+                // Full padding scrolls only where trimming would still hide a label.
+                expect(first!.trimmed, label).toBeGreaterThan(9.5)
+            }
+        }
     }
 })
