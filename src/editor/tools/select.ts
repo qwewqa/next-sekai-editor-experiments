@@ -116,6 +116,7 @@ type MoveActive = {
     // The pointer and lane snapping the preview was last built for.
     last?: string
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
+    bases?: { source: State; beatOffset: number; bases: Bases }
 }
 
 type RawMove = { delta: number; unconstrained?: boolean }
@@ -644,17 +645,18 @@ const getRawMove = (
 }
 
 /** The selected ticks this move takes past their slide's ends, at their gameplay place. */
-const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Bases =>
-    isSelectResize(active.onlyType, active.focus, active.lane)
-        ? new Map()
-        : getMovedEndBases(
-              source,
-              new Map(
-                  active.entities.flatMap((entity) =>
-                      entity.type === 'note' ? [[entity, entity.beat + beatOffset] as const] : [],
-                  ),
-              ),
-          )
+const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Bases => {
+    // Without a beat change, or in a resize, no tick crosses an end.
+    if (!beatOffset || isSelectResize(active.onlyType, active.focus, active.lane)) return new Map()
+    const cached = active.bases
+    if (cached?.source === source && cached.beatOffset === beatOffset) return cached.bases
+    const beats = new Map<NoteEntity, number>()
+    for (const entity of active.entities)
+        if (entity.type === 'note') beats.set(entity, entity.beat + beatOffset)
+    const bases = getMovedEndBases(source, beats)
+    active.bases = { source, beatOffset, bases }
+    return bases
+}
 
 const moveSelectedLane = (
     value: number,

@@ -310,26 +310,31 @@ for (const layout of ['basic', 'composed'] as const) {
                         }))
                 })
 
-            test('a Beat past the tail keeps the tick in place', async ({ page }) => {
-                await setup(page, layout)
-                await page.evaluate(() => {
-                    window.editorTest.settings.showSidebar = true
+            for (const [end, beat] of [
+                ['tail', 7],
+                ['head', 1],
+            ] as const) {
+                test(`a Beat past the ${end} keeps the tick in place`, async ({ page }) => {
+                    await setup(page, layout)
+                    await page.evaluate(() => {
+                        window.editorTest.settings.showSidebar = true
+                    })
+                    const before = await notes(page)
+                    const [tick] = await stageOne(page, 4)
+                    await page.keyboard.press('f')
+                    await click(page, centre(layout, tick!), 4)
+                    const field = beatField(page)
+                    const shown = Number(await field.inputValue())
+                    await field.fill(String(shown + beat - 4))
+                    await field.press('Enter')
+                    await expect.poll(async () => (await stageOne(page, beat)).length).toBe(1)
+                    const after = await notes(page)
+                    const [moved] = await stageOne(page, beat)
+                    // A Beat edit keeps stored lanes, as for any note.
+                    expect(stored(moved!)).toEqual({ ...landed(beat), left: -5.25 })
+                    await expectUndoRedo(page, before, after)
                 })
-                const before = await notes(page)
-                const [tick] = await stageOne(page, 4)
-                await page.keyboard.press('f')
-                await click(page, centre(layout, tick!), 4)
-                const field = beatField(page)
-                const shown = Number(await field.inputValue())
-                await field.fill(String(shown + 3))
-                await field.press('Enter')
-                await expect.poll(async () => (await stageOne(page, 7)).length).toBe(1)
-                const after = await notes(page)
-                const [moved] = await stageOne(page, 7)
-                // A Beat edit keeps stored lanes, as for any note.
-                expect(stored(moved!)).toEqual({ ...landed(7), left: -5.25 })
-                await expectUndoRedo(page, before, after)
-            })
+            }
 
             test('a Beat that stays inside keeps the tick on the path', async ({ page }) => {
                 await setup(page, layout)

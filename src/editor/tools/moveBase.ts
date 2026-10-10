@@ -29,10 +29,7 @@ const placesOf = (source: State, notes: NoteEntity[]) => {
     return known
 }
 
-/**
- * Interior attached ticks that a move takes past their slide's head or tail, as the ordinary
- * notes they move as: at their gameplay place, as detaching keeps them.
- */
+/** Ticks a move takes past their slide's ends, as notes at their gameplay place. */
 export const getMovedEndBases = (source: State, beats: ReadonlyMap<NoteEntity, number>) => {
     const bases = new Map<NoteEntity, NoteEntity>()
     const slideIds = new Set<SlideId>()
