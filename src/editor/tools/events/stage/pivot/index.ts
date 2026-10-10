@@ -24,14 +24,15 @@ import { showToolModal } from '../../../../toolModals'
 import {
     focusEntityAtBeat,
     setViewHover,
-    snapYToBeat,
     view,
+    xToLane,
     xToValidLane,
     yToBeat,
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { commitDrop, hitEntitiesAtPoint } from '../../../utils'
+import { constrainMoved, snapYToMovedBeat } from '../../../toolMove'
+import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
 import StagePivotEventSidebar from './StagePivotEventSidebar.vue'
 
 type DefaultStagePivotEventProperties = {
@@ -47,15 +48,18 @@ export const defaultStagePivotEventProperties = ref<DefaultStagePivotEventProper
     copyProperties: true,
 })
 
+type MoveActive = {
+    type: 'move'
+    entity: StagePivotEventJointEntity
+    pressBeat: number
+    lane: number
+}
+
 let active:
     | {
           type: 'add'
       }
-    | {
-          type: 'move'
-          entity: StagePivotEventJointEntity
-          pressBeat: number
-      }
+    | MoveActive
     | undefined
 
 export const stagePivotEvent: Tool = {
@@ -190,6 +194,7 @@ export const stagePivotEvent: Tool = {
                 type: 'move',
                 entity,
                 pressBeat: yToBeat(y),
+                lane: xToLane(x),
             }
         } else {
             focusEntityAtBeat(beat)
@@ -215,11 +220,10 @@ export const stagePivotEvent: Tool = {
 
         setViewHover(y)
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 view.entities = {
                     hovered: [],
@@ -237,21 +241,13 @@ export const stagePivotEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toStagePivotEventJointEntity(
-                            constrainLaneObject({
-                                ...active.entity,
-                                beat,
-                                pivotLane: lane,
-                            }),
-                        ),
-                    ],
+                    creating: [toStagePivotEventJointEntity(object)],
                 }
-                focusEntityAtBeat(beat)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -275,11 +271,10 @@ export const stagePivotEvent: Tool = {
         clearPreviewEdit()
         if (!active) return
 
-        const lane = xToValidLane(x)
-
         switch (active.type) {
             case 'add': {
                 const beat = yToValidBeat(y)
+                const lane = xToValidLane(x)
 
                 add(
                     constrainLaneObject({
@@ -292,18 +287,10 @@ export const stagePivotEvent: Tool = {
                 break
             }
             case 'move': {
-                const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
+                const object = toMovedObject(active, x, y)
 
-                commitDrop(
-                    move,
-                    active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        pivotLane: lane,
-                    }),
-                )
-                focusEntityAtBeat(beat)
+                commitDrop(move, active.entity, object)
+                focusEntityAtBeat(object.beat)
                 break
             }
         }
@@ -315,6 +302,21 @@ export const stagePivotEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Moves by the pointer's snapped movement, as Select does.
+const toMovedObject = (move: MoveActive, x: number, y: number): StagePivotEventObject => {
+    const lane = xToLane(x)
+    return constrainMoved(
+        {
+            ...move.entity,
+            beat: snapYToMovedBeat(y, move.entity.beat, move.pressBeat),
+            pivotLane: moveLane(move.entity.pivotLane, move.lane, lane, move.entity.pivotLane),
+        },
+        move.entity.beat,
+        move.lane,
+        lane,
+    )
 }
 
 const getStagePivotEventJointFromSelection = () => {
