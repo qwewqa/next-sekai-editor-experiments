@@ -155,6 +155,7 @@ const keepDetachedTicks = (
 ) => {
     const interiors = new Map<SlideId, Set<NoteEntity>>()
     const isInterior = (note: NoteEntity) => {
+        if (!note.isAttached) return false
         let interior = interiors.get(note.slideId)
         if (!interior) {
             const notes = source.store.slides.note.get(note.slideId) ?? []
@@ -165,16 +166,26 @@ const keepDetachedTicks = (
         }
         return interior.has(note)
     }
-    const candidates: { note: NoteEntity; origin: NoteOrigin }[] = []
+    // Unedited ticks can only end up first or last, as rebuildSlide's stable sort orders them.
+    const ends = new Set<NoteEntity>()
     for (const slideId of slideIds) {
-        const notes = store.slides.note.get(slideId)
-        if (!notes) continue
-        const sorted = [...notes].sort((a, b) => a.beat - b.beat)
-        for (const [i, note] of sorted.entries()) {
-            if (note.isAttached && i > 0 && i < sorted.length - 1) continue
-            const origin = origins.get(note) ?? { note, explicit: {} }
-            if (isInterior(origin.note)) candidates.push({ note, origin })
+        let first: NoteEntity | undefined
+        let last: NoteEntity | undefined
+        for (const note of store.slides.note.get(slideId) ?? []) {
+            if (!first || note.beat < first.beat) first = note
+            if (!last || note.beat >= last.beat) last = note
         }
+        if (first) ends.add(first)
+        if (last) ends.add(last)
+    }
+    const candidates: { note: NoteEntity; origin: NoteOrigin }[] = []
+    for (const note of ends) {
+        const origin = origins.get(note) ?? { note, explicit: {} }
+        if (isInterior(origin.note)) candidates.push({ note, origin })
+    }
+    for (const [note, origin] of origins) {
+        if (!ends.has(note) && !note.isAttached && isInterior(origin.note))
+            candidates.push({ note, origin })
     }
     if (!candidates.length) return
     const positions = getDetachedNotePositions(

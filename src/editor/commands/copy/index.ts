@@ -120,13 +120,15 @@ export const getComposedClipboardOffset = (
     y: number,
     kept?: ReadonlyMap<NoteEntity, { left: number }>,
 ) => {
-    if (view.layout !== 'composed' || !state.value.isDynamicStages || editorNavigation.value)
-        return 0
+    if (editorNavigation.value) return 0
     const { note } = getAnchor(entities, x, y)
-    return note
-        ? createComposedLayout(state.value).notePosition(note).left -
-              (kept?.get(note)?.left ?? note.left)
-        : 0
+    if (!note) return 0
+    const drawn =
+        view.layout === 'composed' && state.value.isDynamicStages
+            ? createComposedLayout(state.value).notePosition(note).left
+            : note.left
+    // A kept tick is copied at its gameplay place, not where it is drawn.
+    return drawn - (kept?.get(note)?.left ?? note.left)
 }
 
 /** Keep the chosen note's identity even when raw lanes and beats overlap across stages. */

@@ -273,6 +273,7 @@ for (const layout of ['basic', 'composed'] as const) {
 
         test('a slide preset with Attached off keeps the tick in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.evaluate(() => {
                 const { settings } = window.editorTest
                 settings.showSidebar = true
@@ -286,10 +287,12 @@ for (const layout of ['basic', 'composed'] as const) {
             await click(page, lanes[layout].tick, 4)
             await expect.poll(async () => tickOf(await notes(page))?.attached).toBe(false)
             expectKept(tickOf(await notes(page)), 1, false)
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('a Brush with Attached off keeps the tick in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.evaluate(async () => {
                 const { brushProperties } = await window.editorTest.appImport<
                     typeof import('../../src/editor/tools/brush')
@@ -300,10 +303,12 @@ for (const layout of ['basic', 'composed'] as const) {
             await click(page, lanes[layout].tick, 4)
             await expect.poll(async () => tickOf(await notes(page))?.attached).toBe(false)
             expectKept(tickOf(await notes(page)), 1, false)
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('a Brush that also sets Size keeps its size', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.evaluate(async () => {
                 const { brushProperties } = await window.editorTest.appImport<
                     typeof import('../../src/editor/tools/brush')
@@ -314,6 +319,7 @@ for (const layout of ['basic', 'composed'] as const) {
             await click(page, lanes[layout].tick, 4)
             await expect.poll(async () => tickOf(await notes(page))?.attached).toBe(false)
             expect(tickOf(await notes(page))).toMatchObject({ left: -5.25, size: 1, elevation: 2 })
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('deleting the slide head keeps the tick, now the head, in place', async ({ page }) => {
@@ -330,18 +336,22 @@ for (const layout of ['basic', 'composed'] as const) {
 
         test('cutting the slide head keeps the tick in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await select(page, lanes[layout].head, 2)
             await page.keyboard.press('x')
             await expect.poll(async () => (await notes(page)).length).toBe(3)
             expectKept(tickOf(await notes(page)), 1, true)
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('erasing the slide tail keeps the tick, now the tail, in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.keyboard.press('g')
             await click(page, lanes[layout].tail, 6)
             await expect.poll(async () => (await notes(page)).length).toBe(3)
             expectKept(tickOf(await notes(page)), 1, true)
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('deleting the tail stage keeps the tick in place', async ({ page }) => {
@@ -361,6 +371,7 @@ for (const layout of ['basic', 'composed'] as const) {
 
         test('duplicating the head stage keeps the copied tick in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.evaluate(async () => {
                 const { stageFolderOps } = await window.editorTest.appImport<
                     typeof import('../../src/editor/workspace/manager/stages')
@@ -374,10 +385,12 @@ for (const layout of ['basic', 'composed'] as const) {
             const copy = after.find((note) => note.beat === 4 && note.stage > 2)
             expect(copy).toMatchObject({ left: -5.25, size: 2.5, elevation: 2, attached: true })
             expect(copy!.drawn).toEqual({ left: -1.25, size: 2.5 })
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('duplicating the head group keeps the copied tick in place', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await page.evaluate(async () => {
                 const { groupFolderOps } = await window.editorTest.appImport<
                     typeof import('../../src/editor/workspace/manager/groups')
@@ -391,10 +404,12 @@ for (const layout of ['basic', 'composed'] as const) {
                 [-5.25, true],
             ])
             expect(ticks[1]).toMatchObject(kept())
+            await expectUndoRedo(page, before, await notes(page))
         })
 
         test('pasting a copied tick and tail keeps the tick at its elevation', async ({ page }) => {
             await setup(page, layout)
+            const before = await notes(page)
             await select(page, lanes[layout].tick, 4)
             const tail = await point(page, lanes[layout].tail, 6)
             await page.keyboard.down('Control')
@@ -424,10 +439,43 @@ for (const layout of ['basic', 'composed'] as const) {
             // It lands where the original was drawn in this layout.
             if (layout === 'composed') expect(copy.drawn).toEqual({ left: -1.25, size: 2.5 })
             else expect(copy.left + copy.size / 2).toBe(lanes.basic.tick)
+            await expectUndoRedo(page, before, await notes(page))
+        })
+
+        test('pasting a cut tick and tail keeps the tick in place', async ({ page }) => {
+            await setup(page, layout)
+            await select(page, lanes[layout].tick, 4)
+            const tail = await point(page, lanes[layout].tail, 6)
+            await page.keyboard.down('Control')
+            await page.mouse.click(tail.x, tail.y)
+            await page.keyboard.up('Control')
+            await expect
+                .poll(() => page.evaluate(() => window.editorTest.snapshot().selected.length))
+                .toBe(2)
+            await page.evaluate(() => {
+                window.editorTest.view.laneDivision = 4
+            })
+            // Cut with the pointer on the tick, then paste at the same spot.
+            const tick = await point(page, lanes[layout].tick, 4)
+            await page.mouse.move(tick.x, tick.y)
+            await page.keyboard.press('x')
+            await expect.poll(async () => (await notes(page)).length).toBe(2)
+            const before = await notes(page)
+            await page.mouse.click(tick.x, tick.y, { button: 'right' })
+            await page.getByRole('menu').getByRole('menuitem', { name: 'Paste' }).click()
+            await expect.poll(async () => (await notes(page)).length).toBe(4)
+            const after = await notes(page)
+            const copy = tickOf(after)!
+            expect(copy).toMatchObject({ size: 2.5, elevation: 2 })
+            // It lands where the original was drawn in this layout.
+            if (layout === 'composed') expect(copy.drawn).toEqual({ left: -1.25, size: 2.5 })
+            else expect(copy.left + copy.size / 2).toBe(lanes.basic.tick)
+            await expectUndoRedo(page, before, after)
         })
 
         test('a same-beat tick keeps its stored elevation when its head goes', async ({ page }) => {
             await setup(page, layout, true)
+            const all = await notes(page)
             const tick = async () => (await notes(page)).find((note) => note.elevation === 1)!
             const before = await tick()
             expect(before.attached).toBe(true)
@@ -449,6 +497,7 @@ for (const layout of ['basic', 'composed'] as const) {
             expect(after.attached).toBe(true)
             expect(after.drawn.left).toBeCloseTo(before.drawn.left, 9)
             expect(after.drawn.size).toBeCloseTo(before.drawn.size, 9)
+            await expectUndoRedo(page, all, await notes(page))
         })
     })
 }
