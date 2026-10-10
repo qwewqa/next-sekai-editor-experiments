@@ -11,9 +11,8 @@ import type { EditorDrawContext } from './types'
 const MAX_PIXELS = 8 * 1024 * 1024
 // The moving window is released once the view has held still this long.
 const RELEASE_MS = 2500
-// A moving window reaches a view ahead, or this many frames of fast motion, and a quarter view behind.
+// A moving window reaches a view ahead and a quarter view behind.
 const AHEAD = 1
-const AHEAD_FRAMES = 4
 const BEHIND = 0.25
 // A window too shallow for this many frames of motion would be redrawn about every frame.
 const MIN_FRAMES = 4
@@ -56,6 +55,11 @@ export const createStageSurface = () => {
         if (motion) motion.canvas.width = motion.canvas.height = 0
         motion = undefined
     }
+    // Keeps the window until the view has held still a while.
+    const holdMotion = () => {
+        clearTimeout(release)
+        release = setTimeout(clearMotion, RELEASE_MS)
+    }
     const clear = () => {
         if (canvas) canvas.width = canvas.height = 0
         canvas = undefined
@@ -88,23 +92,16 @@ export const createStageSurface = () => {
         // Margins in whole device pixels; scene x grows right and scene y grows down.
         // Large screens get a shallower window within the same pixel budget.
         let reach = 1
-        const margin = (delta: number, size: number, step: number, forward: boolean) =>
-            delta === 0
-                ? 0
-                : Math.round(
-                      reach *
-                          (delta > 0 === forward
-                              ? Math.max(size * AHEAD, step * AHEAD_FRAMES)
-                              : size * BEHIND),
-                  )
+        const margin = (delta: number, size: number, forward: boolean) =>
+            delta === 0 ? 0 : Math.ceil(reach * size * (delta > 0 === forward ? AHEAD : BEHIND))
         const area = () =>
-            (w + margin(dx, w, stepX, false) + margin(dx, w, stepX, true)) *
-            (h + margin(dy, h, stepY, false) + margin(dy, h, stepY, true))
+            (w + margin(dx, w, false) + margin(dx, w, true)) *
+            (h + margin(dy, h, false) + margin(dy, h, true))
         while (area() > MAX_PIXELS && reach > 1 / 16) reach /= 2
-        const left = margin(dx, w, stepX, false)
-        const right = margin(dx, w, stepX, true)
-        const top = margin(dy, h, stepY, false)
-        const bottom = margin(dy, h, stepY, true)
+        const left = margin(dx, w, false)
+        const right = margin(dx, w, true)
+        const top = margin(dy, h, false)
+        const bottom = margin(dy, h, true)
         const W = w + left + right
         const H = h + top + bottom
         if (W * H > MAX_PIXELS) {
@@ -154,6 +151,7 @@ export const createStageSurface = () => {
         }
         drawComposedStages({ ...context, ctx, bounds: extended }, beats, scope, laneDivision)
         motion = { canvas: target, ctx, key, e, f, w: W, h: H }
+        holdMotion()
         return true
     }
 
@@ -239,11 +237,7 @@ export const createStageSurface = () => {
             const now = performance.now()
             const wasMoving = !!last?.moving && (isClockFrame() || now - last.time < SUSTAINED_MS)
             last = { key: viewKey, l: bounds.l, t: bounds.t, moving: moved, time: now }
-            if (moved) {
-                clearTimeout(release)
-                // An exact last moving frame has no still frame after it to start the release.
-                release = motion ? setTimeout(clearMotion, RELEASE_MS) : undefined
-            } else if (motion && !release) release = setTimeout(clearMotion, RELEASE_MS)
+            if (moved && motion) holdMotion()
             // A single step redraws exactly; sustained motion reuses a larger window.
             if (!sameKey(previous, key) && moved && wasMoving) {
                 if (blitMotion(context, viewKey, width, height)) return true

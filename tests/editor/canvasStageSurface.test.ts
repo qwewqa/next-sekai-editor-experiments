@@ -161,4 +161,23 @@ test('a motion window is released after an exact last moving frame', (t) => {
     assert.ok(window.height > 0, 'kept through a pause')
     t.mock.timers.tick(1)
     assert.deepEqual([window.width, window.height], [0, 0])
+
+    // A window first drawn on the last moving frame is released too, with no draw after it.
+    draw(3000, -4.03)
+    draw(3010, -4.04)
+    assert.equal(draw(3020, -4.05), true)
+    const last = allocated.filter((item) => item.height > 100).at(-1)!
+    assert.notEqual(last, window)
+    t.mock.timers.tick(2500)
+    assert.deepEqual([last.width, last.height], [0, 0])
+
+    // A window reaches a view ahead: motion that crosses it within four frames draws exactly.
+    const count = allocated.length
+    draw(6000, -4.05)
+    draw(6010, -2.95)
+    assert.equal(draw(6020, -1.85), false)
+    assert.equal(allocated.length, count)
+    // Slower motion still shifts a window.
+    assert.equal(draw(6030, -1.75), true)
+    assert.equal(allocated.length, count + 1)
 })
