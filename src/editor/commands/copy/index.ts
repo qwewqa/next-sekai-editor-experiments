@@ -66,7 +66,8 @@ export const copy: Command = {
         )
 
         const anchor = getAnchor(entities, view.pointer.x, view.pointer.y)
-        const kept = anchor.note && copied.positions.get(anchor.note)
+        // Composed holds a kept tick where it is drawn; Basic pastes back at the stored centre.
+        const kept = anchor.note && isComposed() && copied.positions.get(anchor.note)
         setClipboardData({
             lane: kept ? kept.left + kept.size / 2 : anchor.lane,
             beat: anchor.beat,
@@ -89,9 +90,8 @@ export const clipboardSource = () => ({
 })
 
 const getAnchor = (entities: Entity[], x: number, y: number) => {
-    const hitEntities = hitAllEntitiesAtPoint(x, y)
-        .filter((entity) => entities.includes(entity))
-        .sort((a, b) => a.beat - b.beat)
+    // Hits stay in their drawn-on-top order, as hover and press take them.
+    const hitEntities = hitAllEntitiesAtPoint(x, y).filter((entity) => entities.includes(entity))
     const sortedEntities = [...entities].sort((a, b) => a.beat - b.beat)
 
     const note =
@@ -120,14 +120,15 @@ export const getComposedClipboardOffset = (
     kept?: ReadonlyMap<NoteEntity, { left: number }>,
 ) => {
     const { note } = getAnchor(entities, x, y)
-    if (!note) return 0
-    const drawn =
-        view.layout === 'composed' && state.value.isDynamicStages
-            ? createComposedLayout(state.value).notePosition(note).left
-            : note.left
+    if (!note || !isComposed()) return 0
     // A kept tick is copied at its gameplay place, not where it is drawn.
-    return drawn - (kept?.get(note)?.left ?? note.left)
+    return (
+        createComposedLayout(state.value).notePosition(note).left -
+        (kept?.get(note)?.left ?? note.left)
+    )
 }
+
+const isComposed = () => view.layout === 'composed' && state.value.isDynamicStages
 
 /** Keep the chosen note's identity even when raw lanes and beats overlap across stages. */
 export const getClipboardAnchor = (

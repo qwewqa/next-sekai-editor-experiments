@@ -252,16 +252,20 @@ for (const layout of ['basic', 'composed'] as const) {
             await page.mouse.click(tick.x, tick.y, { button: 'right' })
             await page.getByRole('menu').getByRole('menuitem', { name: 'Paste' }).click()
             await expect.poll(async () => (await notes(page)).length).toBe(6)
-            const original = JSON.stringify(tickOf(await notes(page)))
-            const pasted = (await notes(page)).filter((note) => note.beat === 4)
+            const after = await notes(page)
+            const original = JSON.stringify(tickOf(before))
+            const pasted = after.filter((note) => note.beat === 4)
             expect(pasted).toHaveLength(2)
             const copy = pasted.find((note) => JSON.stringify(note) !== original)!
-            // Level data keeps no Attached flag on a slide's end.
-            expect(copy).toMatchObject({ size: 2.5, elevation: 2 })
-            // It lands where the original was drawn in this layout.
-            if (layout === 'composed') expect(copy.drawn).toEqual({ left: -1.25, size: 2.5 })
-            else expect(copy.left + copy.size / 2).toBe(lanes.basic.tick)
-            await expectUndoRedo(page, before, await notes(page))
+            // It lands at its gameplay place; level data keeps no Attached flag on a slide's end.
+            expectKept(copy, 1, false)
+            // The tail lands on the original, and the rest stays.
+            const original6 = before.find((note) => note.beat === 6)!
+            expect(after.filter((note) => note.beat === 6)).toEqual([original6, original6])
+            expect(after.filter((note) => note.beat !== 4 && note.beat !== 6)).toEqual(
+                before.filter((note) => note.beat !== 4 && note.beat !== 6),
+            )
+            await expectUndoRedo(page, before, after)
         })
 
         test('pasting a cut tick and tail keeps the tick in place', async ({ page }) => {
@@ -280,6 +284,7 @@ for (const layout of ['basic', 'composed'] as const) {
             // Cut with the pointer on the tick, then paste at the same spot.
             const tick = await point(page, lanes[layout].tick, 4)
             await page.mouse.move(tick.x, tick.y)
+            const original = await notes(page)
             await page.keyboard.press('x')
             await expect.poll(async () => (await notes(page)).length).toBe(2)
             const before = await notes(page)
@@ -287,11 +292,11 @@ for (const layout of ['basic', 'composed'] as const) {
             await page.getByRole('menu').getByRole('menuitem', { name: 'Paste' }).click()
             await expect.poll(async () => (await notes(page)).length).toBe(4)
             const after = await notes(page)
-            const copy = tickOf(after)!
-            expect(copy).toMatchObject({ size: 2.5, elevation: 2 })
-            // It lands where the original was drawn in this layout.
-            if (layout === 'composed') expect(copy.drawn).toEqual({ left: -1.25, size: 2.5 })
-            else expect(copy.left + copy.size / 2).toBe(lanes.basic.tick)
+            // The tick lands at its gameplay place, and every other note where it was.
+            expectKept(tickOf(after), 1, false)
+            expect(after.filter((note) => note.beat !== 4)).toEqual(
+                original.filter((note) => note.beat !== 4),
+            )
             await expectUndoRedo(page, before, after)
         })
 
