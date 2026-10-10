@@ -4,6 +4,7 @@ import { selectedEntities } from '../history/selectedEntities'
 import { settings } from '../settings'
 import { beatToTime } from '../state/integrals/bpms'
 import { deselect } from './commands/deselect'
+import { getComposedLayout } from './composedView'
 import { editorNavigation } from './navigation'
 import { select } from './tools/select'
 import { getLaneAnchor, hitAllEntitiesAtPoint } from './tools/utils'
@@ -39,15 +40,17 @@ export const openSelectionContextMenu = () => {
         return
     }
     const entity = selectedEntities.value[0]
-    const lane = entity ? (getLaneAnchor(entity) ?? 6.5) : undefined
-    const size =
-        entity?.type === 'note'
-            ? entity.size
-            : entity?.type === 'cameraEventJoint'
-              ? entity.cameraSize
-              : entity?.type === 'stageMaskEventJoint'
-                ? entity.maskSize
-                : 0
+    // Notes open where drawn; Paste reads the menu's x as a displayed lane.
+    const note =
+        entity?.type === 'note' ? (getComposedLayout()?.notePosition(entity) ?? entity) : undefined
+    const lane = note ? note.left : entity ? (getLaneAnchor(entity) ?? 6.5) : undefined
+    const size = note
+        ? note.size
+        : entity?.type === 'cameraEventJoint'
+          ? entity.cameraSize
+          : entity?.type === 'stageMaskEventJoint'
+            ? entity.maskSize
+            : 0
     const x =
         lane === undefined
             ? view.pointer.x > view.x && view.pointer.x < view.x + view.w
