@@ -1,7 +1,6 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { isAppActive } from '../../activity'
+import { interruptsDrags } from '../../activity'
 import { replaceState, state } from '../../history'
-import { isBlockingModalOpen } from '../../modals'
 import { settings } from '../../settings'
 import { hasSameChartData } from '../../state/data'
 import type { EntityType } from '../../state/entities'
@@ -148,17 +147,9 @@ export const useControlLifecycle = () => {
     // Undo/redo and loading can restore a selection that includes hidden objects.
     watch(state, deselectHidden, { flush: 'sync' })
     watch(
-        isAppActive,
-        (active) => {
-            if (!active) cancelControls()
-        },
-        { flush: 'sync' },
-    )
-    // A dialog that holds the editor cancels a press or drag, as blur does.
-    watch(
-        isBlockingModalOpen,
-        (open) => {
-            if (open) cancelControls()
+        interruptsDrags,
+        (interrupted) => {
+            if (interrupted) cancelControls()
         },
         { flush: 'sync' },
     )

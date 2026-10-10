@@ -359,3 +359,82 @@ test('a narrowing top rail settles on one padding at any root font size', async 
     }
     for (const [root, seen] of paddings) expect(seen.size, `${root}px`).toBe(2)
 })
+
+test('the top rail picks its padding by width alone, and a strip that fits shows no fade', async ({
+    page,
+}) => {
+    test.setTimeout(90_000)
+    await page.evaluate(() => {
+        document.documentElement.style.fontSize = '20px'
+    })
+    const strip = page.locator('[data-workspace-dock="top"] .panel-rail-tabs')
+    const state = () =>
+        strip.evaluate(async (element) => {
+            const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+            for (let i = 0; i < 3; i++) await frame()
+            const tabs = [...element.querySelectorAll('[role="tab"]')]
+            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+            const labels = tabs.map((tab) => tab.firstElementChild!.getBoundingClientRect())
+            const box = element.getBoundingClientRect()
+            const full =
+                labels.reduce((sum, label) => sum + label.width, 0) +
+                (tabs.length - 1) * parseFloat(getComputedStyle(element).columnGap) +
+                tabs.length * 1.5 * rem
+            return {
+                padding: getComputedStyle(tabs[0]!).paddingLeft,
+                fade: element.classList.contains('fade-end'),
+                inside: labels.at(-1)!.right <= box.right + 0.5,
+                // How far the strip overflows at full padding, and at the trimmed one.
+                full: full - box.width,
+                trimmed: full - tabs.length * 0.5 * rem - box.width,
+            }
+        })
+    const setWidth = (width: number) => page.setViewportSize({ width, height: 680 })
+    const setLocale = (locale: string) =>
+        page.evaluate((locale) => {
+            window.editorTest.settings.locale = locale as never
+        }, locale)
+
+    // French with four tabs reaches the trim threshold at 390px in Chromium.
+    for (const [locale, showGroups] of [
+        ['fr', true],
+        ['ko', false],
+    ] as const) {
+        await page.evaluate((showGroups) => {
+            window.editorTest.settings.showGroups = showGroups
+        }, showGroups)
+        await setLocale(locale)
+        // The widths where the full padding stops fitting, and then where trimming no
+        // longer shows every label: its end padding, 0.5rem, may overflow.
+        await setWidth(600)
+        const wide = await state()
+        expect(wide.full).toBeLessThan(-10)
+        const widths = new Set(locale === 'fr' ? [388, 389, 390, 391, 392] : [])
+        for (const threshold of [600 + wide.full, 600 + wide.trimmed - 10])
+            for (let offset = -2; offset <= 2; offset++) widths.add(Math.round(threshold) + offset)
+        for (const width of widths) {
+            const arrivals = []
+            for (const before of [320, 600]) {
+                await setWidth(before)
+                await state()
+                await setWidth(width)
+                arrivals.push(await state())
+            }
+            await setLocale('en')
+            await state()
+            await setLocale(locale)
+            arrivals.push(await state())
+            const label = `${locale} at ${width}px`
+            const [first] = arrivals
+            for (const arrival of arrivals) expect(arrival.padding, label).toBe(first!.padding)
+            const trimmed = first!.padding === '10px'
+            if (trimmed || first!.full <= 0.5) {
+                expect(first, label).toMatchObject({ fade: false, inside: true })
+                expect(first!.trimmed, label).toBeLessThanOrEqual(10.5)
+            } else {
+                // Full padding scrolls only where trimming would still hide a label.
+                expect(first!.trimmed, label).toBeGreaterThan(9.5)
+            }
+        }
+    }
+})

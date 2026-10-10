@@ -1,10 +1,14 @@
-import { readonly, ref, watch } from 'vue'
+import { computed, readonly, ref, watch } from 'vue'
+import { isBlockingModalOpen } from './modals'
 
 const active = ref(document.visibilityState !== 'hidden' && document.hasFocus())
 
 // A visible window can still be behind another application. Stop presentation
 // work in both cases, including browsers that keep firing RAF while unfocused.
 export const isAppActive = readonly(active)
+
+/** Leaving the app or a dialog that holds the editor cancels any press or drag. */
+export const interruptsDrags = computed(() => !active.value || isBlockingModalOpen.value)
 
 const stop = watch(
     active,
