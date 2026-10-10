@@ -65,3 +65,14 @@ export const getMaterializedNotePositions = (
     }
     return positions
 }
+
+/** Gameplay places that detached ticks keep; a same-beat tick's elevation is input, so it stays. */
+export const getDetachedNotePositions = (source: State, notes: NoteEntity[]) => {
+    const positions = getMaterializedNotePositions(source, notes)
+    for (const [note, position] of positions) {
+        const info = source.store.slides.info.get(note.slideId)?.find((info) => info.note === note)
+        if (info && info.attachHead.beat === info.attachTail.beat)
+            position.elevation = note.elevation
+    }
+    return positions
+}

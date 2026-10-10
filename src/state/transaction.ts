@@ -3,9 +3,11 @@ import { nearlyEqual } from '../utils/math'
 import type { Entity } from './entities'
 import type { SlideId } from './entities/slides'
 import type { SlideInfos } from './entities/slides/hiddenTicks'
+import { toNoteEntity, type NoteEntity } from './entities/slides/note'
 import { beatToTime, calculateBpms, type BpmIntegral } from './integrals/bpms'
 import { rebuildSlide } from './mutations/slides'
-import { createStoreGridOwnership } from './store/grid'
+import { getDetachedNotePositions } from './operations/notePositions'
+import { addToStoreGrid, createStoreGridOwnership, removeFromStoreGrid } from './store/grid'
 import { createSlideNoteDrafts } from './store/slideNoteDrafts'
 
 export type Transaction = ReturnType<typeof createTransaction>
@@ -19,6 +21,7 @@ export const createTransaction = (state: State) => {
     const slides = createMapObjectTransaction(state.store.slides)
     const noteDrafts = createSlideNoteDrafts(() => slides.accessor.note)
     const dirtySlideIds = new Set<SlideId>()
+    const origins = new Map<NoteEntity, NoteOrigin>()
 
     let bpms: BpmIntegral[] | undefined
 
@@ -42,6 +45,11 @@ export const createTransaction = (state: State) => {
 
             markDirty(slideId: SlideId) {
                 dirtySlideIds.add(slideId)
+            },
+
+            /** A note made from an interior attached tick keeps its place if it ends up non-interior. */
+            setOrigin(note: NoteEntity, origin: NoteEntity, explicit: NoteOrigin['explicit'] = {}) {
+                origins.set(note, { note: origins.get(origin)?.note ?? origin, explicit })
             },
         },
 
@@ -88,8 +96,10 @@ export const createTransaction = (state: State) => {
                 }
             }
 
+            for (const slideId of dirtySlideIds) noteDrafts.prepare(slideId)
+            keepDetachedTicks(currentState, this.store, dirtySlideIds, origins, selection)
+
             for (const slideId of dirtySlideIds) {
-                noteDrafts.prepare(slideId)
                 rebuildSlide(this.store, slideId, selection, bpms ?? currentState.bpms)
             }
 
@@ -123,9 +133,76 @@ export const createTransaction = (state: State) => {
             grid.checkpoint()
             gridOwnership.reset()
             dirtySlideIds.clear()
+            origins.clear()
             bpms = undefined
             return result
         },
+    }
+}
+
+type NoteOrigin = {
+    note: NoteEntity
+    explicit: Partial<Record<'left' | 'size' | 'elevation', boolean>>
+}
+
+// Ticks that stop being interior attached ticks keep their gameplay place, as Split Slide does.
+const keepDetachedTicks = (
+    source: State,
+    store: Transaction['store'],
+    slideIds: Set<SlideId>,
+    origins: Map<NoteEntity, NoteOrigin>,
+    selection: Entity[],
+) => {
+    const interiors = new Map<SlideId, Set<NoteEntity>>()
+    const isInterior = (note: NoteEntity) => {
+        let interior = interiors.get(note.slideId)
+        if (!interior) {
+            const notes = source.store.slides.note.get(note.slideId) ?? []
+            interior = new Set(
+                notes.filter((note, i) => note.isAttached && i > 0 && i < notes.length - 1),
+            )
+            interiors.set(note.slideId, interior)
+        }
+        return interior.has(note)
+    }
+    const candidates: { note: NoteEntity; origin: NoteOrigin }[] = []
+    for (const slideId of slideIds) {
+        const notes = store.slides.note.get(slideId)
+        if (!notes) continue
+        const sorted = [...notes].sort((a, b) => a.beat - b.beat)
+        for (const [i, note] of sorted.entries()) {
+            if (note.isAttached && i > 0 && i < sorted.length - 1) continue
+            const origin = origins.get(note) ?? { note, explicit: {} }
+            if (isInterior(origin.note)) candidates.push({ note, origin })
+        }
+    }
+    if (!candidates.length) return
+    const positions = getDetachedNotePositions(
+        source,
+        candidates.map(({ origin }) => origin.note),
+    )
+    for (const { note, origin } of candidates) {
+        const position = positions.get(origin.note)
+        if (!position) continue
+        const { explicit } = origin
+        const left = explicit.left ? note.left : position.left
+        const size = explicit.size ? note.size : position.size
+        const elevation = explicit.elevation ? note.elevation : position.elevation
+        if (
+            nearlyEqual(left, note.left) &&
+            nearlyEqual(size, note.size) &&
+            nearlyEqual(elevation, note.elevation)
+        )
+            continue
+        const notes = store.slides.note.get(note.slideId)
+        const index = notes?.indexOf(note) ?? -1
+        if (!notes || index === -1) continue
+        const replacement = toNoteEntity(note.slideId, { ...note, left, size, elevation })
+        notes[index] = replacement
+        removeFromStoreGrid(store.grid, note, note.beat)
+        addToStoreGrid(store.grid, replacement, replacement.beat)
+        const selected = selection.indexOf(note)
+        if (selected !== -1) selection[selected] = replacement
     }
 }
 

@@ -26,7 +26,12 @@ import { interpolate } from '../../../utils/interpolate'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { view, xToLane, yToValidBeat } from '../../view'
-import { clipboardSource, getClipboardAnchor, getComposedClipboardOffset, getSlides } from '../copy'
+import {
+    clipboardSource,
+    getClipboardAnchor,
+    getComposedClipboardOffset,
+    getCopiedSlides,
+} from '../copy'
 import CutIcon from './CutIcon.vue'
 
 export const cut: Command = {
@@ -43,6 +48,7 @@ export const cut: Command = {
             return
         }
 
+        const copied = getCopiedSlides(entities)
         const copiedStore = createStore(
             {
                 initialLife: initialLife.value,
@@ -56,7 +62,7 @@ export const cut: Command = {
                 stageTransformEvents: getEntities(entities, 'stageTransformEventJoint'),
                 groups: groups.value,
                 stages: stages.value,
-                slides: getSlides(entities),
+                slides: copied.slides,
             },
             // The selection may hold no BPM; attached notes keep their document places.
             state.value.bpms,
@@ -74,7 +80,12 @@ export const cut: Command = {
             lane:
                 position?.lane ??
                 xToLane(view.pointer.x) -
-                    getComposedClipboardOffset(entities, view.pointer.x, view.pointer.y),
+                    getComposedClipboardOffset(
+                        entities,
+                        view.pointer.x,
+                        view.pointer.y,
+                        copied.positions,
+                    ),
             beat: position?.beat ?? yToValidBeat(view.pointer.y),
             entities: copiedEntities,
             anchor: getClipboardAnchor(entities, copiedEntities),
