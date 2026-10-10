@@ -846,8 +846,9 @@ const changeBeat = (beat: number) => {
 const beatField = computed({
     get: () => toDisplayedBeat(elevationBeat.value),
     set: (value: number | string) => {
+        // Arrow steps carry decimal noise; on the grid they store its exact beat, as Next does.
         if (typeof value === 'number' && Number.isFinite(value) && value >= 1)
-            changeBeat(fromDisplayedBeat(value))
+            changeBeat(alignNear(fromDisplayedBeat(value), view.division))
     },
 })
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
