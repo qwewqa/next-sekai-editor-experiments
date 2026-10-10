@@ -360,6 +360,31 @@ test('a narrowing top rail settles on one padding at any root font size', async 
     for (const [root, seen] of paddings) expect(seen.size, `${root}px`).toBe(2)
 })
 
+test('a tab docked after the rail mounts still re-measures it when its label grows', async ({
+    page,
+}) => {
+    await setSettings(page, {
+        propertiesPosition: 'top',
+        groupsPosition: 'right',
+        stagesPosition: 'right',
+        previewPosition: 'right',
+    })
+    const strip = dock(page, 'top').locator('.panel-rail-tabs')
+    const tabs = strip.getByRole('tab')
+    await expect(tabs).toHaveText(['Properties'])
+    // Groups joins the rail, then Properties leaves it: only the later tab remains.
+    await setSettings(page, { groupsPosition: 'top' })
+    await expect(tabs).toHaveText(['Groups', 'Properties'])
+    await setSettings(page, { propertiesPosition: 'right' })
+    await expect(tabs).toHaveText(['Groups'])
+    await expect(strip).not.toHaveClass(/fade-end/)
+    // A label growing past the rail, as a locale or font change can, brings the fade.
+    await tabs.first().evaluate((tab) => {
+        tab.firstElementChild!.textContent = 'Groups '.repeat(400)
+    })
+    await expect(strip).toHaveClass(/fade-end/)
+})
+
 test('the top rail picks its padding by width alone, and a strip that fits shows no fade', async ({
     page,
 }) => {

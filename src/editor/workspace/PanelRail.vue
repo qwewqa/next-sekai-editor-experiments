@@ -97,23 +97,21 @@ const updateOverflow = () => {
     }
     updateFades()
 }
+// Observes the tabs the rail holds now, including ones docked here after mount.
 watch(
-    () => props.dock.panels.join(),
-    async () => {
-        await nextTick()
+    [scroller, () => props.dock.panels.join()],
+    ([element], _, onCleanup) => {
+        if (!element) return
+        const observer = new ResizeObserver(updateOverflow)
+        observer.observe(element)
+        for (const child of element.children) observer.observe(child)
         updateOverflow()
+        onCleanup(() => {
+            observer.disconnect()
+        })
     },
+    { flush: 'post' },
 )
-watch(scroller, (element, _, onCleanup) => {
-    if (!element) return
-    const observer = new ResizeObserver(updateOverflow)
-    observer.observe(element)
-    for (const child of element.children) observer.observe(child)
-    updateOverflow()
-    onCleanup(() => {
-        observer.disconnect()
-    })
-})
 
 // Keep a visible tab reachable when labels overflow the rail.
 watch(
