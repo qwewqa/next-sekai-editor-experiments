@@ -12,7 +12,7 @@ import {
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import BaseField from './BaseField.vue'
-import { isUnset, mixedRange, useFieldUsage } from './fieldUsage'
+import { formatNumber, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
 import { confirmOnEnter, isTyped, trackTypedText } from './resync'
 
@@ -31,7 +31,9 @@ const field = useFieldUsage()
 const range = computed(() => mixedRange(field?.value))
 const edit = inject(numberEditKey, undefined)
 const owner = Symbol('number field')
-const text = ref(`${modelValue.value ?? ''}`)
+// Shown to 4 decimals, as mixed ranges are; only typing writes, so the exact value stays.
+const shown = () => (modelValue.value === undefined ? '' : formatNumber(modelValue.value))
+const text = ref(shown())
 // The committed text; previews change the model while typing.
 let committed = text.value
 let dirty = false
@@ -39,7 +41,7 @@ trackTypedText(input, () => committed)
 
 const reset = () => {
     dirty = false
-    text.value = `${modelValue.value ?? ''}`
+    text.value = shown()
     committed = text.value
     if (input.value) input.value.value = text.value
 }

@@ -1132,3 +1132,41 @@ test('undo after a native undo back to the committed value goes to the chart', a
     await expect.poll(left).toEqual([3])
     await expect(lane).toHaveValue('3')
 })
+
+test('a single value shows to 4 decimals and keeps its exact value until typed over', async ({
+    page,
+}) => {
+    const exact = 36.458333333333336
+    await showSlides(page, [[{ beat: exact }, { beat: 40 }]])
+    await page.evaluate(() => {
+        const { history, store } = window.editorTest
+        const note = [...store.getAllEntities()].find(
+            (entity) => entity.type === 'note' && entity.beat < 40,
+        )!
+        history.replaceState({ ...history.state.value, selectedEntities: [note] })
+    })
+    const beat = control(page, 'Beat')
+    await expect(beat).toHaveValue('37.4583')
+
+    // Focusing and leaving writes nothing.
+    const state = () =>
+        page.evaluate(() => ({
+            canUndo: window.editorTest.history.canUndo.value,
+            beats: [...window.editorTest.store.getAllEntities()].flatMap((entity) =>
+                entity.type === 'note' ? [entity.beat] : [],
+            ),
+        }))
+    const before = await state()
+    expect(before.beats).toContain(exact)
+    await beat.focus()
+    await beat.press('Tab')
+    await beat.focus()
+    await beat.press('Enter')
+    await beat.blur()
+    expect(await state()).toEqual(before)
+
+    // Typing writes the typed value.
+    await beat.fill('38.5')
+    await beat.press('Enter')
+    await expect.poll(async () => (await state()).beats).toContain(37.5)
+})
