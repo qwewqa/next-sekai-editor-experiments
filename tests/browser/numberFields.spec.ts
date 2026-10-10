@@ -182,6 +182,15 @@ test('arrow steps add in decimal, and stepping back changes nothing', async ({ p
     await page.keyboard.press('ArrowUp')
     await page.keyboard.press('Enter')
     await expect.poll(() => values(page, 'note', 'beat')).toEqual([4 / 3, 13 / 3])
+
+    // Typed, a beat holds its decimals, alone and mixed: 1.01 - 1 alone would be 0.010000000000000009.
+    await beat.fill('1.01')
+    await beat.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([0.01, 0.01])
+    await showNotes(page, [{ beat: 0.14 }])
+    await beat.fill('2.14')
+    await beat.press('Enter')
+    await expect.poll(() => values(page, 'note', 'beat')).toEqual([1.14])
 })
 
 test('undo after a step reverts it in the field, not another field', async ({ page }) => {

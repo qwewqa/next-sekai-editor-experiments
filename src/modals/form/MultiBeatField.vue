@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { fromDisplayedBeat, toDisplayedBeat } from '../../editor/beatDisplay'
 import { i18n } from '../../i18n'
+import { fromFieldBeat, fromSteppedBeat, toFieldBeat } from './beatField'
 import MultiNumberField from './MultiNumberField.vue'
-import { alignFraction } from './numberStep'
 
 const modelValue = defineModel<number | undefined>({ required: true })
 const displayedBeat = computed({
-    get: () => (modelValue.value === undefined ? undefined : toDisplayedBeat(modelValue.value)),
+    get: () => (modelValue.value === undefined ? undefined : toFieldBeat(modelValue.value)),
     set: (value: number | undefined) => {
-        modelValue.value = value === undefined ? undefined : fromDisplayedBeat(value)
+        modelValue.value = value === undefined ? undefined : fromFieldBeat(value)
     },
 })
-// A beat stepped in displayed space lands an ulp off its grid; same-beat objects must be equal.
 const setStep = (value: number) => {
-    modelValue.value = alignFraction(fromDisplayedBeat(value))
+    modelValue.value = fromSteppedBeat(value)
 }
 </script>
 
