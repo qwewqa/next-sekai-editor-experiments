@@ -351,8 +351,8 @@ const buildComposedLayout = (state: State) => {
             edges(from, true)
             edges(to, true)
             const beats = [from, ...data.changes.filter((beat) => from < beat && beat < to), to]
-            // Extremes need no quarter-point checks; an unbounded step keeps midpoint sampling.
-            sampleComposed(state.bpms, beats, edges, { maxTimeStep: Infinity })
+            // Extremes need no quarter-point checks.
+            sampleComposed(state.bpms, beats, edges, { quarters: false })
         }
         const result = { min, max }
         stageExtents.set(stages, result)

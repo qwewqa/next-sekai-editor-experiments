@@ -1,3 +1,4 @@
+import { jumpTolerance } from '../../preview/engine/math'
 import type { BpmIntegral } from '../../state/integrals/bpms'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 
@@ -8,13 +9,17 @@ export const sampleComposed = <T extends { left: number; size: number }>(
     bpms: BpmIntegral[],
     breaks: readonly number[],
     at: (beat: number, rightLimit: boolean) => T,
-    options: { coordinates?: (point: T) => readonly number[]; maxTimeStep?: number } = {},
+    options: {
+        coordinates?: (point: T) => readonly number[]
+        maxTimeStep?: number
+        quarters?: boolean
+    } = {},
 ): (T & { time: number })[][] => {
     type Point = T & { time: number }
     const strips: Point[][] = []
-    // A time step already bounds chord height, so only unbounded chords test quarter points.
+    // A time step already bounds chord height, so by default only unbounded chords test quarter points.
     // Those probe three points per seed: 8 seeds sample as densely as 16 midpoints, to the same finest step.
-    const quarters = options.maxTimeStep === undefined
+    const quarters = options.quarters ?? options.maxTimeStep === undefined
     const seeds = quarters ? 8 : 16
     const maxDepth = quarters ? 11 : 10
     const sample = (time: number, rightLimit: boolean) => ({
@@ -49,7 +54,7 @@ export const sampleComposed = <T extends { left: number; size: number }>(
         const from = beatToTime(bpms, fromBeat)
         const to = beatToTime(bpms, toBeat)
         // Strips within the jump tolerance would draw a jump as a horizontal line.
-        if (!(to - from > Math.max(1, Math.abs(to)) * 2 ** -21)) continue
+        if (!(to - from > jumpTolerance(to))) continue
         let previous = { ...at(fromBeat, true), time: from }
         const points = [previous]
         // Quarter points catch curves a matching midpoint hides; they become the halves' midpoints.

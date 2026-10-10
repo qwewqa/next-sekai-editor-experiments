@@ -125,6 +125,9 @@ export const ease = (easeType: EaseTypeValue, x: number): number =>
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     easeFunctions[easeType]!(x)
 
+/** Rounding error of a time near `time`; times this close to a jump count as on it. */
+export const jumpTolerance = (time: number) => Math.max(1, Math.abs(time)) * 2 ** -21
+
 // sekai/lib/ease.py event_progress
 export const eventProgress = (
     easeType: EaseTypeValue,
@@ -134,9 +137,8 @@ export const eventProgress = (
     rightLimit = false,
 ) => {
     if (easeType !== EaseType.inOutStep) return ease(easeType, unlerpClamped(tA, tB, t))
-    // Times within rounding error of the jump count as on it.
     const jump = (tA + tB) / 2
-    const tolerance = Math.min(Math.max(1, Math.abs(jump)) * 2 ** -21, (tB - tA) / 8)
+    const tolerance = Math.min(jumpTolerance(jump), (tB - tA) / 8)
     return (rightLimit ? t >= jump - tolerance : t > jump + tolerance) ? 1 : 0
 }
 
