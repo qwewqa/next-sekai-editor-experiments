@@ -902,6 +902,13 @@ watch(editorNavigation, (current) => {
         creating.value = []
     }
 })
+// Its ghosts mirror the shared ones, which leaving the pane clears.
+watch(
+    () => view.entities.creating,
+    (current) => {
+        if (!current.length && creating.value.length) creating.value = []
+    },
+)
 
 const connectorStore = computed(() => elevationState.value.store.slides.connector)
 const connections = computed(() => {

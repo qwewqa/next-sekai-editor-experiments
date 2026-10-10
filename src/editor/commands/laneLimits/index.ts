@@ -3,18 +3,13 @@ import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import { settings } from '../../../settings'
 import { interpolate } from '../../../utils/interpolate'
-import { isDragging } from '../../controls/gestures/recognizers/drag'
 import { notify } from '../../notification'
-import { tool } from '../../tools'
-import { view } from '../../view'
 import CustomLaneLimitModal from './CustomLaneLimitModal.vue'
 import LaneLimitIcon from './LaneLimitIcon.vue'
 
 const setLimit = (maxLane: number) => {
+    // The mouse controls refresh a hover ghost under a still mouse.
     settings.maxLane = maxLane
-    // Touch hides the hover, so where a finger lifted gets no ghost.
-    if (!isDragging.value && !view.isHoverHidden)
-        void tool.value.hover?.(view.pointer.x, view.pointer.y, view.pointer.modifiers)
     notify(
         maxLane
             ? interpolate(() => i18n.value.commands.laneLimits.limited, `${maxLane}`)

@@ -199,7 +199,11 @@ const mouseleave = (event: MouseEvent) => {
     isHovering = false
     contextClick = undefined
     // A press continues outside the pane; only its release lands it.
-    if (!pressedPane) mouseup(event)
+    if (pressedPane) return
+    mouseup(event)
+    // Off the pane, a click lands nowhere, so no ghost shows where.
+    if (!isDragging.value && view.entities.creating.length)
+        view.entities = { hovered: view.entities.hovered, creating: [] }
 }
 
 const wheel = (event: WheelEvent) => {
@@ -292,7 +296,7 @@ watch([viewBox, () => view.x, () => view.y], () => {
     if (!editorNavigation.value) hoverAgain()
 })
 
-// A snapping or layout change under a still mouse moves where a click lands, in either pane.
+// A snapping, lane limit or layout change under a still mouse moves where a click lands, in either pane.
 watch(
     [
         () => view.division,
@@ -300,6 +304,7 @@ watch(
         () => view.laneDivision,
         () => view.laneSnapping,
         () => settings.elevationSnap,
+        () => settings.maxLane,
         () => view.layout,
     ],
     hoverAgain,
