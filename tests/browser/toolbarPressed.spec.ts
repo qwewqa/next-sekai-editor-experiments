@@ -1733,7 +1733,7 @@ test('a resize leaves a hand-scrolled value flyout alone while its checked value
     await expect.poll(scrollTop).toBeGreaterThan(0)
     // Scrolled by hand as far up as keeps the checked row in full view.
     const opened = await scrollTop()
-    const top = await checked.evaluate((row) => {
+    const top = await checked.evaluate((row: HTMLElement) => {
         const list = row.parentElement!
         list.scrollTop = Math.max(0, row.offsetTop + row.offsetHeight - list.clientHeight)
         return list.scrollTop
