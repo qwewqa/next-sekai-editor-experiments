@@ -7,8 +7,10 @@ import { deviceSize, prepareSurface } from './surface'
 import type { EditorDrawContext } from './types'
 
 // Each retained store (the exact view and the moving window) holds at most 32 MiB
-// of RGBA pixels, so up to twice that beside the chart. Larger screens draw directly.
+// of RGBA pixels, so up to twice that beside the chart while it moves. Larger screens draw directly.
 const MAX_PIXELS = 8 * 1024 * 1024
+// The moving window is released once the view has held still this long.
+const RELEASE_MS = 2500
 // A moving window reaches a view ahead, or this many frames of fast motion, and a quarter view behind.
 const AHEAD = 1
 const AHEAD_FRAMES = 4
@@ -43,11 +45,14 @@ export const createStageSurface = () => {
     let previous: readonly unknown[] | undefined
     let motion: Motion | undefined
     let stageSet: unknown
+    let release: ReturnType<typeof setTimeout> | undefined
     // The last frame's view, to tell motion from a still or changed view.
     let last:
         { key: readonly unknown[]; l: number; t: number; moving: boolean; time: number } | undefined
 
     const clearMotion = () => {
+        clearTimeout(release)
+        release = undefined
         if (motion) motion.canvas.width = motion.canvas.height = 0
         motion = undefined
     }
@@ -233,6 +238,10 @@ export const createStageSurface = () => {
             const now = performance.now()
             const wasMoving = !!last?.moving && (isClockFrame() || now - last.time < SUSTAINED_MS)
             last = { key: viewKey, l: bounds.l, t: bounds.t, moving: moved, time: now }
+            if (moved) {
+                clearTimeout(release)
+                release = undefined
+            } else if (motion && !release) release = setTimeout(clearMotion, RELEASE_MS)
             // A single step redraws exactly; sustained motion reuses a larger window.
             if (!sameKey(previous, key) && moved && wasMoving) {
                 if (blitMotion(context, viewKey, width, height)) return true

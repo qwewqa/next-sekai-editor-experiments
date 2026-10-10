@@ -245,6 +245,46 @@ test.describe('window sizing', () => {
         expect(back.windows).toBeGreaterThan(slow.windows)
         expect(back.resizes).toBe(slow.resizes)
     })
+
+    test('the window is released a few seconds after the view comes to rest', async ({ page }) => {
+        await page.addInitScript(installCanvasCounters)
+        await page.addInitScript(() => {
+            const fillRect = CanvasRenderingContext2D.prototype.fillRect
+            CanvasRenderingContext2D.prototype.fillRect = function (...args: number[]) {
+                const chart = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
+                if (
+                    chart &&
+                    !this.canvas.isConnected &&
+                    this.globalCompositeOperation === 'copy' &&
+                    args[2]! * args[3]! > chart.width * chart.height
+                )
+                    (window as unknown as { motionWindow: HTMLCanvasElement }).motionWindow =
+                        this.canvas
+                return Reflect.apply(fillRect, this, args)
+            }
+        })
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await seed(page, 5)
+        await frames(page, 4)
+        const size = () =>
+            page.evaluate(() => {
+                const canvas = (window as unknown as { motionWindow?: HTMLCanvasElement })
+                    .motionWindow
+                return canvas ? canvas.width * canvas.height : undefined
+            })
+        await page.evaluate(async () => {
+            for (let i = 0; i < 20; i++) {
+                window.editorTest.view.time += 0.01
+                await new Promise((r) => requestAnimationFrame(r))
+            }
+        })
+        await page.waitForTimeout(500)
+        // Kept through a pause, for the next motion.
+        expect(await size()).toBeGreaterThan(0)
+        await expect.poll(size, { timeout: 5000 }).toBe(0)
+    })
 })
 
 test.describe('changes during motion', () => {
