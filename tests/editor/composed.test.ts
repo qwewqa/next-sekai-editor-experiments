@@ -13,7 +13,7 @@ import type { StageId } from '../../src/chart/stages'
 import { ease, eases, isStepEase } from '../../src/ease'
 import { createComposedLayout, divisionGridOffset } from '../../src/editor/composed'
 import { buildPreviewChart } from '../../src/preview/engine/chart'
-import { getStageProps } from '../../src/preview/engine/stage'
+import { getStageOffset, getStageProps } from '../../src/preview/engine/stage'
 import { createState } from '../../src/state'
 import { createSlideId } from '../../src/state/entities/slides'
 import { toConnectorEntity } from '../../src/state/entities/slides/connector'
@@ -556,6 +556,55 @@ test('same-time stage events retain the first left value and final right value',
     assert.equal(layout.stage(stageA, 2, { rightLimit: true })!.width, 1)
 })
 
+test('stage offsets equal the preview stage props exactly, at and between events', () => {
+    // Every ease, same-beat pairs and a tempo change; seeded so failures repeat.
+    let seed = 7
+    const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+    const beats = Array.from({ length: 40 }, (_, index) => Math.floor(index / 2) * 0.75)
+    const source = state({
+        bpms: [
+            { beat: 0, bpm: 60 },
+            { beat: 5, bpm: 173 },
+        ],
+        stagePivotEvents: beats.map((beat, index) =>
+            pivot(beat, random() * 12 - 6, { eventEase: eases[index % eases.length]! }),
+        ),
+        stageTransformEvents: beats.map((beat, index) =>
+            transform(beat + 0.3, random() * 8 - 4, {
+                eventEase: eases[(index * 7) % eases.length]!,
+            }),
+        ),
+    })
+    const preview = buildPreviewChart(source, 10).stages[0]!
+    const layout = createComposedLayout(source)
+    const times = [
+        ...[...beats, ...beats.map((beat) => beat + 0.3)].map((beat) =>
+            beatToTime(source.bpms, beat),
+        ),
+        ...Array.from({ length: 400 }, () => random() * 20 - 1),
+    ]
+    for (const time of times) {
+        for (const rightLimit of [false, true]) {
+            const props = getStageProps(preview, time, { rightLimit })
+            assert.equal(
+                getStageOffset(preview, time, { rightLimit }),
+                props.pivotLane + props.xLaneTranslate,
+            )
+        }
+    }
+    // The layout's offset, asked twice in a row, then on the other side of a jump.
+    for (const beat of beats) {
+        const props = getStageProps(preview, beatToTime(source.bpms, beat))
+        const right = getStageProps(preview, beatToTime(source.bpms, beat), { rightLimit: true })
+        assert.equal(layout.offset(stageA, beat), props.pivotLane + props.xLaneTranslate)
+        assert.equal(layout.offset(stageA, beat), props.pivotLane + props.xLaneTranslate)
+        assert.equal(
+            layout.offset(stageA, beat, { rightLimit: true }),
+            right.pivotLane + right.xLaneTranslate,
+        )
+    }
+})
+
 test('mask overshoot collapses width without clipping the moving center or pivot', () => {
     const source = state({
         stageMaskEvents: [mask(0, -2, 4, { eventEase: 'outBack' }), mask(4, 6, 0)],
@@ -660,6 +709,44 @@ test('every continuous ease joins projected attached separator notes across stag
                 const actual = layout.connectorPosition(connector, note.beat)
                 close(actual.left, expected.left)
                 close(actual.size, expected.size)
+            }
+        }
+    }
+})
+
+test('connector positions are the same whether its samples come in a row or interleaved', () => {
+    for (const connectorEase of ['linear', 'inOutStep', 'outInBack', 'inStep'] as const) {
+        const source = state({
+            bpms: [
+                { beat: 0, bpm: 150 },
+                { beat: 3, bpm: 83 },
+            ],
+            stagePivotEvents: [pivot(0, -4), pivot(8, 7), pivot(0, 3, { stageId: stageB })],
+            stageTransformEvents: [transform(0, 1, { eventEase: 'inOutBack' }), transform(8, -2)],
+            slides: [
+                [
+                    note(0, -2, { connectorEase }),
+                    note(1, 50, { isAttached: true, stageId: stageB }),
+                    note(4, 3, { stageId: stageB, connectorEase }),
+                    note(6, 50, { isAttached: true }),
+                    note(8, -3, { size: 4 }),
+                ],
+                [note(0, 1, { connectorEase }), note(8, 5)],
+            ],
+        })
+        const layout = createComposedLayout(source)
+        const connectors = [...source.store.slides.connector.values()].flat()
+        const beats = Array.from({ length: 33 }, (_, index) => index / 4)
+        const query = (connector: (typeof connectors)[number], beat: number, rightLimit: boolean) =>
+            layout.connectorPosition(connector, beat, { rightLimit })
+        const inRow = connectors.map((connector) =>
+            beats.map((beat) => [query(connector, beat, false), query(connector, beat, true)]),
+        )
+        for (const [index, beat] of [...beats].reverse().entries()) {
+            for (const [c, connector] of [...connectors.entries()].reverse()) {
+                const expected = inRow[c]![beats.length - 1 - index]!
+                assert.deepEqual(query(connector, beat, true), expected[1])
+                assert.deepEqual(query(connector, beat, false), expected[0])
             }
         }
     }

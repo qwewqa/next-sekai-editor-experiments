@@ -9,7 +9,7 @@ import {
     type LimitOptions,
 } from '../preview/engine/math'
 import type { PreviewStage } from '../preview/engine/model'
-import { getStageProps, type StageProps } from '../preview/engine/stage'
+import { getStageOffset, getStageProps, type StageProps } from '../preview/engine/stage'
 import type { State } from '../state'
 import type { Entity, EntityHitbox } from '../state/entities'
 import { sameBeatAttachmentFraction } from '../state/entities/slides/attachment'
@@ -215,11 +215,22 @@ const buildComposedLayout = (state: State) => {
             right: props.lane + props.width + props.xLaneTranslate,
         }
     }
+    // A connector's ends usually share a stage and ask for it at the same beat.
+    let lastOffset = {
+        data: undefined as ComposedStage | undefined,
+        beat: 0,
+        right: false,
+        value: 0,
+    }
     const offset = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
         const data = stages.get(stageId)
         if (!data) return 0
-        const props = getStageProps(data.props, toTime(beat), options)
-        return props.pivotLane + props.xLaneTranslate
+        const right = !!options.rightLimit
+        if (lastOffset.data === data && lastOffset.beat === beat && lastOffset.right === right)
+            return lastOffset.value
+        const value = getStageOffset(data.props, toTime(beat), options)
+        lastOffset = { data, beat, right, value }
+        return value
     }
     const gridOffset = (stageId: StageId, beat: number, options: LimitOptions = {}) => {
         const data = stages.get(stageId)
@@ -227,21 +238,28 @@ const buildComposedLayout = (state: State) => {
             ? divisionGridOffset(getStageProps(data.props, toTime(beat), options).division)
             : 0
     }
-    const between = (
+    // An attachment's eased fraction depends only on its notes, so connector samples reuse it.
+    const betweenFraction = (
         head: NoteEntity,
         tail: NoteEntity,
-        beat: number,
-        options: LimitOptions,
-        easeBeat = beat,
+        easeBeat: number,
         attachedNote?: NoteEntity,
-    ): ComposedPosition => {
+    ) => {
         const start = toTime(head.beat)
         const end = toTime(tail.beat)
-        const fraction = ease(
+        return ease(
             easeValues[head.connectorEase] as EaseTypeValue,
             (attachedNote && sameBeatAttachmentFraction(head, tail, attachedNote)) ??
                 (Math.abs(end - start) < 1e-6 ? 0.5 : unlerpClamped(start, end, toTime(easeBeat))),
         )
+    }
+    const betweenAt = (
+        head: NoteEntity,
+        tail: NoteEntity,
+        fraction: number,
+        beat: number,
+        options: LimitOptions,
+    ): ComposedPosition => {
         const size = Math.max(0, lerp(head.size, tail.size, fraction))
         const center = lerp(
             head.left + head.size / 2 + offset(head.stageId, beat, options),
@@ -250,6 +268,14 @@ const buildComposedLayout = (state: State) => {
         )
         return { left: center - size / 2, size }
     }
+    const between = (
+        head: NoteEntity,
+        tail: NoteEntity,
+        beat: number,
+        options: LimitOptions,
+        easeBeat = beat,
+        attachedNote?: NoteEntity,
+    ) => betweenAt(head, tail, betweenFraction(head, tail, easeBeat, attachedNote), beat, options)
     const infoLookups = new WeakMap<
         readonly SlideInfos[number][],
         Map<NoteEntity, SlideInfos[number]>
@@ -310,11 +336,26 @@ const buildComposedLayout = (state: State) => {
         if (cacheable) hitboxes.set(entity, Object.freeze(hitbox))
         return hitbox
     }
-    const connectorPosition = (
-        connector: ConnectorEntity,
-        beat: number,
-        options: LimitOptions = {},
-    ): ComposedPosition => {
+    // A connector's samples come in a row; its ends' times and eases are the same for each.
+    let span:
+        | {
+              connector: ConnectorEntity
+              headAttached: boolean
+              tailAttached: boolean
+              headBetween: number
+              tailBetween: number
+              type: NoteEntity['connectorEase']
+              start: number
+              end: number
+              headFraction: number
+              tailFraction: number
+              easeType: EaseTypeValue
+              headEased: number
+              tailEased: number
+          }
+        | undefined
+    const connectorSpan = (connector: ConnectorEntity) => {
+        if (span?.connector === connector) return span
         const { head, tail, attachHead, attachTail } = connector
         const isAttached = (note: NoteEntity) =>
             note.isAttached && note !== attachHead && note !== attachTail
@@ -325,35 +366,61 @@ const buildComposedLayout = (state: State) => {
             (Math.abs(spanEnd - spanStart) < 1e-6
                 ? 0.5
                 : unlerpClamped(spanStart, spanEnd, toTime(note.beat)))
-        const endpoint = (note: NoteEntity) =>
-            isAttached(note)
-                ? between(attachHead, attachTail, beat, options, note.beat, note)
-                : { left: note.left + offset(note.stageId, beat, options), size: note.size }
-        const a = endpoint(head)
-        const type = (isAttached(head) ? attachHead : head).connectorEase
-        if (type === 'none' || type === 'inStep') return a
-        const b = endpoint(tail)
-        const headFraction = isAttached(head) ? fractionAt(head) : 0
-        const tailFraction = isAttached(tail) ? fractionAt(tail) : 1
-        const start = toTime(head.beat)
-        const end = toTime(tail.beat)
-        const fraction =
-            Math.abs(end - start) < 1e-6 ? 0.5 : unlerpClamped(start, end, toTime(beat))
-        const target = lerp(headFraction, tailFraction, fraction)
+        const headAttached = isAttached(head)
+        const tailAttached = isAttached(tail)
+        const type = (headAttached ? attachHead : head).connectorEase
+        const headFraction = headAttached ? fractionAt(head) : 0
+        const tailFraction = tailAttached ? fractionAt(tail) : 1
         const easeType = easeValues[type] as EaseTypeValue
         const endpointEase = (fraction: number) =>
             fraction <= 0 ? 0 : fraction >= 1 ? 1 : ease(easeType, fraction)
-        const headEased = endpointEase(headFraction)
-        const tailEased = endpointEase(tailFraction)
+        span = {
+            connector,
+            headAttached,
+            tailAttached,
+            headBetween: headAttached
+                ? betweenFraction(attachHead, attachTail, head.beat, head)
+                : 0,
+            tailBetween: tailAttached
+                ? betweenFraction(attachHead, attachTail, tail.beat, tail)
+                : 0,
+            type,
+            start: toTime(head.beat),
+            end: toTime(tail.beat),
+            headFraction,
+            tailFraction,
+            easeType,
+            headEased: endpointEase(headFraction),
+            tailEased: endpointEase(tailFraction),
+        }
+        return span
+    }
+    const connectorPosition = (
+        connector: ConnectorEntity,
+        beat: number,
+        options: LimitOptions = {},
+    ): ComposedPosition => {
+        const { head, tail, attachHead, attachTail } = connector
+        const s = connectorSpan(connector)
+        const a = s.headAttached
+            ? betweenAt(attachHead, attachTail, s.headBetween, beat, options)
+            : { left: head.left + offset(head.stageId, beat, options), size: head.size }
+        if (s.type === 'none' || s.type === 'inStep') return a
+        const b = s.tailAttached
+            ? betweenAt(attachHead, attachTail, s.tailBetween, beat, options)
+            : { left: tail.left + offset(tail.stageId, beat, options), size: tail.size }
+        const fraction =
+            Math.abs(s.end - s.start) < 1e-6 ? 0.5 : unlerpClamped(s.start, s.end, toTime(beat))
+        const target = lerp(s.headFraction, s.tailFraction, fraction)
         // Slice endpoints use the corresponding side of an In-Out Step jump.
         const targetEased =
-            type === 'inOutStep'
-                ? eventProgress(easeType, target, 0, 1, options.rightLimit)
-                : ease(easeType, target)
+            s.type === 'inOutStep'
+                ? eventProgress(s.easeType, target, 0, 1, options.rightLimit)
+                : ease(s.easeType, target)
         const blend =
-            Math.abs(tailEased - headEased) < 1e-6
+            Math.abs(s.tailEased - s.headEased) < 1e-6
                 ? fraction
-                : (targetEased - headEased) / (tailEased - headEased)
+                : (targetEased - s.headEased) / (s.tailEased - s.headEased)
         const size = Math.max(0, lerp(a.size, b.size, blend))
         const center = lerp(a.left + a.size / 2, b.left + b.size / 2, blend)
         return { left: center - size / 2, size }
