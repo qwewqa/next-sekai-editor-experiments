@@ -269,3 +269,71 @@ test('a slide at a tick’s anchor beat keeps the tick attached only when ordere
     assert.deepEqual(attachedBeats(detached), [])
     assertSamePlaces(above, detached)
 })
+
+test('a touching join stays end to start when the later head is lower than the earlier tail', () => {
+    const source = state([
+        [note(2, 3, { elevation: 1, connectorEase: 'inOutQuad' }), tick(3), note(4, -3)],
+        [
+            note(0, -4, { connectorEase: 'inQuad' }),
+            tick(1),
+            tick(1.5),
+            note(2, 1, { elevation: 3 }),
+        ],
+    ])
+    const combined = combineAll(source)
+    assert.deepEqual(attachedBeats(combined), [1, 1.5, 3])
+    assertSamePlaces(source, combined)
+    const slide = [...combined.store.slides.note.values()][0]!
+    assert.deepEqual(
+        slide.filter((entity) => entity.beat === 2).map((entity) => entity.elevation),
+        [3, 1],
+    )
+})
+
+test('a chain of slides joins end to start at each shared beat, through a slide wholly at one', () => {
+    const source = state([
+        [note(4, 0, { elevation: 0 }), tick(5), note(6, 2)],
+        [note(2, 1, { elevation: 2 }), note(2, 1, { elevation: 1 })],
+        [
+            note(2, -1, { elevation: 0, connectorEase: 'outQuad' }),
+            tick(3),
+            note(4, 3, { elevation: 6 }),
+        ],
+        [note(0, -4, { connectorEase: 'inQuad' }), tick(1), note(2, 4, { elevation: 4 })],
+    ])
+    const combined = combineAll(source)
+    assert.deepEqual(attachedBeats(combined), [1, 3, 5])
+    assertSamePlaces(source, combined)
+    const slide = [...combined.store.slides.note.values()][0]!
+    assert.deepEqual(
+        slide.map((entity) => [entity.beat, entity.elevation]),
+        [
+            [0, 0],
+            [1, 0],
+            [2, 4],
+            [2, 2],
+            [2, 1],
+            [2, 0],
+            [3, 0],
+            [4, 6],
+            [4, 0],
+            [5, 0],
+            [6, 0],
+        ],
+    )
+})
+
+test('a slide passing through a shared beat keeps its elevation place among joining slides', () => {
+    const source = state([
+        [note(2, 0, { elevation: 2 }), note(4, 0)],
+        [note(0, 2), note(2, 2, { elevation: 3 }), note(4, 2)],
+        [note(0, -2), note(2, -2, { elevation: 5 })],
+    ])
+    const combined = combineAll(source)
+    const slide = [...combined.store.slides.note.values()][0]!
+    // By elevation: start (2), passing (3), end (5); the end and start swap places.
+    assert.deepEqual(
+        slide.filter((entity) => entity.beat === 2).map((entity) => entity.elevation),
+        [5, 3, 2],
+    )
+})
