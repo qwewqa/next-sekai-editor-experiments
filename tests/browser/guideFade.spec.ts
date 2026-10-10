@@ -30,7 +30,7 @@ const pointAt = (page: Page, lane: number, beat: number) =>
         { lane, beat },
     )
 
-test('a separator moved onto another by float noise draws its zero-length guide segment', async ({
+test('separators a float step apart draw their zero-length guide segment, and a drag onto one lands exactly', async ({
     page,
 }) => {
     const errors: string[] = []
@@ -56,12 +56,18 @@ test('a separator moved onto another by float noise draws its zero-length guide 
                     [
                         guide(0),
                         guide(22 / 3, { isConnectorSeparator: true }),
-                        guide(7 / 3, {
+                        // 7.333333333333334: a float step after 22 / 3, as imported charts can hold.
+                        guide(7 / 3 + 5, {
                             left: 2,
                             isConnectorSeparator: true,
                             connectorGuideAlpha: 0.2,
                         }),
                         guide(10),
+                    ],
+                    [
+                        guide(0, { left: 4 }),
+                        guide(7 / 3, { left: 4, isConnectorSeparator: true }),
+                        guide(10, { left: 4 }),
                     ],
                 ],
             },
@@ -73,20 +79,20 @@ test('a separator moved onto another by float noise draws its zero-length guide 
     })
     await settle(page)
 
-    // Dragged with the select tool onto the other separator's beat, it lands a hair later.
-    const start = await pointAt(page, 3, 7 / 3)
-    const end = await pointAt(page, 3, 22 / 3)
+    const beats = () =>
+        page.evaluate(() => window.editorTest.snapshot().notes.map((note) => note.beat))
+    const [head, tail] = (await beats()).filter((beat) => beat > 7 && beat < 8)
+    expect(head).not.toBe(tail)
+    expect(Math.abs(head! - tail!)).toBeLessThan(1e-9)
+
+    // A select drag onto the other separator's beat lands on it exactly.
+    const start = await pointAt(page, 5, 7 / 3)
+    const end = await pointAt(page, 5, 22 / 3)
     await page.mouse.move(start.x, start.y)
     await page.mouse.down()
     await page.mouse.move(end.x, end.y, { steps: 8 })
     await page.mouse.up()
     await settle(page)
-
-    // The precondition: two separators a float step apart, at one time.
-    const [, head, tail] = await page.evaluate(() =>
-        window.editorTest.snapshot().notes.map((note) => note.beat),
-    )
-    expect(head).not.toBe(tail)
-    expect(Math.abs(head! - tail!)).toBeLessThan(1e-9)
+    expect((await beats()).filter((beat) => beat === 22 / 3)).toHaveLength(2)
     expect(errors).toEqual([])
 })
