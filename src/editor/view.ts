@@ -9,7 +9,7 @@ import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
 import { time } from '../time'
 import { computedArray } from '../utils/array'
-import { align, clamp, lerp, unlerp } from '../utils/math'
+import { align, alignNear, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
 import { requestAudioPreview } from './audioPreview'
 import { getComposedLayout } from './composedView'
@@ -412,14 +412,25 @@ export const yToBeatOffset = (y: number, beat: number) =>
         : align(yToBeat(y) - beat, view.division)
 
 /**
- * A move's beat offset. Absolute snapping, as for lanes, snaps the grabbed beat
- * moved by the pointer's movement from its press, once that reaches half a step.
+ * A move's beat offset, from the pointer's movement since its press, as for lanes:
+ * relative snapping steps by it; absolute snaps the grabbed beat moved by it, once
+ * that reaches half a step.
  */
 export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) => {
-    if (view.snapping !== 'absolute') return yToBeatOffset(y, beat)
     const pointer = yToBeat(y)
-    return snappedOffset(pressBeat, pointer, beat, view.division, 'absolute', pointer - pressBeat)
+    return snappedOffset(
+        pressBeat,
+        pointer,
+        beat,
+        view.division,
+        view.snapping,
+        pointer - pressBeat,
+    )
 }
 
+// A beat moved by an offset, without float noise on the division's grid; unmoved, it stays exact.
+export const toMovedBeat = (beat: number, offset: number) =>
+    offset === 0 ? beat : alignNear(beat + offset, view.division)
+
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
-    Math.max(0, beat + yToMoveBeatOffset(y, beat, pressBeat))
+    Math.max(0, toMovedBeat(beat, yToMoveBeatOffset(y, beat, pressBeat)))

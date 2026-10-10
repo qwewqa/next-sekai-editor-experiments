@@ -84,6 +84,7 @@ import {
     focusEntityAtBeat,
     focusViewAtBeat,
     setViewHover,
+    toMovedBeat,
     view,
     xToLane,
     yToBeat,
@@ -115,6 +116,8 @@ type MoveActive = {
     pressBeat: number
     // The pointer and lane snapping the preview was last built for.
     last?: string
+    // The ghosts as built from the move, and as shown with attached notes where they drop.
+    ghosts?: { ghosts: Entity[]; shown: Entity[] }
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
     bases?: { source: State; beatOffset: number; bases: Bases }
 }
@@ -312,20 +315,14 @@ export const select: Tool = {
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
                 const source = state.value
                 const move = active
-                // Attached notes take their lane from the connector, so their
-                // previews come from the moved chart, showing where they drop.
-                const moved = active.entities.some(
-                    (entity) => entity.type === 'note' && entity.isAttached,
-                )
-                    ? moveEntities(source, move, lane, beatOffset, rawMove)
-                    : undefined
                 const bases = getMoveBases(source, active, beatOffset)
 
-                const creating: Entity[] = []
+                const ghosts: Entity[] = []
+                const ghosted: Entity[] = []
                 let focusBeat = active.focus.beat
                 for (const entity of active.entities) {
                     if (isPinned(entity, beatOffset)) continue
-                    const beat = entity.beat + beatOffset
+                    const beat = toMovedBeat(entity.beat, beatOffset)
 
                     const result = creates[entity.type]?.(
                         active.onlyType,
@@ -339,21 +336,19 @@ export const select: Tool = {
                     )
                     if (!result) continue
 
-                    creating.push(
-                        (entity.type === 'note' && entity.isAttached
-                            ? moved?.note(entity)
-                            : undefined) ?? result,
-                    )
+                    ghosts.push(result)
+                    ghosted.push(entity)
                     if (entity === active.focus) focusBeat = result.beat
                 }
 
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
-                const previous = view.entities.creating
+                const previous = active.ghosts
                 if (
-                    creating.length === previous.length &&
-                    creating.every((entity, index) => {
-                        const other = previous[index]
+                    previous?.shown === view.entities.creating &&
+                    ghosts.length === previous.ghosts.length &&
+                    ghosts.every((entity, index) => {
+                        const other = previous.ghosts[index]
                         return (
                             entity.type === other?.type &&
                             entity.beat === other.beat &&
@@ -364,6 +359,23 @@ export const select: Tool = {
                 ) {
                     break
                 }
+
+                // Attached notes take their lane from the connector, so their
+                // previews come from the moved chart, showing where they drop.
+                const moved = active.entities.some(
+                    (entity) => entity.type === 'note' && entity.isAttached,
+                )
+                    ? moveEntities(source, move, lane, beatOffset, rawMove)
+                    : undefined
+                const creating = ghosts.map((ghost, index) => {
+                    const entity = ghosted[index]
+                    return (
+                        (entity?.type === 'note' && entity.isAttached
+                            ? moved?.note(entity)
+                            : undefined) ?? ghost
+                    )
+                })
+                active.ghosts = { ghosts, shown: creating }
 
                 view.entities = {
                     hovered: [],
@@ -434,7 +446,7 @@ export const select: Tool = {
                           active.focus as never,
                           active.lane,
                           lane,
-                          active.focus.beat + beatOffset,
+                          toMovedBeat(active.focus.beat, beatOffset),
                           active.focus,
                           rawMove,
                       )
@@ -511,7 +523,7 @@ const moveEntities = (
         ? new Map(
               entities
                   .filter((entity) => entity.type === 'note')
-                  .map((note) => [note, note.beat + beatOffset]),
+                  .map((note) => [note, toMovedBeat(note.beat, beatOffset)]),
           )
         : undefined
     const bases = getMoveBases(source, active, beatOffset)
@@ -519,7 +531,7 @@ const moveEntities = (
     let destinationNotes: Map<NoteEntity, NoteEntity> | undefined
     for (const entity of entities) {
         if (isPinned(entity, beatOffset)) continue
-        const beat = entity.beat + beatOffset
+        const beat = toMovedBeat(entity.beat, beatOffset)
         if (entity === active.focus) focusIndex = selectedEntities.length
         if (entity.type === 'note') placed.set(entity, selectedEntities.length)
 
@@ -652,11 +664,15 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     if (cached?.source === source && cached.beatOffset === beatOffset) return cached.bases
     const beats = new Map<NoteEntity, number>()
     for (const entity of active.entities)
-        if (entity.type === 'note') beats.set(entity, entity.beat + beatOffset)
+        if (entity.type === 'note') beats.set(entity, toMovedBeat(entity.beat, beatOffset))
     const bases = getMovedEndBases(source, beats)
     active.bases = { source, beatOffset, bases }
     return bases
 }
+
+/** The focus lanes snap from: a tick taken past its slide's end snaps from its gameplay place. */
+const toLaneFocus = (focus: Entity, bases?: Bases) =>
+    focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus
 
 const moveSelectedLane = (
     value: number,
@@ -664,12 +680,13 @@ const moveSelectedLane = (
     lane: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ) =>
     rawMove
         ? rawMove.unconstrained
             ? value + rawMove.delta
             : shiftComputed(value, rawMove.delta)
-        : moveLane(value, startLane, lane, getLaneAnchor(focus))
+        : moveLane(value, startLane, lane, getLaneAnchor(toLaneFocus(focus, bases)))
 
 /** The starting BPM and time scales. */
 const isInitial = (entity: Entity) =>
@@ -693,7 +710,7 @@ const isUnmoved = (active: MoveActive, lane: number, beatOffset: number, rawMove
             entity as never,
             active.lane,
             lane,
-            entity.beat + beatOffset,
+            toMovedBeat(entity.beat, beatOffset),
             active.focus,
             rawMove,
         )
@@ -742,6 +759,7 @@ const toMovedCameraEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): CameraEventObject => {
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [cameraLeft, cameraSize] = resize(
@@ -777,7 +795,7 @@ const toMovedCameraEventObject = (
         {
             ...entity,
             beat,
-            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, focus, rawMove),
+            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -796,6 +814,7 @@ const toMovedStageMaskEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StageMaskEventObject => {
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [maskLeft, maskSize] = resize(
@@ -831,7 +850,7 @@ const toMovedStageMaskEventObject = (
         {
             ...entity,
             beat,
-            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, focus, rawMove),
+            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -849,12 +868,13 @@ const toMovedStagePivotEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StagePivotEventObject =>
     constrainLaneObject(
         {
             ...entity,
             beat,
-            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, focus, rawMove),
+            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -897,12 +917,20 @@ const toMovedStageTransformEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StageTransformEventObject =>
     constrainLaneObject(
         {
             ...entity,
             beat,
-            xTranslation: moveSelectedLane(entity.xTranslation, startLane, lane, focus, rawMove),
+            xTranslation: moveSelectedLane(
+                entity.xTranslation,
+                startLane,
+                lane,
+                focus,
+                rawMove,
+                bases,
+            ),
         },
         {
             enabled:
@@ -979,7 +1007,8 @@ const toMovedNoteObject = (
 
     const composed = getComposedLayout()
     const anchor = composed && focus.type === 'note' ? (bases?.get(focus) ?? focus) : from
-    const anchorBeat = anchor.beat + beat - entity.beat
+    const anchorBeat =
+        anchor.beat === entity.beat ? beat : toMovedBeat(anchor.beat, beat - entity.beat)
     // Only the grabbed note is inverted into its destination stage. Every
     // selected note receives that same authored delta, so animated stages can
     // change their displayed spacing without changing the chart's shape.
@@ -999,7 +1028,7 @@ const toMovedNoteObject = (
                 from.left,
                 startLane,
                 lane + correction,
-                getLaneAnchor(focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus),
+                getLaneAnchor(toLaneFocus(focus, bases)),
                 composed && focus.type === 'note'
                     ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
                     : 0,
@@ -1034,21 +1063,39 @@ const creates: {
             toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
         ),
 
-    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toCameraEventJointEntity(
-            toMovedCameraEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedCameraEventObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                bases,
+            ),
         ),
     cameraEventConnection: undefined,
 
-    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStageMaskEventJointEntity(
-            toMovedStageMaskEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedStageMaskEventObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                bases,
+            ),
         ),
     stageMaskEventConnection: undefined,
 
-    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStagePivotEventJointEntity(
-            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove),
+            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
         ),
     stagePivotEventConnection: undefined,
 
@@ -1058,9 +1105,9 @@ const creates: {
         ),
     stageStyleEventConnection: undefined,
 
-    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStageTransformEventJointEntity(
-            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove),
+            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
         ),
     stageTransformEventConnection: undefined,
 
@@ -1153,6 +1200,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedCameraEventObject(
             onlyType,
@@ -1162,6 +1210,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat) return replaceCameraEventJoint(transaction, entity, object)
 
@@ -1180,6 +1229,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedStageMaskEventObject(
             onlyType,
@@ -1189,6 +1239,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageMaskEventJoint(transaction, entity, object)
@@ -1208,8 +1259,17 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
-        const object = toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove)
+        const object = toMovedStagePivotEventObject(
+            entity,
+            startLane,
+            lane,
+            beat,
+            focus,
+            rawMove,
+            bases,
+        )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStagePivotEventJoint(transaction, entity, object)
 
@@ -1256,6 +1316,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedStageTransformEventObject(
             entity,
@@ -1264,6 +1325,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageTransformEventJoint(transaction, entity, object)

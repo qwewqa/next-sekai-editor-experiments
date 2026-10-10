@@ -192,7 +192,9 @@ export const orderPointHits = <T extends Entity>(
     const isUnder = (note: NoteEntity) => {
         const position = composed?.notePosition(note) ?? note
         const type = getNoteVisualType(
-            position.size === note.size ? note : { ...note, size: position.size },
+            position.size === note.size
+                ? note
+                : { ...note, size: position.size, useInfoOf: note.useInfoOf ?? note },
             source.store.slides.info.get(note.slideId),
         )
         return isOnNoteArtwork(

@@ -284,6 +284,38 @@ for (const layout of ['basic', 'composed'] as const) {
             expect(stored(attached.moved)).toEqual({ ...stored(detached.moved), attached: true })
         })
 
+        for (const tool of ['select', 'note'] as const) {
+            test(`${tool}: a tick taken past the tail and back before release stays on the path`, async ({
+                page,
+            }) => {
+                const run = async (overshoot: boolean) => {
+                    await setup(page, layout)
+                    await useTool(page, tool)
+                    const [tick] = await stageOne(page, 4)
+                    const lane = centre(layout, tick!)
+                    const start = await point(page, lane, 4)
+                    const past = await point(page, lane, 7)
+                    const end = await point(page, lane, 5)
+                    await page.mouse.move(start.x, start.y)
+                    await page.mouse.down()
+                    if (overshoot) {
+                        await page.mouse.move(past.x, past.y, { steps: 8 })
+                        // Past the tail, it previews as the end it would become.
+                        expect(await ghosts(page)).toEqual([landed(7)])
+                    }
+                    await page.mouse.move(end.x, end.y, { steps: 8 })
+                    const preview = await ghosts(page)
+                    await page.mouse.up()
+                    const [moved] = await stageOne(page, 5)
+                    return { preview, moved: stored(moved!) }
+                }
+                const back = await run(true)
+                expect(back.moved).toMatchObject({ attached: true, elevation: 0, size: 2.75 })
+                expect(back.preview).toEqual([back.moved])
+                expect(back.moved).toEqual((await run(false)).moved)
+            })
+        }
+
         test.describe('Properties Beat', () => {
             const beatField = (page: Page) =>
                 page
@@ -383,3 +415,43 @@ for (const layout of ['basic', 'composed'] as const) {
         })
     })
 }
+
+// Composed with dynamic stages moves a mixed selection by one solved delta; Basic snaps each.
+test('basic: a camera joint moved with a tick taken past the tail shifts as the tick does', async ({
+    page,
+}) => {
+    await setup(page, 'basic')
+    await page.evaluate(async () => {
+        const { history, fixtures, appImport } = window.editorTest
+        const { createTransaction } = await appImport<typeof import('../../src/state/transaction')>(
+            '/src/state/transaction.ts',
+        )
+        const { addCameraEventJoint } = await appImport<
+            typeof import('../../src/state/mutations/events/camera')
+        >('/src/state/mutations/events/camera.ts')
+        const source = history.state.value
+        const transaction = createTransaction(source)
+        const [camera] = addCameraEventJoint(transaction, {
+            ...fixtures.events.cameraEvents[0]!,
+            beat: 4,
+            cameraLeft: -6,
+            cameraSize: 12,
+        })
+        const tick = [...source.store.slides.note.values()].flat().find((note) => note.isAttached)
+        history.replaceState(transaction.commit([tick!, camera!]))
+    })
+    await useTool(page, 'select')
+    const [tick] = await stageOne(page, 4)
+    // Absolute lane snapping, 1.3 lanes sideways: the tick snaps from its gameplay place.
+    await drag(page, centre('basic', tick!), 4, 1.3, 2.5)
+    const [moved] = await stageOne(page, 6.5)
+    const cameraLeft = await page.evaluate(
+        () =>
+            [...window.editorTest.history.state.value.store.grid.cameraEventJoint.values()]
+                .flatMap((bucket) => [...bucket])
+                .find((joint) => joint.beat === 6.5)?.cameraLeft,
+    )
+    // Detached in place, the tick is at -5.25.
+    expect(moved!.left).not.toBe(-5.25)
+    expect(cameraLeft! - -6).toBe(moved!.left - -5.25)
+})

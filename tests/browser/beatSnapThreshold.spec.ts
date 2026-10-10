@@ -164,7 +164,32 @@ test('a multi-selection keeps its spacing and moves as one', async ({ page }) =>
     }
 })
 
-test('relative beat snapping is unchanged', async ({ page }) => {
+// Relative beat snapping steps by the pointer's movement from the press, as relative lanes do.
+for (const tool of ['select', 'note', 'slide'] as const) {
+    test(`${tool}: relative beat snapping steps by the pointer's movement from an off-centre press`, async ({
+        page,
+    }) => {
+        // Division 8 at 400 px per second: half a step is 12.5 px; the press is 18 px off the beat.
+        for (const [db, beat] of [
+            [0, 4.375],
+            [0.04, 4.375],
+            [-0.04, 4.375],
+            [0.085, 4.5],
+            [-0.085, 4.25],
+        ] as const) {
+            await setup(page, { tool, mode: 'relative' })
+            await page.evaluate(() => {
+                const { view, settings } = window.editorTest
+                view.division = 8
+                settings.pps = 400
+            })
+            await drag(page, -1, db, 4.375 + 0.09)
+            expect(await beatsOf(page), `${db}`).toEqual([beat])
+        }
+    })
+}
+
+test('relative beat snapping from a press on the beat', async ({ page }) => {
     for (const [db, beat] of [
         [0.1, 4.375],
         [0.15, 4.625],
@@ -250,5 +275,23 @@ test('Composed and attached ticks snap from the grabbed beat', async ({ page }) 
                 [7, false],
             ])
         }
+    }
+})
+
+// Moved beats land exactly on the grid: 4/3 + 1/3 in floating point is 1 ulp off 5/3.
+test('a move by a third lands exactly on the next third', async ({ page }) => {
+    for (const [tool, mode, beats, landed] of [
+        ['select', 'relative', [4 / 3], [5 / 3]],
+        ['note', 'relative', [4 / 3], [5 / 3]],
+        ['slide', 'relative', [4 / 3], [5 / 3]],
+        // The grabbed note moves by 2/3 - 1/3; the other note by that offset.
+        ['select', 'absolute', [1 / 3, 4 / 3], [2 / 3, 5 / 3]],
+    ] as const) {
+        await setup(page, { tool, mode, beats: [...beats] })
+        await page.evaluate(() => {
+            window.editorTest.view.division = 3
+        })
+        await drag(page, -1, 1 / 3, beats[0])
+        expect(await beatsOf(page), `${tool} ${mode}`).toEqual(landed)
     }
 })

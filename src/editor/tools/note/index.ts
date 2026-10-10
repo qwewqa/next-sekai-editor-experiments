@@ -8,7 +8,6 @@ import { defaultGroupId } from '../../../history/groups.ts'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages.ts'
 import { i18n } from '../../../i18n'
-import { clearPreviewEdit, setPreviewEdit } from '../../../preview/edit'
 import { settings } from '../../../settings'
 import type { Entity } from '../../../state/entities'
 import { createSlideId } from '../../../state/entities/slides'
@@ -36,7 +35,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { toDraggedNoteObject } from '../moveBase'
+import { createEditPreview, toDraggedNoteObject } from '../moveBase'
 import {
     addDragAnchor,
     commitDrop,
@@ -288,7 +287,7 @@ export const note: Tool = {
                 view.entities = {
                     hovered: [],
                     creating: [
-                        previewEdit(active.entity, object) ??
+                        preview.show(active.entity, object) ??
                             toNoteEntity(active.entity.slideId, object, active.entity),
                     ],
                 }
@@ -301,7 +300,7 @@ export const note: Tool = {
                 view.entities = {
                     hovered: [],
                     creating: [
-                        previewEdit(active.entity, object) ??
+                        preview.show(active.entity, object) ??
                             toNoteEntity(active.entity.slideId, object, active.entity),
                     ],
                 }
@@ -312,7 +311,7 @@ export const note: Tool = {
     },
 
     dragEnd(x, y) {
-        clearPreviewEdit()
+        preview.clear()
         if (!active) return
 
         switch (active.type) {
@@ -388,7 +387,7 @@ export const note: Tool = {
     },
 
     dragCancel() {
-        clearPreviewEdit()
+        preview.clear()
         active = undefined
     },
 }
@@ -507,18 +506,7 @@ const edit = (entity: NoteEntity, object: Partial<WithEaseEdits<NoteObject>>) =>
     )
 }
 
-// An attached note takes its lane from the connector, so it previews as edited.
-const previewEdit = (entity: NoteEntity, object: NoteObject) => {
-    const source = state.value
-    const build = () => {
-        const transaction = createTransaction(source)
-        return transaction.commit(editSelectedNote(transaction, entity, object))
-    }
-    const built = entity.isAttached ? build() : undefined
-    setPreviewEdit(source, () => built ?? build(), [entity, object.beat, object.left, object.size])
-    const note = built?.selectedEntities[0]
-    return note?.type === 'note' ? note : undefined
-}
+const preview = createEditPreview(editSelectedNote)
 
 const move = (entity: NoteEntity, object: NoteObject) => {
     update(

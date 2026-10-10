@@ -9,8 +9,8 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages.ts'
 import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
-import { clearPreviewEdit, setPreviewEdit } from '../../../preview/edit'
 import { settings } from '../../../settings'
+import type { State } from '../../../state'
 import type { Entity } from '../../../state/entities'
 import { createSlideId, type SlideId } from '../../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
@@ -40,9 +40,10 @@ import {
     xToLane,
     yToBeat,
     yToValidBeat,
+    type EditorLayout,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { toDraggedNoteObject } from '../moveBase'
+import { createEditPreview, toDraggedNoteObject } from '../moveBase'
 import {
     addDragAnchor,
     commitDrop,
@@ -295,7 +296,7 @@ export const slide: Tool = {
                 view.entities = {
                     hovered: [],
                     creating: [
-                        previewEdit(active.entity, object) ??
+                        preview.show(active.entity, object) ??
                             toNoteEntity(active.entity.slideId, object, active.entity),
                     ],
                 }
@@ -308,7 +309,7 @@ export const slide: Tool = {
                 view.entities = {
                     hovered: [],
                     creating: [
-                        previewEdit(active.entity, object) ??
+                        preview.show(active.entity, object) ??
                             toNoteEntity(active.entity.slideId, object, active.entity),
                     ],
                 }
@@ -319,7 +320,7 @@ export const slide: Tool = {
     },
 
     dragEnd(x, y) {
-        clearPreviewEdit()
+        preview.clear()
         if (!active) return
 
         switch (active.type) {
@@ -396,7 +397,7 @@ export const slide: Tool = {
     },
 
     dragCancel() {
-        clearPreviewEdit()
+        preview.clear()
         active = undefined
     },
 }
@@ -541,8 +542,38 @@ const add = (slideId: SlideId, object: NoteObject) => {
 
 // An attached note added inside a slide lands on its path; the ghost shows it there.
 const landing = (slideId: SlideId, object: NoteObject) => {
+    if (!object.isAttached || !store.value.slides.note.has(slideId))
+        return toNoteEntity(slideId, object)
+    const source = state.value
+    const last = lastLanding
+    if (
+        last?.source === source &&
+        last.layout === view.layout &&
+        last.slideId === slideId &&
+        Object.keys(object).length === Object.keys(last.object).length &&
+        Object.entries(object).every(
+            ([key, value]) => last.object[key as keyof NoteObject] === value,
+        )
+    )
+        return last.ghost
+    const ghost = placeLanding(slideId, object)
+    lastLanding = { source, layout: view.layout, slideId, object, ghost }
+    return ghost
+}
+
+// The last attached landing, so a hover within one snapped placement doesn't rebuild it.
+let lastLanding:
+    | {
+          source: State
+          layout: EditorLayout
+          slideId: SlideId
+          object: NoteObject
+          ghost: NoteEntity
+      }
+    | undefined
+
+const placeLanding = (slideId: SlideId, object: NoteObject) => {
     const ghost = toNoteEntity(slideId, object)
-    if (!object.isAttached || !store.value.slides.note.has(slideId)) return ghost
     const transaction = createTransaction(state.value)
     const result = transaction.commit(addNote(transaction, slideId, object))
     const [landed] = result.selectedEntities
@@ -564,18 +595,7 @@ const edit = (entity: NoteEntity, object: NoteObject) => {
     )
 }
 
-// An attached note takes its lane from the connector, so it previews as edited.
-const previewEdit = (entity: NoteEntity, object: NoteObject) => {
-    const source = state.value
-    const build = () => {
-        const transaction = createTransaction(source)
-        return transaction.commit(replaceNote(transaction, entity, object))
-    }
-    const built = entity.isAttached ? build() : undefined
-    setPreviewEdit(source, () => built ?? build(), [entity, object.beat, object.left, object.size])
-    const note = built?.selectedEntities[0]
-    return note?.type === 'note' ? note : undefined
-}
+const preview = createEditPreview(replaceNote)
 
 const move = (entity: NoteEntity, object: NoteObject) => {
     update(

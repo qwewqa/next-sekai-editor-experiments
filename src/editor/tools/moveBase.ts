@@ -1,9 +1,12 @@
 import type { NoteObject } from '../../chart/note'
 import { state } from '../../history'
+import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
 import type { State } from '../../state'
+import type { Entity } from '../../state/entities'
 import type { SlideId } from '../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../state/entities/slides/note'
 import { getDetachedNotePositions } from '../../state/operations/notePositions'
+import { createTransaction, type Transaction } from '../../state/transaction'
 import {
     getComposedGridOffset,
     getComposedMoveOffset,
@@ -84,4 +87,36 @@ export const toDraggedNoteObject = (
         size: from.size,
         elevation: from.elevation,
     })
+}
+
+/** A Note or Slide tool drag's preview; an attached note previews as edited, on its connector. */
+export const createEditPreview = (
+    edit: (transaction: Transaction, entity: NoteEntity, object: NoteObject) => Entity[],
+) => {
+    // The edited chart, built once per change of the preview's key.
+    let built: { source: State; key: unknown[]; state: State } | undefined
+    return {
+        show: (entity: NoteEntity, object: NoteObject) => {
+            const source = state.value
+            const key = [entity, object.beat, object.left, object.size]
+            const build = () => {
+                const transaction = createTransaction(source)
+                return transaction.commit(edit(transaction, entity, object))
+            }
+            if (
+                entity.isAttached &&
+                (built?.source !== source ||
+                    key.some((value, index) => value !== built?.key[index]))
+            )
+                built = { source, key, state: build() }
+            const edited = entity.isAttached ? built?.state : undefined
+            setPreviewEdit(source, () => edited ?? build(), key)
+            const note = edited?.selectedEntities[0]
+            return note?.type === 'note' ? note : undefined
+        },
+        clear: () => {
+            built = undefined
+            clearPreviewEdit()
+        },
+    }
 }
