@@ -1818,3 +1818,45 @@ test.describe('with touch', () => {
         await expect(scrims).toHaveCount(0)
     })
 })
+
+test('a drag with a button held crosses the toolbar without opening flyouts', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.showSidebar = true
+    })
+    const centers = await shown(page).evaluateAll((buttons) =>
+        buttons.slice(0, 4).map((button) => {
+            const box = button.getBoundingClientRect()
+            return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        }),
+    )
+    // Pressed over the Properties panel, then dragged along the tools and released on one.
+    const panel = (await page.locator('#workspace-panel-properties').boundingBox())!
+    await page.mouse.move(panel.x + panel.width / 2, panel.y + panel.height - 20)
+    await page.mouse.down()
+    for (const { x, y } of centers) {
+        await page.mouse.move(x, y, { steps: 6 })
+        expect(await placedFlyout(page)).toBe(-1)
+    }
+    await page.mouse.up()
+    await page.waitForTimeout(100)
+    expect(await placedFlyout(page)).toBe(-1)
+
+    // Moving again once released opens as usual.
+    const last = centers.at(-1)!
+    await page.mouse.move(last.x + 1, last.y)
+    await expect.poll(() => placedFlyout(page)).toBe(centers.length - 1)
+    // A drag from the backdrop of a keyboard-opened flyout leaves it on its tool.
+    await page.mouse.move(800, 300)
+    await page.keyboard.press('Escape')
+    await expect.poll(() => placedFlyout(page)).toBe(-1)
+    await shown(page)
+        .nth(centers.length - 1)
+        .focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => placedFlyout(page)).toBe(centers.length - 1)
+    await page.mouse.down()
+    const first = centers[0]!
+    await page.mouse.move(first.x, first.y, { steps: 6 })
+    expect(await placedFlyout(page)).toBe(centers.length - 1)
+    await page.mouse.up()
+})

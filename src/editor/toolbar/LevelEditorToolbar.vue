@@ -186,9 +186,9 @@ const toolRows = computed(() => {
 })
 
 // Opening on movement rather than pointerover keeps a group closed when docks
-// open or resize and move the toolbar under a resting pointer.
+// open or resize and move the toolbar under a resting pointer. A drag passing over opens nothing.
 const onOverMain = (event: PointerEvent, index: number) => {
-    if (event.pointerType !== 'mouse' || activeIndex.value === index) return
+    if (event.pointerType !== 'mouse' || event.buttons || activeIndex.value === index) return
 
     activeIndex.value = index
 }
@@ -246,9 +246,9 @@ const groupAt = ({ clientX: x, clientY: y }: PointerEvent) =>
     })
 
 // Tools under the backdrop take no input; moving onto one opens it at once, and off all closes.
-// Only movement counts: the backdrop appearing under a resting pointer leaves a keyboard-opened flyout.
+// Only free movement counts: the backdrop appearing under a resting pointer leaves a keyboard-opened flyout.
 const onMoveBackdrop = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse' || inPlace) return
+    if (event.pointerType !== 'mouse' || inPlace || event.buttons) return
 
     activeIndex.value = groupAt(event)
 }
