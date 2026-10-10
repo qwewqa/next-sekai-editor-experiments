@@ -314,3 +314,69 @@ for (const layout of ['basic', 'composed'] as const) {
         }
     })
 }
+
+for (const tool of ['stageMaskEvent', 'select'] as const) {
+    test(`${tool}: a time-only drag leaves an off-grid stage mask in its lanes`, async ({
+        page,
+    }) => {
+        for (const [dx, maskLeft] of [
+            [0.2, 0.37],
+            [-0.2, 0.37],
+            [0.6, 1],
+        ] as const) {
+            await page.evaluate(
+                async ({ tool }) => {
+                    const { show, fixtures, view, history, appImport } = window.editorTest
+                    show(
+                        {
+                            ...fixtures.interaction,
+                            slides: [],
+                            stageMaskEvents: [
+                                {
+                                    ...fixtures.events.stageMaskEvents[0]!,
+                                    beat: 4,
+                                    maskLeft: 0.37,
+                                    maskSize: 4,
+                                },
+                            ],
+                        },
+                        3,
+                    )
+                    view.laneDivision = 1
+                    view.laneSnapping = 'absolute'
+                    const { switchToolTo } = await appImport<
+                        typeof import('../../src/editor/tools')
+                    >('/src/editor/tools/index.ts')
+                    switchToolTo(tool)
+                    const source = history.state.value
+                    history.replaceState({
+                        ...source,
+                        selectedEntities: [
+                            ...source.store.grid.stageMaskEventJoint.values(),
+                        ].flatMap((bucket) => [...bucket]),
+                    })
+                },
+                { tool },
+            )
+            const { start, end, lane } = await page.evaluate(() => {
+                const { point, view, settings } = window.editorTest
+                return {
+                    start: point(2.37, 4),
+                    end: point(2.37, 6),
+                    lane: view.w / settings.width,
+                }
+            })
+            await page.mouse.move(start.x, start.y)
+            await page.mouse.down()
+            await page.mouse.move(start.x + dx * lane, (start.y + end.y) / 2, { steps: 4 })
+            await page.mouse.move(start.x + dx * lane, end.y, { steps: 4 })
+            await page.mouse.up()
+            const masks = await page.evaluate(() =>
+                [...window.editorTest.history.state.value.store.grid.stageMaskEventJoint.values()]
+                    .flatMap((bucket) => [...bucket])
+                    .map((mask) => ({ beat: mask.beat, maskLeft: mask.maskLeft })),
+            )
+            expect(masks).toEqual([{ beat: 6, maskLeft }])
+        }
+    })
+}
