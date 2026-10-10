@@ -181,13 +181,61 @@ test.describe('changes during motion', () => {
         await frames(page, 4)
     })
 
-    test('a theme switch mid-scroll still settles on an exact frame', async ({ page }) => {
+    test('a theme switch mid-scroll settles on a fresh frame in the new theme', async ({
+        page,
+    }) => {
+        // Selected names drawn against the chart background follow the theme.
+        const seedNames = (time: number) =>
+            page.evaluate(async (time) => {
+                const { fixtures, show, view, settings, history, store, appImport, nextTick } =
+                    window.editorTest
+                const { clearNotification } = await appImport<
+                    typeof import('../../src/editor/notification')
+                >('/src/editor/notification.ts')
+                show(fixtures.connectors, time)
+                settings.showStageName = true
+                settings.showGroupName = true
+                settings.nameContrast = true
+                for (const type of Object.keys(view.visibilities))
+                    view.visibilities[type as keyof typeof view.visibilities] = true
+                view.layout = 'composed'
+                history.replaceState({
+                    ...history.state.value,
+                    selectedEntities: [...store.getAllEntities()].filter(
+                        (entity) => entity.type === 'note' || entity.type === 'connector',
+                    ),
+                })
+                clearNotification()
+                await document.fonts.ready
+                await nextTick()
+            }, time)
+        const theme = () => page.evaluate(() => document.documentElement.dataset.theme)
+        await page.evaluate(() => {
+            window.editorTest.settings.theme = 'dark'
+        })
+        await seedNames(5)
+        await frames(page, 4)
+        expect(await theme()).toBe('dark')
         await scrollWhile(page, () =>
             page.evaluate(() => {
                 window.editorTest.settings.theme = 'light'
             }),
         )
-        expect((await pixels(page)).equals(await exactPixels(page))).toBe(true)
+        expect(await theme()).toBe('light')
+        const settled = await pixels(page)
+
+        // The same view drawn from scratch in light.
+        const place = await page.evaluate(() => {
+            const { view } = window.editorTest
+            return { time: view.time, lane: view.lane, cursorTime: view.cursorTime }
+        })
+        await seedNames(place.time)
+        await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
+        expect(settled.equals(await pixels(page))).toBe(true)
+        await page.evaluate(() => {
+            window.editorTest.settings.theme = 'dark'
+        })
+        expect(settled.equals(await pixels(page))).toBe(false)
     })
 
     test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {
