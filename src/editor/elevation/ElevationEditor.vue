@@ -9,7 +9,7 @@ import {
     watch,
     watchEffect,
 } from 'vue'
-import { isAppActive } from '../../activity'
+import { interruptsDrags, isAppActive } from '../../activity'
 import { clipboardEntry, updateClipboard } from '../../clipboard'
 import { pushState, replaceState, state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
@@ -941,8 +941,8 @@ watch([scopeLookup, () => view.visibilities], ([scope, visibilities], [previous,
     cancelTouchControls()
     cancel()
 })
-watch(isAppActive, (active) => {
-    if (!active) cancel()
+watch(interruptsDrags, (interrupted) => {
+    if (interrupted) cancel()
 })
 watch(
     toolName,

@@ -1,5 +1,5 @@
 import { onUnmounted, ref, watch, type Ref } from 'vue'
-import { isAppActive } from '../activity'
+import { interruptsDrags, isAppActive } from '../activity'
 import {
     beginPreviewScrub,
     endPreviewScrub,
@@ -163,12 +163,12 @@ export const useTransportInput = (visible: Ref<boolean>) => {
     }
 
     watch(
-        [visible, isPlaying, isAppActive],
-        ([shown, playing, active], [wasShown]) => {
-            if (!shown || playing || !active) finishHold(false)
+        [visible, isPlaying, interruptsDrags],
+        ([shown, playing, interrupted], [wasShown]) => {
+            if (!shown || playing || interrupted) finishHold(false)
             // Seeking also works with the controls hidden. Only a transition to
-            // hidden, playback, or backgrounding cancels an active wheel gesture.
-            if ((wasShown && !shown) || playing || !active) finishWheel(false)
+            // hidden, playback, or an interruption cancels an active wheel gesture.
+            if ((wasShown && !shown) || playing || interrupted) finishWheel(false)
         },
         { flush: 'sync' },
     )
