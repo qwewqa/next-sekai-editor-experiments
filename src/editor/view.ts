@@ -262,8 +262,9 @@ export const clampViewLane = () => {
 /** Brings the view, and any eased sideways scroll, within a reach that has just shrunk. */
 export const clampViewToReach = () => {
     const { min, max } = scrollReach()
-    if (view.scrollingX?.type === 'ease')
-        view.scrollingX.to.viewLane = clamp(view.scrollingX.to.viewLane, min, max)
+    // An ease aimed past the reach stops where it is; a new target would bend its curve back.
+    const target = view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : undefined
+    if (target !== undefined && (target < min || target > max)) view.scrollingX = undefined
     if (view.lane >= min && view.lane <= max) return
     view.scrollingX = undefined
     view.lane = clamp(view.lane, min, max)

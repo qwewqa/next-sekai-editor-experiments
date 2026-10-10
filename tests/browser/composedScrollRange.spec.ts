@@ -151,6 +151,10 @@ test('vertical wheels leave the sideways reach uncomputed, smooth or not', async
                 }, time),
             )
             .toBe(true)
+        // Past the draws that follow it, which could compute the reach too.
+        await page.evaluate(async () => {
+            for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame)
+        })
         expect(
             await page.evaluate(() => ({
                 calls: (window as unknown as { extentCalls: () => number }).extentCalls(),
@@ -213,20 +217,33 @@ test('a lower Max Scroll X brings the view within the reach at once, in either l
     await setLimit(5)
     expect(await lane()).toBe(-5)
 
-    // An eased sideways scroll ends within the new limit.
+    // An eased sideways scroll lowered past mid-ease stops where it is, never easing back.
     await seed(page, 'basic')
     await place(0, 10)
-    await page.evaluate(async () => {
-        const { view, settings, appImport } = window.editorTest
+    const eased = await page.evaluate(async () => {
+        const { view, settings, appImport, nextTick } = window.editorTest
         const { scrollViewXBy } =
             await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const frame = () => new Promise(requestAnimationFrame)
         scrollViewXBy(10_000, true)
-        settings.maxScrollX = 4
-        ;(window as unknown as { easing: boolean }).easing = !!view.scrollingX
+        while (view.lane === 0) await frame()
+        const at = view.lane
+        settings.maxScrollX = at + 2
+        await nextTick()
+        const easing = !!view.scrollingX
+        // The rest of the 250 ms ease, and past it.
+        const lanes = []
+        for (let i = 0; i < 24; i++) {
+            await frame()
+            lanes.push(view.lane)
+        }
+        return { at, easing, lanes }
     })
-    expect(await page.evaluate(() => (window as unknown as { easing: boolean }).easing)).toBe(true)
-    await expect.poll(() => page.evaluate(() => !window.editorTest.view.scrollingX)).toBe(true)
-    expect(await lane()).toBe(4)
+    // Lowered mid-ease, with the view still short of the new limit.
+    expect(eased.at).toBeLessThan(8)
+    expect(eased.easing).toBe(false)
+    for (const lane of eased.lanes) expect(lane).toBe(eased.at)
+    expect(await lane()).toBe(eased.at)
 })
 
 test('a chart opened in Composed starts within its own reach', async ({ page }) => {
