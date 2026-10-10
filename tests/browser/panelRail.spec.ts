@@ -319,3 +319,43 @@ test('a pressed tab takes the accent fill and hides its marker', async ({ page }
         .toBe('0')
     await page.mouse.up()
 })
+
+test('a narrowing top rail settles on one padding at any root font size', async ({ page }) => {
+    // Through each width where the tabs start and stop trimming their padding.
+    const sweeps = [
+        [16, 344, 332],
+        [16, 310, 302],
+        [18, 386, 374],
+        [18, 350, 340],
+        [20, 430, 418],
+        [20, 390, 380],
+    ] as const
+    const paddings = new Map<number, Set<string>>()
+    for (const [root, from, to] of sweeps) {
+        await page.evaluate((root) => {
+            document.documentElement.style.fontSize = `${root}px`
+        }, root)
+        for (let width = from; width >= to; width--) {
+            await page.setViewportSize({ width, height: 680 })
+            // Once laid out, the tabs hold one padding for a few frames.
+            const { flips, padding } = await page.evaluate(async () => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+                await frame()
+                await frame()
+                const strip = document.querySelector(
+                    '[data-workspace-dock="top"] .panel-rail-tabs',
+                )!
+                let flips = 0
+                const observer = new MutationObserver((records) => (flips += records.length))
+                observer.observe(strip, { attributeFilter: ['class'], subtree: true })
+                for (let i = 0; i < 4; i++) await frame()
+                observer.disconnect()
+                const tab = strip.querySelector('[role="tab"]')!
+                return { flips, padding: getComputedStyle(tab).paddingLeft }
+            })
+            expect(flips, `${width}px at ${root}px`).toBe(0)
+            paddings.set(root, (paddings.get(root) ?? new Set()).add(padding))
+        }
+    }
+    for (const [root, seen] of paddings) expect(seen.size, `${root}px`).toBe(2)
+})

@@ -50,13 +50,20 @@ watch(focusId, (id) => {
 const tabs = () => [...(scroller.value?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [])]
 
 // Labels that overflow the rail by only a few pixels (e.g. longer translations
-// on a phone) fit by trimming each tab's padding from 12px to 8px per side,
+// on a phone) fit by trimming each tab's padding from 0.75rem to 0.5rem per side,
 // rather than scrolling behind a fade that makes the last label look clipped.
-const compactSaving = 8
 const compact = ref(false)
 
 // Fade whichever end of the rail has labels scrolled out of view.
 const overflow = ref({ start: false, end: false })
+const updateFades = () => {
+    const element = scroller.value
+    if (!element) return
+    const size = vertical.value ? element.clientHeight : element.clientWidth
+    const position = vertical.value ? element.scrollTop : element.scrollLeft
+    const content = vertical.value ? element.scrollHeight : element.scrollWidth
+    overflow.value = { start: position > 1, end: position + size < content - 1 }
+}
 const updateOverflow = () => {
     const element = scroller.value
     if (!element) return
@@ -66,21 +73,23 @@ const updateOverflow = () => {
     const last = list.at(-1)?.getBoundingClientRect()
     if (first && last) {
         // The strip's length at full padding, whichever padding is applied now.
-        const saving = list.length * compactSaving
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+        const saving = list.length * 0.5 * rem
         const natural =
             (vertical.value ? last.bottom - first.top : last.right - first.left) +
             (compact.value ? saving : 0)
-        const next = natural > size + 1 && natural - saving <= size + 1
+        // 1px apart either way, so rounding can't flip it straight back.
+        const next = compact.value
+            ? natural > size && natural - saving <= size + 1
+            : natural > size + 1 && natural - saving <= size
         if (next !== compact.value) {
             compact.value = next
             // Measure the overflow once the new padding is laid out.
-            void nextTick(updateOverflow)
+            void nextTick(updateFades)
             return
         }
     }
-    const position = vertical.value ? element.scrollTop : element.scrollLeft
-    const content = vertical.value ? element.scrollHeight : element.scrollWidth
-    overflow.value = { start: position > 1, end: position + size < content - 1 }
+    updateFades()
 }
 watch(
     () => props.dock.panels.join(),
@@ -326,7 +335,7 @@ const chevronDirection = computed(() => {
             :aria-orientation="vertical ? 'vertical' : 'horizontal'"
             :aria-label="i18n.workspace.docks[side]"
             aria-multiselectable="true"
-            @scroll.passive="updateOverflow"
+            @scroll.passive="updateFades"
         >
             <!-- Tabs split the gaps between them. -->
             <button
