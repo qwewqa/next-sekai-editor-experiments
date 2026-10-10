@@ -156,6 +156,9 @@ export const flipVertical = (source: State, selected: Entity[]): State => {
             beat,
         })
         for (const other of added) placed.set(other, entity.beat)
+        // A tick flipped past its slide's end keeps its gameplay place, as detaching does.
+        if (entity.type === 'note' && entity.isAttached && added[0])
+            transaction.store.setOrigin(added[0] as NoteEntity, entity)
         flipped.push(...added)
     }
     // Moving the initial BPM must not leave the chart without a tempo at zero.

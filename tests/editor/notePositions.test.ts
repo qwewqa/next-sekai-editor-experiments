@@ -12,10 +12,13 @@ import { getStageProps } from '../../src/preview/engine/stage'
 import { createState, type State } from '../../src/state'
 import { sameBeatAttachmentFraction } from '../../src/state/entities/slides/attachment'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
+import { flipVertical } from '../../src/state/operations/flipVertical'
 import {
     getDetachedNotePositions,
     getMaterializedNotePositions,
 } from '../../src/state/operations/notePositions'
+import { scaleSelection } from '../../src/state/operations/scaleSelection'
+import { translateSelection } from '../../src/state/operations/translateSelection'
 import { alignComputed, shiftComputed } from '../../src/utils/math'
 
 const groupId = 1 as GroupId
@@ -302,4 +305,142 @@ test('a detached same-beat tick keeps its stored elevation within its ends', () 
         const tick = all(source).find((entity) => entity.isAttached)!
         assert.equal(getDetachedNotePositions(source, [tick]).get(tick)!.elevation, kept)
     }
+})
+
+// One cross-stage slide: stage 1 slides its pivot and X, stage 2 sits apart.
+const crossStage = () =>
+    state(
+        [
+            [
+                note(2, -4, { elevation: 1 }),
+                note(4, 0, { isAttached: true }),
+                note(6, -4, { stageId: stageIds[1]!, size: 3, elevation: 3 }),
+            ],
+        ],
+        {
+            stagePivotEvents: [
+                {
+                    stageId: stageIds[0]!,
+                    beat: 0,
+                    pivotLane: 0,
+                    divisionSize: 1,
+                    divisionParity: 'even',
+                    yOffset: 0,
+                    yOffsetBeat: 0,
+                    eventEase: 'linear',
+                },
+                {
+                    stageId: stageIds[0]!,
+                    beat: 8,
+                    pivotLane: 4,
+                    divisionSize: 1,
+                    divisionParity: 'even',
+                    yOffset: 0,
+                    yOffsetBeat: 0,
+                    eventEase: 'linear',
+                },
+                {
+                    stageId: stageIds[1]!,
+                    beat: 0,
+                    pivotLane: 4.5,
+                    divisionSize: 1,
+                    divisionParity: 'odd',
+                    yOffset: 0,
+                    yOffsetBeat: 0,
+                    eventEase: 'linear',
+                },
+            ],
+            stageTransformEvents: [
+                {
+                    stageId: stageIds[0]!,
+                    beat: 0,
+                    rotation: 0,
+                    xTranslation: 0,
+                    yTranslation: 0,
+                    elevation: 0,
+                    anchor: 'default',
+                    eventEase: 'linear',
+                },
+                {
+                    stageId: stageIds[0]!,
+                    beat: 8,
+                    rotation: 0,
+                    xTranslation: 4,
+                    yTranslation: 0,
+                    elevation: 2,
+                    anchor: 'default',
+                    eventEase: 'linear',
+                },
+                {
+                    stageId: stageIds[1]!,
+                    beat: 0,
+                    rotation: 0,
+                    xTranslation: -3,
+                    yTranslation: 0,
+                    elevation: 1,
+                    anchor: 'default',
+                    eventEase: 'linear',
+                },
+            ],
+        },
+    )
+
+const brief = (source: State) =>
+    all(source)
+        .map(({ beat, left, size, elevation, isAttached, stageId }) => ({
+            beat,
+            left,
+            size,
+            elevation,
+            isAttached,
+            stageId,
+        }))
+        .sort((a, b) => a.beat - b.beat)
+
+// The tick's gameplay place: stored on stage 1 at left -5.25, size 2.5, elevation 2.
+const kept = { left: -5.25, size: 2.5, elevation: 2, isAttached: true, stageId: stageIds[0] }
+
+test('Scale Selection taking a tick past its head keeps the tick at its gameplay place', () => {
+    const source = crossStage()
+    const [, tick, tail] = all(source)
+    // Anchored at the tail, tripling takes the tick from 4 to 0 and leaves the tail.
+    const moved = brief(scaleSelection(source, [tick!, tail!], 'beat', 3, 6))
+    assert.deepEqual(moved[0], { beat: 0, ...kept })
+    assert.deepEqual(
+        moved.slice(1),
+        brief(source).filter((entity) => entity.beat !== 4),
+    )
+})
+
+test('Scale Selection translating a tick past its tail keeps the tick at its gameplay place', () => {
+    const source = crossStage()
+    const [, tick] = all(source)
+    const moved = brief(translateSelection(source, [tick!], 'beat', 3))
+    assert.deepEqual(
+        moved.slice(0, 2),
+        brief(source).filter((entity) => entity.beat !== 4),
+    )
+    assert.deepEqual(moved[2], { beat: 7, ...kept })
+})
+
+test('Scale Selection keeping a tick inside its slide leaves it attached on the path', () => {
+    const source = crossStage()
+    const [, tick] = all(source)
+    const moved = brief(translateSelection(source, [tick!], 'beat', 1))
+    assert.deepEqual(moved[1], { ...moved[1], beat: 5, size: 2.75, elevation: 0, isAttached: true })
+})
+
+test('Flip Vertical taking a tick past its tail keeps the tick at its gameplay place', () => {
+    const source = crossStage()
+    const [, tick, tail] = all(source)
+    // Tick and tail swap beats, so the tick ends the slide.
+    const flipped = brief(flipVertical(source, [tick!, tail!]))
+    assert.deepEqual(flipped[1], { ...brief(source)[2], beat: 4 })
+    assert.deepEqual(flipped[2], { beat: 6, ...kept })
+})
+
+test('Flip Vertical of a whole slide leaves its tick attached on the path', () => {
+    const source = crossStage()
+    const flipped = brief(flipVertical(source, all(source)))
+    assert.deepEqual(flipped[1], { ...brief(source)[1], beat: 4 })
 })

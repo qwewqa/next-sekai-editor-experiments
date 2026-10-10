@@ -163,7 +163,15 @@ export const transformSelection = (
     const placed = new Map<Entity, number>()
     for (const [entity, object] of ordered) {
         if (entity.type === 'note') {
-            replacements.set(entity, editSelectedNote(transaction, entity, object))
+            const replaced = editSelectedNote(transaction, entity, object)
+            // A tick this edit takes past its slide's end keeps its gameplay place, as detaching does.
+            if (entity.isAttached && object.beat !== undefined && replaced[0])
+                transaction.store.setOrigin(replaced[0], entity, {
+                    left: object.left !== undefined,
+                    size: object.size !== undefined,
+                    elevation: object.elevation !== undefined,
+                })
+            replacements.set(entity, replaced)
             continue
         }
         if (stays(entity, object)) {
