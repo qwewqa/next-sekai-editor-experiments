@@ -1716,3 +1716,63 @@ test('a resize that re-places a value flyout keeps its checked value in view', a
         )
         .toBe(true)
 })
+
+test('a resize leaves a hand-scrolled value flyout alone while its checked value shows', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 420 })
+    const face = shown(page).and(page.getByTitle('1/4 Division', { exact: true }))
+    const index = await face.evaluate((face) =>
+        [...face.parentElement!.parentElement!.children].indexOf(face.parentElement!),
+    )
+    const box = (await face.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 })
+    await expect.poll(() => placedFlyout(page)).toBe(index)
+    const checked = openFlyout(page).locator('button:has([data-value-check])')
+    const scrollTop = () => openFlyout(page).evaluate((list) => list.scrollTop)
+    await expect.poll(scrollTop).toBeGreaterThan(0)
+    // Scrolled by hand as far up as keeps the checked row in full view.
+    const opened = await scrollTop()
+    const top = await checked.evaluate((row) => {
+        const list = row.parentElement!
+        list.scrollTop = Math.max(0, row.offsetTop + row.offsetHeight - list.clientHeight)
+        return list.scrollTop
+    })
+    expect(top).toBeLessThan(opened)
+
+    await page.evaluate(() => {
+        window.editorTest.settings.showSidebar = true
+    })
+    await expect
+        .poll(() => toolbar(page).evaluate((pane) => pane.getBoundingClientRect().width))
+        .toBeLessThan(1600)
+    await page.waitForTimeout(100)
+    expect(await placedFlyout(page)).toBe(index)
+    expect(await scrollTop()).toBe(top)
+})
+
+test('an open flyout re-centres on its tool as its own width changes', async ({ page }) => {
+    // Opened from the keyboard, so the language changes with no move to close it.
+    const group = toolbar(page).locator(':scope > div > div').nth(9)
+    await group.locator(':scope > button').focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => placedFlyout(page)).toBe(9)
+    const measure = () =>
+        group.evaluate((group) => {
+            const list = group.querySelector(':scope > div')!.getBoundingClientRect()
+            const tool = group.querySelector(':scope > button')!.getBoundingClientRect()
+            return {
+                width: list.width,
+                offset: list.left + list.width / 2 - (tool.left + tool.width / 2),
+            }
+        })
+    const before = await measure()
+    expect(Math.abs(before.offset)).toBeLessThan(1)
+
+    await page.evaluate(() => {
+        window.editorTest.settings.locale = 'fr'
+    })
+    await expect.poll(async () => (await measure()).width).not.toBe(before.width)
+    await expect.poll(async () => Math.abs((await measure()).offset)).toBeLessThan(1)
+    expect(await placedFlyout(page)).toBe(9)
+})

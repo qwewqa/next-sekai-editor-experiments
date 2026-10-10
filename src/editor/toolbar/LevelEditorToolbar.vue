@@ -146,11 +146,19 @@ const root = useTemplateRef<HTMLDivElement>('root')
 const room = ref(0)
 const short = ref(false)
 const height = ref(0)
-const observer = new ResizeObserver(([entry]) => {
-    if (!entry) return
-    room.value = entry.contentRect.width
-    height.value = entry.contentRect.height
-    short.value = entry.contentRect.height < shortPaneHeight
+const observer = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+        if (entry.target === root.value) {
+            room.value = entry.contentRect.width
+            height.value = entry.contentRect.height
+            short.value = entry.contentRect.height < shortPaneHeight
+        } else if (
+            entry.target === observedFlyout &&
+            Math.abs((entry.borderBoxSize[0]?.inlineSize ?? placedWidth) - placedWidth) > 0.5
+        )
+            // A flyout whose own width changes, as on a language switch, re-centres on its tool.
+            void follow()
+    }
 })
 watch(root, (element, previous) => {
     if (previous) observer.unobserve(previous)
@@ -273,6 +281,7 @@ const groups = ref<HTMLElement[]>([])
 // Found by id: switching groups mounts one flyout and unmounts another in either order.
 const openFlyout = () => document.getElementById(flyoutId) ?? undefined
 const placement = ref<{ left: number; bottom: number; maxHeight: number }>()
+let placedWidth = 0
 
 const place = () => {
     const group = groups.value[activeIndex.value]
@@ -281,6 +290,7 @@ const place = () => {
     const pane = root.value.getBoundingClientRect()
     const tool = group.getBoundingClientRect()
     const width = element.getBoundingClientRect().width
+    placedWidth = width
     const center = tool.left + tool.width / 2 - pane.left
     placement.value = {
         left: Math.max(
@@ -292,19 +302,40 @@ const place = () => {
     }
 }
 
-// A flyout opens with its checked value centred, without moving focus.
-const revealChecked = () => {
+// A flyout opens with its checked value centred, without moving focus; later, only a clipped one moves.
+const revealChecked = (ifClipped = false) => {
     const flyout = openFlyout()
     const row = flyout?.querySelector('[data-value-check]')?.closest('button')
     if (!flyout || !row) return
+    const shown =
+        row.offsetTop >= flyout.scrollTop &&
+        row.offsetTop + row.offsetHeight <= flyout.scrollTop + flyout.clientHeight
+    if (ifClipped && shown) return
     const top = row.offsetTop - (flyout.clientHeight - row.offsetHeight) / 2
     flyout.scrollTo({ top, behavior: 'instant' })
 }
 
+// Re-placed as its own width changes too.
+let observedFlyout: HTMLElement | undefined
+const observeFlyout = () => {
+    const flyout = openFlyout()
+    if (flyout === observedFlyout) return
+    if (observedFlyout) observer.unobserve(observedFlyout)
+    observedFlyout = flyout
+    if (flyout) observer.observe(flyout)
+}
+
+const follow = async () => {
+    place()
+    await nextTick()
+    revealChecked(true)
+}
+
 watch(activeIndex, async () => {
     placement.value = undefined
-    if (activeIndex.value === -1) return
     await nextTick()
+    observeFlyout()
+    if (activeIndex.value === -1) return
     place()
     await nextTick()
     revealChecked()
@@ -312,9 +343,7 @@ watch(activeIndex, async () => {
 // After the rows rewrap, so the flyout follows its tool.
 watch([room, short, height, isCoarsePointer], async () => {
     await nextTick()
-    place()
-    await nextTick()
-    revealChecked()
+    await follow()
 })
 
 // Escape closes an open flyout and returns focus to its tool.
