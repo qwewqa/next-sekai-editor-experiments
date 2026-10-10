@@ -3,6 +3,7 @@ import { times } from '.'
 import type { GroupId } from '../chart/groups'
 import type { StageId } from '../chart/stages'
 import { bpms } from '../history/bpms'
+import { onResetState } from '../history/resetHooks'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
@@ -266,6 +267,12 @@ export const clampViewToReach = () => {
     view.scrollingX = undefined
     view.lane = clamp(view.lane, min, max)
 }
+
+// A newly loaded chart opens within its own reach, with no sideways scroll left from the last one.
+onResetState(() => {
+    view.scrollingX = undefined
+    clampViewToReach()
+})
 
 export const scrollViewXBy = (dx: number, smooth = false) => {
     updateViewLastActive()
