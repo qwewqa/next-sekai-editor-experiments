@@ -151,17 +151,25 @@ test('manager rows and their buttons meet', async ({ page }) => {
     expect(await second.evaluate((row) => row.matches(':hover'))).toBe(true)
 })
 
-test('collapsed properties headers meet across their dividers', async ({ page }) => {
-    await page.evaluate(() => Object.assign(window.editorTest.settings, { showSidebar: true }))
-    const headers = page.locator('[id^="properties-section-"][id$="-header"]')
-    await expect(headers).toHaveCount(3)
-    for (let i = 0; i < 3; i++)
-        if ((await headers.nth(i).getAttribute('aria-expanded')) === 'true')
-            await headers.nth(i).click()
-    await page.mouse.move(5, 5)
-    await meet(headers.nth(0), headers.nth(1))
-    await meet(headers.nth(1), headers.nth(2))
-})
+// At fractional scales too.
+for (const scale of [1, 1.5, 1.75])
+    test.describe(`at ${scale}x`, () => {
+        test.use({ deviceScaleFactor: scale })
+
+        test('collapsed properties headers meet across their dividers', async ({ page }) => {
+            await page.evaluate(() =>
+                Object.assign(window.editorTest.settings, { showSidebar: true }),
+            )
+            const headers = page.locator('[id^="properties-section-"][id$="-header"]')
+            await expect(headers).toHaveCount(3)
+            for (let i = 0; i < 3; i++)
+                if ((await headers.nth(i).getAttribute('aria-expanded')) === 'true')
+                    await headers.nth(i).click()
+            await page.mouse.move(5, 5)
+            await meet(headers.nth(0), headers.nth(1))
+            await meet(headers.nth(1), headers.nth(2))
+        })
+    })
 
 const toolbarPairs = (page: Page) =>
     page.getByRole('dialog').evaluate((dialog) => {
