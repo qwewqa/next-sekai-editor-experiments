@@ -3,7 +3,7 @@ import { timeToBeat } from '../../state/integrals/bpms'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { drawComposedStages } from './stages'
-import { deviceSize, prepareSurface } from './surface'
+import { clearSurface, deviceSize, prepareSurface } from './surface'
 import type { EditorDrawContext } from './types'
 
 // Each retained store (the exact view and the moving window) holds at most 32 MiB
@@ -133,6 +133,7 @@ export const createStageSurface = () => {
         ctx.fillStyle = 'rgba(0, 0, 0, 0)'
         ctx.fillRect(0, 0, W, H)
         ctx.restore()
+        clearSurface(ctx, W, H)
         const e = -bounds.l * sx + left
         const f = -bounds.t * sy + top
         ctx.setTransform(sx, 0, 0, sy, e, f)
@@ -260,6 +261,8 @@ export const createStageSurface = () => {
                     drawComposedStages(context, beats, scope, laneDivision)
                     return false
                 }
+                // Read stores can keep old pixels through the 'copy' fill, as the overlay does.
+                clearSurface(ctx, w, h)
                 drawComposedStages({ ...context, ctx }, beats, scope, laneDivision)
                 surfaceContext = ctx
                 previous = key
