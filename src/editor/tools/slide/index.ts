@@ -21,6 +21,7 @@ import { shiftComputed } from '../../../utils/math'
 import { bisect } from '../../../utils/ordered'
 import {
     getComposedGridOffset,
+    getComposedLayout,
     getComposedMoveOffset,
     getComposedNoteOffset,
     getComposedOffset,
@@ -105,7 +106,7 @@ export const slide: Tool = {
             view.entities = {
                 hovered: [],
                 creating: [
-                    toNoteEntity(
+                    landing(
                         getSelectedSlideId() ?? createSlideId(),
                         constrainLaneObject({
                             beat,
@@ -258,7 +259,7 @@ export const slide: Tool = {
                 view.entities = {
                     hovered: [],
                     creating: [
-                        toNoteEntity(
+                        landing(
                             getSelectedSlideId() ?? createSlideId(),
                             constrainLaneObject(
                                 {
@@ -562,6 +563,24 @@ const add = (slideId: SlideId, object: NoteObject) => {
         () => i18n.value.tools.slide.added,
         (transaction) => addNote(transaction, slideId, object),
     )
+}
+
+// An attached note added inside a slide lands on its path; the ghost shows it there.
+const landing = (slideId: SlideId, object: NoteObject) => {
+    const ghost = toNoteEntity(slideId, object)
+    if (!object.isAttached || !store.value.slides.note.has(slideId)) return ghost
+    const transaction = createTransaction(state.value)
+    const result = transaction.commit(addNote(transaction, slideId, object))
+    const [landed] = result.selectedEntities
+    if (landed?.type !== 'note') return ghost
+    const position = getComposedLayout(result)?.notePosition(landed)
+    return toNoteEntity(slideId, {
+        ...object,
+        left: position
+            ? position.left - getComposedOffset(object.stageId, object.beat)
+            : landed.left,
+        size: position?.size ?? landed.size,
+    })
 }
 
 const edit = (entity: NoteEntity, object: NoteObject) => {

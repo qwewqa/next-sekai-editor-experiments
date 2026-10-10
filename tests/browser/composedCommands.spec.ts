@@ -146,7 +146,8 @@ test('make vertical uses authored coordinates and existing attachment materializ
     })
     expect(result.after).toEqual([
         { left: -1, size: 2, beat: 2, attached: false },
-        { left: -1, size: 3, beat: 2, attached: false },
+        // Gameplay's lane at beat 4: stage 1's X of 3 blends to 1.5 between the stages.
+        { left: -2.5, size: 3, beat: 2, attached: false },
         { left: 3, size: 4, beat: 2, attached: false },
     ])
     expect(result.restored).toEqual(result.before)

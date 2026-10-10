@@ -362,7 +362,7 @@ test.describe('kept writes', () => {
         expect(await notes(page, ['connectorType'])).toEqual([['active'], ['guide'], ['active']])
     })
 
-    test('detaching keeps the stored elevation and the panel writes exact sizes', async ({
+    test('detaching keeps the drawn elevation and the panel writes exact sizes', async ({
         page,
     }) => {
         await showSlides(page, [
@@ -373,9 +373,10 @@ test.describe('kept writes', () => {
             ],
         ])
         await panel(page, 'isAttached', false, [1])
+        // Gameplay drew the tick halfway up its slide.
         expect(await notes(page, ['left', 'elevation'])).toEqual([
             [0, 0],
-            [2, 0],
+            [2, 2],
             [4, 4],
         ])
         await page.evaluate(() => {

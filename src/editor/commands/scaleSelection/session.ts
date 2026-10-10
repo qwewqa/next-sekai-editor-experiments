@@ -288,9 +288,12 @@ export const beginScalingDrag = (entity: EditableEntity, value: number, edge?: '
     )
     const { min, max } = extrema(source, session.axis)
     const bounds = getScaleBounds(currentEntity, session.axis)
+    // Lane limits bound the slide's authored lanes, which stage translation doesn't move.
     const materialized =
         settings.maxLane > 0 && session.axis === 'width' && currentEntity.type === 'note'
-            ? getMaterializedNotePositions(source, [currentEntity]).get(currentEntity)
+            ? getMaterializedNotePositions(source, [currentEntity], undefined, {
+                  translation: false,
+              }).get(currentEntity)
             : undefined
     const entityValue =
         session.axis === 'width' && edge ? bounds[edge] : getScaleValue(currentEntity, session.axis)

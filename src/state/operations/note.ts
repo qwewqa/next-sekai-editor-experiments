@@ -9,7 +9,7 @@ export const editSelectedNote = (
     entity: NoteEntity,
     object: Partial<WithEaseEdits<NoteObject>>,
 ) => {
-    return replaceNote(transaction, entity, {
+    const replacement = replaceNote(transaction, entity, {
         groupId: object.groupId ?? entity.groupId,
         stageId: object.stageId ?? entity.stageId,
         beat: object.beat ?? entity.beat,
@@ -37,4 +37,12 @@ export const editSelectedNote = (
         connectorIsPassThrough: object.connectorIsPassThrough ?? entity.connectorIsPassThrough,
         connectorPresentation: object.connectorPresentation ?? entity.connectorPresentation,
     })
+    // An explicit detach keeps the tick where it is drawn, under the edit's own geometry.
+    if (object.isAttached === false && entity.isAttached && replacement[0])
+        transaction.store.setOrigin(replacement[0], entity, {
+            left: object.left !== undefined,
+            size: object.size !== undefined,
+            elevation: object.elevation !== undefined,
+        })
+    return replacement
 }

@@ -14,6 +14,7 @@ import { serializeEditorMetadata } from '../../../levelData/editorMetadata'
 import { serializeToLevelDataEntities } from '../../../levelData/entities/serialize'
 import type { Entity, EntityOfType, EntityType } from '../../../state/entities'
 import type { NoteEntity } from '../../../state/entities/slides/note'
+import { getDetachedNotePositions } from '../../../state/operations/notePositions'
 import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
 import { interpolate } from '../../../utils/interpolate'
@@ -37,6 +38,7 @@ export const copy: Command = {
             return
         }
 
+        const copied = getCopiedSlides(entities)
         const copiedStore = createStore(
             {
                 initialLife: initialLife.value,
@@ -50,7 +52,7 @@ export const copy: Command = {
                 stageTransformEvents: getEntities(entities, 'stageTransformEventJoint'),
                 groups: groups.value,
                 stages: stages.value,
-                slides: getSlides(entities),
+                slides: copied.slides,
             },
             // The selection may hold no BPM; attached notes keep their document places.
             state.value.bpms,
@@ -64,8 +66,9 @@ export const copy: Command = {
         )
 
         const anchor = getAnchor(entities, view.pointer.x, view.pointer.y)
+        const kept = anchor.note && copied.positions.get(anchor.note)
         setClipboardData({
-            lane: anchor.lane,
+            lane: kept ? kept.left + kept.size / 2 : anchor.lane,
             beat: anchor.beat,
             anchor: getClipboardAnchor(entities, copiedEntities, anchor.note),
             entities: copiedEntities,
@@ -110,10 +113,20 @@ const getAnchor = (entities: Entity[], x: number, y: number) => {
 }
 
 /** A cut keeps its free pointer anchor in both the authored and displayed layouts, in either pane. */
-export const getComposedClipboardOffset = (entities: Entity[], x: number, y: number) => {
-    if (view.layout !== 'composed' || !state.value.isDynamicStages) return 0
+export const getComposedClipboardOffset = (
+    entities: Entity[],
+    x: number,
+    y: number,
+    kept?: ReadonlyMap<NoteEntity, { left: number }>,
+) => {
     const { note } = getAnchor(entities, x, y)
-    return note ? createComposedLayout(state.value).notePosition(note).left - note.left : 0
+    if (!note) return 0
+    const drawn =
+        view.layout === 'composed' && state.value.isDynamicStages
+            ? createComposedLayout(state.value).notePosition(note).left
+            : note.left
+    // A kept tick is copied at its gameplay place, not where it is drawn.
+    return drawn - (kept?.get(note)?.left ?? note.left)
 }
 
 /** Keep the chosen note's identity even when raw lanes and beats overlap across stages. */
@@ -142,6 +155,24 @@ const getEntities = <T extends EntityType>(entities: Entity[], type: T) =>
         entities.filter((entity): entity is EntityOfType<T> => entity.type === type),
         (entity) => entity,
     )
+
+/** Copied slides, where a part's end that was an interior attached tick keeps its gameplay place. */
+export const getCopiedSlides = (entities: Entity[]) => {
+    const slides = getSlides(entities)
+    const positions = getDetachedNotePositions(
+        state.value,
+        slides.flatMap((notes) => [notes[0], notes.at(-1)]).filter((note) => note !== undefined),
+    )
+    return {
+        slides: slides.map((notes) =>
+            notes.map((note) => {
+                const position = (note === notes[0] || note === notes.at(-1)) && positions.get(note)
+                return position ? { ...note, ...position } : note
+            }),
+        ),
+        positions,
+    }
+}
 
 /** Each touched slide's selected notes, in the slide's own order. */
 export const getSlides = (entities: Entity[]) => {

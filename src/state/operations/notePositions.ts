@@ -1,7 +1,7 @@
 import type { State } from '..'
 import { attachEasedFrac, buildPreviewChart } from '../../preview/engine/chart'
 import { getStageProps } from '../../preview/engine/stage'
-import { alignComputed } from '../../utils/math'
+import { alignComputed, shiftComputed } from '../../utils/math'
 import { sameBeatAttachmentFraction } from '../entities/slides/attachment'
 import type { NoteEntity } from '../entities/slides/note'
 
@@ -9,6 +9,7 @@ export const getMaterializedNotePositions = (
     source: State,
     notes: NoteEntity[],
     compiledChart?: ReturnType<typeof buildPreviewChart>,
+    { translation = true } = {},
 ) => {
     const attached = notes.filter((note) => {
         const slide = source.store.slides.note.get(note.slideId)
@@ -27,7 +28,7 @@ export const getMaterializedNotePositions = (
             const stage = chart.stages[index]
             return stage
                 ? getStageProps(stage, compiled.targetTime)
-                : { pivotLane: 0, elevation: 0 }
+                : { pivotLane: 0, xLaneTranslate: 0, elevation: 0 }
         }
         const head = compiled.attachHead
         const tail = compiled.attachTail
@@ -42,16 +43,36 @@ export const getMaterializedNotePositions = (
             frac
         const headLane = head.lane + headStage.pivotLane
         const tailLane = tail.lane + tailStage.pivotLane
+        // Gameplay applies X translation through the blended stage transforms; 0 for a shared X.
+        const translate = translation
+            ? headStage.xLaneTranslate +
+              (tailStage.xLaneTranslate - headStage.xLaneTranslate) * frac -
+              stage.xLaneTranslate
+            : 0
         const headElevation = (head.elevation ?? 0) + headStage.elevation
         const tailElevation = (tail.elevation ?? 0) + tailStage.elevation
         positions.set(note, {
-            left: alignComputed(
-                headLane + (tailLane - headLane) * frac - stage.pivotLane - compiled.size,
+            left: shiftComputed(
+                alignComputed(
+                    headLane + (tailLane - headLane) * frac - stage.pivotLane - compiled.size,
+                ),
+                translate,
             ),
             size: alignComputed(compiled.size * 2),
             elevation:
                 headElevation + (tailElevation - headElevation) * elevationFrac - stage.elevation,
         })
+    }
+    return positions
+}
+
+/** Gameplay places that detached ticks keep; a same-beat tick's elevation is input, so it stays. */
+export const getDetachedNotePositions = (source: State, notes: NoteEntity[]) => {
+    const positions = getMaterializedNotePositions(source, notes)
+    for (const [note, position] of positions) {
+        const info = source.store.slides.info.get(note.slideId)?.find((info) => info.note === note)
+        if (info && info.attachHead.beat === info.attachTail.beat)
+            position.elevation = note.elevation
     }
     return positions
 }

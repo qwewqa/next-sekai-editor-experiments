@@ -75,8 +75,14 @@ export const duplicateOwned = (state: State, owners: OwnerCopies): State => {
         const owned = notes.filter((note) => copyOf(note[owners.key]) !== undefined)
         if (!owned.length) continue
         const slideId = createSlideId()
-        for (const note of owned)
-            addNote(transaction, slideId, { ...note, [owners.key]: copyOf(note[owners.key]) })
+        for (const note of owned) {
+            const [copy] = addNote(transaction, slideId, {
+                ...note,
+                [owners.key]: copyOf(note[owners.key]),
+            })
+            // A copied tick that ends a partial slide keeps the original's place.
+            if (copy) transaction.store.setOrigin(copy, note)
+        }
     }
 
     return transaction.commit([...state.selectedEntities])
