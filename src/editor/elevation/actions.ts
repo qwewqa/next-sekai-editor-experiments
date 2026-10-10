@@ -70,6 +70,56 @@ export const previewElevationNote = (
     )
 }
 
+/** The add ghost's row; an attached note added inside a slide shows on its path, where it lands. */
+export const previewElevationNoteRow = (
+    lane: number,
+    elevation: number,
+    beat: number,
+    asSlide: boolean,
+    size?: number,
+): ElevationNote => {
+    const note = previewElevationNote(lane, elevation, beat, asSlide, size)
+    const { laneOffset } = getElevationStageProps(note.stageId, beat)
+    const shown = (point: NoteEntity) =>
+        point.elevation + getElevationStageProps(point.stageId, beat).elevation
+    const row = {
+        note,
+        lane: note.left + note.size / 2 + laneOffset,
+        size: note.size,
+        elevation: shown(note),
+        attached: false,
+        order: 0,
+    }
+    if (!note.isAttached || !state.value.store.slides.note.has(note.slideId)) return row
+    // As the chart's Slide ghost: placed by a throwaway add.
+    const transaction = createTransaction(state.value)
+    const result = transaction.commit(addNote(transaction, note.slideId, note))
+    const [landed] = result.selectedEntities
+    if (landed?.type !== 'note') return row
+    const slide = result.store.slides.info.get(note.slideId) ?? []
+    const index = slide.findIndex((info) => info.note === landed)
+    const info = index > 0 && index < slide.length - 1 ? slide[index] : undefined
+    const position =
+        getComposedLayout(elevationState.value)?.notePosition(landed, landed.beat, {
+            slideInfos: slide,
+        }) ?? landed
+    return {
+        // Its own stage's offset puts it there on the chart too.
+        note: toNoteEntity(note.slideId, {
+            ...note,
+            left: position.left - laneOffset,
+            size: position.size,
+        }),
+        lane: position.left + position.size / 2,
+        size: position.size,
+        elevation: info
+            ? attachedElevation(landed, info.attachHead, info.attachTail, 0, shown)
+            : shown(landed),
+        attached: !!info,
+        order: 0,
+    }
+}
+
 export const createElevationNote = (
     lane: number,
     elevation: number,

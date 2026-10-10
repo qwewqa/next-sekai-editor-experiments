@@ -91,7 +91,7 @@ import {
     elevationAddOrigin,
     elevationNoteMinimum,
     pasteElevationNotes,
-    previewElevationNote,
+    previewElevationNoteRow,
     previewElevationPasteRows,
 } from './actions'
 import { elevationLayout, elevationNotes, elevationState, getElevationStageProps } from './scene'
@@ -423,20 +423,6 @@ const positionAtPoint = (x: number, y: number) => ({
     beat: elevationBeat.value,
     elevation: snapElevation(yToElevation(y), settings.elevationSnap),
 })
-const ghostRows = (entities: NoteEntity[]) =>
-    entities
-        .filter((note) => sameBeat(note.beat, elevationBeat.value))
-        .map((note, order) => {
-            const stage = getElevationStageProps(note.stageId, note.beat)
-            return {
-                note,
-                lane: note.left + note.size / 2 + stage.laneOffset,
-                size: note.size,
-                elevation: note.elevation + stage.elevation,
-                attached: false,
-                order,
-            }
-        })
 const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers) => {
     const source = state.value
     const position = positionAtPoint(x, y)
@@ -524,14 +510,14 @@ const controls: Pick<
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
-            creating.value = ghostRows([
-                previewElevationNote(
+            creating.value = [
+                previewElevationNoteRow(
                     position.lane,
                     position.elevation,
                     position.beat,
                     toolName.value === 'slide',
                 ),
-            ])
+            ]
         else if (toolName.value === 'paste')
             creating.value = previewElevationPasteRows(
                 position.lane,
@@ -708,15 +694,15 @@ const controls: Pick<
                 undefined,
                 adding.origin,
             )
-            creating.value = ghostRows([
-                previewElevationNote(
+            creating.value = [
+                previewElevationNoteRow(
                     left,
                     snapElevation(yToElevation(y), settings.elevationSnap),
                     elevationBeat.value,
                     adding.slide,
                     size,
                 ),
-            ])
+            ]
             view.entities = { hovered: [], creating: creating.value.map((row) => row.note) }
             return
         }
