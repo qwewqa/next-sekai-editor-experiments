@@ -63,6 +63,23 @@ const values = (page: Page, type: string, key: string) =>
         [type, key],
     )
 const lanes = (page: Page) => values(page, 'note', 'left')
+/** A key's values in the selection as previewed, by beat; undefined without a live preview. */
+const previewed = (page: Page, key: string) =>
+    page.evaluate(async (key) => {
+        // The app's own instance of the module, whatever its HMR version.
+        const resource = performance
+            .getEntriesByType('resource')
+            .find((entry) => new URL(entry.name).pathname === '/src/preview/edit.ts')
+        const edit = (await import(
+            resource?.name ?? '/src/preview/edit.ts'
+        )) as typeof import('../../src/preview/edit')
+        if (!edit.previewEdit.value) return
+        return edit
+            .getPreviewState(window.editorTest.history.state.value)
+            .selectedEntities.slice()
+            .sort((a, b) => a.beat - b.beat)
+            .map((entity) => (entity as unknown as Record<string, unknown>)[key])
+    }, key)
 const canUndo = (page: Page) => page.evaluate(() => window.editorTest.history.canUndo.value)
 
 test.beforeEach(async ({ page }) => {
@@ -235,6 +252,7 @@ test.describe('a mixed number field', () => {
         await expect(lane).toHaveAttribute('placeholder', '-2 … 4')
         await expect(lane).toHaveValue('')
         // Previewed only.
+        await expect.poll(() => previewed(page, 'left')).toEqual([-2, 2, 4])
         expect(await lanes(page)).toEqual([-4, 0, 2])
         expect(await canUndo(page)).toBe(false)
 
@@ -264,8 +282,10 @@ test.describe('a mixed number field', () => {
         const lane = field(page, 'Lane')
         await lane.focus()
         await page.keyboard.press('ArrowUp')
+        await expect.poll(() => previewed(page, 'left')).toEqual([-3, 1, 3])
         await page.keyboard.press('Escape')
         await expect(lane).toHaveAttribute('placeholder', '-4 … 2')
+        expect(await previewed(page, 'left')).toBeUndefined()
         await expect(lane).toBeFocused()
         await lane.blur()
         expect(await lanes(page)).toEqual([-4, 0, 2])
@@ -330,9 +350,11 @@ test('Division Size steps preview until left, like other number fields', async (
     await expect(division).toHaveValue('1')
     await page.keyboard.press('ArrowUp')
     await expect(division).toHaveValue('2')
+    await expect.poll(() => previewed(page, 'divisionSize')).toEqual([2])
     expect(await canUndo(page)).toBe(false)
     await page.keyboard.press('Escape')
     await expect(division).toHaveValue('1')
+    expect(await previewed(page, 'divisionSize')).toBeUndefined()
     expect(await sizes()).toEqual(before)
 
     await page.keyboard.press('ArrowUp')
