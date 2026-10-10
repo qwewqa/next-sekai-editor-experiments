@@ -1258,3 +1258,29 @@ test('brushing that empties the selection scrolls it away when that is nearer', 
         scrolledAway: true,
     })
 })
+
+test('a narrow tab strip shortens Selection first, keeping Tool and View whole', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 480 })
+    const cut = () =>
+        panel(page)
+            .locator('.properties-tab-label > span')
+            .evaluateAll((labels) =>
+                labels.map((label) => label.scrollWidth > label.clientWidth + 0.5),
+            )
+    await open(page)
+    await expect(panel(page).getByRole('tablist')).toBeVisible()
+    for (const [locale, width, expected] of [
+        ['en', 220, [true, false, false]],
+        ['tr', 220, [true, false, false]],
+        ['en', 260, [false, false, false]],
+        ['tr', 260, [false, false, false]],
+    ] as const) {
+        await page.evaluate((values) => Object.assign(window.editorTest.settings, values), {
+            locale,
+            rightDockWidth: width,
+        })
+        await expect.poll(cut, `${locale} at ${width}px`).toEqual(expected)
+    }
+})

@@ -309,8 +309,13 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         :key="section"
                         type="button"
                         role="tab"
-                        class="properties-tab group flex min-w-0 flex-auto items-center justify-center font-bold text-fg focus-visible:outline-none"
-                        :class="{ 'properties-tab-active': section === active }"
+                        class="properties-tab group flex flex-auto items-center justify-center font-bold text-fg focus-visible:outline-none"
+                        :class="[
+                            section === 'selection'
+                                ? 'properties-tab-selection min-w-12'
+                                : 'min-w-0',
+                            { 'properties-tab-active': section === active },
+                        ]"
                         :title="title(section)"
                         :aria-selected="section === active"
                         :aria-controls="section === active ? bodyId(section) : undefined"
@@ -421,6 +426,12 @@ const onTabKeydown = (event: KeyboardEvent) => {
 
 .properties-tabs {
     height: 3rem;
+}
+
+/* Selection gives way first; Tool and View keep whole labels until it is down to 3rem.
+   The factor keeps their share of its shrinking under a layout unit. */
+.properties-tab-selection {
+    flex-shrink: 10000;
 }
 
 /* The bar sits on the band's lower edge: 6px below the 36px pill (48px band),
