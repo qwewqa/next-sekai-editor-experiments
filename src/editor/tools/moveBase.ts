@@ -1,9 +1,12 @@
 import type { NoteObject } from '../../chart/note'
 import { state } from '../../history'
+import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
 import type { State } from '../../state'
+import type { Entity } from '../../state/entities'
 import type { SlideId } from '../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../state/entities/slides/note'
 import { getDetachedNotePositions } from '../../state/operations/notePositions'
+import { createTransaction, type Transaction } from '../../state/transaction'
 import {
     getComposedGridOffset,
     getComposedMoveOffset,
@@ -17,12 +20,12 @@ type Place = { left: number; size: number; elevation: number }
 
 const places = new WeakMap<State, Map<NoteEntity, Place | undefined>>()
 
-// Gameplay places at the move's start, built once per state.
-const placesOf = (source: State, notes: NoteEntity[]) => {
+// Gameplay places at the move's start; a miss places every moving tick, so a drag builds once.
+const placesOf = (source: State, notes: NoteEntity[], moving: Iterable<NoteEntity>) => {
     let known = places.get(source)
     if (!known) places.set(source, (known = new Map<NoteEntity, Place | undefined>()))
-    const missing = notes.filter((note) => !known.has(note))
-    if (missing.length) {
+    if (notes.some((note) => !known.has(note))) {
+        const missing = [...moving].filter((note) => note.isAttached && !known.has(note))
         const positions = getDetachedNotePositions(source, missing)
         for (const note of missing) known.set(note, positions.get(note))
     }
@@ -52,7 +55,7 @@ export const getMovedEndBases = (source: State, beats: ReadonlyMap<NoteEntity, n
         }
     }
     if (!ends.length) return bases
-    const known = placesOf(source, ends)
+    const known = placesOf(source, ends, beats.keys())
     for (const note of ends) {
         const place = known.get(note)
         if (place)
@@ -84,4 +87,36 @@ export const toDraggedNoteObject = (
         size: from.size,
         elevation: from.elevation,
     })
+}
+
+/** A Note or Slide tool drag's preview; an attached note previews as edited, on its connector. */
+export const createEditPreview = (
+    edit: (transaction: Transaction, entity: NoteEntity, object: NoteObject) => Entity[],
+) => {
+    // The edited chart, built once per change of the preview's key.
+    let built: { source: State; key: unknown[]; state: State } | undefined
+    return {
+        show: (entity: NoteEntity, object: NoteObject) => {
+            const source = state.value
+            const key = [entity, object.beat, object.left, object.size]
+            const build = () => {
+                const transaction = createTransaction(source)
+                return transaction.commit(edit(transaction, entity, object))
+            }
+            if (
+                entity.isAttached &&
+                (built?.source !== source ||
+                    key.some((value, index) => value !== built?.key[index]))
+            )
+                built = { source, key, state: build() }
+            const edited = entity.isAttached ? built?.state : undefined
+            setPreviewEdit(source, () => edited ?? build(), key)
+            const note = edited?.selectedEntities[0]
+            return note?.type === 'note' ? note : undefined
+        },
+        clear: () => {
+            built = undefined
+            clearPreviewEdit()
+        },
+    }
 }

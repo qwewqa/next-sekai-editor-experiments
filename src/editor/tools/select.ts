@@ -115,6 +115,8 @@ type MoveActive = {
     pressBeat: number
     // The pointer and lane snapping the preview was last built for.
     last?: string
+    // The ghosts as built from the move, and as shown with attached notes where they drop.
+    ghosts?: { ghosts: Entity[]; shown: Entity[] }
     response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
     bases?: { source: State; beatOffset: number; bases: Bases }
 }
@@ -312,16 +314,10 @@ export const select: Tool = {
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
                 const source = state.value
                 const move = active
-                // Attached notes take their lane from the connector, so their
-                // previews come from the moved chart, showing where they drop.
-                const moved = active.entities.some(
-                    (entity) => entity.type === 'note' && entity.isAttached,
-                )
-                    ? moveEntities(source, move, lane, beatOffset, rawMove)
-                    : undefined
                 const bases = getMoveBases(source, active, beatOffset)
 
-                const creating: Entity[] = []
+                const ghosts: Entity[] = []
+                const ghosted: Entity[] = []
                 let focusBeat = active.focus.beat
                 for (const entity of active.entities) {
                     if (isPinned(entity, beatOffset)) continue
@@ -339,21 +335,19 @@ export const select: Tool = {
                     )
                     if (!result) continue
 
-                    creating.push(
-                        (entity.type === 'note' && entity.isAttached
-                            ? moved?.note(entity)
-                            : undefined) ?? result,
-                    )
+                    ghosts.push(result)
+                    ghosted.push(entity)
                     if (entity === active.focus) focusBeat = result.beat
                 }
 
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
-                const previous = view.entities.creating
+                const previous = active.ghosts
                 if (
-                    creating.length === previous.length &&
-                    creating.every((entity, index) => {
-                        const other = previous[index]
+                    previous?.shown === view.entities.creating &&
+                    ghosts.length === previous.ghosts.length &&
+                    ghosts.every((entity, index) => {
+                        const other = previous.ghosts[index]
                         return (
                             entity.type === other?.type &&
                             entity.beat === other.beat &&
@@ -364,6 +358,23 @@ export const select: Tool = {
                 ) {
                     break
                 }
+
+                // Attached notes take their lane from the connector, so their
+                // previews come from the moved chart, showing where they drop.
+                const moved = active.entities.some(
+                    (entity) => entity.type === 'note' && entity.isAttached,
+                )
+                    ? moveEntities(source, move, lane, beatOffset, rawMove)
+                    : undefined
+                const creating = ghosts.map((ghost, index) => {
+                    const entity = ghosted[index]
+                    return (
+                        (entity?.type === 'note' && entity.isAttached
+                            ? moved?.note(entity)
+                            : undefined) ?? ghost
+                    )
+                })
+                active.ghosts = { ghosts, shown: creating }
 
                 view.entities = {
                     hovered: [],
