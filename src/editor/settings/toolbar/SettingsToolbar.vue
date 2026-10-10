@@ -37,7 +37,7 @@ const onAddGroup = async () => {
                 <LevelEditorToolbarTool
                     v-for="(name, j) in names"
                     :key="j"
-                    class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[34px] [@media(pointer:coarse)]:before:w-12"
+                    class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem] [@media(pointer:coarse)]:before:w-12"
                     :name
                     @click="onRemoveFromGroup(i, j)"
                 />

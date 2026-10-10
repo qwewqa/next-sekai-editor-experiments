@@ -60,6 +60,67 @@ const sweep = async (a: Locator, b: Locator) => {
 const meet = async (a: Locator, b: Locator) =>
     expect(await sweep(a, b)).toEqual(['a b', 'a b', 'a b'])
 
+/**
+ * Whole-pixel lines from `a` to `b`: across their shared extent, and up to `beyond`
+ * px past it at each side, as at the corners of a gap. Each line gives what it
+ * hits ('a b' when they meet), the first coordinate on `b`, and the middle of
+ * the gap between their faces.
+ */
+const switches = async (a: Locator, b: Locator, beyond = 0) => {
+    const args = { a: await a.elementHandle(), b: await b.elementHandle(), beyond }
+    return a.page().evaluate(({ a, b, beyond }) => {
+        const ra = a!.getBoundingClientRect()
+        const rb = b!.getBoundingClientRect()
+        const across = rb.left >= ra.right - 0.5
+        const [lo, hi] = across
+            ? [Math.max(ra.top, rb.top), Math.min(ra.bottom, rb.bottom)]
+            : [Math.max(ra.left, rb.left), Math.min(ra.right, rb.right)]
+        const [from, to] = across
+            ? [ra.left + ra.width / 2, rb.left + rb.width / 2]
+            : [ra.top + ra.height / 2, rb.top + rb.height / 2]
+        const middle = across ? (ra.right + rb.left) / 2 : (ra.bottom + rb.top) / 2
+        const lines = [lo + 1, (lo + hi) / 2, hi - 1]
+        // The farthest whole pixels whose 1px probe box stays within the reach.
+        if (beyond) lines.push(Math.ceil(lo - beyond), Math.floor(hi + beyond - 1))
+        return lines.map((along) => {
+            const seen: string[] = []
+            let at: number | undefined
+            for (let t = Math.ceil(from); t <= to; t++) {
+                const element = across
+                    ? document.elementFromPoint(t, Math.round(along))
+                    : document.elementFromPoint(Math.round(along), t)
+                const owner = a!.contains(element)
+                    ? 'a'
+                    : b!.contains(element)
+                      ? 'b'
+                      : `${element?.tagName}.${element?.className}`
+                if (owner === 'b') at ??= t
+                if (seen.at(-1) !== owner) seen.push(owner)
+            }
+            return { hits: seen.join(' '), at: at!, middle }
+        })
+    }, args)
+}
+
+/**
+ * Neighbours meet halfway across the gap between their faces, or at the edge
+ * they share. Chromium hit tests the 1px box at a point, so `b` takes over
+ * within 1px before the middle.
+ */
+const meetHalfway = async (a: Locator, b: Locator, beyond = 0) => {
+    for (const { hits, at, middle } of await switches(a, b, beyond)) {
+        expect(hits).toBe('a b')
+        expect(at).toBeGreaterThan(middle - 1)
+        expect(at).toBeLessThanOrEqual(middle + 0.01)
+    }
+}
+
+/** Sets the root font size, as a browser's default font size setting does. */
+const setRootFontSize = (page: Page, size: number) =>
+    page.evaluate((size) => {
+        document.documentElement.style.fontSize = `${size}px`
+    }, size)
+
 test('rail tabs meet', async ({ page }) => {
     const tabs = page.locator('[data-workspace-dock="left"] [data-panel-tab]')
     await expect(tabs.nth(1)).toBeVisible()
@@ -109,15 +170,24 @@ const toolbarPairs = (page: Page) =>
         const index = (element: Element) =>
             [...dialog.querySelectorAll('button')].indexOf(element as HTMLButtonElement)
         const down = [...columns[0]!.children].slice(0, 2).map(index)
+        // The last tool, whose reach below differs, and the tool above it.
+        const end = [...columns[0]!.children].slice(-2).map(index)
         const tops = (column: Element) =>
             [...column.children].map((child) => child.getBoundingClientRect().top)
         // The trailing add button, wrapped under a column's last tool.
         const grid = [...dialog.querySelectorAll('.flex-wrap button')]
         const last = grid.at(-1)!.getBoundingClientRect()
+        const gap = parseFloat(
+            getComputedStyle(dialog.querySelector('.flex-wrap:has(> .flex-col)')!).rowGap,
+        )
         const over = grid.find((button) => {
             const box = button.getBoundingClientRect()
             const centre = box.left + box.width / 2
-            return last.top - box.bottom === 4 && centre > last.left && centre < last.right
+            return (
+                Math.abs(last.top - box.bottom - gap) < 0.01 &&
+                centre > last.left &&
+                centre < last.right
+            )
         })
         const wrapped = over && [index(over), index(grid.at(-1)!)]
         for (let i = 0; i + 1 < columns.length; i++) {
@@ -126,7 +196,7 @@ const toolbarPairs = (page: Page) =>
             if (shared === undefined) continue
             const at = (column: Element) =>
                 [...column.children].find((child) => child.getBoundingClientRect().top === shared)!
-            return { down, across: [index(at(left)), index(at(right))], wrapped }
+            return { down, end, across: [index(at(left)), index(at(right))], wrapped }
         }
         throw new Error('no columns side by side')
     })
@@ -154,6 +224,72 @@ const settingsToolbarMeets = async (page: Page, wraps = true) => {
 
 test('the settings toolbar editor’s buttons meet', async ({ page }) => {
     await settingsToolbarMeets(page)
+})
+
+test.describe('at other root font sizes', () => {
+    for (const size of [14, 18, 20])
+        test(`the settings toolbar editor’s buttons meet halfway at ${size}px`, async ({
+            page,
+        }) => {
+            await setRootFontSize(page, size)
+            await page.evaluate(async () => {
+                const { commands } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/commands')
+                >('/src/editor/commands/index.ts')
+                await commands.settings.execute()
+            })
+            const dialog = page.getByRole('dialog')
+            await expect(dialog).toBeVisible()
+            await dialog.getByText('Toolbar', { exact: true }).scrollIntoViewIfNeeded()
+            const { end, across, wrapped } = await toolbarPairs(page)
+            const button = (index: number) => dialog.locator('button').nth(index)
+            const reach = size / 8
+            // A column's last tool and the one above it, also beside them in the
+            // gaps between columns; tools across columns; wrapped lines.
+            await button(end[1]!).scrollIntoViewIfNeeded()
+            await meetHalfway(button(end[0]!), button(end[1]!), reach)
+            await meetHalfway(button(across[0]!), button(across[1]!))
+            expect(wrapped).toBeDefined()
+            await button(wrapped![1]!).scrollIntoViewIfNeeded()
+            await meetHalfway(button(wrapped![0]!), button(wrapped![1]!), reach)
+        })
+
+    for (const size of [18, 20])
+        test(`rail tabs and preview steppers reach each other and the track’s edges at ${size}px`, async ({
+            page,
+        }) => {
+            await setRootFontSize(page, size)
+            await expect(page.locator('.transport-step')).toHaveCount(6)
+            const edges = await page.evaluate(() => {
+                // Each face's box grown by its pseudo-element's insets.
+                const reach = (element: Element) => {
+                    const box = element.getBoundingClientRect()
+                    const style = getComputedStyle(element, '::before')
+                    return {
+                        top: box.top + parseFloat(style.top),
+                        bottom: box.bottom - parseFloat(style.bottom),
+                        left: box.left + parseFloat(style.left),
+                        right: box.right - parseFloat(style.right),
+                    }
+                }
+                const tabs = [
+                    ...document.querySelectorAll('[data-workspace-dock="left"] [data-panel-tab]'),
+                ].map(reach)
+                const steps = [...document.querySelectorAll('.transport-step')].map(reach)
+                const track = document.querySelector('.transport-track')!.getBoundingClientRect()
+                return {
+                    tabs: tabs.slice(1).map((tab, i) => tab.top - tabs[i]!.bottom),
+                    steps: steps.slice(1).map((step, i) => step.left - steps[i]!.right),
+                    track: steps.flatMap((step) => [
+                        step.top - track.top,
+                        track.bottom - step.bottom,
+                    ]),
+                }
+            })
+            expect(edges.tabs.length).toBeGreaterThan(0)
+            for (const gap of [...edges.tabs, ...edges.steps, ...edges.track])
+                expect(Math.abs(gap)).toBeLessThan(0.01)
+        })
 })
 
 test.describe('on a phone', () => {

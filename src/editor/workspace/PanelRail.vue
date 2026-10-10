@@ -337,8 +337,8 @@ const chevronDirection = computed(() => {
                 class="panel-tab relative flex shrink-0 items-center justify-center whitespace-nowrap rounded transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 :class="[
                     vertical
-                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-px before:inset-x-0`
-                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-px before:inset-y-0`,
+                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0`
+                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0`,
                     state(id) === 'visible'
                         ? 'bg-white/10 text-white hover:bg-white/20'
                         : menu?.id === id

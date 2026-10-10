@@ -320,7 +320,7 @@ const stripStyle = computed(() => ({
 .transport-track .transport-button::before {
     content: '';
     position: absolute;
-    inset: -2px -1px;
+    inset: -0.125rem -0.0625rem;
 }
 
 /* Touch: Play, the frequent control, is 44 px in a 52 px strip; the steppers,
