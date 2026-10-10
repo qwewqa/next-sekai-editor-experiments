@@ -16,7 +16,7 @@ const AHEAD = 1
 const AHEAD_FRAMES = 4
 const BEHIND = 0.25
 // A window too shallow for this many frames of motion would be redrawn about every frame.
-const MIN_FRAMES = 2
+const MIN_FRAMES = 4
 // Frames closer together than this are one motion; spaced steps each draw exactly.
 export const SUSTAINED_MS = 100
 
