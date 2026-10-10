@@ -18,6 +18,29 @@ const toolbar = (page: Page) => page.locator('[data-editor-toolbar]')
 // Each group's shown tool, outside any open flyout.
 const shown = (page: Page) => toolbar(page).locator(':scope > div > div > button')
 
+/**
+ * The group whose flyout is open: its index once shown and rising from its own
+ * tool, 'unplaced' while mounted but not, or -1.
+ */
+const placedFlyout = (page: Page) =>
+    toolbar(page)
+        .locator(':scope > div > div')
+        .evaluateAll((groups) => {
+            const index = groups.findIndex((group) => group.querySelector(':scope > div'))
+            const group = groups[index]
+            if (!group) return -1
+            const flyout = group.querySelector(':scope > div')!
+            const list = flyout.getBoundingClientRect()
+            const tool = group.querySelector(':scope > button')!.getBoundingClientRect()
+            const placed =
+                getComputedStyle(flyout).visibility === 'visible' &&
+                list.height > 0 &&
+                Math.abs(list.bottom - tool.top) < 1 &&
+                list.left < tool.right &&
+                list.right > tool.left
+            return placed ? index : 'unplaced'
+        })
+
 const pressedTitles = (page: Page) =>
     shown(page).evaluateAll((buttons) =>
         buttons
@@ -1076,13 +1099,7 @@ test('round toolbar faces take input over their whole square', async ({ page }) 
 test('moving from one tool onto the next opens the next at once, even resting on their edge', async ({
     page,
 }) => {
-    // The group whose flyout is open, or -1.
-    const open = () =>
-        toolbar(page)
-            .locator(':scope > div > div')
-            .evaluateAll((groups) =>
-                groups.findIndex((group) => group.querySelector(':scope > div')),
-            )
+    const open = () => placedFlyout(page)
     const boxes = () =>
         shown(page).evaluateAll((buttons) =>
             buttons.map((button) => button.getBoundingClientRect().toJSON() as DOMRect),
@@ -1176,11 +1193,14 @@ test('a flyout opened from the keyboard stays open under a resting pointer', asy
     await group.focus()
     await page.keyboard.press('Enter')
     await expect(group).toHaveAttribute('aria-expanded', 'true')
+    await expect.poll(() => placedFlyout(page)).toBe(0)
     await page.waitForTimeout(300)
     await expect(group).toHaveAttribute('aria-expanded', 'true')
+    expect(await placedFlyout(page)).toBe(0)
     // Moving it there closes the flyout, as for one opened by hovering.
     await page.mouse.move(810, 300)
     await expect(group).toHaveAttribute('aria-expanded', 'false')
+    await expect.poll(() => placedFlyout(page)).toBe(-1)
 })
 
 test.describe('on a phone', () => {
@@ -1644,6 +1664,7 @@ test('a move in place, as WebKit sends after a scroll, leaves a keyboard-opened 
         await group.focus()
         await page.keyboard.press('Enter')
         await expect(group).toHaveAttribute('aria-expanded', 'true')
+        await expect.poll(() => placedFlyout(page)).toBe(0)
         // The browser's own move at the pointer's unchanged position.
         await page.evaluate(
             ([x, y]) => {
@@ -1655,7 +1676,9 @@ test('a move in place, as WebKit sends after a scroll, leaves a keyboard-opened 
         )
         await page.waitForTimeout(100)
         await expect(group).toHaveAttribute('aria-expanded', 'true')
+        expect(await placedFlyout(page)).toBe(0)
         await page.keyboard.press('Escape')
+        await expect.poll(() => placedFlyout(page)).toBe(-1)
     }
 })
 
