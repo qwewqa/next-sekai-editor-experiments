@@ -279,14 +279,31 @@ const wheel = (event: WheelEvent) => {
     event.preventDefault()
 }
 
-// Scrolling under a still mouse, as playback, the wheel or a pan does, moves what it hovers.
-watch([viewBox, () => view.x, () => view.y], () => {
-    if (!isHovering || view.isHoverHidden || editorNavigation.value) return
+const hoverAgain = () => {
+    if (!isHovering || view.isHoverHidden) return
     if (mouseGesture.pointerCount || isDragging.value) return
     const { x, y, modifiers } = view.pointer
     setViewHover(y)
     void tool.value.hover?.(x, y, modifiers)
+}
+
+// Scrolling under a still mouse, as playback, the wheel or a pan does, moves what it hovers.
+watch([viewBox, () => view.x, () => view.y], () => {
+    if (!editorNavigation.value) hoverAgain()
 })
+
+// A snapping or layout change under a still mouse moves where a click lands, in either pane.
+watch(
+    [
+        () => view.division,
+        () => view.snapping,
+        () => view.laneDivision,
+        () => view.laneSnapping,
+        () => settings.elevationSnap,
+        () => view.layout,
+    ],
+    hoverAgain,
+)
 
 export const mouseControlListeners = {
     mousedown,
