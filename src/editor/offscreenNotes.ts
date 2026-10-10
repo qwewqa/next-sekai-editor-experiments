@@ -71,6 +71,27 @@ export const groupOffscreenNotes = <T>(
     return [...groups.values()]
 }
 
+/** Whether two groupings show the same badges with the same targets. */
+export const isSameOffscreenGroups = <T>(
+    a: readonly OffscreenNoteGroup<T>[],
+    b: readonly OffscreenNoteGroup<T>[],
+) =>
+    a.length === b.length &&
+    a.every((group, index) => {
+        const other = b[index]
+        return (
+            group.side === other?.side &&
+            group.slot === other.slot &&
+            group.y === other.y &&
+            group.spacing === other.spacing &&
+            group.count === other.count &&
+            group.highlighted === other.highlighted &&
+            group.opacity === other.opacity &&
+            group.targets.length === other.targets.length &&
+            group.targets.every((target, i) => target === other.targets[i])
+        )
+    })
+
 // Badge width estimate (inset, chevron, digits) with slack; at least a touch target.
 export const offscreenBadgeHitWidth = (count: number) => Math.max(44, 40 + 7 * String(count).length)
 

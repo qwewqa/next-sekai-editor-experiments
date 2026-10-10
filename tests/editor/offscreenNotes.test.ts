@@ -4,6 +4,7 @@ import {
     combineSelection,
     groupOffscreenNotes,
     hitOffscreenGroup,
+    isSameOffscreenGroups,
     offscreenBadgeHitWidth,
     type OffscreenNotePosition,
 } from '../../src/editor/offscreenNotes'
@@ -139,4 +140,71 @@ test('an inset keeps badges clear of the edges and counts the notes there', () =
         ],
     )
     assert.ok(groups.every(({ y, spacing }) => y - spacing / 2 >= 24 && y + spacing / 2 <= 376))
+})
+
+test('groupings compare equal only with the same badges and targets', () => {
+    const target = (y: number, value?: string) => ({ ...note(-10, -1, y), target: value })
+    const group = (notes: OffscreenNotePosition<string>[]) =>
+        groupOffscreenNotes(notes, 300, 0, 400)
+    const base = group([target(100, 'a'), target(110, 'b'), note(301, 310, 300)])
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            group([target(105, 'b'), target(100, 'a'), note(320, 330, 310)]),
+        ),
+    )
+    assert.ok(
+        isSameOffscreenGroups(
+            base,
+            group([target(105, 'a'), target(108, 'b'), note(320, 330, 310)]),
+        ),
+    )
+    assert.ok(
+        !isSameOffscreenGroups(base, group([target(100, 'a'), target(110), note(301, 310, 300)])),
+    )
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            group([target(100, 'a'), target(110, 'c'), note(301, 310, 300)]),
+        ),
+    )
+    assert.ok(!isSameOffscreenGroups(base, group([target(100, 'a'), note(301, 310, 300)])))
+    assert.ok(!isSameOffscreenGroups(base, group([target(100, 'a'), target(110, 'b')])))
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            group([target(100, 'a'), target(200, 'b'), note(301, 310, 300)]),
+        ),
+    )
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            group([
+                { ...target(100, 'a'), highlighted: true },
+                target(110, 'b'),
+                note(301, 310, 300),
+            ]),
+        ),
+    )
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            group([
+                { ...target(100, 'a'), opacity: 0.5 },
+                { ...target(110, 'b'), opacity: 0.5 },
+                note(301, 310, 300),
+            ]),
+        ),
+    )
+    assert.ok(
+        !isSameOffscreenGroups(
+            base,
+            groupOffscreenNotes(
+                [target(100, 'a'), target(110, 'b'), note(301, 310, 300)],
+                300,
+                0,
+                500,
+            ),
+        ),
+    )
 })

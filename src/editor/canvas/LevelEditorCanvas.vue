@@ -5,6 +5,7 @@ import { isAppActive } from '../../activity'
 import { defaultGroupId } from '../../history/groups'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
+import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
@@ -18,7 +19,12 @@ import { isVisible } from '../tools/utils'
 import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
 import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndicators'
-import { groupOffscreenNotes, RANGE_LABEL_HEIGHT } from '../offscreenNotes'
+import {
+    groupOffscreenNotes,
+    isSameOffscreenGroups,
+    RANGE_LABEL_HEIGHT,
+    type OffscreenNoteGroup,
+} from '../offscreenNotes'
 import { edgeLabelBoxes } from '../edgeLabels'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
@@ -82,30 +88,56 @@ const orderedEntities = computed(() =>
 )
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
 const hoveredSet = computed(() => new Set(hoveredEntities.value))
-const offscreenGroups = computed(() => {
+// Note spans in lanes and seconds, which scrolling leaves unchanged.
+const offscreenCandidates = computed(() => {
+    const bpms = sceneState.value.bpms
+    const layout = composed.value
+    return orderedEntities.value.flatMap(({ entity, highlighted, opacity }) => {
+        if (entity.type !== 'note') return []
+        const position = layout?.notePosition(entity) ?? entity
+        return [
+            {
+                entity,
+                left: position.left,
+                right: position.left + position.size,
+                time: beatToTime(bpms, entity.beat),
+                highlighted,
+                opacity,
+            },
+        ]
+    })
+})
+// Only horizontal scrolling and zoom change which notes are off a side.
+const offscreenAxis = computed<{ l: number; scale: number; width: number }>((previous) => {
+    const { l, w } = viewBox.value
+    const scale = view.w / w
+    return previous?.l === l && previous.scale === scale && previous.width === view.w
+        ? previous
+        : { l, scale, width: view.w }
+})
+const offscreenSideNotes = computed(() => {
+    const { l, scale, width } = offscreenAxis.value
+    return offscreenCandidates.value.flatMap((note) => {
+        const left = (note.left - l) * scale
+        const right = (note.right - l) * scale
+        return right < 0 || left > width ? [{ ...note, left, right }] : []
+    })
+})
+const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const bounds = viewBox.value
     const scale = view.w / bounds.w
-    const notes = orderedEntities.value.flatMap(({ entity, highlighted, opacity }) => {
-        const position =
-            entity.type === 'note' ? (composed.value?.notePosition(entity) ?? entity) : undefined
-        return entity.type === 'note' && position
-            ? [
-                  {
-                      left: (position.left - bounds.l) * scale,
-                      right: (position.left + position.size - bounds.l) * scale,
-                      y:
-                          (beatToTime(sceneState.value.bpms, entity.beat) * bounds.ups - bounds.t) *
-                          scale,
-                      highlighted,
-                      opacity,
-                      // Dimmed notes are counted but not selectable.
-                      target: isVisible(entity) ? entity : undefined,
-                  },
-              ]
-            : []
-    })
+    const notes = offscreenSideNotes.value.map(({ entity, left, right, time, ...note }) => ({
+        ...note,
+        left,
+        right,
+        y: (time * bounds.ups - bounds.t) * scale,
+        // Dimmed notes are counted but not selectable.
+        target: isVisible(entity) ? entity : undefined,
+    }))
     // Clear of the range labels in the corners.
-    return groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT)
+    const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT)
+    // Unchanged badges keep their array, so they don't re-render.
+    return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
 useOffscreenIndicators({
     navigation: () => undefined,
