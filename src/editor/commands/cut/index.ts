@@ -72,9 +72,8 @@ export const cut: Command = {
         const position = editorNavigation.value?.positionAtPoint(view.pointer.x, view.pointer.y)
         setClipboardData({
             lane:
-                position?.lane ??
-                xToLane(view.pointer.x) -
-                    getComposedClipboardOffset(entities, view.pointer.x, view.pointer.y),
+                (position?.lane ?? xToLane(view.pointer.x)) -
+                getComposedClipboardOffset(entities, view.pointer.x, view.pointer.y),
             beat: position?.beat ?? yToValidBeat(view.pointer.y),
             entities: copiedEntities,
             anchor: getClipboardAnchor(entities, copiedEntities),
