@@ -275,3 +275,189 @@ test('Elevation Editor scrolling reaches notes in either layout', async ({ page 
     expect(reach.composed.lane).toBeGreaterThan(0)
     expect(reach.composed.visible).toBe(true)
 })
+
+// Stage 1 sits 3.5 lanes over on whole lanes; stage 2 0.25 lanes over on half lanes.
+const seedLattice = (page: import('@playwright/test').Page, layout: 'basic' | 'composed') =>
+    page.evaluate(
+        async ({ layout }) => {
+            const { fixtures, show, view, settings, history, appImport } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            const pivot = fixtures.events.stagePivotEvents[0]!
+            const stage1 = base.stageId
+            const stage2 = 2 as typeof base.stageId
+            const transform = {
+                stageId: stage1,
+                rotation: 0,
+                yTranslation: 0,
+                elevation: 0,
+                anchor: 'default' as const,
+            }
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: true,
+                    stagePivotEvents: [
+                        { ...pivot, stageId: stage1, beat: 0, pivotLane: 0.5, divisionSize: 1 },
+                        {
+                            ...pivot,
+                            stageId: stage2,
+                            beat: 0,
+                            pivotLane: 0.25,
+                            divisionSize: 1,
+                            divisionParity: 'odd',
+                        },
+                    ],
+                    stageTransformEvents: [
+                        { ...transform, beat: 0, xTranslation: 0, eventEase: 'inOutQuad' },
+                        { ...transform, beat: 8, xTranslation: 6, eventEase: 'linear' },
+                    ],
+                    slides: [
+                        [{ ...base, beat: 4, left: -2, size: 2 }],
+                        [{ ...base, stageId: stage2, beat: 4, left: -4.5, size: 2 }],
+                    ],
+                },
+                2,
+            )
+            view.layout = layout
+            view.laneDivision = 1
+            view.laneSnapping = 'absolute'
+            settings.width = 24
+            settings.maxScrollX = 0
+            settings.elevationEditorSideBySide = 'allow'
+            const [first] = [...history.state.value.store.slides.note.values()].flat()
+            history.replaceState({ ...history.state.value, selectedEntities: [first!] })
+            const { copy } = await appImport<typeof import('../../src/editor/commands/copy')>(
+                '/src/editor/commands/copy/index.ts',
+            )
+            copy.execute()
+            history.replaceState({ ...history.state.value, selectedEntities: [] })
+            const { openElevationEditor } = await appImport<
+                typeof import('../../src/editor/elevation/state')
+            >('/src/editor/elevation/state.ts')
+            openElevationEditor(4)
+        },
+        { layout },
+    )
+
+for (const layout of ['basic', 'composed'] as const) {
+    test(`${layout}: Elevation Editor adds, pastes, moves and resizes on the stage lattice, as the chart does`, async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            Object.defineProperty(navigator.clipboard, 'writeText', {
+                configurable: true,
+                value: async () => undefined,
+            })
+            Object.defineProperty(navigator.clipboard, 'readText', {
+                configurable: true,
+                value: async () => '',
+            })
+        })
+        await seedLattice(page, layout)
+        await expect(page.locator('.elevation-canvas')).toBeVisible()
+        type Pane = 'main' | 'elevation'
+        // Displayed lane at beat 4, elevation 0, on either pane.
+        const at = (pane: Pane, lane: number) =>
+            page.evaluate(
+                async ({ pane, lane }) => {
+                    const { appImport, point } = window.editorTest
+                    if (pane === 'main') return point(lane, 4)
+                    const scene = await appImport<
+                        typeof import('../../src/editor/elevation/scene')
+                    >('/src/editor/elevation/scene.ts')
+                    const layout = scene.elevationLayout.value
+                    const box = document.querySelector('.elevation-canvas')!.getBoundingClientRect()
+                    return { x: box.x + layout.xAt(lane), y: box.y + layout.yAt(0) }
+                },
+                { pane, lane },
+            )
+        // Displayed lanes of the stage 2 note.
+        const stage2Note = () =>
+            page.evaluate(async () => {
+                const { appImport, history } = window.editorTest
+                const { getComposedNoteOffset } = await appImport<
+                    typeof import('../../src/editor/composedView')
+                >('/src/editor/composedView.ts')
+                const note = [...history.state.value.store.slides.note.values()]
+                    .flat()
+                    .find((note) => note.stageId === 2)!
+                const left = note.left + getComposedNoteOffset(note)
+                return { left, right: left + note.size }
+            })
+        const setup = (tool: string, stageId?: number) =>
+            page.evaluate(
+                async ({ tool, stageId }) => {
+                    const { appImport, view, history } = window.editorTest
+                    const { switchToolTo } = await appImport<
+                        typeof import('../../src/editor/tools')
+                    >('/src/editor/tools/index.ts')
+                    switchToolTo(tool as Parameters<typeof switchToolTo>[0])
+                    view.stageId = stageId as typeof view.stageId
+                    history.replaceState({ ...history.state.value, selectedEntities: [] })
+                },
+                { tool, stageId },
+            )
+        const notes = () =>
+            page.evaluate(() =>
+                [...window.editorTest.history.state.value.store.slides.note.values()]
+                    .flat()
+                    .map(({ stageId, left, size }) => ({ stageId, left, size }))
+                    .sort((a, b) => a.stageId - b.stageId || a.left - b.left),
+            )
+        const gesture = async (pane: Pane, run: (pane: Pane) => Promise<void>) => {
+            await run(pane)
+            await page.evaluate(() => window.editorTest.nextTick())
+            const result = await notes()
+            await page.evaluate(() => window.editorTest.history.undoState())
+            return result
+        }
+        const tap =
+            (tool: string, lane: number, stageId?: number, shift = false) =>
+            async (pane: Pane) => {
+                await setup(tool, stageId)
+                const point = await at(pane, lane)
+                await page.mouse.move(point.x - 2, point.y)
+                await page.mouse.move(point.x, point.y)
+                if (shift) await page.keyboard.down('Shift')
+                await page.mouse.click(point.x, point.y)
+                if (shift) await page.keyboard.up('Shift')
+                // A paste reads the clipboard first.
+                await expect.poll(notes).toHaveLength(3)
+            }
+        const drag =
+            (tool: string, from: () => Promise<number>, by: number, stageId?: number) =>
+            async (pane: Pane) => {
+                await setup(tool, stageId)
+                const lane = await from()
+                const start = await at(pane, lane)
+                const end = await at(pane, lane + by)
+                await page.mouse.move(start.x, start.y)
+                await page.mouse.down()
+                await page.mouse.move(end.x, end.y, { steps: 6 })
+                await page.mouse.up()
+            }
+        const gestures = {
+            add: tap('note', -6.3, 1),
+            addHalf: tap('note', 5.3, 2),
+            addDrag: drag('note', async () => 5.3, 3.6, 2),
+            paste: tap('paste', 6),
+            // Shift flips the pasted notes.
+            pasteFlipped: tap('paste', 6.3, undefined, true),
+            move: drag('select', async () => (await stage2Note()).left + 1, 2.3),
+            resize: drag('select', async () => (await stage2Note()).right - 0.1, 1.4),
+        }
+        const main: Record<string, unknown> = {}
+        const elevation: Record<string, unknown> = {}
+        for (const [name, run] of Object.entries(gestures)) {
+            main[name] = await gesture('main', run)
+            elevation[name] = await gesture('elevation', run)
+        }
+        expect(elevation).toEqual(main)
+        if (layout === 'composed') {
+            // Authored lanes on each stage's lattice: whole lanes on stage 1, half lanes on stage 2.
+            expect(main.add).toContainEqual({ stageId: 1, left: -10, size: 2 })
+            expect(main.addHalf).toContainEqual({ stageId: 2, left: 5.5, size: 2 })
+            expect(main.move).toContainEqual({ stageId: 2, left: -2.5, size: 2 })
+        }
+    })
+}

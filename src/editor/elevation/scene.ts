@@ -51,7 +51,13 @@ export const getElevationStageProps = (stageId: StageId, beat: number) => {
     const stage = current.isDynamicStages ? chart.stages[index] : undefined
     const props = stage ? getStageProps(stage, beatToTime(current.bpms, beat)) : { elevation: 0 }
     // Lanes follow the chart's layout: authored in Basic, offset by the stage in Composed.
-    return { ...props, laneOffset: getComposedLayout(current)?.offset(stageId, beat) ?? 0 }
+    const layout = getComposedLayout(current)
+    return {
+        ...props,
+        laneOffset: layout?.offset(stageId, beat) ?? 0,
+        // The stage's lattice phase in authored lanes, as the chart snaps to it.
+        gridOffset: layout?.gridOffset(stageId, beat) ?? 0,
+    }
 }
 export const elevationNotes = computed(() => {
     const { chart, bySource } = compiledChart.value

@@ -76,6 +76,7 @@ import {
 } from './layout'
 import {
     createElevationNote,
+    elevationAddOrigin,
     elevationNoteMinimum,
     pasteElevationNotes,
     previewElevationNote,
@@ -244,7 +245,8 @@ const hoveredOffscreenGroup = computed(() =>
     cursor.value === 'pointer' ? hitIndicator(view.pointer.x, view.pointer.y) : undefined,
 )
 const creating = ref<ElevationNote[]>([])
-let adding: { lane: number; elevation: number; slide: boolean } | undefined
+// Lane and origin are displayed, on the lattice of the stage new notes go on.
+let adding: { lane: number; origin: number; elevation: number; slide: boolean } | undefined
 let viewportAdjusted = false
 let mounted = false
 const selection = ref<{ x: number; y: number; w: number; h: number }>()
@@ -260,6 +262,8 @@ let drag:
           resizing: boolean
           anchor: number
           movingEdge: number
+          // Authored phase of the grabbed note's stage lattice.
+          origin: number
           attachment?: AttachedElevationDrag
       }
     | undefined
@@ -315,6 +319,8 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
               minimumNoteSize(note.noteType),
               Number.POSITIVE_INFINITY,
               active.movingEdge,
+              undefined,
+              active.origin,
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -481,7 +487,7 @@ const controls: Pick<
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
             creating.value = ghostRows([
                 previewElevationNote(
-                    alignLane(position.lane),
+                    position.lane,
                     position.elevation,
                     position.beat,
                     toolName.value === 'slide',
@@ -538,7 +544,7 @@ const controls: Pick<
             if (!row) {
                 const position = positionAtPoint(x, y)
                 createElevationNote(
-                    alignLane(position.lane),
+                    position.lane,
                     position.elevation,
                     position.beat,
                     toolName.value === 'slide',
@@ -583,10 +589,13 @@ const controls: Pick<
         if (target.type === 'paste') return true
         if (target.type === 'add') {
             const position = positionAtPoint(x, y)
+            const slide = toolName.value === 'slide'
+            const origin = elevationAddOrigin(position.beat, slide)
             adding = {
-                lane: alignLane(position.lane),
+                lane: alignLane(position.lane - origin) + origin,
+                origin,
                 elevation: position.elevation,
-                slide: toolName.value === 'slide',
+                slide,
             }
             return true
         }
@@ -625,6 +634,7 @@ const controls: Pick<
             resizing,
             anchor: shiftComputed(row.note.left, xToLane(x) < row.lane ? row.note.size : 0),
             movingEdge: xToLane(x) < row.lane ? row.note.left : row.note.left + row.note.size,
+            origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
         }
         if (row.attached) {
             const info = state.value.store.slides.info
@@ -651,6 +661,10 @@ const controls: Pick<
                 adding.lane,
                 xToLane(x),
                 elevationNoteMinimum(elevationBeat.value, adding.slide),
+                Number.POSITIVE_INFINITY,
+                adding.lane,
+                undefined,
+                adding.origin,
             )
             creating.value = ghostRows([
                 previewElevationNote(
@@ -701,7 +715,12 @@ const controls: Pick<
         if (!drag) return
         const deltaLane = drag.attachment
             ? 0
-            : offset(drag.lane, xToLane(x), drag.resizing ? drag.movingEdge : drag.row.note.left)
+            : offset(
+                  drag.lane,
+                  xToLane(x),
+                  drag.resizing ? drag.movingEdge : drag.row.note.left,
+                  drag.origin,
+              )
         const delta = yToElevation(y) - drag.elevation
         const displayedDelta = drag.resizing
             ? 0
@@ -739,6 +758,10 @@ const controls: Pick<
                 current.lane,
                 xToLane(x),
                 elevationNoteMinimum(elevationBeat.value, current.slide),
+                Number.POSITIVE_INFINITY,
+                current.lane,
+                undefined,
+                current.origin,
             )
             const elevation = snapElevation(yToElevation(y), settings.elevationSnap)
             cancel()

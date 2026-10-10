@@ -7,7 +7,8 @@ import { toNoteEntity } from '../../state/entities/slides/note'
 import { addNote } from '../../state/mutations/slides/note'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
-import { alignComputed, shiftComputed } from '../../utils/math'
+import { align, shiftComputed } from '../../utils/math'
+import { getComposedLayout } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { notify } from '../notification'
@@ -20,8 +21,8 @@ import {
     toPasteBeatOffset,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
-import { view } from '../view'
-import { getElevationStageProps } from './scene'
+import { alignLane, view } from '../view'
+import { elevationState, getElevationStageProps } from './scene'
 
 const getElevationProperties = (beat: number, asSlide: boolean) =>
     asSlide ? getSlidePropertiesFromSelection(beat) : getNotePropertiesFromSelection()
@@ -29,6 +30,12 @@ const getElevationProperties = (beat: number, asSlide: boolean) =>
 /** The narrowest note a drag adds, by the Zero-Width Notes setting. */
 export const elevationNoteMinimum = (beat: number, asSlide: boolean) =>
     minimumNoteSize(getElevationProperties(beat, asSlide).noteType)
+
+/** Displayed lane of the lattice new notes snap to: their stage's, shown at its offset. */
+export const elevationAddOrigin = (beat: number, asSlide: boolean) => {
+    const stage = getElevationStageProps(getElevationProperties(beat, asSlide).stageId, beat)
+    return stage.laneOffset + stage.gridOffset
+}
 
 export const previewElevationNote = (
     lane: number,
@@ -45,7 +52,7 @@ export const previewElevationNote = (
             {
                 ...properties,
                 beat,
-                left: alignComputed(lane - stage.laneOffset),
+                left: alignLane(lane - stage.laneOffset - stage.gridOffset) + stage.gridOffset,
                 elevation: elevation - stage.elevation,
                 size: size ?? properties.size,
             },
@@ -87,6 +94,25 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
     const total = first.elevation + firstStage.elevation
     const baseElevation = Number.isFinite(total) ? total : 0
     const direction = modifiers.shift ? -1 : 1
+    const beatOffset = toPasteBeatOffset(notes, beat - data.beat)
+    // In Composed the first note lands on its stage's lattice, as a chart paste does.
+    const landing = getElevationStageProps(view.stageId ?? first.stageId, first.beat + beatOffset)
+    const shifted = toMovedNoteObject(
+        first,
+        data.lane,
+        lane,
+        first.beat + beatOffset,
+        modifiers.shift,
+        false,
+    ).left
+    const pointed = modifiers.shift
+        ? -(first.left + first.size) + data.lane + lane
+        : first.left + lane - data.lane
+    const snap = getComposedLayout(elevationState.value)
+        ? landing.gridOffset +
+          align(pointed - landing.laneOffset - landing.gridOffset, view.laneDivision) -
+          (shifted - landing.laneOffset)
+        : 0
     const mapNote = (note: NoteEntity, destinationBeat: number) => {
         const source = getElevationStageProps(note.stageId, note.beat)
         const destination = getElevationStageProps(view.stageId ?? note.stageId, destinationBeat)
@@ -102,7 +128,9 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
             ...moved,
             left: shiftComputed(
                 moved.left,
-                direction * (source.laneOffset - firstStage.laneOffset) - destination.laneOffset,
+                direction * (source.laneOffset - firstStage.laneOffset) -
+                    destination.laneOffset +
+                    snap,
             ),
             elevation:
                 note.elevation +
@@ -112,7 +140,6 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
                 destination.elevation,
         })
     }
-    const beatOffset = toPasteBeatOffset(notes, beat - data.beat)
     return { notes, mapNote, beatOffset, startLane: data.lane }
 }
 
