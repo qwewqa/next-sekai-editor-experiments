@@ -67,21 +67,24 @@ const updateFades = () => {
 const updateOverflow = () => {
     const element = scroller.value
     if (!element) return
-    const size = vertical.value ? element.clientHeight : element.clientWidth
     const list = tabs()
-    const first = list[0]?.getBoundingClientRect()
-    const last = list.at(-1)?.getBoundingClientRect()
-    if (first && last) {
-        // The strip's length at full padding, whichever padding is applied now.
+    if (list.length) {
+        // Measured from the labels, which keep their length at either padding, so the
+        // choice depends only on the rail's size and can't flip back.
+        const box = element.getBoundingClientRect()
+        const size = vertical.value ? box.height : box.width
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+        const style = getComputedStyle(element)
+        let natural =
+            (list.length - 1) * parseFloat(vertical.value ? style.rowGap : style.columnGap) +
+            list.length * 1.5 * rem
+        for (const tab of list) {
+            const label = (tab.firstElementChild as HTMLElement).getBoundingClientRect()
+            natural += vertical.value ? label.height : label.width
+        }
         const saving = list.length * 0.5 * rem
-        const natural =
-            (vertical.value ? last.bottom - first.top : last.right - first.left) +
-            (compact.value ? saving : 0)
-        // 1px apart either way, so rounding can't flip it straight back.
-        const next = compact.value
-            ? natural > size && natural - saving <= size + 1
-            : natural > size + 1 && natural - saving <= size
+        // Half a pixel either way is rounding.
+        const next = natural > size + 0.5 && natural - saving <= size + 0.5
         if (next !== compact.value) {
             compact.value = next
             // Measure the overflow once the new padding is laid out.
@@ -337,7 +340,7 @@ const chevronDirection = computed(() => {
             aria-multiselectable="true"
             @scroll.passive="updateFades"
         >
-            <!-- Tabs split the gaps between them. -->
+            <!-- Tabs split the gaps between them; the last reaches no further, so a strip that fits doesn't scroll. -->
             <button
                 v-for="id in dock.panels"
                 :key="id"
@@ -346,8 +349,8 @@ const chevronDirection = computed(() => {
                 class="panel-tab relative flex shrink-0 items-center justify-center whitespace-nowrap rounded transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 :class="[
                     vertical
-                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0`
-                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0`,
+                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
+                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0 last:before:right-0`,
                     state(id) === 'visible'
                         ? 'bg-white/10 text-white hover:bg-white/20'
                         : menu?.id === id
