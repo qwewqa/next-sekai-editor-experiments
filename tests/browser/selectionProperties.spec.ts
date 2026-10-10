@@ -1165,6 +1165,13 @@ test('a single value shows to 4 decimals and keeps its exact value until typed o
     await beat.blur()
     expect(await state()).toEqual(before)
 
+    // An arrow key steps from the exact value.
+    await beat.focus()
+    await beat.press('ArrowUp')
+    await beat.blur()
+    await expect.poll(async () => (await state()).beats).toContain(exact + 1)
+    await expect(beat).toHaveValue('38.4583')
+
     // Typing writes the typed value.
     await beat.fill('38.5')
     await beat.press('Enter')

@@ -16,7 +16,7 @@ import { formatNumber, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
 import { confirmOnEnter, isTyped, trackTypedText } from './resync'
 
-defineProps<{
+const props = defineProps<{
     label: string
     min?: number
     max?: number
@@ -105,6 +105,19 @@ const onEscape = (event: KeyboardEvent) => {
     void cancel()
 }
 
+// Arrow keys step from the exact value: the shown one is rounded, and so are native steps.
+const onStepKey = (event: KeyboardEvent) => {
+    const element = input.value
+    const from = dirty ? element?.valueAsNumber : modelValue.value
+    if (props.step !== 'any' || !element || from === undefined || !Number.isFinite(from)) return
+    event.preventDefault()
+    let next = from + (event.key === 'ArrowUp' ? 1 : -1)
+    if (props.min !== undefined) next = Math.max(props.min, next)
+    if (props.max !== undefined) next = Math.min(props.max, next)
+    element.value = `${next}`
+    onInput()
+}
+
 const onFocus = (event: FocusEvent) => {
     ;(event.currentTarget as HTMLInputElement | null)?.select()
 }
@@ -136,6 +149,8 @@ const onFocus = (event: FocusEvent) => {
             @change="onChange"
             @blur="onChange"
             @keydown.esc="onEscape"
+            @keydown.up="onStepKey"
+            @keydown.down="onStepKey"
             @keydown.enter="confirmOnEnter"
         />
     </BaseField>
