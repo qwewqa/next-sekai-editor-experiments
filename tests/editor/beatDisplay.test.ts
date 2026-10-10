@@ -149,3 +149,27 @@ test('measure grid includes off-grid BPM changes, respects the viewport and boun
     const distant = calculateBpms([toBpmIntegral({ beat: 0, bpm: 120 })])
     assert.deepEqual(getMeasureBeats(distant, 1000000, 1000004), [1000000, 1000004])
 })
+
+test('a typed beat holds its decimals, without noise from the 1-based display', () => {
+    assert.notEqual(1.01 - 1, 0.01)
+    assert.equal(fromDisplayedBeat(1.01), 0.01)
+    assert.equal(fromDisplayedBeat(2.1), 1.1)
+    assert.equal(fromDisplayedBeat(1.0625), 0.0625)
+    assert.equal(fromDisplayedBeat(1.001), 0.001)
+    // Many digits keep them.
+    assert.equal(fromDisplayedBeat(Number('1.123456789012345678')), 0.1234567890123457)
+    assert.equal(fromDisplayedBeat(1.123456789), 0.123456789)
+    // Shown the other way without noise too.
+    assert.notEqual(0.14 + 1, 1.14)
+    assert.equal(toDisplayedBeat(0.14), 1.14)
+    for (const places of [1, 2, 3, 4, 6]) {
+        const scale = 10 ** places
+        for (let i = 0; i < 50000; i++) {
+            const k = (i * 7919) % (3000 * scale)
+            const shown = Number(((k + scale) / scale).toFixed(places))
+            const held = Number((k / scale).toFixed(places))
+            assert.equal(fromDisplayedBeat(shown), held, `${shown}`)
+            assert.equal(toDisplayedBeat(held), shown, `${held}`)
+        }
+    }
+})

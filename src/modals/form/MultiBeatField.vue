@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { fromDisplayedBeat, toDisplayedBeat } from '../../editor/beatDisplay'
 import { i18n } from '../../i18n'
-import { fromFieldBeat, fromSteppedBeat, toFieldBeat } from './beatField'
+import { fromSteppedBeat } from './beatField'
 import MultiNumberField from './MultiNumberField.vue'
 
 const modelValue = defineModel<number | undefined>({ required: true })
 const displayedBeat = computed({
-    get: () => (modelValue.value === undefined ? undefined : toFieldBeat(modelValue.value)),
+    get: () => (modelValue.value === undefined ? undefined : toDisplayedBeat(modelValue.value)),
     set: (value: number | undefined) => {
-        modelValue.value = value === undefined ? undefined : fromFieldBeat(value)
+        modelValue.value = value === undefined ? undefined : fromDisplayedBeat(value)
     },
 })
 const setStep = (value: number) => {

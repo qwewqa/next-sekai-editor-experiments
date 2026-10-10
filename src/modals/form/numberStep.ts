@@ -21,6 +21,8 @@ const decimals = (value: number) => {
 /** Adds in decimal, as native number inputs step: 1.1 - 1 is 0.1. */
 export const addDecimal = (value: number, delta: number) => {
     const sum = value + delta
+    // Whole numbers add exactly; skips the text work for grid labels.
+    if (Number.isInteger(value) && Number.isInteger(delta)) return sum
     const places = Math.max(decimals(value), decimals(delta))
     return places > 100 ? sum : Number(sum.toFixed(places))
 }

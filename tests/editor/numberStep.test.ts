@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { fromDisplayedBeat, toDisplayedBeat } from '../../src/editor/beatDisplay'
-import { fromFieldBeat, fromSteppedBeat, toFieldBeat } from '../../src/modals/form/beatField'
+import { fromSteppedBeat } from '../../src/modals/form/beatField'
 import {
     addDecimal,
     alignFraction,
@@ -156,7 +156,7 @@ test('the wheel steps where Chromium would, on any origin', () => {
 test('a beat stepped by whole beats stays on its grid', () => {
     // As the Beat field steps: in displayed space, then back to the chart's beat.
     const stepBeat = (beat: number, delta: number) =>
-        fromSteppedBeat(stepNumber(toFieldBeat(beat), delta, { min: 1 }))
+        fromSteppedBeat(stepNumber(toDisplayedBeat(beat), delta, { min: 1 }))
     assert.notEqual(fromDisplayedBeat(addDecimal(toDisplayedBeat(1 / 3), 1)), 4 / 3)
     assert.equal(stepBeat(1 / 3, 1), 4 / 3)
     for (const division of [3, 5, 6, 7, 9, 10, 11, 12, 24, 48, 192, 480, 1920]) {
@@ -169,6 +169,11 @@ test('a beat stepped by whole beats stays on its grid', () => {
     }
     // Off any grid, a step keeps its decimals.
     assert.equal(stepBeat(0.123456789, 1), 1.123456789)
+    for (let i = 0; i < 20000; i++) {
+        const k = (i * 7919) % 300_000_000
+        const beat = Number((k / 1e6).toFixed(6))
+        assert.equal(stepBeat(beat, 1), Number((k / 1e6 + 1).toFixed(6)), `${beat}`)
+    }
     assert.equal(alignFraction(0.123456789), 0.123456789)
     assert.equal(alignFraction(2.5), 2.5)
 })
@@ -198,28 +203,4 @@ test('mixed values stepped back to their own leave nothing changed', () => {
             .changed,
         [],
     )
-})
-
-test('a typed beat holds its decimals, without noise from the 1-based display', () => {
-    assert.notEqual(fromDisplayedBeat(1.01), 0.01)
-    assert.equal(fromFieldBeat(1.01), 0.01)
-    assert.equal(fromFieldBeat(2.1), 1.1)
-    assert.equal(fromFieldBeat(1.0625), 0.0625)
-    assert.equal(fromFieldBeat(1.001), 0.001)
-    // Many digits keep them.
-    assert.equal(fromFieldBeat(Number('1.123456789012345678')), 0.1234567890123457)
-    assert.equal(fromFieldBeat(1.123456789), 0.123456789)
-    // Shown the other way without noise too.
-    assert.notEqual(toDisplayedBeat(0.14), 1.14)
-    assert.equal(toFieldBeat(0.14), 1.14)
-    for (const places of [1, 2, 3, 4, 6]) {
-        const scale = 10 ** places
-        for (let i = 0; i < 50000; i++) {
-            const k = (i * 7919) % (3000 * scale)
-            const shown = Number(((k + scale) / scale).toFixed(places))
-            const held = Number((k / scale).toFixed(places))
-            assert.equal(fromFieldBeat(shown), held, `${shown}`)
-            assert.equal(toFieldBeat(held), shown, `${held}`)
-        }
-    }
 })
