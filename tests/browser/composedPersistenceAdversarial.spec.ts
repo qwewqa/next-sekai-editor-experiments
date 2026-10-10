@@ -282,7 +282,8 @@ test('clipboard mappings refresh after loading a different chart and editing its
         await nextTick()
         const notes = [...history.state.value.store.slides.note.values()].flat()
         history.replaceState({ ...history.state.value, selectedEntities: notes })
-        view.pointer = { ...view.pointer, ...point(4, 4) }
+        // On the first note, clear of the attached tick's diamond drawn over it.
+        view.pointer = { ...view.pointer, ...point(3.5, 4) }
         copy.execute()
         const payload = JSON.parse(clipboardEntry.value!.text)
         payload.anchor = getClipboardAnchor(notes, payload.entities, notes[0])
