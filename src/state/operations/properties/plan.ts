@@ -128,6 +128,19 @@ export const planEdit = (
                   ? editTimeScale(transaction, entity, own)
                   : edits[entity.type](transaction, entity as never, own),
         )
+        // A tick this Beat edit takes past its slide's end keeps its gameplay place, as detaching does.
+        const [note] = results.get(entity) ?? []
+        if (
+            entity.type === 'note' &&
+            entity.isAttached &&
+            own.beat !== undefined &&
+            note?.type === 'note'
+        )
+            transaction.store.setOrigin(note, entity, {
+                left: own.left !== undefined,
+                size: own.size !== undefined,
+                elevation: own.elevation !== undefined,
+            })
     }
     // The chart keeps a tempo at 0, as moves and flips do.
     if (

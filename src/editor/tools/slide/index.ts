@@ -22,7 +22,6 @@ import { bisect } from '../../../utils/ordered'
 import {
     getComposedGridOffset,
     getComposedLayout,
-    getComposedMoveOffset,
     getComposedNoteOffset,
     getComposedOffset,
 } from '../../composedView'
@@ -43,6 +42,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
+import { toDraggedNoteObject } from '../moveBase'
 import {
     addDragAnchor,
     commitDrop,
@@ -50,7 +50,6 @@ import {
     isNoteResizeStart,
     isVisible,
     modifyEntities,
-    moveLane,
     placementCursors,
     resize,
 } from '../utils'
@@ -304,19 +303,7 @@ export const slide: Tool = {
             }
             case 'move': {
                 const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
-                const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
-                const object = constrainLaneObject({
-                    ...active.entity,
-                    beat,
-                    left: moveLane(
-                        active.entity.left,
-                        active.lane,
-                        lane,
-                        active.entity.left,
-                        getComposedGridOffset(active.entity.stageId, beat),
-                        xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
-                    ),
-                })
+                const object = toDraggedNoteObject(active.entity, active.lane, x, beat)
 
                 view.entities = {
                     hovered: [],
@@ -395,23 +382,10 @@ export const slide: Tool = {
             }
             case 'move': {
                 const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
-                const lane = xToLane(x) - getComposedMoveOffset(active.entity, beat)
-
                 commitDrop(
                     move,
                     active.entity,
-                    constrainLaneObject({
-                        ...active.entity,
-                        beat,
-                        left: moveLane(
-                            active.entity.left,
-                            active.lane,
-                            lane,
-                            active.entity.left,
-                            getComposedGridOffset(active.entity.stageId, beat),
-                            xToLane(x) - getComposedNoteOffset(active.entity) - active.lane,
-                        ),
-                    }),
+                    toDraggedNoteObject(active.entity, active.lane, x, beat),
                 )
                 focusEntityAtBeat(beat)
                 break
