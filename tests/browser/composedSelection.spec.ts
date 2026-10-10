@@ -263,9 +263,9 @@ test('moving a BPM with an attached slide retains rebuilt note identities', asyn
         const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
             '/src/editor/tools/select.ts',
         )
-        const { isScenePreview } = await appImport<typeof import('../../src/editor/sceneState')>(
-            '/src/editor/sceneState.ts',
-        )
+        const { isScenePreview, sceneState } = await appImport<
+            typeof import('../../src/editor/sceneState')
+        >('/src/editor/sceneState.ts')
         const { getPreviewState } =
             await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
         const start = point(2, 2)
@@ -278,6 +278,9 @@ test('moving a BPM with an attached slide retains rebuilt note identities', asyn
             .map(({ beat, left }) => ({ beat, left }))
         // The BPM moves, so the canvas keeps the committed chart until the drop.
         const scenePreview = isScenePreview.value
+        const sceneNotes = [...sceneState.value.store.slides.note.values()]
+            .flat()
+            .map(({ beat, left }) => ({ beat, left }))
         await select.dragEnd!(end.x, end.y, modifiers)
         const final = history.state.value
         const finalNotes = [...final.store.slides.note.values()]
@@ -292,6 +295,7 @@ test('moving a BPM with an attached slide retains rebuilt note identities', asyn
         return {
             previewNotes,
             scenePreview,
+            sceneNotes,
             finalNotes,
             expected: notes.map(({ beat, left }) => ({ beat: beat + 1, left: left + 1 })),
             selectedCount: final.selectedEntities.length,
@@ -304,6 +308,7 @@ test('moving a BPM with an attached slide retains rebuilt note identities', asyn
     })
     expect(result.previewNotes).toEqual(result.expected)
     expect(result.scenePreview).toBe(false)
+    expect(result.sceneNotes).toEqual(result.originalNotes)
     expect(result.finalNotes).toEqual(result.expected)
     expect(result.selectedCount).toBe(4)
     expect(result.validSelection).toBe(true)

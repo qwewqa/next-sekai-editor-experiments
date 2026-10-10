@@ -49,7 +49,7 @@ for (const beatDelta of [-1, 0, 2]) {
             const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
                 '/src/editor/tools/select.ts',
             )
-            const { isScenePreview } = await appImport<
+            const { isScenePreview, sceneState } = await appImport<
                 typeof import('../../src/editor/sceneState')
             >('/src/editor/sceneState.ts')
             const { getPreviewState } =
@@ -88,6 +88,8 @@ for (const beatDelta of [-1, 0, 2]) {
             const preview = positions(getPreviewState(history.state.value))
             // A retimed preview leaves the canvas on the committed chart until the drop.
             const scenePreview = isScenePreview.value
+            // What the canvas draws.
+            const scene = positions(sceneState.value)
             await select.dragEnd!(end.x, end.y, modifiers)
             const after = positions(history.state.value)
             const destination = createComposedLayout(history.state.value)
@@ -113,6 +115,7 @@ for (const beatDelta of [-1, 0, 2]) {
                 expected,
                 preview,
                 scenePreview,
+                scene,
                 after,
                 pivots,
                 restored: positions(history.state.value),
@@ -120,6 +123,7 @@ for (const beatDelta of [-1, 0, 2]) {
             }
         }, beatDelta)
         expect(result.scenePreview).toBe(beatDelta === 0)
+        expect(result.scene).toEqual(beatDelta === 0 ? result.preview : result.original)
         for (const [index, expected] of result.expected.entries()) {
             expect(result.preview[index]!.beat).toBe(expected.beat)
             expect(result.after[index]!.beat).toBe(expected.beat)
