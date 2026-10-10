@@ -1,3 +1,5 @@
+import { formatNumber } from './formatNumber'
+
 export const formatIntegerTime = (time: number) =>
     `${`${Math.floor(time / 60)}`.padStart(2, '0')}:${`${time % 60}`.padStart(2, '0')}`
 
@@ -7,19 +9,15 @@ export const formatTime = (time: number) => {
     return `${`${Math.floor(ms / 60000)}`.padStart(2, '0')}:${((ms % 60000) / 1000).toFixed(3).padStart(6, '0')}`
 }
 
-// Rounds as Properties shows numbers.
-const round = (value: number) => +value.toFixed(4)
-
-export const formatBpm = (value: number) => `${round(value)}`
+// As Properties shows numbers.
+export const formatBpm = (value: number) => formatNumber(value)
 
 export const formatTimeScale = (value: number, skip: number) => {
-    let text = `${round(value)}x`
+    let text = `${formatNumber(value)}x`
 
-    // A skip that rounds to 0 shows none.
-    const shownSkip = round(skip)
-    if (shownSkip) {
-        if (shownSkip > 0) text += '+'
-        text += `${shownSkip}`
+    if (skip) {
+        if (skip > 0) text += '+'
+        text += formatNumber(skip)
     }
 
     return text

@@ -18,7 +18,8 @@ test('BPM and time-scale labels round as Properties shows numbers', () => {
     assert.equal(formatTimeScale(1.123456789, 0), '1.1235x')
     assert.equal(formatTimeScale(0.5, 1.23456789), '0.5x+1.2346')
     assert.equal(formatTimeScale(2, -0.25), '2x-0.25')
-    // A skip that rounds to 0 shows none.
-    assert.equal(formatTimeScale(1, 0.00001), '1x')
-    assert.equal(formatTimeScale(1, -0.00001), '1x')
+    // Like Properties, a value too small for 4 decimals keeps its digits rather than showing 0.
+    assert.equal(formatBpm(0.00001), '0.00001')
+    assert.equal(formatTimeScale(1, 0.00001), '1x+0.00001')
+    assert.equal(formatTimeScale(1, -0.00001), '1x-0.00001')
 })
