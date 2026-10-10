@@ -43,5 +43,8 @@ export const openFrame = (timestamp: number) => {
     }
 }
 
+/** Whether a clock tick is collecting this frame's requests. */
+export const isFrameOpen = () => !!open
+
 /** Whether a draw runs for a clock tick, as playback and eased scrolling do every frame. */
 export const isClockFrame = () => clockCallbacks

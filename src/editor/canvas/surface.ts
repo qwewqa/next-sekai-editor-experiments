@@ -1,4 +1,4 @@
-import { cancelFrame, requestFrame } from '../../frame'
+import { cancelFrame, isFrameOpen, requestFrame } from '../../frame'
 import type { CanvasBounds } from './types'
 
 // Explicitly erase the pixels, including on frames with no visible drawing.
@@ -64,7 +64,9 @@ export const createFrameScheduler = () => {
     return {
         schedule(next: (timestamp: number) => void) {
             draw = next
-            if (id) return
+            // A tick takes over a draw requested before it, so that draw counts as the tick's.
+            if (id > 0 && isFrameOpen()) cancelFrame(id)
+            else if (id) return
             id = requestFrame((timestamp) => {
                 id = 0
                 const current = draw

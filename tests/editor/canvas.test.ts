@@ -6,7 +6,7 @@ import type { StageId } from '../../src/chart/stages'
 import { orderEntities, toDrawSteps, type EntityVisibility } from '../../src/editor/canvas/ordering'
 import { createFrameScheduler, prepareSurface } from '../../src/editor/canvas/surface'
 import { createScopeLookup, type ScopeInputs } from '../../src/editor/scopeRules'
-import { openFrame } from '../../src/frame'
+import { isClockFrame, openFrame } from '../../src/frame'
 import type { Entity, EntityType } from '../../src/state/entities'
 import type { ConnectorEntity } from '../../src/state/entities/slides/connector'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
@@ -385,6 +385,31 @@ test('draws invalidated by a clock frame render in that frame, not every other f
         assert.equal(pending.size, 1)
         tick(128)
         assert.deepEqual(draws, [16, 32, 48, 64, 96, 128])
+    })
+})
+
+test('a clock tick takes over a draw requested before it, which then runs as a clock draw', () => {
+    withAnimationFrames(({ pending, tick }) => {
+        const scheduler = createFrameScheduler()
+        const draws: [number, boolean][] = []
+        const draw = (timestamp: number) => draws.push([timestamp, isClockFrame()])
+        // A timer requests a draw between frames, then the next tick invalidates the canvas again.
+        scheduler.schedule(draw)
+        assert.equal(pending.size, 1)
+        const close = openFrame(16)
+        scheduler.schedule(draw)
+        assert.equal(pending.size, 0)
+        close()
+        assert.deepEqual(draws, [[16, true]])
+        tick(32)
+        assert.deepEqual(draws, [[16, true]])
+        // With no tick, it draws in its own frame, outside the clock.
+        scheduler.schedule(draw)
+        tick(48)
+        assert.deepEqual(draws, [
+            [16, true],
+            [48, false],
+        ])
     })
 })
 
