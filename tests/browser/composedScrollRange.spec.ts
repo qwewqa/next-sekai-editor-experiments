@@ -219,13 +219,13 @@ test('a lower Max Scroll X brings the view within the reach at once, in either l
 
     // An eased sideways scroll lowered past mid-ease stops where it is, never easing back.
     await seed(page, 'basic')
-    await place(0, 10)
+    await place(0, 1000)
     const eased = await page.evaluate(async () => {
         const { view, settings, appImport, nextTick } = window.editorTest
         const { scrollViewXBy } =
             await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
         const frame = () => new Promise(requestAnimationFrame)
-        scrollViewXBy(10_000, true)
+        scrollViewXBy(1_000_000, true)
         while (view.lane === 0) await frame()
         const at = view.lane
         settings.maxScrollX = at + 2
@@ -240,7 +240,7 @@ test('a lower Max Scroll X brings the view within the reach at once, in either l
         return { at, easing, lanes }
     })
     // Lowered mid-ease, with the view still short of the new limit.
-    expect(eased.at).toBeLessThan(8)
+    expect(eased.at).toBeLessThan(998)
     expect(eased.easing).toBe(false)
     for (const lane of eased.lanes) expect(lane).toBe(eased.at)
     expect(await lane()).toBe(eased.at)
