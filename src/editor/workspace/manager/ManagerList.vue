@@ -809,8 +809,19 @@ const isStuck = (folder: HTMLElement) => {
     )
 }
 const updateStuck = () => {
-    const folders = list.value?.querySelectorAll<HTMLElement>('.manager-folder') ?? []
-    const head = [...folders].find(isStuck)?.firstElementChild as HTMLElement | undefined
+    const element = list.value
+    const folders = element?.querySelectorAll<HTMLElement>(':scope > .manager-folder') ?? []
+    // Folders lie in order, so only the last one starting above the list's edge can be stuck.
+    const edge = (element?.getBoundingClientRect().top ?? 0) + (element?.clientTop ?? 0)
+    let above = 0
+    let high = folders.length
+    while (above < high) {
+        const middle = (above + high) >> 1
+        if ((folders[middle]?.getBoundingClientRect().top ?? edge) < edge) above = middle + 1
+        else high = middle
+    }
+    const folder = folders[above - 1]
+    const head = folder && isStuck(folder) ? (folder.firstElementChild as HTMLElement) : undefined
     stuckFolder.value = folderItems.value.get(Number(head?.dataset.folderId) as FolderId)?.id
 }
 // Folding, adding and dragging move heads without a scroll.
