@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
+import {
+    computed,
+    onMounted,
+    onUnmounted,
+    ref,
+    shallowRef,
+    useTemplateRef,
+    watch,
+    watchEffect,
+} from 'vue'
 import { isAppActive } from '../../activity'
 import { clipboardEntry, updateClipboard } from '../../clipboard'
 import { pushState, replaceState, state } from '../../history'
@@ -36,6 +45,7 @@ import { createNoteRenderer } from '../canvas/notes'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
+import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { cancelMouseControls } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
@@ -47,6 +57,7 @@ import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { isSidebarVisible, revealPropertiesSection } from '../sidebars'
 import { panelTools, tools, toolName, type Tool } from '../tools'
 import { applyBrushToEntities } from '../tools/brush'
+import { pasteGhostInfos } from '../tools/paste'
 import { remove } from '../tools/eraser'
 import { applyGeneratedSlideNotes } from '../tools/generateSlideNotes'
 import { defaultNoteProperties } from '../tools/note'
@@ -80,7 +91,7 @@ import {
     elevationNoteMinimum,
     pasteElevationNotes,
     previewElevationNote,
-    previewElevationPaste,
+    previewElevationPasteRows,
 } from './actions'
 import { elevationLayout, elevationNotes, elevationState, getElevationStageProps } from './scene'
 import {
@@ -244,7 +255,8 @@ const hitIndicator = (x: number, y: number) =>
 const hoveredOffscreenGroup = computed(() =>
     cursor.value === 'pointer' ? hitIndicator(view.pointer.x, view.pointer.y) : undefined,
 )
-const creating = ref<ElevationNote[]>([])
+// Shallow, so its notes stay the paste ghost's own and match its slides.
+const creating = shallowRef<ElevationNote[]>([])
 // Lane and origin are displayed, on the lattice of the stage new notes go on.
 let adding: { lane: number; origin: number; elevation: number; slide: boolean } | undefined
 let viewportAdjusted = false
@@ -260,10 +272,15 @@ let drag:
           deltaLane: number
           deltaElevation: number
           resizing: boolean
-          anchor: number
+          // The grabbed side: every resized note keeps its left edge.
+          fixedLeft: boolean
           movingEdge: number
-          // Authored phase of the grabbed note's stage lattice.
+          // Raw pointer lane delta, and each resized note's result.
+          shift: number
+          resized: string
+          // Authored phase of the grabbed note's stage lattice, and whether lanes are Composed.
           origin: number
+          composed: boolean
           attachment?: AttachedElevationDrag
       }
     | undefined
@@ -312,15 +329,17 @@ const cancel = () => {
 const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     if (!getNoteFieldsIn(active.source.store, note).left)
         return { elevation: note.elevation + active.deltaElevation }
+    const edge = note.left + (active.fixedLeft ? note.size : 0)
+    // As the chart's select resize; in Composed every edge takes the grabbed edge's snap.
     const [left, size] = active.resizing
         ? resize(
-              active.anchor,
-              active.movingEdge + active.deltaLane,
+              shiftComputed(note.left, active.fixedLeft ? 0 : note.size),
+              edge + active.shift,
               minimumNoteSize(note.noteType),
               Number.POSITIVE_INFINITY,
-              active.movingEdge,
-              undefined,
-              active.origin,
+              edge,
+              [note.left, note.size],
+              active.composed ? active.origin + edge - active.movingEdge : 0,
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -494,8 +513,11 @@ const controls: Pick<
                 ),
             ])
         else if (toolName.value === 'paste')
-            creating.value = ghostRows(
-                previewElevationPaste(position.lane, position.elevation, position.beat, modifiers),
+            creating.value = previewElevationPasteRows(
+                position.lane,
+                position.elevation,
+                position.beat,
+                modifiers,
             )
         else creating.value = []
         view.entities = {
@@ -617,24 +639,24 @@ const controls: Pick<
                 .filter((item) => getNoteFieldsIn(state.value.store, item.note).elevation)
                 .map((item) => item.note),
         )
-        const resizing = target.type === 'resize'
         drag = {
             source: state.value,
             row,
-            targets: resizing
-                ? [row.note]
-                : state.value.selectedEntities.filter(
-                      (entity): entity is NoteEntity =>
-                          entity.type === 'note' && eligible.has(entity),
-                  ),
+            // Moves and resizes take the selected notes shown here.
+            targets: state.value.selectedEntities.filter(
+                (entity): entity is NoteEntity => entity.type === 'note' && eligible.has(entity),
+            ),
             lane: xToLane(x),
             elevation: yToElevation(y),
             deltaLane: 0,
             deltaElevation: 0,
-            resizing,
-            anchor: shiftComputed(row.note.left, xToLane(x) < row.lane ? row.note.size : 0),
+            resizing: target.type === 'resize',
+            fixedLeft: xToLane(x) >= row.lane,
             movingEdge: xToLane(x) < row.lane ? row.note.left : row.note.left + row.note.size,
+            shift: 0,
+            resized: '',
             origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
+            composed: !!getComposedLayout(state.value),
         }
         if (row.attached) {
             const info = state.value.store.slides.info
@@ -735,14 +757,37 @@ const controls: Pick<
                   drag.deltaElevation,
               )
             : displayedDelta
-        if (deltaLane === drag.deltaLane && deltaElevation === drag.deltaElevation) return
+        // Resized notes can snap on their own, so their results key the preview.
+        const next = {
+            ...drag,
+            deltaLane,
+            deltaElevation,
+            shift: drag.resizing ? xToLane(x) - drag.lane : 0,
+        }
+        const resized = drag.resizing
+            ? next.targets
+                  .map((note) => {
+                      const object = editedObject(next, note)
+                      return 'left' in object ? `${object.left} ${object.size}` : ''
+                  })
+                  .join()
+            : ''
+        if (
+            deltaLane === drag.deltaLane &&
+            deltaElevation === drag.deltaElevation &&
+            resized === drag.resized
+        )
+            return
         drag.deltaLane = deltaLane
         drag.deltaElevation = deltaElevation
+        drag.shift = next.shift
+        drag.resized = resized
         const active = { ...drag }
         setPreviewEdit(active.source, () => edit(active), [
             active.targets,
             deltaLane,
             deltaElevation,
+            resized,
         ])
     },
     dragEnd(x, y, modifiers) {
@@ -781,7 +826,7 @@ const controls: Pick<
         // A drop that changes nothing adds no undo step.
         if (
             active &&
-            (active.deltaLane || active.deltaElevation) &&
+            (active.resizing || active.deltaLane || active.deltaElevation) &&
             active.targets.some((note) =>
                 editChanges(active.source.store, note, editedObject(active, note)),
             )
@@ -815,8 +860,9 @@ const changeBeat = (beat: number) => {
 const beatField = computed({
     get: () => toDisplayedBeat(elevationBeat.value),
     set: (value: number | string) => {
+        // Arrow steps carry decimal noise; on the grid they store its exact beat, as Next does.
         if (typeof value === 'number' && Number.isFinite(value) && value >= 1)
-            changeBeat(fromDisplayedBeat(value))
+            changeBeat(alignNear(fromDisplayedBeat(value), view.division))
     },
 })
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
@@ -934,6 +980,8 @@ watchEffect(() => {
         y: layout.yAt(row.elevation),
         w: row.size * layout.laneScale,
     }))
+    // A paste ghost's notes are drawn as their pasted slides make them, as on the chart.
+    const ghostInfos = toolName.value === 'paste' ? pasteGhostInfos() : undefined
     const rect = selection.value
     const ratio = pixelRatio.value
     const labels = i18n.value.elevation
@@ -1045,14 +1093,21 @@ watchEffect(() => {
                 row.x - row.w / 2 - padding <= layout.width,
         )
         const ghostSet = new Set(ghosts)
-        const drawRow = (row: ElevationRow, opacity = 1) => {
+        const ghostContext = { ...context, slideInfos: ghostInfos }
+        const drawRow = (row: ElevationRow, ghost = false) => {
             ctx.save()
             ctx.scale(layout.laneScale, layout.laneScale)
-            notes.draw(context, row.note, selected.has(row.note) || hover.has(row.note), opacity, {
-                left: (row.x - row.w / 2) / layout.laneScale,
-                y: row.y / layout.laneScale - 0.3,
-                size: row.size,
-            })
+            notes.draw(
+                ghost ? ghostContext : context,
+                row.note,
+                selected.has(row.note) || hover.has(row.note),
+                ghost ? 0.5 : 1,
+                {
+                    left: (row.x - row.w / 2) / layout.laneScale,
+                    y: row.y / layout.laneScale - 0.3,
+                    size: row.size,
+                },
+            )
             ctx.restore()
         }
         for (const row of visibleRows) {
@@ -1064,7 +1119,7 @@ watchEffect(() => {
             if (!ghostSet.has(row) && selected.has(row.note)) drawRow(row)
         }
         for (const row of visibleRows) {
-            if (ghostSet.has(row)) drawRow(row, 0.5)
+            if (ghostSet.has(row)) drawRow(row, true)
         }
         // Names go over every row and connection, as on the chart.
         ctx.save()

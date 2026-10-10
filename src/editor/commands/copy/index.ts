@@ -18,7 +18,6 @@ import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
 import { interpolate } from '../../../utils/interpolate'
 import { createComposedLayout } from '../../composed'
-import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { hitAllEntitiesAtPoint } from '../../tools/utils'
 import { view, yToValidBeat } from '../../view'
@@ -110,10 +109,9 @@ const getAnchor = (entities: Entity[], x: number, y: number) => {
     }
 }
 
-/** A cut keeps its free pointer anchor in both the authored and displayed layouts. */
+/** A cut keeps its free pointer anchor in both the authored and displayed layouts, in either pane. */
 export const getComposedClipboardOffset = (entities: Entity[], x: number, y: number) => {
-    if (view.layout !== 'composed' || !state.value.isDynamicStages || editorNavigation.value)
-        return 0
+    if (view.layout !== 'composed' || !state.value.isDynamicStages) return 0
     const { note } = getAnchor(entities, x, y)
     return note ? createComposedLayout(state.value).notePosition(note).left - note.left : 0
 }

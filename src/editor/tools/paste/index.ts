@@ -429,6 +429,29 @@ const showGhost = (
     }
 }
 
+/** Another pane's notes-only paste ghost, placed as the store will place it (attached notes included). */
+export const showNoteGhost = (slides: NoteObject[][]) => {
+    const { bpms } = state.value
+    if (
+        !ghost ||
+        ghost.state ||
+        ghost.bpms !== bpms ||
+        ghost.pastedBpms.length ||
+        !isSameSlides(ghost.slides, slides)
+    ) {
+        clearPasteGhost()
+        const { slides: built } = createStore({ ...emptyChart(), slides }, bpms)
+        ghost = {
+            slides,
+            bpms,
+            pastedBpms: [],
+            entities: [...[...built.connector.values()].flat(), ...[...built.note.values()].flat()],
+            infos: built.info,
+        }
+    }
+    return { notes: ghost.entities.filter((entity) => entity.type === 'note'), infos: ghost.infos }
+}
+
 const emptyChart = (): Chart => ({
     initialLife: 1000,
     isDynamicStages: false,
@@ -598,29 +621,59 @@ const buildComposedPaste = (
         }
         return transaction.commit(selected)
     }
-    const focus =
-        (anchorIndex === undefined ? undefined : notes[anchorIndex]) ??
-        [...notes].sort(
-            (a, b) =>
-                Math.abs(a.beat - anchorBeat) - Math.abs(b.beat - anchorBeat) ||
-                Math.abs(a.left + a.size / 2 - startLane) -
-                    Math.abs(b.left + b.size / 2 - startLane),
-        )[0]
-    if (!focus) return state.value
+    const delta = getComposedPasteDelta(
+        entities,
+        startLane,
+        lane,
+        beatOffset,
+        flip,
+        anchorIndex,
+        anchorBeat,
+    )
+    return pasteAuthored(entities, startLane, beatOffset, flip, delta ?? 0, delta !== undefined)
+}
+
+/** The pasted note placed under the pointer: the copied anchor, else the one nearest it. */
+export const getPasteFocus = <T extends NoteEntity>(
+    notes: T[],
+    startLane: number,
+    anchorIndex?: number,
+    anchorBeat = 0,
+) =>
+    (anchorIndex === undefined ? undefined : notes[anchorIndex]) ??
+    [...notes].sort(
+        (a, b) =>
+            Math.abs(a.beat - anchorBeat) - Math.abs(b.beat - anchorBeat) ||
+            Math.abs(a.left + a.size / 2 - startLane) - Math.abs(b.left + b.size / 2 - startLane),
+    )[0]
+
+/** A Composed paste's one authored lane delta, landing its focus under the pointer on its stage's lattice. */
+export const getComposedPasteDelta = (
+    entities: Entity[],
+    startLane: number,
+    lane: number,
+    beatOffset: number,
+    flip: boolean,
+    anchorIndex?: number,
+    anchorBeat = 0,
+) => {
+    const notes = entities.filter((entity) => entity.type === 'note')
+    const focus = getPasteFocus(notes, startLane, anchorIndex, anchorBeat)
+    if (!focus) return
     const focusIndex = notes.indexOf(focus)
-    const pasteAtDelta = (delta: number, limited = false) =>
-        pasteAuthored(entities, startLane, beatOffset, flip, delta, limited)
+    const pasteAtDelta = (delta: number) =>
+        pasteAuthored(entities, startLane, beatOffset, flip, delta, false)
     // These probes must neither snap nor clamp: either changes the response slope.
     const base = pasteAtDelta(0)
     const target = base.selectedEntities.filter((entity) => entity.type === 'note')[focusIndex]
-    if (!target) return base
+    if (!target) return
     const layout = createComposedLayout(base)
     const position = layout.notePosition(target)
     const probe = pasteAtDelta(1)
     const probeTarget = probe.selectedEntities.filter((entity) => entity.type === 'note')[
         focusIndex
     ]
-    if (!probeTarget) return base
+    if (!probeTarget) return
     const sourceLeft = flip ? 2 * startLane - focus.left - focus.size : focus.left
     const grasp = startLane - sourceLeft
     const solved = inverseAffine(
@@ -630,11 +683,10 @@ const buildComposedPaste = (
     )
     // A cancelled response cannot follow the pointer; retain the baseline instead
     // of inventing a different translation for the note and its stage controls.
-    if (solved === undefined) return pasteAtDelta(0, true)
+    if (solved === undefined) return 0
     const phase = layout.gridOffset(target.stageId, target.beat)
     const snappedLeft = phase + align(target.left + solved - phase, view.laneDivision)
-    const delta = snappedLeft - target.left
-    return pasteAtDelta(delta, true)
+    return snappedLeft - target.left
 }
 
 /** The same raw edit for every pasted position, with limits only at publication. */

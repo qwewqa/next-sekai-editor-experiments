@@ -11,7 +11,7 @@ import type { Store } from '../../store'
 import { addToStoreGrid, removeFromStoreGrid } from '../../store/grid'
 
 /** By time, as the engine places them (get_attach_frac); by beat, exactly, under one tempo. */
-const attachFraction = (bpms: BpmIntegral[], head: number, tail: number, beat: number) => {
+export const attachFraction = (bpms: BpmIntegral[], head: number, tail: number, beat: number) => {
     let i = bisect(bpms, 'x', head)
     while (bpms[i]?.x === head) i++
     // Entries repeating the tempo in effect don't change it.

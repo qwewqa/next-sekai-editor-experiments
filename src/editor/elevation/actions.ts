@@ -1,13 +1,17 @@
+import type { NoteObject } from '../../chart/note'
 import { clipboardEntry } from '../../clipboard'
+import { ease } from '../../ease'
 import { pushState, state } from '../../history'
 import { i18n } from '../../i18n'
 import { createSlideId } from '../../state/entities/slides'
+import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { toNoteEntity } from '../../state/entities/slides/note'
+import { attachFraction } from '../../state/mutations/slides'
 import { addNote } from '../../state/mutations/slides/note'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
-import { align, shiftComputed } from '../../utils/math'
+import { alignComputed, lerp, shiftComputed } from '../../utils/math'
 import { getComposedLayout } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
@@ -15,13 +19,17 @@ import { notify } from '../notification'
 import { revealAuthoringTarget } from '../scope'
 import { getNotePropertiesFromSelection } from '../tools/note'
 import {
+    getComposedPasteDelta,
+    getPasteFocus,
     getPasteNoteEntities,
     pasteAtPosition,
+    showNoteGhost,
     toMovedNoteObject,
     toPasteBeatOffset,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
 import { alignLane, view } from '../view'
+import { sameBeat, type ElevationNote } from './layout'
 import { elevationState, getElevationStageProps } from './scene'
 
 const getElevationProperties = (beat: number, asSlide: boolean) =>
@@ -82,40 +90,67 @@ export const createElevationNote = (
     notify(message)
 }
 
+// A pasted note's shown elevation before the change; an attached one follows its pasted head and tail.
+const pastedElevation = (note: NoteEntity, notes: NoteEntity[], beatOffset: number) => {
+    const beat = note.beat + beatOffset
+    const shown = (point: NoteEntity) =>
+        point.elevation + getElevationStageProps(view.stageId ?? point.stageId, beat).elevation
+    const slide = notes.filter((other) => other.slideId === note.slideId)
+    const index = slide.indexOf(note)
+    // As the store attaches: to the nearest unattached notes, or the slide's ends.
+    const isEnd = (other: NoteEntity) =>
+        !other.isAttached || other === slide[0] || other === slide.at(-1)
+    const head = slide.slice(0, index).reverse().find(isEnd)
+    const tail = slide.slice(index + 1).find(isEnd)
+    if (!note.isAttached || !head || !tail) return shown(note)
+    return attachedElevation(note, head, tail, beatOffset, shown)
+}
+
+// An attached note's shown elevation between its head and tail, as the editor draws it.
+const attachedElevation = (
+    note: NoteEntity,
+    head: NoteEntity,
+    tail: NoteEntity,
+    beatOffset: number,
+    shown: (point: NoteEntity) => number,
+) =>
+    lerp(
+        shown(head),
+        shown(tail),
+        sameBeatAttachmentFraction(head, tail, note) ??
+            ease(
+                head.connectorEase,
+                attachFraction(
+                    state.value.bpms,
+                    head.beat + beatOffset,
+                    tail.beat + beatOffset,
+                    note.beat + beatOffset,
+                ),
+            ),
+    )
+
 const getElevationPaste = (lane: number, elevation: number, beat: number, modifiers: Modifiers) => {
     const data = clipboardEntry.value?.data
     const notes = getPasteNoteEntities()
-    const first = notes.reduce<(typeof notes)[number] | undefined>(
-        (first, note) => (!first || note.beat < first.beat ? note : first),
-        undefined,
-    )
-    if (!data || !first) return
-    const firstStage = getElevationStageProps(first.stageId, first.beat)
-    const total = first.elevation + firstStage.elevation
-    const baseElevation = Number.isFinite(total) ? total : 0
-    const direction = modifiers.shift ? -1 : 1
+    // The chart paste's focus lands under the pointer.
+    const focus = data && getPasteFocus(notes, data.lane, data.anchor, data.beat)
+    if (!data || !focus) return
     const beatOffset = toPasteBeatOffset(notes, beat - data.beat)
-    // In Composed the first note lands on its stage's lattice, as a chart paste does.
-    const landing = getElevationStageProps(view.stageId ?? first.stageId, first.beat + beatOffset)
-    const shifted = toMovedNoteObject(
-        first,
-        data.lane,
-        lane,
-        first.beat + beatOffset,
-        modifiers.shift,
-        false,
-    ).left
-    const pointed = modifiers.shift
-        ? -(first.left + first.size) + data.lane + lane
-        : first.left + lane - data.lane
-    const snap = getComposedLayout(elevationState.value)
-        ? landing.gridOffset +
-          align(pointed - landing.laneOffset - landing.gridOffset, view.laneDivision) -
-          (shifted - landing.laneOffset)
-        : 0
+    // Every note takes one authored elevation change, landing the focus at the pointer.
+    const elevationDelta = elevation - pastedElevation(focus, notes, beatOffset)
+    // In Composed every note takes the chart paste's one authored lane delta.
+    const delta = getComposedLayout(elevationState.value)
+        ? (getComposedPasteDelta(
+              notes,
+              data.lane,
+              lane,
+              beatOffset,
+              modifiers.shift,
+              data.anchor,
+              data.beat,
+          ) ?? 0)
+        : undefined
     const mapNote = (note: NoteEntity, destinationBeat: number) => {
-        const source = getElevationStageProps(note.stageId, note.beat)
-        const destination = getElevationStageProps(view.stageId ?? note.stageId, destinationBeat)
         const moved = toMovedNoteObject(
             note,
             data.lane,
@@ -126,18 +161,13 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
         )
         return constrainLaneObject({
             ...moved,
-            left: shiftComputed(
-                moved.left,
-                direction * (source.laneOffset - firstStage.laneOffset) -
-                    destination.laneOffset +
-                    snap,
-            ),
-            elevation:
-                note.elevation +
-                source.elevation +
-                elevation -
-                baseElevation -
-                destination.elevation,
+            ...(delta !== undefined && {
+                left: modifiers.shift
+                    ? alignComputed(2 * data.lane - note.left - note.size + delta)
+                    : shiftComputed(note.left, delta),
+                size: note.size,
+            }),
+            elevation: note.elevation + elevationDelta,
         })
     }
     return { notes, mapNote, beatOffset, startLane: data.lane }
@@ -150,11 +180,45 @@ export const previewElevationPaste = (
     modifiers: Modifiers,
 ) => {
     const paste = getElevationPaste(lane, elevation, beat, modifiers)
-    if (!paste) return []
-    return paste.notes.map((note) => {
-        const destinationBeat = note.beat + paste.beatOffset
-        return toNoteEntity(note.slideId, paste.mapNote(note, destinationBeat))
-    })
+    if (!paste) return { notes: [], infos: undefined }
+    const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
+    for (const note of paste.notes) {
+        const object = paste.mapNote(note, note.beat + paste.beatOffset)
+        slides.set(note.slideId, [...(slides.get(note.slideId) ?? []), object])
+    }
+    // Built as the store will place it, so attached notes show where they land.
+    return showNoteGhost([...slides.values()])
+}
+
+/** The paste ghost's rows at a beat: lanes and elevations as they will show once pasted. */
+export const previewElevationPasteRows = (
+    lane: number,
+    elevation: number,
+    beat: number,
+    modifiers: Modifiers,
+): ElevationNote[] => {
+    const { notes, infos } = previewElevationPaste(lane, elevation, beat, modifiers)
+    const composed = getComposedLayout(elevationState.value)
+    return notes
+        .filter((note) => sameBeat(note.beat, beat))
+        .map((note, order) => {
+            const slide = infos?.get(note.slideId) ?? []
+            const index = slide.findIndex((info) => info.note === note)
+            const info = note.isAttached && index > 0 && index < slide.length - 1 && slide[index]
+            const shown = (point: NoteEntity) =>
+                point.elevation + getElevationStageProps(point.stageId, note.beat).elevation
+            const position = composed?.notePosition(note, note.beat, { slideInfos: slide }) ?? note
+            return {
+                note,
+                lane: position.left + position.size / 2,
+                size: position.size,
+                elevation: info
+                    ? attachedElevation(note, info.attachHead, info.attachTail, 0, shown)
+                    : shown(note),
+                attached: !!info,
+                order,
+            }
+        })
 }
 
 export const pasteElevationNotes = async (
