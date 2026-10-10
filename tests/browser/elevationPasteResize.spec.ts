@@ -25,7 +25,8 @@ type Config = { layout: Layout; snapping: 'absolute' | 'relative'; division: num
 // Stage 1: pivot 0.25 plus a 0 to 8 translation over beats 0 to 8, whole lanes.
 // Stage 2: pivot -4 on half lanes, raised 0.5.
 // A (stage 1, beat 2) and B (stage 2, beat 3) are copied with B as the anchor.
-// At beat 3: B, C (off the lattice), D (a slide's anchor) and an attached tick shown at 2.
+// At beat 3: B, C (off the lattice), D (a slide's anchor) and an attached tick shown at 2.25,
+// between a stage 1 head and a stage 2 tail.
 const seed = (page: Page, config: Config) =>
     page.evaluate(async (config) => {
         const { fixtures, show, view, settings, history } = window.editorTest
@@ -72,7 +73,7 @@ const seed = (page: Page, config: Config) =>
                     [
                         { ...base, beat: 2, left: 0, size: 2, elevation: 1 },
                         { ...base, beat: 3, left: 0, size: 2, isAttached: true },
-                        { ...base, beat: 4, left: 0, size: 2, elevation: 3 },
+                        { ...base, stageId: stage2, beat: 4, left: 0, size: 2, elevation: 3 },
                     ],
                 ],
             },
@@ -182,7 +183,9 @@ const copyAnchoredOnB = async (page: Page) => {
         history.replaceState({
             ...history.state.value,
             selectedEntities: all.filter(
-                (note) => (note.beat === 2 && note.left === -2) || note.stageId === 2,
+                (note) =>
+                    (note.beat === 2 && note.left === -2) ||
+                    (note.beat === 3 && note.stageId === 2),
             ),
         })
     })
@@ -190,6 +193,10 @@ const copyAnchoredOnB = async (page: Page) => {
     const point = await at(page, 'main', (b.left + b.right) / 2, 0)
     await page.mouse.move(point.x - 2, point.y)
     await page.mouse.move(point.x, point.y)
+    // The chart has taken the hover before the copy reads it.
+    await expect
+        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered))
+        .toContainEqual({ type: 'note', beat: 3, left: 1, size: 2 })
     await page.keyboard.press('c')
     const anchor = await page.evaluate(async () => {
         const { appImport } = window.editorTest
@@ -234,6 +241,34 @@ const resizeBy =
         await page.mouse.move(end.x, end.y, { steps: 6 })
         await page.mouse.up()
     }
+
+// Copies the tick's whole slide while hovering the tick in the Elevation Editor.
+const copyTickSlide = async (page: Page) => {
+    await openAt(page, 3)
+    // The whole slide, copied while hovering its tick in the Elevation Editor.
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const all = [...history.state.value.store.slides.note.values()].flat()
+        const tick = all.find((note) => note.isAttached)!
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: all.filter((note) => note.slideId === tick.slideId),
+        })
+    })
+    const tick = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const scene = await appImport<typeof import('../../src/editor/elevation/scene')>(
+            '/src/editor/elevation/scene.ts',
+        )
+        const row = scene.elevationNotes.value.find((row) => row.attached)!
+        return { lane: row.lane, elevation: row.elevation }
+    })
+    expect(tick.elevation).toBe(2.25)
+    const hover = await at(page, 'elevation', tick.lane, tick.elevation)
+    await page.mouse.move(hover.x - 2, hover.y)
+    await page.mouse.move(hover.x, hover.y)
+    await page.keyboard.press('c')
+}
 
 const gestures = {
     paste: pasteAt(8.3),
@@ -342,30 +377,7 @@ for (const layout of ['basic', 'composed'] as const) {
         page,
     }) => {
         await seed(page, { layout, snapping: 'absolute', division: 1 })
-        await openAt(page, 3)
-        // The whole slide, copied while hovering its tick (shown at 2) in the Elevation Editor.
-        await page.evaluate(() => {
-            const { history } = window.editorTest
-            const all = [...history.state.value.store.slides.note.values()].flat()
-            const tick = all.find((note) => note.isAttached)!
-            history.replaceState({
-                ...history.state.value,
-                selectedEntities: all.filter((note) => note.slideId === tick.slideId),
-            })
-        })
-        const tick = await page.evaluate(async () => {
-            const { appImport } = window.editorTest
-            const scene = await appImport<typeof import('../../src/editor/elevation/scene')>(
-                '/src/editor/elevation/scene.ts',
-            )
-            const row = scene.elevationNotes.value.find((row) => row.attached)!
-            return { lane: row.lane, elevation: row.elevation }
-        })
-        expect(tick.elevation).toBe(2)
-        const hover = await at(page, 'elevation', tick.lane, tick.elevation)
-        await page.mouse.move(hover.x - 2, hover.y)
-        await page.mouse.move(hover.x, hover.y)
-        await page.keyboard.press('c')
+        await copyTickSlide(page)
         await setup(page, 'paste')
         const point = await at(page, 'elevation', -8, 3)
         await page.mouse.move(point.x - 2, point.y)
@@ -390,10 +402,10 @@ for (const layout of ['basic', 'composed'] as const) {
                 elevations: slide.map((note) => note.elevation),
             }
         })
-        // One authored change of 1 for the whole slide: head 2, tail 4, tick shown at 3.
+        // One authored change of 0.75 for the whole slide: head 1.75, tail 3.75, tick shown at 3.
         expect(pasted.count).toBe(2)
         expect(pasted.shown).toBeCloseTo(3, 9)
-        expect([pasted.elevations[0], pasted.elevations[2]]).toEqual([2, 4])
+        expect([pasted.elevations[0], pasted.elevations[2]]).toEqual([1.75, 3.75])
     })
 }
 
@@ -578,4 +590,110 @@ for (const layout of ['basic', 'composed'] as const)
                 expect(await notes(page)).toEqual(removed)
                 await page.evaluate(() => window.editorTest.history.redoState())
                 expect(await notes(page)).toEqual(before)
+            })
+
+for (const layout of ['basic', 'composed'] as const)
+    for (const pane of ['main', 'elevation'] as const)
+        for (const shift of [false, true])
+            test(`${layout}: the ${pane === 'main' ? 'chart' : 'Elevation Editor'} paste ghost${shift ? ', flipped,' : ''} shows an attached tick where it lands`, async ({
+                page,
+            }) => {
+                await seed(page, { layout, snapping: 'absolute', division: 1 })
+                await copyTickSlide(page)
+                await setup(page, 'paste')
+                const before = await page.evaluate(() =>
+                    [...window.editorTest.history.state.value.store.slides.note.values()]
+                        .flat()
+                        .map((note) => note.slideId),
+                )
+                const point = await at(page, pane, -8, 3)
+                if (shift) await page.keyboard.down('Shift')
+                await page.mouse.move(point.x - 2, point.y)
+                await page.mouse.move(point.x, point.y)
+                const brief = (
+                    list: { type: string; beat: number; left?: number; size?: number }[],
+                ) =>
+                    list
+                        .filter((entity) => entity.type === 'note')
+                        .map(({ beat, left, size }) => `${beat} ${left} ${size}`)
+                        .sort()
+                await expect
+                    .poll(async () =>
+                        brief((await page.evaluate(() => window.editorTest.snapshot())).creating),
+                    )
+                    .not.toEqual([])
+                const ghost = brief(
+                    (await page.evaluate(() => window.editorTest.snapshot())).creating,
+                )
+                // Elevation Editor rows, and the slides the chart pane draws them with.
+                const ghostRows = await page.evaluate(async (pane) => {
+                    const { appImport, view } = window.editorTest
+                    const paste = await appImport<typeof import('../../src/editor/tools/paste')>(
+                        '/src/editor/tools/paste/index.ts',
+                    )
+                    const infos = paste.pasteGhostInfos()
+                    const drawnWithSlides = view.entities.creating.every(
+                        (entity) =>
+                            entity.type !== 'note' ||
+                            !!infos?.get(entity.slideId)?.some((info) => info.note === entity),
+                    )
+                    if (pane === 'main') return { rows: [], drawnWithSlides }
+                    // The rows the Elevation Editor draws, read from its dev-mode instance.
+                    const editor = (
+                        document.querySelector('.elevation-canvas') as unknown as {
+                            __vueParentComponent: {
+                                setupState: {
+                                    creating: import('../../src/editor/elevation/layout').ElevationNote[]
+                                }
+                            }
+                        }
+                    ).__vueParentComponent
+                    const rows = editor.setupState.creating
+                        .map(({ lane, size, elevation, attached }) =>
+                            [lane, size, elevation, attached]
+                                .map((value) =>
+                                    typeof value === 'number' ? value.toFixed(9) : value,
+                                )
+                                .join(' '),
+                        )
+                        .sort()
+                    return { rows, drawnWithSlides }
+                }, pane)
+                expect(ghostRows.drawnWithSlides).toBe(true)
+                await page.mouse.click(point.x, point.y)
+                if (shift) await page.keyboard.up('Shift')
+                await expect.poll(async () => (await notes(page)).length).toBe(12)
+                const landed = await page.evaluate(
+                    async ({ before }) => {
+                        const { appImport, history } = window.editorTest
+                        const scene = await appImport<
+                            typeof import('../../src/editor/elevation/scene')
+                        >('/src/editor/elevation/scene.ts')
+                        const added = [...history.state.value.store.slides.note.values()]
+                            .flat()
+                            .filter((note) => !before.includes(note.slideId))
+                        return {
+                            notes: added,
+                            rows: scene.elevationNotes.value
+                                .filter((row) => added.includes(row.note))
+                                .map(({ lane, size, elevation, attached }) =>
+                                    [lane, size, elevation, attached]
+                                        .map((value) =>
+                                            typeof value === 'number' ? value.toFixed(9) : value,
+                                        )
+                                        .join(' '),
+                                )
+                                .sort(),
+                        }
+                    },
+                    { before },
+                )
+                const landedNotes = brief(landed.notes)
+                // The chart ghost holds the whole paste; the Elevation Editor's, the notes at its beat.
+                if (pane === 'main') expect(ghost).toEqual(landedNotes)
+                else {
+                    expect(ghost).toEqual(landedNotes.filter((note) => note.startsWith('3 ')))
+                    expect(ghostRows.rows).toEqual(landed.rows)
+                    expect(ghostRows.rows.some((row) => row.endsWith(' true'))).toBe(true)
+                }
             })
