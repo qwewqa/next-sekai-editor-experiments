@@ -669,18 +669,23 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     return bases
 }
 
+/** The focus lanes snap from: a tick taken past its slide's end snaps from its gameplay place. */
+const toLaneFocus = (focus: Entity, bases?: Bases) =>
+    focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus
+
 const moveSelectedLane = (
     value: number,
     startLane: number,
     lane: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ) =>
     rawMove
         ? rawMove.unconstrained
             ? value + rawMove.delta
             : shiftComputed(value, rawMove.delta)
-        : moveLane(value, startLane, lane, getLaneAnchor(focus))
+        : moveLane(value, startLane, lane, getLaneAnchor(toLaneFocus(focus, bases)))
 
 /** The starting BPM and time scales. */
 const isInitial = (entity: Entity) =>
@@ -753,6 +758,7 @@ const toMovedCameraEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): CameraEventObject => {
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [cameraLeft, cameraSize] = resize(
@@ -788,7 +794,7 @@ const toMovedCameraEventObject = (
         {
             ...entity,
             beat,
-            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, focus, rawMove),
+            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -807,6 +813,7 @@ const toMovedStageMaskEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StageMaskEventObject => {
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [maskLeft, maskSize] = resize(
@@ -842,7 +849,7 @@ const toMovedStageMaskEventObject = (
         {
             ...entity,
             beat,
-            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, focus, rawMove),
+            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -860,12 +867,13 @@ const toMovedStagePivotEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StagePivotEventObject =>
     constrainLaneObject(
         {
             ...entity,
             beat,
-            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, focus, rawMove),
+            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, focus, rawMove, bases),
         },
         {
             enabled:
@@ -908,12 +916,20 @@ const toMovedStageTransformEventObject = (
     beat: number,
     focus: Entity,
     rawMove?: RawMove,
+    bases?: Bases,
 ): StageTransformEventObject =>
     constrainLaneObject(
         {
             ...entity,
             beat,
-            xTranslation: moveSelectedLane(entity.xTranslation, startLane, lane, focus, rawMove),
+            xTranslation: moveSelectedLane(
+                entity.xTranslation,
+                startLane,
+                lane,
+                focus,
+                rawMove,
+                bases,
+            ),
         },
         {
             enabled:
@@ -1010,7 +1026,7 @@ const toMovedNoteObject = (
                 from.left,
                 startLane,
                 lane + correction,
-                getLaneAnchor(focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus),
+                getLaneAnchor(toLaneFocus(focus, bases)),
                 composed && focus.type === 'note'
                     ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
                     : 0,
@@ -1045,21 +1061,39 @@ const creates: {
             toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
         ),
 
-    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toCameraEventJointEntity(
-            toMovedCameraEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedCameraEventObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                bases,
+            ),
         ),
     cameraEventConnection: undefined,
 
-    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStageMaskEventJointEntity(
-            toMovedStageMaskEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedStageMaskEventObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                bases,
+            ),
         ),
     stageMaskEventConnection: undefined,
 
-    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStagePivotEventJointEntity(
-            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove),
+            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
         ),
     stagePivotEventConnection: undefined,
 
@@ -1069,9 +1103,9 @@ const creates: {
         ),
     stageStyleEventConnection: undefined,
 
-    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
         toStageTransformEventJointEntity(
-            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove),
+            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
         ),
     stageTransformEventConnection: undefined,
 
@@ -1164,6 +1198,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedCameraEventObject(
             onlyType,
@@ -1173,6 +1208,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat) return replaceCameraEventJoint(transaction, entity, object)
 
@@ -1191,6 +1227,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedStageMaskEventObject(
             onlyType,
@@ -1200,6 +1237,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageMaskEventJoint(transaction, entity, object)
@@ -1219,8 +1257,17 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
-        const object = toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove)
+        const object = toMovedStagePivotEventObject(
+            entity,
+            startLane,
+            lane,
+            beat,
+            focus,
+            rawMove,
+            bases,
+        )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStagePivotEventJoint(transaction, entity, object)
 
@@ -1267,6 +1314,7 @@ const moves: {
         focus,
         batch,
         rawMove,
+        bases,
     ) => {
         const object = toMovedStageTransformEventObject(
             entity,
@@ -1275,6 +1323,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            bases,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageTransformEventJoint(transaction, entity, object)
