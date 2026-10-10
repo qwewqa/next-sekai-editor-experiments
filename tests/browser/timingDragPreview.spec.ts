@@ -301,15 +301,17 @@ test('an add drag released on an existing BPM change or time scale selects it as
     }
 })
 
-test('a new BPM change starts at the tempo already in effect at its beat', async ({ page }) => {
+test('a new BPM change starts at the tempo and meter already in effect at its beat', async ({
+    page,
+}) => {
     await page.evaluate(() => {
         const { show, fixtures } = window.editorTest
         show(
             {
                 ...fixtures.interaction,
                 bpms: [
-                    { beat: 0, bpm: 120 },
-                    { beat: 4, bpm: 157.3, meter: 3 },
+                    { beat: 0, bpm: 120, meter: 3 },
+                    { beat: 4, bpm: 157.3, meter: 5 },
                 ],
             },
             2,
@@ -337,22 +339,27 @@ test('a new BPM change starts at the tempo already in effect at its beat', async
             window.editorTest.view.entities.creating.map((entity) => ({
                 beat: entity.beat,
                 bpm: entity.type === 'bpm' ? entity.bpm : undefined,
+                meter: entity.type === 'bpm' ? entity.meter : undefined,
             })),
         )
     const bpms = () =>
         page.evaluate(() =>
             [...window.editorTest.history.state.value.store.grid.bpm.values()]
                 .flatMap((entities) => [...entities])
-                .map(({ beat, bpm }) => ({ beat, bpm }))
+                .map(({ beat, bpm, meter }) => ({ beat, bpm, meter }))
                 .sort((a, b) => a.beat - b.beat),
         )
     await page.keyboard.press('q')
     const tap = await point(4, 2)
     await page.mouse.move(tap.x, tap.y)
     await settle()
-    expect(await ghost()).toEqual([{ beat: 2, bpm: 120 }])
+    expect(await ghost()).toEqual([{ beat: 2, bpm: 120, meter: 3 }])
     await page.mouse.click(tap.x, tap.y)
     await settle()
+    // Its properties show what it keeps.
+    const dialog = page.getByRole('dialog', { name: 'BPM Properties' })
+    await expect(dialog.getByRole('spinbutton', { name: 'BPM' })).toHaveValue('120')
+    await expect(dialog.getByRole('spinbutton', { name: 'Meter' })).toHaveValue('3')
     await page.keyboard.press('Escape')
     await settle()
     const start = await point(4, 7)
@@ -363,13 +370,13 @@ test('a new BPM change starts at the tempo already in effect at its beat', async
     const end = await point(4, 6)
     await page.mouse.move(end.x, end.y, { steps: 8 })
     await settle()
-    expect(await ghost()).toEqual([{ beat: 6, bpm: 157.3 }])
+    expect(await ghost()).toEqual([{ beat: 6, bpm: 157.3, meter: 5 }])
     await page.mouse.up()
     await settle()
     expect(await bpms()).toEqual([
-        { beat: 0, bpm: 120 },
-        { beat: 2, bpm: 120 },
-        { beat: 4, bpm: 157.3 },
-        { beat: 6, bpm: 157.3 },
+        { beat: 0, bpm: 120, meter: 3 },
+        { beat: 2, bpm: 120, meter: 3 },
+        { beat: 4, bpm: 157.3, meter: 5 },
+        { beat: 6, bpm: 157.3, meter: 5 },
     ])
 })
