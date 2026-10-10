@@ -226,9 +226,10 @@ const pasteAt =
         await expect.poll(async () => (await notes(page)).length).toBe(11)
     }
 
-// Drags one selected note's edge by a number of lanes.
+// Drags one selected note's edge by a number of lanes, by way of another to pass the drag slop.
 const resizeBy =
-    (left: number, side: 'left' | 'right', by: number) => async (page: Page, pane: Pane) => {
+    (left: number, side: 'left' | 'right', by: number, via?: number) =>
+    async (page: Page, pane: Pane) => {
         await openAt(page, 3)
         await setup(page, 'select', [1, 4.3, -10, 0])
         const note = await shown(page, left)
@@ -239,6 +240,10 @@ const resizeBy =
         await page.mouse.move(start.x, start.y - 2)
         await page.mouse.move(start.x, start.y)
         await page.mouse.down()
+        if (via !== undefined) {
+            const past = await at(page, pane, lane + via, note.elevation)
+            await page.mouse.move(past.x, past.y, { steps: 6 })
+        }
         await page.mouse.move(end.x, end.y, { steps: 6 })
         await page.mouse.up()
     }
@@ -424,6 +429,22 @@ test('composed: a multi-note resize moves every edge by the grabbed edge snap an
         expect.objectContaining({ stageId: 1, left: 4.8, size: 1.5 }),
         expect.objectContaining({ stageId: 2, left: 1.5, size: 1.5 }),
     ])
+})
+
+test('a resize nudge under a snap step clamps the grabbed note to a lowered lane limit, as on the chart', async ({
+    page,
+}) => {
+    await seed(page, { layout: 'basic', snapping: 'absolute', division: 1 })
+    // B's right edge, 3, now lies past the limit.
+    await page.evaluate(() => (window.editorTest.settings.maxLane = 2))
+    // B's right edge ends 0.3 out, under half a step, so only off-lattice C snaps.
+    const nudge = resizeBy(1, 'right', 0.3, 1.5)
+    const main = await runGesture(page, 'main', nudge)
+    const elevation = await runGesture(page, 'elevation', nudge)
+    expect(lanes(elevation)).toEqual(lanes(main))
+    // B is clamped to the limit; C's snap commits the drop.
+    expect(main).toContainEqual(expect.objectContaining({ beat: 3, stageId: 2, left: 1, size: 1 }))
+    expect(main).toContainEqual(expect.objectContaining({ beat: 3, left: 4.3, size: 2.7 }))
 })
 
 test('Escape cancels a multi-note Elevation Editor resize', async ({ page }) => {

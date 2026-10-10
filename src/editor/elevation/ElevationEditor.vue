@@ -373,8 +373,12 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
             elevation: note.elevation + active.deltaElevation,
         },
         {
+            // A resize clamps on any pointer movement, as the chart's does.
             enabled:
-                note === active.row.note && (active.deltaLane !== 0 || active.deltaElevation !== 0),
+                note === active.row.note &&
+                (active.resizing
+                    ? active.shift !== 0
+                    : active.deltaLane !== 0 || active.deltaElevation !== 0),
             resizing: active.resizing,
         },
     )
@@ -779,6 +783,7 @@ const controls: Pick<
                   })
                   .join()
             : ''
+        drag.shift = next.shift
         if (
             deltaLane === drag.deltaLane &&
             deltaElevation === drag.deltaElevation &&
@@ -787,7 +792,6 @@ const controls: Pick<
             return
         drag.deltaLane = deltaLane
         drag.deltaElevation = deltaElevation
-        drag.shift = next.shift
         drag.resized = resized
         const active = { ...drag }
         setPreviewEdit(active.source, () => edit(active), [
