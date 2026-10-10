@@ -259,6 +259,11 @@ const backdrop = useTemplateRef<HTMLDivElement>('backdrop')
 let lastMove: { x: number; y: number } | undefined
 let inPlace = false
 const onMoveOutside = (event: PointerEvent) => {
+    if (
+        press?.id === event.pointerId &&
+        Math.hypot(event.clientX - press.x, event.clientY - press.y) > pressJitter
+    )
+        endPress(event)
     if (event.pointerType !== 'mouse') return
     inPlace = lastMove?.x === event.clientX && lastMove.y === event.clientY
     lastMove = { x: event.clientX, y: event.clientY }
@@ -267,10 +272,34 @@ const onMoveOutside = (event: PointerEvent) => {
     if (root.value?.contains(target) || backdrop.value?.contains(target)) return
     activeIndex.value = -1
 }
+// A drag that starts anywhere but the open flyout and its tools closes it, by any pointer;
+// so does a touch the browser takes over to scroll.
+const pressJitter = 10
+let press: { id: number; x: number; y: number } | undefined
+const onPressOutside = (event: PointerEvent) => {
+    const target = event.target
+    press =
+        activeIndex.value !== -1 && target instanceof Node && !root.value?.contains(target)
+            ? { id: event.pointerId, x: event.clientX, y: event.clientY }
+            : undefined
+}
+const endPress = (event: PointerEvent) => {
+    if (press?.id !== event.pointerId) return
+    press = undefined
+    if (event.type !== 'pointerup') activeIndex.value = -1
+}
 // Capturing, as resize handles stop moves from bubbling; it runs before the backdrop’s handler.
-window.addEventListener('pointermove', onMoveOutside, { capture: true, passive: true })
+const listeners = [
+    ['pointermove', onMoveOutside],
+    ['pointerdown', onPressOutside],
+    ['pointerup', endPress],
+    ['pointercancel', endPress],
+] as const
+for (const [type, listener] of listeners)
+    window.addEventListener(type, listener, { capture: true, passive: true })
 onBeforeUnmount(() => {
-    window.removeEventListener('pointermove', onMoveOutside, { capture: true })
+    for (const [type, listener] of listeners)
+        window.removeEventListener(type, listener, { capture: true })
 })
 
 // A flyout rises from its tool's top edge, centered on the tool and kept 8px
@@ -339,10 +368,6 @@ watch(activeIndex, async () => {
     place()
     await nextTick()
     revealChecked()
-})
-// A drag in either pane hides the toolbar, so it closes the flyout and its scrim too.
-watch(isDragging, (count) => {
-    if (count) activeIndex.value = -1
 })
 // After the rows rewrap, so the flyout follows its tool.
 watch([room, short, height, isCoarsePointer], async () => {

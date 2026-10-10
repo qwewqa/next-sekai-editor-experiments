@@ -1780,10 +1780,11 @@ test('an open flyout re-centres on its tool as its own width changes', async ({ 
 test.describe('with touch', () => {
     test.use({ hasTouch: true })
 
-    test('a drag in the other pane closes an open flyout and its scrim', async ({ page }) => {
+    test('a drag elsewhere closes an open flyout and its scrim', async ({ page }) => {
         await page.evaluate(() => {
             const { settings } = window.editorTest
             settings.elevationEditorSideBySide = 'allow'
+            settings.showGroups = true
             settings.toolbar = [
                 ['paste', 'undo'],
                 ['eraser', 'select'],
@@ -1794,28 +1795,43 @@ test.describe('with touch', () => {
         await expect(toolbar(page)).toHaveCount(2)
         const flyouts = page.locator('[data-editor-toolbar] > div > div > div')
         const scrims = page.locator('[data-editor-toolbar] + div[class*="bg-scrim"]')
-        await shown(page).first().tap()
-        await expect(flyouts).toHaveCount(1)
-        await expect(flyouts).toBeVisible()
-        await expect(scrims).toHaveCount(1)
-
-        // A touch drag on the Elevation Editor, away from the open flyout's pane.
-        const pane = (await page.locator('.elevation-editor').boundingBox())!
         const client = await page.context().newCDPSession(page)
         const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) =>
             client.send('Input.dispatchTouchEvent', {
                 type,
                 touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
             })
-        const x = pane.x + pane.width / 2
-        const y = pane.y + pane.height / 3
-        await touch('touchStart', x, y)
-        for (let step = 1; step <= 6; step++) await touch('touchMove', x, y + step * 10)
+        const drag = async (box: { x: number; y: number; width: number; height: number }) => {
+            const x = box.x + box.width / 2
+            const y = box.y + box.height / 3
+            await touch('touchStart', x, y)
+            for (let step = 1; step <= 4; step++) await touch('touchMove', x, y + step * 10)
+        }
+        const open = async () => {
+            await shown(page).first().tap()
+            await expect(flyouts).toHaveCount(1)
+            await expect(flyouts).toBeVisible()
+            await expect(scrims).toHaveCount(1)
+        }
+
+        // A drag on the flyout itself, as to scroll it, keeps it open.
+        await open()
+        await drag((await flyouts.boundingBox())!)
+        await page.waitForTimeout(100)
+        await expect(flyouts).toBeVisible()
+        await touch('touchEnd', 0, 0)
+        await page.keyboard.press('Escape')
         await expect(flyouts).toHaveCount(0)
-        await expect(scrims).toHaveCount(0)
-        await touch('touchEnd', x, y + 60)
-        await expect(flyouts).toHaveCount(0)
-        await expect(scrims).toHaveCount(0)
+
+        // On the Elevation Editor beside it, and on a manager row.
+        for (const origin of ['.elevation-editor', '#workspace-panel-groups .manager-entry']) {
+            await open()
+            await drag((await page.locator(origin).first().boundingBox())!)
+            await expect(flyouts, origin).toHaveCount(0)
+            await expect(scrims).toHaveCount(0)
+            await touch('touchEnd', 0, 0)
+            await expect(flyouts).toHaveCount(0)
+        }
     })
 })
 
@@ -1845,7 +1861,7 @@ test('a drag with a button held crosses the toolbar without opening flyouts', as
     const last = centers.at(-1)!
     await page.mouse.move(last.x + 1, last.y)
     await expect.poll(() => placedFlyout(page)).toBe(centers.length - 1)
-    // A drag from the backdrop of a keyboard-opened flyout leaves it on its tool.
+    // A drag from the backdrop of a keyboard-opened flyout closes it, and opens none.
     await page.mouse.move(800, 300)
     await page.keyboard.press('Escape')
     await expect.poll(() => placedFlyout(page)).toBe(-1)
@@ -1857,6 +1873,6 @@ test('a drag with a button held crosses the toolbar without opening flyouts', as
     await page.mouse.down()
     const first = centers[0]!
     await page.mouse.move(first.x, first.y, { steps: 6 })
-    expect(await placedFlyout(page)).toBe(centers.length - 1)
+    expect(await placedFlyout(page)).toBe(-1)
     await page.mouse.up()
 })
