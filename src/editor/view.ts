@@ -411,13 +411,20 @@ export const yToBeatOffset = (y: number, beat: number) =>
         : align(yToBeat(y) - beat, view.division)
 
 /**
- * A move's beat offset. Absolute snapping, as for lanes, snaps the grabbed beat
- * moved by the pointer's movement from its press, once that reaches half a step.
+ * A move's beat offset, from the pointer's movement since its press, as for lanes:
+ * relative snapping steps by it; absolute snaps the grabbed beat moved by it, once
+ * that reaches half a step.
  */
 export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) => {
-    if (view.snapping !== 'absolute') return yToBeatOffset(y, beat)
     const pointer = yToBeat(y)
-    return snappedOffset(pressBeat, pointer, beat, view.division, 'absolute', pointer - pressBeat)
+    return snappedOffset(
+        pressBeat,
+        pointer,
+        beat,
+        view.division,
+        view.snapping,
+        pointer - pressBeat,
+    )
 }
 
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>

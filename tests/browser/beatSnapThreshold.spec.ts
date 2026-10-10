@@ -164,7 +164,32 @@ test('a multi-selection keeps its spacing and moves as one', async ({ page }) =>
     }
 })
 
-test('relative beat snapping is unchanged', async ({ page }) => {
+// Relative beat snapping steps by the pointer's movement from the press, as relative lanes do.
+for (const tool of ['select', 'note', 'slide'] as const) {
+    test(`${tool}: relative beat snapping steps by the pointer's movement from an off-centre press`, async ({
+        page,
+    }) => {
+        // Division 8 at 400 px per second: half a step is 12.5 px; the press is 18 px off the beat.
+        for (const [db, beat] of [
+            [0, 4.375],
+            [0.04, 4.375],
+            [-0.04, 4.375],
+            [0.085, 4.5],
+            [-0.085, 4.25],
+        ] as const) {
+            await setup(page, { tool, mode: 'relative' })
+            await page.evaluate(() => {
+                const { view, settings } = window.editorTest
+                view.division = 8
+                settings.pps = 400
+            })
+            await drag(page, -1, db, 4.375 + 0.09)
+            expect(await beatsOf(page), `${db}`).toEqual([beat])
+        }
+    })
+}
+
+test('relative beat snapping from a press on the beat', async ({ page }) => {
     for (const [db, beat] of [
         [0.1, 4.375],
         [0.15, 4.625],
