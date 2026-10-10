@@ -2408,6 +2408,28 @@ test.describe('preview panel lifecycle', () => {
         await expect(toggle).toBeFocused()
     })
 
+    test('a pointer click on an aspect segment returns shortcuts to the editor', async ({
+        page,
+    }) => {
+        await expect(page.locator('.preview-controls')).toBeVisible()
+        const radios = page.locator('.preview-controls [role="radiogroup"] input')
+        await expect(radios.first()).toBeVisible()
+        const inForm = () =>
+            page.evaluate(() => !!document.activeElement?.closest('.preview-controls'))
+        // The checked segment, which changes nothing, and then another.
+        const checked = await radios.evaluateAll((inputs) =>
+            inputs.findIndex((input) => (input as HTMLInputElement).checked),
+        )
+        await radios.nth(checked).click()
+        expect(await inForm()).toBe(false)
+        await radios.nth(checked === 0 ? 1 : 0).click()
+        expect(await inForm()).toBe(false)
+        // A keyboard choice keeps focus for the next arrow key.
+        await radios.nth(0).focus()
+        await page.keyboard.press('ArrowRight')
+        await expect(radios.nth(1)).toBeFocused()
+    })
+
     test('a form outside the panel avoids the toolbar and closes on an outside press', async ({
         page,
     }) => {

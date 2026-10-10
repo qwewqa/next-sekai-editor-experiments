@@ -86,6 +86,11 @@ const setExpanded = (value: boolean, event?: MouseEvent | KeyboardEvent) => {
     if (!value) void nextTick(() => toggle.value?.focus({ preventScroll: true }))
 }
 
+// A pointer click on the checked segment changes nothing, so it returns shortcuts here.
+const blurPointerClick = (event: MouseEvent) => {
+    if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
+}
+
 // The form is rendered at the end of the document so it can rise above the
 // editor. Keep it next to its toggle in the tab order.
 const focusableSelector =
@@ -456,6 +461,7 @@ const onPlacementChange = () => {
                                 type="radio"
                                 :name="`${id}-aspect`"
                                 :value
+                                @click="blurPointerClick"
                             />
                             <span
                                 class="flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"

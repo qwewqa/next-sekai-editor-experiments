@@ -208,3 +208,30 @@ test('clearing a brush number reverts it and keeps the row', async ({ page }) =>
     await expect(field).toHaveValue('3')
     await expect(tool.getByRole('button', { name: 'Remove Time Scale', exact: true })).toBeVisible()
 })
+
+test('a pointer click on a segment returns shortcuts to the editor before a swap to a select', async ({
+    page,
+}) => {
+    await open(page, { rightDockWidth: 560 })
+    const scroll = transition(page).getByRole('radio', { name: 'Scroll', exact: true })
+    const inPanel = () =>
+        page.evaluate(() => !!document.activeElement?.closest('#workspace-panel-properties'))
+    // Choosing, then the checked segment again, which changes nothing.
+    for (let i = 0; i < 2; i++) {
+        await scroll.click()
+        await expect(scroll).toBeChecked()
+        expect(await inPanel()).toBe(false)
+    }
+    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 336))
+    const select = panel(page).getByRole('combobox', { name: 'Transition', exact: true })
+    await expect(select).toBeVisible()
+    expect(await inPanel()).toBe(false)
+
+    // A keyboard-focused segment carries focus into the select.
+    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 560))
+    await scroll.focus()
+    await page.keyboard.press('ArrowLeft')
+    await expect(transition(page).getByRole('radio', { name: 'Time Scale' })).toBeFocused()
+    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 336))
+    await expect(select).toBeFocused()
+})
