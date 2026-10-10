@@ -227,6 +227,20 @@ const frame = createFrameScheduler()
 const notes = createNoteRenderer()
 const nameSprites = createLabelSprites()
 const pixelRatio = ref(devicePixelRatio || 1)
+let pixelRatioQuery: MediaQueryList | undefined
+const updatePixelRatio = () => {
+    pixelRatio.value = devicePixelRatio || 1
+    pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
+    pixelRatioQuery = matchMedia(`(resolution: ${pixelRatio.value}dppx)`)
+    pixelRatioQuery.addEventListener('change', updatePixelRatio)
+}
+const redrawVersion = ref(0)
+const restoreContext = () => {
+    notes.clear()
+    nameSprites.clear()
+    // A restored surface has lost its pixels.
+    redrawVersion.value++
+}
 const hovered = ref<NoteEntity>()
 const offscreenGroups = computed(() => {
     const selected = new Set(elevationState.value.selectedEntities)
@@ -1011,6 +1025,7 @@ watchEffect(() => {
     // Name contrast is measured against it.
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
+    void redrawVersion.value
     // Axis labels move right of any left badges, which would cover them.
     const leftBadges = offscreenGroups.value.filter(({ side }) => side === 'left')
     const axisLabelLeft = leftBadges.length
@@ -1198,6 +1213,8 @@ onMounted(() => {
         window.removeEventListener('scroll', updateBounds, true)
     }
     window.addEventListener('keydown', onKeydown, true)
+    updatePixelRatio()
+    window.addEventListener('resize', updatePixelRatio)
     view.scrollingY = undefined
     view.scrollingX = undefined
     fitViewport()
@@ -1251,6 +1268,8 @@ onUnmounted(() => {
     mounted = false
     cleanupBounds?.()
     window.removeEventListener('keydown', onKeydown, true)
+    window.removeEventListener('resize', updatePixelRatio)
+    pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
     cancel()
     frame.cancel()
     notes.clear()
@@ -1282,6 +1301,7 @@ onUnmounted(() => {
                 ref="canvas"
                 class="elevation-canvas pointer-events-none absolute size-full"
                 :aria-label="i18n.elevation.canvas"
+                @contextrestored="restoreContext"
             />
             <OffscreenNoteIndicators :groups="offscreenGroups" :hovered="hoveredOffscreenGroup" />
         </div>
