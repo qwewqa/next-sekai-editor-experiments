@@ -382,10 +382,9 @@ watchEffect(
                     @focus="current = index"
                     @click="narrow(chip, $event)"
                 >
-                    <template v-if="chip.text">{{ chip.text }}</template>
-                    <template v-else
-                        >{{ chip.name }}
-                        <span class="tabular-nums">{{ chip.count }}</span></template
+                    <span v-if="chip.text">{{ chip.text }}</span>
+                    <span v-else
+                        >{{ chip.name }} <span class="tabular-nums">{{ chip.count }}</span></span
                     >
                 </button>
             </div>
@@ -569,12 +568,26 @@ watchEffect(
 /* Tinted pills read as actions; coverage is muted text, apart from the values. High
    contrast paints the transparent outline as their edge, and Highlight on focus. */
 .form-field-mixed-value {
+    display: grid;
+    align-items: center;
     border-radius: 9999px;
     outline: 2px solid transparent;
     padding: 0.125rem 0.5rem;
     background-color: theme('colors.fg / 8%');
     transition-property: color, background-color;
     transition-duration: 150ms;
+}
+
+/* Chips split the gaps around them; in flow, since positioning shifts their antialiasing. */
+.form-field-mixed-value::before {
+    content: '';
+    grid-area: 1 / 1;
+    align-self: stretch;
+    margin: -0.25rem -0.625rem;
+}
+
+.form-field-mixed-value > span {
+    grid-area: 1 / 1;
 }
 
 /* Tabular digits keep its width as counts change, which the fit relies on. */
@@ -589,6 +602,10 @@ watchEffect(
     .form-field-mixed-value {
         min-height: 2rem;
         padding-inline: 0.75rem;
+    }
+
+    .form-field-mixed-value::before {
+        margin-inline: -0.875rem;
     }
 }
 

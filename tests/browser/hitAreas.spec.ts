@@ -292,6 +292,58 @@ test.describe('at other root font sizes', () => {
         })
 })
 
+test('mixed-value chips meet halfway, along a line and across wrapped lines', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, history, store, nextTick, settings } = window.editorTest
+        settings.showSidebar = true
+        const template = fixtures.interaction.slides.flat()[0]!
+        const styles = ['default', 'neutral', 'red', 'green', 'blue', 'yellow', 'purple', 'cyan']
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    styles.map((noteStyle, beat) => ({
+                        ...template,
+                        beat,
+                        left: 0,
+                        size: 2,
+                        isAttached: false,
+                        noteType: 'default' as const,
+                        noteStyle: noteStyle as never,
+                    })),
+                ],
+            },
+            2,
+        )
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...store.getAllEntities()].filter(
+                (entity) => entity.type === 'note',
+            ),
+        })
+        await nextTick()
+    })
+    const chips = page
+        .locator('#properties-section-selection .form-field')
+        .filter({ has: page.getByText('Note Color', { exact: true }) })
+        .locator('.form-field-mixed-value')
+    await expect(chips).toHaveCount(8)
+    await chips.last().scrollIntoViewIfNeeded()
+    await page.mouse.move(1, 1)
+    // The first chip on the next line.
+    const below = await chips.first().evaluate((first) => {
+        const bottom = first.getBoundingClientRect().bottom
+        return [...first.parentElement!.children].findIndex(
+            (chip) => chip.getBoundingClientRect().top > bottom,
+        )
+    })
+    expect(below).toBeGreaterThan(1)
+    // Along the first line, also in the gaps above and below; down to the next line.
+    await meetHalfway(chips.nth(0), chips.nth(1), 2)
+    await meetHalfway(chips.nth(below - 2), chips.nth(below - 1), 2)
+    await meetHalfway(chips.nth(0), chips.nth(below), 2)
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
