@@ -4,6 +4,7 @@ import {
     nextTick,
     onMounted,
     onUnmounted,
+    onUpdated,
     shallowRef,
     useId,
     useTemplateRef,
@@ -793,7 +794,27 @@ const onListScroll = () => {
     scrolled.value = (element?.scrollTop ?? 0) > 0
     hiddenBelow.value =
         !!element && element.scrollTop + element.clientHeight < element.scrollHeight - 1
+    updateStuck()
 }
+
+// The folder whose head is stuck over members scrolled beneath it.
+const stuckFolder = shallowRef<FolderId>()
+const isStuck = (folder: HTMLElement) => {
+    const head = (folder.firstElementChild as HTMLElement).getBoundingClientRect()
+    const bounds = folder.getBoundingClientRect()
+    // Within half the gap the head's reach still ends above the member.
+    return (
+        head.bottom < bounds.bottom &&
+        head.top - bounds.top >= parseFloat(getComputedStyle(folder).rowGap) / 2
+    )
+}
+const updateStuck = () => {
+    const folders = list.value?.querySelectorAll<HTMLElement>('.manager-folder') ?? []
+    const head = [...folders].find(isStuck)?.firstElementChild as HTMLElement | undefined
+    stuckFolder.value = folderItems.value.get(Number(head?.dataset.folderId) as FolderId)?.id
+}
+// Folding, adding and dragging move heads without a scroll.
+onUpdated(updateStuck)
 
 const onAdd = async (event: MouseEvent) => {
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
@@ -1988,6 +2009,7 @@ const folderEyeLabel = (item: FolderItem) =>
                                 "
                                 :dragging="isDragged(item)"
                                 :drop-target="isDropTarget(item.id)"
+                                :stuck="stuckFolder === item.id"
                                 :no-grip="!hasGrip"
                                 v-bind="selectingProps(folderChecked(item), folderName(item.id))"
                                 @select="onFolderSelect(item, $event)"

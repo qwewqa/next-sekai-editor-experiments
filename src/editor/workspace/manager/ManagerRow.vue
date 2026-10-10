@@ -84,6 +84,8 @@ const props = defineProps<{
     indented?: boolean
     /** A folder row a dragged entry would drop into. */
     dropTarget?: boolean
+    /** A folder row stuck over its members as they scroll beneath it. */
+    stuck?: boolean
     /** The list is selecting: a check takes the eye's place and the name toggles it. */
     selecting?: boolean
     checked?: boolean | 'mixed'
@@ -364,6 +366,7 @@ const onRenameBlur = (event: FocusEvent) => {
             'manager-row-folder': folder,
             'manager-row-indented': indented,
             'manager-row-drop': dropTarget,
+            'manager-row-stuck': stuck,
         }"
         @keydown="onKeydown"
         @contextmenu="onContextMenu"
@@ -621,6 +624,16 @@ const onRenameBlur = (event: FocusEvent) => {
 .manager-row:not(.manager-row-heading) .manager-icon-button::before,
 .manager-row:not(.manager-row-heading) .manager-name::before {
     @apply -inset-y-1;
+}
+
+/* A stuck row's input stops at its edge; the member showing beneath it takes what lies there. */
+.manager-row-stuck::after {
+    display: none;
+}
+
+.manager-row-stuck:not(.manager-row-heading) .manager-icon-button::before,
+.manager-row-stuck:not(.manager-row-heading) .manager-name::before {
+    @apply -bottom-0.5;
 }
 
 /* A button whose menu is open holds its hover look. */

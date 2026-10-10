@@ -344,6 +344,93 @@ test('mixed-value chips meet halfway, along a line and across wrapped lines', as
     await meetHalfway(chips.nth(0), chips.nth(below), 2)
 })
 
+test.describe('with a folder head stuck over its members', () => {
+    test.use({ viewport: { width: 1600, height: 700 } })
+
+    test.beforeEach(async ({ page }) => {
+        await page.evaluate(() => {
+            const { history, view, fixtures } = window.editorTest
+            const chart = structuredClone(fixtures.notes)
+            chart.isDynamicStages = true
+            chart.groups = new Map(
+                Array.from({ length: 24 }, (_, i) => [
+                    (i < 2 ? i + 1 : 1000 + i) as never,
+                    i >= 2 && i < 14
+                        ? { name: `Group ${i}`, folderId: 9000 as never }
+                        : { name: `Group ${i}` },
+                ]),
+            )
+            chart.groupFolders = new Map([[9000 as never, { name: 'Folder', index: 0 }]])
+            history.resetState(false, chart, 0, 'folders.json')
+            view.groupId = undefined
+            view.stageId = undefined
+        })
+        await expect(page.locator('#workspace-panel-groups .manager-folder-head')).toBeVisible()
+        await page.mouse.move(1, 1)
+    })
+
+    /** Scrolls the folder `by` px under its head; gives the member showing beneath it. */
+    const stick = async (page: Page, by: number) => {
+        const list = page.locator('#workspace-panel-groups .manager-entries')
+        const index = await list.evaluate(async (list, by) => {
+            const folder = list.querySelector('.manager-folder')!
+            list.scrollTop +=
+                folder.getBoundingClientRect().top - list.getBoundingClientRect().top + by
+            await new Promise(requestAnimationFrame)
+            const head = folder.querySelector('.manager-folder-head')!.getBoundingClientRect()
+            return [...folder.querySelectorAll('.manager-members > li')].findIndex(
+                (member) => member.getBoundingClientRect().bottom > head.bottom + 1,
+            )
+        }, by)
+        return list.locator('.manager-members > li').nth(index)
+    }
+
+    test('the member showing beneath it takes the first pixels below the head', async ({
+        page,
+    }) => {
+        const head = page.locator('#workspace-panel-groups .manager-folder-head')
+        for (const by of [40, 61]) {
+            const member = await stick(page, by)
+            const columns = ['.manager-eye', '.manager-name', '.manager-meta']
+            const hits = await member.evaluate((member, columns) => {
+                const head = member
+                    .closest('.manager-folder')!
+                    .querySelector('.manager-folder-head')!
+                const y = Math.ceil(head.getBoundingClientRect().bottom)
+                return columns.map((column) => {
+                    const box = member.querySelector(column)!.getBoundingClientRect()
+                    const x = Math.round(box.left + box.width / 2)
+                    return [
+                        head.contains(document.elementFromPoint(x, y - 1)),
+                        member.contains(document.elementFromPoint(x, y)),
+                    ]
+                })
+            }, columns)
+            expect(hits).toEqual(columns.map(() => [true, true]))
+        }
+        // A click there acts on the member, not the folder.
+        const box = (await head.boundingBox())!
+        await page.mouse.click(box.x + box.width / 2, Math.ceil(box.y + box.height))
+        await expect(head.locator('.manager-name')).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    test('a head back in place meets the row below it halfway again', async ({ page }) => {
+        const head = page.locator('#workspace-panel-groups .manager-folder-head .manager-name')
+        await stick(page, 40)
+        await page
+            .locator('#workspace-panel-groups .manager-entries')
+            .evaluate((list) => (list.scrollTop = 0))
+        const first = page.locator('#workspace-panel-groups .manager-members .manager-name')
+        await expect(async () => meetHalfway(head, first.first())).toPass()
+        // Collapsing a stuck folder, with no scroll, puts its head back over the row after it.
+        await stick(page, 3)
+        await head.click()
+        await expect(head).toHaveAttribute('aria-expanded', 'false')
+        const next = page.locator('#workspace-panel-groups .manager-folder + li .manager-name')
+        await meetHalfway(head, next)
+    })
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
