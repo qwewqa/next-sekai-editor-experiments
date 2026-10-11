@@ -135,6 +135,10 @@ for (const tool of ['select', 'note', 'slide'] as const) {
                 elevation: 2,
                 attached: true,
             })
+            // The resting mouse's hover outlines what a click would take; the drag frame had none.
+            await page.evaluate(() => {
+                window.editorTest.view.entities = { hovered: [], creating: [] }
+            })
             expect((await tickRow(page)).equals(drawn)).toBe(true)
             expect((await movedArea()).equals(moved)).toBe(true)
 
@@ -273,9 +277,10 @@ test('a pending property edit under a Slide tool hover leaves the chart as it is
         })
     const empty = await point(page, 4, 1)
     await page.mouse.move(empty.x, empty.y)
-    const before = await chart()
-    // Typed, not committed: the field keeps focus and only previews.
+    // Typed, not committed: the field keeps focus and only previews. Every layout draws the
+    // draft, so the chart is compared with the draft drawn before the hover moves.
     await page.getByLabel('Lane', { exact: true }).fill('-1')
+    const before = await chart()
     await page.mouse.move(empty.x + 4, empty.y)
     const pending = await page.evaluate(async () => {
         const { appImport, view, history } = window.editorTest

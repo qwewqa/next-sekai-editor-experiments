@@ -207,20 +207,20 @@ test('a click where the mouse already hovered reuses that read', async ({ page }
     expect(await reads(page)).toBe(before)
 })
 
-test('a click without a hover reads the clipboard and pastes what it holds now', async ({
+test('choosing Paste under a resting mouse reads there, and a click pastes what it holds now', async ({
     page,
 }) => {
     await setup(page)
     const { x, y } = await point(page, 0, 6)
-    // The mouse rests here before Paste is chosen, so Paste never hovers it.
+    // The mouse rests here before Paste is chosen; choosing it hovers here, which reads.
     await page.mouse.move(x, y)
-    await pasteTool(page)
     await copyElsewhere(page)
+    await pasteTool(page)
     const before = await reads(page)
     await page.mouse.down()
     await page.mouse.up()
     await expect.poll(() => pasted(page)).toEqual([2])
-    expect(await reads(page)).toBe(before + 1)
+    expect(await reads(page)).toBe(before)
 })
 
 test('after leaving the window, a click where the mouse hovered reads again', async ({ page }) => {
