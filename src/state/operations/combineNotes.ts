@@ -31,9 +31,12 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             })),
         )
     const ticks = new Map<number, typeof unordered>()
-    for (const item of unordered)
-        if (item.attached)
-            ticks.set(item.note.slideId, [...(ticks.get(item.note.slideId) ?? []), item])
+    for (const item of unordered) {
+        if (!item.attached) continue
+        const list = ticks.get(item.note.slideId) ?? []
+        list.push(item)
+        ticks.set(item.note.slideId, list)
+    }
     const byBeat = new Map<number, Map<number, typeof unordered>>()
     for (const item of unordered) {
         const slides = byBeat.get(item.note.beat) ?? new Map<number, typeof unordered>()
