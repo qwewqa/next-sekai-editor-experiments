@@ -383,11 +383,11 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
     }
 }
 // A selected row in reach, else the first.
-const hit = (x: number, y: number, minimum = 1.5) => {
-    const { rows, set } = hitRows(x, y, minimum)
+const pickRow = ({ rows, set }: ReturnType<typeof hitRows>) => {
     const selected = (previewEdit.value?.draft ? state : elevationState).value.selectedEntities
     return set.find((row) => selected.includes(row.note)) ?? rows[0]
 }
+const hit = (x: number, y: number) => pickRow(hitRows(x, y))
 const cancel = () => {
     if (drag) clearPreviewEdit()
     drag = undefined
@@ -599,7 +599,7 @@ const controls: Pick<
         }
         // The hover shows what a tap there would act on, as far as it reaches.
         const hits = hitRows(x, y)
-        const row = hit(x, y)
+        const row = pickRow(hits)
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
@@ -640,8 +640,8 @@ const controls: Pick<
             selectOffscreenNotes(indicator.targets, modifiers)
             return
         }
-        const row = hit(x, y)
         const hits = hitRows(x, y)
+        const row = pickRow(hits)
         if (toolName.value === 'paste') {
             void pasteAtPoint(x, y, modifiers)
             return
