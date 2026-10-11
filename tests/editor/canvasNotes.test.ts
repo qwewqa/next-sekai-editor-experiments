@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test, { type TestContext } from 'node:test'
-import { createNoteRenderer, getNoteVisualType } from '../../src/editor/canvas/notes'
+import { createNoteRenderer } from '../../src/editor/canvas/notes'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
+import { getNoteVisualType } from '../../src/state/entities/slides/visualType'
 
 const note = (beat: number, properties: Partial<NoteEntity> = {}) =>
     ({
