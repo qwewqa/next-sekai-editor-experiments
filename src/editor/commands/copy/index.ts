@@ -90,8 +90,8 @@ export const clipboardSource = () => ({
 })
 
 const getAnchor = (entities: Entity[], x: number, y: number) => {
-    // Hits stay in their drawn-on-top order, as hover and press take them.
-    const hitEntities = pointHitsAt(x, y).hits.filter((entity) => entities.includes(entity))
+    // The copied objects in reach, as a press finds selected ones, in the hit model's order.
+    const hitEntities = pointHitsAt(x, y).set.filter((entity) => entities.includes(entity))
     const sortedEntities = [...entities].sort((a, b) => a.beat - b.beat)
 
     const note =
