@@ -128,6 +128,7 @@ for (const tool of ['select', 'note', 'slide'] as const) {
                 attached: true,
             })
             // The resting mouse's hover outlines what a click would take; the drag frame had none.
+            expect(await page.evaluate(() => window.editorTest.view.entities.creating)).toEqual([])
             await page.evaluate(() => {
                 window.editorTest.view.entities = { hovered: [], creating: [] }
             })
@@ -244,7 +245,7 @@ test('a drag that moves no unmoved tick draws its slide as it is', async ({ page
     await page.mouse.up()
 })
 
-test('a pending property edit under a Slide tool hover leaves the chart as it is', async ({
+test('a pending property draft under a Slide tool hover draws as the scene, not as previewed slides', async ({
     page,
 }) => {
     await showSlide(page)
@@ -292,6 +293,42 @@ test('a pending property edit under a Slide tool hover leaves the chart as it is
     })
     expect(pending).toEqual({ edit: true, ghost: true, previewed: false })
     expect(await chart()).toBe(before)
+})
+
+test('under a hover ghost, only a drag preview edit previews slides', async ({ page }) => {
+    await showSlide(page)
+    await useTool(page, 'slide')
+    const previews = await page.evaluate(async () => {
+        const { appImport, view, history } = window.editorTest
+        const { clearPreviewEdit, setPreviewEdit } =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const { previewSlides } = await appImport<typeof import('../../src/editor/sceneState')>(
+            '/src/editor/sceneState.ts',
+        )
+        const { createTransaction } = await appImport<typeof import('../../src/state/transaction')>(
+            '/src/state/transaction.ts',
+        )
+        const { editSelectedNote } = await appImport<
+            typeof import('../../src/state/operations/note')
+        >('/src/state/operations/note.ts')
+        const source = history.state.value
+        const head = [...source.store.slides.note.values()].flat().find(({ beat }) => beat === 2)!
+        // The head moved sideways moves its tick along the connector; the tempo is kept.
+        const build = () => {
+            const transaction = createTransaction(source)
+            return transaction.commit(editSelectedNote(transaction, head, { left: -2 }))
+        }
+        const previews = (options?: { isDrag: boolean }) => {
+            setPreviewEdit(source, build, undefined, options)
+            view.entities = { hovered: [], creating: [head] }
+            return previewSlides.value !== undefined
+        }
+        const result = { unflagged: previews(), drag: previews({ isDrag: true }) }
+        clearPreviewEdit()
+        view.entities = { hovered: [], creating: [] }
+        return result
+    })
+    expect(previews).toEqual({ unflagged: false, drag: true })
 })
 
 test('a previewed slide keeps its stacking with a note at the same beat', async ({ page }) => {
