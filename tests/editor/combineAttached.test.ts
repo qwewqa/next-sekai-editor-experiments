@@ -378,3 +378,31 @@ test('a slide passing below a join goes between the end and the start, keeping b
     assert.deepEqual(attachedBeats(combined), [2, 5])
     assertSamePlaces(source, combined)
 })
+
+test('slides starting at one beat and height put the one whose first span has ticks last', () => {
+    const p = [note(0, 0, { elevation: -1 }), tick(0), note(0.5, 2)]
+    const q = [note(0, -4, { elevation: -1 }), note(3, -4)]
+    for (const slides of [
+        [p, q],
+        [q, p],
+    ]) {
+        const source = state(slides)
+        const combined = combineAll(source)
+        assert.deepEqual(attachedBeats(combined), [0])
+        assertSamePlaces(source, combined)
+    }
+})
+
+test('slides ending at one beat and height put the one whose last span has ticks first', () => {
+    const p = [note(0.5, 2), tick(1), note(1, 0)]
+    const q = [note(0, -4), note(1, -4)]
+    for (const slides of [
+        [p, q],
+        [q, p],
+    ]) {
+        const source = state(slides)
+        const combined = combineAll(source)
+        assert.deepEqual(attachedBeats(combined), [1])
+        assertSamePlaces(source, combined)
+    }
+})

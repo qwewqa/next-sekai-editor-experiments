@@ -1,7 +1,6 @@
 import type { State } from '..'
 import { buildPreviewChart } from '../../preview/engine/chart'
 import { getStageProps } from '../../preview/engine/stage'
-import { nearlyEqual } from '../../utils/math'
 import type { Entity } from '../entities'
 import { createSlideId } from '../entities/slides'
 import type { NoteEntity } from '../entities/slides/note'
@@ -31,6 +30,10 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
                 properties: connectorProperties(infos[index + 1]?.segmentHead ?? info.segmentHead),
             })),
         )
+    const ticks = new Map<number, typeof unordered>()
+    for (const item of unordered)
+        if (item.attached)
+            ticks.set(item.note.slideId, [...(ticks.get(item.note.slideId) ?? []), item])
     const byBeat = new Map<number, Map<number, typeof unordered>>()
     for (const item of unordered) {
         const slides = byBeat.get(item.note.beat) ?? new Map<number, typeof unordered>()
@@ -61,12 +64,26 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             (stage ? getStageProps(stage, beatToTime(source.bpms, note.beat)).elevation : 0)
         )
     }
-    // Slides ending at the beat come first and slides starting there last, so the fewest
-    // attachment spans take in another slide's notes; elevation orders each group.
+    // A heuristic that keeps most joins attached: slides ending at the beat come first and slides
+    // starting there last, each by elevation; on a tie, one whose span across the beat's edge has
+    // ticks goes outermost.
     const rank = (notes: typeof unordered) => {
         const first = notes.some((item) => item.first)
         const last = notes.some((item) => item.last)
         return first === last ? 1 : last ? 0 : 2
+    }
+    const outermost = (notes: typeof unordered, rank: number) => {
+        const [first] = notes
+        if (!first || rank === 1) return 0
+        const block = new Set(notes.map(({ note }) => note))
+        const crosses = ticks
+            .get(first.note.slideId)
+            ?.some(({ attachHead, attachTail }) =>
+                rank === 0
+                    ? block.has(attachTail) && !block.has(attachHead)
+                    : block.has(attachHead) && !block.has(attachTail),
+            )
+        return crosses ? rank - 1 : 0
     }
     const notes = [...byBeat]
         .sort(([a], [b]) => a - b)
@@ -74,8 +91,12 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             const blocks = [...slides.values()]
             if (blocks.length < 2) return blocks.flat()
             return blocks
-                .map((notes) => ({ notes, elevation: elevation(notes[0]), rank: rank(notes) }))
-                .sort((a, b) => a.rank - b.rank || a.elevation - b.elevation)
+                .map((notes) => {
+                    const order = rank(notes)
+                    const tie = outermost(notes, order)
+                    return { notes, elevation: elevation(notes[0]), rank: order, tie }
+                })
+                .sort((a, b) => a.rank - b.rank || a.elevation - b.elevation || a.tie - b.tie)
                 .flatMap(({ notes }) => notes)
         })
 
@@ -93,48 +114,22 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             .map(({ attachHead }) => attachHead),
     )
 
-    for (;;) {
-        const transaction = createTransaction(source)
-        for (const { note } of notes) removeNote(transaction, note)
+    const transaction = createTransaction(source)
+    for (const { note } of notes) removeNote(transaction, note)
 
-        const slideId = createSlideId()
-        const combined = notes.flatMap(({ note, properties, attached, attachHead }, index) => {
-            const previous = notes[index - 1]?.properties
-            const changed = previous && JSON.stringify(previous) !== JSON.stringify(properties)
-            const isAttached = attached && kept.has(attachHead)
-            return addNote(transaction, slideId, {
-                ...note,
-                // Other ticks are re-anchored by the interleaved slide; keep where they play.
-                ...(isAttached ? undefined : positions.get(note)),
-                ...properties,
-                isAttached,
-                isConnectorSeparator: note.isConnectorSeparator || !!changed,
-            })
+    const slideId = createSlideId()
+    const combined = notes.flatMap(({ note, properties, attached, attachHead }, index) => {
+        const previous = notes[index - 1]?.properties
+        const changed = previous && JSON.stringify(previous) !== JSON.stringify(properties)
+        const isAttached = attached && kept.has(attachHead)
+        return addNote(transaction, slideId, {
+            ...note,
+            // Other ticks are re-anchored by the interleaved slide; keep where they play.
+            ...(isAttached ? undefined : positions.get(note)),
+            ...properties,
+            isAttached,
+            isConnectorSeparator: note.isConnectorSeparator || !!changed,
         })
-        const result = transaction.commit([
-            ...selected.filter((entity) => entity.type !== 'note'),
-            ...combined,
-        ])
-        if (!kept.size) return result
-
-        // Detach any span whose ticks would not play exactly where they did.
-        const slide = result.store.slides.note.get(slideId) ?? []
-        const ticks = slide.filter((note) => note.isAttached)
-        const played = getMaterializedNotePositions(result, ticks)
-        const moved = notes.filter(({ note, attached, attachHead }, index) => {
-            if (!attached || !kept.has(attachHead)) return false
-            const before = positions.get(note)
-            const added = slide[index]
-            const after = added && played.get(added)
-            return !(
-                before &&
-                after &&
-                nearlyEqual(before.left, after.left) &&
-                nearlyEqual(before.size, after.size) &&
-                nearlyEqual(before.elevation, after.elevation)
-            )
-        })
-        if (!moved.length) return result
-        for (const { attachHead } of moved) kept.delete(attachHead)
-    }
+    })
+    return transaction.commit([...selected.filter((entity) => entity.type !== 'note'), ...combined])
 }
