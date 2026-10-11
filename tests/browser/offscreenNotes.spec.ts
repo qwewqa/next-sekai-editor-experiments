@@ -417,16 +417,23 @@ const recordBadgeOffsets = (page: Page) =>
         })
     })
 
-for (const smooth of [false, true]) {
-    test(`badges move with their notes while ${smooth ? 'eased' : 'stepped'} wheel scrolling`, async ({
-        page,
-    }) => {
-        await page.evaluate((smooth) => {
-            const { view, settings } = window.editorTest
-            settings.mouseSmoothScrolling = smooth
-            // Beat 3 in the middle of the view, far from the badge band's edges.
-            view.time = 1.5
-        }, smooth)
+for (const { name, smooth, pps } of [
+    { name: 'stepped', smooth: false },
+    { name: 'eased', smooth: true },
+    // Beat 3 is 0.2 px into its slot from time 0, 30 slots up.
+    { name: 'eased, with the note at a slot edge,', smooth: true, pps: (30 * 28 - 0.2) / 1.5 },
+]) {
+    test(`badges move with their notes while ${name} wheel scrolling`, async ({ page }) => {
+        await page.evaluate(
+            ({ smooth, pps }) => {
+                const { view, settings } = window.editorTest
+                settings.mouseSmoothScrolling = smooth
+                if (pps) settings.pps = pps
+                // Beat 3 in the middle of the view, far from the badge band's edges.
+                view.time = 1.5
+            },
+            { smooth, pps },
+        )
         const chart = (await page.locator('canvas.editor-chart').boundingBox())!
         await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
         await recordBadgeOffsets(page)

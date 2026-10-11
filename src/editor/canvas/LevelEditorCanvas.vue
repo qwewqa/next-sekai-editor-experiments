@@ -180,23 +180,18 @@ const offscreenAnchor = computed(() => {
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const bounds = viewBox.value
     const scale = view.w / bounds.w
+    const anchor = offscreenAnchor.value
     const notes = offscreenSideNotes.value.map(({ entity, left, right, time, ...note }) => ({
         ...note,
         left,
         right,
-        y: (time * bounds.ups - bounds.t) * scale,
+        // From the rounded anchor, so notes keep their slots while scrolling.
+        y: anchor + time * bounds.ups * scale,
         // Dimmed notes are counted but not selectable.
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
     // Clear of the range labels in the corners.
-    const groups = groupOffscreenNotes(
-        notes,
-        view.w,
-        0,
-        view.h,
-        RANGE_LABEL_HEIGHT,
-        offscreenAnchor.value,
-    )
+    const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT, anchor)
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })

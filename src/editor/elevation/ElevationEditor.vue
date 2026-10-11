@@ -255,11 +255,14 @@ const offscreenAnchor = computed(() => {
 })
 const offscreenGroups = computed(() => {
     const selected = new Set(elevationState.value.selectedEntities)
+    const { rows, yAt } = elevationLayout.value
+    const anchor = offscreenAnchor.value
     return groupOffscreenNotes(
-        elevationLayout.value.rows.map((row) => ({
+        rows.map((row) => ({
             left: row.x - row.w / 2,
             right: row.x + row.w / 2,
-            y: row.y,
+            // From the rounded anchor, so notes keep their slots while panning.
+            y: anchor + row.y - yAt(0),
             highlighted: selected.has(row.note),
             opacity: 1,
             // A pending draft's notes are picked as the committed ones they show.
@@ -271,7 +274,7 @@ const offscreenGroups = computed(() => {
         headerHeight.value + 4,
         elevationBounds.h,
         0,
-        offscreenAnchor.value,
+        anchor,
     )
 })
 useOffscreenIndicators({
