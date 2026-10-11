@@ -355,6 +355,55 @@ test('switching the beat display re-snaps the hover under a still mouse', async 
 })
 
 for (const display of ['measure', 'beat'] as const)
+    test(`${display}: a pending Meter draft's drawn bars are the snap targets, as after its commit`, async ({
+        page,
+    }) => {
+        await setUp(page, display, [0])
+        await switchTool(page, 'note')
+        await page.evaluate(() => {
+            const { history, settings } = window.editorTest
+            settings.showSidebar = true
+            const source = history.state.value
+            history.replaceState({
+                ...source,
+                selectedEntities: [...source.store.grid.bpm.values()].flatMap((set) => [...set]),
+            })
+        })
+        const at = await point(page, -5.5, 3.4)
+        await page.mouse.move(at.x, at.y)
+        await settle(page)
+        expect(await creating(page)).toEqual([3])
+        const bars = display === 'measure'
+        const landed = bars ? 3.5 : 3
+        const count = async () => (await noteBeats(page)).filter((beat) => beat === landed).length
+        const before = await count()
+        // Typed, not committed: bars every 3.5 beats are drawn, and the still hover follows them.
+        const meter = page.getByLabel('Meter', { exact: true })
+        await meter.fill('3.5')
+        await settle(page)
+        expect(await bpms(page)).toEqual([0])
+        expect((await drawn(page)).lines).toEqual(
+            bars
+                ? [0, 1, 2, 3, 3.5, 4.5, 5.5, 6.5, 7, 8, 9, 10]
+                : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        )
+        expect(await creating(page)).toEqual([landed])
+        await meter.fill('4')
+        await settle(page)
+        expect(await creating(page)).toEqual([3])
+        await meter.fill('3.5')
+        await settle(page)
+        expect(await creating(page)).toEqual([landed])
+        // The press commits the draft first; the note lands where its ghost was.
+        await page.mouse.click(at.x, at.y)
+        await settle(page)
+        expect(
+            await page.evaluate(() => window.editorTest.history.state.value.bpms[0]!.meter),
+        ).toBe(3.5)
+        expect(await count()).toBe(before + 1)
+    })
+
+for (const display of ['measure', 'beat'] as const)
     test(`${display}: the BPM tool grabs an off-grid change within its snapping`, async ({
         page,
     }) => {

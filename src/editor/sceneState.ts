@@ -8,15 +8,10 @@ import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
 import { isInteriorTick, type NoteEntity } from '../state/entities/slides/note'
-import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { isSameTempo, type GridBpm } from '../state/integrals/bpms'
 import { beatToKey } from '../state/store/grid'
 import { dragBpms, gridOf } from './beatGrid'
 import { view } from './view'
-
-const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
-    a === b ||
-    (a.length === b.length &&
-        a.every((bpm, i) => bpm.x === b[i]?.x && bpm.y === b[i].y && bpm.s === b[i].s))
 
 export const sceneState = computed(() => {
     // A dialog's own preview, such as a scaling's, may retime; a Properties draft in one may not.
