@@ -11,6 +11,7 @@ import { pushState, replaceState, state } from '../../history'
 import { selectedEntities } from '../../history/selectedEntities'
 import { i18n } from '../../i18n'
 import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
+import { settings } from '../../settings'
 import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import { toBpmEntity, type BpmEntity } from '../../state/entities/bpm'
@@ -87,6 +88,7 @@ import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicat
 import { sceneState, toSceneEntity } from '../sceneState'
 import { isEntityInScope } from '../scope'
 import { isLatticeMoved, type Lattice } from '../snapping'
+import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import {
     focusEntityAtBeat,
     focusViewAtBeat,
@@ -215,9 +217,17 @@ const resolveDrag = (
     }
 }
 
-// The order a cycle of taps steps through. It keeps its order for objects still hit, so a pixel of
-// jitter can't skip one, and adds newly hit ones after them.
-let cycle: Entity[] = []
+// The cycle of taps at a spot; the hover reads it, a tap keeps it.
+let cycle: TapCycle<Entity, { lane: number; time: number }> | undefined
+
+/** Ends the cycle, so the next tap starts at its spot's top. */
+export const endTapCycle = () => {
+    cycle = undefined
+}
+
+const isNearTap = (a: { lane: number; time: number }, b: { lane: number; time: number }) =>
+    (Math.abs(a.lane - b.lane) * view.w) / settings.width <= tapCycleSlack &&
+    Math.abs(a.time - b.time) * settings.pps <= tapCycleSlack
 
 /**
  * What a tap at a point selects: with Ctrl every object hit together; else the next one after the
@@ -225,20 +235,21 @@ let cycle: Entity[] = []
  */
 const tapTargets = (x: number, y: number, modifiers: Modifiers) => {
     const { set } = pointHitsAt(x, y)
-    if (modifiers.ctrl) return { order: set, targets: modifyEntities(set, modifiers) }
+    if (modifiers.ctrl) return { targets: modifyEntities(set, modifiers) }
     const current = selectedEntities.value[0]
-    // A pending draft's click replaces the selection it edits, which ends the cycle.
-    const kept =
-        current &&
-        set.includes(current) &&
-        cycle.includes(current) &&
-        toSceneEntity(current) === current
-            ? cycle.filter((entity) => set.includes(entity))
-            : []
-    const order = [...kept, ...set.filter((entity) => !kept.includes(entity))]
-    const index = current ? (order.indexOf(current) + 1) % order.length : 0
-    const entity = order[index]
-    return { order, targets: modifyEntities(entity ? [entity] : [], modifiers) }
+    const step = stepTapCycle(
+        cycle,
+        set,
+        current,
+        { lane: xToLane(x), time: yToTime(y) },
+        isNearTap,
+        // A pending draft's click replaces the selection it edits, which ends the cycle.
+        !current || toSceneEntity(current) === current,
+    )
+    return {
+        cycle: step.cycle,
+        targets: modifyEntities(step.target ? [step.target] : [], modifiers),
+    }
 }
 
 // The hover shows what a tap there would select.
@@ -264,9 +275,9 @@ export const select: Tool = {
             return
         }
 
-        const { order, targets: entities } = tapTargets(x, y, modifiers)
+        const { cycle: next, targets: entities } = tapTargets(x, y, modifiers)
         const [entity] = entities
-        if (!modifiers.ctrl) cycle = order
+        if (next) cycle = next
         if (modifiers.ctrl) {
             if (!entity) return
 

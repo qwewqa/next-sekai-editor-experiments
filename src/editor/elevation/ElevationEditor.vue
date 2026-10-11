@@ -79,6 +79,7 @@ import { hasToolModal, showToolModal } from '../toolModals'
 import type { CommandName } from '../commands'
 import { deselect } from '../commands/deselect'
 import { fromDisplayedBeat, toDisplayedBeat } from '../beatDisplay'
+import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '../tools/utils'
 import { scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
@@ -449,48 +450,56 @@ const selectedFor = (notesOnly: boolean) =>
     notesOnly
         ? state.value.selectedEntities.filter((entity) => entity.type === 'note')
         : state.value.selectedEntities
-// The notes a cycle of taps steps through, as the chart's: its order kept for rows still hit,
-// newly hit ones after them.
-let cycled: NoteEntity[] = []
-const cycleOrder = (
-    rows: ElevationRow[],
-    current: State['selectedEntities'][number] | undefined,
-) => {
-    // A pending draft's click replaces the selection it edits, which ends the cycle.
-    const kept =
-        rows.some((row) => row.note === current) &&
-        cycled.some((note) => note === current) &&
-        !!current &&
-        toSceneEntity(current, elevationState.value) === current
-            ? cycled.flatMap((note) => rows.find((row) => row.note === note) ?? [])
-            : []
-    return [...kept, ...rows.filter((row) => !kept.includes(row))]
-}
-/** What a tap selects among rows: with Ctrl all of them, else the next after the selection's first. */
+type TapPoint = { beat: number; lane: number; elevation: number }
+// The cycle of taps at a spot, as the chart's; the hover reads it, a tap keeps it.
+let cycled: TapCycle<State['selectedEntities'][number], TapPoint> | undefined
+const tapPointAt = (x: number, y: number): TapPoint => ({
+    beat: elevationBeat.value,
+    lane: xToLane(x),
+    elevation: yToElevation(y),
+})
+const isNearTap = (a: TapPoint, b: TapPoint) =>
+    sameBeat(a.beat, b.beat) &&
+    Math.abs(a.lane - b.lane) * elevationLayout.value.laneScale <= tapCycleSlack &&
+    Math.abs(a.elevation - b.elevation) * elevationViewport.scale <= tapCycleSlack
+/**
+ * What a tap selects among rows: with Ctrl all of them; cycling at a point, the next after the
+ * selection's first; else the first.
+ */
 const selectTargets = (
     hits: ElevationRow[],
     modifiers: Modifiers,
-    cycle = false,
+    at?: TapPoint,
     notesOnly = false,
 ) => {
+    if (modifiers.ctrl)
+        return {
+            targets: modifyEntities(
+                hits.map((row) => row.note),
+                modifiers,
+            ),
+        }
+    if (!at) return { targets: modifyEntities(hits[0] ? [hits[0].note] : [], modifiers) }
     const current = selectedFor(notesOnly)[0]
-    const rows = cycle ? cycleOrder(hits, current) : hits
-    const index =
-        cycle && current && rows.length
-            ? (rows.findIndex((row) => row.note === current) + 1) % rows.length
-            : 0
-    const notes = modifiers.ctrl
-        ? rows.map((row) => row.note)
-        : rows[index]
-          ? [rows[index].note]
-          : []
-    return modifyEntities(notes, modifiers)
+    const step = stepTapCycle(
+        cycled,
+        hits.map((row) => row.note),
+        current,
+        at,
+        isNearTap,
+        // A pending draft's click replaces the selection it edits, which ends the cycle.
+        !current || toSceneEntity(current, elevationState.value) === current,
+    )
+    return {
+        cycle: step.cycle,
+        targets: modifyEntities(step.target ? [step.target] : [], modifiers),
+    }
 }
-const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, notesOnly = false) => {
+const selectAt = (rows: ElevationRow[], modifiers: Modifiers, at?: TapPoint, notesOnly = false) => {
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
-    const targets = selectTargets(rows, modifiers, cycle, notesOnly)
-    if (cycle) cycled = cycleOrder(rows, selected[0]).map((row) => row.note)
+    const { cycle, targets } = selectTargets(rows, modifiers, at, notesOnly)
+    if (cycle) cycled = cycle
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -618,7 +627,7 @@ const controls: Pick<
                   ? modifyEntities(row ? [row.note] : [], modifiers)
                   : toolName.value === 'paste'
                     ? []
-                    : selectTargets(hits.set, modifiers, !modifiers.ctrl),
+                    : selectTargets(hits.set, modifiers, tapPointAt(x, y)).targets,
             creating: creating.value.map((row) => row.note),
         }
     },
@@ -679,10 +688,10 @@ const controls: Pick<
                     void showToolModal(SelectionPropertiesModal, { kind: 'note' })
                 return
             }
-            selectAt([row], modifiers, false, true)
+            selectAt([row], modifiers, undefined, true)
             return
         }
-        selectAt(hits.set, modifiers, !modifiers.ctrl)
+        selectAt(hits.set, modifiers, tapPointAt(x, y))
     },
     cursor(x, y) {
         const target = resolveDrag(x, y)

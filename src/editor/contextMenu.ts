@@ -6,7 +6,7 @@ import { beatToTime } from '../state/integrals/bpms'
 import { deselect } from './commands/deselect'
 import { getComposedLayout } from './composedView'
 import { editorNavigation } from './navigation'
-import { select } from './tools/select'
+import { endTapCycle, select } from './tools/select'
 import { getLaneAnchor, pointHitsAt, selectedHit } from './tools/utils'
 import { view } from './view'
 
@@ -26,7 +26,11 @@ export const openContextMenu = (x: number, y: number) => {
     }
     if (!selectedEntities.value.length || (hits.length && !selectedHit(found))) {
         if (editorNavigation.value) editorNavigation.value.selectPoint(x, y)
-        else void select.tap?.(x, y, { ctrl: false, shift: false })
+        else {
+            // It selects the winner, not the next of a cycle near here.
+            endTapCycle()
+            void select.tap?.(x, y, { ctrl: false, shift: false })
+        }
     }
     contextMenu.value = { x, y }
 }
