@@ -1,4 +1,6 @@
 import { safeUnlerpClamped } from '../../utils/math'
+import { snappedOffset, type Snapping } from '../snapping'
+import { snapElevation } from './layout'
 
 export type AttachedElevationDrag = {
     head: number
@@ -116,3 +118,16 @@ export const inverseAttachedElevation = (
     }
     return best
 }
+
+/** A move's displayed elevation change; absolute snapping waits for half a step of the pointer's own movement. */
+export const elevationMoveDelta = (
+    elevation: number,
+    delta: number,
+    snap: number,
+    snapping: Snapping,
+) =>
+    snap > 0
+        ? snappedOffset(0, delta, elevation, snap, snapping, delta)
+        : snapping === 'relative'
+          ? snapElevation(delta, snap)
+          : snapElevation(elevation + delta, snap) - elevation
