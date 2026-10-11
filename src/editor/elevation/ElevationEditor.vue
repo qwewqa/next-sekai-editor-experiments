@@ -22,7 +22,7 @@ import {
 } from '../offscreenIndicators'
 import { groupOffscreenNotes, offscreenBadgeHitWidth } from '../offscreenNotes'
 import { modals } from '../../modals'
-import { isChromium } from '../../modals/form/numberStep'
+import { isChromium } from '../../utils/browser'
 import {
     confirmOnEnter,
     resyncInput,

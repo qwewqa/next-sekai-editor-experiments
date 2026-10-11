@@ -1,5 +1,5 @@
-import { addDecimal } from '../modals/form/numberStep'
 import { beatToMeasure, type GridBpm } from '../state/integrals/bpms'
+import { addDecimal } from '../utils/math'
 
 export type BeatDisplay = 'beat' | 'measure' | 'both'
 

@@ -16,7 +16,8 @@ import BaseField from './BaseField.vue'
 import { formatNumber } from '../../utils/formatNumber'
 import { formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
-import { createStepTrail, isChromium, stepValues } from './numberStep'
+import { isChromium } from '../../utils/browser'
+import { createStepTrail, stepValues } from './numberStep'
 import { confirmOnEnter, isTyped, trackTyping } from './resync'
 
 const props = defineProps<{

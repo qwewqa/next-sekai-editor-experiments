@@ -32,3 +32,18 @@ export const shiftComputed = (value: number, delta: number) =>
 /** Equal up to floating-point noise; NaN equals NaN. */
 export const nearlyEqual = (a: number, b: number, epsilon = 1e-9) =>
     Object.is(a, b) || Math.abs(a - b) <= epsilon
+
+// Decimal places of a number's shortest text, counting an exponent.
+const decimals = (value: number) => {
+    const [mantissa = '', exponent = '0'] = `${value}`.split('e')
+    return Math.max(0, (mantissa.split('.')[1]?.length ?? 0) - Number(exponent))
+}
+
+/** Adds in decimal, as native number inputs step: 1.1 - 1 is 0.1. */
+export const addDecimal = (value: number, delta: number) => {
+    const sum = value + delta
+    // Whole numbers add exactly; skips the text work for grid labels.
+    if (Number.isInteger(value) && Number.isInteger(delta)) return sum
+    const places = Math.max(decimals(value), decimals(delta))
+    return places > 100 ? sum : Number(sum.toFixed(places))
+}

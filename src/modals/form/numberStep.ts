@@ -1,3 +1,5 @@
+import { addDecimal } from '../../utils/math'
+
 /** A number field's limits for arrow steps. */
 export type StepLimits = {
     min?: number
@@ -6,25 +8,6 @@ export type StepLimits = {
     exclusiveMin?: boolean
     /** A numeric step snaps values off its grid, from `min`, as native steps do. */
     step?: number | 'any'
-}
-
-/** Chromium steps a focused number input under the wheel; `userAgentData` is missing off secure origins. */
-export const isChromium = (navigator: { userAgent: string }) =>
-    'userAgentData' in navigator || /(Chrome|Chromium)\//.test(navigator.userAgent)
-
-// Decimal places of a number's shortest text, counting an exponent.
-const decimals = (value: number) => {
-    const [mantissa = '', exponent = '0'] = `${value}`.split('e')
-    return Math.max(0, (mantissa.split('.')[1]?.length ?? 0) - Number(exponent))
-}
-
-/** Adds in decimal, as native number inputs step: 1.1 - 1 is 0.1. */
-export const addDecimal = (value: number, delta: number) => {
-    const sum = value + delta
-    // Whole numbers add exactly; skips the text work for grid labels.
-    if (Number.isInteger(value) && Number.isInteger(delta)) return sum
-    const places = Math.max(decimals(value), decimals(delta))
-    return places > 100 ? sum : Number(sum.toFixed(places))
 }
 
 // Off the step grid, a step goes to the next grid value that way, as native steps do.
