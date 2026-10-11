@@ -521,40 +521,46 @@ const parityCases: { family: Family; layout: 'basic' | 'composed'; tick: boolean
     ),
 ]
 
-for (const { family, layout, tick } of parityCases) {
-    test(`${family}${tick ? ' tick' : ''}, ${layout}: a tool move stores what a Select move does`, async ({
-        page,
-    }) => {
-        for (const scenario of scenarios) {
-            if (scenario.ticksOnly && !tick) continue
-            const beat = scenario.beat ?? 4
-            const pressAt = scenario.pressAt ?? 0
-            const results = []
-            for (const tool of [family, 'select'] as const) {
-                const lane = await seed(page, {
-                    family,
-                    tool,
-                    layout,
-                    tick,
-                    beat,
-                    time: (beat + pressAt + scenario.beats / 2) / 2,
-                    laneDivision: scenario.laneDivision ?? 1,
-                    division: scenario.division ?? 4,
-                    laneSnapping: scenario.laneSnapping ?? 'absolute',
-                    snapping: scenario.snapping ?? 'absolute',
-                })
-                const before = await stored(page, family)
-                await drag(page, lane, scenario.dx, scenario.beats, beat + pressAt)
-                const after = await stored(page, family)
-                if (scenario.moves)
-                    expect(after.objects, `${scenario.name}, ${tool}`).not.toEqual(before.objects)
-                else expect(after, `${scenario.name}, ${tool}`).toEqual(before)
-                results.push(after)
+test.describe('tool move parity', () => {
+    // 16 drags, each step a software-rendered frame: 5 s alone, over 70 s on a saturated CPU.
+    test.describe.configure({ timeout: 120_000 })
+    for (const { family, layout, tick } of parityCases) {
+        test(`${family}${tick ? ' tick' : ''}, ${layout}: a tool move stores what a Select move does`, async ({
+            page,
+        }) => {
+            for (const scenario of scenarios) {
+                if (scenario.ticksOnly && !tick) continue
+                const beat = scenario.beat ?? 4
+                const pressAt = scenario.pressAt ?? 0
+                const results = []
+                for (const tool of [family, 'select'] as const) {
+                    const lane = await seed(page, {
+                        family,
+                        tool,
+                        layout,
+                        tick,
+                        beat,
+                        time: (beat + pressAt + scenario.beats / 2) / 2,
+                        laneDivision: scenario.laneDivision ?? 1,
+                        division: scenario.division ?? 4,
+                        laneSnapping: scenario.laneSnapping ?? 'absolute',
+                        snapping: scenario.snapping ?? 'absolute',
+                    })
+                    const before = await stored(page, family)
+                    await drag(page, lane, scenario.dx, scenario.beats, beat + pressAt)
+                    const after = await stored(page, family)
+                    if (scenario.moves)
+                        expect(after.objects, `${scenario.name}, ${tool}`).not.toEqual(
+                            before.objects,
+                        )
+                    else expect(after, `${scenario.name}, ${tool}`).toEqual(before)
+                    results.push(after)
+                }
+                expect(results[1], scenario.name).toEqual(results[0])
             }
-            expect(results[1], scenario.name).toEqual(results[0])
-        }
-    })
-}
+        })
+    }
+})
 
 // An edge resize of an object outside lane limits of 3, pressed at this lane near its on-grid edge.
 const resizes = {

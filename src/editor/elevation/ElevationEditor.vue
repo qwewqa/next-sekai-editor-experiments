@@ -63,7 +63,7 @@ import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { isSidebarVisible, revealPropertiesSection } from '../sidebars'
 import { panelTools, tools, toolName, type Tool } from '../tools'
 import { applyBrushToEntities } from '../tools/brush'
-import { pasteGhostInfos, waitToPaste } from '../tools/paste'
+import { hasWaitingPaste, pasteGhostInfos, waitToPaste } from '../tools/paste'
 import { remove } from '../tools/eraser'
 import { applyGeneratedSlideNotes } from '../tools/generateSlideNotes'
 import { defaultNoteProperties } from '../tools/note'
@@ -515,9 +515,15 @@ const positionAtPoint = (x: number, y: number) => ({
     elevation: snapElevation(yToElevation(y), settings.elevationSnap),
 })
 // The Paste tool's tap or drag drops its paste on a tool switch; the context menu's comes from any tool.
-const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers, keepsTool = false) => {
+const pasteAtPoint = async (
+    x: number,
+    y: number,
+    modifiers: Modifiers,
+    keepsTool = false,
+    waits = true,
+) => {
     const position = positionAtPoint(x, y)
-    if (!(await waitToPaste(updateClipboard, keepsTool))) return false
+    if (waits && !(await waitToPaste(updateClipboard, keepsTool))) return false
     if (!mounted || !isElevationEditorOpen.value || !sameBeat(elevationBeat.value, position.beat))
         return false
     await pasteElevationNotes(position.lane, position.elevation, position.beat, modifiers)
@@ -892,7 +898,8 @@ const controls: Pick<
         controls.dragUpdate?.(x, y, modifiers)
         if (toolName.value === 'paste') {
             cancel()
-            void pasteAtPoint(x, y, modifiers, true)
+            // As the chart's: it lands now, and a paste waiting on a read is then dropped.
+            void pasteAtPoint(x, y, modifiers, true, !hasWaitingPaste())
             return
         }
         if (adding) {

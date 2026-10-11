@@ -1,6 +1,7 @@
 import type { State } from '..'
 import { alignComputed } from '../../utils/math'
 import type { Entity } from '../entities'
+import { isNoiseApart } from '../integrals/grid'
 import { isEditableEntity, type EditableEntity, type EditableProperties } from './editable'
 
 export type ScaleAxis = 'beat' | 'elevation' | 'width'
@@ -273,11 +274,14 @@ const transformValues = (
                 ((transformed < 0 && value >= 0) || !Number.isSafeInteger(Math.floor(transformed))))
         )
             return
-        // Distinct lanes may meet by rounding alone; distinct beats and elevations may not.
+        // Distinct lanes may meet by rounding, beats noise apart by cleaning; other values may not.
+        const isTwin =
+            axis === 'beat' && previousValue !== undefined && isNoiseApart(value, previousValue)
         if (
             previousValue !== undefined &&
             value > previousValue &&
             previousTransformed !== undefined &&
+            !isTwin &&
             (axis === 'width'
                 ? transformed < previousTransformed
                 : transformed <= previousTransformed)
@@ -285,7 +289,10 @@ const transformValues = (
             return
         values.set(entity, transformed)
         previousValue = value
-        previousTransformed = transformed
+        previousTransformed =
+            isTwin && previousTransformed !== undefined
+                ? Math.max(previousTransformed, transformed)
+                : transformed
     }
     if (axis === 'beat' && source && !isWithinGridBudget(source, values)) return
     return new Map(

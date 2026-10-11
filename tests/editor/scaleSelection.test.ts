@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import { createState } from '../../src/state'
 import type { EntityOfType, EntityType } from '../../src/state/entities'
@@ -532,4 +533,80 @@ test('connected grid expansion is bounded while large point-grid positions remai
         [...getScaledSelectionValues([head, tail], 'beat', 0.5, state)!.values()],
         [0, 2],
     )
+})
+
+test('beats one float step apart may meet when moved or scaled; distinct beats still may not', () => {
+    const quarters = (beat: number, offset: number) => cleanBeat([GLOBAL_GRID], beat + offset, 4)
+    // Stored as in a real chart: two anchors of different slides 3e-14 apart, plus notes around them.
+    const lower = source('note', 157.08333333333331)
+    const upper = source('note', 157.08333333333334)
+    const notes = [source('note', 150), lower, upper, source('note', 160)]
+    for (const moveBeat of [quarters, undefined]) {
+        const translated = getTranslatedSelectionValues(notes, 'beat', 1, undefined, moveBeat)
+        assert.ok(translated)
+        if (moveBeat) assert.equal(translated.get(lower), translated.get(upper))
+        for (const factor of [2, 1.5, 0.5]) {
+            const scaled = getScaledSelectionValues(
+                notes,
+                'beat',
+                factor,
+                undefined,
+                undefined,
+                moveBeat,
+            )
+            assert.ok(scaled, `${factor}`)
+            assert.ok(scaled.get(lower)! <= scaled.get(upper)!)
+        }
+    }
+    // Beats within the grid's tolerance of one line clean onto it, as moves land them.
+    const close = [source('note', 48), source('note', 48.000000025), source('note', 48.0000001)]
+    assert.deepEqual(
+        [...getTranslatedSelectionValues(close, 'beat', 1, undefined, quarters)!.values()],
+        [49, 49, 49],
+    )
+    // A down-scale that collapses beats further apart than noise is refused.
+    const spread = [source('note', 0), source('note', 1e-5), source('note', 1)]
+    assert.equal(getScaledSelectionValues(spread, 'beat', 1e-3, undefined, 0, quarters), undefined)
+    assert.ok(getScaledSelectionValues(spread, 'beat', 0.5, undefined, 0, quarters))
+    // Elevations stay strict.
+    const elevations = [source('note', 0, 0), source('note', 1, 1), source('note', 2, 1 + 1e-15)]
+    assert.equal(getTranslatedSelectionValues(elevations, 'elevation', 1e10), undefined)
+})
+
+test('non-finite and huge beats are cleaned as they are, and a huge scale factor is refused, promptly', () => {
+    // Run apart, so a hang fails the test instead of stalling the run.
+    const url = (path: string) => JSON.stringify(new URL(path, import.meta.url).href)
+    const script = `
+        import { calculateBpms, toBpmIntegral } from ${url('../../src/state/integrals/bpms.ts')}
+        import { cleanBeat, GLOBAL_GRID, toBeatGrid } from ${url('../../src/state/integrals/grid.ts')}
+        import { getScaledSelectionValues } from ${url('../../src/state/operations/scaleValues.ts')}
+        import { alignFraction } from ${url('../../src/utils/math.ts')}
+        const bars = toBeatGrid(
+            calculateBpms([{ beat: 0, bpm: 120 }, { beat: 2.3, bpm: 150 }, { beat: 7.1, bpm: 90 }].map(toBpmIntegral)),
+        )
+        const huge = [Infinity, -Infinity, NaN, 1e306, 1e308, 2 ** 60, 2 ** 53 - 1, 2 ** 52 + 0.5]
+        const unchanged = []
+        for (const beat of huge) {
+            unchanged.push(Object.is(alignFraction(beat), beat))
+            for (const division of [1, 4, 1000])
+                unchanged.push(Object.is(cleanBeat([bars, GLOBAL_GRID], beat, division), beat))
+        }
+        const refused = []
+        for (const grids of [[GLOBAL_GRID], [bars, GLOBAL_GRID]]) {
+            const moveBeat = (beat, offset) => cleanBeat(grids, beat + offset, 4)
+            const notes = [{ type: 'note', beat: 0 }, { type: 'note', beat: 1000 }]
+            for (const factor of [1e306, 1e308, 1e15])
+                refused.push(getScaledSelectionValues(notes, 'beat', factor, undefined, undefined, moveBeat) === undefined)
+        }
+        console.log(JSON.stringify({ unchanged, refused }))
+    `
+    const run = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', '--input-type=module', '--eval', script],
+        { encoding: 'utf8', timeout: 20_000 },
+    )
+    assert.equal(run.signal, null, 'timed out')
+    const { unchanged, refused } = JSON.parse(run.stdout) as Record<string, boolean[]>
+    assert.ok(unchanged!.length === 32 && unchanged!.every(Boolean), run.stdout)
+    assert.ok(refused!.length === 6 && refused!.every(Boolean), run.stdout)
 })
