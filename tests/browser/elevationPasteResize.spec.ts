@@ -599,6 +599,8 @@ test.describe('with touch', () => {
         await seed(page, { layout: 'composed', snapping: 'absolute', division: 1 })
         await openAt(page, 3)
         await setup(page, 'select', [1, 4.3])
+        // Load can delay the moves past 500 ms: a long press, which opens the menu.
+        await page.evaluate(() => (window.editorTest.settings.touchLongPressContextMenu = false))
         const client = await page.context().newCDPSession(page)
         const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', points: [number, number][]) =>
             client.send('Input.dispatchTouchEvent', {
