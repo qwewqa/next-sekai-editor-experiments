@@ -11,6 +11,7 @@ import type { Entity } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
+import { isDragging } from '../controls/gestures/recognizers/drag'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
 import { culledEntities, selectedEntitySet, visibleSelectedEntities } from '../entities/visible'
 import { entityScopeVisibility } from '../scopeRules'
@@ -233,6 +234,9 @@ const labels = computed(() =>
     ),
 )
 
+const sameYs = (a: number[], b: number[]) =>
+    a.length === b.length && a.every((y, index) => y === b[index])
+
 // Grid labels under the time and beat labels over the chart are left out. Equal
 // results keep the same object, so they redraw the chart only when they change.
 const measureContext = document.createElement('canvas').getContext('2d')
@@ -246,11 +250,42 @@ const coveredYs = computed<EdgeLabelYs>((previous) => {
         edgeLabelBoxes.value,
         labels.value,
     )
-    const same = (a: number[], b: number[]) =>
-        a.length === b.length && a.every((y, index) => y === b[index])
-    return previous && same(previous.left, ys.left) && same(previous.right, ys.right)
+    return previous && sameYs(previous.left, ys.left) && sameYs(previous.right, ys.right)
         ? previous
         : ys
+})
+
+/** The ghosts the overlay draws, and the state they're drawn through. */
+const shownGhosts = () => {
+    // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
+    // ghosts, but a Composed paste's, placed on the committed lattice, waits for the commit.
+    const isComposedPaste = !!composed.value && tool.value === tools.paste
+    // A Composed paste ghost placed on an earlier chart, such as before a draft committed, waits for its rebuild.
+    const isStalePaste =
+        isComposedPaste && ![undefined, state.value].includes(pasteGhostBase() as never)
+    const showsGhosts =
+        !isStalePaste &&
+        (!isScenePreview.value || (!!previewEdit.value?.isDraft && !isComposedPaste))
+    const preview = previewSlides.value
+    // Previewed slides are drawn solid as they drop, without ghosts.
+    const entities = !showsGhosts
+        ? []
+        : preview
+          ? view.entities.creating.filter((entity) => !preview.includes(entity))
+          : view.entities.creating
+    return { entities, state: isComposedPaste ? pasteGhostState() : undefined }
+}
+
+// Beat labels make room for a drag's BPM ghost labels too.
+const ghostBpmYs = computed<number[]>((previous) => {
+    const ys: number[] = []
+    if (isDragging.value && (view.visibilities.bpm || settings.showOtherObjects)) {
+        const ghosts = shownGhosts()
+        const bpms = (ghosts.state ?? sceneState.value).bpms
+        for (const entity of ghosts.entities)
+            if (entity.type === 'bpm') ys.push(beatToTime(bpms, entity.beat) * viewBox.value.ups)
+    }
+    return previous && sameYs(previous, ys) ? previous : ys
 })
 
 const drawEntity = (
@@ -294,6 +329,7 @@ watchEffect(
         const grid = drawnGrid.value
         const cursor = view.cursorTime
         const covered = coveredYs.value
+        const ghostYs = ghostBpmYs.value
         const currentLabels = labels.value
         const currentWaveform = settings.waveform === 'off' ? undefined : inputs.state.bgm.waveform
         const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
@@ -320,7 +356,7 @@ watchEffect(
             const timeScaleYs = timeScaleEdgeLabelYs(base, entities)
             const edgeLabelYs = {
                 left: [...timeScaleYs.left, ...covered.left],
-                right: [...timeScaleYs.right, ...covered.right],
+                right: [...timeScaleYs.right, ...covered.right, ...ghostYs],
             }
             const context = { ...base, names: createNameLayer() }
             const previewContext = preview && { ...context, state: preview.state }
@@ -376,24 +412,10 @@ watchEffect(
         const canvas = overlayCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
-        // ghosts, but a Composed paste's, placed on the committed lattice, waits for the commit.
-        const isComposedPaste = !!inputs.composed && tool.value === tools.paste
-        // A Composed paste ghost placed on an earlier chart, such as before a draft committed, waits for its rebuild.
-        const isStalePaste =
-            isComposedPaste && ![undefined, state.value].includes(pasteGhostBase() as never)
-        const showsGhosts =
-            !isStalePaste &&
-            (!isScenePreview.value || (!!previewEdit.value?.isDraft && !isComposedPaste))
+        const { entities: creating, state: ghostState } = shownGhosts()
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value
-        // Previewed slides are drawn solid as they drop, without ghosts.
-        const creating = !showsGhosts
-            ? []
-            : preview
-              ? view.entities.creating.filter((entity) => !preview.includes(entity))
-              : view.entities.creating
         // Previewed slides are outlined where they're drawn.
         const selected = preview
             ? [
@@ -407,8 +429,6 @@ watchEffect(
             : visibleSelectedEntities.value
         const selection = view.selection
         const hover = view.isHoverHidden ? undefined : view.hoverTime
-        const ghostState =
-            inputs.composed && tool.value === tools.paste ? pasteGhostState() : undefined
         overlayFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
