@@ -1,8 +1,9 @@
 import type { StageId } from '../../chart/stages'
 import { state } from '../../history'
+import { selectedEntities } from '../../history/selectedEntities'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
 import type { State } from '../../state'
-import type { Entity, EntityType } from '../../state/entities'
+import type { Entity, EntityOfType, EntityType } from '../../state/entities'
 import { editChanges } from '../../state/operations/properties/plan'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
 import type { ComposedLayout } from '../composed'
@@ -121,46 +122,64 @@ export const resize = (
     return [lane >= anchor ? anchor : alignComputed(anchor - size), size] as const
 }
 
+/**
+ * The objects a point hits: `hits` ranked as the hit model says, its first the one a single
+ * pick takes; `set` the ones that act together or count as a selection in reach. The set is
+ * as it was, without notes reached only through their side slack when a note's own span holds
+ * the point, and always with the first hit.
+ */
+export type PointHits<T extends Entity = Entity> = { hits: T[]; set: T[] }
+
+export const pointHitsOfType = <T extends EntityType>(
+    type: T,
+    x: number,
+    y: number,
+    minimumNoteWidth = 1.5,
+): PointHits<EntityOfType<T>> => {
+    const isType = (entity: Entity): entity is EntityOfType<T> => entity.type === type
+    if (editorNavigation.value) {
+        const { hits, set } = editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
+        return { hits: hits.filter(isType), set: set.filter(isType) }
+    }
+    return findPointHits(
+        hitEntities(type, ...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+        x,
+        y,
+        minimumNoteWidth,
+    )
+}
+
+export const pointHitsAt = (x: number, y: number, minimumNoteWidth = 1.5): PointHits =>
+    editorNavigation.value
+        ? editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
+        : findPointHits(
+              hitAllEntities(...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+              x,
+              y,
+              minimumNoteWidth,
+          )
+
 export const hitEntitiesAtPoint = <T extends EntityType>(
     type: T,
     x: number,
     y: number,
     minimumNoteWidth = 1.5,
-) => {
-    if (editorNavigation.value)
-        return editorNavigation.value
-            .hitPoint(x, y, minimumNoteWidth)
-            .filter((entity): entity is Extract<Entity, { type: T }> => entity.type === type)
-    return filterPointHits(
-        hitEntities(
-            type,
-            xToLane(x - 10),
-            xToLane(x + 10),
-            yToTime(y + 10),
-            yToTime(y - 10),
-            minimumNoteWidth,
-            sceneState.value,
-        ),
-        x,
-        y,
-    )
-}
+) => pointHitsOfType(type, x, y, minimumNoteWidth).hits
 
-export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1.5) => {
-    if (editorNavigation.value) return editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
-    return filterPointHits(
-        hitAllEntities(
-            xToLane(x - 10),
-            xToLane(x + 10),
-            yToTime(y + 10),
-            yToTime(y - 10),
-            minimumNoteWidth,
-            sceneState.value,
-        ),
-        x,
-        y,
-    )
-}
+export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1.5) =>
+    pointHitsAt(x, y, minimumNoteWidth).hits
+
+/** A selected object in reach, as the set counts them. */
+export const selectedHit = <T extends Entity>({ set }: PointHits<T>) =>
+    set.find((entity) => selectedEntities.value.includes(entity))
+
+/** What a press takes: a selected object in reach, else the first hit. */
+export const pressTarget = <T extends Entity>(hits: PointHits<T>) =>
+    selectedHit(hits) ?? hits.hits[0]
+
+// 10 pixels around a point, in lanes and times.
+const pointWindow = (x: number, y: number) =>
+    [xToLane(x - 10), xToLane(x + 10), yToTime(y + 10), yToTime(y - 10)] as const
 
 /** Orders point hits as the hit model says. */
 export const orderPointHits = <T extends Entity>(
@@ -171,12 +190,33 @@ export const orderPointHits = <T extends Entity>(
     composed: ComposedLayout | undefined = getComposedLayout(source),
 ) => orderHits(hits, xToLane(x), yToTime(y), ups.value, source, composed)
 
-// Every object within reach is a candidate; the nearest shape decides between them. A
-// previewed scene is hit where it is shown, as the committed objects it shows.
-const filterPointHits = <T extends Entity>(entities: T[], x: number, y: number) =>
-    orderPointHits(entities.filter(isVisible), x, y, sceneState.value).flatMap(
-        (entity) => toCommittedEntity(entity) ?? [],
-    )
+// A previewed scene is hit where it is shown, as the committed objects it shows.
+const findPointHits = <T extends Entity>(
+    entities: T[],
+    x: number,
+    y: number,
+    minimumNoteWidth: number,
+): PointHits<T> => {
+    const source = sceneState.value
+    const composed = getComposedLayout(source)
+    const visible = entities.filter(isVisible)
+    const hits = orderPointHits(visible, x, y, source, composed)
+    const lane = xToLane(x)
+    const isDirectNote = (entity: T) => {
+        const hitbox = composed ? composed.hitbox(entity) : entity.hitbox
+        return (
+            entity.type === 'note' &&
+            !!hitbox &&
+            lane >= hitbox.lane - Math.max(hitbox.w, minimumNoteWidth / 2) &&
+            lane <= hitbox.lane + Math.max(hitbox.w, minimumNoteWidth / 2)
+        )
+    }
+    const set = visible.some(isDirectNote)
+        ? hits.filter((entity, i) => !i || entity.type !== 'note' || isDirectNote(entity))
+        : hits
+    const committed = (list: T[]) => list.flatMap((entity) => toCommittedEntity(entity) ?? [])
+    return { hits: committed(hits), set: committed(set) }
+}
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>
     hitEntities(

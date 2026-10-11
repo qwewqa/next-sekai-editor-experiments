@@ -31,7 +31,7 @@ import { editorNavigation } from './navigation'
 import { notify } from './notification'
 import { isEntityInScope, scopeLookup } from './scope'
 import { toolName } from './tools'
-import { hitAllEntitiesAtPoint, modifyEntities } from './tools/utils'
+import { modifyEntities, pointHitsAt } from './tools/utils'
 import { view, yToValidBeat } from './view'
 
 type ActionName = CommandName | 'selectSlideNotes' | 'editElevations' | 'editProperties'
@@ -155,7 +155,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
     if (name === 'editElevations') {
         if (point) {
             const note = (
-                point.selection ? selectedEntities.value : hitAllEntitiesAtPoint(point.x, point.y)
+                point.selection ? selectedEntities.value : pointHitsAt(point.x, point.y).set
             ).find((entity) => entity.type === 'note' && selectedEntities.value.includes(entity))
             openElevationEditor(
                 note?.beat ??

@@ -24,7 +24,7 @@ import {
     yToTime,
     yToValidBeat,
 } from '../view'
-import { hitAllEntitiesAtPoint, hitAllEntitiesInSelection, toSelection } from './utils'
+import { hitAllEntitiesInSelection, pointHitsAt, selectedHit, toSelection } from './utils'
 
 let active:
     | {
@@ -35,10 +35,10 @@ let active:
     | undefined
 
 const tapTarget = (x: number, y: number) => {
-    const entities = hitAllEntitiesAtPoint(x, y)
-    if (entities.some((entity) => selectedEntities.value.includes(entity))) return 'selection'
+    const hits = pointHitsAt(x, y)
+    if (selectedHit(hits)) return 'selection'
 
-    return entities.find(canRemove)
+    return hits.hits.find(canRemove)
 }
 
 export const eraser: Tool = {

@@ -109,14 +109,15 @@ import { getOnlyEntityType } from './entityType'
 import { getMovedEndBases } from './moveBase'
 import {
     getLaneAnchor,
-    hitAllEntitiesAtPoint,
     hitAllEntitiesInSelection,
     isSelectResize,
     modifyEntities,
     moveLane,
     offset,
+    pointHitsAt,
     resize,
     resizeShift,
+    selectedHit,
     toSelection,
 } from './utils'
 
@@ -182,9 +183,10 @@ const resolveDrag = (
     const lane = xToLane(x)
     // Off-screen badges sit over the chart; pressing one box-selects.
     if (hitOffscreenIndicator(x, y)) return { type: 'select', lane, indicator: true }
-    const entities = hitAllEntitiesAtPoint(x, y)
+    const hits = pointHitsAt(x, y)
+    const entities = hits.hits
 
-    const [focus] = entities.filter((entity) => selectedEntities.value.includes(entity))
+    const focus = selectedHit(hits)
     if (focus) {
         // Selected objects in hidden or dimmed groups/stages stay put.
         const moving = selectedEntities.value.filter(isEntityInScope)
@@ -213,14 +215,20 @@ const resolveDrag = (
     }
 }
 
+// The order a cycle of taps steps through, kept while the same objects are hit, so jitter can't skip one.
+let cycle: Entity[] = []
+const cycleOrder = (hits: Entity[]) =>
+    hits.length === cycle.length && hits.every((entity) => cycle.includes(entity)) ? cycle : hits
+
 /** What a tap at a point selects: with Ctrl every hit, else the hit after the selection's first, or the top one. */
 const tapTargets = (x: number, y: number, modifiers: Modifiers) => {
-    const entities = hitAllEntitiesAtPoint(x, y)
-    if (modifiers.ctrl) return modifyEntities(entities, modifiers)
+    const { hits, set } = pointHitsAt(x, y)
+    if (modifiers.ctrl) return { order: hits, targets: modifyEntities(set, modifiers) }
+    const order = cycleOrder(hits)
     const current = selectedEntities.value[0]
-    const index = current ? (entities.indexOf(current) + 1) % entities.length : 0
-    const entity = entities[index]
-    return modifyEntities(entity ? [entity] : [], modifiers)
+    const index = current ? (order.indexOf(current) + 1) % order.length : 0
+    const entity = order[index]
+    return { order, targets: modifyEntities(entity ? [entity] : [], modifiers) }
 }
 
 // The hover shows what a tap there would select.
@@ -229,7 +237,7 @@ const previewTap = (x: number, y: number, modifiers: Modifiers) => {
     view.entities = {
         hovered: indicator
             ? modifyEntities(indicator.targets, modifiers)
-            : tapTargets(x, y, modifiers),
+            : tapTargets(x, y, modifiers).targets,
         creating: [],
     }
 }
@@ -246,8 +254,9 @@ export const select: Tool = {
             return
         }
 
-        const entities = tapTargets(x, y, modifiers)
+        const { order, targets: entities } = tapTargets(x, y, modifiers)
         const [entity] = entities
+        if (!modifiers.ctrl) cycle = order
         if (modifiers.ctrl) {
             if (!entity) return
 

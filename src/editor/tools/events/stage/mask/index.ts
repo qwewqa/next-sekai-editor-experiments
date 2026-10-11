@@ -36,10 +36,11 @@ import SelectionPropertiesModal from '../../../../workspace/properties/Selection
 import { constrainMoved, constrainResized } from '../../../toolMove'
 import {
     commitDrop,
-    hitEntitiesAtPoint,
     isRangeResizeStart,
     moveLane,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../../../utils'
 import StageMaskEventSidebar from './StageMaskEventSidebar.vue'
@@ -478,9 +479,7 @@ const tryFind = (
     x: number,
     y: number,
 ): [StageMaskEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('stageMaskEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('stageMaskEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

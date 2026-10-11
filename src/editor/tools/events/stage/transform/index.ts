@@ -33,7 +33,7 @@ import {
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
 import { constrainMoved } from '../../../toolMove'
-import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
+import { commitDrop, moveLane, pointHitsOfType, pressTarget } from '../../../utils'
 import StageTransformEventSidebar from './StageTransformEventSidebar.vue'
 
 type DefaultStageTransformEventProperties = {
@@ -368,9 +368,7 @@ const tryFind = (
     x: number,
     y: number,
 ): [StageTransformEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('stageTransformEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('stageTransformEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

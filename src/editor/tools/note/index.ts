@@ -40,11 +40,11 @@ import { constrainResized } from '../toolMove'
 import {
     addDragAnchor,
     commitDrop,
-    hitEntitiesAtPoint,
     isNoteResizeStart,
-    isVisible,
     modifyEntities,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../utils'
 import NoteSidebar from './NoteSidebar.vue'
@@ -465,9 +465,7 @@ const tryFind = (
     minimumNoteWidth = 1.5,
 ): [NoteEntity] | [undefined, number, number] => {
     // Only notes whose type, group and stage are fully visible are editable.
-    const [hit] = hitEntitiesAtPoint('note', x, y, minimumNoteWidth)
-        .filter(isVisible)
-        .sort((a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a))
+    const hit = pressTarget(pointHitsOfType('note', x, y, minimumNoteWidth))
 
     if (hit) return [hit]
 

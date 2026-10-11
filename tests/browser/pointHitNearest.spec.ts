@@ -229,7 +229,8 @@ test('Elevation Editor: rows side by side meet halfway', async ({ page }) => {
         for (let x = Math.floor(middle - 6); x <= middle + 6; x++)
             hits.push({
                 x,
-                left: (editorNavigation.value!.hitPoint(x, y, 1.5)[0] as { left: number }).left,
+                left: (editorNavigation.value!.hitPoint(x, y, 1.5).hits[0] as { left: number })
+                    .left,
             })
         return { middle, hits }
     })

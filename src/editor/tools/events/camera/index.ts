@@ -34,10 +34,11 @@ import SelectionPropertiesModal from '../../../workspace/properties/SelectionPro
 import { constrainMoved, constrainResized } from '../../toolMove'
 import {
     commitDrop,
-    hitEntitiesAtPoint,
     isRangeResizeStart,
     moveLane,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../../utils'
 import CameraEventSidebar from './CameraEventSidebar.vue'
@@ -495,9 +496,7 @@ const resolveDrag = (x: number, y: number) => {
 }
 
 const tryFind = (x: number, y: number): [CameraEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('cameraEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('cameraEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

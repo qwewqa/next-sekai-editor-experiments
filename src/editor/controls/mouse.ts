@@ -1,4 +1,5 @@
 import { watch } from 'vue'
+import { state } from '../../history'
 import { settings } from '../../settings'
 import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
@@ -10,6 +11,7 @@ import { zoomYOut } from '../commands/zooms/zoomYOut'
 import { closeContextMenu, openContextMenu } from '../contextMenu'
 import { editorNavigation, getControlBounds } from '../navigation'
 import { cancelPreviewFollow, stopPlayer } from '../player'
+import { scopeLookup } from '../scope'
 import { switchToolTo, tool, toolName, type ToolName } from '../tools'
 import {
     scrollViewXBy,
@@ -312,6 +314,23 @@ watch(
     ],
     hoverAgain,
 )
+
+// The hover previews a tap, which edits, undo, selection and scope changes all move. A landed
+// paste keeps its ghost hidden until the mouse moves.
+watch([state, scopeLookup, () => view.visibilities, () => settings.showOtherObjects], () => {
+    if (toolName.value !== 'paste') hoverAgain()
+})
+
+// Ctrl and Shift change what a tap would act on; the hover follows them without a move.
+const followModifiers = (event: KeyboardEvent) => {
+    const modifiers = { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey }
+    const { ctrl, shift } = view.pointer.modifiers
+    if (modifiers.ctrl === ctrl && modifiers.shift === shift) return
+    view.pointer = { ...view.pointer, modifiers }
+    hoverAgain()
+}
+addEventListener('keydown', followModifiers)
+addEventListener('keyup', followModifiers)
 
 export const mouseControlListeners = {
     mousedown,

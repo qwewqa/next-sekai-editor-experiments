@@ -40,9 +40,10 @@ import {
 } from '../../view'
 import { holdToolSection } from '../../workspace/properties/toolSectionHold'
 import {
-    hitAllEntitiesAtPoint,
     hitAllEntitiesInSelection,
     modifyEntities,
+    pointHitsAt,
+    selectedHit,
     toSelection,
 } from '../utils'
 import BrushSidebar from './BrushSidebar.vue'
@@ -113,10 +114,8 @@ let active:
     | undefined
 
 const tapTarget = (x: number, y: number) => {
-    const entities = hitAllEntitiesAtPoint(x, y)
-    return entities.some((entity) => selectedEntities.value.includes(entity))
-        ? 'selection'
-        : entities
+    const hits = pointHitsAt(x, y)
+    return selectedHit(hits) ? 'selection' : hits.set
 }
 
 export const brush: Tool = {

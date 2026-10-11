@@ -28,7 +28,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { commitDrop, hitEntitiesAtPoint } from '../utils'
+import { commitDrop, pointHitsOfType, pressTarget } from '../utils'
 
 let active:
     | {
@@ -292,9 +292,7 @@ const tempoAt = (beat: number): Omit<BpmObject, 'beat'> => {
 }
 
 const tryFind = (x: number, y: number, grab = false): [BpmEntity] | [undefined, number] => {
-    const [hit] = hitEntitiesAtPoint('bpm', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('bpm', x, y))
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)

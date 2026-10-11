@@ -33,7 +33,7 @@ import {
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
 import { constrainMoved } from '../../../toolMove'
-import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
+import { commitDrop, moveLane, pointHitsOfType, pressTarget } from '../../../utils'
 import StagePivotEventSidebar from './StagePivotEventSidebar.vue'
 
 type DefaultStagePivotEventProperties = {
@@ -361,9 +361,7 @@ const tryFind = (
     x: number,
     y: number,
 ): [StagePivotEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('stagePivotEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('stagePivotEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

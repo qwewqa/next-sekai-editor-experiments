@@ -317,7 +317,11 @@ let marquee:
 const yToElevation = (y: number) =>
     elevationViewport.center +
     (elevationBounds.h / 2 - y + elevationBounds.y) / elevationViewport.scale
-const hitAll = (x: number, y: number, minimum = 1.5) => {
+/**
+ * Rows at a point, as the chart's hits: `rows` ranked, `set` those that act together, without
+ * rows reached only through their side slack when a row's own span holds the point, but with the first.
+ */
+const hitRows = (x: number, y: number, minimum = 1.5) => {
     const rows = elevationLayout.value.rows
     const matches = rows.filter(
         (row) =>
@@ -327,7 +331,7 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
                 Math.max(14, elevationLayout.value.laneScale * 0.3 + 10),
     )
     // As the hit model orders the chart's: rows whose shape holds the point, later rows
-    // over earlier ones; then the nearest shape, then the nearest middle.
+    // over earlier ones; then the nearest shape, then the later row.
     const scale = elevationLayout.value.laneScale
     const distances = new Map(
         matches.map((row) => [
@@ -353,20 +357,24 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
     )
     const distance = (row: ElevationRow) => distances.get(row) ?? 0
     const index = new Map(rows.map((row, i) => [row, i]))
-    // Every row within reach is a candidate; the nearest shape decides between them.
-    return matches.sort(
+    const ranked = matches.sort(
         (a, b) =>
             +(distance(b) === 0) - +(distance(a) === 0) ||
-            (distance(a) === 0
-                ? (index.get(b) ?? 0) - (index.get(a) ?? 0)
-                : distance(a) - distance(b)) ||
-            Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y) ||
+            (distance(a) === 0 ? 0 : distance(a) - distance(b)) ||
             (index.get(b) ?? 0) - (index.get(a) ?? 0),
     )
+    const isDirect = (row: ElevationRow) =>
+        Math.abs(x - elevationBounds.x - row.x) <=
+        Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2
+    return {
+        rows: ranked,
+        set: ranked.some(isDirect) ? ranked.filter((row, i) => !i || isDirect(row)) : ranked,
+    }
 }
+// A selected row in reach, else the first.
 const hit = (x: number, y: number, minimum = 1.5) => {
-    const rows = hitAll(x, y, minimum)
-    return rows.find((row) => elevationState.value.selectedEntities.includes(row.note)) ?? rows[0]
+    const { rows, set } = hitRows(x, y, minimum)
+    return set.find((row) => elevationState.value.selectedEntities.includes(row.note)) ?? rows[0]
 }
 const cancel = () => {
     if (drag) clearPreviewEdit()
@@ -436,13 +444,20 @@ const selectedFor = (notesOnly: boolean) =>
     notesOnly
         ? state.value.selectedEntities.filter((entity) => entity.type === 'note')
         : state.value.selectedEntities
+// The notes a cycle of taps steps through, kept while the same rows are hit, so jitter can't skip one.
+let cycled: NoteEntity[] = []
+const cycleOrder = (rows: ElevationRow[]) =>
+    rows.length === cycled.length && rows.every((row) => cycled.includes(row.note))
+        ? cycled.flatMap((note) => rows.find((row) => row.note === note) ?? [])
+        : rows
 /** What a tap selects among rows: with Ctrl all of them, else the next after the selection's first. */
 const selectTargets = (
-    rows: ElevationRow[],
+    hits: ElevationRow[],
     modifiers: Modifiers,
     cycle = false,
     notesOnly = false,
 ) => {
+    const rows = cycle ? cycleOrder(hits) : hits
     const current = selectedFor(notesOnly)[0]
     const index =
         cycle && current && rows.length
@@ -459,6 +474,7 @@ const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, not
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
     const targets = selectTargets(rows, modifiers, cycle, notesOnly)
+    if (cycle) cycled = cycleOrder(rows).map((row) => row.note)
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -503,13 +519,16 @@ const visibleTargets = (entities: State['selectedEntities']) => {
 const isSecondaryTool = () => ['eraser', 'brush', 'generateSlideNotes'].includes(toolName.value)
 const secondaryTargets = (entities: State['selectedEntities'], modifiers: Modifiers) =>
     visibleTargets(toolName.value === 'brush' ? modifyEntities(entities, modifiers) : entities)
-const applyToVisibleSelection = (rows: ElevationRow[], modifiers: Modifiers) => {
+const applyToVisibleSelection = (
+    { rows, set }: ReturnType<typeof hitRows>,
+    modifiers: Modifiers,
+) => {
     const selected = state.value.selectedEntities
-    const hits = rows.map((row) => row.note)
+    const hits = set.map((row) => row.note)
     const targets = hits.some((note) => selected.includes(note))
         ? selected
         : toolName.value === 'eraser'
-          ? hits.slice(0, 1)
+          ? rows.slice(0, 1).map((row) => row.note)
           : hits
     return secondaryTargets(targets, modifiers)
 }
@@ -556,7 +575,7 @@ const controls: Pick<
             return
         }
         // The hover shows what a tap there would act on, as far as it reaches.
-        const rows = hitAll(x, y)
+        const hits = hitRows(x, y)
         const row = hit(x, y)
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
@@ -579,10 +598,14 @@ const controls: Pick<
         else creating.value = []
         view.entities = {
             hovered: isSecondaryTool()
-                ? applyToVisibleSelection(rows, modifiers)
+                ? applyToVisibleSelection(hits, modifiers)
                 : toolName.value === 'note' || toolName.value === 'slide'
                   ? modifyEntities(row ? [row.note] : [], modifiers)
-                  : selectTargets(rows, modifiers, !modifiers.ctrl),
+                  : selectTargets(
+                        modifiers.ctrl ? hits.set : hits.rows,
+                        modifiers,
+                        !modifiers.ctrl,
+                    ),
             creating: creating.value.map((row) => row.note),
         }
     },
@@ -593,21 +616,21 @@ const controls: Pick<
             return
         }
         const row = hit(x, y)
-        const rows = hitAll(x, y)
+        const hits = hitRows(x, y)
         if (toolName.value === 'paste') {
             void pasteAtPoint(x, y, modifiers)
             return
         }
         if (row && toolName.value === 'eraser') {
-            remove(applyToVisibleSelection(rows, modifiers))
+            remove(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (row && toolName.value === 'brush') {
-            applyBrushToEntities(applyToVisibleSelection(rows, modifiers))
+            applyBrushToEntities(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (row && toolName.value === 'generateSlideNotes') {
-            applyGeneratedSlideNotes(applyToVisibleSelection(rows, modifiers))
+            applyGeneratedSlideNotes(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (isSecondaryTool()) {
@@ -646,7 +669,7 @@ const controls: Pick<
             selectAt([row], modifiers, false, true)
             return
         }
-        selectAt(rows, modifiers, !modifiers.ctrl)
+        selectAt(modifiers.ctrl ? hits.set : hits.rows, modifiers, !modifiers.ctrl)
         // What the next tap would select.
         void controls.hover?.(x, y, modifiers)
     },
@@ -1297,7 +1320,8 @@ onMounted(() => {
             elevationViewport.scale = clamp(scale, 1, 1200)
         },
         hitPoint: (x, y, minimum) => {
-            return hitAll(x, y, minimum).map((row) => row.note)
+            const { rows, set } = hitRows(x, y, minimum)
+            return { hits: rows.map((row) => row.note), set: set.map((row) => row.note) }
         },
         selectPoint: (x, y) => {
             const row = hit(x, y)

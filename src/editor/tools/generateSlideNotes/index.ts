@@ -27,7 +27,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import { defaultSlideProperties } from '../slide'
-import { hitEntitiesAtPoint, hitEntitiesInSelection, toSelection } from '../utils'
+import { hitEntitiesInSelection, pointHitsOfType, selectedHit, toSelection } from '../utils'
 
 let active:
     | {
@@ -38,10 +38,8 @@ let active:
     | undefined
 
 const tapTarget = (x: number, y: number) => {
-    const entities = hitEntitiesAtPoint('note', x, y)
-    return entities.some((entity) => selectedEntities.value.includes(entity))
-        ? 'selection'
-        : entities
+    const hits = pointHitsOfType('note', x, y)
+    return selectedHit(hits) ? 'selection' : hits.set
 }
 
 export const generateSlideNotes: Tool = {
