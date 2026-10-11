@@ -155,7 +155,7 @@ test('a touch tap waits for a slow read', async ({ page }) => {
     expect(await reads(page)).toBe(before + 1)
 })
 
-test('a touch tap waits at most 5 s for a read, then pastes what was last read', async ({
+test('a touch tap waits at most 15 s for a read, then pastes what was last read', async ({
     page,
 }) => {
     await setup(page)
@@ -171,14 +171,14 @@ test('a touch tap waits at most 5 s for a read, then pastes what was last read',
         await touch('touchEnd', [])
     }
     await tap(6)
-    await page.clock.runFor(4000)
+    await page.clock.runFor(14000)
     expect(await pasted(page)).toEqual([])
     await page.clock.runFor(1100)
     await expect.poll(() => pasted(page)).toEqual([4])
     // The late read is what the next paste takes, even while its own read hangs.
     await page.evaluate(() => (window as never as { clip: Clip }).clip.release!())
     await tap(8)
-    await page.clock.runFor(5100)
+    await page.clock.runFor(15100)
     await expect.poll(() => pasted(page)).toEqual([4, 2])
 })
 
@@ -329,10 +329,10 @@ test('further Paste taps while a paste waits for a read are ignored', async ({ p
     const tap = await point(page, 0, 8)
     await touch('touchStart', [[tap.x, tap.y]])
     await touch('touchEnd', [])
-    await page.clock.runFor(5100)
+    await page.clock.runFor(15100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])
     await release(page)
-    await page.clock.runFor(5100)
+    await page.clock.runFor(15100)
     await settle(page)
     expect(await pastedBeats(page)).toEqual([6])
 })
@@ -369,7 +369,7 @@ test('a click where the mouse hovered waits for that read, however long it has r
     const { x, y } = await point(page, 0, 6)
     await page.mouse.move(x, y)
     await expect.poll(() => reads(page)).toBe(before + 1)
-    await page.clock.runFor(5100)
+    await page.clock.runFor(15100)
     await copyElsewhere(page)
     await page.mouse.click(x, y)
     await settle(page)
@@ -379,7 +379,7 @@ test('a click where the mouse hovered waits for that read, however long it has r
     expect(await reads(page)).toBe(before + 1)
 })
 
-test('an Elevation Editor Paste tap waits at most 5 s for a read', async ({ page }) => {
+test('an Elevation Editor Paste tap waits at most 15 s for a read', async ({ page }) => {
     await setup(page)
     await page.evaluate(async () => {
         const { settings, appImport } = window.editorTest
@@ -396,13 +396,13 @@ test('an Elevation Editor Paste tap waits at most 5 s for a read', async ({ page
     await page.clock.install()
     const bounds = (await canvas.boundingBox())!
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
-    await page.clock.runFor(4000)
+    await page.clock.runFor(14000)
     expect(await pastedBeats(page)).toEqual([])
     await page.clock.runFor(1100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])
 })
 
-test("the context menu's Paste waits at most 5 s for a read", async ({ page }) => {
+test("the context menu's Paste waits at most 15 s for a read", async ({ page }) => {
     await setup(page)
     await page.evaluate(() => {
         const { settings, history } = window.editorTest
@@ -414,7 +414,7 @@ test("the context menu's Paste waits at most 5 s for a read", async ({ page }) =
     const { x, y } = await point(page, 0, 6)
     await page.mouse.click(x, y, { button: 'right' })
     await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
-    await page.clock.runFor(4000)
+    await page.clock.runFor(14000)
     expect(await pastedBeats(page)).toEqual([])
     await page.clock.runFor(1100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])

@@ -38,7 +38,7 @@ const readClipboard = async () => {
 }
 
 // Waiting on a read stops after this long; its text still lands when it arrives.
-const readWait = 5000
+const readWait = 15000
 
 const waitForRead = async (read: Promise<void>) => {
     let timer: ReturnType<typeof setTimeout> | undefined
