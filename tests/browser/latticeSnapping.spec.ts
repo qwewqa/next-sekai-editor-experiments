@@ -348,32 +348,40 @@ for (const tool of tools) {
 test('Select: every note moves by the grabbed one, also when it lands exactly on a stepped stage event', async ({
     page,
 }) => {
-    // A third of a beat moved by 1 is the pivot's beat; the other note's own move was a float step off
-    // it, which moves now clean off small fractions.
+    // Off any small fraction, so no cleaning: the grabbed note moved by 1 is the pivot's beat; the
+    // other note's own move is a float step off it.
+    const [grabbed, other] = [0.33713, 1.601358027]
+    const event = grabbed + 1
     await load(page, {
         tool: 'select',
         pivots: [
             { beat: 0, pivotLane: 0, eventEase: 'none' },
-            { beat: 4 / 3, pivotLane: 0.6 },
+            { beat: event, pivotLane: 0.6 },
         ],
-        slides: [[{ beat: 1 / 3, left: 1 }], [{ beat: 5 / 3, left: 3 }]],
+        slides: [[{ beat: grabbed, left: 1 }], [{ beat: other, left: 3 }]],
         snapping: 'relative',
         select: 'notes',
         time: 0.75,
     })
     expect(
-        await page.evaluate(async () => {
-            const { toMovedBeat } =
-                await window.editorTest.appImport<typeof import('../../src/editor/view')>(
-                    '/src/editor/view.ts',
-                )
-            return toMovedBeat(1 / 3, toMovedBeat(5 / 3, 1) - 5 / 3) === 4 / 3
-        }),
-    ).toBe(true)
-    await drag(page, 1 / 3, 4 / 3, 0)
+        await page.evaluate(
+            async ({ grabbed, other, event }) => {
+                const { toMovedBeat } =
+                    await window.editorTest.appImport<typeof import('../../src/editor/view')>(
+                        '/src/editor/view.ts',
+                    )
+                return [
+                    toMovedBeat(grabbed, 1) === event,
+                    toMovedBeat(grabbed, toMovedBeat(other, 1) - other) === event,
+                ]
+            },
+            { grabbed, other, event },
+        ),
+    ).toEqual([true, false])
+    await drag(page, grabbed, event, 0)
     const moved = await notes(page)
     // Bit-equal to the event's beat, on its left side: the stage hasn't moved for the grabbed note.
-    expect(moved[0]!.beat).toBe(4 / 3)
+    expect(moved[0]!.beat).toBe(event)
     expect(moved.map((note) => note.left)).toEqual([1, 3])
 })
 
