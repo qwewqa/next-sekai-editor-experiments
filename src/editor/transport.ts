@@ -1,3 +1,4 @@
+import { computed, shallowRef } from 'vue'
 import type { settings } from '../settings'
 import type { view } from './view'
 
@@ -39,7 +40,8 @@ export const createTransport = ({
     let speed = 1
     // floor: the frame shown before a speed change, which the display holds until it passes.
     let playback: { returnTime: number; floor?: number } | undefined
-    let scrub: 'smooth' | 'locked' | undefined
+    // Reactive, so drawing can tell a scrub from a rest.
+    const scrub = shallowRef<'smooth' | 'locked'>()
     let followScroll: typeof view.scrollingY
     let pendingAudition: { time: number; source: 'cursor' | 'note' | 'transport' } | undefined
 
@@ -50,7 +52,7 @@ export const createTransport = ({
         )
 
     const queueAudition = (time: number, source: 'cursor' | 'note' | 'transport') => {
-        if (playback || scrub) return
+        if (playback || scrub.value) return
         // A note audition has its own position, independent of cursor changes
         // made by the same editor interaction. Explicit transport actions replace it.
         if (source === 'cursor' && pendingAudition?.source === 'note') return
@@ -61,7 +63,7 @@ export const createTransport = ({
     const flushAudition = () => {
         const pending = pendingAudition
         pendingAudition = undefined
-        if (pending && !playback && !scrub) audio.audition(pending.time)
+        if (pending && !playback && !scrub.value) audio.audition(pending.time)
     }
 
     const update = () => {
@@ -118,7 +120,7 @@ export const createTransport = ({
         view.cursorTime = seconds
         activate()
         const target = followTime(seconds)
-        if (scrub === 'locked') {
+        if (scrub.value === 'locked') {
             view.time = target
             view.scrollingY = undefined
             followScroll = undefined
@@ -140,8 +142,8 @@ export const createTransport = ({
     }
 
     const endScrub = (audition = true) => {
-        if (!scrub) return
-        scrub = undefined
+        if (!scrub.value) return
+        scrub.value = undefined
         pendingAudition = undefined
         if (audition) audio.audition(view.cursorTime)
     }
@@ -169,17 +171,17 @@ export const createTransport = ({
     }
 
     const beginScrub = (follow: 'smooth' | 'locked' = 'smooth') => {
-        if (scrub) return
+        if (scrub.value) return
         stop()
         audio.stopAudition()
         pendingAudition = undefined
         view.scrollingY = undefined
-        scrub = follow
-        if (scrub === 'locked' && settings.playFollow) seek(view.cursorTime)
+        scrub.value = follow
+        if (follow === 'locked' && settings.playFollow) seek(view.cursorTime)
     }
 
     const scrubTo = (seconds: number) => {
-        if (!scrub || !Number.isFinite(seconds)) return
+        if (!scrub.value || !Number.isFinite(seconds)) return
         const target = Math.max(0, seconds)
         if (target !== view.cursorTime || settings.playFollow) seek(target)
     }
@@ -200,6 +202,7 @@ export const createTransport = ({
         get isPlaying() {
             return !!playback
         },
+        isScrubbing: computed(() => !!scrub.value),
         update,
         play,
         pause,

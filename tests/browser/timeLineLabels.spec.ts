@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
+import { resource } from './previewResourceFixture'
 
 // The hover and cursor lines stop a label inset short of the time and beat labels they meet,
 // and the hover labels' figures are centred on the line.
@@ -155,6 +156,21 @@ const dashes = async (page: Page) => {
     return { runs, from: left + inset, to: right - inset }
 }
 
+// One evenly stretched pattern from stop to stop: every dash and every gap the same, near 6 and 4.
+const expectEven = ({ runs, from, to }: Awaited<ReturnType<typeof dashes>>) => {
+    expect(runs[0]![0]).toBeCloseTo(from, 0)
+    expect(runs.at(-1)![1]).toBeCloseTo(to, 0)
+    const dashLengths = runs.map(([start, end]) => end - start)
+    const gapLengths = runs.slice(1).map(([start], index) => start - runs[index]![1])
+    for (const [lengths, size] of [
+        [dashLengths, 6],
+        [gapLengths, 4],
+    ] as const) {
+        expect(Math.max(...lengths) - Math.min(...lengths)).toBeLessThanOrEqual(1.5)
+        for (const length of lengths) expect(Math.abs(length - size)).toBeLessThanOrEqual(2)
+    }
+}
+
 // Between beats, so off the grid lines.
 const hoverAt = async (page: Page, beat: number) => {
     const { x, y } = await page.evaluate((beat) => window.editorTest.point(0, beat), beat)
@@ -248,21 +264,6 @@ for (const deviceScaleFactor of [1, 2]) {
             await useTool(page, 'select')
             await hoverAt(page, 10.5)
             await expectGaps(page, 'hover')
-            // One evenly stretched pattern from stop to stop: every dash and every gap the same, near 6 and 4.
-            const expectEven = ({ runs, from, to }: Awaited<ReturnType<typeof dashes>>) => {
-                expect(runs[0]![0]).toBeCloseTo(from, 0)
-                expect(runs.at(-1)![1]).toBeCloseTo(to, 0)
-                const dashLengths = runs.map(([start, end]) => end - start)
-                const gapLengths = runs.slice(1).map(([start], index) => start - runs[index]![1])
-                for (const [lengths, size] of [
-                    [dashLengths, 6],
-                    [gapLengths, 4],
-                ] as const) {
-                    expect(Math.max(...lengths) - Math.min(...lengths)).toBeLessThanOrEqual(1.5)
-                    for (const length of lengths)
-                        expect(Math.abs(length - size)).toBeLessThanOrEqual(2)
-                }
-            }
             const first = await dashes(page)
             expectEven(first)
             // Lines of every length modulo the pattern.
@@ -340,6 +341,41 @@ for (const deviceScaleFactor of [1, 2]) {
     })
 }
 
+test('the hover line draws as many dashes at a length however it was reached', async ({ page }) => {
+    await setup(page, 'composed', 24)
+    await useTool(page, 'select')
+    await hoverAt(page, 10.5)
+    await expectGaps(page, 'hover')
+    const size = page.viewportSize()!
+    const first = await dashes(page)
+    const length = first.to - first.from
+    // Resized so the line is the given share of its length; the count settles there.
+    const resize = async (share: number) => {
+        await page.setViewportSize({
+            ...size,
+            width: Math.round(size.width + (share - 1) * length),
+        })
+        await hoverAt(page, 10.5)
+        await expect
+            .poll(async () => {
+                const { from, to } = await dashes(page)
+                return Math.abs(to - from - share * length) < 2
+            })
+            .toBe(true)
+        return dashes(page)
+    }
+    // Shorter, then a little longer than the length, so a kept count would be off there by a tenth.
+    for (const share of [0.8, 1.1]) await resize(share)
+    const back = await resize(1)
+    expect(back.runs.length).toBe(first.runs.length)
+    expectEven(back)
+    // And the other way.
+    for (const share of [1.25, 0.9]) await resize(share)
+    const again = await resize(1)
+    expect(again.runs.length).toBe(first.runs.length)
+    expectEven(again)
+})
+
 test('Basic zoomed out: the hover line ends at the lanes, clear of its labels', async ({
     page,
 }) => {
@@ -389,13 +425,11 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
     expect(frames.overlay).toBeGreaterThanOrEqual(4)
 })
 
-test('in playback, the Basic cursor line keeps its ends as grid labels pass it', async ({
-    page,
-}) => {
-    // The cursor line's ends in lanes, by chart frame: full-opacity white horizontal lines.
-    await page.evaluate(() => {
-        const ends: number[] = []
-        ;(window as unknown as { cursorEnds: number[] }).cursorEnds = ends
+// Records the cursor line's ends in lanes, by chart frame: full-opacity white horizontal lines.
+const recordCursorEnds = (page: Page) =>
+    page.evaluate(() => {
+        const ends: string[] = []
+        ;(window as unknown as { cursorEnds: string[] }).cursorEnds = ends
         const proto = CanvasRenderingContext2D.prototype
         const { moveTo, lineTo } = proto
         let from: [number, number] | undefined
@@ -412,10 +446,23 @@ test('in playback, the Basic cursor line keeps its ends as grid labels pass it',
                 from[0] < 0 &&
                 x > 0
             )
-                ends.push(x)
+                ends.push(`${from[0]},${x}`)
             return lineTo.call(this, x, y)
         }
     })
+
+const recordedCursorEnds = (page: Page) =>
+    page.evaluate(() => {
+        const recorded = (window as unknown as { cursorEnds: string[] }).cursorEnds
+        const ends = [...recorded]
+        recorded.length = 0
+        return ends
+    })
+
+test('in playback, the Basic cursor line keeps its ends as grid labels pass it', async ({
+    page,
+}) => {
+    await recordCursorEnds(page)
     await setup(page, 'basic', 16)
     await useTool(page, 'select')
     await page.mouse.move(5, 5)
@@ -429,16 +476,54 @@ test('in playback, the Basic cursor line keeps its ends as grid labels pass it',
             await window.editorTest.appImport<typeof import('../../src/editor/player')>(
                 '/src/editor/player.ts',
             )
-        const recorded = (window as unknown as { cursorEnds: number[] }).cursorEnds
+        const recorded = (window as unknown as { cursorEnds: string[] }).cursorEnds
+        // From the start, after the frames at rest, which may meet a label.
         recorded.length = 0
         player.startOrStopPlayer()
         await new Promise((resolve) => setTimeout(resolve, 2000))
         player.startOrStopPlayer()
+        // Until the stop, before the next frame at rest.
         return [...recorded]
     })
     // Past several labelled beats.
     expect(ends.length).toBeGreaterThan(20)
-    expect([...new Set(ends)]).toEqual([7])
+    expect([...new Set(ends)]).toEqual(['-7,7'])
+})
+
+test('scrubbing from the preview, the Basic cursor line keeps its ends as grid labels pass it', async ({
+    page,
+}) => {
+    await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
+    await page.route('**/resource/particle.scp*', (route) =>
+        route.fulfill({ body: resource('particles') }),
+    )
+    await recordCursorEnds(page)
+    await setup(page, 'basic', 16)
+    await useTool(page, 'select')
+    await page.evaluate(() => {
+        const { settings, view } = window.editorTest
+        settings.pps = 400
+        settings.playFollow = true
+        settings.previewPosition = 'top'
+        settings.topDockHeight = 200
+        settings.showPreview = true
+        view.cursorTime = 5.25
+    })
+    const preview = page.locator('.preview-transport-root')
+    await expect(preview).toBeVisible()
+    const box = (await preview.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await recordedCursorEnds(page)
+    // Wheel up scrubs later, the grid scrolling past the held cursor.
+    for (let event = 0; event < 50; event++) {
+        await page.mouse.wheel(0, -20)
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+    }
+    const ends = await recordedCursorEnds(page)
+    // Past several labelled beats.
+    expect(await page.evaluate(() => window.editorTest.view.cursorTime)).toBeGreaterThan(6.1)
+    expect(ends.length).toBeGreaterThan(20)
+    expect([...new Set(ends)]).toEqual(['-7,7'])
 })
 
 // The middle of a canvas line's rows, in CSS pixels: alpha-weighted down a strip at the
@@ -567,7 +652,7 @@ const figureMiddles = async (page: Page) => {
     return middles
 }
 
-for (const deviceScaleFactor of [1, 1.5, 2]) {
+for (const deviceScaleFactor of [1, 1.25, 1.5, 2]) {
     for (const rootSize of [16, 20]) {
         test.describe(`at ${deviceScaleFactor}x and ${rootSize} pixel text`, () => {
             test.use({ deviceScaleFactor })
@@ -596,12 +681,13 @@ for (const deviceScaleFactor of [1, 1.5, 2]) {
                     )
                     for (const middle of await figureMiddles(page)) offsets.push(middle - line)
                 }
-                // Within half a pixel, as text lands on whole ones, and centred on average; device
-                // pixels that aren't whole pixels add up to half of one.
+                // Within half a pixel, as text lands on whole ones, and centred on average. Where device
+                // pixels aren't whole pixels, each whole pixel falls at another phase of them, and the ink,
+                // found in whole device pixels, can be off by half of one at every shift: in the mean too.
                 const uneven = Number.isInteger(deviceScaleFactor) ? 0 : 0.5 / deviceScaleFactor
                 const mean = offsets.reduce((a, b) => a + b) / offsets.length
                 expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(0.51 + uneven)
-                expect(Math.abs(mean)).toBeLessThanOrEqual(0.2 + uneven / 2)
+                expect(Math.abs(mean)).toBeLessThanOrEqual(0.2 + uneven)
             })
         })
     }

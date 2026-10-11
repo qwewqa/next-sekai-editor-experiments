@@ -9,6 +9,7 @@ import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
+import { BPM_LABEL } from '../../state/entities/bpm'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
@@ -25,6 +26,7 @@ import {
     toCommittedEntity,
     toSceneEntity,
 } from '../sceneState'
+import { isPreviewScrubbing } from '../player'
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
@@ -311,9 +313,9 @@ const ghostBpmYs = computed<number[]>((previous) => {
 })
 
 // The labels past lanes -6.1 and 6.1 that Basic time lines stop short of, in pane pixels.
-// Not while playing, as the labels passing the cursor would make its ends jump.
+// Not while playing or scrubbing, as the labels passing the cursor would make its ends jump.
 const columnBoxes = computed<SideBoxes | undefined>(() => {
-    if (composed.value || isPlaying.value) return
+    if (composed.value || isPlaying.value || isPreviewScrubbing.value) return
     const bounds = viewBox.value
     const scale = view.w / bounds.w
     const covered = coveredYs.value
@@ -341,7 +343,7 @@ const columnBoxes = computed<SideBoxes | undefined>(() => {
             ...right
                 .filter(({ y }) => !isNearLabel(beatYs, y))
                 .map(({ y }) => box(y, 0.2, 6.1, Infinity)),
-            ...bpmYs.map((y) => box(y, 0.25, 6.1, Infinity)),
+            ...bpmYs.map((y) => box(y, BPM_LABEL.size / 2, BPM_LABEL.lane, Infinity)),
         ],
     }
 })
@@ -379,7 +381,8 @@ const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined
 const DASH = 6
 const GAP = 4
 
-// Dashes on the hover line; kept while its stretch stays near 1, so small length changes don't regroup them.
+// Dashes on the hover line; kept within 0.75 of the length's own count, so small length changes don't regroup
+// them, yet a length draws (almost) the same however it was reached.
 let hoverDashes = 0
 
 // Stretches the dash pattern slightly so the line starts and ends on a whole dash.
@@ -391,11 +394,11 @@ const strokeDashedTimeLine = (
 ) => {
     if (!ends) return
     const length = (ends.right - ends.left) * scale
-    // The stretch that fits `count` dashes and the gaps between them exactly.
-    const fit = (count: number) => length / (count * (DASH + GAP) - GAP)
-    if (!hoverDashes || Math.abs(fit(hoverDashes) - 1) > 0.15)
-        hoverDashes = Math.max(1, Math.round((length + GAP) / (DASH + GAP)))
-    const stretch = fit(hoverDashes)
+    const count = (length + GAP) / (DASH + GAP)
+    if (!hoverDashes || Math.abs(hoverDashes - count) >= 0.75)
+        hoverDashes = Math.max(1, Math.round(count))
+    // Fits the dashes and the gaps between them exactly.
+    const stretch = length / (hoverDashes * (DASH + GAP) - GAP)
     ctx.setLineDash([(DASH * stretch) / scale, (GAP * stretch) / scale])
     ctx.beginPath()
     ctx.moveTo(ends.left, y)

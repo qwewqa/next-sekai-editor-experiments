@@ -108,6 +108,7 @@ export const togglePreviewPlayback = () => {
 export const stopPlayer = transport.stop
 export const stepPreviewTime = transport.step
 export const beginPreviewScrub = transport.beginScrub
+export const isPreviewScrubbing = transport.isScrubbing
 export const scrubPreviewTo = transport.scrubTo
 export const endPreviewScrub = transport.endScrub
 export const cancelPreviewFollow = transport.cancelFollow
