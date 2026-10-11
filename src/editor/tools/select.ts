@@ -137,8 +137,9 @@ type MoveActive = {
         one: number
         // The lane anchor's stage lattice in the moved chart.
         lattice: Lattice | undefined
+        beatSnap: string
     }
-    bases?: { source: State; beatOffset: number; bases: Bases }
+    bases?: { source: State; beatOffset: number; beatSnap: string; bases: Bases }
 }
 
 type RawMove = { delta: number; unconstrained?: boolean }
@@ -346,7 +347,7 @@ export const select: Tool = {
 
                 // Moved BPM changes redraw the bars only once they leave their beats.
                 setLiftDrawn(beatOffset !== 0)
-                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${view.division} ${beatGridKey(snapGrid.value)}`
+                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
                 if (active.last === last) break
                 active.last = last
                 const source = state.value
@@ -381,7 +382,7 @@ export const select: Tool = {
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
                 // The preview reads snapping when drawn, so a snapping change rebuilds it.
-                const snapping = `${view.laneDivision} ${view.laneSnapping} ${view.division}`
+                const snapping = `${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
                 const previous = active.ghosts
                 if (
                     previous?.shown === view.entities.creating &&
@@ -672,7 +673,12 @@ const getRawMove = (
     // and attached anchors can also change the projection while they move.
     if (active.onlyType === 'note' && !focus.isAttached) return
     let response = active.response
-    if (response?.source !== source || response.beatOffset !== beatOffset) {
+    const beatSnap = getBeatSnap()
+    if (
+        response?.source !== source ||
+        response.beatOffset !== beatOffset ||
+        response.beatSnap !== beatSnap
+    ) {
         const probe = (delta: number) => {
             const result = moveEntities(source, active, active.lane + delta, beatOffset, plan, {
                 delta,
@@ -695,6 +701,7 @@ const getRawMove = (
             zero: zero.value,
             one: one.value,
             lattice: zero.lattice,
+            beatSnap,
         }
     }
     const target = composed.noteLeft(focus) + lane - active.lane
@@ -765,14 +772,23 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     // Without a beat change, or in a resize, no tick crosses an end.
     if (!beatOffset || isSelectResize(active.onlyType, active.focus, active.lane)) return new Map()
     const cached = active.bases
-    if (cached?.source === source && cached.beatOffset === beatOffset) return cached.bases
+    const beatSnap = getBeatSnap()
+    if (
+        cached?.source === source &&
+        cached.beatOffset === beatOffset &&
+        cached.beatSnap === beatSnap
+    )
+        return cached.bases
     const beats = new Map<NoteEntity, number>()
     for (const entity of active.entities)
         if (entity.type === 'note') beats.set(entity, toMovedBeat(entity.beat, beatOffset))
     const bases = getMovedEndBases(source, beats)
-    active.bases = { source, beatOffset, bases }
+    active.bases = { source, beatOffset, beatSnap, bases }
     return bases
 }
+
+// What moved beats are cleaned against: the beat division and grid.
+const getBeatSnap = () => `${view.division} ${beatGridKey(snapGrid.value)}`
 
 const moveSelectedLane = (
     value: number,
