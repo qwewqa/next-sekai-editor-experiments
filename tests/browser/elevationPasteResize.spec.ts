@@ -193,10 +193,11 @@ const copyAnchoredOnB = async (page: Page) => {
     const point = await at(page, 'main', (b.left + b.right) / 2, 0)
     await page.mouse.move(point.x - 2, point.y)
     await page.mouse.move(point.x, point.y)
-    // The chart has taken the hover before the copy reads it.
+    // The chart has taken the hover before the copy reads it; it previews the tap, which with B
+    // selected goes on to the note after it.
     await expect
-        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered))
-        .toContainEqual({ type: 'note', beat: 3, left: 1, size: 2 })
+        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered.length))
+        .toBe(1)
     await page.keyboard.press('c')
     const anchor = await page.evaluate(async () => {
         const { appImport } = window.editorTest
@@ -233,18 +234,25 @@ const resizeBy =
         await openAt(page, 3)
         await setup(page, 'select', [1, 4.3, -10, 0])
         const note = await shown(page, left)
-        // In the edge zone, clear of the attached tick's diamond drawn over B's left edge in Basic.
+        // In the edge zone; on the chart above the attached tick's box, 0.15 lanes high, which Basic
+        // draws over B's left edge.
         const lane = side === 'left' ? note.left + 0.4 : note.right - 0.4
+        const lift =
+            pane === 'main'
+                ? await page.evaluate(
+                      () => (0.22 * window.editorTest.view.w) / window.editorTest.settings.width,
+                  )
+                : 0
         const start = await at(page, pane, lane, note.elevation)
         const end = await at(page, pane, lane + by, note.elevation)
-        await page.mouse.move(start.x, start.y - 2)
-        await page.mouse.move(start.x, start.y)
+        await page.mouse.move(start.x, start.y - lift - 2)
+        await page.mouse.move(start.x, start.y - lift)
         await page.mouse.down()
         if (via !== undefined) {
             const past = await at(page, pane, lane + via, note.elevation)
-            await page.mouse.move(past.x, past.y, { steps: 6 })
+            await page.mouse.move(past.x, past.y - lift, { steps: 6 })
         }
-        await page.mouse.move(end.x, end.y, { steps: 6 })
+        await page.mouse.move(end.x, end.y - lift, { steps: 6 })
         await page.mouse.up()
     }
 
