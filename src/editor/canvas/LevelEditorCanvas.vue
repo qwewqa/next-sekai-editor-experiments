@@ -11,7 +11,14 @@ import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
 import { culledEntities, selectedEntitySet, visibleSelectedEntities } from '../entities/visible'
 import { entityScopeVisibility } from '../scopeRules'
-import { drawnGrid, isScenePreview, previewSlides, sceneState } from '../sceneState'
+import {
+    drawnGrid,
+    isScenePreview,
+    previewSlides,
+    sceneCounterparts,
+    sceneState,
+    toSceneEntity,
+} from '../sceneState'
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
@@ -106,7 +113,11 @@ const orderedEntities = computed(() =>
     }),
 )
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
-const hoveredSet = computed(() => new Set(hoveredEntities.value))
+// Hovered objects are committed ones; a previewed scene draws their counterparts.
+const sceneHovered = computed(() =>
+    sceneCounterparts.value ? hoveredEntities.value.map(toSceneEntity) : hoveredEntities.value,
+)
+const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Note spans in lanes and seconds, which scrolling leaves unchanged.
 const offscreenCandidates = computed(() => {
     const bpms = sceneState.value.bpms
@@ -348,7 +359,7 @@ watchEffect(
         if (!canvas || !inputs.width || !inputs.height) return
         const creating = isScenePreview.value ? [] : view.entities.creating
         const range = artRange.value
-        const hovered = hoveredEntities.value
+        const hovered = sceneHovered.value
         const preview = previewSlides.value
         // Previewed slides are outlined where they're drawn.
         const selected = preview

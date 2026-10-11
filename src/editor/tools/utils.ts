@@ -12,6 +12,7 @@ import type { Modifiers } from '../controls/gestures/pointer'
 import { orderHits } from '../hitModel'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
+import { sceneState, toCommittedEntity } from '../sceneState'
 import { isEntityInScope } from '../scope'
 import { snappedOffset } from '../snapping'
 import { alignLane, ups, view, xToLane, yToTime, type Selection } from '../view'
@@ -138,6 +139,7 @@ export const hitEntitiesAtPoint = <T extends EntityType>(
             yToTime(y + 10),
             yToTime(y - 10),
             minimumNoteWidth,
+            sceneState.value,
         ),
         x,
         y,
@@ -153,6 +155,7 @@ export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1
             yToTime(y + 10),
             yToTime(y - 10),
             minimumNoteWidth,
+            sceneState.value,
         ),
         x,
         y,
@@ -168,9 +171,12 @@ export const orderPointHits = <T extends Entity>(
     composed: ComposedLayout | undefined = getComposedLayout(source),
 ) => orderHits(hits, xToLane(x), yToTime(y), ups.value, source, composed)
 
-// Every object within reach is a candidate; the nearest shape decides between them.
+// Every object within reach is a candidate; the nearest shape decides between them. A
+// previewed scene is hit where it is shown, as the committed objects it shows.
 const filterPointHits = <T extends Entity>(entities: T[], x: number, y: number) =>
-    orderPointHits(entities.filter(isVisible), x, y)
+    orderPointHits(entities.filter(isVisible), x, y, sceneState.value).flatMap(
+        (entity) => toCommittedEntity(entity) ?? [],
+    )
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>
     hitEntities(

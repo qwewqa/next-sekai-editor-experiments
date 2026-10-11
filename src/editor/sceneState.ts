@@ -8,6 +8,7 @@ import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { beatToKey } from '../state/store/grid'
 import { gridOf, liftedDrawnBpms } from './beatGrid'
 import { view } from './view'
 
@@ -99,3 +100,54 @@ export const hitAllSceneEntities = (
     timeMax: number,
     minimumNoteWidth = 0,
 ) => hitAllEntities(laneMin, laneMax, timeMin, timeMax, minimumNoteWidth, sceneState.value)
+
+/**
+ * A previewed scene's replaced entities and the committed ones they show: an
+ * edit's objects keep their place in the selection, and a slide's other notes,
+ * such as attached ticks, their order. What can't be paired is left out.
+ */
+export const sceneCounterparts = computed(() => {
+    const scene = sceneState.value
+    const source = state.value
+    if (scene === source) return
+    const toSource = new Map<Entity, Entity>()
+    const toScene = new Map<Entity, Entity>()
+    const pair = (shown: Entity, committed: Entity) => {
+        if (shown === committed || shown.type !== committed.type || toSource.has(shown)) return
+        toSource.set(shown, committed)
+        toScene.set(committed, shown)
+    }
+    if (scene.selectedEntities.length === source.selectedEntities.length)
+        for (const [i, entity] of scene.selectedEntities.entries())
+            pair(entity, source.selectedEntities[i] ?? entity)
+    const slideIds = new Set(
+        scene.selectedEntities.flatMap((entity) =>
+            entity.type === 'note' ? [entity.slideId] : [],
+        ),
+    )
+    for (const id of slideIds) {
+        const before = source.store.slides.note.get(id) ?? []
+        const after = scene.store.slides.note.get(id) ?? []
+        const kept = new Set(before)
+        const shown = new Set(after)
+        const added = after.filter((note) => !kept.has(note) && !toSource.has(note))
+        const removed = before.filter((note) => !shown.has(note) && !toScene.has(note))
+        if (added.length === removed.length)
+            for (const [i, note] of added.entries()) pair(note, removed[i] ?? note)
+    }
+    return { toSource, toScene }
+})
+
+/** The committed entity a scene entity shows, if any. */
+export const toCommittedEntity = <T extends Entity>(entity: T) => {
+    const counterparts = sceneCounterparts.value
+    if (!counterparts) return entity
+    const committed = counterparts.toSource.get(entity)
+    if (committed) return committed as T
+    const grid = state.value.store.grid[entity.type] as Map<number, Set<Entity>>
+    return grid.get(beatToKey(entity.beat))?.has(entity) ? entity : undefined
+}
+
+/** The entity the scene shows for a committed one. */
+export const toSceneEntity = <T extends Entity>(entity: T) =>
+    (sceneCounterparts.value?.toScene.get(entity) as T | undefined) ?? entity
