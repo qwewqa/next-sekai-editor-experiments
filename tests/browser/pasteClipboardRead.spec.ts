@@ -3,6 +3,7 @@ import {
     installCanvasCounters,
     installEditorFixture,
     touchInput,
+    useTool,
     type TouchInput,
 } from './editorFixture'
 
@@ -24,7 +25,6 @@ type Clip = {
     text: string
     reads: number
     copies: string[]
-    delay: number
     // Reads wait for release() while set.
     hold: boolean
     release?: () => void
@@ -50,7 +50,7 @@ const setup = async (page: Page) => {
             1.1,
         )
         await nextTick()
-        const clip: Clip = { text: '', reads: 0, copies: [], delay: 0, hold: false }
+        const clip: Clip = { text: '', reads: 0, copies: [], hold: false }
         Object.assign(window, { clip })
         Object.defineProperty(navigator.clipboard, 'writeText', {
             configurable: true,
@@ -68,7 +68,7 @@ const setup = async (page: Page) => {
                         clip.release = () => resolve(clip.text)
                     })
                 const { text } = clip
-                await new Promise((resolve) => setTimeout(resolve, clip.delay))
+                await new Promise((resolve) => setTimeout(resolve))
                 return text
             },
         })
@@ -106,6 +106,15 @@ const pasteTool = async (page: Page) => {
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
 }
 
+/** Holds reads until release(). */
+const hold = (page: Page) =>
+    page.evaluate(() => {
+        ;(window as never as { clip: Clip }).clip.hold = true
+    })
+
+const release = (page: Page) =>
+    page.evaluate(() => (window as never as { clip: Clip }).clip.release!())
+
 const point = (page: Page, lane: number, beat: number) =>
     page.evaluate(([lane, beat]) => window.editorTest.point(lane, beat), [lane, beat] as const)
 
@@ -134,14 +143,14 @@ test('a touch tap waits for a slow read', async ({ page }) => {
     await setup(page)
     await pasteTool(page)
     await copyElsewhere(page)
-    await page.evaluate(() => {
-        ;(window as never as { clip: Clip }).clip.delay = 400
-    })
+    await hold(page)
     const before = await reads(page)
     const { x, y } = await point(page, 0, 6)
     await touch('touchStart', [[x, y]])
     await touch('touchEnd', [])
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
     expect(await pasted(page)).toEqual([])
+    await release(page)
     await expect.poll(() => pasted(page)).toEqual([2])
     expect(await reads(page)).toBe(before + 1)
 })
@@ -238,4 +247,126 @@ test('after leaving the window, a click where the mouse hovered reads again', as
     await page.mouse.up()
     await expect.poll(() => pasted(page)).toEqual([2])
     expect(await reads(page)).toBe(before + 1)
+})
+
+/** Beats of the pasted notes. */
+const pastedBeats = (page: Page) =>
+    page.evaluate(() =>
+        window.editorTest
+            .snapshot()
+            .notes.filter(({ beat }) => beat !== 2)
+            .map(({ beat }) => beat),
+    )
+
+const settle = (page: Page) =>
+    page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
+
+/** Clicks with Paste where its hover's read is held, so the paste waits. */
+const clickWaiting = async (page: Page, beat: number) => {
+    await setup(page)
+    await pasteTool(page)
+    await hold(page)
+    const before = await reads(page)
+    const { x, y } = await point(page, 0, beat)
+    await page.mouse.move(x, y)
+    await expect.poll(() => reads(page)).toBe(before + 1)
+    await page.mouse.click(x, y)
+}
+
+test('a click that waits for a read pastes where it clicked, though the view scrolls meanwhile', async ({
+    page,
+}) => {
+    await clickWaiting(page, 6)
+    const time = () => page.evaluate(() => window.editorTest.view.time)
+    const before = await time()
+    await page.mouse.wheel(0, -300)
+    await expect.poll(time).not.toBe(before)
+    expect(await pastedBeats(page)).toEqual([])
+    await release(page)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+})
+
+test('a click that waits for a read pastes nothing once another tool is chosen', async ({
+    page,
+}) => {
+    await clickWaiting(page, 6)
+    await useTool(page, 'select')
+    await release(page)
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([])
+})
+
+test('a click that waits for a read pastes nothing during a drag, and leaves the drag alone', async ({
+    page,
+}) => {
+    await clickWaiting(page, 6)
+    const from = await point(page, 0, 8)
+    const to = await point(page, 0, 9)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 5 })
+    await release(page)
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([])
+    await page.mouse.up()
+    await expect.poll(() => pastedBeats(page)).toEqual([9])
+})
+
+test('further Paste taps while one waits for a read are ignored', async ({ page }) => {
+    await setup(page)
+    await pasteTool(page)
+    await hold(page)
+    await page.clock.install()
+    for (const beat of [6, 8]) {
+        const { x, y } = await point(page, 0, beat)
+        await touch('touchStart', [[x, y]])
+        await touch('touchEnd', [])
+    }
+    await page.clock.runFor(5100)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+    await release(page)
+    await page.clock.runFor(5100)
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([6])
+})
+
+test('an Elevation Editor Paste tap waits at most 5 s for a read', async ({ page }) => {
+    await setup(page)
+    await page.evaluate(async () => {
+        const { settings, appImport } = window.editorTest
+        settings.elevationEditorSideBySide = 'disallow'
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(6)
+    })
+    const canvas = page.locator('.elevation-canvas')
+    await expect(canvas).toBeVisible()
+    await useTool(page, 'paste')
+    await hold(page)
+    await page.clock.install()
+    const bounds = (await canvas.boundingBox())!
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    await page.clock.runFor(4000)
+    expect(await pastedBeats(page)).toEqual([])
+    await page.clock.runFor(1100)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+})
+
+test("the context menu's Paste waits at most 5 s for a read", async ({ page }) => {
+    await setup(page)
+    await page.evaluate(() => {
+        const { settings, history } = window.editorTest
+        settings.mouseSecondaryTool = 'selectContextMenu'
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+    })
+    await hold(page)
+    await page.clock.install()
+    const { x, y } = await point(page, 0, 6)
+    await page.mouse.click(x, y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
+    await page.clock.runFor(4000)
+    expect(await pastedBeats(page)).toEqual([])
+    await page.clock.runFor(1100)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
 })

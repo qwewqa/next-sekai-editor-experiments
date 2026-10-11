@@ -40,7 +40,7 @@ const readClipboard = async () => {
 // Waiting on a read stops after this long; its text still lands when it arrives.
 const readWait = 5000
 
-export const waitForRead = async (read: Promise<void>) => {
+const waitForRead = async (read: Promise<void>) => {
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
         await Promise.race([
@@ -53,13 +53,14 @@ export const waitForRead = async (read: Promise<void>) => {
 }
 
 export const updateClipboard = () => {
-    if (reading) return waitForRead(reading)
-    const read = readClipboard()
-    reading = read
-    void read.finally(() => {
-        if (reading === read) reading = undefined
-    })
-    return read
+    if (!reading) {
+        const read = readClipboard()
+        reading = read
+        void read.finally(() => {
+            if (reading === read) reading = undefined
+        })
+    }
+    return waitForRead(reading)
 }
 
 export const setClipboardData = (data: ClipboardData) => {

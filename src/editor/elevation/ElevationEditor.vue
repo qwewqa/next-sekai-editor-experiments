@@ -10,7 +10,7 @@ import {
     watchEffect,
 } from 'vue'
 import { interruptsDrags, isAppActive } from '../../activity'
-import { clipboardEntry, updateClipboard } from '../../clipboard'
+import { updateClipboard } from '../../clipboard'
 import { pushState, replaceState, state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
 import { i18n } from '../../i18n'
@@ -63,7 +63,7 @@ import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { isSidebarVisible, revealPropertiesSection } from '../sidebars'
 import { panelTools, tools, toolName, type Tool } from '../tools'
 import { applyBrushToEntities } from '../tools/brush'
-import { pasteGhostInfos } from '../tools/paste'
+import { pasteGhostInfos, waitToPaste } from '../tools/paste'
 import { remove } from '../tools/eraser'
 import { applyGeneratedSlideNotes } from '../tools/generateSlideNotes'
 import { defaultNoteProperties } from '../tools/note'
@@ -502,22 +502,11 @@ const positionAtPoint = (x: number, y: number) => ({
     beat: elevationBeat.value,
     elevation: snapElevation(yToElevation(y), settings.elevationSnap),
 })
-const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers) => {
-    const source = state.value
+// The Paste tool's tap or drag drops its paste on a tool switch; the context menu's comes from any tool.
+const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers, keepsTool = false) => {
     const position = positionAtPoint(x, y)
-    const scope = scopeLookup.value
-    try {
-        await updateClipboard()
-    } catch {
-        if (!clipboardEntry.value?.data) return false
-    }
-    if (
-        !mounted ||
-        !isElevationEditorOpen.value ||
-        !hasSameChartData(source, state.value) ||
-        scopeLookup.value !== scope ||
-        !sameBeat(elevationBeat.value, position.beat)
-    )
+    if (!(await waitToPaste(updateClipboard, keepsTool))) return false
+    if (!mounted || !isElevationEditorOpen.value || !sameBeat(elevationBeat.value, position.beat))
         return false
     await pasteElevationNotes(position.lane, position.elevation, position.beat, modifiers)
     creating.value = []
@@ -633,7 +622,7 @@ const controls: Pick<
         const hits = hitRows(x, y)
         const row = pickRow(hits)
         if (toolName.value === 'paste') {
-            void pasteAtPoint(x, y, modifiers)
+            void pasteAtPoint(x, y, modifiers, true)
             return
         }
         if (row && toolName.value === 'eraser') {
@@ -885,7 +874,7 @@ const controls: Pick<
         controls.dragUpdate?.(x, y, modifiers)
         if (toolName.value === 'paste') {
             cancel()
-            void pasteAtPoint(x, y, modifiers)
+            void pasteAtPoint(x, y, modifiers, true)
             return
         }
         if (adding) {

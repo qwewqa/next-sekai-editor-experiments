@@ -13,7 +13,7 @@ import type { FlickDirection, NoteObject } from '../../../chart/note'
 import type { StageId } from '../../../chart/stages'
 import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
-import { clipboardEntry, updateClipboard, waitForRead } from '../../../clipboard/index.ts'
+import { clipboardEntry, updateClipboard } from '../../../clipboard/index.ts'
 import { pushState, state } from '../../../history'
 import { chartSessionId } from '../../../history/chartSession'
 import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
@@ -49,6 +49,7 @@ import { createSlideId, type SlideId } from '../../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities/timeScale'
 import { calculateBpms, toBpmIntegral, type BpmIntegral } from '../../../state/integrals/bpms'
+import { snapBeat } from '../../../state/integrals/grid'
 import { addBpm, removeBpm } from '../../../state/mutations/bpm'
 import { addCameraEventJoint } from '../../../state/mutations/events/camera'
 import { addStageMaskEventJoint } from '../../../state/mutations/events/stage/mask'
@@ -68,12 +69,14 @@ import { committedGrid } from '../../beatGrid'
 import { createComposedLayout } from '../../composed'
 import { inverseAffine } from '../../composedPointer'
 import type { Modifiers } from '../../controls/gestures/pointer'
+import { isDragging } from '../../controls/gestures/recognizers/drag'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
 import { revealAuthoringTarget, scopeLookup } from '../../scope'
 import { entityScopeIds } from '../../scopeRules'
-import { alignLane, toMovedBeat, view, xToLane, yToBeatOffset } from '../../view'
+import { alignLane, toMovedBeat, view, xToLane, yToBeat, yToBeatOffset } from '../../view'
 import { getOnlyEntityType } from '../entityType'
+import { toolName } from '../state'
 import PasteSidebar from './PasteSidebar.vue'
 
 let active:
@@ -91,7 +94,7 @@ let readAt: { x: number; y: number } | undefined
 watch(isAppActive, (active) => {
     if (!active) readAt = undefined
 })
-// A hover's or press's read, while it runs.
+// A hover's or press's read, until it lands or waiting on it stops.
 let reading: Promise<void> | undefined
 const readClipboardAt = (x: number, y: number) => {
     if (x === readAt?.x && y === readAt.y) return
@@ -100,6 +103,51 @@ const readClipboardAt = (x: number, y: number) => {
     void read.then(() => {
         if (reading === read) reading = undefined
     })
+}
+
+// Whether a paste waits on a clipboard read; other pastes meanwhile are ignored.
+let isPasteWaiting = false
+
+/**
+ * Waits for a clipboard read before a paste. False drops it: another paste is waiting, or an
+ * edit, a scope or layout change, a drag, or with `keepsTool` a tool switch came meanwhile.
+ */
+export const waitToPaste = async (read: () => Promise<unknown>, keepsTool: boolean) => {
+    if (isPasteWaiting) return false
+    const source = state.value
+    const scope = scopeLookup.value
+    const layout = view.layout
+    const tool = toolName.value
+    isPasteWaiting = true
+    try {
+        await read()
+    } catch {
+        // A failed read pastes what was read before.
+    } finally {
+        isPasteWaiting = false
+    }
+    return (
+        hasSameChartData(source, state.value) &&
+        scopeLookup.value === scope &&
+        (!source.isDynamicStages || view.layout === layout) &&
+        (!keepsTool || toolName.value === tool) &&
+        !isDragging.value
+    )
+}
+
+/** Where a paste at a point lands, as the view is now: its lane, and its beat offset from a copy's beat. */
+export const pastePositionAt = (x: number, y: number) => {
+    const lane = xToLane(x)
+    const beat = yToBeat(y)
+    const { division, snapping } = view
+    const grid = committedGrid.value
+    return {
+        lane,
+        beatOffset: (from: number) =>
+            snapping === 'absolute'
+                ? snapBeat(grid, beat, division) - from
+                : align(beat - from, division),
+    }
 }
 
 export const paste: Tool = {
@@ -139,23 +187,14 @@ export const paste: Tool = {
     },
 
     async tap(x, y, modifiers) {
-        if (reading) {
-            const source = state.value
-            const scope = scopeLookup.value
-            const layout = view.layout
-            await waitForRead(reading)
-            // An edit or scope change while it read drops the paste.
-            if (
-                !hasSameChartData(source, state.value) ||
-                scopeLookup.value !== scope ||
-                (source.isDynamicStages && view.layout !== layout)
-            )
-                return
-        }
+        if (isPasteWaiting) return
+        const position = pastePositionAt(x, y)
+        const read = reading
+        if (read && !(await waitToPaste(() => read, true))) return
         const data = clipboardEntry.value?.data
         if (!data) return
 
-        await pasteAtPosition(xToLane(x), yToBeatOffset(y, data.beat), modifiers, {
+        await pasteAtPosition(position.lane, position.beatOffset(data.beat), modifiers, {
             composed: true,
         })
     },

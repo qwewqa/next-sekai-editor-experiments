@@ -1,16 +1,7 @@
 import { clipboardEntry, updateClipboard } from '../clipboard'
-import { state } from '../history'
-import { bpms } from '../history/bpms'
-import { hasSameChartData } from '../state/data'
-import { timeToBeat } from '../state/integrals/bpms'
-import { snapBeat } from '../state/integrals/grid'
-import { align } from '../utils/math'
-import { committedGrid } from './beatGrid'
 import type { Modifiers } from './controls/gestures/pointer'
 import { editorNavigation } from './navigation'
-import { scopeLookup } from './scope'
-import { pasteAtPosition } from './tools/paste'
-import { view, xToLane, yToTime } from './view'
+import { pasteAtPosition, pastePositionAt, waitToPaste } from './tools/paste'
 
 export const pasteAtContextPosition = async (
     x: number,
@@ -18,32 +9,14 @@ export const pasteAtContextPosition = async (
     modifiers: Modifiers = { ctrl: false, shift: false },
 ) => {
     if (editorNavigation.value) return await editorNavigation.value.pasteAtPoint(x, y, modifiers)
-    const source = state.value
-    const lane = xToLane(x)
-    const beat = timeToBeat(bpms.value, Math.max(0, yToTime(y)))
-    const { division, snapping, layout } = view
-    const grid = committedGrid.value
-    // A focus or visibility change while the clipboard is read invalidates the paste.
-    const scope = scopeLookup.value
-    try {
-        await updateClipboard()
-    } catch {
-        if (!clipboardEntry.value?.data) return false
-    }
+    const position = pastePositionAt(x, y)
+    if (!(await waitToPaste(updateClipboard, false))) return false
 
     const data = clipboardEntry.value?.data
-    if (
-        !hasSameChartData(source, state.value) ||
-        scopeLookup.value !== scope ||
-        (source.isDynamicStages && view.layout !== layout) ||
-        !data
-    )
-        return false
+    if (!data) return false
 
-    const beatOffset =
-        snapping === 'absolute'
-            ? snapBeat(grid, beat, division) - data.beat
-            : align(beat - data.beat, division)
-    await pasteAtPosition(lane, beatOffset, modifiers, { composed: true })
+    await pasteAtPosition(position.lane, position.beatOffset(data.beat), modifiers, {
+        composed: true,
+    })
     return true
 }
