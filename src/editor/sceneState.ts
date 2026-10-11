@@ -105,11 +105,7 @@ export const hitAllSceneEntities = (
 type Counterparts = { toSource: Map<Entity, Entity>; toScene: Map<Entity, Entity> }
 const counterparts = new WeakMap<State, WeakMap<State, Counterparts>>()
 
-/**
- * A previewed state's replaced entities and the committed ones they show: an edit's objects
- * keep their place in the selection, and a slide's other notes, such as attached ticks, their
- * order. What can't be paired is left out.
- */
+// Pairs a preview's replaced entities with committed ones: by selection place, else slide order.
 const counterpartsOf = (source: State, preview: State) => {
     let bySource = counterparts.get(preview)
     const cached = bySource?.get(source)

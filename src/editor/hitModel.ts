@@ -10,23 +10,9 @@ import { beatToKey } from '../state/store/grid'
 import { clamp } from '../utils/math'
 import type { ComposedLayout } from './composed'
 
-/*
- * The hit model: the order in which a point takes the objects it hits, the ground truth for
- * picking. Drawing follows it by convention; hitModelConsistency.spec flags drift.
- *
- * A point hits each hitbox within 10 pixels, notes at least the minimum width. The order:
- * 1. On a primary shape, by precedence: time-scale markers, notes, then transform, style, pivot,
- *    mask and camera markers, then BPM labels; within a kind, earlier beat, then later in the grid.
- * 2. The rest, nearest shape first, so reach meets halfway; then type, earlier beat, later entity.
- *
- * Primary shapes, in lanes across and down from the object's line:
- * - A note's box at its shown width (zero width: a 0.2-lane placeholder), 0.3 lanes each way,
- *   0.15 for anchors, ticks, damage and trace notes. A sized tick or trace adds its diamond, 0.3
- *   lanes out and up and 0.15 down. Flick arrows, names and outline strokes are decoration.
- * - An event joint's marker: 0.1 lanes each way at each of its lanes.
- * - A time scale's marker: 0.135 lanes each way, for the first of a same-beat jump on its lane.
- * - A BPM change's label box: its hitbox.
- */
+// The hit model, the ground truth for picking; drawing follows it (hitModelConsistency.spec).
+// Within 10 px, hits on a primary shape go first by precedence, earlier beat, later in the grid;
+// the rest nearest first, then by type. Flick arrows, names and outlines are decoration.
 
 export type Box = { l: number; r: number; t: number; b: number }
 export type Shape = { boxes: Box[]; diamond?: number }
