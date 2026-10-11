@@ -7,7 +7,7 @@ import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
-import type { NoteEntity } from '../state/entities/slides/note'
+import { isInteriorTick, type NoteEntity } from '../state/entities/slides/note'
 import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
 import { beatToKey } from '../state/store/grid'
 import { dragBpms, gridOf } from './beatGrid'
@@ -49,8 +49,7 @@ export const previewSlides = computed(() => {
         if (ghost.type !== 'note' || checked.has(ghost.slideId)) continue
         checked.add(ghost.slideId)
         const notes = source.store.slides.note.get(ghost.slideId)
-        if (notes?.some((note, i) => note.isAttached && i > 0 && i < notes.length - 1))
-            slideIds.add(ghost.slideId)
+        if (notes?.some(isInteriorTick)) slideIds.add(ghost.slideId)
     }
     if (!slideIds.size) return
     const preview = edit.resolve()
@@ -59,7 +58,7 @@ export const previewSlides = computed(() => {
     for (const id of slideIds) {
         const before = source.store.slides.note.get(id) ?? []
         const kept = new Set(before)
-        const interior = new Set(before.slice(1, -1).filter((note) => note.isAttached))
+        const interior = new Set(before.filter(isInteriorTick))
         const notes = preview.store.slides.note.get(id) ?? []
         // A tick keeps its entity while its place holds; one that changes is replaced.
         const moves = (note: NoteEntity, index: number) =>

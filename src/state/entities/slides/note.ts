@@ -43,6 +43,27 @@ export type NoteEntity = BaseEntity & {
     useInfoOf?: NoteEntity
 }
 
+/** An attached tick inside its slide, at this index of the slide's notes or infos. */
+export const isInteriorTick = (
+    note: { isAttached: boolean },
+    index: number,
+    slide: readonly unknown[],
+) => note.isAttached && index > 0 && index < slide.length - 1
+
+/** A slide's first and last notes at these beats; its stable sort keeps stored order among equal beats. */
+export const slideEnds = (
+    notes: readonly NoteEntity[],
+    beatOf = (note: NoteEntity) => note.beat,
+) => {
+    let first: NoteEntity | undefined
+    let last: NoteEntity | undefined
+    for (const note of notes) {
+        if (!first || beatOf(note) < beatOf(first)) first = note
+        if (!last || beatOf(note) >= beatOf(last)) last = note
+    }
+    return { first, last }
+}
+
 export const getNoteInteractionWidth = (size: number) => Math.max(1.5, size)
 
 export const toNoteEntity = (

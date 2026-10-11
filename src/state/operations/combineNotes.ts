@@ -3,7 +3,7 @@ import { buildPreviewChart } from '../../preview/engine/chart'
 import { getStageProps } from '../../preview/engine/stage'
 import type { Entity } from '../entities'
 import { createSlideId } from '../entities/slides'
-import type { NoteEntity } from '../entities/slides/note'
+import { isInteriorTick, type NoteEntity } from '../entities/slides/note'
 import { beatToTime } from '../integrals/bpms'
 import { addNote, removeNote } from '../mutations/slides/note'
 import { createTransaction } from '../transaction'
@@ -24,7 +24,7 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
                 index,
                 first: index === 0,
                 last: index === infos.length - 1,
-                attached: info.note.isAttached && index > 0 && index < infos.length - 1,
+                attached: isInteriorTick(info.note, index, infos),
                 attachHead: info.attachHead,
                 attachTail: info.attachTail,
                 properties: connectorProperties(infos[index + 1]?.segmentHead ?? info.segmentHead),

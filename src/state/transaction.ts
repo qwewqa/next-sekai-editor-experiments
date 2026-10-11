@@ -3,7 +3,7 @@ import { nearlyEqual } from '../utils/math'
 import type { Entity } from './entities'
 import type { SlideId } from './entities/slides'
 import type { SlideInfos } from './entities/slides/hiddenTicks'
-import { toNoteEntity, type NoteEntity } from './entities/slides/note'
+import { isInteriorTick, slideEnds, toNoteEntity, type NoteEntity } from './entities/slides/note'
 import { beatToTime, calculateBpms, type BpmIntegral } from './integrals/bpms'
 import { rebuildSlide } from './mutations/slides'
 import { getDetachedNotePositions } from './operations/notePositions'
@@ -159,9 +159,7 @@ const keepDetachedTicks = (
         let interior = interiors.get(note.slideId)
         if (!interior) {
             const notes = source.store.slides.note.get(note.slideId) ?? []
-            interior = new Set(
-                notes.filter((note, i) => note.isAttached && i > 0 && i < notes.length - 1),
-            )
+            interior = new Set(notes.filter(isInteriorTick))
             interiors.set(note.slideId, interior)
         }
         return interior.has(note)
@@ -169,12 +167,7 @@ const keepDetachedTicks = (
     // Unedited ticks can only end up first or last, as rebuildSlide's stable sort orders them.
     const ends = new Set<NoteEntity>()
     for (const slideId of slideIds) {
-        let first: NoteEntity | undefined
-        let last: NoteEntity | undefined
-        for (const note of store.slides.note.get(slideId) ?? []) {
-            if (!first || note.beat < first.beat) first = note
-            if (!last || note.beat >= last.beat) last = note
-        }
+        const { first, last } = slideEnds(store.slides.note.get(slideId) ?? [])
         if (first) ends.add(first)
         if (last) ends.add(last)
     }

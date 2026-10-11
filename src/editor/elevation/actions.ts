@@ -7,7 +7,7 @@ import { previewEdit } from '../../preview/edit'
 import { createSlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
-import { toNoteEntity } from '../../state/entities/slides/note'
+import { isInteriorTick, toNoteEntity } from '../../state/entities/slides/note'
 import { attachFraction } from '../../state/mutations/slides'
 import { addNote } from '../../state/mutations/slides/note'
 import { createTransaction } from '../../state/transaction'
@@ -259,7 +259,7 @@ export const previewElevationPasteRows = (
         .map((note, order) => {
             const slide = infos?.get(note.slideId) ?? []
             const index = slide.findIndex((info) => info.note === note)
-            const info = note.isAttached && index > 0 && index < slide.length - 1 && slide[index]
+            const info = isInteriorTick(note, index, slide) && slide[index]
             const shown = (point: NoteEntity) =>
                 point.elevation + getElevationStageProps(point.stageId, note.beat).elevation
             const position = composed?.notePosition(note, note.beat, { slideInfos: slide }) ?? note

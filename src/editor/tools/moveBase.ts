@@ -4,7 +4,7 @@ import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
 import type { State } from '../../state'
 import type { Entity } from '../../state/entities'
 import type { SlideId } from '../../state/entities/slides'
-import { toNoteEntity, type NoteEntity } from '../../state/entities/slides/note'
+import { slideEnds, toNoteEntity, type NoteEntity } from '../../state/entities/slides/note'
 import { getDetachedNotePositions } from '../../state/operations/notePositions'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import {
@@ -42,14 +42,7 @@ export const getMovedEndBases = (source: State, beats: ReadonlyMap<NoteEntity, n
     const ends: NoteEntity[] = []
     for (const slideId of slideIds) {
         const notes = source.store.slides.note.get(slideId) ?? []
-        const at = (note: NoteEntity) => beats.get(note) ?? note.beat
-        // The slide's stable sort keeps stored order among equal beats.
-        let first: NoteEntity | undefined
-        let last: NoteEntity | undefined
-        for (const note of notes) {
-            if (!first || at(note) < at(first)) first = note
-            if (!last || at(note) >= at(last)) last = note
-        }
+        const { first, last } = slideEnds(notes, (note) => beats.get(note) ?? note.beat)
         for (const end of new Set([first, last])) {
             if (!end?.isAttached || !beats.has(end)) continue
             const index = notes.indexOf(end)
