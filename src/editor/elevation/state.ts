@@ -2,7 +2,8 @@ import { ref, watch } from 'vue'
 import { bpms } from '../../history/bpms'
 import { selectedEntities } from '../../history/selectedEntities'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
-import { alignNear } from '../../utils/math'
+import { nearGridBeat } from '../../state/integrals/grid'
+import { committedGrid } from '../beatGrid'
 import { editorNavigation } from '../navigation'
 import { switchToolTo, type ToolName } from '../tools'
 import { toolName } from '../tools/state'
@@ -33,7 +34,11 @@ export const openElevationEditor = (beat?: number) => {
     const displayedBeat =
         beat ??
         note?.beat ??
-        alignNear(timeToBeat(bpms.value, Math.max(0, view.cursorTime)), view.division)
+        nearGridBeat(
+            committedGrid.value,
+            timeToBeat(bpms.value, Math.max(0, view.cursorTime)),
+            view.division,
+        )
     isElevationEditorOpen.value = true
     view.cursorTime = beatToTime(bpms.value, displayedBeat)
     elevationBeat.value = displayedBeat
@@ -62,7 +67,8 @@ watch(
     () => view.cursorTime,
     (time) => {
         if (isElevationEditorOpen.value)
-            elevationBeat.value = alignNear(
+            elevationBeat.value = nearGridBeat(
+                committedGrid.value,
                 timeToBeat(bpms.value, Math.max(0, time)),
                 view.division,
             )

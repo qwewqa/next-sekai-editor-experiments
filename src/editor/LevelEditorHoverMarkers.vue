@@ -10,7 +10,7 @@ import {
     observeLabelSize,
     unobserveLabelSize,
 } from './edgeLabels'
-import { sceneBpms } from './sceneState'
+import { drawnBpms, sceneBpms } from './sceneState'
 import { view } from './view'
 
 const hover = computed(() => ({
@@ -39,7 +39,7 @@ onBeforeUnmount(() => {
     >
         <span ref="time" class="pl-1">{{ formatTime(hover.time) }}</span>
         <span ref="beat" class="pr-1">{{
-            formatBeatPosition(sceneBpms, hover.beat, settings.beatDisplay, true)
+            formatBeatPosition(drawnBpms, hover.beat, settings.beatDisplay, true)
         }}</span>
     </div>
 </template>

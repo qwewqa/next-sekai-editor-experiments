@@ -11,7 +11,7 @@ import {
     observeLabelSize,
     unobserveLabelSize,
 } from './edgeLabels'
-import { sceneBpms } from './sceneState'
+import { drawnBpms } from './sceneState'
 
 // The grid leaves out its own labels under these; a little inset keeps them clear of dock shadows.
 const labels = {
@@ -41,7 +41,7 @@ onBeforeUnmount(() => {
                 formatTime(times.max)
             }}</span>
             <span ref="topBeat" class="pr-1" :class="{ invisible: coveredEdgeLabels.top.beat }">{{
-                formatBeatPosition(sceneBpms, beats.max, settings.beatDisplay, true)
+                formatBeatPosition(drawnBpms, beats.max, settings.beatDisplay, true)
             }}</span>
         </div>
         <div class="flex justify-between" :class="{ invisible: lowerEdgeLabelsCovered }">
@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
                 ref="bottomBeat"
                 class="pr-1"
                 :class="{ invisible: coveredEdgeLabels.bottom.beat }"
-                >{{ formatBeatPosition(sceneBpms, beats.min, settings.beatDisplay, true) }}</span
+                >{{ formatBeatPosition(drawnBpms, beats.min, settings.beatDisplay, true) }}</span
             >
         </div>
     </div>

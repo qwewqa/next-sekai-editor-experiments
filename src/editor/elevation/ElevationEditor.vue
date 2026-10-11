@@ -34,12 +34,14 @@ import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
+import { isGlobalGrid, nearGridBeat, stepGridBeat } from '../../state/integrals/grid'
 import { editSelectedNote } from '../../state/operations/note'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
 import { editChanges } from '../../state/operations/properties/plan'
 import { createTransaction } from '../../state/transaction'
 import { isComposingKey } from '../../utils/composition'
-import { alignComputed, alignNear, clamp, shiftComputed } from '../../utils/math'
+import { alignComputed, clamp, shiftComputed } from '../../utils/math'
+import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
 import { createNoteRenderer, getNoteVisualType, isOnNoteArtwork } from '../canvas/notes'
@@ -864,11 +866,14 @@ const controls: Pick<
 }
 
 const previousBeat = computed(() => {
-    const beat = Math.max(0, alignNear(elevationBeat.value - 1 / view.division, view.division))
+    const beat = Math.max(
+        0,
+        stepGridBeat(committedGrid.value, elevationBeat.value, view.division, -1),
+    )
     return beat < elevationBeat.value ? beat : undefined
 })
 const nextBeat = computed(() => {
-    const beat = alignNear(elevationBeat.value + 1 / view.division, view.division)
+    const beat = stepGridBeat(committedGrid.value, elevationBeat.value, view.division, 1)
     return Number.isFinite(beat) && beat > elevationBeat.value ? beat : undefined
 })
 const changeBeat = (beat: number) => {
@@ -889,9 +894,17 @@ const beatField = computed({
     set: (value: number | string) => {
         // Arrow steps carry decimal noise; on the grid they store its exact beat, as Next does.
         if (typeof value === 'number' && Number.isFinite(value) && value >= 1)
-            changeBeat(alignNear(fromDisplayedBeat(value), view.division))
+            changeBeat(nearGridBeat(committedGrid.value, fromDisplayedBeat(value), view.division))
     },
 })
+// The native step counts from beat one on the global grid; a bar grid steps through its lines.
+const isBarStepped = computed(() => !isGlobalGrid(committedGrid.value, view.division))
+const stepBeatField = (event: KeyboardEvent, direction: 1 | -1) => {
+    if (!isBarStepped.value) return
+    event.preventDefault()
+    const beat = direction > 0 ? nextBeat.value : previousBeat.value
+    if (beat !== undefined) changeBeat(beat)
+}
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
 trackTypedText(beatInput, () => `${beatField.value}`)
 // Pointer clicks on header buttons return keyboard shortcuts to the editor, as in docks.
@@ -1350,11 +1363,13 @@ onUnmounted(() => {
                                 class="focus:ring-2"
                                 type="number"
                                 min="1"
-                                :step="1 / view.division"
+                                :step="isBarStepped ? 'any' : 1 / view.division"
                                 :aria-label="i18n.elevation.beat"
                                 @change="resyncInput($event, () => `${beatField}`)"
                                 @keydown.esc="revertOnEscape($event, `${beatField}`)"
                                 @keydown.enter="confirmOnEnter"
+                                @keydown.up="stepBeatField($event, 1)"
+                                @keydown.down="stepBeatField($event, -1)"
                         /></label>
                         <button
                             type="button"

@@ -328,6 +328,15 @@ export const beginScalingDrag = (entity: EditableEntity, value: number, edge?: '
     return true
 }
 
+/** What the drag moves from: its draft and, scaling from an end, the fixed value. */
+export const getScalingDrag = () =>
+    drag && { source: drag.source, anchor: drag.endpoint ? drag.anchor : undefined }
+
+/** Measures the drag from another press value, as the press snapped to another grid. */
+export const rebaseScalingDrag = (value: number) => {
+    if (drag) drag.value = value
+}
+
 export const updateScalingDrag = (value: number) => {
     const session = scalingSession.value
     const active = drag

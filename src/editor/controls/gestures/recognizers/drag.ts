@@ -3,6 +3,7 @@ import { replaceState, state } from '../../../../history'
 import { settings } from '../../../../settings'
 import { time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
+import { snapGrid } from '../../../beatGrid'
 import { getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
 import { tool, type Tool } from '../../../tools'
@@ -113,6 +114,7 @@ export const drag = (quickScroll: boolean): Recognizer<1> => {
             viewBox,
             paneMoves,
             () => view.division,
+            snapGrid,
             () => view.snapping,
             () => view.laneDivision,
             () => view.laneSnapping,

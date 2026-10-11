@@ -2,6 +2,7 @@ import { watch } from 'vue'
 import { settings } from '../../settings'
 import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
+import { committedGrid } from '../beatGrid'
 import { zoomXIn } from '../commands/zooms/zoomXIn'
 import { zoomXOut } from '../commands/zooms/zoomXOut'
 import { zoomYIn } from '../commands/zooms/zoomYIn'
@@ -300,6 +301,8 @@ watch([viewBox, () => view.x, () => view.y], () => {
 watch(
     [
         () => view.division,
+        // Not the drag's lifted grid: dropping it moves nothing under the mouse.
+        committedGrid,
         () => view.snapping,
         () => view.laneDivision,
         () => view.laneSnapping,

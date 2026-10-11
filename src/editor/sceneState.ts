@@ -4,7 +4,8 @@ import { cullAllEntities, hitAllEntities, hitEntities } from '../history/store'
 import { isToolModalOpen } from '../modals'
 import { getPreviewState } from '../preview/edit'
 import type { EntityType } from '../state/entities'
-import type { BpmIntegral } from '../state/integrals/bpms'
+import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { gridOf, liftedDrawnBpms } from './beatGrid'
 import { view } from './view'
 
 const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
@@ -21,6 +22,10 @@ export const sceneState = computed(() => {
 })
 export const sceneBpms = computed(() => sceneState.value.bpms)
 export const isScenePreview = computed(() => sceneState.value !== state.value)
+
+/** The bars drawn: during a BPM change move, without the moved changes once they move. */
+export const drawnBpms = computed<GridBpm[]>(() => liftedDrawnBpms.value ?? sceneBpms.value)
+export const drawnGrid = computed(() => gridOf(drawnBpms.value))
 
 export const cullAllSceneEntities = (minKey: number, maxKey: number) =>
     cullAllEntities(minKey, maxKey, sceneState.value.store)

@@ -36,6 +36,7 @@ import {
 } from '../../state/entities/events/joints/stage/transform'
 import { toNoteEntity, type NoteEntity } from '../../state/entities/slides/note'
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../state/entities/timeScale'
+import { beatGridKey } from '../../state/integrals/grid'
 import { addBpm, removeBpm, replaceBpm } from '../../state/mutations/bpm'
 import {
     addCameraEventJoint,
@@ -69,6 +70,7 @@ import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { shiftComputed } from '../../utils/math'
+import { dropLift, endingLift, liftForMove, setLiftDrawn, snapGrid } from '../beatGrid'
 import { inverseAffine } from '../composedPointer'
 import {
     getComposedGridOffset,
@@ -270,12 +272,14 @@ export const select: Tool = {
                 entities: selectedEntities.value,
             }
         } else if (target.isSelected) {
+            liftForMove(target.entities, state.value)
             focusEntityAtBeat(target.focus.beat)
 
             notify(interpolate(() => i18n.value.tools.select.moving, `${target.entities.length}`))
 
             active = target
         } else {
+            liftForMove(target.entities, state.value)
             replaceState({
                 ...state.value,
                 selectedEntities: [target.focus],
@@ -309,7 +313,9 @@ export const select: Tool = {
                     yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
                 )
 
-                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping}`
+                // Moved BPM changes redraw the bars only once they leave their beats.
+                setLiftDrawn(beatOffset !== 0)
+                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${view.division} ${beatGridKey(snapGrid.value)}`
                 if (active.last === last) break
                 active.last = last
                 const rawMove = getRawMove(state.value, active, lane, beatOffset)
@@ -414,7 +420,7 @@ export const select: Tool = {
         }
     },
 
-    dragEnd(x, y, modifiers) {
+    dragEnd: endingLift((x, y, modifiers) => {
         if (!active) return
 
         switch (active.type) {
@@ -490,11 +496,12 @@ export const select: Tool = {
 
         active = undefined
         clearPreviewEdit()
-    },
+    }),
 
     dragCancel() {
         active = undefined
         clearPreviewEdit()
+        dropLift()
     },
 }
 

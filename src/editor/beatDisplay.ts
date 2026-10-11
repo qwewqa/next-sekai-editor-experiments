@@ -1,5 +1,5 @@
 import { addDecimal } from '../modals/form/numberStep'
-import { beatToMeasure, type BpmIntegral } from '../state/integrals/bpms'
+import { beatToMeasure, type GridBpm } from '../state/integrals/bpms'
 
 export type BeatDisplay = 'beat' | 'measure' | 'both'
 
@@ -8,7 +8,7 @@ export const toDisplayedBeat = (chartBeat: number) => addDecimal(chartBeat, 1)
 export const fromDisplayedBeat = (displayedBeat: number) => addDecimal(displayedBeat, -1)
 
 export const formatBeatPosition = (
-    bpms: BpmIntegral[],
+    bpms: GridBpm[],
     chartBeat: number,
     display: BeatDisplay,
     fractional = false,
@@ -16,7 +16,8 @@ export const formatBeatPosition = (
     // Rounds to the shown thousandth first, so 3.9999 reads 2.1 rather than 1.5.
     if (fractional) chartBeat = Math.round(chartBeat * 1000) / 1000
     const beat = toDisplayedBeat(chartBeat)
-    const beatText = fractional ? beat.toFixed(3) : `${beat}`
+    // Bar grid labels can sit at thirds.
+    const beatText = fractional ? beat.toFixed(3) : `${Number(beat.toFixed(3))}`
     if (display === 'beat') return beatText
     const position = beatToMeasure(bpms, chartBeat)
     const measureBeat = position.beat.toFixed(3)
