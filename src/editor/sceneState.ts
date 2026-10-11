@@ -2,8 +2,10 @@ import { computed } from 'vue'
 import { state } from '../history'
 import { cullAllEntities, hitAllEntities, hitEntities } from '../history/store'
 import { isToolModalOpen } from '../modals'
-import { getPreviewState } from '../preview/edit'
-import type { EntityType } from '../state/entities'
+import { getPreviewState, previewEdit } from '../preview/edit'
+import { hasSameChartData } from '../state/data'
+import type { Entity, EntityType } from '../state/entities'
+import type { SlideId } from '../state/entities/slides'
 import type { BpmIntegral } from '../state/integrals/bpms'
 import { view } from './view'
 
@@ -21,6 +23,49 @@ export const sceneState = computed(() => {
 })
 export const sceneBpms = computed(() => sceneState.value.bpms)
 export const isScenePreview = computed(() => sceneState.value !== state.value)
+
+/**
+ * Slides an edit's preview changes beyond its ghosts, drawn from the preview where the scene isn't:
+ * an unmoved tick that becomes the slide's end.
+ */
+export const previewSlides = computed(() => {
+    const ghosts = view.entities.creating
+    const edit = previewEdit.value
+    if (isScenePreview.value || !ghosts.length || !edit) return
+    const source = state.value
+    if (!hasSameChartData(source, edit.source)) return
+    // Only slides with a tick can gain one as an end; the rest skip building the preview.
+    const slideIds = new Set<SlideId>()
+    for (const ghost of ghosts) {
+        if (ghost.type !== 'note' || slideIds.has(ghost.slideId)) continue
+        const notes = source.store.slides.note.get(ghost.slideId)
+        if (notes?.some((note, i) => note.isAttached && i > 0 && i < notes.length - 1))
+            slideIds.add(ghost.slideId)
+    }
+    if (!slideIds.size) return
+    const preview = edit.resolve()
+    if (!isSameTempo(preview.bpms, source.bpms)) return
+    const moved = new Set(preview.selectedEntities)
+    for (const id of slideIds) {
+        const notes = preview.store.slides.note.get(id) ?? []
+        const ends = [notes[0], notes.at(-1)]
+        if (!ends.some((note) => note?.isAttached && !moved.has(note))) slideIds.delete(id)
+    }
+    if (!slideIds.size) return
+    const entities = [...slideIds].flatMap((id): Entity[] => [
+        ...(preview.store.slides.note.get(id) ?? []),
+        ...(preview.store.slides.connector.get(id) ?? []),
+    ])
+    return {
+        state: preview,
+        entities: new Set(entities),
+        /** Whether an entity, from either state, belongs to a previewed slide. */
+        includes: (entity: Entity) =>
+            entity.type === 'note'
+                ? slideIds.has(entity.slideId)
+                : entity.type === 'connector' && slideIds.has(entity.head.slideId),
+    }
+})
 
 export const cullAllSceneEntities = (minKey: number, maxKey: number) =>
     cullAllEntities(minKey, maxKey, sceneState.value.store)

@@ -10,7 +10,8 @@ import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
 import { culledEntities, selectedEntitySet, visibleSelectedEntities } from '../entities/visible'
-import { isScenePreview, sceneState } from '../sceneState'
+import { entityScopeVisibility } from '../scopeRules'
+import { isScenePreview, previewSlides, sceneState } from '../sceneState'
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
@@ -81,8 +82,24 @@ const artEntities = computedVisibleEntities(
     () => culledEntities.value,
     () => artRange.value,
 )
+// Slides a drag changes beyond its ghosts are drawn as they drop.
+const shownEntities = computed(() => {
+    const preview = previewSlides.value
+    if (!preview) return { entities: artEntities.value, selected: selectedEntitySet.value }
+    const { min, max } = artRange.value
+    return {
+        entities: [
+            ...artEntities.value.filter((entity) => !preview.includes(entity)),
+            ...[...preview.entities].filter((entity) => isEntityInBeatRange(entity, min, max)),
+        ],
+        selected: new Set([
+            ...selectedEntitySet.value,
+            ...preview.state.selectedEntities.filter(preview.includes),
+        ]),
+    }
+})
 const orderedEntities = computed(() =>
-    orderEntities(artEntities.value, selectedEntitySet.value, {
+    orderEntities(shownEntities.value.entities, shownEntities.value.selected, {
         scope: scopeLookup.value,
         visibilities: view.visibilities,
         showOtherObjects: settings.showOtherObjects,
@@ -230,7 +247,8 @@ watchEffect(
         if (!canvas || !inputs.width || !inputs.height) return
         const entities = drawSteps.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
-        const selected = selectedEntitySet.value
+        const selected = shownEntities.value.selected
+        const preview = previewSlides.value
         const visibilities = view.visibilities
         // Captured here: the frame callback runs untracked.
         const scope = scopeLookup.value
@@ -273,6 +291,7 @@ watchEffect(
                 right: [...timeScaleYs.right, ...covered.right],
             }
             const context = { ...base, names: createNameLayer() }
+            const previewContext = preview && { ...context, state: preview.state }
             waveform.draw(context, currentWaveform, offset, currentTimes)
             if (
                 stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
@@ -301,7 +320,13 @@ watchEffect(
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects)
             for (const { entity, highlighted, opacity, part } of entities) {
-                drawEntity(context, entity, highlighted || !!hovered?.has(entity), opacity, part)
+                drawEntity(
+                    previewContext && preview.entities.has(entity) ? previewContext : context,
+                    entity,
+                    highlighted || !!hovered?.has(entity),
+                    opacity,
+                    part,
+                )
             }
             placeNames(context, context.names)
         })
@@ -321,7 +346,18 @@ watchEffect(
         const creating = isScenePreview.value ? [] : view.entities.creating
         const range = artRange.value
         const hovered = hoveredEntities.value
-        const selected = visibleSelectedEntities.value
+        const preview = previewSlides.value
+        // Previewed slides are outlined where they're drawn.
+        const selected = preview
+            ? [
+                  ...visibleSelectedEntities.value.filter((entity) => !preview.includes(entity)),
+                  ...preview.state.selectedEntities.filter(
+                      (entity) =>
+                          preview.includes(entity) &&
+                          entityScopeVisibility(entity, scopeLookup.value) !== 'hidden',
+                  ),
+              ]
+            : visibleSelectedEntities.value
         const selection = view.selection
         const hover = view.isHoverHidden ? undefined : view.hoverTime
         const ghostState =
