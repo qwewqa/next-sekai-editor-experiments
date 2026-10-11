@@ -525,6 +525,8 @@ for (const { family, layout, tick } of parityCases) {
     test(`${family}${tick ? ' tick' : ''}, ${layout}: a tool move stores what a Select move does`, async ({
         page,
     }) => {
+        // 16 drags, each step a software-rendered frame: 5 s alone, over 70 s on a saturated CPU.
+        test.setTimeout(120_000)
         for (const scenario of scenarios) {
             if (scenario.ticksOnly && !tick) continue
             const beat = scenario.beat ?? 4
