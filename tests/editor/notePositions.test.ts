@@ -3,14 +3,13 @@ import test from 'node:test'
 import type { Chart } from '../../src/chart'
 import type { StagePivotEventObject } from '../../src/chart/events/stage/pivot'
 import type { StageTransformEventObject } from '../../src/chart/events/stage/transform'
-import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import { eases, type Ease } from '../../src/ease'
 import { attachEasedFrac, buildPreviewChart } from '../../src/preview/engine/chart'
 import { effectiveNoteElevation } from '../../src/preview/engine/elevation'
 import { getStageProps } from '../../src/preview/engine/stage'
-import { createState, type State } from '../../src/state'
+import type { State } from '../../src/state'
 import { sameBeatAttachmentFraction } from '../../src/state/entities/slides/attachment'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
 import { removeNote } from '../../src/state/mutations/slides/note'
@@ -24,65 +23,26 @@ import { splitHold } from '../../src/state/operations/splitHold'
 import { translateSelection } from '../../src/state/operations/translateSelection'
 import { createTransaction } from '../../src/state/transaction'
 import { alignComputed, shiftComputed } from '../../src/utils/math'
+import { chartState, note } from './chartFixture'
 
-const groupId = 1 as GroupId
 const stageIds = [1, 2, 3, 4] as StageId[]
 
-const note = (beat: number, left: number, extra: Partial<NoteObject> = {}): NoteObject => ({
-    groupId,
-    stageId: stageIds[0]!,
-    beat,
-    noteType: 'default',
-    isAttached: false,
-    left,
-    size: 2,
-    isCritical: false,
-    flickDirection: 'none',
-    isFake: false,
-    noteStyle: 'default',
-    connectorStyle: 'default',
-    sfx: 'default',
-    isConnectorSeparator: false,
-    connectorType: 'active',
-    connectorEase: 'linear',
-    connectorIsFake: false,
-    connectorActiveIsCritical: false,
-    connectorGuideAlpha: 1,
-    connectorLayer: 'top',
-    connectorIsPassThrough: false,
-    connectorPresentation: 'default',
-    ...extra,
-})
-
 const state = (slides: NoteObject[][], overrides: Partial<Chart> = {}) =>
-    createState(
-        {
-            initialLife: 1000,
-            isDynamicStages: true,
-            bpms: [{ beat: 0, bpm: 60 }],
-            groups: new Map([[groupId, { name: 'Default' }]]),
-            stages: new Map(
-                stageIds.map((id) => [
-                    id,
-                    {
-                        name: `${id}`,
-                        isFromStart: true,
-                        isUntilEnd: true,
-                        generateSimLines: 'global' as const,
-                    },
-                ]),
-            ),
-            cameraEvents: [],
-            stageMaskEvents: [],
-            stagePivotEvents: [],
-            stageStyleEvents: [],
-            stageTransformEvents: [],
-            timeScales: [],
-            slides,
-            ...overrides,
-        },
-        0,
-    )
+    chartState(slides, {
+        isDynamicStages: true,
+        stages: new Map(
+            stageIds.map((id) => [
+                id,
+                {
+                    name: `${id}`,
+                    isFromStart: true,
+                    isUntilEnd: true,
+                    generateSimLines: 'global' as const,
+                },
+            ]),
+        ),
+        ...overrides,
+    })
 
 // The whole-chart compile these positions used to come from.
 const compiledPositions = (source: State, notes: NoteEntity[], { translation = true } = {}) => {

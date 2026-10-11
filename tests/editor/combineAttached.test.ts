@@ -1,73 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { Chart } from '../../src/chart'
-import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
-import { createState, type State } from '../../src/state'
+import type { State } from '../../src/state'
 import { combineNotes } from '../../src/state/operations/combineNotes'
 import { getMaterializedNotePositions } from '../../src/state/operations/notePositions'
+import { chartState, note, stageA, stageB } from './chartFixture'
 
-const groupId = 1 as GroupId
-const stageA = 1 as StageId
-const stageB = 2 as StageId
-
-const note = (beat: number, left: number, extra: Partial<NoteObject> = {}): NoteObject => ({
-    groupId,
-    stageId: stageA,
-    beat,
-    noteType: 'default',
-    isAttached: false,
-    left,
-    size: 2,
-    isCritical: false,
-    flickDirection: 'none',
-    isFake: false,
-    noteStyle: 'default',
-    connectorStyle: 'default',
-    sfx: 'default',
-    isConnectorSeparator: false,
-    connectorType: 'active',
-    connectorEase: 'linear',
-    connectorIsFake: false,
-    connectorActiveIsCritical: false,
-    connectorGuideAlpha: 1,
-    connectorLayer: 'top',
-    connectorIsPassThrough: false,
-    connectorPresentation: 'default',
-    ...extra,
-})
 const tick = (beat: number, extra: Partial<NoteObject> = {}) =>
     note(beat, 0, { isAttached: true, ...extra })
 
-const state = (slides: NoteObject[][], overrides: Partial<Chart> = {}) =>
-    createState(
-        {
-            initialLife: 1000,
-            isDynamicStages: false,
-            bpms: [{ beat: 0, bpm: 60 }],
-            groups: new Map([[groupId, { name: 'Default' }]]),
-            stages: new Map([
-                [
-                    stageA,
-                    { name: 'A', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
-                ],
-                [
-                    stageB,
-                    { name: 'B', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
-                ],
-            ]),
-            cameraEvents: [],
-            stageMaskEvents: [],
-            stagePivotEvents: [],
-            stageStyleEvents: [],
-            stageTransformEvents: [],
-            timeScales: [],
-            slides,
-            ...overrides,
-        },
-        0,
-    )
+const state = chartState
 
 const notes = (source: State) => [...source.store.slides.note.values()].flat()
 const combineAll = (source: State) => {

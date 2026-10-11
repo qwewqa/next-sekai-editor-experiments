@@ -4,48 +4,18 @@ import type { Chart } from '../../src/chart'
 import type { EventEase } from '../../src/chart/events'
 import type { StagePivotEventObject } from '../../src/chart/events/stage/pivot'
 import type { StageTransformEventObject } from '../../src/chart/events/stage/transform'
-import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import { createComposedLayout } from '../../src/editor/composed'
-import { createState, type State } from '../../src/state'
+import type { State } from '../../src/state'
 import { combineNotes } from '../../src/state/operations/combineNotes'
 import { makeVertical } from '../../src/state/operations/makeVertical'
 import { getMaterializedNotePositions } from '../../src/state/operations/notePositions'
 import { splitHold } from '../../src/state/operations/splitHold'
+import { chartState, note, stageA, stageB } from './chartFixture'
 
 // Gameplay draws an attached note at the blend of its ends' pivot plus X translation;
 // a materialized note sits at its own stage's pivot plus X translation.
-const groupId = 1 as GroupId
-const stageA = 1 as StageId
-const stageB = 2 as StageId
-
-const note = (beat: number, left: number, extra: Partial<NoteObject> = {}): NoteObject => ({
-    groupId,
-    stageId: stageA,
-    beat,
-    noteType: 'default',
-    isAttached: false,
-    left,
-    size: 2,
-    isCritical: false,
-    flickDirection: 'none',
-    isFake: false,
-    noteStyle: 'default',
-    connectorStyle: 'default',
-    sfx: 'default',
-    isConnectorSeparator: false,
-    connectorType: 'active',
-    connectorEase: 'linear',
-    connectorIsFake: false,
-    connectorActiveIsCritical: false,
-    connectorGuideAlpha: 1,
-    connectorLayer: 'top',
-    connectorIsPassThrough: false,
-    connectorPresentation: 'default',
-    ...extra,
-})
-
 const pivot = (
     stageId: StageId,
     beat: number,
@@ -79,33 +49,7 @@ const translate = (
 })
 
 const state = (slides: NoteObject[][], overrides: Partial<Chart> = {}) =>
-    createState(
-        {
-            initialLife: 1000,
-            isDynamicStages: true,
-            bpms: [{ beat: 0, bpm: 60 }],
-            groups: new Map([[groupId, { name: 'Default' }]]),
-            stages: new Map([
-                [
-                    stageA,
-                    { name: 'A', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
-                ],
-                [
-                    stageB,
-                    { name: 'B', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
-                ],
-            ]),
-            cameraEvents: [],
-            stageMaskEvents: [],
-            stagePivotEvents: [],
-            stageStyleEvents: [],
-            stageTransformEvents: [],
-            timeScales: [],
-            slides,
-            ...overrides,
-        },
-        0,
-    )
+    chartState(slides, { isDynamicStages: true, ...overrides })
 
 // The audit's fixture: A translates 0 to 8 over beats 0 to 8; B sits at pivot 4.5.
 const audit = () =>

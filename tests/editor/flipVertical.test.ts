@@ -1,39 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { GroupId } from '../../src/chart/groups'
-import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import { createState, type State } from '../../src/state'
 import { GLOBAL_GRID, nearGridsBeat } from '../../src/state/integrals/grid'
 import { flipVertical } from '../../src/state/operations/flipVertical'
+import { groupId, note } from './chartFixture'
 
-const groupId = 1 as GroupId
 const stageId = 1 as StageId
-
-const note = (beat: number): NoteObject => ({
-    groupId,
-    stageId,
-    beat,
-    noteType: 'default',
-    isAttached: false,
-    left: 0,
-    size: 2,
-    isCritical: false,
-    flickDirection: 'none',
-    isFake: false,
-    noteStyle: 'default',
-    connectorStyle: 'default',
-    sfx: 'default',
-    isConnectorSeparator: false,
-    connectorType: 'active',
-    connectorEase: 'linear',
-    connectorIsFake: false,
-    connectorActiveIsCritical: false,
-    connectorGuideAlpha: 1,
-    connectorLayer: 'top',
-    connectorIsPassThrough: false,
-    connectorPresentation: 'default',
-})
 
 // Single-note slides at these beats, all selected.
 const selectedNotes = (beats: number[]): State => {
