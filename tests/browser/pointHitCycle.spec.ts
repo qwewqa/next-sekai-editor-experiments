@@ -143,3 +143,50 @@ test('Elevation Editor: overlapping rows cycle top to bottom, and another overla
     await click(page, points.stack)
     expect(await elevations()).toEqual([2.2])
 })
+
+test('a selection made elsewhere starts a new cycle in its spot, not an old cycle', async ({
+    page,
+}) => {
+    const taps = await page.evaluate(async () => {
+        const { show, fixtures, view, settings, history, appImport } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        const events = fixtures.events
+        show(
+            {
+                ...events,
+                isDynamicStages: true,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                // A pivot at 0, a zero-width note at 0.5 and a style at 1, about 15 pixels a lane.
+                stagePivotEvents: [{ ...events.stagePivotEvents[0]!, beat: 4, pivotLane: 0 }],
+                stageStyleEvents: [{ ...events.stageStyleEvents[0]!, beat: 4, editorLane: 1 }],
+                slides: [[{ ...base, beat: 4, left: 0.5, size: 0 }]],
+            },
+            2,
+        )
+        settings.width = 100
+        view.lane = 0
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const name = () => history.state.value.selectedEntities.map((entity) => entity.type).join()
+        const tap = (lane: number) => {
+            const { x, y } = window.editorTest.point(lane, 4)
+            void select.tap?.(x, y, { ctrl: false, shift: false })
+            return name()
+        }
+        // The pivot and the note reach 0.1; the style, the note and the pivot reach 0.8, nearest first.
+        const cycled = [tap(0.1), tap(0.1)]
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.grid.stageStyleEventJoint.values()]
+                .flatMap((set) => [...set])
+                .slice(0, 1),
+        })
+        return [...cycled, tap(0.8)]
+    })
+    expect(taps).toEqual(['stagePivotEventJoint', 'note', 'note'])
+})
