@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { fromDisplayedBeat, toDisplayedBeat } from '../../editor/beatDisplay'
+import { committedBarGrid, committedGrid } from '../../editor/beatGrid'
+import { view } from '../../editor/view'
 import { i18n } from '../../i18n'
 import { fromSteppedBeat } from './beatField'
 import MultiNumberField from './MultiNumberField.vue'
@@ -12,8 +14,13 @@ const displayedBeat = computed({
         modelValue.value = value === undefined ? undefined : fromDisplayedBeat(value)
     },
 })
+// As moved beats: onto the grid's line, or the chart's bar line other content may sit on.
 const setStep = (value: number) => {
-    modelValue.value = fromSteppedBeat(value)
+    modelValue.value = fromSteppedBeat(
+        value,
+        [committedGrid.value, committedBarGrid.value],
+        view.division,
+    )
 }
 </script>
 
