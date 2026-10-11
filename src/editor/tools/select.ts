@@ -351,20 +351,13 @@ export const select: Tool = {
 
         switch (active.type) {
             case 'move': {
-                const lane =
-                    xToLane(x) -
-                    (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(
-                    active,
-                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
-                )
+                const { lane, beatOffset } = toPointerMove(active, x, y)
 
                 const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 if (active.last === last) break
                 active.last = last
                 const source = state.value
-                const plan = getMovePlan(source, active, beatOffset)
-                const rawMove = getRawMove(source, active, lane, beatOffset, plan)
+                const { plan, rawMove } = planMove(source, active, lane, beatOffset)
                 const move = active
 
                 const ghosts: Entity[] = []
@@ -476,15 +469,8 @@ export const select: Tool = {
 
         switch (active.type) {
             case 'move': {
-                const lane =
-                    xToLane(x) -
-                    (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0)
-                const beatOffset = toMoveBeatOffset(
-                    active,
-                    yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
-                )
-                const plan = getMovePlan(state.value, active, beatOffset)
-                const rawMove = getRawMove(state.value, active, lane, beatOffset, plan)
+                const { lane, beatOffset } = toPointerMove(active, x, y)
+                const { plan, rawMove } = planMove(state.value, active, lane, beatOffset)
                 // Dropping everything where it started adds no undo step.
                 if (isUnmoved(active, lane, beatOffset, rawMove, plan)) {
                     view.entities = {
@@ -832,6 +818,17 @@ const toMoveBeatOffset = (active: MoveActive, beatOffset: number) =>
         (offset, entity) => (isInitial(entity) ? offset : Math.max(offset, -entity.beat)),
         beatOffset,
     )
+
+/** The move's lane and beat offset at a pointer. */
+const toPointerMove = (active: MoveActive, x: number, y: number) => ({
+    lane: xToLane(x) - (active.focus.type === 'note' ? getComposedNoteOffset(active.focus) : 0),
+    beatOffset: toMoveBeatOffset(active, yToMoveBeatOffset(y, active.focus.beat, active.pressBeat)),
+})
+
+const planMove = (source: State, active: MoveActive, lane: number, beatOffset: number) => {
+    const plan = getMovePlan(source, active, beatOffset)
+    return { plan, rawMove: getRawMove(source, active, lane, beatOffset, plan) }
+}
 
 const isUnmoved = (
     active: MoveActive,
