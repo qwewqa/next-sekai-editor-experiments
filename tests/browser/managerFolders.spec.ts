@@ -1450,7 +1450,7 @@ test.describe('touch', () => {
         const other = await center('Lead')
         const to = (await entryRow(page, 'Default').boundingBox())!.y + 4
         const client = await page.context().newCDPSession(page)
-        // Points left out of a touch event are released.
+        // CDP releases no finger alone: only touchEnd releases, and it releases them all.
         const touch = (
             type: 'touchStart' | 'touchMove' | 'touchEnd',
             points: { x: number; y: number }[],
@@ -1465,10 +1465,30 @@ test.describe('touch', () => {
         for (let step = 1; step <= 4; step++) await touch('touchMove', [at(step)])
         await expect(dragging).toHaveCount(1)
         await expect(dragging).toContainText('Outro')
-        // A second finger presses another row's handle, then lifts.
-        await touch('touchStart', [at(4), other])
-        await touch('touchMove', [at(4), { x: other.x, y: other.y + 20 }])
-        await touch('touchMove', [at(4)])
+        // A second finger presses another row's handle, moves and lifts, as synthetic pointer events.
+        const second = (type: 'pointerdown' | 'pointermove' | 'pointerup', dy = 0) =>
+            page.evaluate(
+                ({ type, x, y }) => {
+                    const init = {
+                        pointerId: 777,
+                        pointerType: 'touch',
+                        isPrimary: false,
+                        clientX: x,
+                        clientY: y,
+                        bubbles: true,
+                        cancelable: true,
+                        button: type === 'pointermove' ? -1 : 0,
+                        buttons: type === 'pointerup' ? 0 : 1,
+                    }
+                    const target =
+                        type === 'pointerdown' ? document.elementFromPoint(x, y)! : window
+                    target.dispatchEvent(new PointerEvent(type, init))
+                },
+                { type, x: other.x, y: other.y + dy },
+            )
+        await second('pointerdown')
+        await second('pointermove', 30)
+        await second('pointerup', 30)
         await expect(dragging).toHaveCount(1)
         await expect(dragging).toContainText('Outro')
         // Another pointer's cancel leaves it too.
