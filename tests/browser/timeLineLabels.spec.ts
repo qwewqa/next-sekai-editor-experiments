@@ -370,6 +370,58 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
     expect(frames.overlay).toBeGreaterThanOrEqual(4)
 })
 
+test('in playback, the Basic cursor line keeps its ends as grid labels pass it', async ({
+    page,
+}) => {
+    // The cursor line's ends in lanes, by chart frame: full-opacity white horizontal lines.
+    await page.evaluate(() => {
+        const ends: number[] = []
+        ;(window as unknown as { cursorEnds: number[] }).cursorEnds = ends
+        const proto = CanvasRenderingContext2D.prototype
+        const { moveTo, lineTo } = proto
+        let from: [number, number] | undefined
+        proto.moveTo = function (x, y) {
+            from = [x, y]
+            return moveTo.call(this, x, y)
+        }
+        proto.lineTo = function (x, y) {
+            if (
+                this.canvas.classList.contains('editor-chart') &&
+                this.globalAlpha === 1 &&
+                this.strokeStyle === '#ffffff' &&
+                from?.[1] === y &&
+                from[0] < 0 &&
+                x > 0
+            )
+                ends.push(x)
+            return lineTo.call(this, x, y)
+        }
+    })
+    await setup(page, 'basic', 16)
+    await useTool(page, 'select')
+    await page.mouse.move(5, 5)
+    await page.evaluate(() => {
+        const { settings, view } = window.editorTest
+        settings.pps = 200
+        view.cursorTime = 5
+    })
+    const ends = await page.evaluate(async () => {
+        const player =
+            await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+                '/src/editor/player.ts',
+            )
+        const recorded = (window as unknown as { cursorEnds: number[] }).cursorEnds
+        recorded.length = 0
+        player.startOrStopPlayer()
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        player.startOrStopPlayer()
+        return [...recorded]
+    })
+    // Past several labelled beats.
+    expect(ends.length).toBeGreaterThan(20)
+    expect([...new Set(ends)]).toEqual([7])
+})
+
 // The middle of a canvas line's rows, in CSS pixels: alpha-weighted down a strip at the
 // pane's middle. On the chart canvas, the change when the line moves away, within a few pixels.
 const lineMiddle = (page: Page, line: Line, near = 0) =>

@@ -5,6 +5,7 @@ import { isAppActive } from '../../activity'
 import { state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
 import { cullAllEntities } from '../../history/store'
+import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
@@ -310,8 +311,9 @@ const ghostBpmYs = computed<number[]>((previous) => {
 })
 
 // The labels past lanes -6.1 and 6.1 that Basic time lines stop short of, in pane pixels.
+// Not while playing, as the labels passing the cursor would make its ends jump.
 const columnBoxes = computed<SideBoxes | undefined>(() => {
-    if (composed.value) return
+    if (composed.value || isPlaying.value) return
     const bounds = viewBox.value
     const scale = view.w / bounds.w
     const covered = coveredYs.value
