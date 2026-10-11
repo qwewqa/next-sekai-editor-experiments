@@ -20,9 +20,9 @@ const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
 
 export const sceneState = computed(() => {
     // A dialog's own preview, such as a scaling's, may retime; a Properties draft in one may not.
-    if (isToolModalOpen.value && !previewEdit.value?.draft) return getPreviewState(state.value)
+    if (isToolModalOpen.value && !previewEdit.value?.isDraft) return getPreviewState(state.value)
     // Composed shows every edit's preview; Basic a pending Properties draft's.
-    if ((view.layout !== 'composed' || !state.value.isDynamicStages) && !previewEdit.value?.draft)
+    if ((view.layout !== 'composed' || !state.value.isDynamicStages) && !previewEdit.value?.isDraft)
         return state.value
     // Pointers map through the committed tempo, so a retimed preview would slide away from them.
     const preview = getPreviewState(state.value)
@@ -172,4 +172,4 @@ export const toSceneEntity = <T extends Entity>(entity: T, preview = sceneState.
 
 /** An entity as a pending Properties draft shows it, as the click that commits the draft will read it. */
 export const withDraft = <T extends Entity>(entity: T) =>
-    previewEdit.value?.draft ? toSceneEntity(entity) : entity
+    previewEdit.value?.isDraft ? toSceneEntity(entity) : entity

@@ -223,7 +223,7 @@ const scene = (page: Page) =>
         const { previewEdit } =
             await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
         return {
-            draft: !!previewEdit.value?.draft,
+            draft: !!previewEdit.value?.isDraft,
             committed: sceneState.value === history.state.value,
         }
     })

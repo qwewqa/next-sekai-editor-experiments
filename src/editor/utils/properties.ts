@@ -115,7 +115,7 @@ export const useEntitiesProperties = (
                     each: plan.each,
                 }).state,
             undefined,
-            { draft: true },
+            { isDraft: true },
         )
         ownedPreview = previewEdit.value
     }

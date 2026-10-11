@@ -326,7 +326,7 @@ watch(
 watch(tool, hoverAgain)
 // A Composed paste ghost hidden during a draft is placed again once the draft ends.
 watch(
-    () => !!previewEdit.value?.draft,
+    () => !!previewEdit.value?.isDraft,
     (draft, was) => {
         if (was && !draft && toolName.value === 'paste') hoverAgain()
     },

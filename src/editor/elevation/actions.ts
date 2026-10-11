@@ -93,7 +93,7 @@ export const previewElevationNoteRow = (
     if (!note.isAttached || !state.value.store.slides.note.has(note.slideId)) return row
     // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
     const transaction = createTransaction(
-        previewEdit.value?.draft ? elevationState.value : state.value,
+        previewEdit.value?.isDraft ? elevationState.value : state.value,
     )
     const result = transaction.commit(addNote(transaction, note.slideId, note))
     const [landed] = result.selectedEntities

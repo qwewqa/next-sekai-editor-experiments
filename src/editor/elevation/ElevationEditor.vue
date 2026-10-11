@@ -359,7 +359,7 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
         Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2
     // A pending Properties draft's rows are hit as the committed notes they show.
     const shown = ranked.flatMap((row) => {
-        const note = previewEdit.value?.draft
+        const note = previewEdit.value?.isDraft
             ? toCommittedEntity(row.note, elevationState.value)
             : row.note
         return note
@@ -374,7 +374,7 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
 }
 // A selected row in reach, else the first.
 const pickRow = ({ rows, set }: ReturnType<typeof hitRows>) => {
-    const selected = (previewEdit.value?.draft ? state : elevationState).value.selectedEntities
+    const selected = (previewEdit.value?.isDraft ? state : elevationState).value.selectedEntities
     return set.find((row) => selected.includes(row.note)) ?? rows[0]
 }
 const hit = (x: number, y: number) => pickRow(hitRows(x, y))
@@ -604,7 +604,7 @@ const controls: Pick<
         else if (toolName.value === 'paste')
             // As the chart's: a Composed paste is placed on the committed lattice, so it waits for a draft's commit.
             creating.value =
-                previewEdit.value?.draft && getComposedLayout(elevationState.value)
+                previewEdit.value?.isDraft && getComposedLayout(elevationState.value)
                     ? []
                     : previewElevationPasteRows(
                           position.lane,

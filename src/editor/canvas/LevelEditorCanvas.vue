@@ -384,7 +384,7 @@ watchEffect(
             isComposedPaste && ![undefined, state.value].includes(pasteGhostBase() as never)
         const showsGhosts =
             !isStalePaste &&
-            (!isScenePreview.value || (!!previewEdit.value?.draft && !isComposedPaste))
+            (!isScenePreview.value || (!!previewEdit.value?.isDraft && !isComposedPaste))
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value

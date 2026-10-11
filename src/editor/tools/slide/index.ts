@@ -386,9 +386,9 @@ const getNoteFromSelection = () => {
 
 // As a pending draft shows the slide, which the click commits first.
 const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
-    const notes = (previewEdit.value?.draft ? sceneState.value.store : store.value).slides.note.get(
-        slideId,
-    )
+    const notes = (
+        previewEdit.value?.isDraft ? sceneState.value.store : store.value
+    ).slides.note.get(slideId)
     if (!notes) throw new Error('Unexpected notes not found')
 
     const index = bisect(notes, 'beat', beat)
@@ -549,7 +549,7 @@ let lastLanding:
     | undefined
 
 // On the path drawn, a pending draft's included, as the click lands once it commits.
-const landingSource = () => (previewEdit.value?.draft ? sceneState.value : state.value)
+const landingSource = () => (previewEdit.value?.isDraft ? sceneState.value : state.value)
 
 const placeLanding = (source: State, slideId: SlideId, object: NoteObject) => {
     const ghost = toNoteEntity(slideId, object)
