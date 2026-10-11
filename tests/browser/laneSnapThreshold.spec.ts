@@ -187,7 +187,7 @@ test('a sideways jitter shorter than half a step adds no undo step', async ({ pa
     ).toBe(false)
 })
 
-test('Composed waits in pointer lanes and keeps the stage lattice', async ({ page }) => {
+test('Composed waits in pointer lanes until the stage lattice moves', async ({ page }) => {
     for (const tool of ['select', 'note'] as const) {
         // An integer note on an odd-parity stage is off its half-lane lattice.
         for (const [dx, left] of [
@@ -203,13 +203,13 @@ test('Composed waits in pointer lanes and keeps the stage lattice', async ({ pag
             expect(moved!.beat).toBe(6)
             expect(moved!.left).toBe(left)
         }
-        // A moving stage's shift isn't the pointer's: the authored lane stays, and the note rides the stage.
+        // A stage moved by half a lane moves its lattice, so the note snaps at once: it stays where it was shown.
         await setup(page, { tool, lefts: [1], layout: 'composed', stage: 'moving' })
         const [before] = await notes(page)
         await drag(page, 0)
         const [after] = await notes(page)
-        expect(after!.left).toBe(1)
-        expect(after!.shown - before!.shown).toBeCloseTo(0.5)
+        expect(after!.left).toBe(0.5)
+        expect(after!.shown - before!.shown).toBeCloseTo(0)
         // Beyond half a step, absolute snapping lands on the destination lattice.
         await setup(page, { tool, lefts: [1], layout: 'composed', stage: 'moving' })
         await drag(page, 0.6)

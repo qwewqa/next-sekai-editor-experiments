@@ -4,6 +4,7 @@ import type { State } from '../state'
 import type { SlideId } from '../state/entities/slides'
 import type { NoteEntity } from '../state/entities/slides/note'
 import { createComposedLayout } from './composed'
+import { isLatticeMoved, type Lattice } from './snapping'
 import { view } from './view'
 
 /** The chart remains in authoring coordinates; only this view projects it. */
@@ -15,6 +16,32 @@ export const getComposedOffset = (stageId: StageId, beat: number, source = state
 
 export const getComposedGridOffset = (stageId: StageId, beat: number, source = state.value) =>
     getComposedLayout(source)?.gridOffset(stageId, beat) ?? 0
+
+/** A stage's lane lattice at a beat. */
+export const getComposedLattice = (
+    stageId: StageId,
+    beat: number,
+    source = state.value,
+): Lattice | undefined => {
+    const layout = getComposedLayout(source)
+    return (
+        layout && { offset: layout.offset(stageId, beat), grid: layout.gridOffset(stageId, beat) }
+    )
+}
+
+/** Whether a stage's lane lattice differs between two beats, so absolute lane snapping can't wait. */
+export const isComposedLatticeMoved = (
+    stageId: StageId,
+    fromBeat: number,
+    toBeat: number,
+    source = state.value,
+) =>
+    fromBeat !== toBeat &&
+    isLatticeMoved(
+        getComposedLattice(stageId, fromBeat, source),
+        getComposedLattice(stageId, toBeat, source),
+        view.laneDivision,
+    )
 
 export const getComposedNoteOffset = (note: NoteEntity, beat = note.beat, source = state.value) => {
     const position = getComposedLayout(source)?.notePosition(note, beat)

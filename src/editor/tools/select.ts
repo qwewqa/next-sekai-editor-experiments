@@ -72,14 +72,17 @@ import { shiftComputed } from '../../utils/math'
 import { inverseAffine } from '../composedPointer'
 import {
     getComposedGridOffset,
+    getComposedLattice,
     getComposedLayout,
     getComposedMoveOffset,
     getComposedNoteOffset,
+    isComposedLatticeMoved,
 } from '../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
 import { isEntityInScope } from '../scope'
+import { isLatticeMoved, type Lattice } from '../snapping'
 import {
     focusEntityAtBeat,
     focusViewAtBeat,
@@ -118,13 +121,31 @@ type MoveActive = {
     last?: string
     // The ghosts as built from the move, and as shown with attached notes where they drop.
     ghosts?: { ghosts: Entity[]; shown: Entity[] }
-    response?: { source: State; beatOffset: number; zero: number; one: number; origin: number }
+    response?: {
+        source: State
+        beatOffset: number
+        zero: number
+        one: number
+        // The lane anchor's stage lattice in the moved chart.
+        lattice: Lattice | undefined
+    }
     bases?: { source: State; beatOffset: number; bases: Bases }
 }
 
 type RawMove = { delta: number; unconstrained?: boolean }
 
 type Bases = ReadonlyMap<NoteEntity, NoteEntity>
+
+/** What the grabbed object gives every moved object, once per pointer update. */
+type MovePlan = {
+    bases: Bases
+    // Lanes snap from it: a tick taken past its slide's end from its gameplay place, a tick within its slide from its attach head.
+    anchor: Entity
+    // The grabbed object's moved beat.
+    beat: number
+    // Whether the anchor's stage lattice moved there, so absolute lane snapping can't wait.
+    latticeMoved: boolean
+}
 
 let active:
     | MoveActive
@@ -312,10 +333,10 @@ export const select: Tool = {
                 const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping}`
                 if (active.last === last) break
                 active.last = last
-                const rawMove = getRawMove(state.value, active, lane, beatOffset)
                 const source = state.value
+                const plan = getMovePlan(source, active, beatOffset)
+                const rawMove = getRawMove(source, active, lane, beatOffset, plan)
                 const move = active
-                const bases = getMoveBases(source, active, beatOffset)
 
                 const ghosts: Entity[] = []
                 const ghosted: Entity[] = []
@@ -332,7 +353,7 @@ export const select: Tool = {
                         beat,
                         active.focus,
                         rawMove,
-                        bases,
+                        plan,
                     )
                     if (!result) continue
 
@@ -365,7 +386,7 @@ export const select: Tool = {
                 const moved = active.entities.some(
                     (entity) => entity.type === 'note' && entity.isAttached,
                 )
-                    ? moveEntities(source, move, lane, beatOffset, rawMove)
+                    ? moveEntities(source, move, lane, beatOffset, plan, rawMove)
                     : undefined
                 const creating = ghosts.map((ghost, index) => {
                     const entity = ghosted[index]
@@ -383,7 +404,9 @@ export const select: Tool = {
                 }
                 setPreviewEdit(
                     source,
-                    () => (moved ?? moveEntities(source, move, lane, beatOffset, rawMove)).state,
+                    () =>
+                        (moved ?? moveEntities(source, move, lane, beatOffset, plan, rawMove))
+                            .state,
                 )
                 focusEntityAtBeat(focusBeat)
                 break
@@ -426,9 +449,10 @@ export const select: Tool = {
                     active,
                     yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
                 )
-                const rawMove = getRawMove(state.value, active, lane, beatOffset)
+                const plan = getMovePlan(state.value, active, beatOffset)
+                const rawMove = getRawMove(state.value, active, lane, beatOffset, plan)
                 // Dropping everything where it started adds no undo step.
-                if (isUnmoved(active, lane, beatOffset, rawMove)) {
+                if (isUnmoved(active, lane, beatOffset, rawMove, plan)) {
                     view.entities = {
                         hovered: [],
                         creating: [],
@@ -437,7 +461,14 @@ export const select: Tool = {
                     clearNotification()
                     break
                 }
-                const moved = moveEntities(state.value, active, lane, beatOffset, rawMove).state
+                const moved = moveEntities(
+                    state.value,
+                    active,
+                    lane,
+                    beatOffset,
+                    plan,
+                    rawMove,
+                ).state
                 const selectedEntities = moved.selectedEntities
                 const focus = isPinned(active.focus, beatOffset)
                     ? undefined
@@ -446,9 +477,10 @@ export const select: Tool = {
                           active.focus as never,
                           active.lane,
                           lane,
-                          toMovedBeat(active.focus.beat, beatOffset),
+                          plan.beat,
                           active.focus,
                           rawMove,
+                          plan,
                       )
 
                 pushState(
@@ -503,6 +535,7 @@ const moveEntities = (
     active: MoveActive,
     lane: number,
     beatOffset: number,
+    plan: MovePlan,
     rawMove?: RawMove,
 ) => {
     const transaction = createTransaction(source)
@@ -526,7 +559,6 @@ const moveEntities = (
                   .map((note) => [note, toMovedBeat(note.beat, beatOffset)]),
           )
         : undefined
-    const bases = getMoveBases(source, active, beatOffset)
     let destination: State | undefined
     let destinationNotes: Map<NoteEntity, NoteEntity> | undefined
     for (const entity of entities) {
@@ -563,9 +595,9 @@ const moveEntities = (
                         beat,
                         active.focus,
                         rawMove,
+                        plan,
                         destination,
                         movingBeats,
-                        bases,
                     ),
                 ),
             )
@@ -582,7 +614,7 @@ const moveEntities = (
             active.focus,
             selectedEntities,
             rawMove,
-            bases,
+            plan,
         )
         if (result) selectedEntities.push(...result)
     }
@@ -604,10 +636,17 @@ const getRawMove = (
     active: MoveActive,
     lane: number,
     beatOffset: number,
+    plan: MovePlan,
 ): RawMove | undefined => {
     const composed = getComposedLayout(source)
     const focus = active.focus
-    if (!composed || focus.type !== 'note' || isSelectResize(active.onlyType, focus, active.lane))
+    const anchor = plan.anchor
+    if (
+        !composed ||
+        focus.type !== 'note' ||
+        anchor.type !== 'note' ||
+        isSelectResize(active.onlyType, focus, active.lane)
+    )
         return
     // Ordinary note-only moves have a direct inverse. Mixed authored controls
     // and attached anchors can also change the projection while they move.
@@ -615,17 +654,17 @@ const getRawMove = (
     let response = active.response
     if (response?.source !== source || response.beatOffset !== beatOffset) {
         const probe = (delta: number) => {
-            const result = moveEntities(source, active, active.lane + delta, beatOffset, {
+            const result = moveEntities(source, active, active.lane + delta, beatOffset, plan, {
                 delta,
                 unconstrained: true,
             })
             const note = result.focus
-            if (note?.type !== 'note') return { value: NaN, origin: 0 }
+            if (note?.type !== 'note') return { value: NaN, lattice: undefined }
             const layout = getComposedLayout(result.state)
-            if (!layout) return { value: NaN, origin: 0 }
+            if (!layout) return { value: NaN, lattice: undefined }
             return {
                 value: layout.noteLeft(note),
-                origin: layout.gridOffset(note.stageId, note.beat),
+                lattice: getComposedLattice(anchor.stageId, plan.beat, result.state),
             }
         }
         const zero = probe(0)
@@ -635,16 +674,20 @@ const getRawMove = (
             beatOffset,
             zero: zero.value,
             one: one.value,
-            origin: zero.origin,
+            lattice: zero.lattice,
         }
     }
     const target = composed.noteLeft(focus) + lane - active.lane
-    // A tick taken past its slide's end snaps from its gameplay place.
-    const anchor = getMoveBases(source, active, beatOffset).get(focus) ?? focus
     const delta = inverseAffine(
         target,
         { input: 0, output: response.zero },
         { input: 1, output: response.one },
+    )
+    // The moved chart's lattice decides, judged without sideways movement.
+    const latticeMoved = isLatticeMoved(
+        getComposedLattice(anchor.stageId, focus.beat, source),
+        response.lattice,
+        view.laneDivision,
     )
     // An attached anchor can have no horizontal response. Keeping the raw
     // baseline avoids moving controls that cannot move the grabbed point.
@@ -652,8 +695,40 @@ const getRawMove = (
         delta:
             delta === undefined
                 ? 0
-                : offset(0, delta, anchor.left, response.origin, lane - active.lane),
+                : offset(
+                      0,
+                      delta,
+                      anchor.left,
+                      response.lattice?.grid ?? 0,
+                      latticeMoved ? Number.POSITIVE_INFINITY : lane - active.lane,
+                  ),
     }
+}
+
+/** The grabbed object's moved beat and lane anchor, and whether its stage lattice moved. */
+const getMovePlan = (source: State, active: MoveActive, beatOffset: number): MovePlan => {
+    const bases = getMoveBases(source, active, beatOffset)
+    const focus = active.focus
+    const beat = toMovedBeat(focus.beat, beatOffset)
+    const anchor =
+        focus.type === 'note' ? (bases.get(focus) ?? getAttachHead(source, focus) ?? focus) : focus
+    return {
+        bases,
+        anchor,
+        beat,
+        // The raw move judges the moved chart's lattice itself.
+        latticeMoved:
+            anchor.type === 'note' &&
+            isComposedLatticeMoved(anchor.stageId, focus.beat, beat, source),
+    }
+}
+
+/** A tick within its slide takes what it lacks from its attach head. */
+const getAttachHead = (source: State, note: NoteEntity) => {
+    if (!note.isAttached) return
+    const infos = source.store.slides.info.get(note.slideId)
+    if (!infos || infos[0]?.note === note || infos.at(-1)?.note === note) return
+    return infos.find((info) => info.note === note)?.attachHead
 }
 
 /** The selected ticks this move takes past their slide's ends, at their gameplay place. */
@@ -670,23 +745,18 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     return bases
 }
 
-/** The focus lanes snap from: a tick taken past its slide's end snaps from its gameplay place. */
-const toLaneFocus = (focus: Entity, bases?: Bases) =>
-    focus.type === 'note' ? (bases?.get(focus) ?? focus) : focus
-
 const moveSelectedLane = (
     value: number,
     startLane: number,
     lane: number,
-    focus: Entity,
+    anchor: Entity,
     rawMove?: RawMove,
-    bases?: Bases,
 ) =>
     rawMove
         ? rawMove.unconstrained
             ? value + rawMove.delta
             : shiftComputed(value, rawMove.delta)
-        : moveLane(value, startLane, lane, getLaneAnchor(toLaneFocus(focus, bases)))
+        : moveLane(value, startLane, lane, getLaneAnchor(anchor))
 
 /** The starting BPM and time scales. */
 const isInitial = (entity: Entity) =>
@@ -702,7 +772,13 @@ const toMoveBeatOffset = (active: MoveActive, beatOffset: number) =>
         beatOffset,
     )
 
-const isUnmoved = (active: MoveActive, lane: number, beatOffset: number, rawMove?: RawMove) =>
+const isUnmoved = (
+    active: MoveActive,
+    lane: number,
+    beatOffset: number,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
+) =>
     active.entities.every((entity) => {
         if (isPinned(entity, beatOffset)) return true
         const moved = creates[entity.type]?.(
@@ -713,6 +789,7 @@ const isUnmoved = (active: MoveActive, lane: number, beatOffset: number, rawMove
             toMovedBeat(entity.beat, beatOffset),
             active.focus,
             rawMove,
+            plan,
         )
         if (!moved) return true
         // Hitboxes are rebuilt for the preview; only the values matter.
@@ -758,8 +835,8 @@ const toMovedCameraEventObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): CameraEventObject => {
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [cameraLeft, cameraSize] = resize(
@@ -795,7 +872,7 @@ const toMovedCameraEventObject = (
         {
             ...entity,
             beat,
-            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, focus, rawMove, bases),
+            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, plan.anchor, rawMove),
         },
         {
             enabled:
@@ -813,8 +890,8 @@ const toMovedStageMaskEventObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): StageMaskEventObject => {
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const [maskLeft, maskSize] = resize(
@@ -850,7 +927,7 @@ const toMovedStageMaskEventObject = (
         {
             ...entity,
             beat,
-            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, focus, rawMove, bases),
+            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, plan.anchor, rawMove),
         },
         {
             enabled:
@@ -867,14 +944,14 @@ const toMovedStagePivotEventObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): StagePivotEventObject =>
     constrainLaneObject(
         {
             ...entity,
             beat,
-            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, focus, rawMove, bases),
+            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, plan.anchor, rawMove),
         },
         {
             enabled:
@@ -916,8 +993,8 @@ const toMovedStageTransformEventObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): StageTransformEventObject =>
     constrainLaneObject(
         {
@@ -927,9 +1004,8 @@ const toMovedStageTransformEventObject = (
                 entity.xTranslation,
                 startLane,
                 lane,
-                focus,
+                plan.anchor,
                 rawMove,
-                bases,
             ),
         },
         {
@@ -947,13 +1023,13 @@ const toMovedNoteObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
     destination = state.value,
     movingBeats?: ReadonlyMap<NoteEntity, number>,
-    bases?: Bases,
 ): NoteObject => {
     // A tick taken past its slide's end moves as the note it becomes, from its gameplay place.
-    const from = bases?.get(entity) ?? entity
+    const from = plan.bases.get(entity) ?? entity
     if (rawMove) {
         return constrainLaneObject(
             {
@@ -1006,18 +1082,16 @@ const toMovedNoteObject = (
     }
 
     const composed = getComposedLayout()
-    const anchor = composed && focus.type === 'note' ? (bases?.get(focus) ?? focus) : from
-    const anchorBeat =
-        anchor.beat === entity.beat ? beat : toMovedBeat(anchor.beat, beat - entity.beat)
+    const anchor = composed && focus.type === 'note' ? (plan.bases.get(focus) ?? focus) : from
     // Only the grabbed note is inverted into its destination stage. Every
     // selected note receives that same authored delta, so animated stages can
     // change their displayed spacing without changing the chart's shape.
     const correction =
         composed &&
         focus.type === 'note' &&
-        (anchorBeat !== anchor.beat || destination !== state.value)
+        (plan.beat !== anchor.beat || destination !== state.value)
             ? getComposedNoteOffset(anchor) -
-              getComposedMoveOffset(anchor, anchorBeat, state.value, destination, movingBeats)
+              getComposedMoveOffset(anchor, plan.beat, state.value, destination, movingBeats)
             : 0
 
     return constrainLaneObject(
@@ -1028,11 +1102,12 @@ const toMovedNoteObject = (
                 from.left,
                 startLane,
                 lane + correction,
-                getLaneAnchor(toLaneFocus(focus, bases)),
-                composed && focus.type === 'note'
-                    ? getComposedGridOffset(focus.stageId, anchorBeat, destination)
+                getLaneAnchor(plan.anchor),
+                composed && plan.anchor.type === 'note'
+                    ? getComposedGridOffset(plan.anchor.stageId, plan.beat, destination)
                     : 0,
-                lane - startLane,
+                // A moved stage lattice snaps at once.
+                plan.latticeMoved ? Number.POSITIVE_INFINITY : lane - startLane,
             ),
             size: from.size,
             elevation: from.elevation,
@@ -1050,8 +1125,8 @@ type Create<T extends Entity> = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ) => Entity | undefined
 
 const creates: {
@@ -1063,22 +1138,13 @@ const creates: {
             toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
         ),
 
-    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
+    cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toCameraEventJointEntity(
-            toMovedCameraEventObject(
-                onlyType,
-                entity,
-                startLane,
-                lane,
-                beat,
-                focus,
-                rawMove,
-                bases,
-            ),
+            toMovedCameraEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove, plan),
         ),
     cameraEventConnection: undefined,
 
-    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
+    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStageMaskEventJointEntity(
             toMovedStageMaskEventObject(
                 onlyType,
@@ -1088,14 +1154,14 @@ const creates: {
                 beat,
                 focus,
                 rawMove,
-                bases,
+                plan,
             ),
         ),
     stageMaskEventConnection: undefined,
 
-    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
+    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStagePivotEventJointEntity(
-            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
+            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove, plan),
         ),
     stagePivotEventConnection: undefined,
 
@@ -1105,27 +1171,16 @@ const creates: {
         ),
     stageStyleEventConnection: undefined,
 
-    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
+    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStageTransformEventJointEntity(
-            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove, bases),
+            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove, plan),
         ),
     stageTransformEventConnection: undefined,
 
-    note: (onlyType, entity, startLane, lane, beat, focus, rawMove, bases) =>
+    note: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toNoteEntity(
             entity.slideId,
-            toMovedNoteObject(
-                onlyType,
-                entity,
-                startLane,
-                lane,
-                beat,
-                focus,
-                rawMove,
-                undefined,
-                undefined,
-                bases,
-            ),
+            toMovedNoteObject(onlyType, entity, startLane, lane, beat, focus, rawMove, plan),
             entity,
         ),
     connector: undefined,
@@ -1141,8 +1196,8 @@ type Move<T extends Entity> = (
     focus: Entity,
     /** Objects already placed by this move; they never replace each other. */
     batch: readonly Entity[],
-    rawMove?: RawMove,
-    bases?: Bases,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ) => Entity[] | undefined
 
 const moves: {
@@ -1200,7 +1255,7 @@ const moves: {
         focus,
         batch,
         rawMove,
-        bases,
+        plan,
     ) => {
         const object = toMovedCameraEventObject(
             onlyType,
@@ -1210,7 +1265,7 @@ const moves: {
             beat,
             focus,
             rawMove,
-            bases,
+            plan,
         )
         if (object.beat === entity.beat) return replaceCameraEventJoint(transaction, entity, object)
 
@@ -1229,7 +1284,7 @@ const moves: {
         focus,
         batch,
         rawMove,
-        bases,
+        plan,
     ) => {
         const object = toMovedStageMaskEventObject(
             onlyType,
@@ -1239,7 +1294,7 @@ const moves: {
             beat,
             focus,
             rawMove,
-            bases,
+            plan,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageMaskEventJoint(transaction, entity, object)
@@ -1259,7 +1314,7 @@ const moves: {
         focus,
         batch,
         rawMove,
-        bases,
+        plan,
     ) => {
         const object = toMovedStagePivotEventObject(
             entity,
@@ -1268,7 +1323,7 @@ const moves: {
             beat,
             focus,
             rawMove,
-            bases,
+            plan,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStagePivotEventJoint(transaction, entity, object)
@@ -1316,7 +1371,7 @@ const moves: {
         focus,
         batch,
         rawMove,
-        bases,
+        plan,
     ) => {
         const object = toMovedStageTransformEventObject(
             entity,
@@ -1325,7 +1380,7 @@ const moves: {
             beat,
             focus,
             rawMove,
-            bases,
+            plan,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageTransformEventJoint(transaction, entity, object)
@@ -1335,7 +1390,7 @@ const moves: {
     },
     stageTransformEventConnection: undefined,
 
-    note: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, bases) => {
+    note: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan) => {
         const object = toMovedNoteObject(
             onlyType,
             entity,
@@ -1344,9 +1399,7 @@ const moves: {
             beat,
             focus,
             rawMove,
-            undefined,
-            undefined,
-            bases,
+            plan,
         )
 
         return replaceNote(transaction, entity, object)

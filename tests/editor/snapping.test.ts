@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { snappedOffset } from '../../src/editor/snapping'
+import { isLatticeMoved, snappedOffset } from '../../src/editor/snapping'
 
 test('relative snapping preserves an off-grid anchor and rounds only the drag distance', () => {
     assert.equal(snappedOffset(1.3, 1.71, 0.15, 4, 'relative'), 0.5)
@@ -55,4 +55,44 @@ test('the movement is monotonic across the half-step boundary', () => {
         assert.ok(value >= previous)
         previous = value
     }
+})
+
+test('an infinite pointer movement forces absolute snapping, rounding a tie up through float noise', () => {
+    assert.ok(
+        Math.abs(snappedOffset(2, 2, 0.37, 1, 'absolute', Number.POSITIVE_INFINITY) + 0.37) < 1e-12,
+    )
+    // A note at 1 whose target is half a lane left lands back at 1, also just below the tie.
+    assert.equal(snappedOffset(0, -0.5, 1, 1, 'absolute', Number.POSITIVE_INFINITY), 0)
+    assert.equal(snappedOffset(0, -0.5 - 1e-12, 1, 1, 'absolute', Number.POSITIVE_INFINITY), 0)
+    assert.equal(snappedOffset(0, -0.5 - 1e-12, 1, 1, 'absolute'), -1)
+    assert.equal(snappedOffset(0, -0.25, 1, 2, 'absolute', Number.POSITIVE_INFINITY), 0)
+    // Away from a tie it is plain absolute snapping.
+    for (const current of [-1.3, -0.6, -0.4, 0.2, 0.49, 0.51, 1.7])
+        assert.equal(
+            snappedOffset(0, current, 0.37, 1, 'absolute', Number.POSITIVE_INFINITY),
+            snappedOffset(0, current, 0.37, 1, 'absolute'),
+        )
+    // Relative snapping ignores it.
+    assert.equal(snappedOffset(0, 0.3, 0.37, 1, 'relative', Number.POSITIVE_INFINITY), 0)
+})
+
+test('a lattice moves when its offset or its parity changes by part of a step', () => {
+    const at = (offset: number, grid: number) => ({ offset, grid })
+    assert.equal(isLatticeMoved(at(0.2, 0), at(0.2, 0), 1), false)
+    assert.equal(isLatticeMoved(at(0.2, 0), at(1.2, 0), 1), false)
+    assert.equal(isLatticeMoved(at(0.2, 0), at(0.7, 0), 1), true)
+    assert.equal(isLatticeMoved(at(0.2, 0), at(0.7, 0), 2), false)
+    assert.equal(isLatticeMoved(at(0, 0), at(0, 0.5), 1), true)
+    assert.equal(isLatticeMoved(at(0, 0), at(0, 0.5), 2), false)
+    assert.equal(isLatticeMoved(at(0, 0), at(0, 0.5), 3), true)
+    // Half a lane and a parity flip leave the drawn lines in place, but not the notes on them.
+    assert.equal(isLatticeMoved(at(0, 0), at(0.5, 0.5), 1), true)
+    assert.equal(isLatticeMoved(at(0, 0), at(0.5, 0.5), 2), false)
+    assert.equal(isLatticeMoved(at(0, 0), at(1 / 6, 0.5), 3), true)
+    // Float noise is no move; a real drift is.
+    assert.equal(isLatticeMoved(at(0, 0), at(1 - 1e-12, 0), 1), false)
+    assert.equal(isLatticeMoved(at(0, 0), at(1e-5, 0), 1), true)
+    // Basic has no lattice.
+    assert.equal(isLatticeMoved(undefined, at(0.5, 0), 1), false)
+    assert.equal(isLatticeMoved(at(0.5, 0), undefined, 1), false)
 })
