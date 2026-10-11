@@ -295,8 +295,16 @@ export const nearGridsBeat = (grids: BeatGrid[], beat: number, division: number)
 }
 
 /** A computed beat without float noise: on a small fraction, then on a grid's line. */
-export const cleanBeat = (grids: BeatGrid[], beat: number, division: number) =>
-    nearGridsBeat(grids, alignFraction(beat), division)
+export const cleanBeat = (grids: BeatGrid[], beat: number, division: number) => {
+    const aligned = alignFraction(beat)
+    // Past 2^32 steps float spacing reaches the tolerance: no noise to clean, and line search would stall.
+    return Math.abs(aligned * division) < 2 ** 32
+        ? nearGridsBeat(grids, aligned, division)
+        : aligned
+}
+
+/** Beats this close may clean onto one line at any division, so they are one beat up to noise. */
+export const isNoiseApart = (a: number, b: number) => Math.abs(a - b) < 2 * TOLERANCE
 
 /** The first line at or after the beat. */
 export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => {

@@ -46,3 +46,11 @@ test('alignFraction only removes float noise: deliberate offsets and typed decim
     assert.equal(alignFraction(14.999999999999998), 15)
     assert.equal(alignFraction(-1e-17), 0)
 })
+
+test('alignFraction returns non-finite and huge values as they are', () => {
+    assert.equal(alignFraction(Infinity), Infinity)
+    assert.equal(alignFraction(-Infinity), -Infinity)
+    assert.ok(Number.isNaN(alignFraction(NaN)))
+    assert.equal(alignFraction(1e308), 1e308)
+    assert.equal(alignFraction(2 ** 60), 2 ** 60)
+})

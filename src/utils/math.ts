@@ -35,7 +35,7 @@ export const alignFraction = (value: number, max = 10000, epsilon = 1e-11) => {
     for (;;) {
         const a = Math.floor(rest)
         const [p, q] = [a * p1 + p0, a * q1 + q0]
-        if (q > max) return value
+        if (!(q <= max)) return value
         // Integer over integer rounds once, as k / division does for a placed beat.
         if (Math.abs(fraction - p / q) <= epsilon) return (whole * q + p) / q
         ;[p0, q0, p1, q1] = [p1, q1, p, q]
