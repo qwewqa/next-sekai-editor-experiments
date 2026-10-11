@@ -256,7 +256,10 @@ const offscreenGroups = computed(() => {
             y: row.y,
             highlighted: selected.has(row.note),
             opacity: 1,
-            target: row.note,
+            // A pending draft's notes are picked as the committed ones they show.
+            target: previewEdit.value?.isDraft
+                ? toCommittedEntity(row.note, elevationState.value)
+                : row.note,
         })),
         elevationBounds.w,
         headerHeight.value + 4,
@@ -514,8 +517,10 @@ const pasteAtPoint = async (x: number, y: number, modifiers: Modifiers, keepsToo
 }
 const visibleTargets = (entities: State['selectedEntities']) => {
     const visible = new Set(elevationNotes.value.map((item) => item.note))
+    // Committed notes, shown as a pending draft draws them.
     return entities.filter(
-        (entity): entity is NoteEntity => entity.type === 'note' && visible.has(entity),
+        (entity): entity is NoteEntity =>
+            entity.type === 'note' && visible.has(toSceneEntity(entity, elevationState.value)),
     )
 }
 const isSecondaryTool = () => ['eraser', 'brush', 'generateSlideNotes'].includes(toolName.value)
@@ -545,7 +550,11 @@ const resolveDrag = (x: number, y: number) => {
         return { type: 'marquee', row } as const
     if (row.attached)
         return {
-            type: getNoteFieldsIn(elevationState.value.store, row.note).elevation
+            // As drawn, as the press reads it once it commits a pending draft.
+            type: getNoteFieldsIn(
+                elevationState.value.store,
+                toSceneEntity(row.note, elevationState.value),
+            ).elevation
                 ? 'move'
                 : 'select',
             row,

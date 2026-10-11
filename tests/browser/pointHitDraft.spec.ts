@@ -10,10 +10,10 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
 })
 
-// A slide from beat 4 to 6 with an attached tick at 5, its head selected, typed to lane 0 unsaved.
+// A slide from beat 4 to 6 with an attached tick at 5, its head selected, typed to a lane (0 by default) unsaved.
 type Layout = { layout: 'basic' | 'composed'; dynamic: boolean }
 
-const showDraft = async (page: Page, { layout, dynamic }: Layout) => {
+const showDraft = async (page: Page, { layout, dynamic }: Layout, typed = '0') => {
     await page.evaluate(
         async ({ layout, dynamic }) => {
             const { show, fixtures, view, settings, history, nextTick, appImport } =
@@ -54,7 +54,7 @@ const showDraft = async (page: Page, { layout, dynamic }: Layout) => {
         .locator('#workspace-panel-properties #properties-section-selection label')
         .filter({ has: page.getByText('Lane', { exact: true }) })
         .locator('input')
-    await lane.fill('0')
+    await lane.fill(typed)
     await expect
         .poll(() =>
             page.evaluate(async () => {
@@ -160,21 +160,22 @@ test('a right-click on a drafted note commits the draft, then opens the menu on 
     ).toEqual({ canUndo: true, selected: [[4, 0]] })
 })
 
-test('Elevation Editor: a pending draft is hovered as the committed note, and a press commits it', async ({
-    page,
-}) => {
-    const lane = await showDraft(page, { layout: 'basic', dynamic: false })
-    await page.evaluate(async () => {
+/** Opens the Elevation Editor beside the chart at a beat. */
+const openElevation = async (page: Page, beat: number) => {
+    await page.evaluate(async (beat) => {
         const { settings, appImport } = window.editorTest
         settings.elevationEditorSideBySide = 'allow'
         const { openElevationEditor } = await appImport<
             typeof import('../../src/editor/elevation/state')
         >('/src/editor/elevation/state.ts')
-        openElevationEditor(4)
-    })
+        openElevationEditor(beat)
+    }, beat)
     await expect(page.locator('.elevation-canvas')).toBeVisible()
-    await expect(lane).toHaveValue('0')
-    const row = await page.evaluate(async () => {
+}
+
+/** Hovers the Elevation Editor's row of the note at a beat, where it is drawn. */
+const hoverRow = async (page: Page, beat: number) => {
+    const row = await page.evaluate(async (beat) => {
         const { appImport } = window.editorTest
         const { elevationLayout } = await appImport<
             typeof import('../../src/editor/elevation/scene')
@@ -182,21 +183,30 @@ test('Elevation Editor: a pending draft is hovered as the committed note, and a 
         const { elevationBounds } = await appImport<
             typeof import('../../src/editor/elevation/viewport')
         >('/src/editor/elevation/viewport.ts')
-        const head = elevationLayout.value.rows.find((row) => row.note.beat === 4)!
-        return { x: elevationBounds.x + head.x, y: elevationBounds.y + head.y }
-    })
+        const row = elevationLayout.value.rows.find((row) => row.note.beat === beat)!
+        return { x: elevationBounds.x + row.x, y: elevationBounds.y + row.y }
+    }, beat)
     await page.mouse.move(row.x - 2, row.y)
     await page.mouse.move(row.x, row.y)
-    // The committed note, which the store holds.
-    await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const { view, store } = window.editorTest
-                const all = store.getAllEntities()
-                return view.entities.hovered.map((entity) => all.has(entity))
-            }),
-        )
-        .toEqual([true])
+    return row
+}
+
+/** The hovered notes' beats, and whether the store holds each, as committed notes. */
+const hoveredInStore = (page: Page) =>
+    page.evaluate(() => {
+        const { view, store } = window.editorTest
+        const all = store.getAllEntities()
+        return view.entities.hovered.map((entity) => [entity.beat, all.has(entity)])
+    })
+
+test('Elevation Editor: a pending draft is hovered as the committed note, and a press commits it', async ({
+    page,
+}) => {
+    const lane = await showDraft(page, { layout: 'basic', dynamic: false })
+    await openElevation(page, 4)
+    await expect(lane).toHaveValue('0')
+    await hoverRow(page, 4)
+    await expect.poll(() => hoveredInStore(page)).toEqual([[4, true]])
     await page.mouse.down()
     await page.mouse.up()
     expect(
@@ -212,6 +222,54 @@ test('Elevation Editor: a pending draft is hovered as the committed note, and a 
             [6, -4],
         ],
     })
+})
+
+test("Elevation Editor: the cursor over a drafted slide's attached tick reads the tick as drawn", async ({
+    page,
+}) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text())
+    })
+    await showDraft(page, { layout: 'basic', dynamic: false })
+    await openElevation(page, 5)
+    await hoverRow(page, 5)
+    await expect.poll(() => hoveredInStore(page)).toEqual([[5, true]])
+    await expect(page.locator('.elevation-canvas').locator('..')).toHaveCSS('cursor', 'pointer')
+    expect(errors).toEqual([])
+})
+
+test("Elevation Editor: with a draft pending, the Eraser's and Brush's hover is what a click acts on", async ({
+    page,
+}) => {
+    await showDraft(page, { layout: 'basic', dynamic: false })
+    await openElevation(page, 4)
+    await useTool(page, 'brush')
+    // The drafted head, as the committed note the click brushes.
+    await hoverRow(page, 4)
+    await expect.poll(() => hoveredInStore(page)).toEqual([[4, true]])
+    await useTool(page, 'eraser')
+    const row = await hoverRow(page, 4)
+    await expect.poll(() => hoveredInStore(page)).toEqual([[4, true]])
+    await page.mouse.click(row.x, row.y)
+    expect(
+        await page.evaluate(() => window.editorTest.snapshot().notes.map(({ beat }) => beat)),
+    ).toEqual([5, 6])
+})
+
+test('Elevation Editor: with a draft pending, an off-screen badge targets the committed notes', async ({
+    page,
+}) => {
+    // The head is drawn at lane 40, off the side.
+    await showDraft(page, { layout: 'basic', dynamic: false }, '40')
+    await openElevation(page, 4)
+    const badge = page.locator('.elevation-canvas').locator('..').locator('[data-side="right"]')
+    await expect(badge).toBeVisible()
+    const bounds = (await badge.boundingBox())!
+    await page.mouse.move(bounds.x + bounds.width / 2 - 2, bounds.y + bounds.height / 2)
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    await expect.poll(() => hoveredInStore(page)).toEqual([[4, true]])
 })
 
 const scene = (page: Page) =>
