@@ -128,7 +128,7 @@ export const resize = (
  * but notes reached only through their side slack when a note's own span holds the point, and
  * always the first.
  */
-export type PointHits<T extends Entity = Entity> = { hits: T[]; set: T[] }
+type PointHits<T extends Entity = Entity> = { hits: T[]; set: T[] }
 
 export const pointHitsOfType = <T extends EntityType>(
     type: T,

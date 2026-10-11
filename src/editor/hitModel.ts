@@ -64,7 +64,7 @@ const comparePointHitTypes = (a: Entity, b: Entity) =>
     typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)
 
 /** A note's primary shape, from its left edge and its middle. */
-export const noteHitShape = (size: number, type: NoteVisualType): Shape => {
+const noteHitShape = (size: number, type: NoteVisualType): Shape => {
     const half = type === 'single' || type === 'head' || type === 'tail' ? 0.3 : 0.15
     const [l, r] = size > 0 ? [0, size] : [-0.1, 0.1]
     return {
