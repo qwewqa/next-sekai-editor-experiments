@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
 })
 
-// Two wide notes over lane 0, one ending there on its left and one starting there on its right.
+// Two wide notes over lane 0, plus one ending there and one starting there.
 const stack = [
     { left: -2, size: 4 },
     { left: -1.5, size: 3 },
@@ -53,37 +53,74 @@ const expectEveryLap = (picks: unknown[]) => {
         expect(new Set(picks.slice(from, from + lap)).size, `${picks.join()}`).toBe(stack.length)
 }
 
+/** Shows the stack in the chart; returns the edge's point. */
+const showStack = (page: Page, layout: 'basic' | 'composed') =>
+    page.evaluate(
+        ({ layout, stack }) => {
+            const { show, fixtures, view, settings } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            const chart: Chart = {
+                ...fixtures.events,
+                isDynamicStages: layout === 'composed',
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                slides: stack.map((note) => [{ ...base, beat: 4, ...note }]),
+            }
+            show(chart, 2)
+            view.layout = layout
+            settings.width = view.w / 40
+            settings.pps = 160
+            view.lane = 0.3
+            return window.editorTest.point(0, 4)
+        },
+        { layout, stack },
+    )
+
 for (const layout of ['basic', 'composed'] as const) {
     test(`${layout}: one-pixel jitter reaches every note each lap`, async ({ page }) => {
-        const edge = await page.evaluate(
-            ({ layout, stack }) => {
-                const { show, fixtures, view, settings } = window.editorTest
-                const base = fixtures.interaction.slides[0]![0]!
-                const chart: Chart = {
-                    ...fixtures.events,
-                    isDynamicStages: layout === 'composed',
-                    bpms: [{ beat: 0, bpm: 120 }],
-                    cameraEvents: [],
-                    stageMaskEvents: [],
-                    stagePivotEvents: [],
-                    stageStyleEvents: [],
-                    stageTransformEvents: [],
-                    timeScales: [],
-                    slides: stack.map((note) => [{ ...base, beat: 4, ...note }]),
-                }
-                show(chart, 2)
-                view.layout = layout
-                settings.width = view.w / 40
-                settings.pps = 160
-                view.lane = 0.3
-                return window.editorTest.point(0, 4)
-            },
-            { layout, stack },
-        )
+        const edge = await showStack(page, layout)
         await useTool(page, 'select')
         expectEveryLap(await jitterClicks(page, edge))
     })
 }
+
+test('a right click by a cycled pick gone out of reach selects the top note', async ({ page }) => {
+    const edge = await showStack(page, 'basic')
+    await useTool(page, 'select')
+    const y = Math.round(edge.y)
+    const [at, near] = [Math.round(edge.x) - 1, Math.round(edge.x) + 1]
+    const hits = (x: number) =>
+        page.evaluate(
+            async ({ x, y }) => {
+                const { pointHitsAt } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/tools/utils')
+                >('/src/editor/tools/utils.ts')
+                return pointHitsAt(x, y).set.map((entity) =>
+                    entity.type === 'note' ? entity.left : entity.type,
+                )
+            },
+            { x, y },
+        )
+    const nearHits = await hits(near)
+    // Cycle at one point to a note out of reach 2 px away.
+    await page.mouse.move(at, y)
+    for (let i = 0; i < stack.length; i++) {
+        await page.mouse.click(at, y)
+        if (!nearHits.includes((await lefts(page, 'selected'))[0] as number)) break
+    }
+    expect(nearHits).not.toContain((await lefts(page, 'selected'))[0])
+    // There a left click would go on with the cycle; the menu takes the top.
+    await page.mouse.move(near, y)
+    expect(await lefts(page, 'hovered')).not.toEqual(nearHits.slice(0, 1))
+    await page.mouse.click(near, y, { button: 'right' })
+    await expect(page.getByRole('menu')).toBeVisible()
+    expect(await lefts(page, 'selected')).toEqual(nearHits.slice(0, 1))
+})
 
 test('Elevation Editor: one-pixel jitter reaches every row each lap', async ({ page }) => {
     await page.evaluate(async (stack) => {
