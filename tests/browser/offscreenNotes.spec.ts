@@ -274,6 +274,8 @@ test('elevation editor badges select their notes too', async ({ page }) => {
     await expect(right).toHaveClass(/is-hovered/)
     await page.mouse.click(x, y)
     expect(await selectedCount(page)).toBe(12)
+    // The resting mouse hovers again, as after any tap.
+    await expect.poll(() => hoveredCount(page)).toBe(12)
     await clickIndicator(page, left, true)
     expect(await selectedCount(page)).toBe(13)
     await clickIndicator(page, left, true)
