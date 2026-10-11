@@ -394,7 +394,11 @@ test("Composed: with a stage's move drafted, a Note tool ghost lands where the c
     await expect.poll(() => shownLeft('added')).toBe(ghost)
 })
 
-const useTool = (page: Page, name: string, properties?: { isAttached: boolean }) =>
+const useTool = (
+    page: Page,
+    name: string,
+    properties?: { copyProperties: boolean; isAttached: boolean },
+) =>
     page.evaluate(
         async ({ name, properties }) => {
             const { appImport } = window.editorTest
@@ -437,7 +441,7 @@ test("Basic: an attached Slide ghost lands on the drafted slide's path, as the c
     page,
 }) => {
     await showDraft(page, { layout: 'basic', dynamic: false })
-    await useTool(page, 'slide', { isAttached: true })
+    await useTool(page, 'slide', { copyProperties: true, isAttached: true })
     // Halfway from the head, drafted to 0, to the tick at 5 (-2 once the head moves).
     const point = await hover(page, -3, 4.5)
     await expect.poll(() => ghost(page)).toHaveLength(1)
