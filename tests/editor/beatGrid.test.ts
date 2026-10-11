@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import { calculateBpms, type GridBpm } from '../../src/state/integrals/bpms'
 import {
@@ -504,4 +505,70 @@ test('grid lines are drawn once at the tolerance and up to the top edge', () => 
     const edge = grid([0], [25.00000006491687, 0.37])
     assert.equal(snapBeat(edge, 62, 8), 62)
     assert.ok(gridLines(edge, 61.9, 62.00000006491686, 8, 1000)!.some(({ beat }) => beat === 62))
+})
+
+test('beats past 2^32 grid steps snap, step and draw promptly, with no lines between them', () => {
+    // Run apart, so a hang fails the test instead of stalling the run.
+    const url = (path: string) => JSON.stringify(new URL(path, import.meta.url).href)
+    const script = `
+        import { drawGrid, gridLabels } from ${url('../../src/editor/canvas/grid.ts')}
+        import { createState } from ${url('../../src/state/index.ts')}
+        import { beatToTime } from ${url('../../src/state/integrals/bpms.ts')}
+        import * as g from ${url('../../src/state/integrals/grid.ts')}
+        import { align, alignNear } from ${url('../../src/utils/math.ts')}
+        const state = createState({
+            initialLife: 1000,
+            isDynamicStages: false,
+            bpms: [{ beat: 0, bpm: 120 }, { beat: 2.3, bpm: 150 }, { beat: 7.1, bpm: 90 }],
+            groups: new Map(),
+            stages: new Map(),
+            cameraEvents: [],
+            stageMaskEvents: [],
+            stagePivotEvents: [],
+            stageStyleEvents: [],
+            stageTransformEvents: [],
+            timeScales: [],
+            slides: [],
+        }, 0)
+        const bars = g.toBeatGrid(state.bpms)
+        const ctx = new Proxy({}, { get: (target, key) => key in target ? target[key] : () => ({ width: 0 }) })
+        const bounds = { l: -10, r: 10, t: -100, b: 0, w: 20, h: 100 }
+        const checks = []
+        for (const division of [1, 4, 16, 1e9])
+            for (const beat of [1e9, 4.5e15, 2 ** 53, -(2 ** 53)]) {
+                if (g.isWithinGridSteps(beat, division)) continue
+                for (const grid of [bars, g.GLOBAL_GRID]) {
+                    checks.push(Object.is(g.ceilGridBeat(grid, beat, division), beat))
+                    checks.push(Object.is(g.floorGridBeat(grid, beat, division), beat))
+                    for (const direction of [1, -1])
+                        checks.push(Number.isFinite(g.stepGridBeat(grid, beat, division, direction)))
+                    checks.push(g.gridLines(grid, beat, beat + 10, division, 2000)?.length === 0)
+                }
+                checks.push(Object.is(g.snapPhasedBeat(state.bpms, beat, division), beat))
+                checks.push(Object.is(g.nearGridBeat(bars, beat, division), beat))
+                checks.push(Object.is(g.snapBeat(bars, beat, division), beat))
+                // The global grid's arithmetic is unchanged.
+                checks.push(Object.is(g.snapBeat(g.GLOBAL_GRID, beat, division), align(beat, division)))
+                checks.push(Object.is(g.nearGridBeat(g.GLOBAL_GRID, beat, division), alignNear(beat, division)))
+                if (beat < 0) continue
+                const beats = { min: beat, max: beat + 10 }
+                const times = { min: beatToTime(state.bpms, beat), max: beatToTime(state.bpms, beat + 10) }
+                for (const display of ['beat', 'measure']) {
+                    const labels = gridLabels(state, -10, 10, beats, times, display).right
+                    // Labels go by whole beats.
+                    checks.push(g.isWithinGridSteps(beat, 1) ? labels.length > 0 : labels.length === 0)
+                    drawGrid({ ctx, scale: 10, pixelRatio: 2, bounds, ups: -10, state }, beats, times, division, 1, display)
+                }
+            }
+        console.log(JSON.stringify(checks))
+    `
+    const run = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', '--input-type=module', '--eval', script],
+        { encoding: 'utf8', timeout: 20_000 },
+    )
+    assert.equal(run.signal, null, 'timed out')
+    assert.equal(run.status, 0, run.stderr)
+    const checks = JSON.parse(run.stdout) as boolean[]
+    assert.ok(checks.length > 100 && checks.every(Boolean), run.stdout)
 })

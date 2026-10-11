@@ -39,6 +39,10 @@ const TOLERANCE = 1e-6
 // Bars of a smaller meter would hold no lines; such a segment restarts only at its change.
 const TINY_METER = 2e-6
 
+/** Under 2^32 steps; past them float spacing reaches the tolerance and line searches would stall. */
+export const isWithinGridSteps = (beat: number, division: number) =>
+    Math.abs(beat * division) < 2 ** 32
+
 const stepError = (value: number, division: number) =>
     Math.abs(value * division - Math.round(value * division))
 
@@ -222,6 +226,7 @@ const previousLastLine = (bpms: GridBpm[], interval: Interval, division: number)
 
 /** The nearest line of a BPM list's bar grid; ties go to the later line. */
 export const snapPhasedBeat = (bpms: GridBpm[], beat: number, division: number) => {
+    if (!isWithinGridSteps(beat, division)) return beat
     const interval = locate(bpms, beat)
     const first = firstLine(interval, division)
     const last = lastLine(interval, division)
@@ -297,10 +302,7 @@ export const nearGridsBeat = (grids: BeatGrid[], beat: number, division: number)
 /** A computed beat without float noise: on a small fraction, then on a grid's line. */
 export const cleanBeat = (grids: BeatGrid[], beat: number, division: number) => {
     const aligned = alignFraction(beat)
-    // Past 2^32 steps float spacing reaches the tolerance: no noise to clean, and line search would stall.
-    return Math.abs(aligned * division) < 2 ** 32
-        ? nearGridsBeat(grids, aligned, division)
-        : aligned
+    return isWithinGridSteps(aligned, division) ? nearGridsBeat(grids, aligned, division) : aligned
 }
 
 /** Beats this close may clean onto one line at the division, so they are one beat up to noise. */
@@ -310,6 +312,7 @@ export const isNoiseApart = (a: number, b: number, division = 1) =>
 
 /** The first line at or after the beat. */
 export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => {
+    if (!isWithinGridSteps(beat, division)) return beat
     const bpms = grid.bpms
     if (!bpms || isGlobalGrid(grid, division)) return ceilIn(intervalAt([], -1, 0), beat, division)
     for (
@@ -329,6 +332,7 @@ export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => 
 
 /** The last line at or before the beat. */
 export const floorGridBeat = (grid: BeatGrid, beat: number, division: number) => {
+    if (!isWithinGridSteps(beat, division)) return beat
     const bpms = grid.bpms
     if (!bpms || isGlobalGrid(grid, division)) return floorIn(intervalAt([], -1, 0), beat, division)
     const located = locate(bpms, beat)
@@ -355,7 +359,7 @@ export const floorGridBeat = (grid: BeatGrid, beat: number, division: number) =>
  * grid, one step relatively.
  */
 export const stepGridBeat = (grid: BeatGrid, beat: number, division: number, direction: 1 | -1) => {
-    if (!grid.bpms || isGlobalGrid(grid, division))
+    if (!grid.bpms || isGlobalGrid(grid, division) || !isWithinGridSteps(beat, division))
         return alignNear(beat + direction / division, division)
     const line = snapPhasedBeat(grid.bpms, beat, division)
     if (Math.abs(line - beat) * division >= TOLERANCE)
@@ -380,6 +384,7 @@ export const gridLines = (
     division: number,
     limit: number,
 ): GridLine[] | undefined => {
+    if (!isWithinGridSteps(min, division) || !isWithinGridSteps(max, division)) return []
     const lines: GridLine[] = []
     // Bars meeting at the tolerance can both hold a line; it's drawn once.
     const push = (beat: number, isBeat: boolean) => {

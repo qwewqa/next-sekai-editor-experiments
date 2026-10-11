@@ -6,6 +6,7 @@ import {
     GLOBAL_GRID,
     gridLines,
     isGlobalGrid,
+    isWithinGridSteps,
     toBeatGrid,
     type BeatGrid,
 } from '../../state/integrals/grid'
@@ -66,9 +67,11 @@ export const gridLabels = (
     grid = defaultGrid(state, beatDisplay),
 ): GridLabels => {
     const left: GridLabels['left'] = []
-    for (let time = Math.max(1, Math.ceil(times.min)); time <= times.max; time++)
-        left.push({ text: formatIntegerTime(time), y: time * ups })
+    if (isWithinGridSteps(times.max, 1))
+        for (let time = Math.max(1, Math.ceil(times.min)); time <= times.max; time++)
+            left.push({ text: formatIntegerTime(time), y: time * ups })
     const right: GridLabels['right'] = []
+    if (!isWithinGridSteps(beats.min, 1) || !isWithinGridSteps(beats.max, 1)) return { left, right }
     const gap = MIN_LABEL_SPACING / Math.abs(ups * scale)
     const bars = grid.bpms ?? state.bpms
     if (isGlobalGrid(grid, 1)) {
@@ -190,7 +193,11 @@ export const drawGrid = (
     const left = composed ? bounds.l : -6
     const right = composed ? bounds.r : 6
     const showMeasures = beatDisplay !== 'beat'
-    if (max - min <= 100 && isGlobalGrid(grid, division) && isGlobalGrid(grid, 1)) {
+    const hasLines =
+        max - min <= 100 &&
+        isWithinGridSteps(beats.min, division) &&
+        isWithinGridSteps(beats.max, division)
+    if (hasLines && isGlobalGrid(grid, division) && isGlobalGrid(grid, 1)) {
         for (const isBeat of [false, true]) {
             ctx.globalAlpha = showMeasures ? (isBeat ? 0.35 : 0.15) : isBeat ? 0.5 : 0.25
             ctx.beginPath()
@@ -202,7 +209,7 @@ export const drawGrid = (
             }
             ctx.stroke()
         }
-    } else if (max - min <= 100) {
+    } else if (hasLines) {
         const lines = gridLines(grid, beats.min, beats.max, division, MAX_LINES) ?? []
         const ys = lines.map(({ beat }) => beatToTime(state.bpms, beat) * ups)
         const kept = thinLines(lines, ys, MIN_LINE_SPACING / scale)

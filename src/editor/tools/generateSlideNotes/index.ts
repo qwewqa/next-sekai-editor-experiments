@@ -9,7 +9,7 @@ import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import type { SlideId } from '../../../state/entities/slides'
 import type { NoteEntity } from '../../../state/entities/slides/note'
-import { gridLines, isGlobalGrid } from '../../../state/integrals/grid'
+import { gridLines, isGlobalGrid, isWithinGridSteps } from '../../../state/integrals/grid'
 import { addNote } from '../../../state/mutations/slides/note'
 import { createTransaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
@@ -150,6 +150,7 @@ const MAX_LINES = 100_000
 const generatedBeats = (slideNotes: NoteEntity[], minBeat: number, maxBeat: number) => {
     const division = view.division
     const grid = committedGrid.value
+    if (!isWithinGridSteps(minBeat, division) || !isWithinGridSteps(maxBeat, division)) return []
     if (isGlobalGrid(grid, division)) {
         const min = Math.floor(minBeat * division) + 1
         const max = Math.ceil(maxBeat * division) - 1
