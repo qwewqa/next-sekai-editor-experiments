@@ -403,6 +403,33 @@ for (const display of ['measure', 'beat'] as const)
         expect(await count()).toBe(before + 1)
     })
 
+test('a pending draft that moves a BPM change keeps snapping on the drawn, committed bars', async ({
+    page,
+}) => {
+    await setUp(page, 'measure')
+    await switchTool(page, 'note')
+    await page.evaluate(() => {
+        const { history, settings } = window.editorTest
+        settings.showSidebar = true
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: [...source.store.grid.bpm.values()]
+                .flatMap((set) => [...set])
+                .filter((entity) => entity.beat === 2.5),
+        })
+    })
+    const at = await point(page, -5.5, 3.4)
+    await page.mouse.move(at.x, at.y)
+    await settle(page)
+    expect(await creating(page)).toEqual([3.5])
+    // Typed, not committed: a retimed draft isn't drawn, so neither are its bars at 3.
+    await page.getByLabel('Beat', { exact: true }).fill('4')
+    await settle(page)
+    expect((await drawn(page)).bars).toEqual([0, 2.5])
+    expect(await creating(page)).toEqual([3.5])
+})
+
 for (const display of ['measure', 'beat'] as const)
     test(`${display}: the BPM tool grabs an off-grid change within its snapping`, async ({
         page,
