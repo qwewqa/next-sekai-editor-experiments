@@ -559,6 +559,59 @@ for (const layout of ['basic', 'composed'] as const) {
     })
 }
 
+test('elevation editor badges of elevation 0 notes keep their slot as the view pans', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, history } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        // Imported notes default to elevation 0, which sits exactly on a slot boundary.
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [{ ...base, beat: 3, left: 40, size: 2, elevation: 0 }],
+                    [{ ...base, beat: 3, left: 0, size: 2, elevation: 2 }],
+                ],
+            },
+            1.5,
+        )
+        const current = history.state.value
+        history.replaceState({
+            ...current,
+            selectedEntities: [...current.store.slides.note.values()][1]!,
+        })
+    })
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-editor [data-side="right"]')).toHaveAttribute(
+        'data-count',
+        '1',
+    )
+    const offsets = await page.evaluate(async () => {
+        const { appImport, nextTick } = window.editorTest
+        const { elevationViewport } = await appImport<
+            typeof import('../../src/editor/elevation/viewport')
+        >('/src/editor/elevation/viewport.ts')
+        const { elevationLayout } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const canvas = document.querySelector('.elevation-canvas')!
+        const offsets: number[] = []
+        const start = elevationViewport.center
+        // Fractional centres, which used to put elevation 0 a rounding error into the slot above.
+        for (let step = 0; step < 40; step++) {
+            elevationViewport.center = start + step * 0.0137
+            await nextTick()
+            const badge = document.querySelector('.elevation-editor [data-side="right"]')!
+            const { top, height } = badge.getBoundingClientRect()
+            const note = canvas.getBoundingClientRect().top + elevationLayout.value.yAt(0)
+            offsets.push(top + height / 2 - note)
+        }
+        return offsets
+    })
+    expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1)
+})
+
 test('elevation editor badges of elevation 0 notes move only with the scroll', async ({ page }) => {
     await page.evaluate(() => {
         const { fixtures, show, history } = window.editorTest
