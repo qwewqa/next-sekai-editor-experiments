@@ -6,7 +6,8 @@ import type { StageId } from '../../src/chart/stages'
 import type { TimeScaleObject } from '../../src/chart/timeScale'
 import { drawEvent, drawEventInfinities } from '../../src/editor/canvas/events'
 import { coveredLabelYs, drawGrid, timeScaleEdgeLabelYs } from '../../src/editor/canvas/grid'
-import { clearNameWidths, createNameLayer, placeNames } from '../../src/editor/canvas/names'
+import { createNameLayer, placeNames } from '../../src/editor/canvas/names'
+import { clearTextWidths } from '../../src/editor/canvas/text'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import { createComposedLayout } from '../../src/editor/composed'
 import { getPathD, getRangePathDs } from '../../src/editor/entities/events/path'
@@ -952,13 +953,13 @@ test('time scale labels are measured once per font and zoom, and again after a f
         timeScaleEdgeLabelYs(at, steps)
         for (const { entity } of steps) drawEvent(at, entity, false)
     }
-    clearNameWidths()
+    clearTextWidths()
     frame()
     frame()
     assert.deepEqual(measured, ['15x'])
     frame(20)
     assert.deepEqual(measured, ['15x', '15x'])
-    clearNameWidths()
+    clearTextWidths()
     frame(20)
     assert.deepEqual(measured, ['15x', '15x', '15x'])
 })

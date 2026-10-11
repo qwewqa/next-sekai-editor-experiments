@@ -43,11 +43,11 @@ import { drawEvent, drawEventInfinities } from './events'
 import { coveredLabelYs, drawGrid, gridLabels, timeScaleEdgeLabelYs } from './grid'
 import { chartBackground } from './nameColors'
 import { createLabelSprites } from './labelSprites'
-import { clearNameWidths, createNameLayer, placeNames } from './names'
+import { createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
 import { orderEntities, toDrawSteps, type DrawStep } from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
-import { FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
+import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
 import { createComposedLayout } from '../composed'
@@ -507,7 +507,7 @@ const updateFont = () => {
         fontMiddle.value = measureTextMiddle(fontFamily.value, container.value)
         figureMiddle.value = measureFigureMiddle(fontFamily.value)
     }
-    clearNameWidths()
+    clearTextWidths()
     nameSprites.clear()
     redrawVersion.value++
 }

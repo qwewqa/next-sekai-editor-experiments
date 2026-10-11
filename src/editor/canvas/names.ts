@@ -1,6 +1,6 @@
 import type { Entity } from '../../state/entities'
 import { nameColorOn } from './nameColors'
-import { clearTextWidths, drawText, measureCachedText, normalizeSvgText } from './text'
+import { drawText, measureCachedText, normalizeSvgText } from './text'
 import type { EditorDrawContext } from './types'
 
 type Box = { l: number; r: number; t: number; b: number }
@@ -142,11 +142,6 @@ const drawSplitName = (
         pen.text(name, color)
         ctx.restore()
     }
-}
-
-/** Forgets measured names, as a loaded font changes their widths. */
-export const clearNameWidths = () => {
-    clearTextWidths()
 }
 
 const ellipsis = '…'

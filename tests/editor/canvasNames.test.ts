@@ -6,13 +6,9 @@ import {
     contrast,
     nameColorOn,
 } from '../../src/editor/canvas/nameColors'
-import {
-    clearNameWidths,
-    createNameLayer,
-    placeNames,
-    type NameFill,
-} from '../../src/editor/canvas/names'
+import { createNameLayer, placeNames, type NameFill } from '../../src/editor/canvas/names'
 import { createNoteRenderer } from '../../src/editor/canvas/notes'
+import { clearTextWidths } from '../../src/editor/canvas/text'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import type { Entity } from '../../src/state/entities'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
@@ -302,13 +298,13 @@ test('names are measured once per font and zoom, and again after a font loads', 
             })
         placeNames({ ...context, scale, nameContrast }, layer)
     }
-    clearNameWidths()
+    clearTextWidths()
     frame(10)
     frame(10)
     assert.equal(measured, 2)
     frame(20)
     assert.equal(measured, 4)
-    clearNameWidths()
+    clearTextWidths()
     frame(20)
     assert.equal(measured, 6)
     // Without contrast, names are still measured to fit the pane.
@@ -344,7 +340,7 @@ test('canvases at different fonts and zooms keep their measured names', () => {
         })
         placeNames({ ...context, fontFamily, scale }, layer)
     }
-    clearNameWidths()
+    clearTextWidths()
     // The chart and the elevation editor drawing in turn.
     for (let index = 0; index < 3; index++) {
         frame('system-ui', 37.5)
@@ -360,7 +356,7 @@ test('canvases at different fonts and zooms keep their measured names', () => {
     frame('system-ui', 37.5)
     assert.equal(measured, 8)
     // A font alone measures anew.
-    clearNameWidths()
+    clearTextWidths()
     frame('system-ui', 40)
     frame('serif', 40)
     assert.equal(measured, 10)
