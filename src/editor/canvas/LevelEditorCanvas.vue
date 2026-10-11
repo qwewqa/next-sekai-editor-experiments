@@ -38,7 +38,7 @@ import {
     RANGE_LABEL_HEIGHT,
     type OffscreenNoteGroup,
 } from '../offscreenNotes'
-import { edgeLabelBoxes } from '../edgeLabels'
+import { edgeLabelBoxes, hoverLabelCenter, lineSpanAt, type LineSpan } from '../edgeLabels'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
 import { coveredLabelYs, drawGrid, gridLabels, timeScaleEdgeLabelYs } from './grid'
@@ -308,6 +308,31 @@ const drawEntity = (
     else drawEvent(context, entity, highlighted, opacity, part)
 }
 
+// A time line's ends in lanes: `lanes` either side, or the whole Composed workspace, cut to `span`.
+const timeLineEnds = (
+    { bounds, scale, composed }: typeof contextInputs.value,
+    lanes: number,
+    span: LineSpan,
+): LineSpan | undefined => {
+    const left = Math.max(composed ? bounds.l : -lanes, bounds.l + span.left / scale)
+    const right = Math.min(composed ? bounds.r : lanes, bounds.l + span.right / scale)
+    return left < right ? { left, right } : undefined
+}
+
+const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined, y: number) => {
+    if (!ends) return
+    ctx.moveTo(ends.left, y)
+    ctx.lineTo(ends.right, y)
+}
+
+// Equal ends keep their object, so hovering redraws the chart only when the cursor line changes.
+const cursorLineEnds = computed<LineSpan | undefined>((previous) => {
+    const inputs = contextInputs.value
+    const y = (view.cursorTime * inputs.ups - inputs.bounds.t) * inputs.scale
+    const ends = timeLineEnds(inputs, 7, lineSpanAt(y))
+    return previous?.left === ends?.left && previous?.right === ends?.right ? previous : ends
+})
+
 // Dependencies are captured synchronously; rendering runs once with the latest
 // snapshot. Pointer-only overlays do not invalidate the chart underneath them.
 watchEffect(
@@ -336,6 +361,7 @@ watchEffect(
         const beatDisplay = settings.beatDisplay
         const grid = drawnGrid.value
         const cursor = view.cursorTime
+        const cursorEnds = cursorLineEnds.value
         const covered = coveredYs.value
         const ghostYs = ghostBpmYs.value
         const currentLabels = labels.value
@@ -391,8 +417,7 @@ watchEffect(
             ctx.save()
             ctx.strokeStyle = '#fff'
             ctx.beginPath()
-            ctx.moveTo(inputs.composed ? inputs.bounds.l : -7, cursor * inputs.ups)
-            ctx.lineTo(inputs.composed ? inputs.bounds.r : 7, cursor * inputs.ups)
+            traceTimeLine(ctx, cursorEnds, cursor * inputs.ups)
             ctx.stroke()
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects)
@@ -436,6 +461,9 @@ watchEffect(
               ]
             : visibleSelectedEntities.value
         const selection = view.selection
+        const hoverEnds = view.isHoverHidden
+            ? undefined
+            : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value))
         const hover = view.isHoverHidden ? undefined : view.hoverTime
         overlayFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
@@ -512,8 +540,7 @@ watchEffect(
             }
             if (hover !== undefined) {
                 ctx.beginPath()
-                ctx.moveTo(inputs.composed ? inputs.bounds.l : -6, hover * inputs.ups)
-                ctx.lineTo(inputs.composed ? inputs.bounds.r : 6, hover * inputs.ups)
+                traceTimeLine(ctx, hoverEnds, hover * inputs.ups)
                 ctx.stroke()
             }
             ctx.restore()
