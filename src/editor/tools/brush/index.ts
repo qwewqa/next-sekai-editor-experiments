@@ -123,11 +123,15 @@ export const brush: Tool = {
     title: () => i18n.value.tools.brush.title,
     sidebar: BrushSidebar,
 
+    // The hover shows what a tap there would brush.
     hover(x, y, modifiers) {
-        const entities = modifyEntities(hitAllEntitiesAtPoint(x, y, 0.5), modifiers)
+        const entities = tapTarget(x, y)
 
         view.entities = {
-            hovered: entities,
+            hovered: modifyEntities(
+                entities === 'selection' ? selectedEntities.value : entities,
+                modifiers,
+            ),
             creating: [],
         }
     },

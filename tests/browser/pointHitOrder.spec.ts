@@ -113,8 +113,12 @@ for (const layout of ['basic', 'composed'] as const) {
             Array.from({ length: 7 }, (_, i) => [147.125 + i / 8, true]),
         )
 
-        // On the tick's diamond, the tick is on top.
+        // On the tick's diamond, the tick is on top; with nothing selected, the hover shows it.
         await page.keyboard.press('Control+z')
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.replaceState({ ...history.state.value, selectedEntities: [] })
+        })
         const diamond = await at(page, -3, 147.875)
         await page.mouse.move(diamond.x - 2, diamond.y)
         await page.mouse.move(diamond.x, diamond.y)

@@ -99,7 +99,8 @@ export const slide: Tool = {
     sidebar: SlideSidebar,
 
     hover(x, y, modifiers) {
-        const [entity, beat, lane] = tryFind(x, y, 0.5)
+        // As far as a tap reaches.
+        const [entity, beat, lane] = tryFind(x, y)
         if (entity) {
             view.entities = {
                 hovered: modifyEntities([entity], modifiers),

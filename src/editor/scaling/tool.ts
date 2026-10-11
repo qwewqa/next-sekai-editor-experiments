@@ -175,7 +175,7 @@ export const scalingTool: Tool = {
     secondaryTool: false,
     hover(x, y) {
         view.entities = {
-            hovered: matchesAxis() ? selectedEntitiesAtPoint(x, y, 0.5) : [],
+            hovered: matchesAxis() ? selectedEntitiesAtPoint(x, y, 1.5) : [],
             creating: [],
         }
     },

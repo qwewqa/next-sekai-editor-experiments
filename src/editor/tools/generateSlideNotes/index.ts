@@ -47,11 +47,15 @@ const tapTarget = (x: number, y: number) => {
 export const generateSlideNotes: Tool = {
     title: () => i18n.value.tools.generateSlideNotes.title,
 
+    // The hover shows what a tap there would generate on.
     hover(x, y) {
-        const entities = hitEntitiesAtPoint('note', x, y, 0.5)
+        const entities = tapTarget(x, y)
 
         view.entities = {
-            hovered: entities,
+            hovered:
+                entities === 'selection'
+                    ? selectedEntities.value.filter((entity) => entity.type === 'note')
+                    : entities,
             creating: [],
         }
     },

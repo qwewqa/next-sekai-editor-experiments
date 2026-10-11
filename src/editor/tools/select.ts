@@ -87,6 +87,7 @@ import {
     getComposedNoteOffset,
     isComposedLatticeMoved,
 } from '../composedView'
+import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
@@ -212,21 +213,31 @@ const resolveDrag = (
     }
 }
 
+/** What a tap at a point selects: with Ctrl every hit, else the hit after the selection's first, or the top one. */
+const tapTargets = (x: number, y: number, modifiers: Modifiers) => {
+    const entities = hitAllEntitiesAtPoint(x, y)
+    if (modifiers.ctrl) return modifyEntities(entities, modifiers)
+    const current = selectedEntities.value[0]
+    const index = current ? (entities.indexOf(current) + 1) % entities.length : 0
+    const entity = entities[index]
+    return modifyEntities(entity ? [entity] : [], modifiers)
+}
+
+// The hover shows what a tap there would select.
+const previewTap = (x: number, y: number, modifiers: Modifiers) => {
+    const indicator = hitOffscreenIndicator(x, y)
+    view.entities = {
+        hovered: indicator
+            ? modifyEntities(indicator.targets, modifiers)
+            : tapTargets(x, y, modifiers),
+        creating: [],
+    }
+}
+
 export const select: Tool = {
     title: () => i18n.value.tools.select.title,
 
-    hover(x, y, modifiers) {
-        const indicator = hitOffscreenIndicator(x, y)
-        const entities = modifyEntities(
-            indicator ? indicator.targets : hitAllEntitiesAtPoint(x, y, 0.5),
-            modifiers,
-        )
-
-        view.entities = {
-            hovered: entities,
-            creating: [],
-        }
-    },
+    hover: previewTap,
 
     tap(x, y, modifiers) {
         const indicator = hitOffscreenIndicator(x, y)
@@ -235,10 +246,9 @@ export const select: Tool = {
             return
         }
 
+        const entities = tapTargets(x, y, modifiers)
+        const [entity] = entities
         if (modifiers.ctrl) {
-            const entities = modifyEntities(hitAllEntitiesAtPoint(x, y), modifiers)
-
-            const [entity] = entities
             if (!entity) return
 
             const targets = entities.every((entity) => selectedEntities.value.includes(entity))
@@ -249,36 +259,23 @@ export const select: Tool = {
                 ...state.value,
                 selectedEntities: targets,
             })
-            view.entities = {
-                hovered: entities,
-                creating: [],
-            }
+            previewTap(x, y, modifiers)
             focusEntityAtBeat(entity.beat)
 
             notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
         } else {
-            const entities = hitAllEntitiesAtPoint(x, y)
-
             const selectedLength = selectedEntities.value.length
-            const current = selectedLength ? selectedEntities.value[0] : undefined
-
-            const index = current ? (entities.indexOf(current) + 1) % entities.length : 0
-            const entity = entities[index]
-            const targets = modifyEntities(entity ? [entity] : [], modifiers)
 
             replaceState({
                 ...state.value,
-                selectedEntities: targets,
+                selectedEntities: entities,
             })
-            view.entities = {
-                hovered: entities,
-                creating: [],
-            }
+            previewTap(x, y, modifiers)
 
             if (entity) {
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+                notify(interpolate(() => i18n.value.tools.select.selected, `${entities.length}`))
             } else {
                 focusViewAtBeat(yToValidBeat(y))
 

@@ -44,13 +44,12 @@ const tapTarget = (x: number, y: number) => {
 export const eraser: Tool = {
     title: () => i18n.value.tools.eraser.title,
 
+    // The hover shows what a tap there would remove.
     hover(x, y) {
-        const entities = hitAllEntitiesAtPoint(x, y, 0.5)
+        const target = tapTarget(x, y)
 
         view.entities = {
-            hovered: entities.some((entity) => selectedEntities.value.includes(entity))
-                ? []
-                : entities.filter(canRemove).slice(0, 1),
+            hovered: target === 'selection' ? selectedEntities.value : target ? [target] : [],
             creating: [],
         }
     },

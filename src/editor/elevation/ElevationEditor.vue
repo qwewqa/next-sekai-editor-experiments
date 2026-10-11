@@ -432,12 +432,18 @@ const edit = (active: NonNullable<typeof drag>) => {
         ),
     )
 }
-const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, notesOnly = false) => {
-    const selected = notesOnly
+const selectedFor = (notesOnly: boolean) =>
+    notesOnly
         ? state.value.selectedEntities.filter((entity) => entity.type === 'note')
         : state.value.selectedEntities
-    if (modifiers.ctrl && !rows.length) return
-    const current = selected[0]
+/** What a tap selects among rows: with Ctrl all of them, else the next after the selection's first. */
+const selectTargets = (
+    rows: ElevationRow[],
+    modifiers: Modifiers,
+    cycle = false,
+    notesOnly = false,
+) => {
+    const current = selectedFor(notesOnly)[0]
     const index =
         cycle && current && rows.length
             ? (rows.findIndex((row) => row.note === current) + 1) % rows.length
@@ -447,7 +453,12 @@ const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, not
         : rows[index]
           ? [rows[index].note]
           : []
-    const targets = modifyEntities(notes, modifiers)
+    return modifyEntities(notes, modifiers)
+}
+const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, notesOnly = false) => {
+    const selected = selectedFor(notesOnly)
+    if (modifiers.ctrl && !rows.length) return
+    const targets = selectTargets(rows, modifiers, cycle, notesOnly)
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -544,8 +555,9 @@ const controls: Pick<
             view.entities = { hovered: modifyEntities(indicator.targets, modifiers), creating: [] }
             return
         }
-        const rows = hitAll(x, y, 0.5)
-        const row = hit(x, y, 0.5)
+        // The hover shows what a tap there would act on, as far as it reaches.
+        const rows = hitAll(x, y)
+        const row = hit(x, y)
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
@@ -568,14 +580,9 @@ const controls: Pick<
         view.entities = {
             hovered: isSecondaryTool()
                 ? applyToVisibleSelection(rows, modifiers)
-                : modifyEntities(
-                      toolName.value === 'note' || toolName.value === 'slide'
-                          ? row
-                              ? [row.note]
-                              : []
-                          : rows.map((row) => row.note),
-                      modifiers,
-                  ),
+                : toolName.value === 'note' || toolName.value === 'slide'
+                  ? modifyEntities(row ? [row.note] : [], modifiers)
+                  : selectTargets(rows, modifiers, !modifiers.ctrl),
             creating: creating.value.map((row) => row.note),
         }
     },
@@ -640,6 +647,8 @@ const controls: Pick<
             return
         }
         selectAt(rows, modifiers, !modifiers.ctrl)
+        // What the next tap would select.
+        void controls.hover?.(x, y, modifiers)
     },
     cursor(x, y) {
         const target = resolveDrag(x, y)
