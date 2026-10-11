@@ -1,6 +1,11 @@
 import type { State } from '..'
 import type { Entity } from '../entities'
-import { getScaleProperties, getTranslatedSelectionValues, type ScaleAxis } from './scaleValues'
+import {
+    addBeatOffset,
+    getScaleProperties,
+    getTranslatedSelectionValues,
+    type ScaleAxis,
+} from './scaleValues'
 import { transformSelection } from './transformSelection'
 
 export const translateSelection = (
@@ -8,8 +13,9 @@ export const translateSelection = (
     selected: Entity[],
     axis: ScaleAxis,
     delta: number,
+    moveBeat = addBeatOffset,
 ): State => {
-    const values = getTranslatedSelectionValues(selected, axis, delta, source)
+    const values = getTranslatedSelectionValues(selected, axis, delta, source, moveBeat)
     return values
         ? transformSelection(
               source,

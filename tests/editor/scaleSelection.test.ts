@@ -3,6 +3,8 @@ import test from 'node:test'
 import { createState } from '../../src/state'
 import type { EntityOfType, EntityType } from '../../src/state/entities'
 import type { SlideId } from '../../src/state/entities/slides'
+import { calculateBpms, toBpmIntegral } from '../../src/state/integrals/bpms'
+import { GLOBAL_GRID, nearGridsBeat, snapBeat, toBeatGrid } from '../../src/state/integrals/grid'
 import type { EditableEntity } from '../../src/state/operations/editable'
 import {
     canScaleSelection,
@@ -203,6 +205,62 @@ test('translation moves all eligible values equally and retains negative authore
     assert.deepEqual(
         selected.map((entity) => entity.beat),
         [3, 5, 8, -2, 6, 3],
+    )
+})
+
+test('a beat translation lands on the grid through the given cleaning, which only removes float noise', () => {
+    const thirds = (beat: number, offset: number) => nearGridsBeat([GLOBAL_GRID], beat + offset, 3)
+    const notes = [source('note', 4 / 3), source('note', 7 / 3)]
+    // Plain sums carry an ulp of noise.
+    assert.notEqual(4 / 3 + 1 / 3, 5 / 3)
+    assert.notEqual(7 / 3 + 1 / 3, 8 / 3)
+    assert.deepEqual(
+        [...getTranslatedSelectionValues(notes, 'beat', 1 / 3, undefined, thirds)!.values()],
+        [5 / 3, 8 / 3],
+    )
+    // Off the grid, a translation keeps its value.
+    assert.deepEqual(
+        [...getTranslatedSelectionValues(notes, 'beat', 0.37, undefined, thirds)!.values()],
+        [4 / 3 + 0.37, 7 / 3 + 0.37],
+    )
+    // On a bar grid, onto its lines.
+    const bars = toBeatGrid(
+        calculateBpms(
+            [
+                { beat: 0, bpm: 120 },
+                { beat: 2.3, bpm: 150 },
+            ].map(toBpmIntegral),
+        ),
+    )
+    const line = snapBeat(bars, 2.3 + 1 / 3 + 1e-9, 3)
+    const next = snapBeat(bars, line + 1 + 1e-9, 3)
+    assert.notEqual(line + 1, next)
+    const onBars = (beat: number, offset: number) => nearGridsBeat([bars], beat + offset, 3)
+    assert.deepEqual(
+        [
+            ...getTranslatedSelectionValues(
+                [source('note', line)],
+                'beat',
+                1,
+                undefined,
+                onBars,
+            )!.values(),
+        ],
+        [next],
+    )
+    // Other axes are not beats.
+    const elevated = [source('note', 1, 1 / 3)]
+    assert.deepEqual(
+        [
+            ...getTranslatedSelectionValues(
+                elevated,
+                'elevation',
+                1 / 3,
+                undefined,
+                () => 0,
+            )!.values(),
+        ],
+        [1 / 3 + 1 / 3],
     )
 })
 

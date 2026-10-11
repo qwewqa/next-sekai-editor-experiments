@@ -25,6 +25,7 @@ import { getInStoreGrid } from '../store/grid'
 import { createTransaction, type Transaction } from '../transaction'
 import { connectorProperties } from './connectorProperties'
 import { isEditableEntity, type EditableEntity } from './editable'
+import { addBeatOffset } from './scaleValues'
 import { edit, inStoredOrder } from './transformSelection'
 
 const reverseSlideProperties = (source: State, selected: Set<EditableEntity>) => {
@@ -96,7 +97,11 @@ const reverseEases = (source: State, entities: EditableEntity[]) => {
     return eases
 }
 
-export const flipVertical = (source: State, selected: Entity[]): State => {
+export const flipVertical = (
+    source: State,
+    selected: Entity[],
+    moveBeat = addBeatOffset,
+): State => {
     const entities = [...new Set(selected.filter(isEditableEntity))]
     if (!entities.length) return source
     let min = Infinity
@@ -114,7 +119,7 @@ export const flipVertical = (source: State, selected: Entity[]): State => {
 
     // The centre, within float noise far below any beat grid, keeps its exact beat.
     const flippedBeat = (entity: EditableEntity) =>
-        nearlyEqual(min + max, 2 * entity.beat) ? entity.beat : min + (max - entity.beat)
+        nearlyEqual(min + max, 2 * entity.beat) ? entity.beat : moveBeat(min, max - entity.beat)
     // On its own beat beside an unselected partner, it is edited in place and keeps its order.
     const stays = (entity: EditableEntity) =>
         entity.type !== 'note' &&
