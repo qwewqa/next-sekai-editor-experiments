@@ -348,7 +348,8 @@ for (const tool of tools) {
 test('Select: every note moves by the grabbed one, also when it lands exactly on a stepped stage event', async ({
     page,
 }) => {
-    // A third of a beat moved by 1 is the pivot's beat; the other note's own move is a float step off it.
+    // A third of a beat moved by 1 is the pivot's beat; the other note's own move was a float step off
+    // it, which moves now clean off small fractions.
     await load(page, {
         tool: 'select',
         pivots: [
@@ -368,7 +369,7 @@ test('Select: every note moves by the grabbed one, also when it lands exactly on
                 )
             return toMovedBeat(1 / 3, toMovedBeat(5 / 3, 1) - 5 / 3) === 4 / 3
         }),
-    ).toBe(false)
+    ).toBe(true)
     await drag(page, 1 / 3, 4 / 3, 0)
     const moved = await notes(page)
     // Bit-equal to the event's beat, on its left side: the stage hasn't moved for the grabbed note.
