@@ -65,16 +65,34 @@ const grids = (page: Page) =>
     })
 
 // A change at 2.5, off the whole-beat grid: bars at 0, 2.5 and 6.5, at 1/1 snapping.
-const setUp = async (page: Page, display: BeatDisplay, changes = [0, 2.5]) => {
+const setUp = async (
+    page: Page,
+    display: BeatDisplay,
+    changes = [0, 2.5],
+    layout: 'basic' | 'composed' = 'basic',
+) => {
     await page.evaluate(
-        ({ display, changes }) => {
+        ({ display, changes, layout }) => {
             const { fixtures, show, view, settings } = window.editorTest
-            show({ ...fixtures.interaction, bpms: changes.map((beat) => ({ beat, bpm: 120 })) }, 2)
+            const pivot = fixtures.events.stagePivotEvents[0]!
+            const bpms = changes.map((beat) => ({ beat, bpm: 120 }))
+            show(
+                layout === 'composed'
+                    ? {
+                          ...fixtures.interaction,
+                          bpms,
+                          isDynamicStages: true,
+                          stagePivotEvents: [{ ...pivot, beat: 0, pivotLane: 2 }],
+                      }
+                    : { ...fixtures.interaction, bpms },
+                2,
+            )
+            view.layout = layout
             view.division = 1
             settings.pps = 200
             settings.beatDisplay = display
         },
-        { display, changes },
+        { display, changes, layout },
     )
     await settle(page)
 }
@@ -680,4 +698,58 @@ test('switching the beat display dismisses the context menu', async ({ page }) =
         window.editorTest.settings.beatDisplay = 'beat'
     })
     await expect(page.getByRole('menu')).toHaveCount(0)
+})
+
+test('composed: placing and dragging a BPM change use the bar grid', async ({ page }) => {
+    await setUp(page, 'measure', [0, 2.5], 'composed')
+    await switchTool(page, 'note')
+    for (const [beat, expected] of [
+        [2.3, 2.5],
+        [3.4, 3.5],
+    ] as const) {
+        const at = await point(page, -5.5, beat)
+        await page.mouse.move(at.x, at.y)
+        await settle(page)
+        expect(await creating(page), `${beat}`).toEqual([expected])
+    }
+    await page.keyboard.press('q')
+    await settle(page)
+    const from = await point(page, -4, 2.5)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    const to = await point(page, -4, 3.3)
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect(await creating(page)).toEqual([3])
+    expect(await grids(page)).toEqual({ lifted: [0], drawn: [0] })
+    await page.mouse.up()
+    await settle(page)
+    expect(await bpms(page)).toEqual([0, 3])
+    expect(await grids(page)).toEqual({ lifted: undefined, drawn: [0, 3] })
+})
+
+test('the wheel on a focused Elevation Editor beat field steps through the bar grid', async ({
+    page,
+}) => {
+    await setUp(page, 'measure')
+    await page.keyboard.press('t')
+    const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    await beat.fill('3')
+    await beat.press('Tab')
+    await beat.focus()
+    const box = (await beat.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, -100)
+    await settle(page)
+    await beat.press('Tab')
+    expect(
+        await page.evaluate(
+            async () =>
+                (
+                    await window.editorTest.appImport<
+                        typeof import('../../src/editor/elevation/state')
+                    >('/src/editor/elevation/state.ts')
+                ).elevationBeat.value,
+        ),
+    ).toBe(2.5)
 })

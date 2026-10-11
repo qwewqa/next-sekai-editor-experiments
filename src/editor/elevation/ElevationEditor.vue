@@ -899,11 +899,16 @@ const beatField = computed({
 })
 // The native step counts from beat one on the global grid; a bar grid steps through its lines.
 const isBarStepped = computed(() => !isGlobalGrid(committedGrid.value, view.division))
-const stepBeatField = (event: KeyboardEvent, direction: 1 | -1) => {
+const stepBeatField = (event: Event, direction: 1 | -1) => {
     if (!isBarStepped.value) return
     event.preventDefault()
     const beat = direction > 0 ? nextBeat.value : previousBeat.value
     if (beat !== undefined) changeBeat(beat)
+}
+// Chromium steps a focused number field on the wheel, as with the arrows.
+const wheelBeatField = (event: WheelEvent) => {
+    if (event.deltaY && document.activeElement === event.currentTarget)
+        stepBeatField(event, event.deltaY < 0 ? 1 : -1)
 }
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
 trackTypedText(beatInput, () => `${beatField.value}`)
@@ -1370,6 +1375,7 @@ onUnmounted(() => {
                                 @keydown.enter="confirmOnEnter"
                                 @keydown.up="stepBeatField($event, 1)"
                                 @keydown.down="stepBeatField($event, -1)"
+                                @wheel="wheelBeatField"
                         /></label>
                         <button
                             type="button"
