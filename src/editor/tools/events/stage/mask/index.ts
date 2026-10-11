@@ -286,36 +286,9 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'edit': {
-                const edge =
-                    active.entity.maskLeft +
-                    (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0)
-                const [maskLeft, maskSize] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    0,
-                    Number.POSITIVE_INFINITY,
-                    edge,
-                    [active.entity.maskLeft, active.entity.maskSize],
-                )
-
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toStageMaskEventJointEntity(
-                            constrainResized(
-                                {
-                                    ...active.entity,
-                                    maskLeft,
-                                    maskSize,
-                                },
-                                active.entity.beat,
-                                active.pressBeat,
-                                active.pressLane,
-                                lane,
-                                y,
-                            ),
-                        ),
-                    ],
+                    creating: [toStageMaskEventJointEntity(toResizedObject(active, x, y))],
                 }
                 break
             }
@@ -372,34 +345,7 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'edit': {
-                const edge =
-                    active.entity.maskLeft +
-                    (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0)
-                const [maskLeft, maskSize] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    0,
-                    Number.POSITIVE_INFINITY,
-                    edge,
-                    [active.entity.maskLeft, active.entity.maskSize],
-                )
-
-                commitDrop(
-                    edit,
-                    active.entity,
-                    constrainResized(
-                        {
-                            ...active.entity,
-                            maskLeft,
-                            maskSize,
-                        },
-                        active.entity.beat,
-                        active.pressBeat,
-                        active.pressLane,
-                        lane,
-                        y,
-                    ),
-                )
+                commitDrop(edit, active.entity, toResizedObject(active, x, y))
                 break
             }
             case 'move': {
@@ -418,6 +364,38 @@ export const stageMaskEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Resizes by the pointer's movement from the press; `lane` is the fixed edge.
+const toResizedObject = (
+    resizing: {
+        entity: StageMaskEventJointEntity
+        lane: number
+        pressBeat: number
+        pressLane: number
+    },
+    x: number,
+    y: number,
+) => {
+    const { entity } = resizing
+    const lane = xToLane(x)
+    const edge = entity.maskLeft + (resizing.lane === entity.maskLeft ? entity.maskSize : 0)
+    const [maskLeft, maskSize] = resize(
+        resizing.lane,
+        edge + (lane - resizing.pressLane),
+        0,
+        Number.POSITIVE_INFINITY,
+        edge,
+        [entity.maskLeft, entity.maskSize],
+    )
+    return constrainResized(
+        { ...entity, maskLeft, maskSize },
+        entity.beat,
+        resizing.pressBeat,
+        resizing.pressLane,
+        lane,
+        y,
+    )
 }
 
 // Moves by the pointer's snapped movement, as Select does.

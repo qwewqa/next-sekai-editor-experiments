@@ -287,36 +287,9 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'edit': {
-                const edge =
-                    active.entity.cameraLeft +
-                    (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0)
-                const [cameraLeft, cameraSize] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    6,
-                    24,
-                    edge,
-                    [active.entity.cameraLeft, active.entity.cameraSize],
-                )
-
                 view.entities = {
                     hovered: [],
-                    creating: [
-                        toCameraEventJointEntity(
-                            constrainResized(
-                                {
-                                    ...active.entity,
-                                    cameraLeft,
-                                    cameraSize,
-                                },
-                                active.entity.beat,
-                                active.pressBeat,
-                                active.pressLane,
-                                lane,
-                                y,
-                            ),
-                        ),
-                    ],
+                    creating: [toCameraEventJointEntity(toResizedObject(active, x, y))],
                 }
                 break
             }
@@ -373,34 +346,7 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'edit': {
-                const edge =
-                    active.entity.cameraLeft +
-                    (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0)
-                const [cameraLeft, cameraSize] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    6,
-                    24,
-                    edge,
-                    [active.entity.cameraLeft, active.entity.cameraSize],
-                )
-
-                commitDrop(
-                    edit,
-                    active.entity,
-                    constrainResized(
-                        {
-                            ...active.entity,
-                            cameraLeft,
-                            cameraSize,
-                        },
-                        active.entity.beat,
-                        active.pressBeat,
-                        active.pressLane,
-                        lane,
-                        y,
-                    ),
-                )
+                commitDrop(edit, active.entity, toResizedObject(active, x, y))
                 break
             }
             case 'move': {
@@ -419,6 +365,38 @@ export const cameraEvent: Tool = {
         clearPreviewEdit()
         active = undefined
     },
+}
+
+// Resizes by the pointer's movement from the press; `lane` is the fixed edge.
+const toResizedObject = (
+    resizing: {
+        entity: CameraEventJointEntity
+        lane: number
+        pressBeat: number
+        pressLane: number
+    },
+    x: number,
+    y: number,
+) => {
+    const { entity } = resizing
+    const lane = xToLane(x)
+    const edge = entity.cameraLeft + (resizing.lane === entity.cameraLeft ? entity.cameraSize : 0)
+    const [cameraLeft, cameraSize] = resize(
+        resizing.lane,
+        edge + (lane - resizing.pressLane),
+        6,
+        24,
+        edge,
+        [entity.cameraLeft, entity.cameraSize],
+    )
+    return constrainResized(
+        { ...entity, cameraLeft, cameraSize },
+        entity.beat,
+        resizing.pressBeat,
+        resizing.pressLane,
+        lane,
+        y,
+    )
 }
 
 // Moves by the pointer's snapped movement, as Select does.

@@ -45,8 +45,7 @@ import {
     type EditorLayout,
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
-import { createEditPreview, toDraggedNoteObject } from '../moveBase'
-import { constrainResized } from '../toolMove'
+import { createEditPreview, toDraggedNoteObject, toResizedNoteObject } from '../moveBase'
 import {
     addDragAnchor,
     commitDrop,
@@ -285,27 +284,7 @@ export const slide: Tool = {
                 break
             }
             case 'edit': {
-                const lane = xToLane(x) - getComposedNoteOffset(active.entity)
-                const edge =
-                    active.entity.left +
-                    (active.lane === active.entity.left ? active.entity.size : 0)
-                const [left, size] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    minimumNoteSize(active.entity.noteType),
-                    Number.POSITIVE_INFINITY,
-                    edge,
-                    [active.entity.left, active.entity.size],
-                    getComposedGridOffset(active.entity.stageId, active.entity.beat),
-                )
-                const object = constrainResized(
-                    { ...active.entity, left, size },
-                    active.entity.beat,
-                    active.pressBeat,
-                    active.pressLane,
-                    lane,
-                    y,
-                )
+                const object = toResizedNoteObject(active, x, y)
 
                 view.entities = {
                     hovered: [],
@@ -369,36 +348,7 @@ export const slide: Tool = {
                 break
             }
             case 'edit': {
-                const lane = xToLane(x) - getComposedNoteOffset(active.entity)
-                const edge =
-                    active.entity.left +
-                    (active.lane === active.entity.left ? active.entity.size : 0)
-                const [left, size] = resize(
-                    active.lane,
-                    edge + (lane - active.pressLane),
-                    minimumNoteSize(active.entity.noteType),
-                    Number.POSITIVE_INFINITY,
-                    edge,
-                    [active.entity.left, active.entity.size],
-                    getComposedGridOffset(active.entity.stageId, active.entity.beat),
-                )
-
-                commitDrop(
-                    edit,
-                    active.entity,
-                    constrainResized(
-                        {
-                            ...active.entity,
-                            left,
-                            size,
-                        },
-                        active.entity.beat,
-                        active.pressBeat,
-                        active.pressLane,
-                        lane,
-                        y,
-                    ),
-                )
+                commitDrop(edit, active.entity, toResizedNoteObject(active, x, y))
                 break
             }
             case 'move': {

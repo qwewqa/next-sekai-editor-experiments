@@ -13,9 +13,10 @@ import {
     getComposedNoteOffset,
     isComposedLatticeMoved,
 } from '../composedView'
+import { minimumNoteSize } from '../laneLimits'
 import { xToLane } from '../view'
-import { constrainMoved } from './toolMove'
-import { moveLane } from './utils'
+import { constrainMoved, constrainResized } from './toolMove'
+import { moveLane, resize } from './utils'
 
 type Place = { left: number; size: number; elevation: number }
 
@@ -96,6 +97,34 @@ export const toDraggedNoteObject = (
         entity.beat,
         pressLane,
         pointerLane,
+    )
+}
+
+/** A Note or Slide tool edge resize; `lane` is the fixed edge. */
+export const toResizedNoteObject = (
+    active: { entity: NoteEntity; lane: number; pressBeat: number; pressLane: number },
+    x: number,
+    y: number,
+) => {
+    const { entity } = active
+    const lane = xToLane(x) - getComposedNoteOffset(entity)
+    const edge = entity.left + (active.lane === entity.left ? entity.size : 0)
+    const [left, size] = resize(
+        active.lane,
+        edge + (lane - active.pressLane),
+        minimumNoteSize(entity.noteType),
+        Number.POSITIVE_INFINITY,
+        edge,
+        [entity.left, entity.size],
+        getComposedGridOffset(entity.stageId, entity.beat),
+    )
+    return constrainResized(
+        { ...entity, left, size },
+        entity.beat,
+        active.pressBeat,
+        active.pressLane,
+        lane,
+        y,
     )
 }
 
