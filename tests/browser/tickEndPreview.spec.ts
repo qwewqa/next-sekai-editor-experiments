@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { notes, point, setup } from './crossStageSlide'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// In Basic, dragging a slide's head or tail past an unselected tick draws the slide as it drops,
-// with the tick as the new end where gameplay drew it.
+// In Basic, a drag that moves a slide's unmoved ticks, along their connector or past an end,
+// draws the slide as it drops.
 const errors = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ page }) => {
@@ -100,17 +100,19 @@ for (const tool of ['select', 'note', 'slide'] as const) {
             const start = await point(page, lane, from)
             await page.mouse.move(start.x, start.y)
             await page.mouse.down()
-            // Short of the tick, the chart draws the slide as it is.
+            const pressed = await tickRow(page)
+            // Short of the tick, the tick moves along its connector.
             const near = await point(page, lane, short)
             await page.mouse.move(near.x, near.y, { steps: 6 })
-            expect(await previewed(page)).toBeUndefined()
-            const shown = await tickRow(page)
-            // Past it, the slide as it drops.
+            const relerped = await previewed(page)
+            expect(relerped?.find((note) => note.beat === 4)?.attached).toBe(true)
+            expect(relerped).not.toEqual(before)
+            // Past it, it becomes the end.
             const target = await point(page, lane, past)
             await page.mouse.move(target.x, target.y, { steps: 6 })
             const preview = await previewed(page)
             const drawn = await tickRow(page)
-            expect(drawn.equals(shown)).toBe(false)
+            expect(drawn.equals(pressed)).toBe(false)
             await page.mouse.up()
             const after = await slide(page)
             expect(after).not.toEqual(before)
@@ -130,7 +132,6 @@ for (const tool of ['select', 'note', 'slide'] as const) {
             await expect.poll(() => slide(page)).toEqual(before)
             await page.mouse.move(start.x, start.y)
             await page.mouse.down()
-            await page.mouse.move(near.x, near.y, { steps: 6 })
             const again = await tickRow(page)
             await page.mouse.move(target.x, target.y, { steps: 6 })
             expect(await previewed(page)).toEqual(after)
@@ -143,10 +144,9 @@ for (const tool of ['select', 'note', 'slide'] as const) {
     }
 }
 
-test('a drag that leaves a slide’s ends draws it as it is, even with an end stored attached', async ({
-    page,
-}) => {
-    await page.evaluate(() => {
+// Head at -4, a tick, a middle note at 0 and the tail at 2; the head is stored attached in one case.
+const showSlide = (page: Page, attachedHead = false) =>
+    page.evaluate((attachedHead) => {
         const { show, fixtures } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!
         show(
@@ -155,15 +155,55 @@ test('a drag that leaves a slide’s ends draws it as it is, even with an end st
                 isDynamicStages: false,
                 slides: [
                     [
-                        { ...base, beat: 2, left: -4, size: 2, isAttached: true },
-                        { ...base, beat: 4, left: 0, size: 2, isAttached: true },
+                        { ...base, beat: 2, left: -4, size: 2, isAttached: attachedHead },
+                        { ...base, beat: 3, left: 0, size: 2, isAttached: true },
+                        { ...base, beat: 4, left: 0, size: 2 },
                         { ...base, beat: 6, left: 2, size: 2 },
                     ],
                 ],
             },
             3,
         )
+    }, attachedHead)
+
+const stored = (page: Page) =>
+    page.evaluate(() =>
+        [...window.editorTest.history.state.value.store.slides.note.values()]
+            .flat()
+            .map(({ beat, left, size, elevation, isAttached }) => ({
+                beat,
+                left,
+                size,
+                elevation,
+                attached: isAttached,
+            }))
+            .sort((a, b) => a.beat - b.beat),
+    )
+
+for (const tool of ['select', 'note', 'slide'] as const) {
+    test(`${tool}: moving a head sideways previews its tick moving along the connector`, async ({
+        page,
+    }) => {
+        await showSlide(page)
+        await useTool(page, tool)
+        const before = await stored(page)
+        const start = await point(page, -3, 2)
+        const target = await point(page, -1, 2)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(target.x, target.y, { steps: 6 })
+        const preview = await previewed(page)
+        await page.mouse.up()
+        const after = await stored(page)
+        expect(after[1]!.left).not.toBe(before[1]!.left)
+        expect(after[1]!.attached).toBe(true)
+        expect(preview).toEqual(after)
     })
+}
+
+test('a drag that moves no unmoved tick draws its slide as it is', async ({ page }) => {
+    // The tail's move leaves the tick between the head and the middle note; the head is stored attached.
+    await showSlide(page, true)
     for (const tool of ['select', 'note'] as const) {
         await useTool(page, tool)
         const start = await point(page, 3, 6)
@@ -176,4 +216,22 @@ test('a drag that leaves a slide’s ends draws it as it is, even with an end st
         await page.keyboard.press('Escape')
         await page.mouse.up()
     }
+    // A whole slide moves its ticks with it.
+    await useTool(page, 'select')
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
+        })
+    })
+    const start = await point(page, -3, 2)
+    const end = await point(page, -1, 2.5)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(end.x, end.y, { steps: 6 })
+    expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(4)
+    expect(await previewed(page)).toBeUndefined()
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
 })

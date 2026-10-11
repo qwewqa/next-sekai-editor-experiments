@@ -27,7 +27,7 @@ export const isScenePreview = computed(() => sceneState.value !== state.value)
 
 /**
  * Slides an edit's preview changes beyond its ghosts, drawn from the preview where the scene isn't:
- * an unmoved tick that becomes the slide's end.
+ * those whose unmoved ticks move along their connector or become an end.
  */
 export const previewSlides = computed(() => {
     const ghosts = view.entities.creating
@@ -35,7 +35,7 @@ export const previewSlides = computed(() => {
     if (isScenePreview.value || !ghosts.length || !edit) return
     const source = state.value
     if (!hasSameChartData(source, edit.source)) return
-    // Only slides with a tick can gain one as an end; the rest skip building the preview.
+    // Only slides with a tick can move one; the rest skip building the preview.
     const slideIds = new Set<SlideId>()
     for (const ghost of ghosts) {
         if (ghost.type !== 'note' || slideIds.has(ghost.slideId)) continue
@@ -48,13 +48,16 @@ export const previewSlides = computed(() => {
     if (!isSameTempo(preview.bpms, source.bpms)) return
     const moved = new Set(preview.selectedEntities)
     for (const id of slideIds) {
-        const notes = preview.store.slides.note.get(id) ?? []
         const before = source.store.slides.note.get(id) ?? []
-        // An end that was a tick: ends keep their entity unless moved or replaced.
-        const isNewTickEnd = (note: NoteEntity | undefined, end: NoteEntity | undefined) =>
-            !!note?.isAttached && note !== end && !moved.has(note)
-        if (!isNewTickEnd(notes[0], before[0]) && !isNewTickEnd(notes.at(-1), before.at(-1)))
-            slideIds.delete(id)
+        const kept = new Set(before)
+        const interior = new Set(before.slice(1, -1).filter((note) => note.isAttached))
+        const notes = preview.store.slides.note.get(id) ?? []
+        // A tick keeps its entity while its place holds; one that changes is replaced.
+        const moves = (note: NoteEntity, index: number) =>
+            note.isAttached &&
+            !moved.has(note) &&
+            (interior.has(note) ? index === 0 || index === notes.length - 1 : !kept.has(note))
+        if (!notes.some(moves)) slideIds.delete(id)
     }
     if (!slideIds.size) return
     const entities = [...slideIds].flatMap((id): Entity[] => [
