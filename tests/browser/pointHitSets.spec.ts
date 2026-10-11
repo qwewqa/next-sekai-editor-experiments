@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 // Objects acting together, and a selection in reach, count as before; one pick takes the nearest.
 
@@ -10,14 +10,6 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
 })
-
-const useTool = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(name as never)
-    }, name)
 
 type Build = 'touching' | 'overlapping' | 'narrowWide' | 'triple'
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 // The hover highlights exactly what a tap there would act on.
 
@@ -10,14 +10,6 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
 })
-
-const useTool = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(name as never)
-    }, name)
 
 // Three overlapping notes, one beside them in reach, and markers among them; 40 px a lane.
 const showStack = (page: Page) =>

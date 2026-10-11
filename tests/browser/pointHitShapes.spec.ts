@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 // A press takes the object whose primary hit shape holds it, by the hit model's precedence:
 // event and time-scale markers have shapes too. Flick arrows are decoration.
@@ -11,14 +11,6 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
 })
-
-const useTool = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(name as never)
-    }, name)
 
 type Build =
     | 'arrow'

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { notes, point, setup, type Brief, type Layout } from './crossStageSlide'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 // An attached tick moved past its slide's head or tail moves as the note it becomes, from where
 // gameplay drew it (as detaching keeps it), and its preview shows exactly where it drops.
@@ -19,16 +19,6 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => {
     expect(errors.get(page)).toEqual([])
 })
-
-type Tool = 'select' | 'note' | 'slide'
-
-const useTool = (page: Page, tool: Tool) =>
-    page.evaluate(async (tool) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(tool)
-    }, tool)
 
 const stored = ({ beat, left, size, elevation, attached }: Brief) => ({
     beat,

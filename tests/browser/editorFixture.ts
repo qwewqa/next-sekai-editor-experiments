@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
@@ -377,6 +377,14 @@ export const installEditorFixture = async () => {
     view.snapping = 'absolute'
     await nextTick()
 }
+
+export const useTool = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const { switchToolTo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools')
+        >('/src/editor/tools/index.ts')
+        switchToolTo(name as never)
+    }, name)
 
 /** Adds a property to the brush through its Add Property menu. */
 export const addBrushProperty = async (scope: Locator, key: string) => {

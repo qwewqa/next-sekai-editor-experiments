@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { notes, point, setup } from './crossStageSlide'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 // In Basic, a drag that moves a slide's unmoved ticks, along their connector or past an end,
 // draws the slide as it drops.
@@ -19,14 +19,6 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => {
     expect(errors.get(page)).toEqual([])
 })
-
-const useTool = (page: Page, tool: string) =>
-    page.evaluate(async (tool) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(tool as never)
-    }, tool)
 
 const brief = ({
     beat,

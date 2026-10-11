@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -7,14 +7,6 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
 })
-
-const useTool = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
-        const { switchToolTo } = await window.editorTest.appImport<
-            typeof import('../../src/editor/tools')
-        >('/src/editor/tools/index.ts')
-        switchToolTo(name as never)
-    }, name)
 
 const ghost = (page: Page) =>
     page.evaluate(() =>
