@@ -84,7 +84,7 @@ export const toDraggedNoteObject = (
                 pressLane + getComposedNoteOffset(entity) - getComposedNoteOffset(from),
                 lane,
                 from.left,
-                getComposedGridOffset(entity.stageId, beat),
+                getComposedGridOffset(from.stageId, beat),
                 // A moved stage lattice snaps at once.
                 isComposedLatticeMoved(from.stageId, entity.beat, beat)
                     ? Number.POSITIVE_INFINITY

@@ -24,7 +24,7 @@ import {
     yToTime,
     yToValidBeat,
 } from '../view'
-import { hitAllEntitiesAtPoint, hitAllEntitiesInSelection, toSelection } from './utils'
+import { hitAllEntitiesInSelection, pointHitsAt, selectedHit, toSelection } from './utils'
 
 let active:
     | {
@@ -35,22 +35,26 @@ let active:
     | undefined
 
 const tapTarget = (x: number, y: number) => {
-    const entities = hitAllEntitiesAtPoint(x, y)
-    if (entities.some((entity) => selectedEntities.value.includes(entity))) return 'selection'
+    const hits = pointHitsAt(x, y)
+    if (selectedHit(hits)) return 'selection'
 
-    return entities.find(canRemove)
+    return hits.hits.find(canRemove)
 }
 
 export const eraser: Tool = {
     title: () => i18n.value.tools.eraser.title,
 
+    // The hover shows what a tap there would remove.
     hover(x, y) {
-        const entities = hitAllEntitiesAtPoint(x, y, 0.5)
+        const target = tapTarget(x, y)
 
         view.entities = {
-            hovered: entities.some((entity) => selectedEntities.value.includes(entity))
-                ? []
-                : entities.filter(canRemove).slice(0, 1),
+            hovered:
+                target === 'selection'
+                    ? selectedEntities.value.filter(canRemove)
+                    : target
+                      ? [target]
+                      : [],
             creating: [],
         }
     },

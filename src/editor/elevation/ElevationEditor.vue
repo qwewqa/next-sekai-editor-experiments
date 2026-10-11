@@ -22,13 +22,14 @@ import {
 } from '../offscreenIndicators'
 import { groupOffscreenNotes, offscreenBadgeHitWidth } from '../offscreenNotes'
 import { modals } from '../../modals'
+import { isChromium } from '../../modals/form/numberStep'
 import {
     confirmOnEnter,
     resyncInput,
     revertOnEscape,
     trackTypedText,
 } from '../../modals/form/resync'
-import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
+import { clearPreviewEdit, previewEdit, setPreviewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
@@ -44,13 +45,16 @@ import { alignComputed, clamp, shiftComputed } from '../../utils/math'
 import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
-import { createNoteRenderer, getNoteVisualType, isOnNoteArtwork } from '../canvas/notes'
+import { createNoteRenderer } from '../canvas/notes'
+import { noteHitShape, shapeDistance } from '../hitModel'
+import { toCommittedEntity, toSceneEntity } from '../sceneState'
+import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
 import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
-import { cancelMouseControls } from '../controls/mouse'
+import { cancelMouseControls, hoverAgain } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { notifyPaneMoved } from '../controls/gestures/recognizers/drag'
@@ -76,7 +80,7 @@ import { hasToolModal, showToolModal } from '../toolModals'
 import type { CommandName } from '../commands'
 import { deselect } from '../commands/deselect'
 import { fromDisplayedBeat, toDisplayedBeat } from '../beatDisplay'
-import { isNoteResizeStart, modifyEntities, offset, resize } from '../tools/utils'
+import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '../tools/utils'
 import { scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { dockKeysAttribute, isInWorkspaceDock } from '../workspace'
@@ -314,7 +318,11 @@ let marquee:
 const yToElevation = (y: number) =>
     elevationViewport.center +
     (elevationBounds.h / 2 - y + elevationBounds.y) / elevationViewport.scale
-const hitAll = (x: number, y: number, minimum = 1.5) => {
+/**
+ * Rows at a point, as the chart's hits: `rows` ranked, `set` those that act together, without
+ * rows reached only through their side slack when a row's own span holds the point, but with the first.
+ */
+const hitRows = (x: number, y: number, minimum = 1.5) => {
     const rows = elevationLayout.value.rows
     const matches = rows.filter(
         (row) =>
@@ -323,38 +331,62 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
             Math.abs(y - elevationBounds.y - row.y) <=
                 Math.max(14, elevationLayout.value.laneScale * 0.3 + 10),
     )
-    const direct = matches.filter(
-        (row) =>
-            Math.abs(x - elevationBounds.x - row.x) <=
-            Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2,
-    )
-    // The row drawn on top first: rows whose artwork lies under the point, later
-    // rows drawn over earlier ones; then the nearest.
+    // As the hit model orders the chart's: rows whose shape holds the point, later rows
+    // over earlier ones; then the nearest shape, then the later row.
     const scale = elevationLayout.value.laneScale
-    const isUnder = (row: ElevationRow) =>
-        isOnNoteArtwork(
-            row.size,
-            getNoteVisualType(
-                row.size === row.note.size
-                    ? row.note
-                    : { ...row.note, size: row.size, useInfoOf: row.note.useInfoOf ?? row.note },
-                elevationState.value.store.slides.info.get(row.note.slideId),
+    const distances = new Map(
+        matches.map((row) => [
+            row,
+            shapeDistance(
+                noteHitShape(
+                    row.size,
+                    getNoteVisualType(
+                        row.size === row.note.size
+                            ? row.note
+                            : {
+                                  ...row.note,
+                                  size: row.size,
+                                  useInfoOf: row.note.useInfoOf ?? row.note,
+                              },
+                        elevationState.value.store.slides.info.get(row.note.slideId),
+                    ),
+                ),
+                (x - elevationBounds.x - row.x + row.w / 2) / scale,
+                (y - elevationBounds.y - row.y) / scale,
             ),
-            (x - elevationBounds.x - row.x + row.w / 2) / scale,
-            (y - elevationBounds.y - row.y) / scale,
-        )
-    const under = new Set(matches.filter(isUnder))
-    const index = new Map(rows.map((row, i) => [row, i]))
-    return (direct.length ? direct : matches).sort(
-        (a, b) =>
-            +under.has(b) - +under.has(a) ||
-            (under.has(a) ? (index.get(b) ?? 0) - (index.get(a) ?? 0) : 0) ||
-            Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y),
+        ]),
     )
+    const distance = (row: ElevationRow) => distances.get(row) ?? 0
+    const index = new Map(rows.map((row, i) => [row, i]))
+    const ranked = matches.sort(
+        (a, b) =>
+            +(distance(b) === 0) - +(distance(a) === 0) ||
+            (distance(a) === 0 ? 0 : distance(a) - distance(b)) ||
+            (index.get(b) ?? 0) - (index.get(a) ?? 0),
+    )
+    const isDirect = (row: ElevationRow) =>
+        Math.abs(x - elevationBounds.x - row.x) <=
+        Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2
+    // A pending Properties draft's rows are hit as the committed notes they show.
+    const shown = ranked.flatMap((row) => {
+        const note = previewEdit.value?.draft
+            ? toCommittedEntity(row.note, elevationState.value)
+            : row.note
+        return note
+            ? [{ row: note === row.note ? row : { ...row, note }, isDirect: isDirect(row) }]
+            : []
+    })
+    const filtered = shown.some(({ isDirect }) => isDirect)
+    return {
+        rows: shown.map(({ row }) => row),
+        set: shown.flatMap(({ row, isDirect }, i) => (!i || !filtered || isDirect ? [row] : [])),
+    }
 }
+// A selected row in reach, else the first.
 const hit = (x: number, y: number, minimum = 1.5) => {
-    const rows = hitAll(x, y, minimum)
-    return rows.find((row) => elevationState.value.selectedEntities.includes(row.note)) ?? rows[0]
+    const { rows, set } = hitRows(x, y, minimum)
+    const selected = (previewEdit.value?.draft ? state : elevationState).value.selectedEntities
+    return set.find((row) => selected.includes(row.note)) ?? rows[0]
 }
 const cancel = () => {
     if (drag) clearPreviewEdit()
@@ -368,7 +400,7 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     if (!getNoteFieldsIn(active.source.store, note).left)
         return { elevation: note.elevation + active.deltaElevation }
     const edge = note.left + (active.fixedLeft ? note.size : 0)
-    // As the chart's select resize; in Composed every edge takes the grabbed edge's snap.
+    // As the chart's select resize, every edge moves by the grabbed edge's snapped shift.
     const [left, size] = active.resizing
         ? resize(
               shiftComputed(note.left, active.fixedLeft ? 0 : note.size),
@@ -377,7 +409,12 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
               Number.POSITIVE_INFINITY,
               edge,
               [note.left, note.size],
-              active.composed ? active.origin + edge - active.movingEdge : 0,
+              undefined,
+              resizeShift(
+                  active.movingEdge,
+                  active.movingEdge + active.shift,
+                  active.composed ? active.origin : 0,
+              ),
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -415,12 +452,36 @@ const edit = (active: NonNullable<typeof drag>) => {
         ),
     )
 }
-const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, notesOnly = false) => {
-    const selected = notesOnly
+const selectedFor = (notesOnly: boolean) =>
+    notesOnly
         ? state.value.selectedEntities.filter((entity) => entity.type === 'note')
         : state.value.selectedEntities
-    if (modifiers.ctrl && !rows.length) return
-    const current = selected[0]
+// The notes a cycle of taps steps through, as the chart's: its order kept for rows still hit,
+// newly hit ones after them.
+let cycled: NoteEntity[] = []
+const cycleOrder = (
+    rows: ElevationRow[],
+    current: State['selectedEntities'][number] | undefined,
+) => {
+    // A pending draft's click replaces the selection it edits, which ends the cycle.
+    const kept =
+        rows.some((row) => row.note === current) &&
+        cycled.some((note) => note === current) &&
+        !!current &&
+        toSceneEntity(current, elevationState.value) === current
+            ? cycled.flatMap((note) => rows.find((row) => row.note === note) ?? [])
+            : []
+    return [...kept, ...rows.filter((row) => !kept.includes(row))]
+}
+/** What a tap selects among rows: with Ctrl all of them, else the next after the selection's first. */
+const selectTargets = (
+    hits: ElevationRow[],
+    modifiers: Modifiers,
+    cycle = false,
+    notesOnly = false,
+) => {
+    const current = selectedFor(notesOnly)[0]
+    const rows = cycle ? cycleOrder(hits, current) : hits
     const index =
         cycle && current && rows.length
             ? (rows.findIndex((row) => row.note === current) + 1) % rows.length
@@ -430,7 +491,13 @@ const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, not
         : rows[index]
           ? [rows[index].note]
           : []
-    const targets = modifyEntities(notes, modifiers)
+    return modifyEntities(notes, modifiers)
+}
+const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, notesOnly = false) => {
+    const selected = selectedFor(notesOnly)
+    if (modifiers.ctrl && !rows.length) return
+    const targets = selectTargets(rows, modifiers, cycle, notesOnly)
+    if (cycle) cycled = cycleOrder(rows, selected[0]).map((row) => row.note)
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -475,13 +542,16 @@ const visibleTargets = (entities: State['selectedEntities']) => {
 const isSecondaryTool = () => ['eraser', 'brush', 'generateSlideNotes'].includes(toolName.value)
 const secondaryTargets = (entities: State['selectedEntities'], modifiers: Modifiers) =>
     visibleTargets(toolName.value === 'brush' ? modifyEntities(entities, modifiers) : entities)
-const applyToVisibleSelection = (rows: ElevationRow[], modifiers: Modifiers) => {
+const applyToVisibleSelection = (
+    { rows, set }: ReturnType<typeof hitRows>,
+    modifiers: Modifiers,
+) => {
     const selected = state.value.selectedEntities
-    const hits = rows.map((row) => row.note)
+    const hits = set.map((row) => row.note)
     const targets = hits.some((note) => selected.includes(note))
         ? selected
         : toolName.value === 'eraser'
-          ? hits.slice(0, 1)
+          ? rows.slice(0, 1).map((row) => row.note)
           : hits
     return secondaryTargets(targets, modifiers)
 }
@@ -527,8 +597,9 @@ const controls: Pick<
             view.entities = { hovered: modifyEntities(indicator.targets, modifiers), creating: [] }
             return
         }
-        const rows = hitAll(x, y, 0.5)
-        const row = hit(x, y, 0.5)
+        // The hover shows what a tap there would act on, as far as it reaches.
+        const hits = hitRows(x, y)
+        const row = hit(x, y)
         hovered.value = row?.note
         const position = positionAtPoint(x, y)
         if (!hovered.value && (toolName.value === 'note' || toolName.value === 'slide'))
@@ -541,24 +612,25 @@ const controls: Pick<
                 ),
             ]
         else if (toolName.value === 'paste')
-            creating.value = previewElevationPasteRows(
-                position.lane,
-                position.elevation,
-                position.beat,
-                modifiers,
-            )
+            // As the chart's: a Composed paste is placed on the committed lattice, so it waits for a draft's commit.
+            creating.value =
+                previewEdit.value?.draft && getComposedLayout(elevationState.value)
+                    ? []
+                    : previewElevationPasteRows(
+                          position.lane,
+                          position.elevation,
+                          position.beat,
+                          modifiers,
+                      )
         else creating.value = []
         view.entities = {
             hovered: isSecondaryTool()
-                ? applyToVisibleSelection(rows, modifiers)
-                : modifyEntities(
-                      toolName.value === 'note' || toolName.value === 'slide'
-                          ? row
-                              ? [row.note]
-                              : []
-                          : rows.map((row) => row.note),
-                      modifiers,
-                  ),
+                ? applyToVisibleSelection(hits, modifiers)
+                : toolName.value === 'note' || toolName.value === 'slide'
+                  ? modifyEntities(row ? [row.note] : [], modifiers)
+                  : toolName.value === 'paste'
+                    ? []
+                    : selectTargets(hits.set, modifiers, !modifiers.ctrl),
             creating: creating.value.map((row) => row.note),
         }
     },
@@ -569,21 +641,21 @@ const controls: Pick<
             return
         }
         const row = hit(x, y)
-        const rows = hitAll(x, y)
+        const hits = hitRows(x, y)
         if (toolName.value === 'paste') {
             void pasteAtPoint(x, y, modifiers)
             return
         }
         if (row && toolName.value === 'eraser') {
-            remove(applyToVisibleSelection(rows, modifiers))
+            remove(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (row && toolName.value === 'brush') {
-            applyBrushToEntities(applyToVisibleSelection(rows, modifiers))
+            applyBrushToEntities(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (row && toolName.value === 'generateSlideNotes') {
-            applyGeneratedSlideNotes(applyToVisibleSelection(rows, modifiers))
+            applyGeneratedSlideNotes(applyToVisibleSelection(hits, modifiers))
             return
         }
         if (isSecondaryTool()) {
@@ -622,7 +694,7 @@ const controls: Pick<
             selectAt([row], modifiers, false, true)
             return
         }
-        selectAt(rows, modifiers, !modifiers.ctrl)
+        selectAt(hits.set, modifiers, !modifiers.ctrl)
     },
     cursor(x, y) {
         const target = resolveDrag(x, y)
@@ -914,9 +986,10 @@ const stepBeatField = (event: Event, direction: 1 | -1) => {
     // A step onto the committed beat leaves no re-render to replace the typed text.
     ;(event.currentTarget as HTMLInputElement).value = `${beatField.value}`
 }
-// Chromium steps a focused number field on the wheel, as with the arrows.
+// Chromium steps a focused number field on the wheel, as with the arrows; other browsers don't.
+const stepsOnWheel = isChromium(navigator)
 const wheelBeatField = (event: WheelEvent) => {
-    if (event.deltaY && document.activeElement === event.currentTarget)
+    if (stepsOnWheel && event.deltaY && document.activeElement === event.currentTarget)
         stepBeatField(event, event.deltaY < 0 ? 1 : -1)
 }
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
@@ -950,6 +1023,10 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 // Its scroll and zoom move where a drag in it lands.
 watch([() => elevationViewport.center, () => elevationViewport.scale], notifyPaneMoved)
+// They, and its beat, move what a resting mouse hovers.
+watch([() => elevationViewport.center, () => elevationViewport.scale, elevationBeat], () => {
+    if (editorNavigation.value === navigation) hoverAgain()
+})
 watch([() => elevationBounds.w, () => elevationBounds.h], () => {
     cancelMouseControls()
     cancelTouchControls()
@@ -1034,7 +1111,9 @@ watchEffect(() => {
         (connection) => connection.connector.segmentHead.connectorLayer === 'over',
     )
     const selected = new Set(current.selectedEntities)
-    const hover = new Set(hoveredEntities.value)
+    const hover = new Set(
+        hoveredEntities.value.map((entity) => toSceneEntity(entity, elevationState.value)),
+    )
     const ghosts = creating.value.map((row) => ({
         ...row,
         x: layout.xAt(row.lane),
@@ -1270,7 +1349,8 @@ onMounted(() => {
             elevationViewport.scale = clamp(scale, 1, 1200)
         },
         hitPoint: (x, y, minimum) => {
-            return hitAll(x, y, minimum).map((row) => row.note)
+            const { rows, set } = hitRows(x, y, minimum)
+            return { hits: rows.map((row) => row.note), set: set.map((row) => row.note) }
         },
         selectPoint: (x, y) => {
             const row = hit(x, y)

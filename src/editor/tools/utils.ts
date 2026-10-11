@@ -1,22 +1,22 @@
 import type { StageId } from '../../chart/stages'
 import { state } from '../../history'
+import { selectedEntities } from '../../history/selectedEntities'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
 import type { State } from '../../state'
-import type { Entity, EntityType } from '../../state/entities'
-import type { NoteEntity } from '../../state/entities/slides/note'
-import { beatToTime } from '../../state/integrals/bpms'
+import type { Entity, EntityOfType, EntityType } from '../../state/entities'
 import { editChanges } from '../../state/operations/properties/plan'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
-import { getNoteVisualType, isOnNoteArtwork } from '../canvas/notes'
 import type { ComposedLayout } from '../composed'
 import { getComposedGridOffset, getComposedLayout, getComposedOffset } from '../composedView'
 import type { CanvasCursor } from '../controls/cursor'
 import type { Modifiers } from '../controls/gestures/pointer'
+import { orderHits } from '../hitModel'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
-import { isEntityInScope } from '../scope'
+import { sceneState, toCommittedEntity } from '../sceneState'
+import { isEntityInScope, scopeLookup } from '../scope'
 import { snappedOffset } from '../snapping'
-import { alignLane, ups, view, xToLane, yToTime, type Selection } from '../view'
+import { alignLane, ups, view, viewBox, xToLane, yToTime, type Selection } from '../view'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
 
@@ -99,6 +99,10 @@ export const getLaneAnchor = (entity: Entity) => {
     }
 }
 
+/** A dragged edge's snapped shift; a multi-selection resize moves every edge by the grabbed one's. */
+export const resizeShift = (edge: number, lane: number, origin = 0) =>
+    offset(edge, lane, edge, origin)
+
 export const resize = (
     anchor: number,
     lane: number,
@@ -107,8 +111,8 @@ export const resize = (
     startEdge = anchor,
     original?: readonly [left: number, size: number],
     origin = 0,
+    shift = resizeShift(startEdge, lane, origin),
 ) => {
-    const shift = offset(startEdge, lane, startEdge, origin)
     // An edge dragged back to its start keeps the values exactly.
     if (original && shift === 0) return original
     const edge = startEdge + shift
@@ -118,128 +122,131 @@ export const resize = (
     return [lane >= anchor ? anchor : alignComputed(anchor - size), size] as const
 }
 
-export const hitEntitiesAtPoint = <T extends EntityType>(
+/**
+ * The objects a point hits: `hits` ranked as the hit model says, its first the one a single
+ * pick takes; `set` the ones that act together or count as a selection in reach. The set is
+ * as it was, without notes reached only through their side slack when a note's own span holds
+ * the point, and always with the first hit.
+ */
+export type PointHits<T extends Entity = Entity> = { hits: T[]; set: T[] }
+
+export const pointHitsOfType = <T extends EntityType>(
     type: T,
     x: number,
     y: number,
     minimumNoteWidth = 1.5,
-) => {
-    if (editorNavigation.value)
-        return editorNavigation.value
-            .hitPoint(x, y, minimumNoteWidth)
-            .filter((entity): entity is Extract<Entity, { type: T }> => entity.type === type)
-    return filterPointHits(
-        hitEntities(
-            type,
-            xToLane(x - 10),
-            xToLane(x + 10),
-            yToTime(y + 10),
-            yToTime(y - 10),
+): PointHits<EntityOfType<T>> => {
+    const isType = (entity: Entity): entity is EntityOfType<T> => entity.type === type
+    if (editorNavigation.value) {
+        const { hits, set } = editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
+        return { hits: hits.filter(isType), set: set.filter(isType) }
+    }
+    return remember(type, x, y, minimumNoteWidth, () =>
+        findPointHits(
+            hitEntities(type, ...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+            x,
+            y,
             minimumNoteWidth,
         ),
-        x,
-        y,
-        minimumNoteWidth,
     )
 }
 
-// Point priority by type, independent of storage and drawing order.
-const pointHitOrder: EntityType[] = [
-    'note',
-    'stageTransformEventJoint',
-    'stageStyleEventJoint',
-    'stagePivotEventJoint',
-    'stageMaskEventJoint',
-    'cameraEventJoint',
-    'timeScale',
-    'bpm',
-]
+export const pointHitsAt = (x: number, y: number, minimumNoteWidth = 1.5): PointHits =>
+    editorNavigation.value
+        ? editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
+        : remember(undefined, x, y, minimumNoteWidth, () =>
+              findPointHits(
+                  hitAllEntities(...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+                  x,
+                  y,
+                  minimumNoteWidth,
+              ),
+          )
 
-export const comparePointHits = (a: Entity, b: Entity) =>
-    pointHitOrder.indexOf(a.type) - pointHitOrder.indexOf(b.type)
-
-export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1.5) => {
-    if (editorNavigation.value) return editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
-    return filterPointHits(
-        hitAllEntities(
-            xToLane(x - 10),
-            xToLane(x + 10),
-            yToTime(y + 10),
-            yToTime(y - 10),
-            minimumNoteWidth,
-        ),
+// The hover and the cursor ask for the same point each frame; they share one answer.
+let remembered: { key: unknown[]; hits: PointHits<never> } | undefined
+const remember = <T extends Entity>(
+    type: EntityType | undefined,
+    x: number,
+    y: number,
+    minimumNoteWidth: number,
+    find: () => PointHits<T>,
+): PointHits<T> => {
+    const key = [
+        type,
         x,
         y,
         minimumNoteWidth,
-    )
+        state.value,
+        sceneState.value,
+        viewBox.value,
+        view.x,
+        view.y,
+        view.w,
+        view.h,
+        view.layout,
+        // Read through, as a change in place keeps its identity.
+        Object.values(view.visibilities).join(),
+        scopeLookup.value,
+    ]
+    if (remembered?.key.every((value, i) => value === key[i])) return remembered.hits
+    const hits = find()
+    remembered = { key, hits: hits as PointHits<never> }
+    return hits
 }
 
-/**
- * Point hits, the one drawn on top first: notes whose artwork lies under the
- * point, then by type, then in reverse drawing order, where an earlier beat and
- * then a later entity in the grid are drawn over the rest. Selection, which also
- * draws on top, is left to the tools, so cycling through the hits stays stable.
- */
+/** A selected object in reach, as the set counts them. */
+export const selectedHit = <T extends Entity>({ set }: PointHits<T>) =>
+    set.find((entity) => selectedEntities.value.includes(entity))
+
+/** What a press takes: a selected object in reach, else the first hit. */
+export const pressTarget = <T extends Entity>(hits: PointHits<T>) =>
+    selectedHit(hits) ?? hits.hits[0]
+
+// 10 pixels around a point, in lanes and times.
+const pointWindow = (x: number, y: number) =>
+    [xToLane(x - 10), xToLane(x + 10), yToTime(y + 10), yToTime(y - 10)] as const
+
+/** Orders point hits as the hit model says. */
 export const orderPointHits = <T extends Entity>(
     hits: T[],
     x: number,
     y: number,
     source: State = state.value,
     composed: ComposedLayout | undefined = getComposedLayout(source),
-) => {
-    const lane = xToLane(x)
-    const units = Math.max(0, yToTime(y)) * ups.value
-    const isUnder = (note: NoteEntity) => {
-        const position = composed?.notePosition(note) ?? note
-        const type = getNoteVisualType(
-            position.size === note.size
-                ? note
-                : { ...note, size: position.size, useInfoOf: note.useInfoOf ?? note },
-            source.store.slides.info.get(note.slideId),
-        )
-        return isOnNoteArtwork(
-            position.size,
-            type,
-            lane - position.left,
-            units - beatToTime(source.bpms, note.beat) * ups.value,
-        )
-    }
-    const under = new Set(hits.filter((entity) => entity.type === 'note' && isUnder(entity)))
-    const index = new Map(hits.map((entity, i) => [entity, i]))
-    return [...hits].sort(
-        (a, b) =>
-            +under.has(b) - +under.has(a) ||
-            comparePointHits(a, b) ||
-            a.beat - b.beat ||
-            (index.get(b) ?? 0) - (index.get(a) ?? 0),
-    )
-}
+) => orderHits(hits, xToLane(x), yToTime(y), ups.value, source, composed)
 
-const filterPointHits = <T extends Entity>(
+// A previewed scene is hit where it is shown, as the committed objects it shows.
+const findPointHits = <T extends Entity>(
     entities: T[],
     x: number,
     y: number,
     minimumNoteWidth: number,
-) => {
-    const hits = entities.filter(isVisible)
+): PointHits<T> => {
+    const source = sceneState.value
+    const composed = getComposedLayout(source)
+    const visible = entities.filter(isVisible)
     const lane = xToLane(x)
-    const composed = getComposedLayout()
     const isDirectNote = (entity: T) => {
         const hitbox = composed ? composed.hitbox(entity) : entity.hitbox
         return (
             entity.type === 'note' &&
-            hitbox &&
+            !!hitbox &&
             lane >= hitbox.lane - Math.max(hitbox.w, minimumNoteWidth / 2) &&
             lane <= hitbox.lane + Math.max(hitbox.w, minimumNoteWidth / 2)
         )
     }
-    return orderPointHits(
-        hits.some(isDirectNote)
-            ? hits.filter((entity) => entity.type !== 'note' || isDirectNote(entity))
-            : hits,
-        x,
-        y,
-    )
+    const filtered = visible.some(isDirectNote)
+    const shown = orderPointHits(visible, x, y, source, composed).flatMap((entity) => {
+        const committed = toCommittedEntity(entity)
+        return committed
+            ? [{ committed, inSet: !filtered || entity.type !== 'note' || isDirectNote(entity) }]
+            : []
+    })
+    return {
+        hits: shown.map(({ committed }) => committed),
+        set: shown.flatMap(({ committed, inSet }, i) => (!i || inSet ? [committed] : [])),
+    }
 }
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>

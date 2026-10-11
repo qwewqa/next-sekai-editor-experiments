@@ -3,11 +3,13 @@ import { state } from '../history'
 import { cullAllEntities, hitAllEntities, hitEntities } from '../history/store'
 import { isToolModalOpen } from '../modals'
 import { getPreviewState, previewEdit } from '../preview/edit'
+import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { beatToKey } from '../state/store/grid'
 import { gridOf, liftedDrawnBpms } from './beatGrid'
 import { view } from './view'
 
@@ -17,8 +19,11 @@ const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
         a.every((bpm, i) => bpm.x === b[i]?.x && bpm.y === b[i].y && bpm.s === b[i].s))
 
 export const sceneState = computed(() => {
-    if (isToolModalOpen.value) return getPreviewState(state.value)
-    if (view.layout !== 'composed' || !state.value.isDynamicStages) return state.value
+    // A dialog's own preview, such as a scaling's, may retime; a Properties draft in one may not.
+    if (isToolModalOpen.value && !previewEdit.value?.draft) return getPreviewState(state.value)
+    // Composed shows every edit's preview; Basic a pending Properties draft's.
+    if ((view.layout !== 'composed' || !state.value.isDynamicStages) && !previewEdit.value?.draft)
+        return state.value
     // Pointers map through the committed tempo, so a retimed preview would slide away from them.
     const preview = getPreviewState(state.value)
     return isSameTempo(preview.bpms, state.value.bpms) ? preview : state.value
@@ -99,3 +104,70 @@ export const hitAllSceneEntities = (
     timeMax: number,
     minimumNoteWidth = 0,
 ) => hitAllEntities(laneMin, laneMax, timeMin, timeMax, minimumNoteWidth, sceneState.value)
+
+type Counterparts = { toSource: Map<Entity, Entity>; toScene: Map<Entity, Entity> }
+const counterparts = new WeakMap<State, WeakMap<State, Counterparts>>()
+
+/**
+ * A previewed state's replaced entities and the committed ones they show: an edit's objects
+ * keep their place in the selection, and a slide's other notes, such as attached ticks, their
+ * order. What can't be paired is left out.
+ */
+const counterpartsOf = (source: State, preview: State) => {
+    let bySource = counterparts.get(preview)
+    const cached = bySource?.get(source)
+    if (cached) return cached
+    const toSource = new Map<Entity, Entity>()
+    const toScene = new Map<Entity, Entity>()
+    const pair = (shown: Entity, committed: Entity) => {
+        if (shown === committed || shown.type !== committed.type || toSource.has(shown)) return
+        toSource.set(shown, committed)
+        toScene.set(committed, shown)
+    }
+    if (preview.selectedEntities.length === source.selectedEntities.length)
+        for (const [i, entity] of preview.selectedEntities.entries())
+            pair(entity, source.selectedEntities[i] ?? entity)
+    const slideIds = new Set(
+        preview.selectedEntities.flatMap((entity) =>
+            entity.type === 'note' ? [entity.slideId] : [],
+        ),
+    )
+    for (const id of slideIds) {
+        const before = source.store.slides.note.get(id) ?? []
+        const after = preview.store.slides.note.get(id) ?? []
+        const kept = new Set(before)
+        const shown = new Set(after)
+        const added = after.filter((note) => !kept.has(note) && !toSource.has(note))
+        const removed = before.filter((note) => !shown.has(note) && !toScene.has(note))
+        if (added.length === removed.length)
+            for (const [i, note] of added.entries()) pair(note, removed[i] ?? note)
+    }
+    const result = { toSource, toScene }
+    if (!bySource) counterparts.set(preview, (bySource = new WeakMap()))
+    bySource.set(source, result)
+    return result
+}
+
+export const sceneCounterparts = computed(() =>
+    sceneState.value === state.value ? undefined : counterpartsOf(state.value, sceneState.value),
+)
+
+/** The committed entity a previewed state's entity shows, if any; the scene's by default. */
+export const toCommittedEntity = <T extends Entity>(entity: T, preview = sceneState.value) => {
+    const source = state.value
+    if (preview === source) return entity
+    const committed = counterpartsOf(source, preview).toSource.get(entity)
+    if (committed) return committed as T
+    const grid = source.store.grid[entity.type] as Map<number, Set<Entity>>
+    return grid.get(beatToKey(entity.beat))?.has(entity) ? entity : undefined
+}
+
+/** The entity a previewed state shows for a committed one; the scene's by default. */
+export const toSceneEntity = <T extends Entity>(entity: T, preview = sceneState.value) =>
+    preview === state.value
+        ? entity
+        : ((counterpartsOf(state.value, preview).toScene.get(entity) as T | undefined) ?? entity)
+
+/** An entity as a pending Properties draft shows it, as the click that commits the draft will read it. */
+export const withDraft = <T extends Entity>(entity: T) =>
+    previewEdit.value?.draft ? toSceneEntity(entity) : entity

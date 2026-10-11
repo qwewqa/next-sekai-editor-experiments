@@ -18,6 +18,7 @@ import { interpolate } from '../../../../utils/interpolate'
 import { shiftComputed } from '../../../../utils/math'
 import { constrainLaneObject } from '../../../laneLimits'
 import { notify } from '../../../notification'
+import { toSceneEntity, withDraft } from '../../../sceneState'
 import { isSidebarVisible, revealPropertiesSection } from '../../../sidebars'
 import { showToolModal } from '../../../toolModals'
 import {
@@ -34,10 +35,11 @@ import SelectionPropertiesModal from '../../../workspace/properties/SelectionPro
 import { constrainMoved, constrainResized } from '../../toolMove'
 import {
     commitDrop,
-    hitEntitiesAtPoint,
     isRangeResizeStart,
     moveLane,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../../utils'
 import CameraEventSidebar from './CameraEventSidebar.vue'
@@ -442,7 +444,8 @@ const getCameraEventJointFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'cameraEventJoint') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getPropertiesFromSelection = () => {
@@ -485,19 +488,17 @@ const resolveDrag = (x: number, y: number) => {
     if (!entity) return { type: 'add', beat, lane } as const
 
     const pointerLane = xToLane(x)
+    // As drawn, a pending draft's included; the press commits it first.
+    const shown = toSceneEntity(entity)
     return {
-        type: isRangeResizeStart(entity.cameraLeft, entity.cameraSize, pointerLane)
-            ? 'edit'
-            : 'move',
+        type: isRangeResizeStart(shown.cameraLeft, shown.cameraSize, pointerLane) ? 'edit' : 'move',
         entity,
         lane: pointerLane,
     } as const
 }
 
 const tryFind = (x: number, y: number): [CameraEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('cameraEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('cameraEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

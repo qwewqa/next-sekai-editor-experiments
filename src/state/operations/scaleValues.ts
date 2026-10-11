@@ -225,17 +225,23 @@ const validWidthValues = (values: Map<EditableEntity, number>, factor: number) =
     return true
 }
 
+/** A beat moved by an offset; the editor's cleans float noise onto its grid, as moves do. */
+export type MoveBeat = (beat: number, offset: number) => number
+
+export const addBeatOffset: MoveBeat = (beat, offset) => beat + offset
+
 export const getTranslatedSelectionValues = (
     selected: Entity[],
     axis: ScaleAxis,
     delta: number,
     source?: State,
+    moveBeat = addBeatOffset,
 ): Map<EditableEntity, number> | undefined => {
     if (!Number.isFinite(delta) || delta === 0) return
     const transformed = transformValues(
         getScaleEntities(selected, axis, source),
         axis,
-        (value) => value + delta,
+        axis === 'beat' ? (value) => moveBeat(value, delta) : (value) => value + delta,
         source,
     )
     if (!transformed) return

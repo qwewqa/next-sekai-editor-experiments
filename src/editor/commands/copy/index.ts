@@ -21,7 +21,7 @@ import { interpolate } from '../../../utils/interpolate'
 import { committedGrid } from '../../beatGrid'
 import { createComposedLayout } from '../../composed'
 import { notify } from '../../notification'
-import { hitAllEntitiesAtPoint } from '../../tools/utils'
+import { pointHitsAt } from '../../tools/utils'
 import { view, yToValidBeat } from '../../view'
 import CopyIcon from './CopyIcon.vue'
 
@@ -92,7 +92,7 @@ export const clipboardSource = () => ({
 
 const getAnchor = (entities: Entity[], x: number, y: number) => {
     // Hits stay in their drawn-on-top order, as hover and press take them.
-    const hitEntities = hitAllEntitiesAtPoint(x, y).filter((entity) => entities.includes(entity))
+    const hitEntities = pointHitsAt(x, y).hits.filter((entity) => entities.includes(entity))
     const sortedEntities = [...entities].sort((a, b) => a.beat - b.beat)
 
     const note =

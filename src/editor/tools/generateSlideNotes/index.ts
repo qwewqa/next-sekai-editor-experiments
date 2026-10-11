@@ -27,7 +27,7 @@ import {
     yToValidBeat,
 } from '../../view'
 import { defaultSlideProperties } from '../slide'
-import { hitEntitiesAtPoint, hitEntitiesInSelection, toSelection } from '../utils'
+import { hitEntitiesInSelection, pointHitsOfType, selectedHit, toSelection } from '../utils'
 
 let active:
     | {
@@ -38,20 +38,22 @@ let active:
     | undefined
 
 const tapTarget = (x: number, y: number) => {
-    const entities = hitEntitiesAtPoint('note', x, y)
-    return entities.some((entity) => selectedEntities.value.includes(entity))
-        ? 'selection'
-        : entities
+    const hits = pointHitsOfType('note', x, y)
+    return selectedHit(hits) ? 'selection' : hits.set
 }
 
 export const generateSlideNotes: Tool = {
     title: () => i18n.value.tools.generateSlideNotes.title,
 
+    // The hover shows what a tap there would generate on.
     hover(x, y) {
-        const entities = hitEntitiesAtPoint('note', x, y, 0.5)
+        const entities = tapTarget(x, y)
 
         view.entities = {
-            hovered: entities,
+            hovered:
+                entities === 'selection'
+                    ? selectedEntities.value.filter((entity) => entity.type === 'note')
+                    : entities,
             creating: [],
         }
     },

@@ -56,8 +56,8 @@ const ghost = (page: Page) =>
     page.evaluate(async () => {
         const { appImport, view, history } = window.editorTest
         const { getNoteVisualType } = await appImport<
-            typeof import('../../src/editor/canvas/notes')
-        >('/src/editor/canvas/notes.ts')
+            typeof import('../../src/state/entities/slides/visualType')
+        >('/src/state/entities/slides/visualType.ts')
         const { pasteGhostInfos } = await appImport<typeof import('../../src/editor/tools/paste')>(
             '/src/editor/tools/paste/index.ts',
         )

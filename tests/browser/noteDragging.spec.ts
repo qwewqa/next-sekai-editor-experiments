@@ -202,8 +202,9 @@ for (const [tool, shortcut] of [
                     )
                     await page.mouse.move(outside.x, outside.y)
                     await settle(page)
+                    // The hover reaches as far as a click, which takes the note there.
                     expect(await page.evaluate(() => window.editorTest.snapshot().hovered)).toEqual(
-                        [],
+                        original(size),
                     )
                     const center = await page.evaluate(
                         (lane) => window.editorTest.point(lane, 5),

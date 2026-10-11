@@ -3,6 +3,7 @@ import { clipboardEntry } from '../../clipboard'
 import { ease } from '../../ease'
 import { pushState, state } from '../../history'
 import { i18n } from '../../i18n'
+import { previewEdit } from '../../preview/edit'
 import { createSlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -90,8 +91,10 @@ export const previewElevationNoteRow = (
         order: 0,
     }
     if (!note.isAttached || !state.value.store.slides.note.has(note.slideId)) return row
-    // As the chart's Slide ghost: placed by a throwaway add.
-    const transaction = createTransaction(state.value)
+    // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
+    const transaction = createTransaction(
+        previewEdit.value?.draft ? elevationState.value : state.value,
+    )
     const result = transaction.commit(addNote(transaction, note.slideId, note))
     const [landed] = result.selectedEntities
     if (landed?.type !== 'note') return row

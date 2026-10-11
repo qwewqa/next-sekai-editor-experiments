@@ -353,7 +353,7 @@ export const stepGridBeat = (grid: BeatGrid, beat: number, division: number, dir
         : floorGridBeat(grid, line - offset, division)
 }
 
-export type GridLine = { beat: number; isBeat: boolean }
+type GridLine = { beat: number; isBeat: boolean }
 
 /**
  * The lines from min to max, with those a whole beat from their bar; undefined

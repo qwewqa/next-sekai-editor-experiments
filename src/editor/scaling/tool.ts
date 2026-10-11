@@ -123,7 +123,7 @@ const selectedEntitiesAtPoint = (x: number, y: number, minimumWidth: number) => 
     if (!axis) return []
     const composed = navigation ? undefined : getComposedLayout(sceneState.value)
     const hits = navigation
-        ? navigation.hitPoint(x, y, minimumWidth)
+        ? navigation.hitPoint(x, y, minimumWidth).hits
         : axis === 'width'
           ? hitAllSceneEntities(
                 xToLane(x - 10),
@@ -175,7 +175,7 @@ export const scalingTool: Tool = {
     secondaryTool: false,
     hover(x, y) {
         view.entities = {
-            hovered: matchesAxis() ? selectedEntitiesAtPoint(x, y, 0.5) : [],
+            hovered: matchesAxis() ? selectedEntitiesAtPoint(x, y, 1.5) : [],
             creating: [],
         }
     },

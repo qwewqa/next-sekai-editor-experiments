@@ -165,7 +165,13 @@ for (const [tool, shortcut] of [
         await page.keyboard.press('Escape')
         await page.mouse.up()
         expect(await page.evaluate(() => window.editorTest.snapshot().notes)).toEqual(original)
-        expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual([])
+        // What shows is the resting mouse's own hover, not the cancelled drag's ghost.
+        const creating = () => page.evaluate(() => window.editorTest.snapshot().creating)
+        const shown = await creating()
+        const end = await point(page, 6, 6)
+        await page.mouse.move(end.x + 1, end.y)
+        await page.mouse.move(end.x, end.y)
+        expect(await creating()).toEqual(shown)
         expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
     })
 

@@ -30,15 +30,15 @@ test('copy anchors on the hit drawn on top, not the earliest hit', async ({ page
         })
         const notes = [...history.state.value.store.slides.note.values()].flat()
         history.replaceState({ ...history.state.value, selectedEntities: notes })
-        const { hitAllEntitiesAtPoint } = await appImport<
-            typeof import('../../src/editor/tools/utils')
-        >('/src/editor/tools/utils.ts')
+        const { pointHitsAt } = await appImport<typeof import('../../src/editor/tools/utils')>(
+            '/src/editor/tools/utils.ts',
+        )
         const [early, late] = [...notes].sort((a, b) => a.beat - b.beat)
         // A point on the later note's artwork that also reaches the earlier note.
         for (let beat = 1.9; beat <= 2.6; beat += 1 / 256) {
             for (let lane = 0; lane <= 4; lane += 1 / 32) {
                 const { x, y } = point(lane, beat)
-                const hits = hitAllEntitiesAtPoint(x, y)
+                const hits = pointHitsAt(x, y).hits
                 if (hits[0] === late && hits.includes(early!)) return { x, y, beat: late!.beat }
             }
         }

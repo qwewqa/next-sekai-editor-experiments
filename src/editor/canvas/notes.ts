@@ -1,7 +1,7 @@
 import { flickArrowPoints } from '../../flickArrow'
 import { createSlideInfoLookup } from '../../state/entities/slides/lookup'
 import type { NoteEntity } from '../../state/entities/slides/note'
-import { getActiveNoteRole, type SlideNoteInfo } from '../../state/entities/slides/semantics'
+import { getNoteVisualType, type NoteVisualType } from '../../state/entities/slides/visualType'
 import { beatToTime } from '../../state/integrals/bpms'
 import { noteStyleColors } from '../../utils/colors'
 import { blendOverChart } from './nameColors'
@@ -10,56 +10,6 @@ import type { EditorDrawContext } from './types'
 
 // Lanes between a note's stage and group names and its middle.
 const NAME_GAP = 0.1
-
-type NoteInfo = SlideNoteInfo
-
-export type NoteVisualType = 'anchor' | 'damage' | 'trace' | 'tick' | 'single' | 'head' | 'tail'
-
-// Creation and paste ghosts can refer to a note in the existing slide or be a
-// new insertion. Keep their role calculation identical to committed notes.
-export const getNoteVisualType = (
-    entity: NoteEntity,
-    infos?: readonly NoteInfo[],
-    lookup?: ReadonlyMap<NoteEntity, NoteInfo>,
-): NoteVisualType => {
-    if (entity.noteType === 'anchor') return 'anchor'
-    if (entity.noteType === 'damage') return 'damage'
-    if (entity.noteType === 'trace') return 'trace'
-    if (entity.noteType === 'forceTick') return 'tick'
-    if (!infos) return 'single'
-
-    const infoEntity = entity.useInfoOf ?? entity
-    const info = lookup ? lookup.get(infoEntity) : infos.find(({ note }) => note === infoEntity)
-    if (info) {
-        const activeRole = getActiveNoteRole(info)
-        return activeRole === 'middle'
-            ? infoEntity.noteType === 'default'
-                ? 'tick'
-                : 'single'
-            : activeRole
-    }
-    if (!infos.length) return 'single'
-
-    let isActive = false
-    let i = 0
-    for (; i < infos.length; i++) {
-        const info = infos[i]
-        if (!info) break
-        if (entity.beat < info.note.beat) break
-        if (i === 0 || info.note.isConnectorSeparator) {
-            isActive = info.note.connectorType === 'active'
-        }
-    }
-
-    if (isActive) {
-        if (!infos[i]) return 'tail'
-        if (entity.isConnectorSeparator && entity.connectorType !== 'active') return 'tail'
-        return 'tick'
-    }
-    if (!infos[i - 1]) return entity.connectorType === 'active' ? 'head' : 'single'
-    if (!infos[i]) return 'single'
-    return entity.isConnectorSeparator && entity.connectorType === 'active' ? 'head' : 'single'
-}
 
 const colors = {
     cyan: ['#aabfff', '#e6edff', '#8394f6'],
@@ -79,23 +29,6 @@ const diamondPoints: readonly Point[] = [
     [0.3, 0],
     [0, 0.15],
 ]
-// The diamond above, as a test: its tips are 0.3 out and up and 0.15 down.
-const isInDiamond = (x: number, y: number) => Math.abs(x) / 0.3 + (y < 0 ? -y / 0.3 : y / 0.15) <= 1
-
-/**
- * Whether a point, in lanes from a note's left edge and from its middle (down
- * the screen), lies on the artwork drawArtwork paints. Anchors paint none.
- */
-export const isOnNoteArtwork = (size: number, type: NoteVisualType, x: number, y: number) => {
-    if (type === 'anchor') return false
-    if ((type === 'tick' || type === 'trace') && size > 0 && isInDiamond(x - size / 2, y))
-        return true
-    // A sized tick is only its diamond.
-    if (type === 'tick' && size > 0) return false
-    const flat = type === 'tick' || type === 'damage' || type === 'trace'
-    const [left, right] = size > 0 ? [0, size] : [-0.1, 0.1]
-    return x >= left && x <= right && Math.abs(y) <= (flat ? 0.15 : 0.3)
-}
 
 const diamondHighlightPoints: readonly Point[] = [
     [-0.25, 0],

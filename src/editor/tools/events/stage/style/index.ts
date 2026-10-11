@@ -23,6 +23,7 @@ import { createTransaction, type Transaction } from '../../../../../state/transa
 import { interpolate } from '../../../../../utils/interpolate'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
+import { withDraft } from '../../../../sceneState'
 import { revealAuthoringTarget } from '../../../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../../../sidebars'
 import { showToolModal } from '../../../../toolModals'
@@ -38,7 +39,7 @@ import {
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
 import { constrainMoved } from '../../../toolMove'
-import { commitDrop, hitEntitiesAtPoint, moveLane } from '../../../utils'
+import { commitDrop, moveLane, pointHitsOfType, pressTarget } from '../../../utils'
 import StageStyleEventSidebar from './StageStyleEventSidebar.vue'
 
 type DefaultStageStyleEventProperties = {
@@ -338,7 +339,8 @@ const getStageStyleEventJointFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'stageStyleEventJoint') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getPropertiesFromSelection = () => {
@@ -393,9 +395,7 @@ const tryFind = (
     x: number,
     y: number,
 ): [StageStyleEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('stageStyleEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('stageStyleEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

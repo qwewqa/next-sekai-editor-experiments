@@ -122,9 +122,15 @@ for (const layout of ['basic', 'composed'] as const)
             await page.mouse.up()
             await settle(page)
             expect(await bpms(page)).toEqual(initial)
-            expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(
-                0,
-            )
+            // What shows is the resting mouse's own hover: a ghost where a tap would add.
+            const creating = () =>
+                page.evaluate(() =>
+                    window.editorTest.view.entities.creating.map(({ type, beat }) => [type, beat]),
+                )
+            const shown = await creating()
+            await page.mouse.move(to.x + 1, to.y)
+            await page.mouse.move(to.x, to.y)
+            expect(await creating()).toEqual(shown)
             expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
         })
 

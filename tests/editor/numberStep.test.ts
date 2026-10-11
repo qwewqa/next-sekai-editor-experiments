@@ -10,6 +10,8 @@ import {
     stepNumber,
     stepValues,
 } from '../../src/modals/form/numberStep'
+import { calculateBpms, toBpmIntegral } from '../../src/state/integrals/bpms'
+import { GLOBAL_GRID, snapBeat, toBeatGrid } from '../../src/state/integrals/grid'
 import { formatNumber } from '../../src/utils/formatNumber'
 
 test('steps add in decimal, without float noise', () => {
@@ -156,7 +158,7 @@ test('the wheel steps where Chromium would, on any origin', () => {
 test('a beat stepped by whole beats stays on its grid', () => {
     // As the Beat field steps: in displayed space, then back to the chart's beat.
     const stepBeat = (beat: number, delta: number) =>
-        fromSteppedBeat(stepNumber(toDisplayedBeat(beat), delta, { min: 1 }))
+        fromSteppedBeat(stepNumber(toDisplayedBeat(beat), delta, { min: 1 }), [GLOBAL_GRID], 1)
     assert.notEqual(fromDisplayedBeat(addDecimal(toDisplayedBeat(1 / 3), 1)), 4 / 3)
     assert.equal(stepBeat(1 / 3, 1), 4 / 3)
     for (const division of [3, 5, 6, 7, 9, 10, 11, 12, 24, 48, 192, 480, 1920]) {
@@ -171,11 +173,52 @@ test('a beat stepped by whole beats stays on its grid', () => {
     assert.equal(stepBeat(0.123456789, 1), 1.123456789)
     for (let i = 0; i < 20000; i++) {
         const k = (i * 7919) % 300_000_000
+        // Within the noise tolerance of a line, it lands on the line, as moves do.
+        if (k % 1e6 === 1 || k % 1e6 === 999_999) continue
         const beat = Number((k / 1e6).toFixed(6))
         assert.equal(stepBeat(beat, 1), Number((k / 1e6 + 1).toFixed(6)), `${beat}`)
     }
+    assert.equal(stepBeat(140.000001, 1), 141)
     assert.equal(alignFraction(0.123456789), 0.123456789)
     assert.equal(alignFraction(2.5), 2.5)
+})
+
+test('a beat stepped on a bar grid lands on its line exactly, in either display', () => {
+    for (const start of [2.3, 2.5, 1.1, 0.7]) {
+        const bars = toBeatGrid(
+            calculateBpms(
+                [
+                    { beat: 0, bpm: 120 },
+                    { beat: start, bpm: 150 },
+                ].map(toBpmIntegral),
+            ),
+        )
+        for (const division of [1, 2, 3, 4, 6, 8, 12, 16]) {
+            for (let n = 0; n < 40; n++) {
+                const line = snapBeat(bars, start + n / division + 1e-9, division)
+                const next = snapBeat(bars, line + 1 + 1e-9, division)
+                const stepped = stepNumber(toDisplayedBeat(line), 1, { min: 1, step: 'any' })
+                const at = `${start} ${division} ${n}`
+                // Measure and Both snap to the bars; Beat keeps the global grid, and pairs with content on bars.
+                assert.equal(fromSteppedBeat(stepped, [bars, bars], division), next, at)
+                assert.equal(fromSteppedBeat(stepped, [GLOBAL_GRID, bars], division), next, at)
+            }
+        }
+    }
+    // The change at 2.3 and a line a third past it: the fraction alone lands an ulp off.
+    const bars = toBeatGrid(
+        calculateBpms(
+            [
+                { beat: 0, bpm: 120 },
+                { beat: 2.3, bpm: 150 },
+            ].map(toBpmIntegral),
+        ),
+    )
+    const line = snapBeat(bars, 2.3 + 1 / 3 + 1e-9, 3)
+    const next = snapBeat(bars, line + 1 + 1e-9, 3)
+    const stepped = stepNumber(toDisplayedBeat(line), 1, { min: 1, step: 'any' })
+    assert.notEqual(alignFraction(fromDisplayedBeat(stepped)), next)
+    assert.equal(fromSteppedBeat(stepped, [bars, bars], 3), next)
 })
 
 test('mixed values stepped back to their own leave nothing changed', () => {

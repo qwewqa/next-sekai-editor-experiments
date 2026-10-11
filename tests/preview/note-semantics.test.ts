@@ -5,11 +5,11 @@ import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject, NoteType } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
-import { getNoteVisualType } from '../../src/editor/canvas/notes'
 import { serializeSlidesToLevelDataEntities } from '../../src/levelData/entities/serialize/slide'
 import { buildPreviewChart } from '../../src/preview/engine/chart'
 import { NoteKind, type NoteKindValue } from '../../src/preview/engine/model'
 import { createState, type State } from '../../src/state'
+import { getNoteVisualType } from '../../src/state/entities/slides/visualType'
 
 const groupId = 1 as GroupId
 const stageId = 1 as StageId

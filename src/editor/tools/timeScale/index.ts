@@ -37,7 +37,7 @@ import {
 } from '../../view'
 import SelectionPropertiesModal from '../../workspace/properties/SelectionPropertiesModal.vue'
 import { constrainMoved } from '../toolMove'
-import { commitDrop, hitEntitiesAtPoint, isVisible, moveLane } from '../utils'
+import { commitDrop, isVisible, moveLane, pointHitsOfType, pressTarget } from '../utils'
 
 type MoveActive = {
     type: 'move'
@@ -336,9 +336,7 @@ const tryFind = (
     y: number,
     grab = false,
 ): [TimeScaleEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('timeScale', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('timeScale', x, y))
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)

@@ -19,6 +19,7 @@ import { interpolate } from '../../../../../utils/interpolate'
 import { shiftComputed } from '../../../../../utils/math'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
+import { toSceneEntity, withDraft } from '../../../../sceneState'
 import { revealAuthoringTarget } from '../../../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../../../sidebars'
 import { showToolModal } from '../../../../toolModals'
@@ -36,10 +37,11 @@ import SelectionPropertiesModal from '../../../../workspace/properties/Selection
 import { constrainMoved, constrainResized } from '../../../toolMove'
 import {
     commitDrop,
-    hitEntitiesAtPoint,
     isRangeResizeStart,
     moveLane,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../../../utils'
 import StageMaskEventSidebar from './StageMaskEventSidebar.vue'
@@ -441,7 +443,8 @@ const getStageMaskEventJointFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'stageMaskEventJoint') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getPropertiesFromSelection = () => {
@@ -467,8 +470,10 @@ const resolveDrag = (x: number, y: number) => {
     if (!entity) return { type: 'add', beat, lane } as const
 
     const pointerLane = xToLane(x)
+    // As drawn, a pending draft's included; the press commits it first.
+    const shown = toSceneEntity(entity)
     return {
-        type: isRangeResizeStart(entity.maskLeft, entity.maskSize, pointerLane) ? 'edit' : 'move',
+        type: isRangeResizeStart(shown.maskLeft, shown.maskSize, pointerLane) ? 'edit' : 'move',
         entity,
         lane: pointerLane,
     } as const
@@ -478,9 +483,7 @@ const tryFind = (
     x: number,
     y: number,
 ): [StageMaskEventJointEntity] | [undefined, number, number] => {
-    const [hit] = hitEntitiesAtPoint('stageMaskEventJoint', x, y).sort(
-        (a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a),
-    )
+    const hit = pressTarget(pointHitsOfType('stageMaskEventJoint', x, y))
 
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }

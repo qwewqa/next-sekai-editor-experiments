@@ -441,10 +441,12 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
 
 // A moved or pasted beat, without float noise on the grid, or on the chart's bars as other
 // content may sit there (in the Beat display, or while lifted); unmoved, it stays exact.
-export const toMovedBeat = (beat: number, offset: number) =>
-    offset === 0
-        ? beat
-        : nearGridsBeat([snapGrid.value, committedBarGrid.value], beat + offset, view.division)
+export const toMovedBeat = (beat: number, offset: number) => {
+    if (offset === 0) return beat
+    const grid = snapGrid.value
+    const bars = committedBarGrid.value
+    return nearGridsBeat(grid === bars ? [grid] : [grid, bars], beat + offset, view.division)
+}
 
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
     Math.max(0, toMovedBeat(beat, yToMoveBeatOffset(y, beat, pressBeat)))

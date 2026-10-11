@@ -9,6 +9,7 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages.ts'
 import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
+import { previewEdit } from '../../../preview/edit'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
 import type { Entity } from '../../../state/entities'
@@ -27,6 +28,7 @@ import {
 } from '../../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
+import { sceneState, toSceneEntity, withDraft } from '../../sceneState'
 import { revealAuthoringTarget } from '../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
@@ -48,11 +50,11 @@ import { constrainResized } from '../toolMove'
 import {
     addDragAnchor,
     commitDrop,
-    hitEntitiesAtPoint,
     isNoteResizeStart,
-    isVisible,
     modifyEntities,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../utils'
 import SlideSidebar from './SlideSidebar.vue'
@@ -99,7 +101,8 @@ export const slide: Tool = {
     sidebar: SlideSidebar,
 
     hover(x, y, modifiers) {
-        const [entity, beat, lane] = tryFind(x, y, 0.5)
+        // As far as a tap reaches.
+        const [entity, beat, lane] = tryFind(x, y)
         if (entity) {
             view.entities = {
                 hovered: modifyEntities([entity], modifiers),
@@ -427,11 +430,15 @@ const getNoteFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'note') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
+// As a pending draft shows the slide, which the click commits first.
 const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
-    const notes = store.value.slides.note.get(slideId)
+    const notes = (previewEdit.value?.draft ? sceneState.value.store : store.value).slides.note.get(
+        slideId,
+    )
     if (!notes) throw new Error('Unexpected notes not found')
 
     const index = bisect(notes, 'beat', beat)
@@ -494,17 +501,17 @@ const tryFind = (
     minimumNoteWidth = 1.5,
 ): [NoteEntity] | [undefined, number, number] => {
     // Only notes whose type, group and stage are fully visible are editable.
-    const [hit] = hitEntitiesAtPoint('note', x, y, minimumNoteWidth)
-        .filter(isVisible)
-        .sort((a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a))
+    const hit = pressTarget(pointHitsOfType('note', x, y, minimumNoteWidth))
 
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)
     const properties = getPropertiesFromSelection(beat)
-    const origin = getComposedGridOffset(properties.stageId, beat)
+    // On the lattice drawn, a pending draft's included, as the click lands once it commits.
+    const scene = sceneState.value
+    const origin = getComposedGridOffset(properties.stageId, beat, scene)
     const lane =
-        alignLane(xToLane(x) - getComposedOffset(properties.stageId, beat) - origin) + origin
+        alignLane(xToLane(x) - getComposedOffset(properties.stageId, beat, scene) - origin) + origin
     return [undefined, beat, lane]
 }
 
@@ -523,9 +530,11 @@ const resolveDrag = (x: number, y: number) => {
     const [entity, beat, lane] = tryFind(x, y)
     if (!entity) return { type: 'add', beat, lane } as const
 
-    const pointerLane = xToLane(x) - getComposedNoteOffset(entity)
+    // Move or resize by the note as drawn, a pending draft's included; the press commits it first.
+    const shown = toSceneEntity(entity)
+    const pointerLane = xToLane(x) - getComposedNoteOffset(shown, shown.beat, sceneState.value)
     return {
-        type: isNoteResizeStart(entity, pointerLane) ? 'edit' : 'move',
+        type: isNoteResizeStart(shown, pointerLane) ? 'edit' : 'move',
         entity,
         lane: pointerLane,
     } as const
@@ -561,7 +570,7 @@ const add = (slideId: SlideId, object: NoteObject) => {
 const landing = (slideId: SlideId, object: NoteObject) => {
     if (!object.isAttached || !store.value.slides.note.has(slideId))
         return toNoteEntity(slideId, object)
-    const source = state.value
+    const source = landingSource()
     const last = lastLanding
     if (
         last?.source === source &&
@@ -573,7 +582,7 @@ const landing = (slideId: SlideId, object: NoteObject) => {
         )
     )
         return last.ghost
-    const ghost = placeLanding(slideId, object)
+    const ghost = placeLanding(source, slideId, object)
     lastLanding = { source, layout: view.layout, slideId, object, ghost }
     return ghost
 }
@@ -589,9 +598,12 @@ let lastLanding:
       }
     | undefined
 
-const placeLanding = (slideId: SlideId, object: NoteObject) => {
+// On the path drawn, a pending draft's included, as the click lands once it commits.
+const landingSource = () => (previewEdit.value?.draft ? sceneState.value : state.value)
+
+const placeLanding = (source: State, slideId: SlideId, object: NoteObject) => {
     const ghost = toNoteEntity(slideId, object)
-    const transaction = createTransaction(state.value)
+    const transaction = createTransaction(source)
     const result = transaction.commit(addNote(transaction, slideId, object))
     const [landed] = result.selectedEntities
     if (landed?.type !== 'note') return ghost
@@ -599,7 +611,7 @@ const placeLanding = (slideId: SlideId, object: NoteObject) => {
     return toNoteEntity(slideId, {
         ...object,
         left: position
-            ? position.left - getComposedOffset(object.stageId, object.beat)
+            ? position.left - getComposedOffset(object.stageId, object.beat, source)
             : landed.left,
         size: position?.size ?? landed.size,
     })

@@ -193,10 +193,11 @@ const copyAnchoredOnB = async (page: Page) => {
     const point = await at(page, 'main', (b.left + b.right) / 2, 0)
     await page.mouse.move(point.x - 2, point.y)
     await page.mouse.move(point.x, point.y)
-    // The chart has taken the hover before the copy reads it.
+    // The chart has taken the hover before the copy reads it; it previews the tap, which with B
+    // selected goes on to the note after it.
     await expect
-        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered))
-        .toContainEqual({ type: 'note', beat: 3, left: 1, size: 2 })
+        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered.length))
+        .toBe(1)
     await page.keyboard.press('c')
     const anchor = await page.evaluate(async () => {
         const { appImport } = window.editorTest
@@ -233,18 +234,25 @@ const resizeBy =
         await openAt(page, 3)
         await setup(page, 'select', [1, 4.3, -10, 0])
         const note = await shown(page, left)
-        // In the edge zone, clear of the attached tick's diamond drawn over B's left edge in Basic.
+        // In the edge zone; on the chart above the attached tick's box, 0.15 lanes high, which Basic
+        // draws over B's left edge.
         const lane = side === 'left' ? note.left + 0.4 : note.right - 0.4
+        const lift =
+            pane === 'main'
+                ? await page.evaluate(
+                      () => (0.22 * window.editorTest.view.w) / window.editorTest.settings.width,
+                  )
+                : 0
         const start = await at(page, pane, lane, note.elevation)
         const end = await at(page, pane, lane + by, note.elevation)
-        await page.mouse.move(start.x, start.y - 2)
-        await page.mouse.move(start.x, start.y)
+        await page.mouse.move(start.x, start.y - lift - 2)
+        await page.mouse.move(start.x, start.y - lift)
         await page.mouse.down()
         if (via !== undefined) {
             const past = await at(page, pane, lane + via, note.elevation)
-            await page.mouse.move(past.x, past.y, { steps: 6 })
+            await page.mouse.move(past.x, past.y - lift, { steps: 6 })
         }
-        await page.mouse.move(end.x, end.y, { steps: 6 })
+        await page.mouse.move(end.x, end.y - lift, { steps: 6 })
         await page.mouse.up()
     }
 
@@ -437,15 +445,94 @@ test('a resize nudge under a snap step clamps the grabbed note to a lowered lane
     await seed(page, { layout: 'basic', snapping: 'absolute', division: 1 })
     // B's right edge, 3, now lies past the limit.
     await page.evaluate(() => (window.editorTest.settings.maxLane = 2))
-    // B's right edge ends 0.3 out, under half a step, so only off-lattice C snaps.
+    // B's right edge ends 0.3 out, under half a step, so no edge moves.
     const nudge = resizeBy(1, 'right', 0.3, 1.5)
     const main = await runGesture(page, 'main', nudge)
     const elevation = await runGesture(page, 'elevation', nudge)
     expect(lanes(elevation)).toEqual(lanes(main))
-    // B is clamped to the limit; C's snap commits the drop.
+    // B's clamp to the limit commits the drop; off-lattice C keeps its size.
     expect(main).toContainEqual(expect.objectContaining({ beat: 3, stageId: 2, left: 1, size: 1 }))
-    expect(main).toContainEqual(expect.objectContaining({ beat: 3, left: 4.3, size: 2.7 }))
+    expect(main).toContainEqual(expect.objectContaining({ beat: 3, left: 4.3, size: 2 }))
 })
+
+for (const layout of ['basic', 'composed'] as const) {
+    test(`${layout}: an Elevation Editor resize of several notes moves every edge by the grabbed edge's snapped shift`, async ({
+        page,
+    }) => {
+        // At beat 3: A's right edge on the lattice, grabbed; B's half a lane off it; C's on a third.
+        const sizes = [2, 3.5, 10 / 3]
+        for (const [dx, elevation, shift] of [
+            [1, 0, 1],
+            [0, 2, 0],
+            // A stops at its minimum width of a lane.
+            [-1.9, 0, -2],
+        ] as const) {
+            const grid = await page.evaluate(
+                async ({ layout, sizes }) => {
+                    const { show, fixtures, view, settings, history, appImport } = window.editorTest
+                    const { createComposedLayout } =
+                        await appImport<typeof import('../../src/editor/composed')>(
+                            '/src/editor/composed.ts',
+                        )
+                    const base = fixtures.interaction.slides[0]![0]!
+                    const pivot = fixtures.events.stagePivotEvents[0]!
+                    const chart = (grid: number) => ({
+                        ...fixtures.interaction,
+                        isDynamicStages: layout === 'composed',
+                        stagePivotEvents:
+                            layout === 'composed'
+                                ? [{ ...pivot, beat: 0, pivotLane: 0.2, divisionSize: 1 }]
+                                : [],
+                        slides: sizes.map((size, i) => [
+                            { ...base, beat: 3, left: grid + 5 * i, size, elevation: 1 },
+                        ]),
+                    })
+                    show(chart(0), 1.5)
+                    view.layout = layout
+                    view.laneDivision = 1
+                    view.laneSnapping = 'absolute'
+                    settings.width = 28
+                    settings.maxScrollX = 0
+                    settings.maxLane = 0
+                    settings.elevationEditorSideBySide = 'allow'
+                    const grid =
+                        layout === 'composed'
+                            ? createComposedLayout(history.state.value).gridOffset(base.stageId, 3)
+                            : 0
+                    show(chart(grid), 1.5)
+                    return grid
+                },
+                { layout, sizes },
+            )
+            await openAt(page, 3)
+            await setup(page, 'select', [grid, grid + 5, grid + 10])
+            const before = await notes(page)
+            const a = await shown(page, grid)
+            const start = await at(page, 'elevation', a.right - 0.3, a.elevation)
+            const end = await at(page, 'elevation', a.right - 0.3 + dx, a.elevation + elevation)
+            await page.mouse.move(start.x, start.y)
+            await page.mouse.down()
+            await page.mouse.move((start.x + end.x) / 2, (start.y + end.y) / 2, { steps: 4 })
+            await page.mouse.move(end.x, end.y, { steps: 4 })
+            await page.mouse.up()
+            const after = await notes(page)
+            const label = `dx ${dx}, elevation ${elevation}`
+            expect(
+                after.map((note) => note.left),
+                label,
+            ).toEqual([grid, grid + 5, grid + 10])
+            after.forEach((note, i) =>
+                expect(note.size, `${label}, ${i}`).toBeCloseTo(Math.max(sizes[i]! + shift, 1), 9),
+            )
+            const canUndo = await page.evaluate(() => window.editorTest.history.canUndo.value)
+            // Without a shift, nothing is edited.
+            if (shift === 0) {
+                expect(after, label).toEqual(before)
+                expect(canUndo, label).toBe(false)
+            } else expect(canUndo, label).toBe(true)
+        }
+    })
+}
 
 test('Escape cancels a multi-note Elevation Editor resize', async ({ page }) => {
     await seed(page, { layout: 'composed', snapping: 'absolute', division: 1 })

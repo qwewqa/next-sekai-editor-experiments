@@ -67,14 +67,16 @@ test.beforeEach(async ({ page }) => {
 })
 
 for (const layout of ['basic', 'composed'] as const) {
-    test(`${layout} clicks cycle notes then event categories in requested priority`, async ({
+    test(`${layout} clicks cycle what is drawn, top first, then events in reach by category`, async ({
         page,
     }) => {
         await page.evaluate((layout) => {
             window.editorTest.view.layout = layout
         }, layout)
-        // Of the same-beat notes, blue is drawn on top.
+        // The time scale's marker is drawn over everything; of the same-beat notes, blue is on
+        // top; the joint markers at lane 0 are drawn under the notes; camera and mask are in reach.
         const expected = [
+            'timeScale',
             'note:blue',
             'note:red',
             'stageTransformEventJoint',
@@ -83,7 +85,6 @@ for (const layout of ['basic', 'composed'] as const) {
             'stageMaskEventJoint',
             'cameraEventJoint',
             'timeScale',
-            'note:blue',
         ]
         for (const entity of expected) {
             await click(page)
@@ -94,7 +95,9 @@ for (const layout of ['basic', 'composed'] as const) {
 }
 
 for (const layout of ['basic', 'composed'] as const) {
-    test(`${layout} fixed BPM lane cycles notes then time scale then BPM`, async ({ page }) => {
+    test(`${layout} fixed BPM lane cycles the time-scale marker, notes, then BPM`, async ({
+        page,
+    }) => {
         await page.evaluate((layout) => {
             const { fixtures, show, view } = window.editorTest
             const note = { ...fixtures.interaction.slides[0]![0]!, beat: 4, left: 5.5, size: 2 }
@@ -121,7 +124,7 @@ for (const layout of ['basic', 'composed'] as const) {
             view.layout = layout
         }, layout)
         const at = await page.evaluate(() => window.editorTest.point(6.5, 4))
-        for (const entity of ['note:blue', 'note:red', 'timeScale', 'bpm', 'note:blue']) {
+        for (const entity of ['timeScale', 'note:blue', 'note:red', 'bpm', 'timeScale']) {
             await page.mouse.click(at.x, at.y)
             expect(await selected(page)).toEqual([entity])
         }
@@ -138,8 +141,8 @@ test('category sorting preserves typed-note and box hit order and excludes conne
             '/src/editor/tools/utils.ts',
         )
         const at = window.editorTest.point(0, 4)
-        const all = hits.hitAllEntitiesAtPoint(at.x, at.y)
-        const typed = hits.hitEntitiesAtPoint('note', at.x, at.y)
+        const all = hits.pointHitsAt(at.x, at.y).hits
+        const typed = hits.pointHitsOfType('note', at.x, at.y).hits
         const box = hits.hitAllEntitiesInSelection({
             laneMin: -0.1,
             laneMax: 0.1,
@@ -162,11 +165,13 @@ test('category sorting preserves typed-note and box hit order and excludes conne
     expect([...result.boxTypes].sort()).toEqual([...result.pointTypes].sort())
 })
 
-test('hidden and dimmed notes are excluded before category priority applies', async ({ page }) => {
+test('hidden and dimmed notes are excluded before the drawn order applies', async ({ page }) => {
     await page.evaluate(() => {
         const { view } = window.editorTest
         view.groupVisibility = new Map([[2 as NonNullable<typeof view.groupId>, 'hidden']])
     })
+    await click(page)
+    expect(await selected(page)).toEqual(['timeScale'])
     await click(page)
     expect(await selected(page)).toEqual(['note:red'])
     await click(page)
@@ -178,6 +183,8 @@ test('hidden and dimmed notes are excluded before category priority applies', as
         history.replaceState({ ...history.state.value, selectedEntities: [] })
     })
     await click(page)
+    expect(await selected(page)).toEqual(['timeScale'])
+    await click(page)
     expect(await selected(page)).toEqual(['note:red'])
     await click(page)
     expect(await selected(page)).toEqual(['stageTransformEventJoint'])
@@ -187,13 +194,15 @@ test('hidden and dimmed notes are excluded before category priority applies', as
         history.replaceState({ ...history.state.value, selectedEntities: [] })
     })
     await click(page)
+    expect(await selected(page)).toEqual(['timeScale'])
+    await click(page)
     expect(await selected(page)).toEqual(['stageTransformEventJoint'])
 })
 
 test('an already selected event keeps context-menu and drag ownership over notes', async ({
     page,
 }) => {
-    for (let i = 0; i < 3; i++) await click(page)
+    for (let i = 0; i < 4; i++) await click(page)
     expect(await selected(page)).toEqual(['stageTransformEventJoint'])
     const at = await point(page)
     await page.mouse.click(at.x, at.y, { button: 'right' })
@@ -225,13 +234,24 @@ test('an already selected event keeps context-menu and drag ownership over notes
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
-test('Eraser chooses the top note ahead of overlapping events', async ({ page }) => {
+test('Eraser removes the top drawn object: the time-scale marker, then the top note', async ({
+    page,
+}) => {
     await page.evaluate(async () => {
         const { switchToolTo } = await window.editorTest.appImport<
             typeof import('../../src/editor/tools')
         >('/src/editor/tools/index.ts')
         switchToolTo('eraser')
     })
+    await click(page)
+    expect(
+        await page.evaluate(
+            () =>
+                [...window.editorTest.store.getAllEntities()].filter(
+                    (entity) => entity.type === 'timeScale',
+                ).length,
+        ),
+    ).toBe(0)
     await click(page)
     expect(
         await page.evaluate(() =>
@@ -249,6 +269,9 @@ test('Eraser chooses the top note ahead of overlapping events', async ({ page })
                 ).length,
         ),
     ).toBe(1)
-    await page.evaluate(() => window.editorTest.history.undoState())
+    await page.evaluate(() => {
+        window.editorTest.history.undoState()
+        window.editorTest.history.undoState()
+    })
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })

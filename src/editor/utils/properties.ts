@@ -114,6 +114,8 @@ export const useEntitiesProperties = (
                     only: scope,
                     each: plan.each,
                 }).state,
+            undefined,
+            true,
         )
         ownedPreview = previewEdit.value
     }

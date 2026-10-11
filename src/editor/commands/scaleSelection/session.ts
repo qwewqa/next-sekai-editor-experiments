@@ -30,7 +30,7 @@ import { clamp } from '../../../utils/math'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
 import { toolName } from '../../tools/state'
-import { view } from '../../view'
+import { toMovedBeat, view } from '../../view'
 import { getScaleLabels } from './labels'
 
 export type ScalingSession = {
@@ -416,6 +416,7 @@ export const updateScalingDrag = (value: number) => {
             session.axis,
             delta,
             active.source,
+            toMovedBeat,
         )
     )
         return false
@@ -423,7 +424,9 @@ export const updateScalingDrag = (value: number) => {
     return publishDraft(
         () =>
             constrainDraft(
-                delta === 0 ? source : translateSelection(source, selected, axis, delta),
+                delta === 0
+                    ? source
+                    : translateSelection(source, selected, axis, delta, toMovedBeat),
             ),
         active.factor,
     )

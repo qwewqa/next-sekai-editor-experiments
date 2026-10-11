@@ -20,6 +20,7 @@ import { shiftComputed } from '../../../utils/math'
 import { getComposedGridOffset, getComposedNoteOffset, getComposedOffset } from '../../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
+import { sceneState, toSceneEntity, withDraft } from '../../sceneState'
 import { revealAuthoringTarget } from '../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
@@ -40,11 +41,11 @@ import { constrainResized } from '../toolMove'
 import {
     addDragAnchor,
     commitDrop,
-    hitEntitiesAtPoint,
     isNoteResizeStart,
-    isVisible,
     modifyEntities,
     placementCursors,
+    pointHitsOfType,
+    pressTarget,
     resize,
 } from '../utils'
 import NoteSidebar from './NoteSidebar.vue'
@@ -91,7 +92,8 @@ export const note: Tool = {
     sidebar: NoteSidebar,
 
     hover(x, y, modifiers) {
-        const [entity, beat, lane] = tryFind(x, y, 0.5)
+        // As far as a tap reaches.
+        const [entity, beat, lane] = tryFind(x, y)
         if (entity) {
             view.entities = {
                 hovered: modifyEntities([entity], modifiers),
@@ -417,7 +419,8 @@ const getNoteFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'note') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 export const getNotePropertiesFromSelection = () => {
@@ -464,17 +467,17 @@ const tryFind = (
     minimumNoteWidth = 1.5,
 ): [NoteEntity] | [undefined, number, number] => {
     // Only notes whose type, group and stage are fully visible are editable.
-    const [hit] = hitEntitiesAtPoint('note', x, y, minimumNoteWidth)
-        .filter(isVisible)
-        .sort((a, b) => +selectedEntities.value.includes(b) - +selectedEntities.value.includes(a))
+    const hit = pressTarget(pointHitsOfType('note', x, y, minimumNoteWidth))
 
     if (hit) return [hit]
 
     const beat = yToValidBeat(y)
     const properties = getPropertiesFromSelection()
-    const origin = getComposedGridOffset(properties.stageId, beat)
+    // On the lattice drawn, a pending draft's included, as the click lands once it commits.
+    const scene = sceneState.value
+    const origin = getComposedGridOffset(properties.stageId, beat, scene)
     const lane =
-        alignLane(xToLane(x) - getComposedOffset(properties.stageId, beat) - origin) + origin
+        alignLane(xToLane(x) - getComposedOffset(properties.stageId, beat, scene) - origin) + origin
     return [undefined, beat, lane]
 }
 
@@ -482,9 +485,11 @@ const resolveDrag = (x: number, y: number) => {
     const [entity, beat, lane] = tryFind(x, y)
     if (!entity) return { type: 'add', beat, lane } as const
 
-    const pointerLane = xToLane(x) - getComposedNoteOffset(entity)
+    // Move or resize by the note as drawn, a pending draft's included; the press commits it first.
+    const shown = toSceneEntity(entity)
+    const pointerLane = xToLane(x) - getComposedNoteOffset(shown, shown.beat, sceneState.value)
     return {
-        type: isNoteResizeStart(entity, pointerLane) ? 'edit' : 'move',
+        type: isNoteResizeStart(shown, pointerLane) ? 'edit' : 'move',
         entity,
         lane: pointerLane,
     } as const

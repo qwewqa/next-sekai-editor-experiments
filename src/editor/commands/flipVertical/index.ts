@@ -4,7 +4,7 @@ import { i18n } from '../../../i18n'
 import { flipVertical as flip } from '../../../state/operations/flipVertical'
 import { interpolate } from '../../../utils/interpolate'
 import { notify } from '../../notification'
-import { view } from '../../view'
+import { toMovedBeat, view } from '../../view'
 import FlipIcon from '../flip/FlipIcon.vue'
 
 export const flipVertical: Command = {
@@ -16,7 +16,8 @@ export const flipVertical: Command = {
             notify(() => i18n.value.commands.flip.noSelected)
             return
         }
-        const flipped = flip(source, source.selectedEntities)
+        // Flipped beats land on the grid without float noise, as moves do.
+        const flipped = flip(source, source.selectedEntities, toMovedBeat)
         if (flipped === source) {
             notify(() => i18n.value.sidebars.default.noChange)
             return

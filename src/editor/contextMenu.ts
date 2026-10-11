@@ -7,7 +7,7 @@ import { deselect } from './commands/deselect'
 import { getComposedLayout } from './composedView'
 import { editorNavigation } from './navigation'
 import { select } from './tools/select'
-import { getLaneAnchor, hitAllEntitiesAtPoint } from './tools/utils'
+import { getLaneAnchor, pointHitsAt, selectedHit } from './tools/utils'
 import { view } from './view'
 
 export const contextMenu = shallowRef<{ x: number; y: number; selection?: boolean }>()
@@ -17,16 +17,14 @@ export const closeContextMenu = () => {
 }
 
 export const openContextMenu = (x: number, y: number) => {
-    const hits = hitAllEntitiesAtPoint(x, y)
+    const found = pointHitsAt(x, y)
+    const { hits } = found
     if (!hits.length && selectedEntities.value.length) {
         closeContextMenu()
         void deselect.execute()
         return
     }
-    if (
-        !selectedEntities.value.length ||
-        (hits.length && !hits.some((entity) => selectedEntities.value.includes(entity)))
-    ) {
+    if (!selectedEntities.value.length || (hits.length && !selectedHit(found))) {
         if (editorNavigation.value) editorNavigation.value.selectPoint(x, y)
         else void select.tap?.(x, y, { ctrl: false, shift: false })
     }

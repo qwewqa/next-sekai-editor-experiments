@@ -873,3 +873,31 @@ test('the forced snap and the moved beat it is judged at', async ({ page }) => {
         thirds: [true, true, true, true, true],
     })
 })
+
+for (const tool of tools) {
+    test(`${tool}: Escape during a forced snap cancels the drag cleanly`, async ({ page }) => {
+        await load(page, {
+            tool,
+            pivots: [
+                { beat: 0, pivotLane: 0.2 },
+                { beat: 8, pivotLane: 2.2 },
+            ],
+            slides: [[{ beat: 4, left: 1.37 }]],
+            select: 'notes',
+        })
+        const before = await notes(page)
+        await drag(page, 4, 5, 0, { hold: true })
+        // The preview shows the forced snap.
+        expectOnGrid((await notes(page, true)).find((note) => note.beat === 5)!.left)
+        await page.keyboard.press('Escape')
+        expect(await notes(page, true)).toEqual(before)
+        expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(0)
+        // Moving on and releasing does nothing more.
+        const later = await at(page, before[0]!.shown + 1, 6)
+        await page.mouse.move(later.x, later.y, { steps: 4 })
+        await page.mouse.up()
+        expect(await notes(page)).toEqual(before)
+        expect(await notes(page, true)).toEqual(before)
+        expect(await canUndo(page)).toBe(false)
+    })
+}

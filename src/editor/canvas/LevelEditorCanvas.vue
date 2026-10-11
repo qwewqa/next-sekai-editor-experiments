@@ -2,7 +2,9 @@
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { beats, times } from '..'
 import { isAppActive } from '../../activity'
+import { state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
+import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -11,11 +13,19 @@ import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
 import { culledEntities, selectedEntitySet, visibleSelectedEntities } from '../entities/visible'
 import { entityScopeVisibility } from '../scopeRules'
-import { drawnGrid, isScenePreview, previewSlides, sceneState } from '../sceneState'
+import {
+    drawnGrid,
+    isScenePreview,
+    previewSlides,
+    sceneCounterparts,
+    sceneState,
+    toCommittedEntity,
+    toSceneEntity,
+} from '../sceneState'
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
-import { pasteGhostInfos, pasteGhostState } from '../tools/paste'
+import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
 import { isVisible } from '../tools/utils'
 import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
@@ -106,7 +116,13 @@ const orderedEntities = computed(() =>
     }),
 )
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
-const hoveredSet = computed(() => new Set(hoveredEntities.value))
+// Hovered objects are committed ones; a previewed scene draws their counterparts.
+const sceneHovered = computed(() =>
+    sceneCounterparts.value
+        ? hoveredEntities.value.map((entity) => toSceneEntity(entity))
+        : hoveredEntities.value,
+)
+const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Note spans in lanes and seconds, which scrolling leaves unchanged.
 const offscreenCandidates = computed(() => {
     const bpms = sceneState.value.bpms
@@ -151,7 +167,7 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         right,
         y: (time * bounds.ups - bounds.t) * scale,
         // Dimmed notes are counted but not selectable.
-        target: isVisible(entity) ? entity : undefined,
+        target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
     // Clear of the range labels in the corners.
     const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT)
@@ -346,9 +362,18 @@ watchEffect(
         const canvas = overlayCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        const creating = isScenePreview.value ? [] : view.entities.creating
+        // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
+        // ghosts, but a Composed paste's, placed on the committed lattice, waits for the commit.
+        const isComposedPaste = !!inputs.composed && tool.value === tools.paste
+        // A Composed paste ghost placed on an earlier chart, such as before a draft committed, waits for its rebuild.
+        const isStalePaste =
+            isComposedPaste && ![undefined, state.value].includes(pasteGhostBase() as never)
+        const showsGhosts =
+            !isStalePaste &&
+            (!isScenePreview.value || (!!previewEdit.value?.draft && !isComposedPaste))
+        const creating = showsGhosts ? view.entities.creating : []
         const range = artRange.value
-        const hovered = hoveredEntities.value
+        const hovered = sceneHovered.value
         const preview = previewSlides.value
         // Previewed slides are outlined where they're drawn.
         const selected = preview

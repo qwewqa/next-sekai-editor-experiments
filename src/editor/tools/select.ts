@@ -87,9 +87,11 @@ import {
     getComposedNoteOffset,
     isComposedLatticeMoved,
 } from '../composedView'
+import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
+import { sceneState, toSceneEntity } from '../sceneState'
 import { isEntityInScope } from '../scope'
 import { isLatticeMoved, type Lattice } from '../snapping'
 import {
@@ -108,13 +110,15 @@ import { getOnlyEntityType } from './entityType'
 import { getMovedEndBases } from './moveBase'
 import {
     getLaneAnchor,
-    hitAllEntitiesAtPoint,
     hitAllEntitiesInSelection,
     isSelectResize,
     modifyEntities,
     moveLane,
     offset,
+    pointHitsAt,
     resize,
+    resizeShift,
+    selectedHit,
     toSelection,
 } from './utils'
 
@@ -171,6 +175,12 @@ let active:
       }
     | undefined
 
+// Where a note is drawn, a pending draft's included; the press commits it first.
+const noteOffset = (note: NoteEntity) => {
+    const shown = toSceneEntity(note)
+    return getComposedNoteOffset(shown, shown.beat, sceneState.value)
+}
+
 const resolveDrag = (
     x: number,
     y: number,
@@ -180,15 +190,16 @@ const resolveDrag = (
     const lane = xToLane(x)
     // Off-screen badges sit over the chart; pressing one box-selects.
     if (hitOffscreenIndicator(x, y)) return { type: 'select', lane, indicator: true }
-    const entities = hitAllEntitiesAtPoint(x, y)
+    const hits = pointHitsAt(x, y)
+    const entities = hits.hits
 
-    const [focus] = entities.filter((entity) => selectedEntities.value.includes(entity))
+    const focus = selectedHit(hits)
     if (focus) {
         // Selected objects in hidden or dimmed groups/stages stay put.
         const moving = selectedEntities.value.filter(isEntityInScope)
         return {
             type: 'move',
-            lane: focus.type === 'note' ? lane - getComposedNoteOffset(focus) : lane,
+            lane: focus.type === 'note' ? lane - noteOffset(focus) : lane,
             focus,
             entities: moving,
             onlyType: getOnlyEntityType(moving),
@@ -202,7 +213,7 @@ const resolveDrag = (
 
     return {
         type: 'move',
-        lane: entity.type === 'note' ? lane - getComposedNoteOffset(entity) : lane,
+        lane: entity.type === 'note' ? lane - noteOffset(entity) : lane,
         focus: entity,
         entities: [entity],
         onlyType: entity.type,
@@ -211,21 +222,47 @@ const resolveDrag = (
     }
 }
 
+// The order a cycle of taps steps through. It keeps its order for objects still hit, so a pixel of
+// jitter can't skip one, and adds newly hit ones after them.
+let cycle: Entity[] = []
+
+/**
+ * What a tap at a point selects: with Ctrl every object hit together; else the next one after the
+ * selection's first among them, or, with the selection elsewhere, the top one.
+ */
+const tapTargets = (x: number, y: number, modifiers: Modifiers) => {
+    const { set } = pointHitsAt(x, y)
+    if (modifiers.ctrl) return { order: set, targets: modifyEntities(set, modifiers) }
+    const current = selectedEntities.value[0]
+    // A pending draft's click replaces the selection it edits, which ends the cycle.
+    const kept =
+        current &&
+        set.includes(current) &&
+        cycle.includes(current) &&
+        toSceneEntity(current) === current
+            ? cycle.filter((entity) => set.includes(entity))
+            : []
+    const order = [...kept, ...set.filter((entity) => !kept.includes(entity))]
+    const index = current ? (order.indexOf(current) + 1) % order.length : 0
+    const entity = order[index]
+    return { order, targets: modifyEntities(entity ? [entity] : [], modifiers) }
+}
+
+// The hover shows what a tap there would select.
+const previewTap = (x: number, y: number, modifiers: Modifiers) => {
+    const indicator = hitOffscreenIndicator(x, y)
+    view.entities = {
+        hovered: indicator
+            ? modifyEntities(indicator.targets, modifiers)
+            : tapTargets(x, y, modifiers).targets,
+        creating: [],
+    }
+}
+
 export const select: Tool = {
     title: () => i18n.value.tools.select.title,
 
-    hover(x, y, modifiers) {
-        const indicator = hitOffscreenIndicator(x, y)
-        const entities = modifyEntities(
-            indicator ? indicator.targets : hitAllEntitiesAtPoint(x, y, 0.5),
-            modifiers,
-        )
-
-        view.entities = {
-            hovered: entities,
-            creating: [],
-        }
-    },
+    hover: previewTap,
 
     tap(x, y, modifiers) {
         const indicator = hitOffscreenIndicator(x, y)
@@ -234,10 +271,10 @@ export const select: Tool = {
             return
         }
 
+        const { order, targets: entities } = tapTargets(x, y, modifiers)
+        const [entity] = entities
+        if (!modifiers.ctrl) cycle = order
         if (modifiers.ctrl) {
-            const entities = modifyEntities(hitAllEntitiesAtPoint(x, y), modifiers)
-
-            const [entity] = entities
             if (!entity) return
 
             const targets = entities.every((entity) => selectedEntities.value.includes(entity))
@@ -248,36 +285,21 @@ export const select: Tool = {
                 ...state.value,
                 selectedEntities: targets,
             })
-            view.entities = {
-                hovered: entities,
-                creating: [],
-            }
             focusEntityAtBeat(entity.beat)
 
             notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
         } else {
-            const entities = hitAllEntitiesAtPoint(x, y)
-
             const selectedLength = selectedEntities.value.length
-            const current = selectedLength ? selectedEntities.value[0] : undefined
-
-            const index = current ? (entities.indexOf(current) + 1) % entities.length : 0
-            const entity = entities[index]
-            const targets = modifyEntities(entity ? [entity] : [], modifiers)
 
             replaceState({
                 ...state.value,
-                selectedEntities: targets,
+                selectedEntities: entities,
             })
-            view.entities = {
-                hovered: entities,
-                creating: [],
-            }
 
             if (entity) {
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+                notify(interpolate(() => i18n.value.tools.select.selected, `${entities.length}`))
             } else {
                 focusViewAtBeat(yToValidBeat(y))
 
@@ -289,7 +311,8 @@ export const select: Tool = {
     cursor(x, y) {
         const target = resolveDrag(x, y)
         if (target.type === 'select') return target.indicator ? 'pointer' : 'default'
-        if (isSelectResize(target.onlyType, target.focus, target.lane)) return 'ew-resize'
+        if (isSelectResize(target.onlyType, toSceneEntity(target.focus), target.lane))
+            return 'ew-resize'
         return target.onlyType === 'bpm' ? 'ns-resize' : 'move'
     },
 
@@ -347,7 +370,7 @@ export const select: Tool = {
 
                 // Moved BPM changes redraw the bars only once they leave their beats.
                 setLiftDrawn(beatOffset !== 0)
-                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
+                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 if (active.last === last) break
                 active.last = last
                 const source = state.value
@@ -382,7 +405,7 @@ export const select: Tool = {
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
                 // The preview reads snapping when drawn, so a snapping change rebuilds it.
-                const snapping = `${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
+                const snapping = `${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 const previous = active.ghosts
                 if (
                     previous?.shown === view.entities.creating &&
@@ -673,7 +696,7 @@ const getRawMove = (
     // and attached anchors can also change the projection while they move.
     if (active.onlyType === 'note' && !focus.isAttached) return
     let response = active.response
-    const beatSnap = getBeatSnap()
+    const beatSnap = beatSnapKey()
     if (
         response?.source !== source ||
         response.beatOffset !== beatOffset ||
@@ -690,7 +713,10 @@ const getRawMove = (
             if (!layout) return { value: NaN, lattice: undefined }
             return {
                 value: layout.noteLeft(note),
-                lattice: getComposedLattice(anchor.stageId, plan.beat, result.state),
+                lattice:
+                    delta === 0
+                        ? getComposedLattice(anchor.stageId, plan.beat, result.state)
+                        : undefined,
             }
         }
         const zero = probe(0)
@@ -772,7 +798,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     // Without a beat change, or in a resize, no tick crosses an end.
     if (!beatOffset || isSelectResize(active.onlyType, active.focus, active.lane)) return new Map()
     const cached = active.bases
-    const beatSnap = getBeatSnap()
+    const beatSnap = beatSnapKey()
     if (
         cached?.source === source &&
         cached.beatOffset === beatOffset &&
@@ -788,7 +814,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
 }
 
 // What moved beats are cleaned against: the beat division and grid.
-const getBeatSnap = () => `${view.division} ${beatGridKey(snapGrid.value)}`
+const beatSnapKey = () => `${view.division} ${beatGridKey(snapGrid.value)}`
 
 const moveSelectedLane = (
     value: number,
@@ -886,7 +912,8 @@ const toMovedCameraEventObject = (
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const isLeft = startLane >= focus.cameraLeft + focus.cameraSize / 2
         const edge = entity.cameraLeft + (isLeft ? entity.cameraSize : 0)
-        // Each range's edge moves by the pointer's movement, as notes do.
+        const focusEdge = focus.cameraLeft + (isLeft ? focus.cameraSize : 0)
+        // Every range's edge moves by the grabbed edge's snapped shift, as notes do.
         const [cameraLeft, cameraSize] = resize(
             shiftComputed(entity.cameraLeft, isLeft ? 0 : entity.cameraSize),
             edge + (lane - startLane),
@@ -894,6 +921,8 @@ const toMovedCameraEventObject = (
             24,
             edge,
             [entity.cameraLeft, entity.cameraSize],
+            undefined,
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
         )
 
         return constrainLaneObject(
@@ -940,6 +969,7 @@ const toMovedStageMaskEventObject = (
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const isLeft = startLane >= focus.maskLeft + focus.maskSize / 2
         const edge = entity.maskLeft + (isLeft ? entity.maskSize : 0)
+        const focusEdge = focus.maskLeft + (isLeft ? focus.maskSize : 0)
         const [maskLeft, maskSize] = resize(
             shiftComputed(entity.maskLeft, isLeft ? 0 : entity.maskSize),
             edge + (lane - startLane),
@@ -947,6 +977,8 @@ const toMovedStageMaskEventObject = (
             Number.POSITIVE_INFINITY,
             edge,
             [entity.maskLeft, entity.maskSize],
+            undefined,
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
         )
 
         return constrainLaneObject(
@@ -1095,10 +1127,12 @@ const toMovedNoteObject = (
         const isLeft = startLane >= focus.left + focus.size / 2
         const edge = entity.left + (isLeft ? entity.size : 0)
         const focusEdge = focus.left + (isLeft ? focus.size : 0)
-        // The grabbed edge supplies one raw delta for the whole selection.
-        const origin = getComposedLayout()
-            ? getComposedGridOffset(focus.stageId, focus.beat) + (edge - focusEdge)
-            : 0
+        // The grabbed edge's snapped shift moves every selected edge.
+        const shift = resizeShift(
+            focusEdge,
+            focusEdge + (lane - startLane),
+            getComposedLayout() ? getComposedGridOffset(focus.stageId, focus.beat) : 0,
+        )
 
         const [left, size] = resize(
             shiftComputed(entity.left, isLeft ? 0 : entity.size),
@@ -1107,7 +1141,8 @@ const toMovedNoteObject = (
             Number.POSITIVE_INFINITY,
             edge,
             [entity.left, entity.size],
-            origin,
+            undefined,
+            shift,
         )
 
         return constrainLaneObject(

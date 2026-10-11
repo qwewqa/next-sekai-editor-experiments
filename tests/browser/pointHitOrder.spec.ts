@@ -113,8 +113,12 @@ for (const layout of ['basic', 'composed'] as const) {
             Array.from({ length: 7 }, (_, i) => [147.125 + i / 8, true]),
         )
 
-        // On the tick's diamond, the tick is on top.
+        // On the tick's diamond, the tick is on top; with nothing selected, the hover shows it.
         await page.keyboard.press('Control+z')
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.replaceState({ ...history.state.value, selectedEntities: [] })
+        })
         const diamond = await at(page, -3, 147.875)
         await page.mouse.move(diamond.x - 2, diamond.y)
         await page.mouse.move(diamond.x, diamond.y)
@@ -164,9 +168,9 @@ test('of a same-beat pair, the one drawn on top is hit first', async ({ page }) 
         const { orderEntities } = await appImport<
             typeof import('../../src/editor/canvas/ordering')
         >('/src/editor/canvas/ordering.ts')
-        const { hitAllEntitiesAtPoint } = await appImport<
-            typeof import('../../src/editor/tools/utils')
-        >('/src/editor/tools/utils.ts')
+        const { pointHitsAt } = await appImport<typeof import('../../src/editor/tools/utils')>(
+            '/src/editor/tools/utils.ts',
+        )
         const { scopeLookup } =
             await appImport<typeof import('../../src/editor/scope')>('/src/editor/scope.ts')
         const notes = [...history.state.value.store.slides.note.values()].flat()
@@ -177,7 +181,7 @@ test('of a same-beat pair, the one drawn on top is hit first', async ({ page }) 
         })
         return {
             top: drawn.map(({ entity }) => entity.type === 'note' && entity.isCritical).at(-1),
-            hit: hitAllEntitiesAtPoint(point.x, point.y).map((note) =>
+            hit: pointHitsAt(point.x, point.y).hits.map((note) =>
                 note.type === 'note' ? note.isCritical : undefined,
             ),
         }

@@ -91,10 +91,10 @@ test('main-canvas overlap changes redraw all hover highlights while stable hits 
         await page.evaluate(() =>
             window.editorTest.view.entities.hovered
                 .filter((entity) => entity.type === 'note')
-                .map((note) => note.elevation)
-                .sort(),
+                .map((note) => note.elevation),
         ),
-    ).toEqual([0, 2])
+        // The hover previews the tap: the top of the overlap.
+    ).toEqual([2])
     expect(await frames(page)).toBeGreaterThan(before)
     const highlighted = await frames(page)
     await page.mouse.move(point.x + 1, point.y)

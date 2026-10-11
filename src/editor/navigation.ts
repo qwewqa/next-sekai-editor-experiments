@@ -9,7 +9,8 @@ export type EditorNavigation = {
     getScaleX?: () => number
     getScaleY: () => number
     setScaleY: (scale: number) => void
-    hitPoint: (x: number, y: number, minimumNoteWidth: number) => Entity[]
+    /** As pointHitsAt: the hits ranked, and the set that acts together. */
+    hitPoint: (x: number, y: number, minimumNoteWidth: number) => { hits: Entity[]; set: Entity[] }
     selectPoint: (x: number, y: number) => void
     positionAtPoint: (x: number, y: number) => { lane: number; beat: number; elevation: number }
     pasteAtPoint: (x: number, y: number, modifiers: Modifiers) => Promise<boolean>

@@ -4,7 +4,6 @@ import { replaceState, state } from '../history'
 import { selectedEntities } from '../history/selectedEntities'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
-import { committedGrid } from './beatGrid'
 import { isEditableEntity } from '../state/operations/editable'
 import { canMakeVertical } from '../state/operations/makeVerticalValues'
 import { canScaleSelection } from '../state/operations/scaleValues'
@@ -12,6 +11,7 @@ import { getSplitHoldNotes } from '../state/operations/splitHold'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { interpolate } from '../utils/interpolate'
 import { holdsCharacter, menuKeyIndex } from '../utils/menuKeys'
+import { committedGrid } from './beatGrid'
 import { commands, isCommandName, type Command, type CommandName } from './commands'
 import {
     formatShortcut,
@@ -31,7 +31,7 @@ import { editorNavigation } from './navigation'
 import { notify } from './notification'
 import { isEntityInScope, scopeLookup } from './scope'
 import { toolName } from './tools'
-import { hitAllEntitiesAtPoint, modifyEntities } from './tools/utils'
+import { modifyEntities, pointHitsAt } from './tools/utils'
 import { view, yToValidBeat } from './view'
 
 type ActionName = CommandName | 'selectSlideNotes' | 'editElevations' | 'editProperties'
@@ -155,7 +155,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
     if (name === 'editElevations') {
         if (point) {
             const note = (
-                point.selection ? selectedEntities.value : hitAllEntitiesAtPoint(point.x, point.y)
+                point.selection ? selectedEntities.value : pointHitsAt(point.x, point.y).hits
             ).find((entity) => entity.type === 'note' && selectedEntities.value.includes(entity))
             openElevationEditor(
                 note?.beat ??
