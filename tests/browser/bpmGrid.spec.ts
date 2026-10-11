@@ -736,6 +736,57 @@ for (const display of ['measure', 'beat'] as const)
     })
 
 for (const display of ['measure', 'beat'] as const)
+    test(`${display}: Generate Slide Notes over its line limit says so and changes nothing`, async ({
+        page,
+    }) => {
+        await page.evaluate((display) => {
+            const { fixtures, show, view, settings } = window.editorTest
+            const [[head]] = fixtures.interaction.slides as [[object]]
+            show(
+                {
+                    ...fixtures.interaction,
+                    bpms: [
+                        { beat: 0, bpm: 120 },
+                        { beat: 2.5, bpm: 120 },
+                    ],
+                    // Over 100,000 lines between the ends on either grid; the short slide waits too.
+                    slides: [
+                        [
+                            { ...head, beat: 1 },
+                            { ...head, beat: 100_003 },
+                        ],
+                        [
+                            { ...head, beat: 1 },
+                            { ...head, beat: 5 },
+                        ],
+                    ],
+                } as never,
+                2,
+            )
+            view.division = 1
+            settings.pps = 200
+            settings.beatDisplay = display
+        }, display)
+        const result = await page.evaluate(async () => {
+            const { appImport, store, history } = window.editorTest
+            const { applyGeneratedSlideNotes } = await appImport<
+                typeof import('../../src/editor/tools/generateSlideNotes')
+            >('/src/editor/tools/generateSlideNotes/index.ts')
+            const { notification } = await appImport<
+                typeof import('../../src/editor/notification')
+            >('/src/editor/notification.ts')
+            const before = history.state.value
+            const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+            applyGeneratedSlideNotes(notes as never)
+            return {
+                unchanged: history.state.value === before,
+                message: notification.value.message?.(),
+            }
+        })
+        expect(result).toEqual({ unchanged: true, message: 'Too many notes to generate' })
+    })
+
+for (const display of ['measure', 'beat'] as const)
     test(`${display}: a context-menu paste lands on the grid`, async ({ page }) => {
         await setUp(page, display)
         const at = await point(page, -5.5, 3.4)
