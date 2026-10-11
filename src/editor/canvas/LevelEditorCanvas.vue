@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { beats, times } from '..'
 import { isAppActive } from '../../activity'
+import { state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
@@ -24,7 +25,7 @@ import {
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
-import { pasteGhostInfos, pasteGhostState } from '../tools/paste'
+import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
 import { isVisible } from '../tools/utils'
 import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
@@ -363,9 +364,13 @@ watchEffect(
         if (!canvas || !inputs.width || !inputs.height) return
         // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
         // ghosts, but a Composed paste's, placed on the committed lattice, waits for the commit.
+        const isComposedPaste = !!inputs.composed && tool.value === tools.paste
+        // A Composed paste ghost placed on an earlier chart, such as before a draft committed, waits for its rebuild.
+        const isStalePaste =
+            isComposedPaste && ![undefined, state.value].includes(pasteGhostBase() as never)
         const showsGhosts =
-            !isScenePreview.value ||
-            (!!previewEdit.value?.draft && !(inputs.composed && tool.value === tools.paste))
+            !isStalePaste &&
+            (!isScenePreview.value || (!!previewEdit.value?.draft && !isComposedPaste))
         const creating = showsGhosts ? view.entities.creating : []
         const range = artRange.value
         const hovered = sceneHovered.value

@@ -20,7 +20,7 @@ import { shiftComputed } from '../../../utils/math'
 import { getComposedGridOffset, getComposedNoteOffset, getComposedOffset } from '../../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
-import { sceneState, toSceneEntity } from '../../sceneState'
+import { sceneState, toSceneEntity, withDraft } from '../../sceneState'
 import { revealAuthoringTarget } from '../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
@@ -419,7 +419,8 @@ const getNoteFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'note') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 export const getNotePropertiesFromSelection = () => {

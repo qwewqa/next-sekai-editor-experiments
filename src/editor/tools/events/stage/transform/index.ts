@@ -18,6 +18,7 @@ import { createTransaction, type Transaction } from '../../../../../state/transa
 import { interpolate } from '../../../../../utils/interpolate'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
+import { withDraft } from '../../../../sceneState'
 import { revealAuthoringTarget } from '../../../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../../../sidebars'
 import { showToolModal } from '../../../../toolModals'
@@ -333,7 +334,8 @@ const getStageTransformEventJointFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'stageTransformEventJoint') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getPropertiesFromSelection = () => {

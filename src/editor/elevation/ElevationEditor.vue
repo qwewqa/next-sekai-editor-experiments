@@ -612,12 +612,16 @@ const controls: Pick<
                 ),
             ]
         else if (toolName.value === 'paste')
-            creating.value = previewElevationPasteRows(
-                position.lane,
-                position.elevation,
-                position.beat,
-                modifiers,
-            )
+            // As the chart's: a Composed paste is placed on the committed lattice, so it waits for a draft's commit.
+            creating.value =
+                previewEdit.value?.draft && getComposedLayout(elevationState.value)
+                    ? []
+                    : previewElevationPasteRows(
+                          position.lane,
+                          position.elevation,
+                          position.beat,
+                          modifiers,
+                      )
         else creating.value = []
         view.entities = {
             hovered: isSecondaryTool()

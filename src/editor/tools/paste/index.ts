@@ -277,6 +277,9 @@ export const pasteGhostInfos = () => ghost?.infos
 /** Includes the pasted events that determine a composed ghost's stage positions. */
 export const pasteGhostState = () => ghost?.state
 
+/** The chart a Composed paste ghost was placed on. */
+export const pasteGhostBase = () => (ghost?.state ? composedGhostKeys?.[0] : undefined)
+
 /** Drops the ghost once it no longer shows. */
 export const clearPasteGhost = () => {
     ghost = undefined

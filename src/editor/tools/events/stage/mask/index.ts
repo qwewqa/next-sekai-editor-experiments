@@ -19,7 +19,7 @@ import { interpolate } from '../../../../../utils/interpolate'
 import { shiftComputed } from '../../../../../utils/math'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
-import { toSceneEntity } from '../../../../sceneState'
+import { toSceneEntity, withDraft } from '../../../../sceneState'
 import { revealAuthoringTarget } from '../../../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../../../sidebars'
 import { showToolModal } from '../../../../toolModals'
@@ -443,7 +443,8 @@ const getStageMaskEventJointFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'stageMaskEventJoint') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getPropertiesFromSelection = () => {

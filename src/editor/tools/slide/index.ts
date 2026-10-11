@@ -9,6 +9,7 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages.ts'
 import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
+import { previewEdit } from '../../../preview/edit'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
 import type { Entity } from '../../../state/entities'
@@ -27,7 +28,7 @@ import {
 } from '../../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
-import { sceneState, toSceneEntity } from '../../sceneState'
+import { sceneState, toSceneEntity, withDraft } from '../../sceneState'
 import { revealAuthoringTarget } from '../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
@@ -429,7 +430,8 @@ const getNoteFromSelection = () => {
     const [entity] = selectedEntities.value
     if (entity?.type !== 'note') return
 
-    return entity
+    // As a pending draft shows it, which the click commits first.
+    return withDraft(entity)
 }
 
 const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
@@ -565,7 +567,7 @@ const add = (slideId: SlideId, object: NoteObject) => {
 const landing = (slideId: SlideId, object: NoteObject) => {
     if (!object.isAttached || !store.value.slides.note.has(slideId))
         return toNoteEntity(slideId, object)
-    const source = state.value
+    const source = landingSource()
     const last = lastLanding
     if (
         last?.source === source &&
@@ -577,7 +579,7 @@ const landing = (slideId: SlideId, object: NoteObject) => {
         )
     )
         return last.ghost
-    const ghost = placeLanding(slideId, object)
+    const ghost = placeLanding(source, slideId, object)
     lastLanding = { source, layout: view.layout, slideId, object, ghost }
     return ghost
 }
@@ -593,9 +595,12 @@ let lastLanding:
       }
     | undefined
 
-const placeLanding = (slideId: SlideId, object: NoteObject) => {
+// On the path drawn, a pending draft's included, as the click lands once it commits.
+const landingSource = () => (previewEdit.value?.draft ? sceneState.value : state.value)
+
+const placeLanding = (source: State, slideId: SlideId, object: NoteObject) => {
     const ghost = toNoteEntity(slideId, object)
-    const transaction = createTransaction(state.value)
+    const transaction = createTransaction(source)
     const result = transaction.commit(addNote(transaction, slideId, object))
     const [landed] = result.selectedEntities
     if (landed?.type !== 'note') return ghost
@@ -603,7 +608,7 @@ const placeLanding = (slideId: SlideId, object: NoteObject) => {
     return toNoteEntity(slideId, {
         ...object,
         left: position
-            ? position.left - getComposedOffset(object.stageId, object.beat)
+            ? position.left - getComposedOffset(object.stageId, object.beat, source)
             : landed.left,
         size: position?.size ?? landed.size,
     })

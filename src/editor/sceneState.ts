@@ -167,3 +167,7 @@ export const toSceneEntity = <T extends Entity>(entity: T, preview = sceneState.
     preview === state.value
         ? entity
         : ((counterpartsOf(state.value, preview).toScene.get(entity) as T | undefined) ?? entity)
+
+/** An entity as a pending Properties draft shows it, as the click that commits the draft will read it. */
+export const withDraft = <T extends Entity>(entity: T) =>
+    previewEdit.value?.draft ? toSceneEntity(entity) : entity

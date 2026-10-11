@@ -393,3 +393,58 @@ test("Composed: with a stage's move drafted, a Note tool ghost lands where the c
     await page.mouse.click(point.x, point.y)
     await expect.poll(() => shownLeft('added')).toBe(ghost)
 })
+
+const useTool = (page: Page, name: string, properties?: { isAttached: boolean }) =>
+    page.evaluate(
+        async ({ name, properties }) => {
+            const { appImport } = window.editorTest
+            if (properties) {
+                const slide = await appImport<typeof import('../../src/editor/tools/slide')>(
+                    '/src/editor/tools/slide/index.ts',
+                )
+                slide.defaultSlideProperties.value = properties
+            }
+            const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                '/src/editor/tools/index.ts',
+            )
+            switchToolTo(name as never)
+        },
+        { name, properties },
+    )
+
+const ghost = (page: Page) =>
+    page.evaluate(() =>
+        window.editorTest.view.entities.creating.flatMap((entity) =>
+            entity.type === 'note' ? [{ left: entity.left, size: entity.size }] : [],
+        ),
+    )
+
+test('Basic: a draft of the copied note sets the Note ghost, as the click copies it', async ({
+    page,
+}) => {
+    await showDraft(page, { layout: 'basic', dynamic: false })
+    await page
+        .locator('#workspace-panel-properties #properties-section-selection label')
+        .filter({ has: page.getByText('Size', { exact: true }) })
+        .locator('input')
+        .fill('6')
+    await useTool(page, 'note')
+    await hover(page, 2, 7)
+    await expect.poll(() => ghost(page)).toMatchObject([{ size: 6 }])
+})
+
+test("Basic: an attached Slide ghost lands on the drafted slide's path, as the click does", async ({
+    page,
+}) => {
+    await showDraft(page, { layout: 'basic', dynamic: false })
+    await useTool(page, 'slide', { isAttached: true })
+    // Halfway from the head, drafted to 0, to the tick at 5 (-2 once the head moves).
+    const point = await hover(page, -3, 4.5)
+    await expect.poll(() => ghost(page)).toHaveLength(1)
+    const [shown] = await ghost(page)
+    await page.mouse.click(point.x, point.y)
+    const landed = await page.evaluate(() =>
+        window.editorTest.snapshot().notes.filter((note) => note.beat === 4.5),
+    )
+    expect(landed).toMatchObject([{ left: shown!.left, size: shown!.size }])
+})

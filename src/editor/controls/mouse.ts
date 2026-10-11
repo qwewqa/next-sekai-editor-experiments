@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { state } from '../../history'
+import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
@@ -330,6 +331,13 @@ watch(
     },
 )
 watch(tool, hoverAgain)
+// A Composed paste ghost hidden during a draft is placed again once the draft ends.
+watch(
+    () => !!previewEdit.value?.draft,
+    (draft, was) => {
+        if (was && !draft && toolName.value === 'paste') hoverAgain()
+    },
+)
 
 // Ctrl and Shift change what a tap would act on; the hover follows them without a move.
 const followModifiers = (event: KeyboardEvent) => {
