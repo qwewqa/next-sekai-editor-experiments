@@ -418,7 +418,7 @@ test('Select: a note moved by another onto an off-grid stage event on a bar line
 test('Select: with a BPM change in the moved stretch, the lattice is judged at the beat the note drops at', async ({
     page,
 }) => {
-    // Bars restart at the change; moved with it, the note snaps on the grid without it.
+    // Bars restart at the change; moved with it, the note snaps on the grid from before the move.
     await load(page, {
         tool: 'select',
         pivots: [
@@ -435,6 +435,15 @@ test('Select: with a BPM change in the moved stretch, the lattice is judged at t
         selectBpms: [2.3],
         time: 1.6,
     })
+    // The committed grid's line nearest 6: quarters from 2.3, so 6.05.
+    const line = await page.evaluate(async () => {
+        const { history, view, appImport } = window.editorTest
+        const { snapBeat, toBeatGrid } = await appImport<
+            typeof import('../../src/state/integrals/grid')
+        >('/src/state/integrals/grid.ts')
+        return snapBeat(toBeatGrid(history.state.value.bpms), 6, view.division)
+    })
+    expect(line).toBeCloseTo(6.05, 9)
     await drag(page, 4, 6, 0, { hold: true })
     const held = await page.evaluate(() => {
         const [note] = window.editorTest.view.entities.creating
@@ -461,10 +470,10 @@ test('Select: with a BPM change in the moved stretch, the lattice is judged at t
             grid: to?.grid,
         }
     }, moved!.beat)
-    // A line of the grid without the change, not the bars' 5.8 or 6.05: the lift held through the drop.
-    expect(held).toBe(6)
+    expect(held).toBe(line)
     expect(moved!.beat).toBe(held)
-    expect(result.bpms).toEqual([0, 4.3])
+    expect(result.bpms[0]).toBe(0)
+    expect(result.bpms[1]).toBeCloseTo(2.3 + held! - 4, 9)
     // The retimed stretch moves the stage lattice there, so the note is on its grid.
     expect(result.moved).toBe(true)
     expectOnGrid(moved!.left - result.grid!)

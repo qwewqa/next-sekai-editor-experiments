@@ -10,7 +10,7 @@ import type { SlideId } from '../state/entities/slides'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
 import { beatToKey } from '../state/store/grid'
-import { gridOf, liftedDrawnBpms } from './beatGrid'
+import { dragBpms, gridOf } from './beatGrid'
 import { view } from './view'
 
 const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
@@ -84,8 +84,8 @@ export const previewSlides = computed(() => {
     }
 })
 
-/** The bars drawn: during a BPM change move, without the moved changes once they move. */
-export const drawnBpms = computed<GridBpm[]>(() => liftedDrawnBpms.value ?? sceneBpms.value)
+/** The bars drawn: during a scaling drag, those at its press. */
+export const drawnBpms = computed<GridBpm[]>(() => dragBpms.value ?? sceneBpms.value)
 export const drawnGrid = computed(() => gridOf(drawnBpms.value))
 
 export const cullAllSceneEntities = (minKey: number, maxKey: number) =>

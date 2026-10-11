@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { toBpmEntity, type BpmEntity } from '../../src/state/entities/bpm'
 import { calculateBpms, type GridBpm } from '../../src/state/integrals/bpms'
 import {
     ceilGridBeat,
@@ -15,9 +14,6 @@ import {
     stepGridBeat,
     toBeatGrid,
 } from '../../src/state/integrals/grid'
-import { liftBpms } from '../../src/state/mutations/bpm'
-import type { Store } from '../../src/state/store'
-import { addToStoreGrid, type StoreGrid } from '../../src/state/store/grid'
 import { align, alignNear } from '../../src/utils/math'
 
 const chart = (...changes: [number, number?][]) =>
@@ -442,36 +438,7 @@ test('tiny meters stay bounded', { timeout: 5000 }, () => {
     assert.equal(snapBeat(last, 7.4, 1), 7)
 })
 
-test('a lift removes the moved changes by their order among same-beat changes', () => {
-    const bpms = chart([0], [2.5, 3], [2.5, 7], [6])
-    const entities = bpms.map(({ x, meter }) => toBpmEntity({ beat: x, bpm: 120, meter }))
-    const store = { grid: { bpm: new Map() } as unknown as StoreGrid } as Store
-    for (const entity of entities) addToStoreGrid(store.grid, entity, entity.beat)
-    const copy = [...bpms]
-    const withoutFirst = liftBpms({ store, bpms }, [entities[1] as BpmEntity])
-    assert.deepEqual(
-        withoutFirst.map(({ x, meter }) => [x, meter]),
-        [
-            [0, 4],
-            [2.5, 7],
-            [6, 4],
-        ],
-    )
-    const withoutLast = liftBpms({ store, bpms }, [entities[2] as BpmEntity])
-    assert.deepEqual(
-        withoutLast.map(({ x, meter }) => [x, meter]),
-        [
-            [0, 4],
-            [2.5, 3],
-            [6, 4],
-        ],
-    )
-    // The initial change stays; the input isn't touched.
-    assert.equal(liftBpms({ store, bpms }, [entities[0] as BpmEntity]).length, 4)
-    assert.deepEqual(bpms, copy)
-})
-
-test('moved beats pair with content on the chart bars in the Beat display and during a lift', () => {
+test('moved beats pair with content on the chart bars in the Beat display', () => {
     const bars = grid([0], [2.5])
     const partner = snapBeat(bars, 2.5 + 2 / 3, 3)
     assert.ok(Object.is(partner, 2.5 + 2 / 3))
@@ -480,8 +447,6 @@ test('moved beats pair with content on the chart bars in the Beat display and du
     assert.notEqual(moved, partner)
     // The Beat display's global grid, then the bars.
     assert.ok(Object.is(nearGridsBeat([GLOBAL_GRID, bars], moved, 3), partner))
-    // The grid without the lifted change, then the bars.
-    assert.ok(Object.is(nearGridsBeat([grid([0]), bars], moved, 3), partner))
     // Off both, as alignNear.
     assert.ok(Object.is(nearGridsBeat([GLOBAL_GRID, bars], 3.2, 3), 3.2))
 })
@@ -505,6 +470,28 @@ test('global content moves in the Beat display exactly as before', () => {
                     alignNear(moved, division),
                 ),
             )
+        }
+    }
+})
+
+test('moved beats in Measure clean against the bars once, as nearGridBeat', () => {
+    for (let t = 0; t < 200; t++) {
+        const division = pick(divisions)
+        const changes: [number, number][] = [[0, 4]]
+        for (let i = 0; i < 4; i++)
+            changes.push([Math.round(random() * 1000) / 100 + 0.003, pick(meters)])
+        changes.sort((a, b) => a[0] - b[0])
+        const bars = grid(...changes)
+        for (let j = 0; j < 50; j++) {
+            const line = snapBeat(bars, random() * 40, division)
+            const moved = line + (Math.floor(random() * 20) - 10) / division
+            for (const beat of [moved, moved + 1e-9, moved + 0.3 / division])
+                assert.ok(
+                    Object.is(
+                        nearGridsBeat([bars, bars], beat, division),
+                        nearGridBeat(bars, beat, division),
+                    ),
+                )
         }
     }
 })

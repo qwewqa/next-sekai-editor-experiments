@@ -50,17 +50,19 @@ const switchTool = (page: Page, name: string) =>
         switchToolTo(name as never)
     }, name)
 
-const grids = (page: Page) =>
+// What the canvas draws from: the bars, and the grid's lines from 0 to 10.
+const drawn = (page: Page) =>
     page.evaluate(async () => {
-        const { appImport } = window.editorTest
-        const { liftedBpms } =
-            await appImport<typeof import('../../src/editor/beatGrid')>('/src/editor/beatGrid.ts')
-        const { drawnBpms } = await appImport<typeof import('../../src/editor/sceneState')>(
-            '/src/editor/sceneState.ts',
+        const { appImport, view } = window.editorTest
+        const { drawnBpms, drawnGrid } = await appImport<
+            typeof import('../../src/editor/sceneState')
+        >('/src/editor/sceneState.ts')
+        const { gridLines } = await appImport<typeof import('../../src/state/integrals/grid')>(
+            '/src/state/integrals/grid.ts',
         )
         return {
-            lifted: liftedBpms.value?.map(({ x }) => x),
-            drawn: drawnBpms.value.map(({ x }) => x),
+            bars: drawnBpms.value.map(({ x }) => x),
+            lines: gridLines(drawnGrid.value, 0, 10, view.division, 1000)!.map(({ beat }) => beat),
         }
     })
 
@@ -160,7 +162,7 @@ test('the drawn lines and labels are the snap targets', async ({ page }) => {
             const { drawnGrid } = await appImport<typeof import('../../src/editor/sceneState')>(
                 '/src/editor/sceneState.ts',
             )
-            const { snapGrid } =
+            const { committedGrid } =
                 await appImport<typeof import('../../src/editor/beatGrid')>(
                     '/src/editor/beatGrid.ts',
                 )
@@ -234,7 +236,7 @@ test('the drawn lines and labels are the snap targets', async ({ page }) => {
                 bars: strokes.find((stroke) => Math.abs(stroke.width - 0.15) < 1e-6)?.beats,
                 labels: labels.right.map(({ text }) => text),
                 snapped: [...lines[0]!.beats, ...lines[1]!.beats].every(
-                    (beat) => snapBeat(snapGrid.value, beat, view.division) === beat,
+                    (beat) => snapBeat(committedGrid.value, beat, view.division) === beat,
                 ),
             }
         })
@@ -364,54 +366,60 @@ for (const display of ['measure', 'beat'] as const)
         expect(await cursor(page)).toBe(display === 'beat' ? 'crosshair' : 'ns-resize')
     })
 
-test('a dragged BPM change snaps to the grid without it, and drops it on cancel', async ({
+test('a dragged BPM change snaps to and draws the grid from before the move until the drop', async ({
     page,
 }) => {
     await setUp(page, 'measure')
     await page.keyboard.press('q')
+    const before = await drawn(page)
+    expect(before).toEqual({
+        bars: [0, 2.5],
+        lines: [0, 1, 2, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5],
+    })
     const from = await point(page, -4, 2.5)
 
-    // Later: whole beats, not its own 3.5.
+    // Later: its own lines after it.
     await page.mouse.move(from.x, from.y)
     await page.mouse.down()
-    // Within the wait it hasn't moved, so the bars stay.
     const near = await point(page, -4, 2.75)
     await page.mouse.move(near.x, near.y, { steps: 3 })
     await settle(page)
-    expect(await grids(page)).toEqual({ lifted: [0], drawn: [0, 2.5] })
+    expect(await drawn(page)).toEqual(before)
     const to = await point(page, -4, 3.3)
     await page.mouse.move(to.x, to.y, { steps: 6 })
     await settle(page)
-    expect(await creating(page)).toEqual([3])
-    expect(await grids(page)).toEqual({ lifted: [0], drawn: [0] })
+    expect(await creating(page)).toEqual([3.5])
+    expect(await drawn(page)).toEqual(before)
     await page.mouse.up()
     await settle(page)
-    expect(await bpms(page)).toEqual([0, 3])
-    expect(await grids(page)).toEqual({ lifted: undefined, drawn: [0, 3] })
+    expect(await bpms(page)).toEqual([0, 3.5])
+    expect((await drawn(page)).bars).toEqual([0, 3.5])
     await page.keyboard.press('Control+z')
     await settle(page)
     expect(await bpms(page)).toEqual([0, 2.5])
+    expect(await drawn(page)).toEqual(before)
 
-    // Earlier: the previous bar's beats.
+    // Earlier: the previous bar's lines.
     await drag(page, from, await point(page, -4, 1.8))
     expect(await bpms(page)).toEqual([0, 2])
     await page.keyboard.press('Control+z')
     await settle(page)
 
-    // Escape and blur cancel; the next hover snaps to the chart's grid again.
+    // Escape and blur cancel; the next hover snaps to the chart's grid.
     for (const cancel of ['Escape', 'blur'] as const) {
         await page.mouse.move(from.x, from.y)
         await page.mouse.down()
         const to = await point(page, -4, 4.3)
         await page.mouse.move(to.x, to.y, { steps: 6 })
         await settle(page)
-        expect(await grids(page)).toEqual({ lifted: [0], drawn: [0] })
+        expect(await creating(page), cancel).toEqual([4.5])
+        expect(await drawn(page), cancel).toEqual(before)
         if (cancel === 'Escape') await page.keyboard.press('Escape')
         else await page.evaluate(() => window.dispatchEvent(new Event('blur')))
         await page.mouse.up()
         await settle(page)
         expect(await bpms(page), cancel).toEqual([0, 2.5])
-        expect(await grids(page), cancel).toEqual({ lifted: undefined, drawn: [0, 2.5] })
+        expect(await drawn(page), cancel).toEqual(before)
         await switchTool(page, 'note')
         const at = await point(page, -5.5, 3.4)
         await page.mouse.move(at.x, at.y)
@@ -421,7 +429,7 @@ test('a dragged BPM change snaps to the grid without it, and drops it on cancel'
     }
 })
 
-test('a Select move of a BPM change and its notes snaps to the grid without it', async ({
+test('a Select move of a BPM change and its notes keeps the grid from before the move', async ({
     page,
 }) => {
     await page.evaluate(() => {
@@ -456,13 +464,25 @@ test('a Select move of a BPM change and its notes snaps to the grid without it',
     })
     await settle(page)
     await switchTool(page, 'select')
-    // Grabbed by its note at 3.5 and dropped near 5.3: whole beats, so the block moves by 1.5.
-    await drag(page, await point(page, -3, 3.5), await point(page, -3, 5.3))
-    expect(await bpms(page)).toEqual([0, 4])
-    expect(await noteBeats(page)).toEqual([5, 6])
+    const before = await drawn(page)
+    expect(before.lines).toContain(5.5)
+    // Grabbed by its note at 3.5 and dropped near 5.3: its line 5.5, so the block moves by 2.
+    const from = await point(page, -3, 3.5)
+    const to = await point(page, -3, 5.3)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect((await creating(page)).sort((a, b) => a - b)).toEqual([4.5, 5.5, 6.5])
+    expect(await drawn(page)).toEqual(before)
+    await page.mouse.up()
+    await settle(page)
+    expect(await bpms(page)).toEqual([0, 4.5])
+    expect(await noteBeats(page)).toEqual([5.5, 6.5])
+    expect((await drawn(page)).bars).toEqual([0, 4.5])
 })
 
-test('a scaling translate of a BPM change and its notes snaps to the grid without it', async ({
+test('a scaling translate of a BPM change and its notes keeps the grid from before the move', async ({
     page,
 }) => {
     await page.evaluate(() => {
@@ -519,13 +539,22 @@ test('a scaling translate of a BPM change and its notes snaps to the grid withou
                     .sort((a, b) => a - b),
             }
         })
-    // Without the lift, 2.2 would snap to 2 against 3.5 and shift the block by 1.5.
-    await drag(page, from, await point(page, -3, 2.2))
-    expect(await draft()).toEqual({ bpms: [0, 1.5], notes: [2.5, 3.5] })
-    expect(await grids(page)).toEqual({ lifted: undefined, drawn: [0, 1.5] })
+    const before = await drawn(page)
+    expect(before.lines).toContain(2)
+    // Pressed on its line 3.5 and dropped near 2.2: the line 2, so the block moves by 1.5.
+    const to = await point(page, -3, 2.2)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect(await draft()).toEqual({ bpms: [0, 1], notes: [2, 3] })
+    expect(await drawn(page)).toEqual(before)
+    await page.mouse.up()
+    await settle(page)
+    expect(await draft()).toEqual({ bpms: [0, 1], notes: [2, 3] })
+    expect((await drawn(page)).bars).toEqual([0, 1])
 })
 
-test('Escape mid-scaling restores the draft and drops the lift', async ({ page }) => {
+test('Escape mid-scaling restores the draft and its grid', async ({ page }) => {
     await setUp(page, 'measure')
     await page.evaluate(() => {
         const { history } = window.editorTest
@@ -557,16 +586,17 @@ test('Escape mid-scaling restores the draft and drops the lift', async ({ page }
             return { factor, requestedFactor, valid }
         })
     const before = await session()
+    const grid = await drawn(page)
     await page.mouse.down()
     const to = await point(page, -3, 4.2)
     await page.mouse.move(to.x, to.y, { steps: 6 })
     await settle(page)
-    expect((await grids(page)).lifted).toEqual([0])
+    expect(await drawn(page)).toEqual(grid)
     await page.keyboard.press('Escape')
     await page.mouse.up()
     await settle(page)
     expect(await session()).toEqual(before)
-    expect((await grids(page)).lifted).toBeUndefined()
+    expect(await drawn(page)).toEqual(grid)
 })
 
 test('the Elevation Editor steps through the bar grid', async ({ page }) => {
@@ -714,18 +744,19 @@ test('composed: placing and dragging a BPM change use the bar grid', async ({ pa
     }
     await page.keyboard.press('q')
     await settle(page)
+    const before = await drawn(page)
     const from = await point(page, -4, 2.5)
     await page.mouse.move(from.x, from.y)
     await page.mouse.down()
     const to = await point(page, -4, 3.3)
     await page.mouse.move(to.x, to.y, { steps: 6 })
     await settle(page)
-    expect(await creating(page)).toEqual([3])
-    expect(await grids(page)).toEqual({ lifted: [0], drawn: [0] })
+    expect(await creating(page)).toEqual([3.5])
+    expect(await drawn(page)).toEqual(before)
     await page.mouse.up()
     await settle(page)
-    expect(await bpms(page)).toEqual([0, 3])
-    expect(await grids(page)).toEqual({ lifted: undefined, drawn: [0, 3] })
+    expect(await bpms(page)).toEqual([0, 3.5])
+    expect((await drawn(page)).bars).toEqual([0, 3.5])
 })
 
 test('the wheel on a focused Elevation Editor beat field steps through the bar grid', async ({
@@ -754,7 +785,9 @@ test('the wheel on a focused Elevation Editor beat field steps through the bar g
     ).toBe(2.5)
 })
 
-test('a scaling drag from an end lifts the moving changes but not the anchor', async ({ page }) => {
+test('a scaling drag from an end draws the bars from its press until the drop', async ({
+    page,
+}) => {
     await page.evaluate(() => {
         const { fixtures, show, view, settings, history } = window.editorTest
         const [[head]] = fixtures.interaction.slides as [[object]]
@@ -790,14 +823,28 @@ test('a scaling drag from an end lifts the moving changes but not the anchor', a
         void scaleBeat.execute()
     })
     await expect(page.locator('.scaling-panel')).toBeVisible()
+    const draftBpms = () =>
+        page.evaluate(async () => {
+            const { history, appImport } = window.editorTest
+            const { getPreviewState } =
+                await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+            return getPreviewState(history.state.value).bpms.map(({ x }) => x)
+        })
+    const before = await drawn(page)
+    expect(before.bars).toEqual([0, 2.5, 4.75])
     await page.mouse.down()
     const to = await point(page, -3, 8.6)
     await page.mouse.move(to.x, to.y, { steps: 6 })
     await settle(page)
-    expect((await grids(page)).lifted).toEqual([0, 2.5])
+    // The draft has moved the change at 4.75; the bars haven't.
+    const moved = await draftBpms()
+    expect(moved.slice(0, 2)).toEqual([0, 2.5])
+    expect(moved[2]).toBeGreaterThan(4.75)
+    expect(await drawn(page)).toEqual(before)
     await page.mouse.up()
     await settle(page)
-    expect((await grids(page)).lifted).toBeUndefined()
+    expect(await draftBpms()).toEqual(moved)
+    expect((await drawn(page)).bars).toEqual(moved)
 })
 
 test('switching the beat display moves a Composed paste ghost under a still mouse', async ({

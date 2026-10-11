@@ -5,7 +5,7 @@ import { hasSameChartData } from '../state/data'
 import { timeToBeat } from '../state/integrals/bpms'
 import { snapBeat } from '../state/integrals/grid'
 import { align } from '../utils/math'
-import { snapGrid } from './beatGrid'
+import { committedGrid } from './beatGrid'
 import type { Modifiers } from './controls/gestures/pointer'
 import { editorNavigation } from './navigation'
 import { scopeLookup } from './scope'
@@ -22,7 +22,7 @@ export const pasteAtContextPosition = async (
     const lane = xToLane(x)
     const beat = timeToBeat(bpms.value, Math.max(0, yToTime(y)))
     const { division, snapping, layout } = view
-    const grid = snapGrid.value
+    const grid = committedGrid.value
     // A focus or visibility change while the clipboard is read invalidates the paste.
     const scope = scopeLookup.value
     try {

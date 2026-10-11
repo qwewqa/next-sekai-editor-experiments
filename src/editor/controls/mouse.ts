@@ -313,7 +313,6 @@ watch([viewBox, () => view.x, () => view.y], () => {
 watch(
     [
         () => view.division,
-        // Not the drag's lifted grid: dropping it moves nothing under the mouse.
         committedGrid,
         () => view.snapping,
         () => view.laneDivision,

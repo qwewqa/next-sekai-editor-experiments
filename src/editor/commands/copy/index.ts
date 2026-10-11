@@ -18,7 +18,6 @@ import { getDetachedNotePositions } from '../../../state/operations/notePosition
 import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
 import { interpolate } from '../../../utils/interpolate'
-import { committedGrid } from '../../beatGrid'
 import { createComposedLayout } from '../../composed'
 import { notify } from '../../notification'
 import { pointHitsAt } from '../../tools/utils'
@@ -108,7 +107,7 @@ const getAnchor = (entities: Entity[], x: number, y: number) => {
     const entity = hitEntities[0] ?? sortedEntities[0]
     return {
         lane: 0,
-        beat: entity?.beat ?? yToValidBeat(y, committedGrid.value),
+        beat: entity?.beat ?? yToValidBeat(y),
         note: undefined,
     }
 }

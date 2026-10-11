@@ -70,14 +70,7 @@ import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { shiftComputed } from '../../utils/math'
-import {
-    dropLift,
-    endingLift,
-    liftForMove,
-    setLiftDrawn,
-    snapGrid,
-    startingLift,
-} from '../beatGrid'
+import { committedGrid } from '../beatGrid'
 import { inverseAffine } from '../composedPointer'
 import {
     getComposedGridOffset,
@@ -316,7 +309,7 @@ export const select: Tool = {
         return target.onlyType === 'bpm' ? 'ns-resize' : 'move'
     },
 
-    dragStart: startingLift((x, y) => {
+    dragStart(x, y) {
         const target = resolveDrag(x, y)
         if (target.type === 'select') {
             active = {
@@ -327,14 +320,12 @@ export const select: Tool = {
                 entities: selectedEntities.value,
             }
         } else if (target.isSelected) {
-            liftForMove(target.entities, state.value)
             focusEntityAtBeat(target.focus.beat)
 
             notify(interpolate(() => i18n.value.tools.select.moving, `${target.entities.length}`))
 
             active = target
         } else {
-            liftForMove(target.entities, state.value)
             replaceState({
                 ...state.value,
                 selectedEntities: [target.focus],
@@ -351,7 +342,7 @@ export const select: Tool = {
         }
 
         return true
-    }),
+    },
 
     dragUpdate(x, y, modifiers) {
         if (!active) return
@@ -368,8 +359,6 @@ export const select: Tool = {
                     yToMoveBeatOffset(y, active.focus.beat, active.pressBeat),
                 )
 
-                // Moved BPM changes redraw the bars only once they leave their beats.
-                setLiftDrawn(beatOffset !== 0)
                 const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 if (active.last === last) break
                 active.last = last
@@ -482,7 +471,7 @@ export const select: Tool = {
         }
     },
 
-    dragEnd: endingLift((x, y, modifiers) => {
+    dragEnd(x, y, modifiers) {
         if (!active) return
 
         switch (active.type) {
@@ -567,12 +556,11 @@ export const select: Tool = {
 
         active = undefined
         clearPreviewEdit()
-    }),
+    },
 
     dragCancel() {
         active = undefined
         clearPreviewEdit()
-        dropLift()
     },
 }
 
@@ -816,7 +804,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
 }
 
 // What moved beats are cleaned against: the beat division and grid.
-const beatSnapKey = () => `${view.division} ${beatGridKey(snapGrid.value)}`
+const beatSnapKey = () => `${view.division} ${beatGridKey(committedGrid.value)}`
 
 const moveSelectedLane = (
     value: number,
