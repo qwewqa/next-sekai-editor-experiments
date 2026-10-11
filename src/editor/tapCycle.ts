@@ -47,9 +47,10 @@ export const stepTapCycle = <T, P>(
         }
     }
 
+    const hit = new Set(set)
     const misses = new Map<T, number>()
     for (const [entity, count] of cycle.misses) {
-        const missed = set.includes(entity) ? 0 : count + 1
+        const missed = hit.has(entity) ? 0 : count + 1
         if (missed < maxMisses || entity === current) misses.set(entity, missed)
     }
     for (const entity of set) misses.set(entity, 0)
@@ -60,7 +61,7 @@ export const stepTapCycle = <T, P>(
     const from = order.indexOf(current) + 1
     const after = [...order.slice(from), ...order.slice(0, from)]
     const next = (unpicked: boolean) =>
-        after.find((entity) => set.includes(entity) && !(unpicked && picked.has(entity)))
+        after.find((entity) => hit.has(entity) && !(unpicked && picked.has(entity)))
     let target = next(true)
     if (target === undefined) {
         target = next(false)
