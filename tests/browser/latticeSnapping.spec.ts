@@ -466,6 +466,48 @@ test('Select: a lane division change mid-drag judges the lattice again', async (
     expect((await notes(page))[0]).toMatchObject({ beat: 6, left: 1 })
 })
 
+test('Select: a lane division change with the same ghosts rebuilds the preview', async ({
+    page,
+}) => {
+    // At 4 divisions the stage's 1.5 lanes and parity flip are whole steps: the note waits, as a forced snap at 1 would land.
+    await load(page, {
+        tool: 'select',
+        pivots: [
+            { beat: 0, pivotLane: 0, divisionSize: 1 },
+            { beat: 16, pivotLane: 4, divisionSize: 1, divisionParity: 'odd' },
+        ],
+        slides: [[{ beat: 3, left: -1 }]],
+        laneDivision: 4,
+        select: 'notes',
+        time: 3,
+    })
+    const left = await page.evaluate(async () => {
+        const { history, view, point, appImport } = window.editorTest
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const { previewEdit } =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const source = history.state.value
+        const note = [...source.store.slides.note.values()].flat()[0]!
+        const shown = createComposedLayout(source).notePosition(note).left + 1
+        const start = point(shown, 3)
+        const end = point(shown, 9)
+        const modifiers = { ctrl: false, shift: false }
+        select.dragStart!(start.x, start.y, modifiers)
+        select.dragUpdate!(end.x, end.y, modifiers)
+        view.laneDivision = 1
+        select.dragUpdate!(end.x, end.y, modifiers)
+        const preview = previewEdit.value!.resolve()
+        await select.dragEnd!(end.x, end.y, modifiers)
+        const left = (state: typeof source) => [...state.store.slides.note.values()].flat()[0]!.left
+        return { preview: left(preview), drop: left(history.state.value) }
+    })
+    expect(left.preview).toBe(left.drop)
+})
+
 test('relative lane snapping and the Basic layout keep the wait on a moving stage', async ({
     page,
 }) => {
@@ -590,7 +632,74 @@ test('Select: a tick taken past an unselected middle note snaps by its attach he
     expect(moved[0]!.left).toBe(1)
 })
 
-test('Select: an attached slide end and a tick past its end snap on their own stage', async ({
+test('Select: a tick within its slide whose head stays snaps by its moving tail, or waits', async ({
+    page,
+}) => {
+    const moving: PivotSpec[] = [
+        { beat: 0, pivotLane: 0.2 },
+        { beat: 8, pivotLane: 2.2 },
+    ]
+    const tick = async () => (await notes(page)).find((note) => note.beat === 5)!.shown + 1
+    for (const head of [0.37, 0.5]) {
+        // Composed, straight down a moving stage: the tail stays on the grid.
+        await load(page, {
+            tool: 'select',
+            pivots: moving,
+            slides: slide([1, 1, 1], 0).map(([first, ...rest]) => [
+                { ...first!, left: head },
+                ...rest,
+            ]),
+            select: [5, 6],
+        })
+        await drag(page, 5, 6, 0, { lane: await tick() })
+        const moved = await notes(page)
+        expect(moved.map((note) => note.beat)).toEqual([4, 6, 7])
+        expect(moved[0]!.left).toBe(head)
+        expectOnGrid(moved[2]!.left - (await lattice(page, 6)).grid)
+        // Basic, past half a lane: the tail lands on the grid.
+        await load(page, {
+            tool: 'select',
+            layout: 'basic',
+            slides: slide([1, 1, 1], 0).map(([first, ...rest]) => [
+                { ...first!, left: head },
+                ...rest,
+            ]),
+            select: [5, 6],
+        })
+        await drag(page, 5, 5, 0.7, { lane: await tick() })
+        expect(
+            (await notes(page)).map((note) => note.left).filter((_, index) => index !== 1),
+        ).toEqual([head, 4])
+    }
+    // With neither end moving, a camera moved with the tick snaps from the tick, without forcing.
+    await load(page, {
+        tool: 'select',
+        layout: 'basic',
+        slides: slide([1, 1, 1], 0).map(([first, ...rest]) => [{ ...first!, left: 0.37 }, ...rest]),
+        cameras: [{ beat: 4.5, cameraLeft: -3, cameraSize: 6 }],
+        select: 'all',
+    })
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: source.selectedEntities.filter(
+                (entity) => entity.type !== 'note' || entity.beat === 5,
+            ),
+        })
+    })
+    const derived = (await notes(page)).find((note) => note.beat === 5)!.left
+    await drag(page, 5, 5, 0.7, { lane: await tick() })
+    const [camera] = await page.evaluate(() =>
+        [...window.editorTest.history.state.value.store.grid.cameraEventJoint.values()]
+            .flatMap((bucket) => [...bucket])
+            .map((camera) => camera.cameraLeft),
+    )
+    expect(camera).toBeCloseTo(-3 + Math.round(derived + 0.7) - derived, 9)
+})
+
+test('Select: an attached slide end and a tick taken past its end snap on their own stage', async ({
     page,
 }) => {
     const moving: PivotSpec[] = [
@@ -615,6 +724,22 @@ test('Select: an attached slide end and a tick past its end snap on their own st
     const end = (await notes(page)).find((note) => note.beat === 7)!
     expect((await notes(page)).at(-1)).toEqual(end)
     expectOnGrid(end.left - (await lattice(page, 7)).grid)
+    // An attached tail is drawn as a note: it snaps its own authored lane.
+    await load(page, {
+        tool: 'select',
+        pivots: moving,
+        slides: [
+            [
+                { beat: 4, left: 0.37 },
+                { beat: 6, left: 2.37, isAttached: true },
+            ],
+        ],
+        select: [6],
+    })
+    await drag(page, 6, 7, 0)
+    const tail = (await notes(page)).at(-1)!
+    expect(tail).toMatchObject({ beat: 7, isAttached: true })
+    expectOnGrid(tail.left - (await lattice(page, 7)).grid)
 })
 
 test('the forced snap and the moved beat it is judged at', async ({ page }) => {

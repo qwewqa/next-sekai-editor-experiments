@@ -120,7 +120,7 @@ type MoveActive = {
     // The pointer and lane snapping the preview was last built for.
     last?: string
     // The ghosts as built from the move, and as shown with attached notes where they drop.
-    ghosts?: { ghosts: Entity[]; shown: Entity[] }
+    ghosts?: { ghosts: Entity[]; shown: Entity[]; snapping: string }
     response?: {
         source: State
         beatOffset: number
@@ -139,8 +139,11 @@ type Bases = ReadonlyMap<NoteEntity, NoteEntity>
 /** What the grabbed object gives every moved object, once per pointer update. */
 type MovePlan = {
     bases: Bases
-    // Lanes snap from it: a tick taken past its slide's end from its gameplay place, a tick within its slide from its attach head.
+    // Lanes snap from it: a tick taken past its slide's end from its gameplay place, a tick within
+    // its slide from its moving attach head, else its moving attach tail.
     anchor: Entity
+    // A tick within its slide with neither moving can't be snapped at once.
+    forcible: boolean
     // The grabbed object's moved beat.
     beat: number
     // Whether the anchor's stage lattice moved there, so absolute lane snapping can't wait.
@@ -364,9 +367,12 @@ export const select: Tool = {
 
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
+                // The preview reads snapping when drawn, so a snapping change rebuilds it.
+                const snapping = `${view.laneDivision} ${view.laneSnapping} ${view.division}`
                 const previous = active.ghosts
                 if (
                     previous?.shown === view.entities.creating &&
+                    previous.snapping === snapping &&
                     ghosts.length === previous.ghosts.length &&
                     ghosts.every((entity, index) => {
                         const other = previous.ghosts[index]
@@ -396,7 +402,7 @@ export const select: Tool = {
                             : undefined) ?? ghost
                     )
                 })
-                active.ghosts = { ghosts, shown: creating }
+                active.ghosts = { ghosts, shown: creating, snapping }
 
                 view.entities = {
                     hovered: [],
@@ -684,11 +690,13 @@ const getRawMove = (
         { input: 1, output: response.one },
     )
     // The moved chart's lattice decides, judged without sideways movement.
-    const latticeMoved = isLatticeMoved(
-        getComposedLattice(anchor.stageId, focus.beat, source),
-        response.lattice,
-        view.laneDivision,
-    )
+    const latticeMoved =
+        plan.forcible &&
+        isLatticeMoved(
+            getComposedLattice(anchor.stageId, focus.beat, source),
+            response.lattice,
+            view.laneDivision,
+        )
     // An attached anchor can have no horizontal response. Keeping the raw
     // baseline avoids moving controls that cannot move the grabbed point.
     return {
@@ -710,25 +718,32 @@ const getMovePlan = (source: State, active: MoveActive, beatOffset: number): Mov
     const bases = getMoveBases(source, active, beatOffset)
     const focus = active.focus
     const beat = toMovedBeat(focus.beat, beatOffset)
+    const ends = focus.type === 'note' && !bases.has(focus) ? getAttachEnds(source, focus) : []
     const anchor =
-        focus.type === 'note' ? (bases.get(focus) ?? getAttachHead(source, focus) ?? focus) : focus
+        (focus.type === 'note' ? bases.get(focus) : undefined) ??
+        ends.find((end) => active.entities.includes(end)) ??
+        focus
+    const forcible = !ends.length || anchor !== focus
     return {
         bases,
         anchor,
+        forcible,
         beat,
         // The raw move judges the moved chart's lattice itself.
         latticeMoved:
+            forcible &&
             anchor.type === 'note' &&
             isComposedLatticeMoved(anchor.stageId, focus.beat, beat, source),
     }
 }
 
-/** A tick within its slide takes what it lacks from its attach head. */
-const getAttachHead = (source: State, note: NoteEntity) => {
-    if (!note.isAttached) return
+/** A tick within its slide takes what it lacks from its attach head, or else its attach tail. */
+const getAttachEnds = (source: State, note: NoteEntity) => {
+    if (!note.isAttached) return []
     const infos = source.store.slides.info.get(note.slideId)
-    if (!infos || infos[0]?.note === note || infos.at(-1)?.note === note) return
-    return infos.find((info) => info.note === note)?.attachHead
+    if (!infos || infos[0]?.note === note || infos.at(-1)?.note === note) return []
+    const info = infos.find((info) => info.note === note)
+    return info ? [info.attachHead, info.attachTail] : []
 }
 
 /** The selected ticks this move takes past their slide's ends, at their gameplay place. */
@@ -1052,7 +1067,7 @@ const toMovedNoteObject = (
         const focusEdge = focus.left + (isLeft ? focus.size : 0)
         // The grabbed edge supplies one raw delta for the whole selection.
         const origin = getComposedLayout()
-            ? getComposedGridOffset(focus.stageId, focus.beat) + edge - focusEdge
+            ? getComposedGridOffset(focus.stageId, focus.beat) + (edge - focusEdge)
             : 0
 
         const [left, size] = resize(

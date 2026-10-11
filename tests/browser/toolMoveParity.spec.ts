@@ -791,3 +791,69 @@ for (const family of ['stageMaskEvent', 'cameraEvent'] as const) {
         expect(rightEdges((await stored(page, family)).objects)).toEqual([5, 7])
     })
 }
+
+test('note and slide: a Composed edge resize on thirds stores exactly what Select does', async ({
+    page,
+}) => {
+    const results = await page.evaluate(async () => {
+        const { show, fixtures, view, settings, history, point, appImport } = window.editorTest
+        const { tools } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const base = fixtures.interaction.slides[0]![0]!
+        const pivot = fixtures.events.stagePivotEvents[0]!
+        const modifiers = { ctrl: false, shift: false }
+        const sizes: Record<string, number[]> = { note: [], slide: [], select: [] }
+        for (const tool of ['note', 'slide', 'select'] as const) {
+            for (let i = 0; i < 24; i++) {
+                // An odd-parity stage puts the lattice half a lane off; its thirds carry float noise.
+                show(
+                    {
+                        ...fixtures.interaction,
+                        isDynamicStages: true,
+                        stagePivotEvents: [
+                            {
+                                ...pivot,
+                                beat: 0,
+                                pivotLane: 0.2,
+                                divisionSize: 1,
+                                divisionParity: 'odd',
+                            },
+                        ],
+                        slides: [[{ ...base, beat: 4, left: 2 / 3, size: 3 }]],
+                    },
+                    3,
+                )
+                view.layout = 'composed'
+                view.laneDivision = 3
+                view.laneSnapping = 'absolute'
+                settings.maxLane = 0
+                const source = history.state.value
+                const note = [...source.store.slides.note.values()].flat()[0]!
+                history.replaceState({
+                    ...source,
+                    selectedEntities: tool === 'select' ? [note] : [],
+                })
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo(tool)
+                const shown = createComposedLayout(source).notePosition(note)
+                const press = shown.left + shown.size - 0.2
+                const start = point(press, 4)
+                const end = point(press + 0.05 + i * 0.07, 4)
+                tools[tool].dragStart!(start.x, start.y, modifiers)
+                tools[tool].dragUpdate!(end.x, end.y, modifiers)
+                await tools[tool].dragEnd!(end.x, end.y, modifiers)
+                sizes[tool]!.push(
+                    [...history.state.value.store.slides.note.values()].flat()[0]!.size,
+                )
+            }
+        }
+        return sizes
+    })
+    expect(results.note).toEqual(results.select)
+    expect(results.slide).toEqual(results.select)
+})
