@@ -573,6 +573,43 @@ test('beats one float step apart may meet when moved or scaled; distinct beats s
     assert.equal(getTranslatedSelectionValues(elevations, 'elevation', 1e10), undefined)
 })
 
+test('beats may meet only if the cleaning at the division could merge them', () => {
+    const onGrid = (division: number) => (beat: number, offset: number) =>
+        cleanBeat([GLOBAL_GRID], beat + offset, division)
+    const scaled = (beats: number[], factor: number, division: number) =>
+        getScaledSelectionValues(
+            beats.map((beat) => source('note', beat)),
+            'beat',
+            factor,
+            undefined,
+            0,
+            onGrid(division),
+            division,
+        )
+    // A chain of beats each noise apart still spans distinct beats, which may not meet.
+    const chain = [...Array.from({ length: 67 }, (_, i) => i * 1.5e-6), 1]
+    assert.equal(scaled(chain, 1e-3, 1), undefined)
+    // 1.9e-6 apart may merge at division 1, not at 4.
+    assert.ok(scaled([0, 1.9e-6, 1], 0.1, 1))
+    assert.equal(scaled([0, 1.9e-6, 1], 0.1, 4), undefined)
+    assert.equal(scaled([0, 1e-6, 1], 0.1, 4), undefined)
+    // Overlapping pairs noise apart move as Select lands them.
+    const overlapping = [4 - 2.4e-6, 4 - 0.9e-6, 4 + 0.9e-6].map((beat) => source('note', beat))
+    assert.deepEqual(
+        [
+            ...getTranslatedSelectionValues(
+                overlapping,
+                'beat',
+                1,
+                undefined,
+                onGrid(1),
+                1,
+            )!.values(),
+        ],
+        [4 - 2.4e-6 + 1, 5, 5],
+    )
+})
+
 test('non-finite and huge beats are cleaned as they are, and a huge scale factor is refused, promptly', () => {
     // Run apart, so a hang fails the test instead of stalling the run.
     const url = (path: string) => JSON.stringify(new URL(path, import.meta.url).href)
@@ -606,6 +643,7 @@ test('non-finite and huge beats are cleaned as they are, and a huge scale factor
         { encoding: 'utf8', timeout: 20_000 },
     )
     assert.equal(run.signal, null, 'timed out')
+    assert.equal(run.status, 0, run.stderr)
     const { unchanged, refused } = JSON.parse(run.stdout) as Record<string, boolean[]>
     assert.ok(unchanged!.length === 32 && unchanged!.every(Boolean), run.stdout)
     assert.ok(refused!.length === 6 && refused!.every(Boolean), run.stdout)

@@ -303,8 +303,10 @@ export const cleanBeat = (grids: BeatGrid[], beat: number, division: number) => 
         : aligned
 }
 
-/** Beats this close may clean onto one line at any division, so they are one beat up to noise. */
-export const isNoiseApart = (a: number, b: number) => Math.abs(a - b) < 2 * TOLERANCE
+/** Beats this close may clean onto one line at the division, so they are one beat up to noise. */
+export const isNoiseApart = (a: number, b: number, division = 1) =>
+    // alignFraction moves each up to 1e-11 first.
+    Math.abs(a - b) < 2 * (TOLERANCE / division + 1e-11)
 
 /** The first line at or after the beat. */
 export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => {

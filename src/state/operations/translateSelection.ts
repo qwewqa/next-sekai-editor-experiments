@@ -14,8 +14,9 @@ export const translateSelection = (
     axis: ScaleAxis,
     delta: number,
     moveBeat = addBeatOffset,
+    division = 1,
 ): State => {
-    const values = getTranslatedSelectionValues(selected, axis, delta, source, moveBeat)
+    const values = getTranslatedSelectionValues(selected, axis, delta, source, moveBeat, division)
     return values
         ? transformSelection(
               source,

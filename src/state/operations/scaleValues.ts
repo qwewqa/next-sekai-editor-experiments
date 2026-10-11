@@ -180,7 +180,7 @@ export const isWithinBeatRange = (source: State, values: Map<EditableEntity, num
     [...values.values()].every((beat) => Number.isSafeInteger(Math.floor(beat))) &&
     isWithinGridBudget(source, values)
 
-/** A beat moved by an offset; the editor's cleans float noise onto its grid, as moves do. */
+/** A moved beat; the editor's cleans float noise onto its grid at the division passed with it. */
 type MoveBeat = (beat: number, offset: number) => number
 
 export const addBeatOffset: MoveBeat = (beat, offset) => beat + offset
@@ -192,6 +192,7 @@ export const getScaledSelectionValues = (
     source?: State,
     anchor?: number,
     moveBeat = addBeatOffset,
+    division = 1,
 ): Map<EditableEntity, number> | undefined => {
     if (
         !Number.isFinite(factor) ||
@@ -210,6 +211,7 @@ export const getScaledSelectionValues = (
             ? (value) => moveBeat(pivot, (value - pivot) * factor)
             : (value) => pivot + (value - pivot) * factor,
         source,
+        division,
     )
     if (!transformed) return
     const values = alignWidth(axis, transformed)
@@ -240,6 +242,7 @@ export const getTranslatedSelectionValues = (
     delta: number,
     source?: State,
     moveBeat = addBeatOffset,
+    division = 1,
 ): Map<EditableEntity, number> | undefined => {
     if (!Number.isFinite(delta) || delta === 0) return
     const transformed = transformValues(
@@ -247,6 +250,7 @@ export const getTranslatedSelectionValues = (
         axis,
         axis === 'beat' ? (value) => moveBeat(value, delta) : (value) => value + delta,
         source,
+        division,
     )
     if (!transformed) return
     const values = alignWidth(axis, transformed)
@@ -259,10 +263,15 @@ const transformValues = (
     axis: ScaleAxis,
     transform: (value: number) => number,
     source?: State,
+    division = 1,
 ) => {
     const values = new Map<EditableEntity, number>()
     let previousValue: number | undefined
     let previousTransformed: number | undefined
+    // The beats so far with their results, and the largest result of those distinct from this one.
+    const beats: [number, number][] = []
+    let below = 0
+    let distinctMax = -Infinity
     for (const entity of [...entities].sort(
         (a, b) => getScaleValue(a, axis) - getScaleValue(b, axis),
     )) {
@@ -274,14 +283,21 @@ const transformValues = (
                 ((transformed < 0 && value >= 0) || !Number.isSafeInteger(Math.floor(transformed))))
         )
             return
-        // Distinct lanes may meet by rounding, beats noise apart by cleaning; other values may not.
-        const isTwin =
-            axis === 'beat' && previousValue !== undefined && isNoiseApart(value, previousValue)
-        if (
+        if (axis === 'beat') {
+            // Beats the cleaning could merge may meet; one may not meet a beat distinct below it.
+            for (
+                let seen = beats[below];
+                seen && !isNoiseApart(value, seen[0], division);
+                seen = beats[++below]
+            )
+                distinctMax = Math.max(distinctMax, seen[1])
+            if (transformed <= distinctMax) return
+            beats.push([value, transformed])
+        } else if (
+            // Distinct lanes may meet by rounding; other values may not.
             previousValue !== undefined &&
             value > previousValue &&
             previousTransformed !== undefined &&
-            !isTwin &&
             (axis === 'width'
                 ? transformed < previousTransformed
                 : transformed <= previousTransformed)
@@ -289,10 +305,7 @@ const transformValues = (
             return
         values.set(entity, transformed)
         previousValue = value
-        previousTransformed =
-            isTwin && previousTransformed !== undefined
-                ? Math.max(previousTransformed, transformed)
-                : transformed
+        previousTransformed = transformed
     }
     if (axis === 'beat' && source && !isWithinGridBudget(source, values)) return
     return new Map(

@@ -17,8 +17,17 @@ export const scaleSelection = (
     factor: number,
     anchor?: number,
     moveBeat = addBeatOffset,
+    division = 1,
 ): State => {
-    const values = getScaledSelectionValues(selected, axis, factor, source, anchor, moveBeat)
+    const values = getScaledSelectionValues(
+        selected,
+        axis,
+        factor,
+        source,
+        anchor,
+        moveBeat,
+        division,
+    )
     return values
         ? transformSelection(
               source,

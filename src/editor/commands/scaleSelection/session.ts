@@ -210,6 +210,7 @@ export const setScalingFactor = (value: number) => {
                 base,
                 pivot,
                 toMovedBeat,
+                view.division,
             ) !== undefined)
     if (!valid) {
         scalingSession.value = { ...session, requestedFactor: value, valid: false }
@@ -219,7 +220,9 @@ export const setScalingFactor = (value: number) => {
     const selected = base.selectedEntities
     return publishDraft(
         () =>
-            ratio === 1 ? base : scaleSelection(base, selected, axis, ratio, pivot, toMovedBeat),
+            ratio === 1
+                ? base
+                : scaleSelection(base, selected, axis, ratio, pivot, toMovedBeat, view.division),
         value,
     )
 }
@@ -395,6 +398,7 @@ export const updateScalingDrag = (value: number) => {
                     active.source,
                     active.anchor,
                     toMovedBeat,
+                    view.division,
                 ))
         )
             return false
@@ -405,7 +409,15 @@ export const updateScalingDrag = (value: number) => {
                 constrainDraft(
                     ratio === 1
                         ? source
-                        : scaleSelection(source, selected, axis, ratio, anchor, toMovedBeat),
+                        : scaleSelection(
+                              source,
+                              selected,
+                              axis,
+                              ratio,
+                              anchor,
+                              toMovedBeat,
+                              view.division,
+                          ),
                 ),
             factor,
         )
@@ -418,6 +430,7 @@ export const updateScalingDrag = (value: number) => {
             delta,
             active.source,
             toMovedBeat,
+            view.division,
         )
     )
         return false
@@ -427,7 +440,7 @@ export const updateScalingDrag = (value: number) => {
             constrainDraft(
                 delta === 0
                     ? source
-                    : translateSelection(source, selected, axis, delta, toMovedBeat),
+                    : translateSelection(source, selected, axis, delta, toMovedBeat, view.division),
             ),
         active.factor,
     )
