@@ -1,5 +1,6 @@
 import { isPlaying } from '../../player'
 import { settings } from '../../settings'
+import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
 import { openContextMenu } from '../contextMenu'
 import { stopPlayer } from '../player'
@@ -15,14 +16,24 @@ import { zoomX } from './gestures/recognizers/zoomX'
 import { zoomY } from './gestures/recognizers/zoomY'
 import { clearPageSelection } from './pageSelection'
 
+// The pane each touch started in.
+const panes = new Map<number, Element>()
+// Outside its pane, a touch reaches the tool at the pane's edge, as a mouse press does.
+const holdInPane = (id: number, x: number, y: number) => {
+    const rect = panes.get(id)?.getBoundingClientRect()
+    return rect
+        ? { x: clamp(x, rect.left, rect.right), y: clamp(y, rect.top, rect.bottom) }
+        : { x, y }
+}
+
 // Whether playback ran when the gesture's first touch stopped it.
 let wasPlaying = false
 const touchGesture = gesture(
     zoomY(),
     zoomX(),
     pan(),
-    drag(true),
-    tap(),
+    drag(true, holdInPane),
+    tap(250, holdInPane),
     twoTap(),
     threeTap(() => wasPlaying),
 )
@@ -83,10 +94,16 @@ const toPs = (event: TouchEvent) =>
         },
     }))
 
+const updateTouchPointer = (p: ReturnType<typeof toPs>[number] | undefined) => {
+    if (p) updateViewPointer({ ...p, ...holdInPane(p.id, p.x, p.y) })
+}
+
 const touchstart = (event: TouchEvent) => {
     clearPageSelection()
     const ps = toPs(event)
-    updateViewPointer(ps[0])
+    if (event.currentTarget instanceof Element)
+        for (const { id } of ps) panes.set(id, event.currentTarget)
+    updateTouchPointer(ps[0])
 
     view.scrollingY = undefined
     view.scrollingX = undefined
@@ -108,7 +125,7 @@ const touchstart = (event: TouchEvent) => {
 
 const touchmove = (event: TouchEvent) => {
     const ps = toPs(event)
-    updateViewPointer(ps[0])
+    updateTouchPointer(ps[0])
 
     const moved = longPress && ps.find(({ id }) => id === longPress?.id)
     if (longPress && moved) {
@@ -125,10 +142,11 @@ const touchmove = (event: TouchEvent) => {
 
 const touchend = (event: TouchEvent) => {
     const ps = toPs(event)
-    updateViewPointer(ps[0])
+    updateTouchPointer(ps[0])
 
     cancelLongPress()
     touchGesture.end(ps)
+    for (const { id } of ps) panes.delete(id)
     endTouchHover()
 
     event.preventDefault()
@@ -136,10 +154,11 @@ const touchend = (event: TouchEvent) => {
 
 const touchcancel = (event: TouchEvent) => {
     const ps = toPs(event)
-    updateViewPointer(ps[0])
+    updateTouchPointer(ps[0])
 
     cancelLongPress()
     touchGesture.cancel()
+    for (const { id } of ps) panes.delete(id)
     endTouchHover()
 
     event.preventDefault()

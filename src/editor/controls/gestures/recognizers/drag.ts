@@ -8,7 +8,7 @@ import { getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
 import { tool, type Tool } from '../../../tools'
 import { scrollViewXBy, scrollViewYBy, view, viewBox } from '../../../view'
-import type { Modifiers } from '../pointer'
+import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
 
 export const isDragging = ref(0)
@@ -27,7 +27,9 @@ const panZone = (held: number | undefined) => ({
 // A point inside an edge zone, else none.
 const holdIn = (p: number) => (p < 0.2 || p > 0.8 ? p : undefined)
 
-export const drag = (quickScroll: boolean): Recognizer<1> => {
+export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
+    // A scroll follows the finger; the tool gets the held point.
+    const toolPoint = (id: number, x: number, y: number) => hold?.(id, x, y) ?? { x, y }
     const updates: {
         t: number
         dx: number
@@ -149,6 +151,7 @@ export const drag = (quickScroll: boolean): Recognizer<1> => {
                     y: holdIn((sy - bounds.y) / bounds.h),
                 }
 
+                const at = toolPoint(id, x, y)
                 active = {
                     type: 'drag',
                     id,
@@ -156,11 +159,10 @@ export const drag = (quickScroll: boolean): Recognizer<1> => {
                     state: startState,
                     notice:
                         notification.value.id !== noticeBefore ? notification.value.id : undefined,
-                    pointer: { x, y, modifiers },
+                    pointer: { ...at, modifiers },
                 }
                 update = {
-                    x,
-                    y,
+                    ...at,
                     modifiers,
                 }
                 return true
@@ -182,10 +184,11 @@ export const drag = (quickScroll: boolean): Recognizer<1> => {
             if (!p) return
 
             if (active.type === 'drag') {
+                const { x, y } = toolPoint(active.id, p.x, p.y)
                 if (p.isActive) {
                     update = {
-                        x: p.x,
-                        y: p.y,
+                        x,
+                        y,
                         modifiers: p.modifiers,
                     }
                     active.pointer = update
@@ -196,7 +199,7 @@ export const drag = (quickScroll: boolean): Recognizer<1> => {
                     update = undefined
                     // Committing changes history synchronously. Boundary
                     // watchers must not cancel this already completed drag.
-                    void completed.dragEnd?.(p.x, p.y, p.modifiers)
+                    void completed.dragEnd?.(x, y, p.modifiers)
                 }
             } else {
                 const dx = p.x - active.sx
