@@ -35,6 +35,9 @@ type Load = {
     snapping?: 'absolute' | 'relative'
     // Selected for Select: every note, the cameras and pivots too, or the notes at these beats.
     select?: 'notes' | 'all' | number[]
+    // BPM changes also selected, by beat.
+    selectBpms?: number[]
+    beatDisplay?: 'beat' | 'measure' | 'both'
     time?: number
 }
 
@@ -95,6 +98,7 @@ const load = (page: Page, options: Load) =>
         view.snapping = o.snapping ?? 'absolute'
         settings.maxLane = 0
         settings.pps = 100
+        if (o.beatDisplay) settings.beatDisplay = o.beatDisplay
         const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
             '/src/editor/tools/index.ts',
         )
@@ -124,6 +128,9 @@ const load = (page: Page, options: Load) =>
                                   ),
                           )
                     : []),
+                ...[...source.store.grid.bpm.values()]
+                    .flatMap((bucket) => [...bucket])
+                    .filter((bpm) => o.selectBpms?.includes(bpm.beat)),
             ],
         })
     }, options)
@@ -367,6 +374,100 @@ test('Select: every note moves by the grabbed one, also when it lands exactly on
     // Bit-equal to the event's beat, on its left side: the stage hasn't moved for the grabbed note.
     expect(moved[0]!.beat).toBe(4 / 3)
     expect(moved.map((note) => note.left)).toEqual([1, 3])
+})
+
+test('Select: a note moved by another onto an off-grid stage event on a bar line lands on its beat in the Measure display', async ({
+    page,
+}) => {
+    // Bars restart at 2.3; the event is on a third of that bar, off the beat grid.
+    const event = 2.3 + 5 / 3
+    await load(page, {
+        tool: 'select',
+        bpms: [
+            { beat: 0, bpm: 120 },
+            { beat: 2.3, bpm: 120 },
+        ],
+        beatDisplay: 'measure',
+        division: 3,
+        pivots: [
+            { beat: 0, pivotLane: 0, eventEase: 'none' },
+            { beat: event, pivotLane: 0.6 },
+        ],
+        slides: [[{ beat: 2.3 + 1 / 3, left: 1 }], [{ beat: 2.3 + 2 / 3, left: 3 }]],
+        select: 'notes',
+        time: 1.3,
+    })
+    // Placed there through the bar grid.
+    const placed = await page.evaluate(async (event) => {
+        const { history, view, appImport } = window.editorTest
+        const { snapBeat, toBeatGrid } = await appImport<
+            typeof import('../../src/state/integrals/grid')
+        >('/src/state/integrals/grid.ts')
+        return snapBeat(toBeatGrid(history.state.value.bpms), event + 0.1, view.division)
+    }, event)
+    expect(placed).toBe(event)
+    // The second note plus the first's move is a float step off it.
+    expect(2.3 + 2 / 3 + (2.3 + 4 / 3 - (2.3 + 1 / 3))).not.toBe(event)
+    await drag(page, 2.3 + 1 / 3, 2.3 + 4 / 3, 0)
+    const moved = await notes(page)
+    expect(moved.map((note) => note.beat)).toEqual([2.3 + 4 / 3, event])
+    // On the event's left side, where the stage hasn't moved.
+    expect(moved.map((note) => note.left)).toEqual([1, 3])
+})
+
+test('Select: with a BPM change in the moved stretch, the lattice is judged at the beat the note drops at', async ({
+    page,
+}) => {
+    // Bars restart at the change; moved with it, the note snaps on the grid without it.
+    await load(page, {
+        tool: 'select',
+        pivots: [
+            { beat: 0, pivotLane: 0.2 },
+            { beat: 8, pivotLane: 2.2 },
+        ],
+        bpms: [
+            { beat: 0, bpm: 120 },
+            { beat: 2.3, bpm: 240 },
+        ],
+        beatDisplay: 'measure',
+        slides: [[{ beat: 4, left: 1.37 }]],
+        select: 'notes',
+        selectBpms: [2.3],
+        time: 1.6,
+    })
+    await drag(page, 4, 6, 0, { hold: true })
+    const held = await page.evaluate(() => {
+        const [note] = window.editorTest.view.entities.creating
+        return note?.type === 'note' ? note.beat : undefined
+    })
+    await page.mouse.up()
+    const [moved] = await notes(page)
+    const result = await page.evaluate(async (beat) => {
+        const { history, view, appImport } = window.editorTest
+        const { getComposedLattice } = await appImport<
+            typeof import('../../src/editor/composedView')
+        >('/src/editor/composedView.ts')
+        const { isLatticeMoved } =
+            await appImport<typeof import('../../src/editor/snapping')>('/src/editor/snapping.ts')
+        const { undoState } =
+            await appImport<typeof import('../../src/history')>('/src/history/index.ts')
+        const dropped = history.state.value
+        const to = getComposedLattice(1 as never, beat, dropped)
+        undoState()
+        const from = getComposedLattice(1 as never, 4, history.state.value)
+        return {
+            bpms: dropped.bpms.map(({ x }) => x),
+            moved: isLatticeMoved(from, to, view.laneDivision),
+            grid: to?.grid,
+        }
+    }, moved!.beat)
+    // A line of the grid without the change, not the bars' 5.8 or 6.05: the lift held through the drop.
+    expect(held).toBe(6)
+    expect(moved!.beat).toBe(held)
+    expect(result.bpms).toEqual([0, 4.3])
+    // The retimed stretch moves the stage lattice there, so the note is on its grid.
+    expect(result.moved).toBe(true)
+    expectOnGrid(moved!.left - result.grid!)
 })
 
 test('Select: a note moved with all its stage events keeps the wait, unless a tempo change retimes the stretch', async ({
