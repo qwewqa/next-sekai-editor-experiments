@@ -361,9 +361,12 @@ watchEffect(
         const canvas = overlayCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's ghosts.
-        const creating =
-            isScenePreview.value && !previewEdit.value?.draft ? [] : view.entities.creating
+        // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
+        // ghosts, but a Composed paste's, placed on the committed lattice, waits for the commit.
+        const showsGhosts =
+            !isScenePreview.value ||
+            (!!previewEdit.value?.draft && !(inputs.composed && tool.value === tools.paste))
+        const creating = showsGhosts ? view.entities.creating : []
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value

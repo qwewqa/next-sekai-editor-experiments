@@ -308,3 +308,88 @@ test('after a cycle, a draft and its committing click: the hover showed what the
         ),
     ).toEqual(shown)
 })
+
+test("Basic: the cursor over a drafted note reads the drafted place's move or resize", async ({
+    page,
+}) => {
+    await showDraft(page, { layout: 'basic', dynamic: false })
+    // The head is drawn at 0 to 2; its middle there moves it.
+    await hover(page, 1, 4)
+    await expect(page.locator('.editor-chart').locator('..')).toHaveCSS('cursor', 'move')
+    await hover(page, 0.1, 4)
+    await expect(page.locator('.editor-chart').locator('..')).toHaveCSS('cursor', 'ew-resize')
+})
+
+test("Composed: with a stage's move drafted, a Note tool ghost lands where the click adds", async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { show, fixtures, view, settings, history, nextTick, appImport } = window.editorTest
+        const events = fixtures.events
+        show(
+            {
+                ...events,
+                isDynamicStages: true,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [],
+                stageStyleEvents: [],
+                timeScales: [],
+                stageTransformEvents: [
+                    { ...events.stageTransformEvents[0]!, beat: 2, xTranslation: 0 },
+                ],
+                slides: [],
+            },
+            2,
+        )
+        view.layout = 'composed'
+        settings.pps = 240
+        settings.showSidebar = true
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.grid.stageTransformEventJoint.values()]
+                .flatMap((set) => [...set])
+                .slice(0, 1),
+        })
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo('select')
+        await nextTick()
+    })
+    await page
+        .locator('#workspace-panel-properties #properties-section-selection label')
+        .filter({ has: page.getByText('X Translation', { exact: true }) })
+        .locator('input')
+        .fill('3')
+    await expect.poll(() => scene(page)).toEqual({ draft: true, committed: false })
+    await page.evaluate(async () => {
+        const { switchToolTo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools')
+        >('/src/editor/tools/index.ts')
+        switchToolTo('note')
+    })
+    const shownLeft = (which: 'ghost' | 'added') =>
+        page.evaluate(async (which) => {
+            const { appImport, view, history } = window.editorTest
+            const { sceneState } = await appImport<typeof import('../../src/editor/sceneState')>(
+                '/src/editor/sceneState.ts',
+            )
+            const { createComposedLayout } =
+                await appImport<typeof import('../../src/editor/composed')>(
+                    '/src/editor/composed.ts',
+                )
+            const note =
+                which === 'ghost'
+                    ? view.entities.creating.find((entity) => entity.type === 'note')
+                    : [...history.state.value.store.slides.note.values()].flat()[0]
+            if (note?.type !== 'note') return undefined
+            return createComposedLayout(sceneState.value).notePosition(note).left
+        }, which)
+    const point = await hover(page, 1, 4)
+    await expect.poll(() => shownLeft('ghost')).toBeDefined()
+    const ghost = await shownLeft('ghost')
+    await page.mouse.click(point.x, point.y)
+    await expect.poll(() => shownLeft('added')).toBe(ghost)
+})

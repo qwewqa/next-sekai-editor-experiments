@@ -91,7 +91,7 @@ import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
-import { toSceneEntity } from '../sceneState'
+import { sceneState, toSceneEntity } from '../sceneState'
 import { isEntityInScope } from '../scope'
 import { isLatticeMoved, type Lattice } from '../snapping'
 import {
@@ -175,6 +175,12 @@ let active:
       }
     | undefined
 
+// Where a note is drawn, a pending draft's included; the press commits it first.
+const noteOffset = (note: NoteEntity) => {
+    const shown = toSceneEntity(note)
+    return getComposedNoteOffset(shown, shown.beat, sceneState.value)
+}
+
 const resolveDrag = (
     x: number,
     y: number,
@@ -193,7 +199,7 @@ const resolveDrag = (
         const moving = selectedEntities.value.filter(isEntityInScope)
         return {
             type: 'move',
-            lane: focus.type === 'note' ? lane - getComposedNoteOffset(focus) : lane,
+            lane: focus.type === 'note' ? lane - noteOffset(focus) : lane,
             focus,
             entities: moving,
             onlyType: getOnlyEntityType(moving),
@@ -207,7 +213,7 @@ const resolveDrag = (
 
     return {
         type: 'move',
-        lane: entity.type === 'note' ? lane - getComposedNoteOffset(entity) : lane,
+        lane: entity.type === 'note' ? lane - noteOffset(entity) : lane,
         focus: entity,
         entities: [entity],
         onlyType: entity.type,
@@ -305,7 +311,8 @@ export const select: Tool = {
     cursor(x, y) {
         const target = resolveDrag(x, y)
         if (target.type === 'select') return target.indicator ? 'pointer' : 'default'
-        if (isSelectResize(target.onlyType, target.focus, target.lane)) return 'ew-resize'
+        if (isSelectResize(target.onlyType, toSceneEntity(target.focus), target.lane))
+            return 'ew-resize'
         return target.onlyType === 'bpm' ? 'ns-resize' : 'move'
     },
 

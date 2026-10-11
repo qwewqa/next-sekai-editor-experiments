@@ -184,3 +184,41 @@ test('the hover follows Ctrl and selection changes without a move', async ({ pag
     await select(page, top as number)
     await expect.poll(hovered).toEqual([top === 0 ? 1.5 : 0])
 })
+
+test("a cycle keeps its order when a pixel of jitter crosses one object's reach", async ({
+    page,
+}) => {
+    await show(page, 'triple')
+    const sequence = await page.evaluate(async () => {
+        const { history, fixtures, appImport } = window.editorTest
+        const { createTransaction } = await appImport<typeof import('../../src/state/transaction')>(
+            '/src/state/transaction.ts',
+        )
+        const { addStageStyleEventJoint } = await appImport<
+            typeof import('../../src/state/mutations/events/stage/style')
+        >('/src/state/mutations/events/stage/style.ts')
+        // A style whose reach ends exactly between the two taps.
+        const transaction = createTransaction(history.state.value)
+        addStageStyleEventJoint(transaction, {
+            ...fixtures.events.stageStyleEvents[0]!,
+            beat: 4,
+            editorLane: -0.45,
+        })
+        history.replaceState(transaction.commit([]))
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const { view, settings, point } = window.editorTest
+        const pixel = settings.width / view.w
+        const middle = point(0, 4)
+        const names = []
+        for (const dx of [-1, 1, -1]) {
+            void select.tap?.(middle.x + dx, middle.y, { ctrl: false, shift: false })
+            const [entity] = history.state.value.selectedEntities
+            names.push(entity?.type === 'note' ? entity.left : entity?.type)
+        }
+        return { names, pixel }
+    })
+    // The left note, the right one, then the pivot: none skipped while the style comes and goes.
+    expect(sequence.names).toEqual([-2.2, 0.2, 'stagePivotEventJoint'])
+})

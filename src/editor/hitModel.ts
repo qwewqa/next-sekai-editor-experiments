@@ -65,7 +65,7 @@ const typeOrder: EntityType[] = [
     'bpm',
 ]
 
-export const comparePointHitTypes = (a: Entity, b: Entity) =>
+const comparePointHitTypes = (a: Entity, b: Entity) =>
     typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)
 
 /** A note's primary shape, from its left edge and its middle. */

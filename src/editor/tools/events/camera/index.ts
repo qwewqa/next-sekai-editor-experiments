@@ -18,6 +18,7 @@ import { interpolate } from '../../../../utils/interpolate'
 import { shiftComputed } from '../../../../utils/math'
 import { constrainLaneObject } from '../../../laneLimits'
 import { notify } from '../../../notification'
+import { toSceneEntity } from '../../../sceneState'
 import { isSidebarVisible, revealPropertiesSection } from '../../../sidebars'
 import { showToolModal } from '../../../toolModals'
 import {
@@ -486,10 +487,10 @@ const resolveDrag = (x: number, y: number) => {
     if (!entity) return { type: 'add', beat, lane } as const
 
     const pointerLane = xToLane(x)
+    // As drawn, a pending draft's included; the press commits it first.
+    const shown = toSceneEntity(entity)
     return {
-        type: isRangeResizeStart(entity.cameraLeft, entity.cameraSize, pointerLane)
-            ? 'edit'
-            : 'move',
+        type: isRangeResizeStart(shown.cameraLeft, shown.cameraSize, pointerLane) ? 'edit' : 'move',
         entity,
         lane: pointerLane,
     } as const

@@ -624,7 +624,9 @@ const controls: Pick<
                 ? applyToVisibleSelection(hits, modifiers)
                 : toolName.value === 'note' || toolName.value === 'slide'
                   ? modifyEntities(row ? [row.note] : [], modifiers)
-                  : selectTargets(hits.set, modifiers, !modifiers.ctrl),
+                  : toolName.value === 'paste'
+                    ? []
+                    : selectTargets(hits.set, modifiers, !modifiers.ctrl),
             creating: creating.value.map((row) => row.note),
         }
     },
