@@ -300,7 +300,7 @@ const shownGhosts = () => {
 // Beat labels make room for a drag's BPM ghost labels too.
 const ghostBpmYs = computed<number[]>((previous) => {
     const ys: number[] = []
-    if (isDragging.value && (view.visibilities.bpm || settings.showOtherObjects)) {
+    if (isDragging.value) {
         const ghosts = shownGhosts()
         const bpms = (ghosts.state ?? sceneState.value).bpms
         for (const entity of ghosts.entities)

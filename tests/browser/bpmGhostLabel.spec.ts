@@ -264,3 +264,104 @@ for (const layout of ['basic', 'composed'] as const)
         await settle(page)
         expect(nearLabels((await lastFrame(page)).chart).map(({ text }) => text)).toEqual(['2.4'])
     })
+
+/** Shows BPM changes at beats 0 (120) and 2 (60) in Basic with the BPM tool. */
+const showBpmChanges = (page: Page) =>
+    page.evaluate(async () => {
+        const { appImport, fixtures, show, view } = window.editorTest
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: 2, bpm: 60 },
+                ],
+            },
+            1.5,
+        )
+        view.layout = 'basic'
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo('bpm')
+    })
+
+/** The beat column's texts within half a label of a time's y. */
+const beatColumn = async (page: Page, texts: Text[], seconds: number) => {
+    const pane = (await page.locator('canvas.editor-chart').boundingBox())!
+    const { y, lanePx } = await page.evaluate(
+        (seconds) => ({
+            y: window.editorTest.point(0, seconds * 2).y,
+            lanePx: window.editorTest.view.w / window.editorTest.settings.width,
+        }),
+        seconds,
+    )
+    return texts
+        .filter(
+            (text) =>
+                Math.abs(text.x - (pane.width / 2 + 6.1 * lanePx)) < 2 &&
+                Math.abs(text.y - (y - pane.y)) < 0.45 * lanePx,
+        )
+        .map(({ text }) => text)
+}
+
+test('basic: a dropped BPM change keeps the room it had as a ghost', async ({ page }) => {
+    await showBpmChanges(page)
+    await settle(page)
+    // Beat 3 is at 2 s.
+    expect(await beatColumn(page, (await lastFrame(page)).chart, 2)).toEqual(['2.2'])
+    const from = await point(page, -4, 1)
+    const to = await point(page, -4, 2)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect(await beatColumn(page, (await lastFrame(page)).chart, 2)).toEqual([])
+    // Dropped without Escape: the committed label takes the beat label's place at beat 3, and
+    // the beat label at beat 2 comes back.
+    await page.mouse.up()
+    await page.mouse.move(to.x - 200, to.y + 150)
+    await settle(page)
+    expect(
+        await page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.grid.bpm.values()]
+                .flatMap((entities) => [...entities])
+                .map(({ beat }) => beat)
+                .sort(),
+        ),
+    ).toEqual([0, 3])
+    const after = (await lastFrame(page)).chart
+    // Beat 3 is now at 1.5 s, beat 2 at 1 s.
+    expect(await beatColumn(page, after, 1.5)).toEqual(['60'])
+    expect(await beatColumn(page, after, 1)).toEqual(['1.3'])
+})
+
+test('basic: with BPMs hidden, a drag still makes room for the ghost label it draws', async ({
+    page,
+}) => {
+    await showBpmChanges(page)
+    await page.evaluate(() => {
+        const { settings, view } = window.editorTest
+        view.visibilities.bpm = false
+        settings.showOtherObjects = false
+    })
+    await settle(page)
+    expect(await beatColumn(page, (await lastFrame(page)).chart, 3)).toEqual(['2.3'])
+    // Adding a change at beat 4, at 3 s, by dragging from 3.5 s.
+    const from = await point(page, -4, 3.5)
+    const to = await point(page, -4, 3)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect(await page.evaluate(() => window.editorTest.snapshot().creating)).toEqual([
+        { type: 'bpm', beat: 4 },
+    ])
+    const during = await lastFrame(page)
+    expect(await beatColumn(page, during.overlay, 3), 'the ghost label').toHaveLength(1)
+    expect(await beatColumn(page, during.chart, 3)).toEqual([])
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    await settle(page)
+    expect(await beatColumn(page, (await lastFrame(page)).chart, 3)).toEqual(['2.3'])
+})
