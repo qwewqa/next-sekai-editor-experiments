@@ -13,7 +13,7 @@ import type { FlickDirection, NoteObject } from '../../../chart/note'
 import type { StageId } from '../../../chart/stages'
 import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
-import { clipboardEntry, updateClipboard } from '../../../clipboard/index.ts'
+import { clipboardEntry, updateClipboard, waitForRead } from '../../../clipboard/index.ts'
 import { pushState, state } from '../../../history'
 import { chartSessionId } from '../../../history/chartSession'
 import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
@@ -143,7 +143,7 @@ export const paste: Tool = {
             const source = state.value
             const scope = scopeLookup.value
             const layout = view.layout
-            await reading
+            await waitForRead(reading)
             // An edit or scope change while it read drops the paste.
             if (
                 !hasSameChartData(source, state.value) ||

@@ -15,7 +15,15 @@ test.beforeEach(async ({ page }) => {
     client = await page.context().newCDPSession(page)
 })
 
-type Clip = { text: string; reads: number; copies: string[]; delay: number }
+type Clip = {
+    text: string
+    reads: number
+    copies: string[]
+    delay: number
+    // Reads wait for release() while set.
+    hold: boolean
+    release?: () => void
+}
 
 /**
  * Two notes at beat 2, sizes 2 and 4, each copied in turn through a stubbed
@@ -37,7 +45,7 @@ const setup = async (page: Page) => {
             1.1,
         )
         await nextTick()
-        const clip: Clip = { text: '', reads: 0, copies: [], delay: 0 }
+        const clip: Clip = { text: '', reads: 0, copies: [], delay: 0, hold: false }
         Object.assign(window, { clip })
         Object.defineProperty(navigator.clipboard, 'writeText', {
             configurable: true,
@@ -50,6 +58,10 @@ const setup = async (page: Page) => {
             configurable: true,
             value: async () => {
                 clip.reads++
+                if (clip.hold)
+                    return await new Promise<string>((resolve) => {
+                        clip.release = () => resolve(clip.text)
+                    })
                 const { text } = clip
                 await new Promise((resolve) => setTimeout(resolve, clip.delay))
                 return text
@@ -133,6 +145,33 @@ test('a touch tap waits for a slow read', async ({ page }) => {
     expect(await pasted(page)).toEqual([])
     await expect.poll(() => pasted(page)).toEqual([2])
     expect(await reads(page)).toBe(before + 1)
+})
+
+test('a touch tap waits at most 5 s for a read, then pastes what was last read', async ({
+    page,
+}) => {
+    await setup(page)
+    await pasteTool(page)
+    await copyElsewhere(page)
+    await page.evaluate(() => {
+        ;(window as never as { clip: Clip }).clip.hold = true
+    })
+    await page.clock.install()
+    const tap = async (beat: number) => {
+        const { x, y } = await point(page, 0, beat)
+        await touch('touchStart', [[x, y]])
+        await touch('touchEnd', [])
+    }
+    await tap(6)
+    await page.clock.runFor(4000)
+    expect(await pasted(page)).toEqual([])
+    await page.clock.runFor(1100)
+    await expect.poll(() => pasted(page)).toEqual([4])
+    // The late read is what the next paste takes, even while its own read hangs.
+    await page.evaluate(() => (window as never as { clip: Clip }).clip.release!())
+    await tap(8)
+    await page.clock.runFor(5100)
+    await expect.poll(() => pasted(page)).toEqual([4, 2])
 })
 
 test('a touch drag reads the clipboard as it presses and pastes what it holds now', async ({
