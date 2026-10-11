@@ -897,12 +897,12 @@ const toMovedCameraEventObject = (
     plan: MovePlan,
 ): CameraEventObject => {
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
-        const isLeft = startLane >= focus.cameraLeft + focus.cameraSize / 2
-        const edge = entity.cameraLeft + (isLeft ? entity.cameraSize : 0)
-        const focusEdge = focus.cameraLeft + (isLeft ? focus.cameraSize : 0)
+        const fixedLeft = startLane >= focus.cameraLeft + focus.cameraSize / 2
+        const edge = entity.cameraLeft + (fixedLeft ? entity.cameraSize : 0)
+        const focusEdge = focus.cameraLeft + (fixedLeft ? focus.cameraSize : 0)
         // Every range's edge moves by the grabbed edge's snapped shift, as notes do.
         const [cameraLeft, cameraSize] = resize(
-            shiftComputed(entity.cameraLeft, isLeft ? 0 : entity.cameraSize),
+            shiftComputed(entity.cameraLeft, fixedLeft ? 0 : entity.cameraSize),
             edge + (lane - startLane),
             6,
             24,
@@ -954,11 +954,11 @@ const toMovedStageMaskEventObject = (
     plan: MovePlan,
 ): StageMaskEventObject => {
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
-        const isLeft = startLane >= focus.maskLeft + focus.maskSize / 2
-        const edge = entity.maskLeft + (isLeft ? entity.maskSize : 0)
-        const focusEdge = focus.maskLeft + (isLeft ? focus.maskSize : 0)
+        const fixedLeft = startLane >= focus.maskLeft + focus.maskSize / 2
+        const edge = entity.maskLeft + (fixedLeft ? entity.maskSize : 0)
+        const focusEdge = focus.maskLeft + (fixedLeft ? focus.maskSize : 0)
         const [maskLeft, maskSize] = resize(
-            shiftComputed(entity.maskLeft, isLeft ? 0 : entity.maskSize),
+            shiftComputed(entity.maskLeft, fixedLeft ? 0 : entity.maskSize),
             edge + (lane - startLane),
             0,
             Number.POSITIVE_INFINITY,
@@ -1111,9 +1111,9 @@ const toMovedNoteObject = (
         )
     }
     if (focus.type === 'note' && isSelectResize(onlyType, focus, startLane)) {
-        const isLeft = startLane >= focus.left + focus.size / 2
-        const edge = entity.left + (isLeft ? entity.size : 0)
-        const focusEdge = focus.left + (isLeft ? focus.size : 0)
+        const fixedLeft = startLane >= focus.left + focus.size / 2
+        const edge = entity.left + (fixedLeft ? entity.size : 0)
+        const focusEdge = focus.left + (fixedLeft ? focus.size : 0)
         // The grabbed edge's snapped shift moves every selected edge.
         const shift = resizeShift(
             focusEdge,
@@ -1122,7 +1122,7 @@ const toMovedNoteObject = (
         )
 
         const [left, size] = resize(
-            shiftComputed(entity.left, isLeft ? 0 : entity.size),
+            shiftComputed(entity.left, fixedLeft ? 0 : entity.size),
             edge + (lane - startLane),
             minimumNoteSize(entity.noteType),
             Number.POSITIVE_INFINITY,
