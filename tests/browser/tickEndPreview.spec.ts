@@ -78,9 +78,11 @@ const area = async (
 ) => {
     const from = await point(page, laneMin, beatMax)
     const to = await point(page, laneMax, beatMin)
-    await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-    )
+    await page.evaluate(() => {
+        // Settled: the pointer's recent activity outlines ticks for half a second.
+        window.editorTest.view.lastActive = Number.NEGATIVE_INFINITY
+        return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    })
     return page.screenshot({
         clip: { x: from.x, y: from.y, width: to.x - from.x, height: to.y - from.y },
     })
@@ -263,6 +265,8 @@ test('a pending property draft under a Slide tool hover draws as the scene, not 
     await useTool(page, 'slide')
     const chart = () =>
         page.evaluate(async () => {
+            // Settled: the pointer's recent activity outlines ticks for half a second.
+            window.editorTest.view.lastActive = Number.NEGATIVE_INFINITY
             await new Promise((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(resolve)),
             )
