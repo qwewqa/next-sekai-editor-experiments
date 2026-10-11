@@ -284,13 +284,15 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'edit': {
+                const edge =
+                    active.entity.maskLeft +
+                    (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0)
                 const [maskLeft, maskSize] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     0,
                     Number.POSITIVE_INFINITY,
-                    active.entity.maskLeft +
-                        (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0),
+                    edge,
                     [active.entity.maskLeft, active.entity.maskSize],
                 )
 
@@ -368,13 +370,15 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'edit': {
+                const edge =
+                    active.entity.maskLeft +
+                    (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0)
                 const [maskLeft, maskSize] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     0,
                     Number.POSITIVE_INFINITY,
-                    active.entity.maskLeft +
-                        (active.lane === active.entity.maskLeft ? active.entity.maskSize : 0),
+                    edge,
                     [active.entity.maskLeft, active.entity.maskSize],
                 )
 

@@ -11,6 +11,7 @@ import {
     getComposedGridOffset,
     getComposedMoveOffset,
     getComposedNoteOffset,
+    isComposedLatticeMoved,
 } from '../composedView'
 import { xToLane } from '../view'
 import { constrainMoved } from './toolMove'
@@ -84,7 +85,10 @@ export const toDraggedNoteObject = (
                 lane,
                 from.left,
                 getComposedGridOffset(entity.stageId, beat),
-                pointerLane - pressLane,
+                // A moved stage lattice snaps at once.
+                isComposedLatticeMoved(from.stageId, entity.beat, beat)
+                    ? Number.POSITIVE_INFINITY
+                    : pointerLane - pressLane,
             ),
             size: from.size,
             elevation: from.elevation,

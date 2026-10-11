@@ -105,7 +105,7 @@ import {
 import { elevationBounds, elevationViewport, fitElevationViewport } from './viewport'
 import { drawElevationConnections, getElevationConnections } from './connections'
 import SelectValue from '../../modals/form/SelectValue.vue'
-import { inverseAttachedElevation, type AttachedElevationDrag } from './drag'
+import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const container = useTemplateRef<HTMLElement>('container')
@@ -773,16 +773,16 @@ const controls: Pick<
         const delta = yToElevation(y) - drag.elevation
         const displayedDelta = drag.resizing
             ? 0
-            : view.snapping === 'relative'
-              ? snapElevation(delta, settings.elevationSnap)
-              : snapElevation(drag.row.elevation + delta, settings.elevationSnap) -
-                drag.row.elevation
+            : elevationMoveDelta(drag.row.elevation, delta, settings.elevationSnap, view.snapping)
+        // An unmoved row stays exact; its drawn elevation needn't invert to 0.
         const deltaElevation = drag.attachment
-            ? inverseAttachedElevation(
-                  drag.attachment,
-                  drag.row.elevation + displayedDelta,
-                  drag.deltaElevation,
-              )
+            ? displayedDelta === 0
+                ? 0
+                : inverseAttachedElevation(
+                      drag.attachment,
+                      drag.row.elevation + displayedDelta,
+                      drag.deltaElevation,
+                  )
             : displayedDelta
         // Resized notes can snap on their own, so their results key the preview.
         const next = {

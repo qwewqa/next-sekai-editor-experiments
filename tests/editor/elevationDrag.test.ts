@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
     attachedDragElevation,
+    elevationMoveDelta,
     inverseAttachedElevation,
     type AttachedElevationDrag,
 } from '../../src/editor/elevation/drag'
@@ -117,4 +118,27 @@ test('out-of-range authored elevation can reenter the visible span and return un
     const drag = { ...base, note: -1 }
     close(inverseAttachedElevation(drag, 2), 2)
     close(inverseAttachedElevation(drag, 0, 2), 0)
+})
+
+test('an elevation move waits for half a snap step of the pointer in absolute mode', () => {
+    const close = (actual: number, expected: number) =>
+        assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} != ${expected}`)
+    // Snap 4: half a step is 0.125.
+    for (const delta of [0, 0.1, -0.1, 0.124, -0.124])
+        assert.equal(elevationMoveDelta(0.37, delta, 4, 'absolute') + 0, 0)
+    close(elevationMoveDelta(0.37, 0.125, 4, 'absolute'), 0.5 - 0.37)
+    close(elevationMoveDelta(0.37, 0.2, 4, 'absolute'), 0.5 - 0.37)
+    close(elevationMoveDelta(0.37, -0.2, 4, 'absolute'), 0.25 - 0.37)
+    // Relative snapping and snap off are unchanged.
+    assert.equal(elevationMoveDelta(0.37, 0.1, 4, 'relative'), 0)
+    assert.equal(elevationMoveDelta(0.37, 0.2, 4, 'relative'), 0.25)
+    assert.equal(elevationMoveDelta(0.37, 0.1, 0, 'relative'), 0.1)
+    close(elevationMoveDelta(0.37, 0.1, 0, 'absolute'), 0.1)
+    // Monotonic across the threshold.
+    let previous = Number.NEGATIVE_INFINITY
+    for (let delta = -1; delta <= 1; delta += 0.01) {
+        const value = elevationMoveDelta(0.37, delta, 4, 'absolute')
+        assert.ok(value >= previous)
+        previous = value
+    }
 })

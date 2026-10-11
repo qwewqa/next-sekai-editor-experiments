@@ -283,13 +283,15 @@ export const slide: Tool = {
             }
             case 'edit': {
                 const lane = xToLane(x) - getComposedNoteOffset(active.entity)
+                const edge =
+                    active.entity.left +
+                    (active.lane === active.entity.left ? active.entity.size : 0)
                 const [left, size] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     minimumNoteSize(active.entity.noteType),
                     Number.POSITIVE_INFINITY,
-                    active.entity.left +
-                        (active.lane === active.entity.left ? active.entity.size : 0),
+                    edge,
                     [active.entity.left, active.entity.size],
                     getComposedGridOffset(active.entity.stageId, active.entity.beat),
                 )
@@ -365,13 +367,15 @@ export const slide: Tool = {
             }
             case 'edit': {
                 const lane = xToLane(x) - getComposedNoteOffset(active.entity)
+                const edge =
+                    active.entity.left +
+                    (active.lane === active.entity.left ? active.entity.size : 0)
                 const [left, size] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     minimumNoteSize(active.entity.noteType),
                     Number.POSITIVE_INFINITY,
-                    active.entity.left +
-                        (active.lane === active.entity.left ? active.entity.size : 0),
+                    edge,
                     [active.entity.left, active.entity.size],
                     getComposedGridOffset(active.entity.stageId, active.entity.beat),
                 )

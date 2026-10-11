@@ -623,3 +623,237 @@ for (const family of Object.keys(resizes) as (keyof typeof resizes)[]) {
         }
     })
 }
+
+// Each object's moving edge at lane 4, pressed at 3.7 inside it: the edge follows the pointer's movement.
+const edges = {
+    note: { left: 2, size: 2 },
+    slide: { left: 2, size: 2 },
+    stageMaskEvent: { left: 2, size: 2 },
+    cameraEvent: { left: -2, size: 6 },
+} as const
+const rightEdges = (objects: object[]) =>
+    objects.map((object) => {
+        const fields = object as Record<string, number>
+        const left = fields.left ?? fields.maskLeft ?? fields.cameraLeft!
+        const size = fields.size ?? fields.maskSize ?? fields.cameraSize!
+        return left + size
+    })
+
+for (const family of Object.keys(edges) as (keyof typeof edges)[]) {
+    test(`${family}: an edge resize moves the edge by the pointer's movement, in the tool and in Select`, async ({
+        page,
+    }) => {
+        const { left, size } = edges[family]
+        for (const [laneSnapping, dx, edge] of [
+            ['absolute', 0.6, 5],
+            ['absolute', 0.4, 4],
+            ['absolute', -0.3, 4],
+            ['relative', 0.6, 5],
+            ['relative', -0.6, 3],
+        ] as const) {
+            const results = []
+            for (const tool of [family, 'select'] as const) {
+                await page.evaluate(
+                    async ({ family, tool, left, size, laneSnapping }) => {
+                        const { show, fixtures, view, settings, history, appImport } =
+                            window.editorTest
+                        const base = fixtures.interaction.slides[0]![0]!
+                        const events = fixtures.events
+                        show(
+                            {
+                                ...fixtures.interaction,
+                                slides:
+                                    family === 'note' || family === 'slide'
+                                        ? [[{ ...base, beat: 4, left, size }]]
+                                        : [],
+                                stageMaskEvents:
+                                    family === 'stageMaskEvent'
+                                        ? [
+                                              {
+                                                  ...events.stageMaskEvents[0]!,
+                                                  beat: 4,
+                                                  maskLeft: left,
+                                                  maskSize: size,
+                                              },
+                                          ]
+                                        : [],
+                                cameraEvents:
+                                    family === 'cameraEvent'
+                                        ? [
+                                              {
+                                                  ...events.cameraEvents[0]!,
+                                                  beat: 4,
+                                                  cameraLeft: left,
+                                                  cameraSize: size,
+                                              },
+                                          ]
+                                        : [],
+                            },
+                            3,
+                        )
+                        view.laneDivision = 1
+                        view.laneSnapping = laneSnapping
+                        view.division = 1
+                        view.snapping = 'absolute'
+                        settings.maxLane = 0
+                        const { switchToolTo } = await appImport<
+                            typeof import('../../src/editor/tools')
+                        >('/src/editor/tools/index.ts')
+                        switchToolTo(tool)
+                        const source = history.state.value
+                        history.replaceState({ ...source, selectedEntities: [] })
+                    },
+                    { family, tool, left, size, laneSnapping },
+                )
+                const before = await stored(page, family)
+                await drag(page, 3.7, dx, 0)
+                const after = await stored(page, family)
+                const label = `${laneSnapping} ${dx} ${tool}`
+                // A camera keeps its minimum size of 6.
+                const expected = family === 'cameraEvent' ? Math.max(edge, 4) : edge
+                expect(rightEdges(after.objects), label).toEqual([expected])
+                if (expected === 4) expect(after, label).toEqual(before)
+                results.push(after)
+            }
+            expect(results[1], `${laneSnapping} ${dx}`).toEqual(results[0])
+        }
+    })
+}
+
+for (const family of ['stageMaskEvent', 'cameraEvent'] as const) {
+    test(`${family}: a Select resize moves each selected range's edge by the pointer's movement`, async ({
+        page,
+    }) => {
+        await page.evaluate(
+            async ({ family }) => {
+                const { show, fixtures, view, settings, history, appImport } = window.editorTest
+                const events = fixtures.events
+                const ranges = [
+                    { beat: 4, left: -2, size: 6 },
+                    { beat: 5, left: -1.5, size: 7.5 },
+                ]
+                show(
+                    {
+                        ...fixtures.interaction,
+                        slides: [],
+                        stageMaskEvents:
+                            family === 'stageMaskEvent'
+                                ? ranges.map(({ beat, left, size }) => ({
+                                      ...events.stageMaskEvents[0]!,
+                                      beat,
+                                      maskLeft: left,
+                                      maskSize: size,
+                                  }))
+                                : [],
+                        cameraEvents:
+                            family === 'cameraEvent'
+                                ? ranges.map(({ beat, left, size }) => ({
+                                      ...events.cameraEvents[0]!,
+                                      beat,
+                                      cameraLeft: left,
+                                      cameraSize: size,
+                                  }))
+                                : [],
+                    },
+                    3,
+                )
+                view.laneDivision = 1
+                view.laneSnapping = 'absolute'
+                view.division = 1
+                view.snapping = 'absolute'
+                settings.maxLane = 0
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo('select')
+                const source = history.state.value
+                const grid =
+                    family === 'stageMaskEvent'
+                        ? source.store.grid.stageMaskEventJoint
+                        : source.store.grid.cameraEventJoint
+                history.replaceState({
+                    ...source,
+                    selectedEntities: [...grid.values()].flatMap((bucket) => [...bucket]),
+                })
+            },
+            { family },
+        )
+        // The first range's right edge at 4, pressed at 3.7; the second's, at 6, moves on its own.
+        const { start, width } = await page.evaluate(() => {
+            const { point, view, settings } = window.editorTest
+            return { start: point(3.7, 4), width: view.w / settings.width }
+        })
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(start.x + 1.1 * width, start.y, { steps: 4 })
+        expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(2)
+        await page.mouse.up()
+        expect(rightEdges((await stored(page, family)).objects)).toEqual([5, 7])
+    })
+}
+
+test('note and slide: a Composed edge resize on thirds stores exactly what Select does', async ({
+    page,
+}) => {
+    const results = await page.evaluate(async () => {
+        const { show, fixtures, view, settings, history, point, appImport } = window.editorTest
+        const { tools } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const base = fixtures.interaction.slides[0]![0]!
+        const pivot = fixtures.events.stagePivotEvents[0]!
+        const modifiers = { ctrl: false, shift: false }
+        const sizes: Record<string, number[]> = { note: [], slide: [], select: [] }
+        for (const tool of ['note', 'slide', 'select'] as const) {
+            for (let i = 0; i < 24; i++) {
+                // An odd-parity stage puts the lattice half a lane off; its thirds carry float noise.
+                show(
+                    {
+                        ...fixtures.interaction,
+                        isDynamicStages: true,
+                        stagePivotEvents: [
+                            {
+                                ...pivot,
+                                beat: 0,
+                                pivotLane: 0.2,
+                                divisionSize: 1,
+                                divisionParity: 'odd',
+                            },
+                        ],
+                        slides: [[{ ...base, beat: 4, left: 2 / 3, size: 3 }]],
+                    },
+                    3,
+                )
+                view.layout = 'composed'
+                view.laneDivision = 3
+                view.laneSnapping = 'absolute'
+                settings.maxLane = 0
+                const source = history.state.value
+                const note = [...source.store.slides.note.values()].flat()[0]!
+                history.replaceState({
+                    ...source,
+                    selectedEntities: tool === 'select' ? [note] : [],
+                })
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo(tool)
+                const shown = createComposedLayout(source).notePosition(note)
+                const press = shown.left + shown.size - 0.2
+                const start = point(press, 4)
+                const end = point(press + 0.05 + i * 0.07, 4)
+                tools[tool].dragStart!(start.x, start.y, modifiers)
+                tools[tool].dragUpdate!(end.x, end.y, modifiers)
+                await tools[tool].dragEnd!(end.x, end.y, modifiers)
+                sizes[tool]!.push(
+                    [...history.state.value.store.slides.note.values()].flat()[0]!.size,
+                )
+            }
+        }
+        return sizes
+    })
+    expect(results.note).toEqual(results.select)
+    expect(results.slide).toEqual(results.select)
+})

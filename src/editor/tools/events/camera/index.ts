@@ -285,13 +285,15 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'edit': {
+                const edge =
+                    active.entity.cameraLeft +
+                    (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0)
                 const [cameraLeft, cameraSize] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     6,
                     24,
-                    active.entity.cameraLeft +
-                        (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0),
+                    edge,
                     [active.entity.cameraLeft, active.entity.cameraSize],
                 )
 
@@ -369,13 +371,15 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'edit': {
+                const edge =
+                    active.entity.cameraLeft +
+                    (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0)
                 const [cameraLeft, cameraSize] = resize(
                     active.lane,
-                    lane,
+                    edge + (lane - active.pressLane),
                     6,
                     24,
-                    active.entity.cameraLeft +
-                        (active.lane === active.entity.cameraLeft ? active.entity.cameraSize : 0),
+                    edge,
                     [active.entity.cameraLeft, active.entity.cameraSize],
                 )
 
