@@ -142,3 +142,38 @@ for (const tool of ['select', 'note', 'slide'] as const) {
         })
     }
 }
+
+test('a drag that leaves a slide’s ends draws it as it is, even with an end stored attached', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: false,
+                slides: [
+                    [
+                        { ...base, beat: 2, left: -4, size: 2, isAttached: true },
+                        { ...base, beat: 4, left: 0, size: 2, isAttached: true },
+                        { ...base, beat: 6, left: 2, size: 2 },
+                    ],
+                ],
+            },
+            3,
+        )
+    })
+    for (const tool of ['select', 'note'] as const) {
+        await useTool(page, tool)
+        const start = await point(page, 3, 6)
+        const end = await point(page, 4.5, 6.5)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(end.x, end.y, { steps: 6 })
+        expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(1)
+        expect(await previewed(page)).toBeUndefined()
+        await page.keyboard.press('Escape')
+        await page.mouse.up()
+    }
+})

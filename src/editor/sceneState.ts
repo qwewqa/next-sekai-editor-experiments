@@ -6,6 +6,7 @@ import { getPreviewState, previewEdit } from '../preview/edit'
 import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
+import type { NoteEntity } from '../state/entities/slides/note'
 import type { BpmIntegral } from '../state/integrals/bpms'
 import { view } from './view'
 
@@ -48,8 +49,12 @@ export const previewSlides = computed(() => {
     const moved = new Set(preview.selectedEntities)
     for (const id of slideIds) {
         const notes = preview.store.slides.note.get(id) ?? []
-        const ends = [notes[0], notes.at(-1)]
-        if (!ends.some((note) => note?.isAttached && !moved.has(note))) slideIds.delete(id)
+        const before = source.store.slides.note.get(id) ?? []
+        // An end that was a tick: ends keep their entity unless moved or replaced.
+        const isNewTickEnd = (note: NoteEntity | undefined, end: NoteEntity | undefined) =>
+            !!note?.isAttached && note !== end && !moved.has(note)
+        if (!isNewTickEnd(notes[0], before[0]) && !isNewTickEnd(notes.at(-1), before.at(-1)))
+            slideIds.delete(id)
     }
     if (!slideIds.size) return
     const entities = [...slideIds].flatMap((id): Entity[] => [
