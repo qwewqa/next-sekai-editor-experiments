@@ -69,6 +69,13 @@ test('an object out of reach keeps its place, and leaves after 8 taps', () => {
         current = step.target
     }
     assert.deepEqual([...cycle!.misses.keys()], ['a'])
+    // Once it has left, its pick in this lap is forgotten: back in reach, it's new.
+    const back = tapAll([
+        { at: 0, set: ['a', 'x'] },
+        ...Array.from({ length: 9 }, (_, i) => ({ at: 0, set: [`n${i}`] })),
+        { at: 0, set: ['n8', 'a', 'y'] },
+    ])
+    assert.equal(back.at(-1), 'a')
 })
 
 test('the current pick out of reach continues near the last tap, not further away', () => {

@@ -14,7 +14,7 @@ export type TapCycle<T, P> = {
 // Taps this close to the last one are the same spot, even with its pick out of reach.
 export const tapCycleSlack = 3
 
-// An object out of reach for this many taps leaves the order, unless it is the pick.
+// Within the slack, an object out of reach for this many taps leaves the order, unless it is the pick.
 const maxMisses = 8
 
 /**
