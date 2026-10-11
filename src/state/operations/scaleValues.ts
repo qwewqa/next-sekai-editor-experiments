@@ -179,12 +179,18 @@ export const isWithinBeatRange = (source: State, values: Map<EditableEntity, num
     [...values.values()].every((beat) => Number.isSafeInteger(Math.floor(beat))) &&
     isWithinGridBudget(source, values)
 
+/** A beat moved by an offset; the editor's cleans float noise onto its grid, as moves do. */
+type MoveBeat = (beat: number, offset: number) => number
+
+export const addBeatOffset: MoveBeat = (beat, offset) => beat + offset
+
 export const getScaledSelectionValues = (
     selected: Entity[],
     axis: ScaleAxis,
     factor: number,
     source?: State,
     anchor?: number,
+    moveBeat = addBeatOffset,
 ): Map<EditableEntity, number> | undefined => {
     if (
         !Number.isFinite(factor) ||
@@ -199,7 +205,9 @@ export const getScaledSelectionValues = (
     const transformed = transformValues(
         entities,
         axis,
-        (value) => pivot + (value - pivot) * factor,
+        axis === 'beat'
+            ? (value) => moveBeat(pivot, (value - pivot) * factor)
+            : (value) => pivot + (value - pivot) * factor,
         source,
     )
     if (!transformed) return
@@ -224,11 +232,6 @@ const validWidthValues = (values: Map<EditableEntity, number>, factor: number) =
     }
     return true
 }
-
-/** A beat moved by an offset; the editor's cleans float noise onto its grid, as moves do. */
-type MoveBeat = (beat: number, offset: number) => number
-
-export const addBeatOffset: MoveBeat = (beat, offset) => beat + offset
 
 export const getTranslatedSelectionValues = (
     selected: Entity[],

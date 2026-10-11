@@ -4,15 +4,21 @@ import { createState } from '../../src/state'
 import type { EntityOfType, EntityType } from '../../src/state/entities'
 import type { SlideId } from '../../src/state/entities/slides'
 import { calculateBpms, toBpmIntegral } from '../../src/state/integrals/bpms'
-import { GLOBAL_GRID, nearGridsBeat, snapBeat, toBeatGrid } from '../../src/state/integrals/grid'
+import {
+    cleanBeat,
+    GLOBAL_GRID,
+    nearGridsBeat,
+    snapBeat,
+    toBeatGrid,
+} from '../../src/state/integrals/grid'
 import type { EditableEntity } from '../../src/state/operations/editable'
 import {
     canScaleSelection,
     getScaleBounds,
+    getScaledSelectionValues,
     getScaleEntities,
     getScalePivot,
     getScaleProperties,
-    getScaledSelectionValues,
     getTranslatedSelectionValues,
 } from '../../src/state/operations/scaleValues'
 
@@ -261,6 +267,83 @@ test('a beat translation lands on the grid through the given cleaning, which onl
             )!.values(),
         ],
         [1 / 3 + 1 / 3],
+    )
+})
+
+test('a beat scaling lands on the grid through the given cleaning, the grabbed end on its line', () => {
+    const onGrid = (division: number) => (beat: number, offset: number) =>
+        cleanBeat([GLOBAL_GRID], beat + offset, division)
+    const notes = [source('note', 0), source('note', 11)]
+    // Dragged from 11 to the line at 15 about 0, a plain product lands an ulp short.
+    assert.deepEqual(
+        [...getScaledSelectionValues(notes, 'beat', 15 / 11, undefined, 0)!.values()],
+        [0, 14.999999999999998],
+    )
+    assert.deepEqual(
+        [...getScaledSelectionValues(notes, 'beat', 15 / 11, undefined, 0, onGrid(1))!.values()],
+        [0, 15],
+    )
+    for (const division of [1, 2, 3, 4, 6, 8, 12, 16]) {
+        const clean = onGrid(division)
+        for (let p = 0; p < 10; p++) {
+            for (let v = p + 1; v < p + 20; v++) {
+                for (let t = p + 1; t < p + 30; t++) {
+                    if (t === v) continue
+                    const [pivot, value, target] = [p / division, v / division, t / division]
+                    const scaled = getScaledSelectionValues(
+                        [source('note', pivot), source('note', value)],
+                        'beat',
+                        (target - pivot) / (value - pivot),
+                        undefined,
+                        pivot,
+                        clean,
+                    )!
+                    assert.deepEqual(
+                        [...scaled.values()],
+                        [pivot, target],
+                        `${p} ${v} ${t}/${division}`,
+                    )
+                }
+            }
+        }
+    }
+    // Onto a bar grid's line; off the grid, a scaled beat keeps its value.
+    const bars = toBeatGrid(
+        calculateBpms(
+            [
+                { beat: 0, bpm: 120 },
+                { beat: 2.3, bpm: 150 },
+            ].map(toBpmIntegral),
+        ),
+    )
+    const line = snapBeat(bars, 2.3 + 1 / 3 + 1e-9, 3)
+    const target = snapBeat(bars, 2.3 + 7 / 3 + 1e-9, 3)
+    const onBars = (beat: number, offset: number) => cleanBeat([bars], beat + offset, 3)
+    assert.deepEqual(
+        [
+            ...getScaledSelectionValues(
+                [source('note', 2.3), source('note', line)],
+                'beat',
+                (target - 2.3) / (line - 2.3),
+                undefined,
+                2.3,
+                onBars,
+            )!.values(),
+        ],
+        [2.3, target],
+    )
+    assert.deepEqual(
+        [
+            ...getScaledSelectionValues(
+                [source('note', 1), source('note', 2.37)],
+                'beat',
+                1.5,
+                undefined,
+                1,
+                onGrid(4),
+            )!.values(),
+        ],
+        [1, 1 + 1.37 * 1.5],
     )
 })
 
