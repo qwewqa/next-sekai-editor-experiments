@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { StageId } from '../../src/chart/stages'
 import { createState, type State } from '../../src/state'
-import { GLOBAL_GRID, nearGridsBeat } from '../../src/state/integrals/grid'
+import { cleanBeat, GLOBAL_GRID, nearGridsBeat } from '../../src/state/integrals/grid'
 import { flipVertical } from '../../src/state/operations/flipVertical'
 import { groupId, note } from './chartFixture'
 
@@ -60,4 +60,27 @@ test('a vertical flip lands on the grid through the given cleaning, which only r
         0.1 + (1.3 - 0.37),
         1.3,
     ])
+})
+
+test('a vertical flip lands triplets exactly while the grid is in quarters', () => {
+    const quarters = (beat: number, offset: number) => cleanBeat([GLOBAL_GRID], beat + offset, 4)
+    // Placed at 1/3 steps: 0 + (1 - 2/3) carries an ulp of noise the quarter grid can't see.
+    assert.notEqual(0 + (1 - 2 / 3), 1 / 3)
+    const source = selectedNotes([0, 2 / 3, 1])
+    assert.deepEqual(beats(flipVertical(source, source.selectedEntities)), [0, 1 - 2 / 3, 1])
+    assert.deepEqual(beats(flipVertical(source, source.selectedEntities, quarters)), [0, 1 / 3, 1])
+    for (const division of [3, 6, 12]) {
+        for (let min = 0; min < 2 * division; min++) {
+            for (let max = min + 2; max < min + 3 * division; max++) {
+                for (let k = min + 1; k < max; k++) {
+                    const flipped = selectedNotes([min / division, k / division, max / division])
+                    assert.deepEqual(
+                        beats(flipVertical(flipped, flipped.selectedEntities, quarters)),
+                        [min / division, (min + max - k) / division, max / division],
+                        `${min} ${k} ${max}/${division}`,
+                    )
+                }
+            }
+        }
+    }
 })
