@@ -11,26 +11,20 @@ import { clamp } from '../utils/math'
 import type { ComposedLayout } from './composed'
 
 /*
- * The hit model: the order in which a point takes the objects it hits. It is the
- * ground truth for picking; drawing matches it by convention, and
- * hitModelConsistency.spec flags where they drift apart.
+ * The hit model: the order in which a point takes the objects it hits, the ground truth for
+ * picking. Drawing follows it by convention; hitModelConsistency.spec flags drift.
  *
- * Which objects a point hits: each one's hitbox, notes at least the minimum
- * width, within 10 pixels. The model orders them:
- * 1. Those whose primary shape holds the point, by precedence: time-scale
- *    markers, then notes, then transform, style, pivot, mask and camera
- *    markers, then BPM labels; within a kind, an earlier beat, then a later entity in the grid.
- * 2. The rest, nearest primary shape first, so reach between two objects meets
- *    halfway; equally near, by type, then earlier beat, then later entity.
+ * A point hits each hitbox within 10 pixels, notes at least the minimum width. The order:
+ * 1. On a primary shape, by precedence: time-scale markers, notes, then transform, style, pivot,
+ *    mask and camera markers, then BPM labels; within a kind, earlier beat, then later in the grid.
+ * 2. The rest, nearest shape first, so reach meets halfway; then type, earlier beat, later entity.
  *
- * Primary shapes, in lanes, across from an object's line (down the screen):
- * - A note's box at its shown width, a zero-width one a 0.2-lane placeholder:
- *   0.3 lanes each way, or 0.15 for anchors, ticks, damage and trace notes. A
- *   sized tick or trace adds its diamond, 0.3 lanes out and up and 0.15 down.
- *   Flick arrows, names and outlines' strokes are decoration.
+ * Primary shapes, in lanes across and down from the object's line:
+ * - A note's box at its shown width (zero width: a 0.2-lane placeholder), 0.3 lanes each way,
+ *   0.15 for anchors, ticks, damage and trace notes. A sized tick or trace adds its diamond, 0.3
+ *   lanes out and up and 0.15 down. Flick arrows, names and outline strokes are decoration.
  * - An event joint's marker: 0.1 lanes each way at each of its lanes.
- * - A time scale's marker, 0.135 lanes each way, for the first of a same-beat
- *   jump on its lane.
+ * - A time scale's marker: 0.135 lanes each way, for the first of a same-beat jump on its lane.
  * - A BPM change's label box: its hitbox.
  */
 
