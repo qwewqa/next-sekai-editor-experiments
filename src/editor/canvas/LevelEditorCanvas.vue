@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue'
-import { beats, times } from '..'
+import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
 import { state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
+import { cullAllEntities } from '../../history/store'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
@@ -97,11 +98,24 @@ const shownEntities = computed(() => {
     const preview = previewSlides.value
     if (!preview) return { entities: artEntities.value, selected: selectedEntitySet.value }
     const { min, max } = artRange.value
+    // In the drop's store order, which settles same-beat ties; the source's own entities stay in place.
+    const source = artEntities.value.filter((entity) => !preview.includes(entity))
+    const indices = new Map(source.map((entity, index) => [entity, index]))
+    const entities: Entity[] = []
+    let next = 0
+    for (const entity of cullAllEntities(keys.value.min, keys.value.max, preview.state.store)) {
+        if (preview.entities.has(entity)) {
+            if (isEntityInBeatRange(entity, min, max)) entities.push(entity)
+            continue
+        }
+        const index = indices.get(entity)
+        if (index === undefined || index < next) continue
+        entities.push(...source.slice(next, index + 1))
+        next = index + 1
+    }
+    entities.push(...source.slice(next))
     return {
-        entities: [
-            ...artEntities.value.filter((entity) => !preview.includes(entity)),
-            ...[...preview.entities].filter((entity) => isEntityInBeatRange(entity, min, max)),
-        ],
+        entities,
         selected: new Set([
             ...selectedEntitySet.value,
             ...preview.state.selectedEntities.filter(preview.includes),
@@ -371,10 +385,15 @@ watchEffect(
         const showsGhosts =
             !isStalePaste &&
             (!isScenePreview.value || (!!previewEdit.value?.draft && !isComposedPaste))
-        const creating = showsGhosts ? view.entities.creating : []
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value
+        // Previewed slides are drawn solid as they drop, without ghosts.
+        const creating = !showsGhosts
+            ? []
+            : preview
+              ? view.entities.creating.filter((entity) => !preview.includes(entity))
+              : view.entities.creating
         // Previewed slides are outlined where they're drawn.
         const selected = preview
             ? [

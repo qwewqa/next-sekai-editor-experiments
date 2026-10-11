@@ -75,9 +75,17 @@ const slide = async (page: Page) =>
         .sort((a, b) => a.beat - b.beat || a.left - b.left)
 
 /** The editor around the tick, left of the notices. */
-const tickRow = async (page: Page) => {
-    const from = await point(page, -8, 4.4)
-    const to = await point(page, -1.5, 3.6)
+const tickRow = (page: Page) => area(page, -8, -1.5, 3.6, 4.4)
+
+const area = async (
+    page: Page,
+    laneMin: number,
+    laneMax: number,
+    beatMin: number,
+    beatMax: number,
+) => {
+    const from = await point(page, laneMin, beatMax)
+    const to = await point(page, laneMax, beatMin)
     await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
     )
@@ -112,6 +120,9 @@ for (const tool of ['select', 'note', 'slide'] as const) {
             await page.mouse.move(target.x, target.y, { steps: 6 })
             const preview = await previewed(page)
             const drawn = await tickRow(page)
+            // The moved note is drawn as it drops, without its ghost.
+            const movedArea = () => area(page, lane - 2, lane + 2, past - 0.6, past + 0.6)
+            const moved = await movedArea()
             expect(drawn.equals(pressed)).toBe(false)
             await page.mouse.up()
             const after = await slide(page)
@@ -125,6 +136,7 @@ for (const tool of ['select', 'note', 'slide'] as const) {
                 attached: true,
             })
             expect((await tickRow(page)).equals(drawn)).toBe(true)
+            expect((await movedArea()).equals(moved)).toBe(true)
 
             // Escape draws the slide as it is again.
             await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
@@ -234,4 +246,87 @@ test('a drag that moves no unmoved tick draws its slide as it is', async ({ page
     expect(await previewed(page)).toBeUndefined()
     await page.keyboard.press('Escape')
     await page.mouse.up()
+})
+
+test('a pending property edit under a Slide tool hover leaves the chart as it is', async ({
+    page,
+}) => {
+    await showSlide(page)
+    await page.evaluate(async () => {
+        const { history, settings, nextTick } = window.editorTest
+        settings.showSidebar = true
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()]
+                .flat()
+                .filter((note) => note.beat === 2),
+        })
+        await nextTick()
+    })
+    await useTool(page, 'slide')
+    const chart = () =>
+        page.evaluate(async () => {
+            await new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            )
+            return document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!.toDataURL()
+        })
+    const empty = await point(page, 4, 1)
+    await page.mouse.move(empty.x, empty.y)
+    const before = await chart()
+    // Typed, not committed: the field keeps focus and only previews.
+    await page.getByLabel('Lane', { exact: true }).fill('-1')
+    await page.mouse.move(empty.x + 4, empty.y)
+    const pending = await page.evaluate(async () => {
+        const { appImport, view, history } = window.editorTest
+        const { previewEdit } =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const { previewSlides } = await appImport<typeof import('../../src/editor/sceneState')>(
+            '/src/editor/sceneState.ts',
+        )
+        const [slideId] = history.state.value.store.slides.note.keys()
+        return {
+            edit: !!previewEdit.value,
+            ghost: view.entities.creating.some(
+                (entity) => entity.type === 'note' && entity.slideId === slideId,
+            ),
+            previewed: !!previewSlides.value,
+        }
+    })
+    expect(pending).toEqual({ edit: true, ghost: true, previewed: false })
+    expect(await chart()).toBe(before)
+})
+
+test('a previewed slide keeps its stacking with a note at the same beat', async ({ page }) => {
+    // The slide's tail lies under a critical note at the same beat and lane, stored after it.
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: false,
+                slides: [
+                    [
+                        { ...base, beat: 2, left: -4, size: 2 },
+                        { ...base, beat: 3, left: 0, size: 2, isAttached: true },
+                        { ...base, beat: 4, left: 0, size: 2 },
+                        { ...base, beat: 6, left: 2, size: 2 },
+                    ],
+                    [{ ...base, beat: 6, left: 2, size: 2, isCritical: true }],
+                ],
+            },
+            3,
+        )
+    })
+    await useTool(page, 'select')
+    const start = await point(page, -3, 2)
+    const target = await point(page, -1, 2)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(target.x, target.y, { steps: 6 })
+    expect(await previewed(page)).toBeDefined()
+    const drawn = await area(page, 1.5, 4.5, 5.7, 6.3)
+    await page.mouse.up()
+    expect((await area(page, 1.5, 4.5, 5.7, 6.3)).equals(drawn)).toBe(true)
 })

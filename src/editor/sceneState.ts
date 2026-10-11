@@ -38,13 +38,16 @@ export const isScenePreview = computed(() => sceneState.value !== state.value)
 export const previewSlides = computed(() => {
     const ghosts = view.entities.creating
     const edit = previewEdit.value
-    if (isScenePreview.value || !ghosts.length || !edit) return
+    // Only drags: a pending Properties edit under a hover ghost isn't drawn.
+    if (isScenePreview.value || !ghosts.length || !edit?.isDrag) return
     const source = state.value
     if (!hasSameChartData(source, edit.source)) return
     // Only slides with a tick can move one; the rest skip building the preview.
     const slideIds = new Set<SlideId>()
+    const checked = new Set<SlideId>()
     for (const ghost of ghosts) {
-        if (ghost.type !== 'note' || slideIds.has(ghost.slideId)) continue
+        if (ghost.type !== 'note' || checked.has(ghost.slideId)) continue
+        checked.add(ghost.slideId)
         const notes = source.store.slides.note.get(ghost.slideId)
         if (notes?.some((note, i) => note.isAttached && i > 0 && i < notes.length - 1))
             slideIds.add(ghost.slideId)

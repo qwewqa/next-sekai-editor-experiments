@@ -120,7 +120,7 @@ export const createEditPreview = (
             )
                 built = { source, key, state: build() }
             const edited = entity.isAttached ? built?.state : undefined
-            setPreviewEdit(source, () => edited ?? build(), key)
+            setPreviewEdit(source, () => edited ?? build(), key, { isDrag: true })
             const note = edited?.selectedEntities[0]
             return note?.type === 'note' ? note : undefined
         },
