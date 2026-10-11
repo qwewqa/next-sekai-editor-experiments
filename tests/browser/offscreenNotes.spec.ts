@@ -390,3 +390,86 @@ test('badges keep clear of the range labels and the elevation axis', async ({ pa
     expect(xs.length).toBeGreaterThan(0)
     for (const x of xs) expect(canvasLeft + x).toBeGreaterThanOrEqual(badgeRight)
 })
+
+// Each frame, how far the left badge sits from its note (beat 3, lane -40), in px.
+const recordBadgeOffsets = (page: Page) =>
+    page.evaluate(() => {
+        const { point } = window.editorTest
+        const offsets: number[] = []
+        let recording = true
+        const record = () => {
+            if (!recording) return
+            const badge = document.querySelector(
+                '.editor-chart ~ div .offscreen-note-indicator[data-side="left"]',
+            )
+            if (badge) {
+                const { top, height } = badge.getBoundingClientRect()
+                offsets.push(top + height / 2 - point(-40, 3).y)
+            }
+            requestAnimationFrame(record)
+        }
+        requestAnimationFrame(record)
+        Object.assign(window, {
+            stopBadgeOffsets: () => {
+                recording = false
+                return offsets
+            },
+        })
+    })
+
+for (const smooth of [false, true]) {
+    test(`badges move with their notes while ${smooth ? 'eased' : 'stepped'} wheel scrolling`, async ({
+        page,
+    }) => {
+        await page.evaluate((smooth) => {
+            const { view, settings } = window.editorTest
+            settings.mouseSmoothScrolling = smooth
+            // Beat 3 in the middle of the view, far from the badge band's edges.
+            view.time = 1.5
+        }, smooth)
+        const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+        await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
+        await recordBadgeOffsets(page)
+        for (const delta of [7, 7, 7, 7, 7, -5, -5, -5, 11, 11, 11, 11]) {
+            await page.mouse.wheel(0, delta)
+            await page.waitForTimeout(40)
+        }
+        await page.waitForTimeout(300)
+        const offsets = await page.evaluate(() =>
+            (window as unknown as { stopBadgeOffsets: () => number[] }).stopBadgeOffsets(),
+        )
+        expect(offsets.length).toBeGreaterThan(10)
+        expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1)
+        expect(Math.abs(offsets[0]!)).toBeLessThanOrEqual(14)
+    })
+}
+
+test('elevation editor badges move with their notes as the elevation view pans', async ({
+    page,
+}) => {
+    await page.keyboard.press('t')
+    const badge = page.locator('.elevation-editor [data-side="left"]')
+    await expect(badge).toHaveAttribute('data-count', '1')
+    const offsets = await page.evaluate(async () => {
+        const { appImport, nextTick } = window.editorTest
+        const { elevationViewport } = await appImport<
+            typeof import('../../src/editor/elevation/viewport')
+        >('/src/editor/elevation/viewport.ts')
+        const { elevationLayout } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const canvas = document.querySelector('.elevation-canvas')!
+        const offsets: number[] = []
+        const start = elevationViewport.center
+        for (let step = 0; step < 12; step++) {
+            elevationViewport.center = start + step * 0.07
+            await nextTick()
+            const badge = document.querySelector('.elevation-editor [data-side="left"]')!
+            const { top, height } = badge.getBoundingClientRect()
+            const note = canvas.getBoundingClientRect().top + elevationLayout.value.yAt(2)
+            offsets.push(top + height / 2 - note)
+        }
+        return offsets
+    })
+    expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1)
+})

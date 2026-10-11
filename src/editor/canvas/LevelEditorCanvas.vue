@@ -172,6 +172,11 @@ const offscreenSideNotes = computed(() => {
         return right < 0 || left > width ? [{ ...note, left, right }] : []
     })
 })
+// Badges are placed from time 0's pane y, so they scroll with the chart; whole device pixels keep them sharp.
+const offscreenAnchor = computed(() => {
+    const ratio = pixelRatio.value
+    return Math.round(-viewBox.value.t * (view.w / viewBox.value.w) * ratio) / ratio
+})
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const bounds = viewBox.value
     const scale = view.w / bounds.w
@@ -184,7 +189,14 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
     // Clear of the range labels in the corners.
-    const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT)
+    const groups = groupOffscreenNotes(
+        notes,
+        view.w,
+        0,
+        view.h,
+        RANGE_LABEL_HEIGHT,
+        offscreenAnchor.value,
+    )
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
@@ -192,6 +204,7 @@ useOffscreenIndicators({
     navigation: () => undefined,
     bounds: () => view,
     groups: () => offscreenGroups.value,
+    anchor: () => offscreenAnchor.value,
 })
 const hoveredOffscreenGroup = computed(() =>
     cursor.value === 'pointer' && tool.value === tools.select
@@ -561,6 +574,10 @@ onUnmounted(() => {
             class="editor-overlay pointer-events-none absolute size-full"
             @contextrestored="restoreContext"
         />
-        <OffscreenNoteIndicators :groups="offscreenGroups" :hovered="hoveredOffscreenGroup" />
+        <OffscreenNoteIndicators
+            :groups="offscreenGroups"
+            :hovered="hoveredOffscreenGroup"
+            :anchor="offscreenAnchor"
+        />
     </div>
 </template>

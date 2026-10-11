@@ -248,6 +248,11 @@ const restoreContext = () => {
     redrawVersion.value++
 }
 const hovered = ref<NoteEntity>()
+// Badges are placed from elevation 0's pane y, so they pan with the notes; whole device pixels keep them sharp.
+const offscreenAnchor = computed(() => {
+    const ratio = pixelRatio.value
+    return Math.round(elevationLayout.value.yAt(0) * ratio) / ratio
+})
 const offscreenGroups = computed(() => {
     const selected = new Set(elevationState.value.selectedEntities)
     return groupOffscreenNotes(
@@ -265,12 +270,15 @@ const offscreenGroups = computed(() => {
         elevationBounds.w,
         headerHeight.value + 4,
         elevationBounds.h,
+        0,
+        offscreenAnchor.value,
     )
 })
 useOffscreenIndicators({
     navigation: () => navigation,
     bounds: () => elevationBounds,
     groups: () => offscreenGroups.value,
+    anchor: () => offscreenAnchor.value,
 })
 // Only the select-like tools pick notes from the badges.
 const hitIndicator = (x: number, y: number) =>
@@ -1411,7 +1419,11 @@ onUnmounted(() => {
                 :aria-label="i18n.elevation.canvas"
                 @contextrestored="restoreContext"
             />
-            <OffscreenNoteIndicators :groups="offscreenGroups" :hovered="hoveredOffscreenGroup" />
+            <OffscreenNoteIndicators
+                :groups="offscreenGroups"
+                :hovered="hoveredOffscreenGroup"
+                :anchor="offscreenAnchor"
+            />
         </div>
         <!-- Beside the main editor, notifications show in its pane instead. -->
         <LevelEditorNotification

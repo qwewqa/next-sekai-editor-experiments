@@ -11,6 +11,7 @@ export type OffscreenNotePosition<T = unknown> = {
 export type OffscreenNoteGroup<T = unknown> = {
     side: 'left' | 'right'
     slot: number
+    // From the grouping's anchor.
     y: number
     spacing: number
     count: number
@@ -22,19 +23,30 @@ export type OffscreenNoteGroup<T = unknown> = {
 // One line of the chart's corner range labels.
 export const RANGE_LABEL_HEIGHT = 24
 
-/** Badges sit inset from top and bottom; notes in those margins count in the nearest slot. */
+const SLOT = 28
+
+/**
+ * Badges sit in slots fixed to the content at `anchor` (a pane y), so they scroll with their notes.
+ * Only whole slots between the insets hold badges; notes in the rest count in the nearest one.
+ */
 export const groupOffscreenNotes = <T>(
     notes: readonly OffscreenNotePosition<T>[],
     width: number,
     top: number,
     bottom: number,
     inset = 0,
+    anchor = 0,
 ) => {
     const groups = new Map<string, OffscreenNoteGroup<T>>()
     const first = top + inset
-    if (!(width > 0) || bottom - inset - first < 24) return []
-    const slots = Math.max(1, Math.floor((bottom - inset - first) / 28))
-    const spacing = (bottom - inset - first) / slots
+    const last = bottom - inset
+    if (!(width > 0) || last - first < 24) return []
+    // Too short for two slots: one fixed to the pane, which scrolling can't empty.
+    const fixed = last - first < 2 * SLOT
+    const origin = fixed ? first : anchor
+    const spacing = fixed ? last - first : SLOT
+    const min = fixed ? 0 : Math.ceil((first - origin) / spacing)
+    const max = fixed ? 0 : Math.floor((last - origin) / spacing) - 1
     for (const note of notes) {
         if (
             !Number.isFinite(note.left) ||
@@ -46,7 +58,7 @@ export const groupOffscreenNotes = <T>(
             continue
         const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
         if (!side) continue
-        const slot = Math.min(slots - 1, Math.max(0, Math.floor((note.y - first) / spacing)))
+        const slot = Math.min(max, Math.max(min, Math.floor((note.y - origin) / spacing)))
         const key = `${side}:${slot}`
         let group = groups.get(key)
         if (group) {
@@ -57,7 +69,7 @@ export const groupOffscreenNotes = <T>(
             group = {
                 side,
                 slot,
-                y: first + (slot + 0.5) * spacing,
+                y: origin - anchor + (slot + 0.5) * spacing,
                 spacing,
                 count: 1,
                 highlighted: note.highlighted,
@@ -95,7 +107,7 @@ export const isSameOffscreenGroups = <T>(
 // Badge width estimate (inset, chevron, digits) with slack; at least a touch target.
 export const offscreenBadgeHitWidth = (count: number) => Math.max(44, 40 + 7 * String(count).length)
 
-// Selectable badge whose hit area (slot band, out from the edge) holds a pane point.
+// Selectable badge whose hit area (slot band, out from the edge) holds a point, y from the anchor.
 export const hitOffscreenGroup = <T>(
     groups: readonly OffscreenNoteGroup<T>[],
     x: number,
