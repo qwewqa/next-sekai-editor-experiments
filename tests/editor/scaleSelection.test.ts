@@ -573,40 +573,32 @@ test('beats one float step apart may meet when moved or scaled; distinct beats s
     assert.equal(getTranslatedSelectionValues(elevations, 'elevation', 1e10), undefined)
 })
 
-test('cleaning returns non-finite and out-of-range beats as they are, on any grid', () => {
-    const bars = toBeatGrid(
-        calculateBpms(
-            [
-                { beat: 0, bpm: 120 },
-                { beat: 2.3, bpm: 150 },
-                { beat: 7.1, bpm: 90 },
-            ].map(toBpmIntegral),
-        ),
-    )
-    for (const division of [1, 4, 1000]) {
-        for (const beat of [Infinity, -Infinity, 1e306, 2 ** 53 - 1, 2 ** 52 + 0.5]) {
-            assert.equal(cleanBeat([bars, GLOBAL_GRID], beat, division), beat)
-        }
-        assert.ok(Number.isNaN(cleanBeat([bars, GLOBAL_GRID], NaN, division)))
-    }
-})
-
-test('a huge scale factor is refused promptly', () => {
+test('non-finite and huge beats are cleaned as they are, and a huge scale factor is refused, promptly', () => {
     // Run apart, so a hang fails the test instead of stalling the run.
     const url = (path: string) => JSON.stringify(new URL(path, import.meta.url).href)
     const script = `
         import { calculateBpms, toBpmIntegral } from ${url('../../src/state/integrals/bpms.ts')}
         import { cleanBeat, GLOBAL_GRID, toBeatGrid } from ${url('../../src/state/integrals/grid.ts')}
         import { getScaledSelectionValues } from ${url('../../src/state/operations/scaleValues.ts')}
-        const bars = toBeatGrid(calculateBpms([{ beat: 0, bpm: 120 }, { beat: 2.3, bpm: 150 }].map(toBpmIntegral)))
-        const results = []
+        import { alignFraction } from ${url('../../src/utils/math.ts')}
+        const bars = toBeatGrid(
+            calculateBpms([{ beat: 0, bpm: 120 }, { beat: 2.3, bpm: 150 }, { beat: 7.1, bpm: 90 }].map(toBpmIntegral)),
+        )
+        const huge = [Infinity, -Infinity, NaN, 1e306, 1e308, 2 ** 60, 2 ** 53 - 1, 2 ** 52 + 0.5]
+        const unchanged = []
+        for (const beat of huge) {
+            unchanged.push(Object.is(alignFraction(beat), beat))
+            for (const division of [1, 4, 1000])
+                unchanged.push(Object.is(cleanBeat([bars, GLOBAL_GRID], beat, division), beat))
+        }
+        const refused = []
         for (const grids of [[GLOBAL_GRID], [bars, GLOBAL_GRID]]) {
             const moveBeat = (beat, offset) => cleanBeat(grids, beat + offset, 4)
             const notes = [{ type: 'note', beat: 0 }, { type: 'note', beat: 1000 }]
             for (const factor of [1e306, 1e308, 1e15])
-                results.push(getScaledSelectionValues(notes, 'beat', factor, undefined, undefined, moveBeat) ?? null)
+                refused.push(getScaledSelectionValues(notes, 'beat', factor, undefined, undefined, moveBeat) === undefined)
         }
-        console.log(JSON.stringify(results))
+        console.log(JSON.stringify({ unchanged, refused }))
     `
     const run = spawnSync(
         process.execPath,
@@ -614,9 +606,7 @@ test('a huge scale factor is refused promptly', () => {
         { encoding: 'utf8', timeout: 20_000 },
     )
     assert.equal(run.signal, null, 'timed out')
-    assert.equal(
-        run.stdout.trim(),
-        JSON.stringify([null, null, null, null, null, null]),
-        run.stderr,
-    )
+    const { unchanged, refused } = JSON.parse(run.stdout) as Record<string, boolean[]>
+    assert.ok(unchanged!.length === 32 && unchanged!.every(Boolean), run.stdout)
+    assert.ok(refused!.length === 6 && refused!.every(Boolean), run.stdout)
 })
