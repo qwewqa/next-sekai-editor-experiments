@@ -186,8 +186,8 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         ...note,
         left,
         right,
-        // From the rounded anchor, so notes keep their slots while scrolling.
-        y: anchor + time * bounds.ups * scale,
+        // From time 0, so notes keep their slots while scrolling.
+        y: time * bounds.ups * scale,
         // Dimmed notes are counted but not selectable.
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))

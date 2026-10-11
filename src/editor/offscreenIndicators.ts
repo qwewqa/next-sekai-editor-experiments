@@ -45,8 +45,9 @@ export const hitOffscreenIndicator = (x: number, y: number) => {
         const group = hitOffscreenGroup(
             layer.groups(),
             x - bounds.x,
-            y - bounds.y - layer.anchor(),
+            y - bounds.y,
             bounds.w,
+            layer.anchor(),
         )
         if (group) return group
     }
