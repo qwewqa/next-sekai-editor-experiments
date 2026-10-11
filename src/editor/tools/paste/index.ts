@@ -61,7 +61,7 @@ import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { align, alignComputed, shiftComputed } from '../../../utils/math'
 import { bisect } from '../../../utils/ordered'
-import { snapGrid } from '../../beatGrid'
+import { committedGrid } from '../../beatGrid'
 import { createComposedLayout } from '../../composed'
 import { inverseAffine } from '../../composedPointer'
 import type { Modifiers } from '../../controls/gestures/pointer'
@@ -346,7 +346,7 @@ const showGhost = (
             settings.maxLane,
             view.laneDivision,
             view.division,
-            snapGrid.value,
+            committedGrid.value,
         ]
         if (ghost?.state && composedGhostKeys?.every((key, index) => key === keys[index])) {
             view.entities = { hovered: [], creating: ghost.entities }
@@ -674,7 +674,7 @@ export const getComposedPasteDelta = (
         view.groupId,
         view.stageId,
         view.division,
-        snapGrid.value,
+        committedGrid.value,
     ]
     // The probes don't depend on the pointer lane, so moves within a beat reuse them.
     if (!pasteProbe?.keys.every((key, index) => key === keys[index]))

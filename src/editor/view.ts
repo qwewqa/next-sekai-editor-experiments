@@ -7,13 +7,13 @@ import { onResetState } from '../history/resetHooks'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
-import { isGlobalGrid, nearGridsBeat, snapBeat, type BeatGrid } from '../state/integrals/grid'
+import { isGlobalGrid, nearGridsBeat, snapBeat } from '../state/integrals/grid'
 import { time } from '../time'
 import { computedArray } from '../utils/array'
 import { align, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
 import { requestAudioPreview } from './audioPreview'
-import { committedBarGrid, snapGrid } from './beatGrid'
+import { committedBarGrid, committedGrid } from './beatGrid'
 import { getComposedLayout } from './composedView'
 import type { Modifiers } from './controls/gestures/pointer'
 import { integrateScrollInertia } from './inertia'
@@ -400,8 +400,7 @@ export const yToTime = (y: number) => (0.5 * view.h - y + view.y) / settings.pps
 
 export const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
 
-export const yToValidBeat = (y: number, grid: BeatGrid = snapGrid.value) =>
-    snapBeat(grid, yToBeat(y), view.division)
+export const yToValidBeat = (y: number) => snapBeat(committedGrid.value, yToBeat(y), view.division)
 
 // Further below beat 0 than snapping reaches; yToValidBeat clamps such presses to 0.
 export const isBelowSnapping = (y: number) => {
@@ -411,7 +410,7 @@ export const isBelowSnapping = (y: number) => {
 
 export const yToBeatOffset = (y: number, beat: number) =>
     view.snapping === 'absolute'
-        ? snapBeat(snapGrid.value, yToBeat(y), view.division) - beat
+        ? snapBeat(committedGrid.value, yToBeat(y), view.division) - beat
         : align(yToBeat(y) - beat, view.division)
 
 /**
@@ -421,7 +420,7 @@ export const yToBeatOffset = (y: number, beat: number) =>
  */
 export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) => {
     const pointer = yToBeat(y)
-    const grid = snapGrid.value
+    const grid = committedGrid.value
     // Past the half-step wait, it lands on the bar grid's nearest line.
     if (
         view.snapping === 'absolute' &&
@@ -440,11 +439,11 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
 }
 
 // A moved or pasted beat, without float noise on the grid, or on the chart's bars as other
-// content may sit there (in the Beat display, or while lifted); unmoved, it stays exact.
+// content may sit there in the Beat display; unmoved, it stays exact.
 export const toMovedBeat = (beat: number, offset: number) =>
     offset === 0
         ? beat
-        : nearGridsBeat([snapGrid.value, committedBarGrid.value], beat + offset, view.division)
+        : nearGridsBeat([committedGrid.value, committedBarGrid.value], beat + offset, view.division)
 
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
     Math.max(0, toMovedBeat(beat, yToMoveBeatOffset(y, beat, pressBeat)))

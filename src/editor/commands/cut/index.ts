@@ -23,7 +23,6 @@ import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
 import { createTransaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
-import { committedGrid } from '../../beatGrid'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { view, xToLane, yToValidBeat } from '../../view'
@@ -86,7 +85,7 @@ export const cut: Command = {
                     view.pointer.y,
                     copied.positions,
                 ),
-            beat: position?.beat ?? yToValidBeat(view.pointer.y, committedGrid.value),
+            beat: position?.beat ?? yToValidBeat(view.pointer.y),
             entities: copiedEntities,
             anchor: getClipboardAnchor(entities, copiedEntities),
             ...serializeEditorMetadata(copiedEntities, copiedStore),

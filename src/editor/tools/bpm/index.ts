@@ -13,7 +13,6 @@ import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operati
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
-import { dropLift, endingLift, liftForMove, setLiftDrawn, startingLift } from '../../beatGrid'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
@@ -131,10 +130,9 @@ export const bpm: Tool = {
 
     cursor: (x, y) => (tryFind(x, y, true)[0] ? 'ns-resize' : 'crosshair'),
 
-    dragStart: startingLift((x, y) => {
+    dragStart(x, y) {
         const [entity, beat] = tryFind(x, y, true)
         if (entity) {
-            liftForMove([entity], state.value)
             replaceState({
                 ...state.value,
                 selectedEntities: [entity],
@@ -163,7 +161,7 @@ export const bpm: Tool = {
         }
 
         return true
-    }),
+    },
 
     dragUpdate(x, y) {
         if (!active) return
@@ -195,8 +193,6 @@ export const bpm: Tool = {
             }
             case 'move': {
                 const beat = snapYToBeat(y, active.entity.beat, active.pressBeat)
-                // The bars redraw without it only once it leaves its beat.
-                setLiftDrawn(beat !== active.entity.beat)
                 const object: BpmObject = {
                     beat,
                     bpm: active.entity.bpm,
@@ -214,7 +210,7 @@ export const bpm: Tool = {
         }
     },
 
-    dragEnd: endingLift((x, y) => {
+    dragEnd(x, y) {
         clearPreviewEdit()
         if (!active) return
 
@@ -266,12 +262,11 @@ export const bpm: Tool = {
         }
 
         active = undefined
-    }),
+    },
 
     dragCancel() {
         clearPreviewEdit()
         active = undefined
-        dropLift()
     },
 }
 

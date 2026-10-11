@@ -2,7 +2,7 @@ import type { AddMutation, RemoveMutation, ReplaceMutation } from '.'
 import type { BpmObject } from '../../chart/bpm'
 import { bisect } from '../../utils/ordered'
 import { toBpmEntity, type BpmEntity } from '../entities/bpm'
-import { calculateBpms, toBpmIntegral, type BpmIntegral } from '../integrals/bpms'
+import { toBpmIntegral, type BpmIntegral } from '../integrals/bpms'
 import type { Store } from '../store'
 import {
     addToStoreGrid,
@@ -52,18 +52,4 @@ export const replaceBpm: ReplaceMutation<BpmEntity, BpmObject> = (
     replaceInStoreGrid(store.grid, entity, replacement, entity.beat)
 
     return [replacement]
-}
-
-/** The changes without the moved ones (the initial one stays put), with bars recounted. */
-export const liftBpms = (
-    { store, bpms }: { store: Store; bpms: BpmIntegral[] },
-    entities: BpmEntity[],
-): BpmIntegral[] => {
-    const indices = new Set(
-        entities
-            .filter((entity) => entity.beat !== 0)
-            .map((entity) => integralIndex(store, bpms, entity))
-            .filter((index) => index >= 0),
-    )
-    return calculateBpms(bpms.filter((_, index) => !indices.has(index)))
 }

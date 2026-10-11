@@ -1,6 +1,6 @@
 import { buildPreviewChart } from '../../preview/engine/chart'
 import { getStageProps } from '../../preview/engine/stage'
-import { beatToTime, timeToBeat, type BpmIntegral } from '../../state/integrals/bpms'
+import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { snapBeat } from '../../state/integrals/grid'
 import { isEditableEntity, type EditableEntity } from '../../state/operations/editable'
 import {
@@ -10,24 +10,14 @@ import {
     getScaleValue,
 } from '../../state/operations/scaleValues'
 import { transformSelection } from '../../state/operations/transformSelection'
-import {
-    dropLift,
-    endingLift,
-    gridOf,
-    liftedBpms,
-    liftForMove,
-    setLiftDrawn,
-    startingLift,
-} from '../beatGrid'
+import { dragBpms, gridOf } from '../beatGrid'
 import { getScaleLabels } from '../commands/scaleSelection/labels'
 import {
     beginScalingDrag,
     cancelScalingDrag,
     endScalingDrag,
     getScalingBaselineEntity,
-    getScalingDrag,
     hasScalingRange,
-    rebaseScalingDrag,
     scalingSession,
     updateScalingDrag,
 } from '../commands/scaleSelection/session'
@@ -41,9 +31,6 @@ import type { Tool } from '../tools'
 import { isNoteResizeStart, isVisible, offset, orderPointHits } from '../tools/utils'
 import { view, xToLane, yToTime } from '../view'
 
-let dragBpms: BpmIntegral[] | undefined
-// The beat a beat-axis drag pressed at, on its grid.
-let pressValue: number | undefined
 let elevationDrag:
     | {
           start: number
@@ -107,13 +94,9 @@ const pointerValue = (x: number, y: number) => {
         return elevationDrag.start + delta
     }
     if (editorNavigation.value) return editorNavigation.value.positionAtPoint(x, y).elevation
-    const bpms = dragBpms ?? sceneBpms.value
-    // Moved BPM changes snap to the grid of what stays, as Select does.
-    return snapBeat(
-        gridOf(liftedBpms.value ?? bpms),
-        timeToBeat(bpms, Math.max(0, yToTime(y))),
-        view.division,
-    )
+    // Moved BPM changes snap to the grid drawn at the press, as Select does.
+    const bpms = dragBpms.value ?? sceneBpms.value
+    return snapBeat(gridOf(bpms), timeToBeat(bpms, Math.max(0, yToTime(y))), view.division)
 }
 
 const selectedEntitiesAtPoint = (x: number, y: number, minimumWidth: number) => {
@@ -183,9 +166,8 @@ export const scalingTool: Tool = {
         if (!canDrag() || !selectedEntitiesAtPoint(x, y, 1.5).length) return 'default'
         return scalingSession.value?.axis === 'width' ? 'ew-resize' : 'ns-resize'
     },
-    dragStart: startingLift((x, y) => {
-        dragBpms = undefined
-        pressValue = undefined
+    dragStart(x, y) {
+        dragBpms.value = undefined
         widthDrag = undefined
         elevationDrag = undefined
         if (!canDrag()) return false
@@ -377,43 +359,27 @@ export const scalingTool: Tool = {
             }
             return true
         })
-        if (started && !editorNavigation.value) {
-            dragBpms = sceneBpms.value
-            const drag = getScalingDrag()
-            if (scalingSession.value?.axis === 'beat' && drag) {
-                // Translating moves every selected change; scaling from an end, all but those at it.
-                liftForMove(
-                    drag.source.selectedEntities.filter(
-                        (entity) => entity.type === 'bpm' && entity.beat !== drag.anchor,
-                    ),
-                    drag.source,
-                )
-                pressValue = pointerValue(x, y)
-                rebaseScalingDrag(pressValue)
-            }
-        }
+        if (started && !editorNavigation.value) dragBpms.value = sceneBpms.value
         return started
-    }),
-    dragUpdate(x, y) {
-        const value = pointerValue(x, y)
-        // The bars redraw without the moved changes only once they move.
-        if (pressValue !== undefined) setLiftDrawn(value !== pressValue)
-        updateScalingDrag(value)
     },
-    dragEnd: endingLift((x, y) => {
+    dragUpdate(x, y) {
         updateScalingDrag(pointerValue(x, y))
-        endScalingDrag()
-        dragBpms = undefined
-        pressValue = undefined
-        widthDrag = undefined
-        elevationDrag = undefined
-    }),
+    },
+    dragEnd(x, y) {
+        // Drawn, so not left behind by a throw.
+        try {
+            updateScalingDrag(pointerValue(x, y))
+            endScalingDrag()
+        } finally {
+            dragBpms.value = undefined
+            widthDrag = undefined
+            elevationDrag = undefined
+        }
+    },
     dragCancel() {
-        dragBpms = undefined
-        pressValue = undefined
+        dragBpms.value = undefined
         widthDrag = undefined
         elevationDrag = undefined
         cancelScalingDrag()
-        dropLift()
     },
 }
