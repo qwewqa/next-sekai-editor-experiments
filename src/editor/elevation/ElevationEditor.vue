@@ -22,6 +22,7 @@ import {
 } from '../offscreenIndicators'
 import { groupOffscreenNotes, offscreenBadgeHitWidth } from '../offscreenNotes'
 import { modals } from '../../modals'
+import { isChromium } from '../../modals/form/numberStep'
 import {
     confirmOnEnter,
     resyncInput,
@@ -919,9 +920,10 @@ const stepBeatField = (event: Event, direction: 1 | -1) => {
     // A step onto the committed beat leaves no re-render to replace the typed text.
     ;(event.currentTarget as HTMLInputElement).value = `${beatField.value}`
 }
-// Chromium steps a focused number field on the wheel, as with the arrows.
+// Chromium steps a focused number field on the wheel, as with the arrows; other browsers don't.
+const stepsOnWheel = isChromium(navigator)
 const wheelBeatField = (event: WheelEvent) => {
-    if (event.deltaY && document.activeElement === event.currentTarget)
+    if (stepsOnWheel && event.deltaY && document.activeElement === event.currentTarget)
         stepBeatField(event, event.deltaY < 0 ? 1 : -1)
 }
 // Showing its committed beat, Ctrl+Z and Ctrl+Y go to the editor.
