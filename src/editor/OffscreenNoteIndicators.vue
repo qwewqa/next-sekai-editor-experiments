@@ -18,7 +18,7 @@ const fixed = computed(() => props.groups.filter(({ fixed }) => fixed))
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
         <!-- Scrolling moves only this layer; the badges re-render when they change. -->
         <div
-            class="absolute inset-x-0 top-0"
+            class="absolute inset-x-0 top-0 will-change-transform"
             data-layer="anchored"
             :style="{ transform: `translateY(${anchor}px)` }"
         >
