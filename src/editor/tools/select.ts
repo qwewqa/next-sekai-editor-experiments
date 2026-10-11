@@ -427,6 +427,8 @@ export const select: Tool = {
                     () =>
                         (moved ?? moveEntities(source, move, lane, beatOffset, plan, rawMove))
                             .state,
+                    undefined,
+                    { isDrag: true },
                 )
                 focusEntityAtBeat(focusBeat)
                 break

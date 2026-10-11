@@ -6,6 +6,8 @@ export type PreviewEdit = {
     source: State
     resolve: () => State
     dependencies?: readonly unknown[]
+    /** Set by a Select, Note or Slide tool drag, whose ghosts are the moved notes. */
+    isDrag: boolean
 }
 
 // Keep speculative edits out of undo history and resolve them only when a
@@ -17,6 +19,7 @@ export const setPreviewEdit = (
     source: State,
     build: () => State,
     dependencies?: readonly unknown[],
+    { isDrag = false } = {},
 ) => {
     const previous = previewEdit.value
     // A drag often emits many pointer updates inside the same snapped cell.
@@ -25,6 +28,7 @@ export const setPreviewEdit = (
     if (
         dependencies &&
         previous?.dependencies?.length === dependencies.length &&
+        previous.isDrag === isDrag &&
         hasSameChartData(previous.source, source) &&
         dependencies.every((value, index) => value === previous.dependencies?.[index])
     ) {
@@ -36,6 +40,7 @@ export const setPreviewEdit = (
         source,
         resolve: () => (resolved ??= build()),
         dependencies: dependencies && [...dependencies],
+        isDrag,
     }
 }
 
