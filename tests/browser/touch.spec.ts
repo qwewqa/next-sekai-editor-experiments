@@ -415,3 +415,59 @@ test('a quick scroll that leaves the pane follows the finger the whole way', asy
     await touch('touchEnd', [])
     expect((before - after) * pps).toBeCloseTo(from.y - to.y, 0)
 })
+
+test.describe('quick scroll zone edge', () => {
+    /** A wide note across the zone's inner edge at beat 2, and that edge's x. */
+    const setup = async (page: Page) => {
+        const edge = await page.evaluate(async () => {
+            const { fixtures, show, view, settings, nextTick } = window.editorTest
+            settings.touchQuickScrollZone = 25
+            settings.dragToPanX = false
+            settings.dragToPanY = false
+            const x = view.x + view.w * 0.75
+            const lane = view.lane + ((x - view.x) / view.w - 0.5) * settings.width
+            const template = fixtures.interaction.slides.flat()[0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [
+                        [
+                            {
+                                ...template,
+                                beat: 2,
+                                left: Math.round(lane) - 2,
+                                size: 4,
+                                isAttached: false,
+                            },
+                        ],
+                    ],
+                },
+                1.1,
+            )
+            await nextTick()
+            return view.x + view.w * 0.75
+        })
+        await page.keyboard.press('a')
+        const { y } = await point(page, 0, 2)
+        return { edge, y }
+    }
+    const viewTime = (page: Page) => page.evaluate(() => window.editorTest.view.time)
+
+    test('a press just outside the zone that moves into it drags the note', async ({ page }) => {
+        const { edge, y } = await setup(page)
+        const before = await notes(page)
+        const time = await viewTime(page)
+        await press(page, 'touch', { x: edge - 5, y }, { x: edge + 35, y: y - 30 })
+        expect(await notes(page)).not.toEqual(before)
+        expect(await viewTime(page)).toBe(time)
+    })
+
+    test('a press just inside the zone that moves out of it scrolls', async ({ page }) => {
+        const { edge, y } = await setup(page)
+        const before = await notes(page)
+        const time = await viewTime(page)
+        await press(page, 'touch', { x: edge + 5, y }, { x: edge - 35, y: y - 30 })
+        expect(await notes(page)).toEqual(before)
+        expect(await viewTime(page)).not.toBe(time)
+    })
+})

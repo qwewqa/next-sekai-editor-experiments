@@ -137,7 +137,8 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
             if (Math.hypot(x - sx, y - sy) <= 20) return false
 
             const bounds = getControlBounds(view)
-            const p = (x - bounds.x) / bounds.w
+            // Where the press landed decides, not where it was recognized.
+            const p = (sx - bounds.x) / bounds.w
             if (!quickScroll || p < 1 - settings.touchQuickScrollZone / 100) {
                 // Tools hold one drag; another input's drag leaves this press inert.
                 if (isDragging.value) return true
