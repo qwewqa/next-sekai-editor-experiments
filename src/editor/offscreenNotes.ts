@@ -1,6 +1,7 @@
 export type OffscreenNotePosition<T = unknown> = {
     left: number
     right: number
+    // From the grouping's anchor, so slots don't depend on the scroll position.
     y: number
     highlighted: boolean
     opacity: number
@@ -10,8 +11,10 @@ export type OffscreenNotePosition<T = unknown> = {
 
 export type OffscreenNoteGroup<T = unknown> = {
     side: 'left' | 'right'
+    // -Infinity and Infinity for the badges held at the top and bottom edges.
     slot: number
-    // From the grouping's anchor.
+    // Held at the band's edge: y is a pane y, not one from the anchor.
+    fixed: boolean
     y: number
     spacing: number
     count: number
@@ -24,10 +27,12 @@ export type OffscreenNoteGroup<T = unknown> = {
 export const RANGE_LABEL_HEIGHT = 24
 
 const SLOT = 28
+// Badge height; badges closer than this would overlap.
+const BADGE = 24
 
 /**
  * Badges sit in slots fixed to the content at `anchor` (a pane y), so they scroll with their notes.
- * Only whole slots between the insets hold badges; notes in the rest count in the nearest one.
+ * Slots within a badge of an edge share one badge held there; notes only ever move to it with the scroll.
  */
 export const groupOffscreenNotes = <T>(
     notes: readonly OffscreenNotePosition<T>[],
@@ -37,28 +42,43 @@ export const groupOffscreenNotes = <T>(
     inset = 0,
     anchor = 0,
 ) => {
-    const groups = new Map<string, OffscreenNoteGroup<T>>()
     const first = top + inset
     const last = bottom - inset
-    if (!(width > 0) || last - first < 24) return []
+    if (!(width > 0) || last - first < BADGE) return []
     // Too short for two slots: one fixed to the pane, which scrolling can't empty.
-    const fixed = last - first < 2 * SLOT
-    const origin = fixed ? first : anchor
-    const spacing = fixed ? last - first : SLOT
-    const min = fixed ? 0 : Math.ceil((first - origin) / spacing)
-    const max = fixed ? 0 : Math.floor((last - origin) / spacing) - 1
+    const short = last - first < 2 * SLOT
+    const groups = new Map<string, OffscreenNoteGroup<T>>()
     for (const note of notes) {
         if (
             !Number.isFinite(note.left) ||
             !Number.isFinite(note.right) ||
             !Number.isFinite(note.y) ||
-            note.y < top ||
-            note.y > bottom
+            anchor + note.y < top ||
+            anchor + note.y > bottom
         )
             continue
         const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
         if (!side) continue
-        const slot = Math.min(max, Math.max(min, Math.floor((note.y - origin) / spacing)))
+        let slot = Math.floor(note.y / SLOT)
+        let y = (slot + 0.5) * SLOT
+        let fixed = short
+        if (short) {
+            slot = 0
+            y = (first + last) / 2
+        } else {
+            // Held at the nearer edge whose badge it would overlap.
+            const toTop = anchor + y - (first + SLOT / 2)
+            const toBottom = last - SLOT / 2 - (anchor + y)
+            if (toTop < BADGE && toTop <= toBottom) {
+                slot = -Infinity
+                y = first + SLOT / 2
+                fixed = true
+            } else if (toBottom < BADGE) {
+                slot = Infinity
+                y = last - SLOT / 2
+                fixed = true
+            }
+        }
         const key = `${side}:${slot}`
         let group = groups.get(key)
         if (group) {
@@ -69,8 +89,9 @@ export const groupOffscreenNotes = <T>(
             group = {
                 side,
                 slot,
-                y: origin - anchor + (slot + 0.5) * spacing,
-                spacing,
+                fixed,
+                y,
+                spacing: short ? last - first : SLOT,
                 count: 1,
                 highlighted: note.highlighted,
                 opacity: note.opacity,
@@ -94,6 +115,7 @@ export const isSameOffscreenGroups = <T>(
         return (
             group.side === other?.side &&
             group.slot === other.slot &&
+            group.fixed === other.fixed &&
             group.y === other.y &&
             group.spacing === other.spacing &&
             group.count === other.count &&
@@ -107,18 +129,27 @@ export const isSameOffscreenGroups = <T>(
 // Badge width estimate (inset, chevron, digits) with slack; at least a touch target.
 export const offscreenBadgeHitWidth = (count: number) => Math.max(44, 40 + 7 * String(count).length)
 
-// Selectable badge whose hit area (slot band, out from the edge) holds a point, y from the anchor.
+// Selectable badge whose hit area (slot band, out from the edge) holds a pane point; the nearest where bands meet.
 export const hitOffscreenGroup = <T>(
     groups: readonly OffscreenNoteGroup<T>[],
     x: number,
     y: number,
     width: number,
-) =>
-    groups.find((group) => {
-        if (!group.targets.length || Math.abs(y - group.y) > group.spacing / 2) return false
+    anchor = 0,
+) => {
+    let hit: OffscreenNoteGroup<T> | undefined
+    let distance = Infinity
+    for (const group of groups) {
+        const offset = Math.abs(y - (group.fixed ? group.y : anchor + group.y))
+        if (!group.targets.length || offset > group.spacing / 2 || offset >= distance) continue
         const reach = offscreenBadgeHitWidth(group.count)
-        return group.side === 'left' ? x >= 0 && x <= reach : x <= width && x >= width - reach
-    })
+        if (group.side === 'left' ? x >= 0 && x <= reach : x <= width && x >= width - reach) {
+            hit = group
+            distance = offset
+        }
+    }
+    return hit
+}
 
 // Ctrl removes the targets when all are selected and adds them otherwise.
 export const combineSelection = <T>(

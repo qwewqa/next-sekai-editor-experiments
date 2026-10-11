@@ -20,7 +20,12 @@ import {
     selectOffscreenNotes,
     useOffscreenIndicators,
 } from '../offscreenIndicators'
-import { groupOffscreenNotes, offscreenBadgeHitWidth } from '../offscreenNotes'
+import {
+    groupOffscreenNotes,
+    isSameOffscreenGroups,
+    offscreenBadgeHitWidth,
+    type OffscreenNoteGroup,
+} from '../offscreenNotes'
 import { modals } from '../../modals'
 import { isChromium } from '../../utils/browser'
 import {
@@ -253,16 +258,16 @@ const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
     return Math.round(elevationLayout.value.yAt(0) * ratio) / ratio
 })
-const offscreenGroups = computed(() => {
+const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const selected = new Set(elevationState.value.selectedEntities)
-    const { rows, yAt } = elevationLayout.value
+    const { rows, elevationScale } = elevationLayout.value
     const anchor = offscreenAnchor.value
-    return groupOffscreenNotes(
+    const groups = groupOffscreenNotes(
         rows.map((row) => ({
             left: row.x - row.w / 2,
             right: row.x + row.w / 2,
-            // From the rounded anchor, so notes keep their slots while panning.
-            y: anchor + row.y - yAt(0),
+            // From elevation 0, so notes keep their slots while panning.
+            y: -row.elevation * elevationScale,
             highlighted: selected.has(row.note),
             opacity: 1,
             // A pending draft's notes are picked as the committed ones they show.
@@ -276,6 +281,8 @@ const offscreenGroups = computed(() => {
         0,
         anchor,
     )
+    // Unchanged badges keep their array, so they don't re-render.
+    return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
 useOffscreenIndicators({
     navigation: () => navigation,

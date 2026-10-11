@@ -6,6 +6,7 @@ import {
     hitOffscreenGroup,
     isSameOffscreenGroups,
     offscreenBadgeHitWidth,
+    type OffscreenNoteGroup,
     type OffscreenNotePosition,
 } from '../../src/editor/offscreenNotes'
 
@@ -130,13 +131,13 @@ test('an inset keeps badges clear of the edges and counts the notes there', () =
         400,
         24,
     )
-    // The whole 28 px slots between the insets at 24 and 376: from 28 to 364.
+    // Slots within a badge of the edges, at 38 and 362 between the insets, are held there.
     assert.deepEqual(
-        groups.map(({ slot, count, y }) => [slot, count, y]),
+        groups.map(({ slot, count, y, fixed }) => [slot, count, y, fixed]),
         [
-            [1, 2, 42],
-            [7, 1, 210],
-            [12, 1, 350],
+            [-Infinity, 2, 38, true],
+            [7, 1, 210, false],
+            [Infinity, 1, 362, true],
         ],
     )
     assert.ok(groups.every(({ y, spacing }) => y - spacing / 2 >= 24 && y + spacing / 2 <= 376))
@@ -201,7 +202,7 @@ test('groupings compare equal only with the same badges and targets', () => {
         !isSameOffscreenGroups(
             base,
             groupOffscreenNotes(
-                [target(100, 'a'), target(110, 'b'), note(301, 310, 300)],
+                [target(80, 'a'), target(90, 'b'), note(301, 310, 280)],
                 300,
                 0,
                 400,
@@ -219,60 +220,171 @@ test('no badge reaches further in than the widest possible count', () => {
         assert.ok(offscreenBadgeHitWidth(count) <= reach)
 })
 
+// Pane y of each badge, count and whether it's held at an edge.
+const drawn = (groups: OffscreenNoteGroup<string>[], anchor: number) =>
+    groups.map(({ y, fixed, count }) => [fixed ? y : anchor + y, count, fixed] as const)
+
 test('badges scroll with their notes, changing only at the edges', () => {
     const notes = [60, 65, 200, 300, 370].map((y, index) => ({
         ...note(-10, -1, y),
         target: String(index),
     }))
-    // Notes and anchor scrolled down by a number of px.
-    const show = (scroll: number) =>
-        groupOffscreenNotes(
-            notes.map((item) => ({ ...item, y: item.y + scroll })),
-            300,
-            0,
-            400,
-            24,
-            scroll,
-        )
+    // Anchor scrolled down by a number of px; note positions are from it.
+    const show = (scroll: number) => groupOffscreenNotes(notes, 300, 0, 400, 24, scroll)
     const base = show(0)
-    assert.deepEqual(
-        base.map(({ count, y }) => [count, y]),
-        [
-            [2, 70],
-            [1, 210],
-            [1, 294],
-            // 370 is in the slot the inset cuts, so it counts in the last whole one.
-            [1, 350],
-        ],
-    )
-    // Positions are from the anchor, so scrolling within whole slots keeps the same badges.
+    assert.deepEqual(drawn(base, 0), [
+        [70, 2, false],
+        [210, 1, false],
+        [294, 1, false],
+        // 370's slot would overlap a badge at the bottom edge, so it is held there.
+        [362, 1, true],
+    ])
+    // Scrolling within whole slots keeps the same badges.
     for (const scroll of [0.5, 3, -2.25]) assert.ok(isSameOffscreenGroups(base, show(scroll)))
-    // The bottom slot is cut once scrolled 20 px down; its note joins the slot above.
-    assert.deepEqual(
-        show(20).map(({ count, y }) => [count, y + 20]),
+    assert.deepEqual(drawn(show(20), 20), [
+        [90, 2, false],
+        [230, 1, false],
+        [314, 1, false],
+        [362, 1, true],
+    ])
+    // Scrolled 40 px up, the top notes are in the inset, held at the top edge.
+    assert.deepEqual(drawn(show(-40), -40), [
+        [38, 2, true],
+        [170, 1, false],
+        [254, 1, false],
+        [338, 1, false],
+    ])
+})
+
+test('a lone badge moves only with the scroll across an edge, hopping once to it', () => {
+    for (const edge of ['top', 'bottom'] as const)
+        for (const entering of [false, true]) {
+            // The note's pane y, 1.5 px a step from 200 px inside to past the edge, or back.
+            const outside = edge === 'top' ? -5 : 405
+            const from = entering ? outside : 200
+            const to = entering ? 200 : outside
+            const direction = Math.sign(to - from)
+            let previous: number | undefined
+            let shown = 0
+            let hops = 0
+            for (let i = 0; i <= Math.abs(to - from) / 1.5; i++) {
+                const y = from + direction * i * 1.5
+                // Note 100 px from the anchor.
+                const groups = groupOffscreenNotes([note(-10, -1, 100)], 300, 0, 400, 24, y - 100)
+                const badge = drawn(groups, y - 100)[0]
+                assert.equal(!!badge, y >= 0 && y <= 400, `step ${i}`)
+                if (!badge) continue
+                shown++
+                // Within the band, and never moving against the scroll.
+                assert.ok(badge[0] >= 38 && badge[0] <= 362, `step ${i}`)
+                if (previous !== undefined) {
+                    const move = (badge[0] - previous) * direction
+                    assert.ok(move >= 0 && move <= 24 + 1.5, `step ${i}: ${move}`)
+                    if (move > 1.5) hops++
+                }
+                previous = badge[0]
+            }
+            assert.ok(shown > 100)
+            assert.equal(hops, 1, `${edge} ${entering}`)
+        }
+})
+
+test('slots within a badge of an edge are held there', () => {
+    // Notes 10 and 40 px from the anchor, scrolled up past the top edge.
+    const show = (anchor: number, ys = [10, 40]) =>
+        drawn(
+            groupOffscreenNotes(
+                ys.map((y) => ({ ...note(-10, -1, y), target: String(y) })),
+                300,
+                0,
+                400,
+                24,
+                anchor,
+            ),
+            anchor,
+        )
+    assert.deepEqual(show(48), [
+        [62, 1, false],
+        [90, 1, false],
+    ])
+    assert.deepEqual(show(47), [
+        [38, 1, true],
+        [89, 1, false],
+    ])
+    // 24 px from the edge badge: about to overlap it.
+    assert.deepEqual(show(20), [
+        [38, 1, true],
+        [62, 1, false],
+    ])
+    assert.deepEqual(show(19), [[38, 2, true]])
+    assert.deepEqual(show(-10), [[38, 2, true]])
+    assert.deepEqual(show(-11), [[38, 1, true]])
+    assert.deepEqual(show(-40), [[38, 1, true]])
+    assert.deepEqual(show(-41), [])
+    // Alone too, so its badge doesn't depend on other notes coming and going.
+    assert.deepEqual(show(20, [40]), [[62, 1, false]])
+    assert.deepEqual(show(19, [40]), [[38, 1, true]])
+    // Hit tests use the drawn positions, the nearer badge where their bands meet.
+    const groups = groupOffscreenNotes(
         [
-            [2, 90],
-            [1, 230],
-            [1, 314],
-            [1, 342],
+            { ...note(-10, -1, 10), target: 'a' },
+            { ...note(-10, -1, 40), target: 'b' },
         ],
+        300,
+        0,
+        400,
+        24,
+        21,
     )
-    // Scrolled 40 px up, the top notes are in the inset and count in the first whole slot.
-    assert.deepEqual(
-        show(-40).map(({ count, y }) => [count, y - 40]),
-        [
-            [2, 58],
-            [1, 170],
-            [1, 254],
-            [1, 338],
-        ],
-    )
+    assert.deepEqual(drawn(groups, 21), [
+        [38, 1, true],
+        [63, 1, false],
+    ])
+    const hit = (y: number) => hitOffscreenGroup(groups, 2, y, 300, 21)?.targets[0]
+    assert.equal(hit(24), 'a')
+    assert.equal(hit(50), 'a')
+    assert.equal(hit(51), 'b')
+    assert.equal(hit(77), 'b')
+    assert.equal(hit(78), undefined)
+})
+
+test('a whole slot that both edge badges would overlap goes to the nearer one', () => {
+    // Band 24 to 94: with the anchor at 44 or 46, the only whole slot is 0, centred at 58 or 60.
+    const show = (anchor: number) =>
+        drawn(
+            groupOffscreenNotes(
+                [note(-10, -1, -30), note(-10, -1, 10), note(-10, -1, 60)],
+                300,
+                0,
+                118,
+                24,
+                anchor,
+            ),
+            anchor,
+        )
+    assert.deepEqual(show(44), [
+        [38, 2, true],
+        [80, 1, true],
+    ])
+    assert.deepEqual(show(46), [
+        [38, 1, true],
+        [80, 2, true],
+    ])
 })
 
 test('a band too short for two slots keeps one badge fixed to the pane', () => {
     for (const scroll of [0, 7, 19]) {
-        const [badge] = groupOffscreenNotes([note(-10, -1, 40 + scroll)], 300, 0, 100, 24, scroll)
-        assert.equal(badge!.y + scroll, 50)
+        const [badge] = groupOffscreenNotes([note(-10, -1, 40)], 300, 0, 100, 24, scroll)
+        assert.equal(badge!.fixed, true)
+        assert.equal(badge!.y, 50)
         assert.equal(badge!.spacing, 52)
+    }
+})
+
+test('a note on a slot boundary stays in its slot wherever the anchor is', () => {
+    // Elevation 0 sits exactly on the anchor, which rounding to device pixels makes fractional.
+    for (let anchor = 300; anchor < 330; anchor += 0.8 * 0.137) {
+        const [badge] = groupOffscreenNotes([note(-10, -1, -0)], 300, 0, 1000, 0, anchor)
+        assert.ok(badge!.slot === 0 && badge!.y === 14)
     }
 })
