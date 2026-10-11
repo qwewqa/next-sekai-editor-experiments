@@ -226,7 +226,7 @@ const validWidthValues = (values: Map<EditableEntity, number>, factor: number) =
 }
 
 /** A beat moved by an offset; the editor's cleans float noise onto its grid, as moves do. */
-export type MoveBeat = (beat: number, offset: number) => number
+type MoveBeat = (beat: number, offset: number) => number
 
 export const addBeatOffset: MoveBeat = (beat, offset) => beat + offset
 
