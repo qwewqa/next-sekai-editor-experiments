@@ -466,12 +466,7 @@ const isNearTap = (a: TapPoint, b: TapPoint) =>
  * What a tap selects among rows: with Ctrl all of them; cycling at a point, the next after the
  * selection's first; else the first.
  */
-const selectTargets = (
-    hits: ElevationRow[],
-    modifiers: Modifiers,
-    at?: TapPoint,
-    notesOnly = false,
-) => {
+const selectTargets = (hits: ElevationRow[], modifiers: Modifiers, at?: TapPoint) => {
     if (modifiers.ctrl)
         return {
             targets: modifyEntities(
@@ -480,7 +475,7 @@ const selectTargets = (
             ),
         }
     if (!at) return { targets: modifyEntities(hits[0] ? [hits[0].note] : [], modifiers) }
-    const current = selectedFor(notesOnly)[0]
+    const current = state.value.selectedEntities[0]
     const step = stepTapCycle(
         cycled,
         hits.map((row) => row.note),
@@ -498,7 +493,7 @@ const selectTargets = (
 const selectAt = (rows: ElevationRow[], modifiers: Modifiers, at?: TapPoint, notesOnly = false) => {
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
-    const { cycle, targets } = selectTargets(rows, modifiers, at, notesOnly)
+    const { cycle, targets } = selectTargets(rows, modifiers, at)
     if (cycle) cycled = cycle
     replaceState({
         ...state.value,

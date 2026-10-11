@@ -584,7 +584,7 @@ test('non-finite and huge beats are cleaned as they are, and a huge scale factor
         const bars = toBeatGrid(
             calculateBpms([{ beat: 0, bpm: 120 }, { beat: 2.3, bpm: 150 }, { beat: 7.1, bpm: 90 }].map(toBpmIntegral)),
         )
-        const huge = [Infinity, -Infinity, NaN, 1e306, 1e308, 2 ** 60, 2 ** 53 - 1, 2 ** 52 + 0.5]
+        const huge = [Infinity, -Infinity, NaN, 1e306, 1e308, 2 ** 60, 2 ** 53 - 1, 2 ** 51 + 0.5]
         const unchanged = []
         for (const beat of huge) {
             unchanged.push(Object.is(alignFraction(beat), beat))
