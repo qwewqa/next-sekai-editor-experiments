@@ -902,8 +902,17 @@ const isBarStepped = computed(() => !isGlobalGrid(committedGrid.value, view.divi
 const stepBeatField = (event: Event, direction: 1 | -1) => {
     if (!isBarStepped.value) return
     event.preventDefault()
-    const beat = direction > 0 ? nextBeat.value : previousBeat.value
-    if (beat !== undefined) changeBeat(beat)
+    // From a typed value too, as the native step does.
+    const typed = (event.currentTarget as HTMLInputElement).valueAsNumber
+    const from =
+        Number.isFinite(typed) && typed !== beatField.value
+            ? nearGridBeat(committedGrid.value, fromDisplayedBeat(typed), view.division)
+            : elevationBeat.value
+    const beat = Math.max(0, stepGridBeat(committedGrid.value, from, view.division, direction))
+    if (!(direction > 0 ? beat > from : beat < from)) return
+    changeBeat(beat)
+    // A step onto the committed beat leaves no re-render to replace the typed text.
+    ;(event.currentTarget as HTMLInputElement).value = `${beatField.value}`
 }
 // Chromium steps a focused number field on the wheel, as with the arrows.
 const wheelBeatField = (event: WheelEvent) => {

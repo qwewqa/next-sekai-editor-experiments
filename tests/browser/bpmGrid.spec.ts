@@ -753,3 +753,107 @@ test('the wheel on a focused Elevation Editor beat field steps through the bar g
         ),
     ).toBe(2.5)
 })
+
+test('a scaling drag from an end lifts the moving changes but not the anchor', async ({ page }) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view, settings, history } = window.editorTest
+        const [[head]] = fixtures.interaction.slides as [[object]]
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [0, 2.5, 4.75].map((beat) => ({ beat, bpm: 120 })),
+                slides: [[{ ...head, beat: 6.75, left: -4 }]],
+            } as never,
+            2,
+        )
+        view.division = 1
+        settings.pps = 200
+        settings.beatDisplay = 'measure'
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [
+                ...[...history.state.value.store.grid.bpm.values()]
+                    .flatMap((set) => [...set])
+                    .filter(({ beat }) => beat > 0),
+                ...[...window.editorTest.store.getAllEntities()].filter((e) => e.type === 'note'),
+            ] as never,
+        })
+    })
+    await settle(page)
+    // The note at 6.75 is the end; the change at 2.5 is the anchor and stays.
+    const from = await point(page, -3, 6.75)
+    await page.mouse.move(from.x, from.y)
+    await page.evaluate(async () => {
+        const { scaleBeat } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/scaleSelection')
+        >('/src/editor/commands/scaleSelection/index.ts')
+        void scaleBeat.execute()
+    })
+    await expect(page.locator('.scaling-panel')).toBeVisible()
+    await page.mouse.down()
+    const to = await point(page, -3, 8.6)
+    await page.mouse.move(to.x, to.y, { steps: 6 })
+    await settle(page)
+    expect((await grids(page)).lifted).toEqual([0, 2.5])
+    await page.mouse.up()
+    await settle(page)
+    expect((await grids(page)).lifted).toBeUndefined()
+})
+
+test('switching the beat display moves a Composed paste ghost under a still mouse', async ({
+    page,
+}) => {
+    await setUp(page, 'measure', [0, 2.5], 'composed')
+    await page.evaluate(async () => {
+        const { appImport, history, store } = window.editorTest
+        const { copy } = await appImport<typeof import('../../src/editor/commands/copy')>(
+            '/src/editor/commands/copy/index.ts',
+        )
+        Object.defineProperty(navigator.clipboard, 'writeText', {
+            configurable: true,
+            value: async () => undefined,
+        })
+        const note = [...store.getAllEntities()].find(
+            (entity) => entity.type === 'note' && entity.beat === 5,
+        )!
+        history.replaceState({ ...history.state.value, selectedEntities: [note] })
+        copy.execute()
+    })
+    await switchTool(page, 'paste')
+    const at = await point(page, -5.5, 3.4)
+    await page.mouse.move(at.x, at.y)
+    await settle(page)
+    expect(await creating(page)).toEqual([3.5])
+    for (const [display, expected] of [
+        ['beat', 3],
+        ['measure', 3.5],
+    ] as const) {
+        await page.evaluate((display) => {
+            window.editorTest.settings.beatDisplay = display
+        }, display)
+        await settle(page)
+        expect(await creating(page), display).toEqual([expected])
+    }
+})
+
+test('Elevation Editor arrows on the bar grid step from a typed beat', async ({ page }) => {
+    await setUp(page, 'measure')
+    await page.keyboard.press('t')
+    const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    await beat.fill('3')
+    await beat.press('Tab')
+    // Typed, not committed: 3.5 steps to 4.5, not 2 to 2.5.
+    await beat.fill('4.5')
+    await beat.press('ArrowUp')
+    expect(
+        await page.evaluate(
+            async () =>
+                (
+                    await window.editorTest.appImport<
+                        typeof import('../../src/editor/elevation/state')
+                    >('/src/editor/elevation/state.ts')
+                ).elevationBeat.value,
+        ),
+    ).toBe(4.5)
+    await expect(beat).toHaveValue('5.5')
+})

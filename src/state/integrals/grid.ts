@@ -282,6 +282,18 @@ export const nearGridBeat = (grid: BeatGrid, beat: number, division: number) => 
     return Math.abs(line - beat) * division < TOLERANCE ? line : alignNear(beat, division)
 }
 
+/**
+ * A beat within rounding error of a line of the first grid that has one, as that line;
+ * else as alignNear. Later grids pair moved beats with content placed on other grids.
+ */
+export const nearGridsBeat = (grids: BeatGrid[], beat: number, division: number) => {
+    for (const grid of grids) {
+        const line = snapBeat(grid, beat, division)
+        if (Math.abs(line - beat) * division < TOLERANCE) return line
+    }
+    return alignNear(beat, division)
+}
+
 /** The first line at or after the beat. */
 export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => {
     const bpms = grid.bpms
@@ -355,6 +367,12 @@ export const gridLines = (
     limit: number,
 ): GridLine[] | undefined => {
     const lines: GridLine[] = []
+    // Bars meeting at the tolerance can both hold a line; it's drawn once.
+    const push = (beat: number, isBeat: boolean) => {
+        const last = lines.at(-1)
+        if (last?.beat === beat) last.isBeat ||= isBeat
+        else lines.push({ beat, isBeat })
+    }
     const bpms = grid.bpms
     // Beat lines need whole-beat bars too.
     if (!bpms || (isGlobalGrid(grid, division) && isGlobalGrid(grid, 1))) {
@@ -368,7 +386,8 @@ export const gridLines = (
     let visited = 0
     for (
         let interval: Interval | undefined = locate(bpms, min);
-        interval && interval.s <= max;
+        // An on-grid bar's first line can sit just below its start.
+        interval && interval.s - TOLERANCE / division <= max;
         interval = nextInterval(bpms, interval)
     ) {
         if (++visited > limit) return undefined
@@ -382,17 +401,14 @@ export const gridLines = (
             let k = Math.round(Math.max(first, ceilIn(interval, min, division)) * division)
             for (; k / division <= end; k++) {
                 if (lines.length >= limit) return undefined
-                lines.push({
-                    beat: k / division,
-                    isBeat: (((k - origin) % division) + division) % division === 0,
-                })
+                push(k / division, (((k - origin) % division) + division) % division === 0)
             }
         } else {
             const start = Math.max(first, ceilIn(interval, min, division))
             let n = Math.round((start - interval.s) * division)
             for (; interval.s + n / division <= end; n++) {
                 if (lines.length >= limit) return undefined
-                lines.push({ beat: interval.s + n / division, isBeat: n % division === 0 })
+                push(interval.s + n / division, n % division === 0)
             }
         }
     }

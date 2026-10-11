@@ -50,11 +50,26 @@ export const dropLift = () => {
 
 onResetState(dropLift)
 
+/** The committed chart's bar grid, whatever the display. */
+export const committedBarGrid = computed(() => toBeatGrid(bpms.value))
+
 /** The grid of the committed chart. */
 export const committedGrid = computed(() => gridOf(bpms.value))
 
 /** The grid pointers snap to: during a BPM change move, without the moved changes. */
 export const snapGrid = computed(() => gridOf(liftedBpms.value ?? bpms.value))
+
+/** A drag start that drops its lift if it throws. */
+export const startingLift =
+    <A extends unknown[], R>(start: (...args: A) => R) =>
+    (...args: A): R => {
+        try {
+            return start(...args)
+        } catch (error) {
+            dropLift()
+            throw error
+        }
+    }
 
 /** A drag end that drops the lift after the drop, which it was built against, even on a throw. */
 export const endingLift =

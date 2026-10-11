@@ -10,7 +10,15 @@ import {
     getScaleValue,
 } from '../../state/operations/scaleValues'
 import { transformSelection } from '../../state/operations/transformSelection'
-import { dropLift, endingLift, gridOf, liftedBpms, liftForMove, setLiftDrawn } from '../beatGrid'
+import {
+    dropLift,
+    endingLift,
+    gridOf,
+    liftedBpms,
+    liftForMove,
+    setLiftDrawn,
+    startingLift,
+} from '../beatGrid'
 import { getScaleLabels } from '../commands/scaleSelection/labels'
 import {
     beginScalingDrag,
@@ -175,7 +183,7 @@ export const scalingTool: Tool = {
         if (!canDrag() || !selectedEntitiesAtPoint(x, y, 1.5).length) return 'default'
         return scalingSession.value?.axis === 'width' ? 'ew-resize' : 'ns-resize'
     },
-    dragStart(x, y) {
+    dragStart: startingLift((x, y) => {
         dragBpms = undefined
         pressValue = undefined
         widthDrag = undefined
@@ -385,7 +393,7 @@ export const scalingTool: Tool = {
             }
         }
         return started
-    },
+    }),
     dragUpdate(x, y) {
         const value = pointerValue(x, y)
         // The bars redraw without the moved changes only once they move.

@@ -70,7 +70,14 @@ import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { shiftComputed } from '../../utils/math'
-import { dropLift, endingLift, liftForMove, setLiftDrawn, snapGrid } from '../beatGrid'
+import {
+    dropLift,
+    endingLift,
+    liftForMove,
+    setLiftDrawn,
+    snapGrid,
+    startingLift,
+} from '../beatGrid'
 import { inverseAffine } from '../composedPointer'
 import {
     getComposedGridOffset,
@@ -261,7 +268,7 @@ export const select: Tool = {
         return target.onlyType === 'bpm' ? 'ns-resize' : 'move'
     },
 
-    dragStart(x, y) {
+    dragStart: startingLift((x, y) => {
         const target = resolveDrag(x, y)
         if (target.type === 'select') {
             active = {
@@ -296,7 +303,7 @@ export const select: Tool = {
         }
 
         return true
-    },
+    }),
 
     dragUpdate(x, y, modifiers) {
         if (!active) return

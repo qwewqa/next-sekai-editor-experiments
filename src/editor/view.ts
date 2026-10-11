@@ -7,13 +7,13 @@ import { onResetState } from '../history/resetHooks'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
-import { isGlobalGrid, nearGridBeat, snapBeat, type BeatGrid } from '../state/integrals/grid'
+import { isGlobalGrid, nearGridsBeat, snapBeat, type BeatGrid } from '../state/integrals/grid'
 import { time } from '../time'
 import { computedArray } from '../utils/array'
 import { align, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
 import { requestAudioPreview } from './audioPreview'
-import { snapGrid } from './beatGrid'
+import { committedBarGrid, snapGrid } from './beatGrid'
 import { getComposedLayout } from './composedView'
 import type { Modifiers } from './controls/gestures/pointer'
 import { integrateScrollInertia } from './inertia'
@@ -439,9 +439,12 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
     )
 }
 
-// A moved or pasted beat, without float noise on the grid; unmoved, it stays exact.
+// A moved or pasted beat, without float noise on the grid, or on the chart's bars as other
+// content may sit there (in the Beat display, or while lifted); unmoved, it stays exact.
 export const toMovedBeat = (beat: number, offset: number) =>
-    offset === 0 ? beat : nearGridBeat(snapGrid.value, beat + offset, view.division)
+    offset === 0
+        ? beat
+        : nearGridsBeat([snapGrid.value, committedBarGrid.value], beat + offset, view.division)
 
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>
     Math.max(0, toMovedBeat(beat, yToMoveBeatOffset(y, beat, pressBeat)))

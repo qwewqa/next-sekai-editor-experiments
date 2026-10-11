@@ -13,7 +13,7 @@ import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operati
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
-import { dropLift, endingLift, liftForMove, setLiftDrawn } from '../../beatGrid'
+import { dropLift, endingLift, liftForMove, setLiftDrawn, startingLift } from '../../beatGrid'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
@@ -131,7 +131,7 @@ export const bpm: Tool = {
 
     cursor: (x, y) => (tryFind(x, y, true)[0] ? 'ns-resize' : 'crosshair'),
 
-    dragStart(x, y) {
+    dragStart: startingLift((x, y) => {
         const [entity, beat] = tryFind(x, y, true)
         if (entity) {
             liftForMove([entity], state.value)
@@ -163,7 +163,7 @@ export const bpm: Tool = {
         }
 
         return true
-    },
+    }),
 
     dragUpdate(x, y) {
         if (!active) return

@@ -9,6 +9,7 @@ import {
     gridLines,
     isGlobalGrid,
     nearGridBeat,
+    nearGridsBeat,
     snapBeat,
     snapPhasedBeat,
     stepGridBeat,
@@ -468,4 +469,52 @@ test('a lift removes the moved changes by their order among same-beat changes', 
     // The initial change stays; the input isn't touched.
     assert.equal(liftBpms({ store, bpms }, [entities[0] as BpmEntity]).length, 4)
     assert.deepEqual(bpms, copy)
+})
+
+test('moved beats pair with content on the chart bars in the Beat display and during a lift', () => {
+    const bars = grid([0], [2.5])
+    const partner = snapBeat(bars, 2.5 + 2 / 3, 3)
+    assert.ok(Object.is(partner, 2.5 + 2 / 3))
+    // Placed in Measure at 2.5 + 1/3, moved by a third, one step at a time.
+    const moved = snapBeat(bars, 2.5 + 1 / 3, 3) + 1 / 3
+    assert.notEqual(moved, partner)
+    // The Beat display's global grid, then the bars.
+    assert.ok(Object.is(nearGridsBeat([GLOBAL_GRID, bars], moved, 3), partner))
+    // The grid without the lifted change, then the bars.
+    assert.ok(Object.is(nearGridsBeat([grid([0]), bars], moved, 3), partner))
+    // Off both, as alignNear.
+    assert.ok(Object.is(nearGridsBeat([GLOBAL_GRID, bars], 3.2, 3), 3.2))
+})
+
+test('global content moves in the Beat display exactly as before', () => {
+    for (let t = 0; t < 500; t++) {
+        const division = pick(divisions)
+        // Changes well off the global grid.
+        const changes: [number, number][] = [[0, 4]]
+        for (let i = 0; i < 4; i++)
+            changes.push([Math.round(random() * 1000) / 100 + 0.003, pick(meters)])
+        changes.sort((a, b) => a[0] - b[0])
+        const bars = grid(...changes)
+        for (let j = 0; j < 50; j++) {
+            const beat = Math.floor(random() * 40 * division) / division
+            const offset = (Math.floor(random() * 20 * division) - 10 * division) / division
+            const moved = beat + offset
+            assert.ok(
+                Object.is(
+                    nearGridsBeat([GLOBAL_GRID, bars], moved, division),
+                    alignNear(moved, division),
+                ),
+            )
+        }
+    }
+})
+
+test('grid lines are drawn once at the tolerance and up to the top edge', () => {
+    const lines = gridLines(grid([0], [17.571428714285712, 6]), 40, 43, 7, 1000)!.map(
+        ({ beat }) => beat,
+    )
+    assert.equal(new Set(lines).size, lines.length)
+    const edge = grid([0], [25.00000006491687, 0.37])
+    assert.equal(snapBeat(edge, 62, 8), 62)
+    assert.ok(gridLines(edge, 61.9, 62.00000006491686, 8, 1000)!.some(({ beat }) => beat === 62))
 })
