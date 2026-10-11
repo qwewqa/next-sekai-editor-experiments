@@ -720,78 +720,6 @@ for (const family of Object.keys(edges) as (keyof typeof edges)[]) {
     })
 }
 
-for (const family of ['stageMaskEvent', 'cameraEvent'] as const) {
-    test(`${family}: a Select resize moves each selected range's edge by the pointer's movement`, async ({
-        page,
-    }) => {
-        await page.evaluate(
-            async ({ family }) => {
-                const { show, fixtures, view, settings, history, appImport } = window.editorTest
-                const events = fixtures.events
-                const ranges = [
-                    { beat: 4, left: -2, size: 6 },
-                    { beat: 5, left: -1.5, size: 7.5 },
-                ]
-                show(
-                    {
-                        ...fixtures.interaction,
-                        slides: [],
-                        stageMaskEvents:
-                            family === 'stageMaskEvent'
-                                ? ranges.map(({ beat, left, size }) => ({
-                                      ...events.stageMaskEvents[0]!,
-                                      beat,
-                                      maskLeft: left,
-                                      maskSize: size,
-                                  }))
-                                : [],
-                        cameraEvents:
-                            family === 'cameraEvent'
-                                ? ranges.map(({ beat, left, size }) => ({
-                                      ...events.cameraEvents[0]!,
-                                      beat,
-                                      cameraLeft: left,
-                                      cameraSize: size,
-                                  }))
-                                : [],
-                    },
-                    3,
-                )
-                view.laneDivision = 1
-                view.laneSnapping = 'absolute'
-                view.division = 1
-                view.snapping = 'absolute'
-                settings.maxLane = 0
-                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
-                    '/src/editor/tools/index.ts',
-                )
-                switchToolTo('select')
-                const source = history.state.value
-                const grid =
-                    family === 'stageMaskEvent'
-                        ? source.store.grid.stageMaskEventJoint
-                        : source.store.grid.cameraEventJoint
-                history.replaceState({
-                    ...source,
-                    selectedEntities: [...grid.values()].flatMap((bucket) => [...bucket]),
-                })
-            },
-            { family },
-        )
-        // The first range's right edge at 4, pressed at 3.7; the second's, at 6, moves with it.
-        const { start, width } = await page.evaluate(() => {
-            const { point, view, settings } = window.editorTest
-            return { start: point(3.7, 4), width: view.w / settings.width }
-        })
-        await page.mouse.move(start.x, start.y)
-        await page.mouse.down()
-        await page.mouse.move(start.x + 1.1 * width, start.y, { steps: 4 })
-        expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(2)
-        await page.mouse.up()
-        expect(rightEdges((await stored(page, family)).objects)).toEqual([5, 7])
-    })
-}
-
 test('note and slide: a Composed edge resize on thirds stores exactly what Select does', async ({
     page,
 }) => {
@@ -858,8 +786,15 @@ test('note and slide: a Composed edge resize on thirds stores exactly what Selec
     expect(results.slide).toEqual(results.select)
 })
 
-// Presses x at a beat, moves to (x + dx, beat + beats) by way of the middle, and releases.
-const dragFrom = async (page: Page, x: number, beat: number, dx: number, beats: number) => {
+// Presses x at a beat, moves to (x + dx, beat + beats) by way of the middle, runs `held`, and releases.
+const dragFrom = async (
+    page: Page,
+    x: number,
+    beat: number,
+    dx: number,
+    beats: number,
+    held?: () => Promise<void>,
+) => {
     const { start, end, width } = await page.evaluate(
         ({ x, beat, beats }) => {
             const { point, view, settings } = window.editorTest
@@ -875,6 +810,7 @@ const dragFrom = async (page: Page, x: number, beat: number, dx: number, beats: 
     await page.mouse.down()
     await page.mouse.move(start.x + (dx * width) / 2, (start.y + end.y) / 2, { steps: 4 })
     await page.mouse.move(start.x + dx * width, end.y, { steps: 4 })
+    await held?.()
     await page.mouse.up()
 }
 
@@ -882,9 +818,10 @@ for (const family of ['stageMaskEvent', 'cameraEvent'] as const) {
     test(`${family}: a Select resize moves every selected range's edge by the grabbed edge's snapped shift`, async ({
         page,
     }) => {
-        // Right edges at 6 (grabbed) and 7.5; a camera is at least 6 wide.
+        // Right edges at 6 (grabbed) and 7.5, pressed at 5.7; a camera is at least 6 wide.
         for (const [dx, beats, edges] of [
             [1, 0, [7, 8.5]],
+            [1.1, 0, [7, 8.5]],
             [0, 2, [6, 7.5]],
             [-1, 0, family === 'cameraEvent' ? [6, 6.5] : [5, 6.5]],
         ] as const) {
@@ -943,9 +880,16 @@ for (const family of ['stageMaskEvent', 'cameraEvent'] as const) {
                 { family },
             )
             const before = await stored(page, family)
-            await dragFrom(page, 5.7, 4, dx, beats)
-            const after = await stored(page, family)
             const label = `dx ${dx}, beats ${beats}`
+            await dragFrom(page, 5.7, 4, dx, beats, async () => {
+                // Both ranges preview.
+                if (dx)
+                    expect(
+                        await page.evaluate(() => window.editorTest.view.entities.creating.length),
+                        label,
+                    ).toBe(2)
+            })
+            const after = await stored(page, family)
             expect(rightEdges(after.objects), label).toEqual(edges)
             // Without a shift, nothing is edited.
             if (dx === 0) expect(after, label).toEqual(before)
