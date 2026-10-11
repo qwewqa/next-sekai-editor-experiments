@@ -248,22 +248,37 @@ for (const deviceScaleFactor of [1, 2]) {
             await useTool(page, 'select')
             await hoverAt(page, 10.5)
             await expectGaps(page, 'hover')
+            // One evenly stretched pattern from stop to stop: every dash and every gap the same, near 6 and 4.
+            const expectEven = ({ runs, from, to }: Awaited<ReturnType<typeof dashes>>) => {
+                expect(runs[0]![0]).toBeCloseTo(from, 0)
+                expect(runs.at(-1)![1]).toBeCloseTo(to, 0)
+                const dashLengths = runs.map(([start, end]) => end - start)
+                const gapLengths = runs.slice(1).map(([start], index) => start - runs[index]![1])
+                for (const [lengths, size] of [
+                    [dashLengths, 6],
+                    [gapLengths, 4],
+                ] as const) {
+                    expect(Math.max(...lengths) - Math.min(...lengths)).toBeLessThanOrEqual(1.5)
+                    for (const length of lengths)
+                        expect(Math.abs(length - size)).toBeLessThanOrEqual(2)
+                }
+            }
             const first = await dashes(page)
-            expect(first.runs[0]![0]).toBeCloseTo(first.from, 0)
-            expect(first.runs.at(-1)![1]).toBeCloseTo(first.to, 0)
-            // Dashes 6 and gaps 4 apart, but for one middle dash up to two dashes long.
-            const odd = first.runs.filter(([from, to]) => Math.abs(to - from - 6) > 1)
-            expect(odd.length).toBeLessThanOrEqual(1)
-            for (const [from, to] of odd) expect(to - from).toBeLessThanOrEqual(13)
-            first.runs.slice(1).forEach(([from], index) => {
-                expect(Math.abs(from - first.runs[index]![1] - 4)).toBeLessThanOrEqual(1)
-            })
-            // A beat label of another width moves the dashes at its end with it, and leaves the others in place.
+            expectEven(first)
+            // Lines of every length modulo the pattern.
+            const size = page.viewportSize()!
+            for (const extra of [2, 4, 6, 8]) {
+                await page.setViewportSize({ ...size, width: size.width + extra })
+                await hoverAt(page, 10.5)
+                await expect.poll(async () => (await dashes(page)).to - first.to).toBeGreaterThan(1)
+                expectEven(await dashes(page))
+            }
+            await page.setViewportSize(size)
+            await hoverAt(page, 10.5)
+            await expect.poll(async () => (await dashes(page)).to).toBeCloseTo(first.to, 0)
+            // A beat label of another width keeps both ends on a dash; the first dashes barely move.
             const ratio = await page.evaluate(() => devicePixelRatio)
-            const anchored = ({ runs, to }: typeof first) => [
-                ...runs.slice(0, 5).flat(),
-                ...runs.slice(-5).flatMap(([start, end]) => [end - to, start - to]),
-            ]
+            const anchored = ({ runs }: typeof first) => runs.slice(0, 3).flat()
             const before = anchored(first)
             for (const display of ['both', 'beat'] as const) {
                 await page.evaluate(
@@ -275,7 +290,11 @@ for (const deviceScaleFactor of [1, 2]) {
                         const next = await dashes(page)
                         return (
                             Math.abs(next.to - first.to) > 2 &&
-                            anchored(next).every((x, i) => Math.abs(x - before[i]!) <= 1 / ratio)
+                            Math.abs(next.runs[0]![0] - next.from) <= 1 &&
+                            Math.abs(next.runs.at(-1)![1] - next.to) <= 1 &&
+                            anchored(next).every(
+                                (x, i) => Math.abs(x - before[i]!) <= 1 + 1 / ratio,
+                            )
                         )
                     })
                     .toBe(true)

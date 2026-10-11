@@ -379,8 +379,11 @@ const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined
 const DASH = 6
 const GAP = 4
 
-// Two halves, each starting on a dash at its end, meet in one middle dash up to two dashes long.
-const traceDashedTimeLine = (
+// Dashes on the hover line; kept while its stretch stays near 1, so small length changes don't regroup them.
+let hoverDashes = 0
+
+// Stretches the dash pattern slightly so the line starts and ends on a whole dash.
+const strokeDashedTimeLine = (
     ctx: CanvasRenderingContext2D,
     ends: LineSpan | undefined,
     y: number,
@@ -388,13 +391,16 @@ const traceDashedTimeLine = (
 ) => {
     if (!ends) return
     const length = (ends.right - ends.left) * scale
-    const cycles = Math.max(0, Math.ceil((length - 2 * DASH) / (DASH + GAP)))
-    const middle = length - cycles * (DASH + GAP)
-    const seam = ends.left + (Math.floor(cycles / 2) * (DASH + GAP) + middle / 2) / scale
+    // The stretch that fits `count` dashes and the gaps between them exactly.
+    const fit = (count: number) => length / (count * (DASH + GAP) - GAP)
+    if (!hoverDashes || Math.abs(fit(hoverDashes) - 1) > 0.15)
+        hoverDashes = Math.max(1, Math.round((length + GAP) / (DASH + GAP)))
+    const stretch = fit(hoverDashes)
+    ctx.setLineDash([(DASH * stretch) / scale, (GAP * stretch) / scale])
+    ctx.beginPath()
     ctx.moveTo(ends.left, y)
-    ctx.lineTo(seam, y)
-    ctx.moveTo(ends.right, y)
-    ctx.lineTo(seam, y)
+    ctx.lineTo(ends.right, y)
+    ctx.stroke()
 }
 
 // Equal ends keep their object, so hovering redraws the chart only when the cursor line changes.
@@ -610,11 +616,8 @@ watchEffect(
                 ctx.globalAlpha = 0.5
                 ctx.strokeRect(x, y, w, h)
             }
-            if (hover !== undefined) {
-                ctx.beginPath()
-                traceDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
-                ctx.stroke()
-            }
+            if (hover !== undefined)
+                strokeDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
             ctx.restore()
         })
     },
