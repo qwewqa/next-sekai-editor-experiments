@@ -76,7 +76,7 @@ import { hasToolModal, showToolModal } from '../toolModals'
 import type { CommandName } from '../commands'
 import { deselect } from '../commands/deselect'
 import { fromDisplayedBeat, toDisplayedBeat } from '../beatDisplay'
-import { isNoteResizeStart, modifyEntities, offset, resize } from '../tools/utils'
+import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '../tools/utils'
 import { scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { dockKeysAttribute, isInWorkspaceDock } from '../workspace'
@@ -368,7 +368,7 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     if (!getNoteFieldsIn(active.source.store, note).left)
         return { elevation: note.elevation + active.deltaElevation }
     const edge = note.left + (active.fixedLeft ? note.size : 0)
-    // As the chart's select resize; in Composed every edge takes the grabbed edge's snap.
+    // As the chart's select resize, every edge moves by the grabbed edge's snapped shift.
     const [left, size] = active.resizing
         ? resize(
               shiftComputed(note.left, active.fixedLeft ? 0 : note.size),
@@ -377,7 +377,12 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
               Number.POSITIVE_INFINITY,
               edge,
               [note.left, note.size],
-              active.composed ? active.origin + edge - active.movingEdge : 0,
+              undefined,
+              resizeShift(
+                  active.movingEdge,
+                  active.movingEdge + active.shift,
+                  active.composed ? active.origin : 0,
+              ),
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),

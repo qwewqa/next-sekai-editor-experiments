@@ -115,6 +115,7 @@ import {
     moveLane,
     offset,
     resize,
+    resizeShift,
     toSelection,
 } from './utils'
 
@@ -886,7 +887,8 @@ const toMovedCameraEventObject = (
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const isLeft = startLane >= focus.cameraLeft + focus.cameraSize / 2
         const edge = entity.cameraLeft + (isLeft ? entity.cameraSize : 0)
-        // Each range's edge moves by the pointer's movement, as notes do.
+        const focusEdge = focus.cameraLeft + (isLeft ? focus.cameraSize : 0)
+        // Every range's edge moves by the grabbed edge's snapped shift, as notes do.
         const [cameraLeft, cameraSize] = resize(
             shiftComputed(entity.cameraLeft, isLeft ? 0 : entity.cameraSize),
             edge + (lane - startLane),
@@ -894,6 +896,8 @@ const toMovedCameraEventObject = (
             24,
             edge,
             [entity.cameraLeft, entity.cameraSize],
+            undefined,
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
         )
 
         return constrainLaneObject(
@@ -940,6 +944,7 @@ const toMovedStageMaskEventObject = (
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
         const isLeft = startLane >= focus.maskLeft + focus.maskSize / 2
         const edge = entity.maskLeft + (isLeft ? entity.maskSize : 0)
+        const focusEdge = focus.maskLeft + (isLeft ? focus.maskSize : 0)
         const [maskLeft, maskSize] = resize(
             shiftComputed(entity.maskLeft, isLeft ? 0 : entity.maskSize),
             edge + (lane - startLane),
@@ -947,6 +952,8 @@ const toMovedStageMaskEventObject = (
             Number.POSITIVE_INFINITY,
             edge,
             [entity.maskLeft, entity.maskSize],
+            undefined,
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
         )
 
         return constrainLaneObject(
@@ -1095,10 +1102,12 @@ const toMovedNoteObject = (
         const isLeft = startLane >= focus.left + focus.size / 2
         const edge = entity.left + (isLeft ? entity.size : 0)
         const focusEdge = focus.left + (isLeft ? focus.size : 0)
-        // The grabbed edge supplies one raw delta for the whole selection.
-        const origin = getComposedLayout()
-            ? getComposedGridOffset(focus.stageId, focus.beat) + (edge - focusEdge)
-            : 0
+        // The grabbed edge's snapped shift moves every selected edge.
+        const shift = resizeShift(
+            focusEdge,
+            focusEdge + (lane - startLane),
+            getComposedLayout() ? getComposedGridOffset(focus.stageId, focus.beat) : 0,
+        )
 
         const [left, size] = resize(
             shiftComputed(entity.left, isLeft ? 0 : entity.size),
@@ -1107,7 +1116,8 @@ const toMovedNoteObject = (
             Number.POSITIVE_INFINITY,
             edge,
             [entity.left, entity.size],
-            origin,
+            undefined,
+            shift,
         )
 
         return constrainLaneObject(

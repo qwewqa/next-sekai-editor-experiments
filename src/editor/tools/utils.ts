@@ -99,6 +99,10 @@ export const getLaneAnchor = (entity: Entity) => {
     }
 }
 
+/** A dragged edge's snapped shift; a multi-selection resize moves every edge by the grabbed one's. */
+export const resizeShift = (edge: number, lane: number, origin = 0) =>
+    offset(edge, lane, edge, origin)
+
 export const resize = (
     anchor: number,
     lane: number,
@@ -107,8 +111,8 @@ export const resize = (
     startEdge = anchor,
     original?: readonly [left: number, size: number],
     origin = 0,
+    shift = resizeShift(startEdge, lane, origin),
 ) => {
-    const shift = offset(startEdge, lane, startEdge, origin)
     // An edge dragged back to its start keeps the values exactly.
     if (original && shift === 0) return original
     const edge = startEdge + shift
