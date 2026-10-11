@@ -11,7 +11,6 @@ import { getSplitHoldNotes } from '../state/operations/splitHold'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { interpolate } from '../utils/interpolate'
 import { holdsCharacter, menuKeyIndex } from '../utils/menuKeys'
-import { committedGrid } from './beatGrid'
 import { commands, isCommandName, type Command, type CommandName } from './commands'
 import {
     formatShortcut,
@@ -32,7 +31,7 @@ import { notify } from './notification'
 import { isEntityInScope, scopeLookup } from './scope'
 import { toolName } from './tools'
 import { modifyEntities, pointHitsAt } from './tools/utils'
-import { view, yToValidBeat } from './view'
+import { snappingSources, view, yToValidBeat } from './view'
 
 type ActionName = CommandName | 'selectSlideNotes' | 'editElevations' | 'editProperties'
 type Action = {
@@ -205,14 +204,10 @@ watch(
         () => view.h,
         () => settings.width,
         () => settings.pps,
-        () => view.division,
-        committedGrid,
+        ...snappingSources,
         // Focus, visibility overrides and their settings.
         scopeLookup,
         () => view.visibilities,
-        () => view.snapping,
-        () => view.laneDivision,
-        () => view.laneSnapping,
     ],
     () => {
         dismiss()

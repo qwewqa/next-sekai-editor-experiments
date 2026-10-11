@@ -4,7 +4,6 @@ import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
-import { committedGrid } from '../beatGrid'
 import { zoomXIn } from '../commands/zooms/zoomXIn'
 import { zoomXOut } from '../commands/zooms/zoomXOut'
 import { zoomYIn } from '../commands/zooms/zoomYIn'
@@ -19,6 +18,7 @@ import {
     scrollViewXBy,
     scrollViewYBy,
     setViewHover,
+    snappingSources,
     updateViewPointer,
     view,
     viewBox,
@@ -311,16 +311,7 @@ watch([viewBox, () => view.x, () => view.y], () => {
 
 // A snapping, lane limit or layout change under a still mouse moves where a click lands, in either pane.
 watch(
-    [
-        () => view.division,
-        committedGrid,
-        () => view.snapping,
-        () => view.laneDivision,
-        () => view.laneSnapping,
-        () => settings.elevationSnap,
-        () => settings.maxLane,
-        () => view.layout,
-    ],
+    [...snappingSources, () => settings.elevationSnap, () => settings.maxLane, () => view.layout],
     hoverAgain,
 )
 

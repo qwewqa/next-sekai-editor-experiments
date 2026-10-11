@@ -3,11 +3,10 @@ import { replaceState, state } from '../../../../history'
 import { settings } from '../../../../settings'
 import { time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
-import { committedGrid } from '../../../beatGrid'
 import { getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
 import { tool, type Tool } from '../../../tools'
-import { scrollViewXBy, scrollViewYBy, view, viewBox } from '../../../view'
+import { scrollViewXBy, scrollViewYBy, snappingSources, view, viewBox } from '../../../view'
 import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
 
@@ -111,23 +110,11 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
     }
 
     // A scroll, zoom or snapping change under a still pointer moves where the drag lands.
-    watch(
-        [
-            viewBox,
-            paneMoves,
-            () => view.division,
-            committedGrid,
-            () => view.snapping,
-            () => view.laneDivision,
-            () => view.laneSnapping,
-            () => settings.elevationSnap,
-        ],
-        () => {
-            if (active?.type !== 'drag' || update) return
-            const { x, y, modifiers } = active.pointer
-            updateDrag(x, y, modifiers)
-        },
-    )
+    watch([viewBox, paneMoves, ...snappingSources, () => settings.elevationSnap], () => {
+        if (active?.type !== 'drag' || update) return
+        const { x, y, modifiers } = active.pointer
+        updateDrag(x, y, modifiers)
+    })
 
     return {
         count: 1,

@@ -400,6 +400,15 @@ export const yToTime = (y: number) => (0.5 * view.h - y + view.y) / settings.pps
 
 export const yToBeat = (y: number) => timeToBeat(bpms.value, Math.max(0, yToTime(y)))
 
+// What moves where a still pointer snaps, for the watches that re-run it.
+export const snappingSources = [
+    () => view.division,
+    () => committedGrid.value,
+    () => view.snapping,
+    () => view.laneDivision,
+    () => view.laneSnapping,
+] as const
+
 export const yToValidBeat = (y: number) => snapBeat(committedGrid.value, yToBeat(y), view.division)
 
 // Further below beat 0 than snapping reaches; yToValidBeat clamps such presses to 0.
