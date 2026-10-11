@@ -839,16 +839,15 @@ const toMovedCameraEventObject = (
     plan: MovePlan,
 ): CameraEventObject => {
     if (focus.type === 'cameraEventJoint' && isSelectResize(onlyType, focus, startLane)) {
+        const isLeft = startLane >= focus.cameraLeft + focus.cameraSize / 2
+        const edge = entity.cameraLeft + (isLeft ? entity.cameraSize : 0)
+        // Each range's edge moves by the pointer's movement, as notes do.
         const [cameraLeft, cameraSize] = resize(
-            shiftComputed(
-                entity.cameraLeft,
-                startLane >= focus.cameraLeft + focus.cameraSize / 2 ? 0 : entity.cameraSize,
-            ),
-            lane,
+            shiftComputed(entity.cameraLeft, isLeft ? 0 : entity.cameraSize),
+            edge + (lane - startLane),
             6,
             24,
-            entity.cameraLeft +
-                (startLane >= focus.cameraLeft + focus.cameraSize / 2 ? entity.cameraSize : 0),
+            edge,
             [entity.cameraLeft, entity.cameraSize],
         )
 
@@ -894,16 +893,14 @@ const toMovedStageMaskEventObject = (
     plan: MovePlan,
 ): StageMaskEventObject => {
     if (focus.type === 'stageMaskEventJoint' && isSelectResize(onlyType, focus, startLane)) {
+        const isLeft = startLane >= focus.maskLeft + focus.maskSize / 2
+        const edge = entity.maskLeft + (isLeft ? entity.maskSize : 0)
         const [maskLeft, maskSize] = resize(
-            shiftComputed(
-                entity.maskLeft,
-                startLane >= focus.maskLeft + focus.maskSize / 2 ? 0 : entity.maskSize,
-            ),
-            lane,
+            shiftComputed(entity.maskLeft, isLeft ? 0 : entity.maskSize),
+            edge + (lane - startLane),
             0,
             Number.POSITIVE_INFINITY,
-            entity.maskLeft +
-                (startLane >= focus.maskLeft + focus.maskSize / 2 ? entity.maskSize : 0),
+            edge,
             [entity.maskLeft, entity.maskSize],
         )
 
