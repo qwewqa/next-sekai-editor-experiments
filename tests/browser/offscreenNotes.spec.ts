@@ -99,6 +99,9 @@ test('offscreen counts follow live width previews and revert on Cancel', async (
 const selectedCount = (page: Page) =>
     page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length)
 
+const hoveredCount = (page: Page) =>
+    page.evaluate(() => window.editorTest.view.entities.hovered.length)
+
 const center = async (indicator: Locator) => {
     const bounds = (await indicator.boundingBox())!
     return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
@@ -136,6 +139,14 @@ test('select tool clicks select the notes behind a badge, with Ctrl toggling', a
     expect(await selectedCount(page)).toBe(12)
     await expect(page.locator('.notification')).toHaveText('Selected 12 objects')
     await expect(right).toHaveClass(/border-white(\s|$)/)
+    // The resting mouse hovers again, as after any tap; so does a click that changes nothing.
+    await expect.poll(() => hoveredCount(page)).toBe(12)
+    await page.evaluate(() => {
+        window.editorTest.view.entities = { hovered: [], creating: [] }
+    })
+    await page.mouse.click(x, y)
+    expect(await selectedCount(page)).toBe(12)
+    await expect.poll(() => hoveredCount(page)).toBe(12)
 
     await clickIndicator(page, left, true)
     expect(await selectedCount(page)).toBe(13)
@@ -293,6 +304,8 @@ test.describe('phone', () => {
             await page.touchscreen.tap(x, y)
             await expect.poll(() => selectedCount(page)).toBe(12)
             await expect(right).not.toHaveClass(/is-hovered/)
+            // A tap leaves no hover outline.
+            expect(await hoveredCount(page)).toBe(0)
         })
     })
 })

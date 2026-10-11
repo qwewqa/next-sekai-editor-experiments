@@ -13,7 +13,6 @@ import {
     type OffscreenNoteGroup,
 } from './offscreenNotes'
 import { modifyEntities } from './tools/utils'
-import { view } from './view'
 
 type IndicatorLayer = {
     navigation: () => EditorNavigation | undefined
@@ -50,14 +49,11 @@ export const selectOffscreenNotes = (notes: NoteEntity[], modifiers: Modifiers) 
     const entities = modifyEntities(notes, modifiers)
     const targets = combineSelection(state.value.selectedEntities, entities, modifiers.ctrl)
 
+    // A tap sets no hover; a resting mouse hovers again.
     replaceState({
         ...state.value,
         selectedEntities: targets,
     })
-    view.entities = {
-        hovered: entities,
-        creating: [],
-    }
 
     notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
 }
