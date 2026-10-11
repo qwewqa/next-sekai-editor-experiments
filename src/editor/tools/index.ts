@@ -31,6 +31,9 @@ export type Tool = {
 
     hover?: (x: number, y: number, modifiers: Modifiers) => void | Promise<void>
 
+    // A press begins, before it is a tap or a drag.
+    press?: (x: number, y: number) => void
+
     tap?: (x: number, y: number, modifiers: Modifiers) => void | Promise<void>
 
     // Pure; must share dragStart's resolver so it shows what a press here does.

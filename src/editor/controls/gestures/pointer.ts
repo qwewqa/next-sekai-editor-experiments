@@ -13,3 +13,6 @@ export type Pointer = {
     y: number
     modifiers: Modifiers
 }
+
+/** Where a pointer's point reaches the tool, such as held at its pane's edge. */
+export type HoldPoint = (id: number, x: number, y: number) => { x: number; y: number }
