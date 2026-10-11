@@ -338,7 +338,7 @@ export const floorGridBeat = (grid: BeatGrid, beat: number, division: number) =>
 
 /**
  * A step to the next or previous line: from a line, the adjacent line; off the
- * grid, one step relatively, as before the bar grid.
+ * grid, one step relatively.
  */
 export const stepGridBeat = (grid: BeatGrid, beat: number, division: number, direction: 1 | -1) => {
     if (!grid.bpms || isGlobalGrid(grid, division))

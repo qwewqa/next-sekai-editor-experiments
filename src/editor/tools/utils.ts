@@ -124,9 +124,9 @@ export const resize = (
 
 /**
  * The objects a point hits: `hits` ranked as the hit model says, its first the one a single
- * pick takes; `set` the ones that act together or count as a selection in reach. The set is
- * as it was, without notes reached only through their side slack when a note's own span holds
- * the point, and always with the first hit.
+ * pick takes; `set` the ones that act together or count as a selection in reach: every hit
+ * but notes reached only through their side slack when a note's own span holds the point, and
+ * always the first.
  */
 export type PointHits<T extends Entity = Entity> = { hits: T[]; set: T[] }
 
