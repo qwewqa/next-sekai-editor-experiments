@@ -212,9 +212,9 @@ const mouseleave = (event: MouseEvent) => {
     // A press continues outside the pane; only its release lands it.
     if (pressedPane) return
     mouseup(event)
-    // Off the pane, a click lands nowhere, so no ghost shows where.
-    if (!isDragging.value && view.entities.creating.length)
-        view.entities = { hovered: view.entities.hovered, creating: [] }
+    // Off the pane, or over UI on it, a click hits nothing there, so nothing shows hovered.
+    if (!isDragging.value && (view.entities.hovered.length || view.entities.creating.length))
+        view.entities = { hovered: [], creating: [] }
 }
 
 const wheel = (event: WheelEvent) => {
