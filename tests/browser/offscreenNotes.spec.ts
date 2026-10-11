@@ -480,3 +480,308 @@ test('elevation editor badges move with their notes as the elevation view pans',
     })
     expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1)
 })
+
+// Badge pane y per step (null when there's none), checked against the scroll's direction.
+const expectOnlyWithScroll = (
+    rows: { note: number; badge: number | null }[],
+    // Notes count from top to the pane's bottom; badges are centred from first + 14 to last - 14.
+    pane: { top: number; height: number; first: number; last: number },
+) => {
+    const direction = Math.sign(rows.at(-1)!.note - rows[0]!.note)
+    let previous: number | undefined
+    let hops = 0
+    for (const { note, badge } of rows) {
+        // Shown while the note is in the pane.
+        if (note >= pane.top + 2 && note <= pane.height - 2)
+            expect(badge, `note at ${note}`).not.toBeNull()
+        if (note < pane.top - 2 || note > pane.height + 2)
+            expect(badge, `note at ${note}`).toBeNull()
+        if (badge === null) continue
+        expect(badge).toBeGreaterThanOrEqual(pane.first + 14 - 1)
+        expect(badge).toBeLessThanOrEqual(pane.last - 14 + 1)
+        if (previous !== undefined) {
+            const move = (badge - previous) * direction
+            expect(move, `note at ${note}`).toBeGreaterThanOrEqual(0)
+            expect(move, `note at ${note}`).toBeLessThanOrEqual(24 + 3)
+            if (move > 3) hops++
+        }
+        previous = badge
+    }
+    // Riding with the note, then one hop to the edge it's held at (or back).
+    expect(hops).toBe(1)
+}
+
+for (const layout of ['basic', 'composed'] as const) {
+    test(`a lone badge moves only with the scroll across the edges in the ${layout} layout`, async ({
+        page,
+    }) => {
+        await page.evaluate((layout) => {
+            const { fixtures, show, view } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show({
+                ...fixtures.interaction,
+                slides: [[{ ...base, beat: 3, left: -40, size: 2, elevation: 2 }]],
+            })
+            view.layout = layout
+        }, layout)
+        const height = await page.evaluate(() => window.editorTest.view.h)
+        for (const [from, to] of [
+            [200, -10],
+            [-10, 200],
+            [height - 200, height + 10],
+            [height + 10, height - 200],
+        ] as const) {
+            const rows = await page.evaluate(
+                async ({ from, to }) => {
+                    const { view, settings, nextTick } = window.editorTest
+                    const rows: { note: number; badge: number | null }[] = []
+                    const steps = Math.ceil(Math.abs(to - from) / 1.5)
+                    for (let i = 0; i <= steps; i++) {
+                        const note = from + ((to - from) * i) / steps
+                        // Beat 3 is at 1.5 s.
+                        view.time = 1.5 + (note - view.h / 2) / settings.pps
+                        await nextTick()
+                        const badge = document.querySelector(
+                            '.editor-chart ~ div .offscreen-note-indicator[data-side="left"]',
+                        )
+                        const bounds = badge?.getBoundingClientRect()
+                        rows.push({
+                            note,
+                            badge: bounds ? bounds.top + bounds.height / 2 - view.y : null,
+                        })
+                    }
+                    return rows
+                },
+                { from, to },
+            )
+            expectOnlyWithScroll(rows, { top: 0, height, first: 24, last: height - 24 })
+        }
+    })
+}
+
+test('elevation editor badges of elevation 0 notes move only with the scroll', async ({ page }) => {
+    await page.evaluate(() => {
+        const { fixtures, show, history } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        // Imported notes default to elevation 0.
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [{ ...base, beat: 3, left: 40, size: 2, elevation: 0 }],
+                    [{ ...base, beat: 3, left: 0, size: 2, elevation: 2 }],
+                ],
+            },
+            1.5,
+        )
+        const current = history.state.value
+        history.replaceState({
+            ...current,
+            selectedEntities: [...current.store.slides.note.values()][1]!,
+        })
+    })
+    await page.keyboard.press('t')
+    const badge = page.locator('.elevation-editor [data-side="right"]')
+    await expect(badge).toHaveAttribute('data-count', '1')
+    const header = (await page.locator('.elevation-editor .elevation-header').boundingBox())!
+    const canvas = (await page.locator('.elevation-canvas').boundingBox())!
+    for (const [from, to] of [
+        [canvas.height / 2, -10],
+        [-10, canvas.height / 2],
+        [canvas.height / 2, canvas.height + 10],
+        [canvas.height + 10, canvas.height / 2],
+    ] as const) {
+        const rows = await page.evaluate(
+            async ({ from, to }) => {
+                const { appImport, nextTick } = window.editorTest
+                const { elevationViewport } = await appImport<
+                    typeof import('../../src/editor/elevation/viewport')
+                >('/src/editor/elevation/viewport.ts')
+                const { elevationLayout } = await appImport<
+                    typeof import('../../src/editor/elevation/scene')
+                >('/src/editor/elevation/scene.ts')
+                const canvas = document.querySelector('.elevation-canvas')!
+                const rows: { note: number; badge: number | null; offset: number }[] = []
+                // Fractional steps of the centre, which used to flip elevation 0 between slots.
+                const steps = Math.ceil(Math.abs(to - from) / 1.37)
+                for (let i = 0; i <= steps; i++) {
+                    const { height, elevationScale } = elevationLayout.value
+                    const y = from + ((to - from) * i) / steps
+                    elevationViewport.center = (y - height / 2) / elevationScale
+                    await nextTick()
+                    const note = elevationLayout.value.yAt(0)
+                    const badge = document.querySelector('.elevation-editor [data-side="right"]')
+                    const bounds = badge?.getBoundingClientRect()
+                    const center = bounds
+                        ? bounds.top + bounds.height / 2 - canvas.getBoundingClientRect().top
+                        : null
+                    rows.push({ note, badge: center, offset: center === null ? 0 : center - note })
+                }
+                return rows
+            },
+            { from, to },
+        )
+        const first = header.y + header.height - canvas.y + 4
+        expectOnlyWithScroll(rows, {
+            top: first,
+            height: canvas.height,
+            first,
+            last: canvas.height,
+        })
+        // Riding, the badge stays on its slot just below the note; held, it's at the edge.
+        for (const { badge, offset } of rows)
+            if (badge !== null && badge > first + 14 + 0.5 && badge < canvas.height - 14 - 0.5)
+                expect(Math.abs(offset - 14)).toBeLessThanOrEqual(0.5)
+    }
+})
+
+type NoteBadgeFrame = {
+    content: number
+    badges: { y: number; side: string; notes: number[]; hit: boolean }[]
+}
+
+// Every frame: each badge's pane y, its notes, and whether hit tests there find it.
+const recordNoteBadges = (page: Page, root: string) =>
+    page.evaluate(async (root) => {
+        const { appImport, view, settings } = window.editorTest
+        const { hitOffscreenIndicator } = await appImport<
+            typeof import('../../src/editor/offscreenIndicators')
+        >('/src/editor/offscreenIndicators.ts')
+        const { elevationLayout } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const ids = new Map<object, number>()
+        const frames: NoteBadgeFrame[] = []
+        let recording = true
+        const record = () => {
+            if (!recording) return
+            const pane = document.querySelector(root)!.getBoundingClientRect()
+            const badges = [
+                ...document.querySelectorAll<HTMLElement>(`${root} .offscreen-note-indicator`),
+            ].map((badge) => {
+                const { left, top, width, height } = badge.getBoundingClientRect()
+                const at = (dy: number) =>
+                    hitOffscreenIndicator(left + width / 2, top + height / 2 + dy)
+                const group = at(0)
+                return {
+                    y: top + height / 2 - pane.top,
+                    side: badge.dataset.side!,
+                    notes: (group?.targets ?? []).map((note) => {
+                        if (!ids.has(note)) ids.set(note, ids.size)
+                        return ids.get(note)!
+                    }),
+                    hit: !!group && at(-11) === group && at(11) === group,
+                }
+            })
+            frames.push({
+                // A content y, to tell which way it moves.
+                content: root.includes('elevation')
+                    ? elevationLayout.value.yAt(0)
+                    : view.time * settings.pps,
+                badges,
+            })
+            requestAnimationFrame(record)
+        }
+        requestAnimationFrame(record)
+        Object.assign(window, {
+            stopNoteBadges: () => {
+                recording = false
+                return frames
+            },
+        })
+    }, root)
+
+for (const pane of ['basic', 'composed', 'elevation'] as const) {
+    test(`dense badges take notes in only with the scroll at the ${pane} edges`, async ({
+        page,
+    }) => {
+        await page.evaluate((pane) => {
+            const { fixtures, show, view, settings, history } = window.editorTest
+            settings.mouseSmoothScrolling = true
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [
+                        // 10 px apart in time and 0.15 apart in elevation, off both sides.
+                        ...Array.from({ length: 160 }, (_, i) => [
+                            {
+                                ...base,
+                                beat: 2 + i * 0.05,
+                                left: i % 2 ? -40 : 40,
+                                size: 2,
+                                elevation: i * 0.15 - 12,
+                            },
+                        ]),
+                        [{ ...base, beat: 6, left: 0, size: 2, elevation: 0 }],
+                    ],
+                },
+                3,
+            )
+            settings.pps = 400
+            if (pane !== 'elevation') view.layout = pane
+            const current = history.state.value
+            history.replaceState({
+                ...current,
+                selectedEntities: [...current.store.slides.note.values()].at(-1)!,
+            })
+        }, pane)
+        if (pane === 'elevation') await page.keyboard.press('t')
+        const root = pane === 'elevation' ? '.elevation-canvas ~ div' : '.editor-chart ~ div'
+        await expect(page.locator(`${root} .offscreen-note-indicator`).first()).toBeVisible()
+        const box = (await page.locator(root).boundingBox())!
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        for (const direction of [1, -1]) {
+            await recordNoteBadges(page, root)
+            // The elevation editor's wheel isn't eased, so it takes smaller steps.
+            const [steps, delta] = pane === 'elevation' ? [60, 9] : [25, 40]
+            for (let i = 0; i < steps; i++) {
+                await page.mouse.wheel(0, direction * delta)
+                await page.waitForTimeout(30)
+            }
+            await page.waitForTimeout(400)
+            const frames = await page.evaluate(() =>
+                (window as unknown as { stopNoteBadges: () => NoteBadgeFrame[] }).stopNoteBadges(),
+            )
+            const moving = frames.filter(
+                (frame, i) => i && frame.content !== frames[i - 1]!.content,
+            )
+            expect(moving.length).toBeGreaterThan(10)
+            // Collected rather than asserted one by one: there are thousands.
+            const problems: string[] = []
+            let badges = 0
+            for (const [i, frame] of frames.entries()) {
+                for (const badge of frame.badges) {
+                    badges++
+                    // Hit tests find each badge where it's drawn.
+                    if (!badge.hit) problems.push(`frame ${i}: no hit at ${badge.y}`)
+                    for (const other of frame.badges)
+                        if (
+                            other.side === badge.side &&
+                            other.y > badge.y &&
+                            other.y - badge.y < 24
+                        )
+                            problems.push(`frame ${i}: overlap at ${badge.y}`)
+                }
+                if (i < 2) continue
+                const motion = Math.sign(frame.content - frames[i - 1]!.content)
+                if (!motion) continue
+                const at = (index: number) =>
+                    new Map(frames[index]!.badges.flatMap((b) => b.notes.map((n) => [n, b.y])))
+                const [before, previous, current] = [at(i - 2), at(i - 1), at(i)]
+                const steady = Math.sign(frames[i - 1]!.content - frames[i - 2]!.content) === motion
+                for (const [note, y] of current) {
+                    // A note's badge never moves against the scroll,
+                    const last = previous.get(note)
+                    if (last !== undefined && (y - last) * motion < -0.5)
+                        problems.push(`frame ${i}: note ${note} ${last} -> ${y}`)
+                    // nor leaves a badge and comes back.
+                    if (steady && before.has(note) && !previous.has(note))
+                        problems.push(`frame ${i}: note ${note} came back`)
+                }
+            }
+            expect(problems).toEqual([])
+            expect(badges).toBeGreaterThan(50)
+        }
+    })
+}
