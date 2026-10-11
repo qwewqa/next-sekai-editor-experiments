@@ -452,3 +452,60 @@ test("Basic: an attached Slide ghost lands on the drafted slide's path, as the c
     )
     expect(landed).toMatchObject([{ left: shown!.left, size: shown!.size }])
 })
+
+test("Basic: a Slide ghost copies the drafted slide's nearest note, as the click does", async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { show, fixtures, view, settings, history, nextTick } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [
+                        { ...base, beat: 0, left: -2, size: 2 },
+                        { ...base, beat: 4, left: -2, size: 2, noteStyle: 'red' },
+                        { ...base, beat: 8, left: -2, size: 2 },
+                    ],
+                ],
+            },
+            1,
+        )
+        view.layout = 'basic'
+        settings.pps = 240
+        settings.showSidebar = true
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()]
+                .flat()
+                .filter((note) => note.beat === 4),
+        })
+        await nextTick()
+    })
+    // The red note drafted to beat 1, nearest before beat 2.
+    await page
+        .locator('#workspace-panel-properties #properties-section-selection label')
+        .filter({ has: page.getByText('Beat', { exact: true }) })
+        .locator('input')
+        .fill('1')
+    await expect.poll(() => scene(page)).toEqual({ draft: true, committed: false })
+    await useTool(page, 'slide')
+    const point = await hover(page, 4, 2)
+    const style = () =>
+        page.evaluate(() =>
+            window.editorTest.view.entities.creating.flatMap((entity) =>
+                entity.type === 'note' ? [entity.noteStyle] : [],
+            ),
+        )
+    await expect.poll(style).toEqual(['red'])
+    await page.mouse.click(point.x, point.y)
+    expect(
+        await page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.slides.note.values()]
+                .flat()
+                .filter((note) => note.beat === 2)
+                .map((note) => note.noteStyle),
+        ),
+    ).toEqual(['red'])
+})

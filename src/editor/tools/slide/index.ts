@@ -434,8 +434,11 @@ const getNoteFromSelection = () => {
     return withDraft(entity)
 }
 
+// As a pending draft shows the slide, which the click commits first.
 const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
-    const notes = store.value.slides.note.get(slideId)
+    const notes = (previewEdit.value?.draft ? sceneState.value.store : store.value).slides.note.get(
+        slideId,
+    )
     if (!notes) throw new Error('Unexpected notes not found')
 
     const index = bisect(notes, 'beat', beat)
