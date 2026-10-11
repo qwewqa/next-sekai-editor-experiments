@@ -131,7 +131,10 @@ const mousedown = (event: MouseEvent) => {
         contextClick = { x: p.x, y: p.y }
 
     // The press point is where dragStart decides; keep its cursor until release.
-    if (!mouseGesture.pointerCount) lockCursor(tool.value.cursor?.(p.x, p.y) ?? 'default')
+    if (!mouseGesture.pointerCount) {
+        tool.value.press?.(p.x, p.y)
+        lockCursor(tool.value.cursor?.(p.x, p.y) ?? 'default')
+    }
 
     if (!pressedPane && event.currentTarget instanceof Element) {
         pressedPane = event.currentTarget

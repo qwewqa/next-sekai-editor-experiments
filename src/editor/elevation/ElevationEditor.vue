@@ -1252,6 +1252,8 @@ onMounted(() => {
                 ...(elevationToolNames.includes(name) ? tools[name] : tools.select),
                 ...controls,
                 secondaryTool: undefined,
+                // Its paste reads the clipboard as it lands.
+                press: undefined,
             },
         ]),
     )

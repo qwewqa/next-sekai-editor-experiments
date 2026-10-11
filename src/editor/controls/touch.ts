@@ -113,9 +113,10 @@ const touchstart = (event: TouchEvent) => {
     // A mouse drag keeps its marker.
     if (!isDragging.value) hideViewHover()
 
+    const [first] = ps
+    if (first && !touchGesture.pointerCount) tool.value.press?.(first.x, first.y)
     touchGesture.start(ps)
 
-    const [first] = ps
     if (first && ps.length === 1 && touchGesture.pointerCount === 1)
         startLongPress(first.id, first.x, first.y)
     else cancelLongPress()

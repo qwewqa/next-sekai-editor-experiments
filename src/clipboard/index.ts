@@ -23,12 +23,10 @@ export const clipboardEntries = ref<ClipboardEntry[]>([])
 
 export const clipboardEntry = computed(() => clipboardEntries.value[0])
 
-let isUpdating = false
+// The read running now; another caller waits for it instead of starting its own.
+let reading: Promise<void> | undefined
 
-export const updateClipboard = async () => {
-    if (isUpdating) return
-
-    isUpdating = true
+const readClipboard = async () => {
     try {
         const text = await navigator.clipboard.readText()
         if (!text) return
@@ -36,9 +34,18 @@ export const updateClipboard = async () => {
         updateClipboardEntries(text)
     } catch {
         return
-    } finally {
-        isUpdating = false
     }
+}
+
+export const updateClipboard = () => {
+    if (!reading) {
+        const read = readClipboard()
+        reading = read
+        void read.finally(() => {
+            if (reading === read) reading = undefined
+        })
+    }
+    return reading
 }
 
 export const setClipboardData = (data: ClipboardData) => {

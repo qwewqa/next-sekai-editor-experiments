@@ -1,4 +1,6 @@
+import { watch } from 'vue'
 import type { Tool } from '..'
+import { isAppActive } from '../../../activity'
 import type { BpmObject } from '../../../chart/bpm'
 import type { CameraEventObject } from '../../../chart/events/camera'
 import type { StageMaskEventObject } from '../../../chart/events/stage/mask'
@@ -20,6 +22,7 @@ import { defaultStageId, stages } from '../../../history/stages'
 import { i18n } from '../../../i18n'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
+import { hasSameChartData } from '../../../state/data'
 import type { Entity, EntityType } from '../../../state/entities'
 import { toBpmEntity, type BpmEntity } from '../../../state/entities/bpm'
 import {
@@ -67,7 +70,7 @@ import { inverseAffine } from '../../composedPointer'
 import type { Modifiers } from '../../controls/gestures/pointer'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
-import { revealAuthoringTarget } from '../../scope'
+import { revealAuthoringTarget, scopeLookup } from '../../scope'
 import { entityScopeIds } from '../../scopeRules'
 import { alignLane, toMovedBeat, view, xToLane, yToBeatOffset } from '../../view'
 import { getOnlyEntityType } from '../entityType'
@@ -84,6 +87,20 @@ let active:
     | undefined
 // Where the hover last read the clipboard.
 let readAt: { x: number; y: number } | undefined
+// Only another app changes the clipboard, which takes the focus away.
+watch(isAppActive, (active) => {
+    if (!active) readAt = undefined
+})
+// A hover's or press's read, while it runs.
+let reading: Promise<void> | undefined
+const readClipboardAt = (x: number, y: number) => {
+    if (x === readAt?.x && y === readAt.y) return
+    const read = updateClipboard()
+    reading = read
+    void read.then(() => {
+        if (reading === read) reading = undefined
+    })
+}
 
 export const paste: Tool = {
     title: () => i18n.value.tools.paste.title,
@@ -91,7 +108,7 @@ export const paste: Tool = {
 
     hover(x, y, modifiers) {
         // Only a pointer move reads the clipboard; a scroll under a still pointer reuses what it read.
-        if (x !== readAt?.x || y !== readAt.y) void updateClipboard()
+        readClipboardAt(x, y)
         readAt = { x, y }
 
         const data = clipboardEntry.value?.data
@@ -116,7 +133,25 @@ export const paste: Tool = {
         )
     },
 
+    // Touch has no hover; a mouse press without one reads here too.
+    press(x, y) {
+        readClipboardAt(x, y)
+    },
+
     async tap(x, y, modifiers) {
+        if (reading) {
+            const source = state.value
+            const scope = scopeLookup.value
+            const layout = view.layout
+            await reading
+            // An edit or scope change while it read drops the paste.
+            if (
+                !hasSameChartData(source, state.value) ||
+                scopeLookup.value !== scope ||
+                (source.isDynamicStages && view.layout !== layout)
+            )
+                return
+        }
         const data = clipboardEntry.value?.data
         if (!data) return
 
