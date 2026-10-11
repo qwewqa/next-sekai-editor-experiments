@@ -215,7 +215,7 @@ test('Eraser and Note tool: the hover is what a tap removes or selects, and the 
             })
         else {
             expect(result.added, `note add at ${point.x},${point.y}`).toEqual(shown.ghost)
-            added++
+            if (shown.ghost.length) added++
         }
     }
     expect(added).toBeGreaterThan(0)
