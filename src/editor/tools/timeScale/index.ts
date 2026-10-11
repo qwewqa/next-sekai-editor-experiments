@@ -7,7 +7,7 @@ import { defaultGroupId } from '../../../history/groups'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
-import { clearPreviewEdit, setPreviewEdit } from '../../../preview/edit'
+import { clearPreviewEdit, previewEdit, setPreviewEdit } from '../../../preview/edit'
 import type { Entity } from '../../../state/entities'
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities/timeScale'
 import { addTimeScale } from '../../../state/mutations/timeScale'
@@ -21,6 +21,7 @@ import { interpolate } from '../../../utils/interpolate'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
+import { sceneState, toCommittedEntity } from '../../sceneState'
 import { revealAuthoringTarget } from '../../scope'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
@@ -323,8 +324,9 @@ const find = (
     groupId: GroupId | undefined,
     beat: number,
     filter: (entity: TimeScaleEntity) => boolean = () => true,
+    source = store.value,
 ) =>
-    getInStoreGrid(store.value.grid, 'timeScale', beat)?.find(
+    getInStoreGrid(source.grid, 'timeScale', beat)?.find(
         (entity) =>
             entity.beat === beat &&
             (groupId === undefined || entity.groupId === groupId) &&
@@ -342,7 +344,10 @@ const tryFind = (
     const beat = yToValidBeat(y)
     // Every press below beat 0 snaps to it; only one within snapping of its line grabs there.
     if (grab && isBelowSnapping(y)) return [undefined, beat, xToValidLane(x)]
-    const nearest = find(view.groupId, beat, isVisible)
+    // As a pending draft shows them, which the click commits first.
+    const isDraft = !!previewEdit.value?.isDraft
+    const shown = find(view.groupId, beat, isVisible, isDraft ? sceneState.value.store : undefined)
+    const nearest = shown && isDraft ? toCommittedEntity(shown) : shown
     if (nearest) return [nearest]
 
     return [undefined, beat, xToValidLane(x)]

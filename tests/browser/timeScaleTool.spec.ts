@@ -227,3 +227,50 @@ test.describe('with touch', () => {
         ])
     })
 })
+
+test('with a Beat draft pending, the hover is what a tap selects or adds, where the draft shows it', async ({
+    page,
+}) => {
+    await show(page, 'basic', [{ ...start, beat: 4 }])
+    await page.keyboard.press('w')
+    await page.evaluate(() => {
+        const { history, settings } = window.editorTest
+        settings.showSidebar = true
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.grid.timeScale.values()].flatMap(
+                (entities) => [...entities],
+            ),
+        })
+    })
+    const beatField = page
+        .locator('#workspace-panel-properties #properties-section-selection label')
+        .filter({ has: page.getByText('Beat', { exact: true }) })
+        .locator('input')
+    // The field shows beats as the view displays them; 4 beats later.
+    await beatField.fill(`${Number(await beatField.inputValue()) + 4}`)
+    const hovered = () =>
+        page.evaluate(() =>
+            window.editorTest.view.entities.hovered.map(({ type, beat }) => [type, beat]),
+        )
+    const adding = () =>
+        page.evaluate(() =>
+            window.editorTest.view.entities.creating.map(({ type, beat }) => [type, beat]),
+        )
+    // Away from its marker on the beat 8 row, where it is drawn: the committed time scale.
+    const drafted = await point(page, -4, 8)
+    await page.mouse.move(drafted.x - 1, drafted.y)
+    await page.mouse.move(drafted.x, drafted.y)
+    await expect.poll(hovered).toEqual([['timeScale', 4]])
+    // Its old row adds.
+    const old = await point(page, -4, 4)
+    await page.mouse.move(old.x, old.y)
+    await expect.poll(adding).toEqual([['timeScale', 4]])
+    expect(await hovered()).toEqual([])
+    // A tap commits the draft, then selects it where the hover showed it.
+    await page.mouse.move(drafted.x, drafted.y)
+    await page.mouse.click(drafted.x, drafted.y)
+    await settle(page)
+    expect(await timeScales(page)).toEqual([{ beat: 8, editorLane: 4, timeScale: 2 }])
+    expect(await selected(page)).toEqual([{ type: 'timeScale', beat: 8 }])
+})
