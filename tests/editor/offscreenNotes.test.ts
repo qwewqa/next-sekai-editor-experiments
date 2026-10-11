@@ -130,13 +130,13 @@ test('an inset keeps badges clear of the edges and counts the notes there', () =
         400,
         24,
     )
-    // 352 px between the insets: 12 slots of 29.3 px from y = 24.
+    // The whole 28 px slots between the insets at 24 and 376: from 28 to 364.
     assert.deepEqual(
-        groups.map(({ slot, count, y }) => [slot, count, Math.round(y)]),
+        groups.map(({ slot, count, y }) => [slot, count, y]),
         [
-            [0, 2, 39],
-            [6, 1, 215],
-            [11, 1, 361],
+            [1, 2, 42],
+            [7, 1, 210],
+            [12, 1, 350],
         ],
     )
     assert.ok(groups.every(({ y, spacing }) => y - spacing / 2 >= 24 && y + spacing / 2 <= 376))
@@ -156,7 +156,7 @@ test('groupings compare equal only with the same badges and targets', () => {
     assert.ok(
         isSameOffscreenGroups(
             base,
-            group([target(105, 'a'), target(108, 'b'), note(320, 330, 310)]),
+            group([target(105, 'a'), target(108, 'b'), note(320, 330, 305)]),
         ),
     )
     assert.ok(
@@ -196,6 +196,7 @@ test('groupings compare equal only with the same badges and targets', () => {
             ]),
         ),
     )
+    // Slots anchored elsewhere split the notes.
     assert.ok(
         !isSameOffscreenGroups(
             base,
@@ -203,7 +204,9 @@ test('groupings compare equal only with the same badges and targets', () => {
                 [target(100, 'a'), target(110, 'b'), note(301, 310, 300)],
                 300,
                 0,
-                500,
+                400,
+                0,
+                20,
             ),
         ),
     )
@@ -214,4 +217,62 @@ test('no badge reaches further in than the widest possible count', () => {
     const reach = offscreenBadgeHitWidth(Number.MAX_SAFE_INTEGER)
     for (let count = 1; count < Number.MAX_SAFE_INTEGER; count *= 7)
         assert.ok(offscreenBadgeHitWidth(count) <= reach)
+})
+
+test('badges scroll with their notes, changing only at the edges', () => {
+    const notes = [60, 65, 200, 300, 370].map((y, index) => ({
+        ...note(-10, -1, y),
+        target: String(index),
+    }))
+    // Notes and anchor scrolled down by a number of px.
+    const show = (scroll: number) =>
+        groupOffscreenNotes(
+            notes.map((item) => ({ ...item, y: item.y + scroll })),
+            300,
+            0,
+            400,
+            24,
+            scroll,
+        )
+    const base = show(0)
+    assert.deepEqual(
+        base.map(({ count, y }) => [count, y]),
+        [
+            [2, 70],
+            [1, 210],
+            [1, 294],
+            // 370 is in the slot the inset cuts, so it counts in the last whole one.
+            [1, 350],
+        ],
+    )
+    // Positions are from the anchor, so scrolling within whole slots keeps the same badges.
+    for (const scroll of [0.5, 3, -2.25]) assert.ok(isSameOffscreenGroups(base, show(scroll)))
+    // The bottom slot is cut once scrolled 20 px down; its note joins the slot above.
+    assert.deepEqual(
+        show(20).map(({ count, y }) => [count, y + 20]),
+        [
+            [2, 90],
+            [1, 230],
+            [1, 314],
+            [1, 342],
+        ],
+    )
+    // Scrolled 40 px up, the top notes are in the inset and count in the first whole slot.
+    assert.deepEqual(
+        show(-40).map(({ count, y }) => [count, y - 40]),
+        [
+            [2, 58],
+            [1, 170],
+            [1, 254],
+            [1, 338],
+        ],
+    )
+})
+
+test('a band too short for two slots keeps one badge fixed to the pane', () => {
+    for (const scroll of [0, 7, 19]) {
+        const [badge] = groupOffscreenNotes([note(-10, -1, 40 + scroll)], 300, 0, 100, 24, scroll)
+        assert.equal(badge!.y + scroll, 50)
+        assert.equal(badge!.spacing, 52)
+    }
 })
