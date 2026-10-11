@@ -203,8 +203,14 @@ export const setScalingFactor = (value: number) => {
         Number.isFinite(ratio) &&
         ratio > 0 &&
         (ratio === 1 ||
-            getScaledSelectionValues(base.selectedEntities, session.axis, ratio, base, pivot) !==
-                undefined)
+            getScaledSelectionValues(
+                base.selectedEntities,
+                session.axis,
+                ratio,
+                base,
+                pivot,
+                toMovedBeat,
+            ) !== undefined)
     if (!valid) {
         scalingSession.value = { ...session, requestedFactor: value, valid: false }
         return false
@@ -212,7 +218,8 @@ export const setScalingFactor = (value: number) => {
     const axis = session.axis
     const selected = base.selectedEntities
     return publishDraft(
-        () => (ratio === 1 ? base : scaleSelection(base, selected, axis, ratio, pivot)),
+        () =>
+            ratio === 1 ? base : scaleSelection(base, selected, axis, ratio, pivot, toMovedBeat),
         value,
     )
 }
@@ -387,6 +394,7 @@ export const updateScalingDrag = (value: number) => {
                     ratio,
                     active.source,
                     active.anchor,
+                    toMovedBeat,
                 ))
         )
             return false
@@ -395,7 +403,9 @@ export const updateScalingDrag = (value: number) => {
         return publishDraft(
             () =>
                 constrainDraft(
-                    ratio === 1 ? source : scaleSelection(source, selected, axis, ratio, anchor),
+                    ratio === 1
+                        ? source
+                        : scaleSelection(source, selected, axis, ratio, anchor, toMovedBeat),
                 ),
             factor,
         )

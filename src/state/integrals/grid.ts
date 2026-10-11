@@ -1,4 +1,4 @@
-import { align, alignNear } from '../../utils/math'
+import { align, alignFraction, alignNear } from '../../utils/math'
 import { roundBoundary, type GridBpm } from './bpms'
 
 /**
@@ -293,6 +293,10 @@ export const nearGridsBeat = (grids: BeatGrid[], beat: number, division: number)
     }
     return alignNear(beat, division)
 }
+
+/** A computed beat without float noise: on a small fraction, then on a grid's line. */
+export const cleanBeat = (grids: BeatGrid[], beat: number, division: number) =>
+    nearGridsBeat(grids, alignFraction(beat), division)
 
 /** The first line at or after the beat. */
 export const ceilGridBeat = (grid: BeatGrid, beat: number, division: number) => {

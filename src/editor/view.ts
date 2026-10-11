@@ -7,7 +7,7 @@ import { onResetState } from '../history/resetHooks'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
-import { isGlobalGrid, nearGridsBeat, snapBeat } from '../state/integrals/grid'
+import { cleanBeat, isGlobalGrid, snapBeat } from '../state/integrals/grid'
 import { time } from '../time'
 import { computedArray } from '../utils/array'
 import { align, clamp, lerp, unlerp } from '../utils/math'
@@ -447,13 +447,13 @@ export const yToMoveBeatOffset = (y: number, beat: number, pressBeat: number) =>
     )
 }
 
-// A moved or pasted beat, without float noise on the grid, or on the chart's bars as other
-// content may sit there in the Beat display; unmoved, it stays exact.
+// A moved or pasted beat, without float noise on a small fraction, the grid, or the chart's bars
+// as other content may sit there in the Beat display; unmoved, it stays exact.
 export const toMovedBeat = (beat: number, offset: number) => {
     if (offset === 0) return beat
     const grid = committedGrid.value
     const bars = committedBarGrid.value
-    return nearGridsBeat(grid === bars ? [grid] : [grid, bars], beat + offset, view.division)
+    return cleanBeat(grid === bars ? [grid] : [grid, bars], beat + offset, view.division)
 }
 
 export const snapYToBeat = (y: number, beat: number, pressBeat: number) =>

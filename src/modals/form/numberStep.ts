@@ -65,24 +65,3 @@ export const stepValues = (
     const changed = [...next.keys()].filter((value) => next.get(value) !== origins.get(value))
     return { next, changed }
 }
-
-/**
- * Snaps float noise off a value near a fraction with a denominator up to `max`,
- * to the fraction itself: 1/3 stepped by 1 is 4/3, as a beat placed there.
- */
-export const alignFraction = (value: number, max = 10000, epsilon = 1e-11) => {
-    const whole = Math.floor(value)
-    const fraction = value - whole
-    // Continued fraction convergents: the first within epsilon has the smallest denominator.
-    let [p0, q0, p1, q1] = [0, 1, 1, 0]
-    let rest = fraction
-    for (;;) {
-        const a = Math.floor(rest)
-        const [p, q] = [a * p1 + p0, a * q1 + q0]
-        if (q > max) return value
-        // Integer over integer rounds once, as k / division does for a placed beat.
-        if (Math.abs(fraction - p / q) <= epsilon) return (whole * q + p) / q
-        ;[p0, q0, p1, q1] = [p1, q1, p, q]
-        rest = 1 / (rest - a)
-    }
-}

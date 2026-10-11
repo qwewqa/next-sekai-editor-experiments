@@ -8,15 +8,10 @@ import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
 import { isInteriorTick, type NoteEntity } from '../state/entities/slides/note'
-import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { isSameTempo, type GridBpm } from '../state/integrals/bpms'
 import { beatToKey } from '../state/store/grid'
 import { dragBpms, gridOf } from './beatGrid'
 import { view } from './view'
-
-const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
-    a === b ||
-    (a.length === b.length &&
-        a.every((bpm, i) => bpm.x === b[i]?.x && bpm.y === b[i].y && bpm.s === b[i].s))
 
 export const sceneState = computed(() => {
     // A dialog's own preview, such as a scaling's, may retime; a Properties draft in one may not.
@@ -110,11 +105,7 @@ export const hitAllSceneEntities = (
 type Counterparts = { toSource: Map<Entity, Entity>; toScene: Map<Entity, Entity> }
 const counterparts = new WeakMap<State, WeakMap<State, Counterparts>>()
 
-/**
- * A previewed state's replaced entities and the committed ones they show: an edit's objects
- * keep their place in the selection, and a slide's other notes, such as attached ticks, their
- * order. What can't be paired is left out.
- */
+// Pairs a preview's replaced entities with committed ones: by selection place, else slide order.
 const counterpartsOf = (source: State, preview: State) => {
     let bySource = counterparts.get(preview)
     const cached = bySource?.get(source)

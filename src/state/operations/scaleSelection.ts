@@ -1,6 +1,11 @@
 import type { State } from '..'
 import type { Entity } from '../entities'
-import { getScaleProperties, getScaledSelectionValues, type ScaleAxis } from './scaleValues'
+import {
+    addBeatOffset,
+    getScaleProperties,
+    getScaledSelectionValues,
+    type ScaleAxis,
+} from './scaleValues'
 import { transformSelection } from './transformSelection'
 
 export type { ScaleAxis } from './scaleValues'
@@ -11,8 +16,9 @@ export const scaleSelection = (
     axis: ScaleAxis,
     factor: number,
     anchor?: number,
+    moveBeat = addBeatOffset,
 ): State => {
-    const values = getScaledSelectionValues(selected, axis, factor, source, anchor)
+    const values = getScaledSelectionValues(selected, axis, factor, source, anchor, moveBeat)
     return values
         ? transformSelection(
               source,

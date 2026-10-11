@@ -37,6 +37,12 @@ export const toBpmIntegral = (object: BpmObject): BpmIntegral => ({
     measureBeat: 0,
 })
 
+/** The same tempo: equal times at every beat, whatever the bars. */
+export const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
+    a === b ||
+    (a.length === b.length &&
+        a.every((bpm, i) => bpm.x === b[i]?.x && bpm.y === b[i].y && bpm.s === b[i].s))
+
 export const roundBoundary = (value: number) =>
     Math.abs(value - Math.round(value)) < 1e-9 ? Math.round(value) : value
 

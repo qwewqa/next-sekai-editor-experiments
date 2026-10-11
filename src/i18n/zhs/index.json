@@ -841,7 +841,8 @@
       "title": "生成长按节点",
       "deselected": "已取消选择所有对象",
       "selecting": "正在选择 {0} 个音符",
-      "generated": "已生成 {0} 个音符"
+      "generated": "已生成 {0} 个音符",
+      "tooMany": "要生成的音符过多"
     },
     "note": {
       "title": "音符 #{0}",

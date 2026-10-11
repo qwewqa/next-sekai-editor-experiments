@@ -2,17 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { fromDisplayedBeat, toDisplayedBeat } from '../../src/editor/beatDisplay'
 import { fromSteppedBeat } from '../../src/modals/form/beatField'
-import {
-    alignFraction,
-    createStepTrail,
-    stepNumber,
-    stepValues,
-} from '../../src/modals/form/numberStep'
+import { createStepTrail, stepNumber, stepValues } from '../../src/modals/form/numberStep'
 import { calculateBpms, toBpmIntegral } from '../../src/state/integrals/bpms'
 import { GLOBAL_GRID, snapBeat, toBeatGrid } from '../../src/state/integrals/grid'
 import { isChromium } from '../../src/utils/browser'
 import { formatNumber } from '../../src/utils/formatNumber'
-import { addDecimal } from '../../src/utils/math'
+import { addDecimal, alignFraction } from '../../src/utils/math'
 
 test('steps add in decimal, without float noise', () => {
     assert.equal(addDecimal(1.1, -1), 0.1)

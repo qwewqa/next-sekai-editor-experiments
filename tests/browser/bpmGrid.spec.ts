@@ -355,6 +355,82 @@ test('switching the beat display re-snaps the hover under a still mouse', async 
 })
 
 for (const display of ['measure', 'beat'] as const)
+    test(`${display}: a pending Meter draft's drawn bars are the snap targets, as after its commit`, async ({
+        page,
+    }) => {
+        await setUp(page, display, [0])
+        await switchTool(page, 'note')
+        await page.evaluate(() => {
+            const { history, settings } = window.editorTest
+            settings.showSidebar = true
+            const source = history.state.value
+            history.replaceState({
+                ...source,
+                selectedEntities: [...source.store.grid.bpm.values()].flatMap((set) => [...set]),
+            })
+        })
+        const at = await point(page, -5.5, 3.4)
+        await page.mouse.move(at.x, at.y)
+        await settle(page)
+        expect(await creating(page)).toEqual([3])
+        const bars = display === 'measure'
+        const landed = bars ? 3.5 : 3
+        const count = async () => (await noteBeats(page)).filter((beat) => beat === landed).length
+        const before = await count()
+        // Typed, not committed: bars every 3.5 beats are drawn, and the still hover follows them.
+        const meter = page.getByLabel('Meter', { exact: true })
+        await meter.fill('3.5')
+        await settle(page)
+        expect(await bpms(page)).toEqual([0])
+        expect((await drawn(page)).lines).toEqual(
+            bars
+                ? [0, 1, 2, 3, 3.5, 4.5, 5.5, 6.5, 7, 8, 9, 10]
+                : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        )
+        expect(await creating(page)).toEqual([landed])
+        await meter.fill('4')
+        await settle(page)
+        expect(await creating(page)).toEqual([3])
+        await meter.fill('3.5')
+        await settle(page)
+        expect(await creating(page)).toEqual([landed])
+        // The press commits the draft first; the note lands where its ghost was.
+        await page.mouse.click(at.x, at.y)
+        await settle(page)
+        expect(
+            await page.evaluate(() => window.editorTest.history.state.value.bpms[0]!.meter),
+        ).toBe(3.5)
+        expect(await count()).toBe(before + 1)
+    })
+
+test('a pending draft that moves a BPM change keeps snapping on the drawn, committed bars', async ({
+    page,
+}) => {
+    await setUp(page, 'measure')
+    await switchTool(page, 'note')
+    await page.evaluate(() => {
+        const { history, settings } = window.editorTest
+        settings.showSidebar = true
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: [...source.store.grid.bpm.values()]
+                .flatMap((set) => [...set])
+                .filter((entity) => entity.beat === 2.5),
+        })
+    })
+    const at = await point(page, -5.5, 3.4)
+    await page.mouse.move(at.x, at.y)
+    await settle(page)
+    expect(await creating(page)).toEqual([3.5])
+    // Typed, not committed: a retimed draft isn't drawn, so neither are its bars at 3.
+    await page.getByLabel('Beat', { exact: true }).fill('4')
+    await settle(page)
+    expect((await drawn(page)).bars).toEqual([0, 2.5])
+    expect(await creating(page)).toEqual([3.5])
+})
+
+for (const display of ['measure', 'beat'] as const)
     test(`${display}: the BPM tool grabs an off-grid change within its snapping`, async ({
         page,
     }) => {
@@ -684,6 +760,57 @@ for (const display of ['measure', 'beat'] as const)
             return window.editorTest.snapshot().notes.map(({ beat }) => beat)
         })
         expect(beats).toEqual(display === 'beat' ? [1, 2, 3, 4, 5] : [1, 2, 2.5, 3.5, 4.5, 5])
+    })
+
+for (const display of ['measure', 'beat'] as const)
+    test(`${display}: Generate Slide Notes over its line limit says so and changes nothing`, async ({
+        page,
+    }) => {
+        await page.evaluate((display) => {
+            const { fixtures, show, view, settings } = window.editorTest
+            const [[head]] = fixtures.interaction.slides as [[object]]
+            show(
+                {
+                    ...fixtures.interaction,
+                    bpms: [
+                        { beat: 0, bpm: 120 },
+                        { beat: 2.5, bpm: 120 },
+                    ],
+                    // Over 100,000 lines between the ends on either grid; the short slide waits too.
+                    slides: [
+                        [
+                            { ...head, beat: 1 },
+                            { ...head, beat: 100_003 },
+                        ],
+                        [
+                            { ...head, beat: 1 },
+                            { ...head, beat: 5 },
+                        ],
+                    ],
+                } as never,
+                2,
+            )
+            view.division = 1
+            settings.pps = 200
+            settings.beatDisplay = display
+        }, display)
+        const result = await page.evaluate(async () => {
+            const { appImport, store, history } = window.editorTest
+            const { applyGeneratedSlideNotes } = await appImport<
+                typeof import('../../src/editor/tools/generateSlideNotes')
+            >('/src/editor/tools/generateSlideNotes/index.ts')
+            const { notification } = await appImport<
+                typeof import('../../src/editor/notification')
+            >('/src/editor/notification.ts')
+            const before = history.state.value
+            const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+            applyGeneratedSlideNotes(notes as never)
+            return {
+                unchanged: history.state.value === before,
+                message: notification.value.message?.(),
+            }
+        })
+        expect(result).toEqual({ unchanged: true, message: 'Too many notes to generate' })
     })
 
 for (const display of ['measure', 'beat'] as const)
