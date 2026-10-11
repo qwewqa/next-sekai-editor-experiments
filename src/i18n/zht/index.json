@@ -841,7 +841,8 @@
       "title": "生成滑條音符",
       "deselected": "已取消選取所有物件",
       "selecting": "正在選取 {0} 個音符",
-      "generated": "已生成 {0} 個音符"
+      "generated": "已生成 {0} 個音符",
+      "tooMany": "要生成的音符過多"
     },
     "note": {
       "title": "音符 #{0}",

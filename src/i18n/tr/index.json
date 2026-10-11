@@ -841,7 +841,8 @@
       "title": "Kaydırma Notaları Oluştur",
       "deselected": "Tüm nesnelerin seçimi kaldırıldı",
       "selecting": "{0} nota seçiliyor",
-      "generated": "{0} nota oluşturuldu"
+      "generated": "{0} nota oluşturuldu",
+      "tooMany": "Oluşturulacak nota sayısı çok fazla"
     },
     "note": {
       "title": "Nota #{0}",

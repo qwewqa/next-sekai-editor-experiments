@@ -144,21 +144,25 @@ export const generateSlideNotes: Tool = {
     },
 }
 
-// The grid lines strictly between the ends that no slide note holds.
+const MAX_LINES = 100_000
+
+// The grid lines strictly between the ends that no slide note holds; undefined past MAX_LINES.
 const generatedBeats = (slideNotes: NoteEntity[], minBeat: number, maxBeat: number) => {
     const division = view.division
     const grid = committedGrid.value
     if (isGlobalGrid(grid, division)) {
-        const disallowed = new Set(slideNotes.map((entity) => entity.beat * division))
-        const beats: number[] = []
         const min = Math.floor(minBeat * division) + 1
         const max = Math.ceil(maxBeat * division) - 1
+        if (max - min + 1 > MAX_LINES) return
+        const disallowed = new Set(slideNotes.map((entity) => entity.beat * division))
+        const beats: number[] = []
         for (let i = min; i <= max; i++) if (!disallowed.has(i)) beats.push(i / division)
         return beats
     }
     // Bar grid lines within rounding error of a note or an end are held.
     const epsilon = 1e-6 / division
-    const lines = gridLines(grid, minBeat + epsilon, maxBeat - epsilon, division, 100_000) ?? []
+    const lines = gridLines(grid, minBeat + epsilon, maxBeat - epsilon, division, MAX_LINES)
+    if (!lines) return
     return lines
         .map(({ beat }) => beat)
         .filter((beat) => {
@@ -184,6 +188,7 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         }
     }
 
+    const fills: [SlideId, NoteEntity[], number[]][] = []
     for (const [slideId, notes] of slides) {
         let minBeat = Number.POSITIVE_INFINITY
         let maxBeat = Number.NEGATIVE_INFINITY
@@ -205,7 +210,17 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         const slideNotes = store.value.slides.note.get(slideId)
         if (!slideNotes) throw new Error('Unexpected notes not found')
 
-        for (const beat of generatedBeats(slideNotes, minBeat, maxBeat)) {
+        const beats = generatedBeats(slideNotes, minBeat, maxBeat)
+        if (!beats) {
+            view.entities = { hovered: [], creating: [] }
+            notify(() => i18n.value.tools.generateSlideNotes.tooMany)
+            return
+        }
+        fills.push([slideId, slideNotes, beats])
+    }
+
+    for (const [slideId, slideNotes, beats] of fills) {
+        for (const beat of beats) {
             const index = bisect(slideNotes, 'beat', beat)
             const nearest = slideNotes[index - 1] ?? slideNotes[index]
 

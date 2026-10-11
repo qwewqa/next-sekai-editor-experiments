@@ -841,7 +841,8 @@
       "title": "슬라이드 노트 생성",
       "deselected": "모든 객체 선택 해제됨",
       "selecting": "노트 {0}개 선택 중",
-      "generated": "노트 {0}개 생성됨"
+      "generated": "노트 {0}개 생성됨",
+      "tooMany": "생성할 노트가 너무 많습니다"
     },
     "note": {
       "title": "노트 #{0}",

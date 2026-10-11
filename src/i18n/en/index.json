@@ -841,7 +841,8 @@
             "title": "Generate Slide Notes",
             "deselected": "Deselected all objects",
             "selecting": "Selecting {0} note|Selecting {0} notes",
-            "generated": "Generated {0} note|Generated {0} notes"
+            "generated": "Generated {0} note|Generated {0} notes",
+            "tooMany": "Too many notes to generate"
         },
         "note": {
             "title": "Note #{0}",

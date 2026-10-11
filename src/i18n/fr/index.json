@@ -841,7 +841,8 @@
       "title": "Générer les notes de slide",
       "deselected": "Tout désélectionné",
       "selecting": "Sélection de {0} note|Sélection de {0} notes",
-      "generated": "{0} note générée|{0} notes générées"
+      "generated": "{0} note générée|{0} notes générées",
+      "tooMany": "Trop de notes à générer"
     },
     "note": {
       "title": "Note n° {0}",
