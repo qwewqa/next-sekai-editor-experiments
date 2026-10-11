@@ -24,22 +24,30 @@ test('a still pointer laps the set top to bottom', () => {
     assert.deepEqual(tapAll([{ at: 10, set: ['b', 'c'] }], 'a'), ['b'])
 })
 
-test('one-pixel jitter reaches every object, each lap', () => {
-    // At 0 the time scale t1 is in reach, at 1 t2 instead: one comes as the other goes.
-    const at0 = ['a', 't1', 'b', 'c']
-    const at1 = ['a', 'b', 't2', 'c']
+/** Taps alternating between two points a pixel apart; checks every object comes within 2n taps. */
+const expectEveryLap = (at0: string[], at1: string[]) => {
     const taps = Array.from({ length: 40 }, (_, i) =>
         i % 2 ? { at: 1, set: at1 } : { at: 0, set: at0 },
     )
     const picks = tapAll(taps)
-    for (const object of ['a', 'b', 'c', 't1', 't2']) {
+    const objects = [...new Set([...at0, ...at1])]
+    for (const object of objects) {
         const at = picks.flatMap((pick, i) => (pick === object ? [i] : []))
         const gaps = at.map((i, k) => i - (at[k - 1] ?? -1))
         assert.ok(
-            Math.max(...gaps, picks.length - at.at(-1)!) <= 2 * 5,
+            Math.max(...gaps, picks.length - at.at(-1)!) <= 2 * objects.length,
             `${object}: ${picks.join()}`,
         )
     }
+}
+
+test('one-pixel jitter reaches every object, each lap', () => {
+    // At 0 the time scale t1 is in reach, at 1 t2 instead: one comes as the other goes.
+    expectEveryLap(['a', 't1', 'b', 'c'], ['a', 'b', 't2', 'c'])
+    // x is in reach every other tap, which isn't always its turn.
+    expectEveryLap(['a', 'x', 'b'], ['a', 'b'])
+    // Each pick of x or y goes out of reach at the next tap.
+    expectEveryLap(['x', 'a', 'b'], ['y', 'a', 'b'])
 })
 
 test('an object out of reach keeps its place, and leaves after 8 taps', () => {
