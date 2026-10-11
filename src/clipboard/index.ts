@@ -52,6 +52,9 @@ const waitForRead = async (read: Promise<void>) => {
     }
 }
 
+/** Waits on the read running now, if any, without starting one. */
+export const joinClipboardRead = () => (reading ? waitForRead(reading) : undefined)
+
 export const updateClipboard = () => {
     if (!reading) {
         const read = readClipboard()

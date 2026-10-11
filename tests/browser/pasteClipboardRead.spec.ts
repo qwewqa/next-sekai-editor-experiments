@@ -312,22 +312,50 @@ test('a click that waits for a read pastes nothing during a drag, and leaves the
     await expect.poll(() => pastedBeats(page)).toEqual([9])
 })
 
-test('further Paste taps while one waits for a read are ignored', async ({ page }) => {
+test('further Paste taps while a paste waits for a read are ignored', async ({ page }) => {
     await setup(page)
-    await pasteTool(page)
+    await page.evaluate(() => {
+        const { settings, history } = window.editorTest
+        settings.mouseSecondaryTool = 'selectContextMenu'
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+    })
     await hold(page)
     await page.clock.install()
-    for (const beat of [6, 8]) {
-        const { x, y } = await point(page, 0, beat)
-        await touch('touchStart', [[x, y]])
-        await touch('touchEnd', [])
-    }
+    // With Select, the menu's Paste starts the read and waits; a Paste tap meanwhile pastes nothing.
+    const menu = await point(page, 0, 6)
+    await page.mouse.click(menu.x, menu.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
+    await useTool(page, 'paste')
+    const tap = await point(page, 0, 8)
+    await touch('touchStart', [[tap.x, tap.y]])
+    await touch('touchEnd', [])
     await page.clock.runFor(5100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])
     await release(page)
     await page.clock.runFor(5100)
     await settle(page)
     expect(await pastedBeats(page)).toEqual([6])
+})
+
+test('a click where the mouse hovered waits for that read, however long it has run', async ({
+    page,
+}) => {
+    await setup(page)
+    await pasteTool(page)
+    await hold(page)
+    await page.clock.install()
+    const before = await reads(page)
+    const { x, y } = await point(page, 0, 6)
+    await page.mouse.move(x, y)
+    await expect.poll(() => reads(page)).toBe(before + 1)
+    await page.clock.runFor(5100)
+    await copyElsewhere(page)
+    await page.mouse.click(x, y)
+    await settle(page)
+    expect(await pasted(page)).toEqual([])
+    await release(page)
+    await expect.poll(() => pasted(page)).toEqual([2])
+    expect(await reads(page)).toBe(before + 1)
 })
 
 test('an Elevation Editor Paste tap waits at most 5 s for a read', async ({ page }) => {

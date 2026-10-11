@@ -13,7 +13,7 @@ import type { FlickDirection, NoteObject } from '../../../chart/note'
 import type { StageId } from '../../../chart/stages'
 import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
-import { clipboardEntry, updateClipboard } from '../../../clipboard/index.ts'
+import { clipboardEntry, joinClipboardRead, updateClipboard } from '../../../clipboard/index.ts'
 import { pushState, state } from '../../../history'
 import { chartSessionId } from '../../../history/chartSession'
 import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
@@ -94,15 +94,9 @@ let readAt: { x: number; y: number } | undefined
 watch(isAppActive, (active) => {
     if (!active) readAt = undefined
 })
-// A hover's or press's read, until it lands or waiting on it stops.
-let reading: Promise<void> | undefined
 const readClipboardAt = (x: number, y: number) => {
     if (x === readAt?.x && y === readAt.y) return
-    const read = updateClipboard()
-    reading = read
-    void read.then(() => {
-        if (reading === read) reading = undefined
-    })
+    void updateClipboard()
 }
 
 // Whether a paste waits on a clipboard read; other pastes meanwhile are ignored.
@@ -189,7 +183,8 @@ export const paste: Tool = {
     async tap(x, y, modifiers) {
         if (isPasteWaiting) return
         const position = pastePositionAt(x, y)
-        const read = reading
+        // A read still running gets a capped wait of its own.
+        const read = joinClipboardRead()
         if (read && !(await waitToPaste(() => read, true))) return
         const data = clipboardEntry.value?.data
         if (!data) return
