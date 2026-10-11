@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const layout of ['basic', 'composed'] as const) {
     for (const minimumWidth of [0.5, 1.5]) {
-        test(`${layout} width ${minimumWidth}: direct zero-width note suppresses padded note before stable category ordering`, async ({
+        test(`${layout} width ${minimumWidth}: a padded note in reach follows what the point is on`, async ({
             page,
         }) => {
             const result = await page.evaluate(
@@ -88,8 +88,9 @@ for (const layout of ['basic', 'composed'] as const) {
                 },
                 { layout, minimumWidth },
             )
-            expect(result.direct).toEqual(['note:blue', 'stagePivotEventJoint'])
-            expect(result.hidden).toEqual(['note:red', 'stagePivotEventJoint'])
+            expect(result.direct).toEqual(['note:blue', 'stagePivotEventJoint', 'note:red'])
+            // The pivot's marker holds the point; the padded note is only in reach.
+            expect(result.hidden).toEqual(['stagePivotEventJoint', 'note:red'])
             expect(result.dimmed).toEqual(result.hidden)
             expect(result.typeHidden).toEqual(['stagePivotEventJoint'])
         })

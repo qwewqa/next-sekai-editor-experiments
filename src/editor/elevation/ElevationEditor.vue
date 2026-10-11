@@ -45,7 +45,8 @@ import { alignComputed, clamp, shiftComputed } from '../../utils/math'
 import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
-import { createNoteRenderer, isOnNoteArtwork } from '../canvas/notes'
+import { createNoteRenderer } from '../canvas/notes'
+import { noteHitShape, shapeDistance } from '../hitModel'
 import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
@@ -325,33 +326,42 @@ const hitAll = (x: number, y: number, minimum = 1.5) => {
             Math.abs(y - elevationBounds.y - row.y) <=
                 Math.max(14, elevationLayout.value.laneScale * 0.3 + 10),
     )
-    const direct = matches.filter(
-        (row) =>
-            Math.abs(x - elevationBounds.x - row.x) <=
-            Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2,
-    )
-    // The row drawn on top first: rows whose artwork lies under the point, later
-    // rows drawn over earlier ones; then the nearest.
+    // As the hit model orders the chart's: rows whose shape holds the point, later rows
+    // over earlier ones; then the nearest shape, then the nearest middle.
     const scale = elevationLayout.value.laneScale
-    const isUnder = (row: ElevationRow) =>
-        isOnNoteArtwork(
-            row.size,
-            getNoteVisualType(
-                row.size === row.note.size
-                    ? row.note
-                    : { ...row.note, size: row.size, useInfoOf: row.note.useInfoOf ?? row.note },
-                elevationState.value.store.slides.info.get(row.note.slideId),
+    const distances = new Map(
+        matches.map((row) => [
+            row,
+            shapeDistance(
+                noteHitShape(
+                    row.size,
+                    getNoteVisualType(
+                        row.size === row.note.size
+                            ? row.note
+                            : {
+                                  ...row.note,
+                                  size: row.size,
+                                  useInfoOf: row.note.useInfoOf ?? row.note,
+                              },
+                        elevationState.value.store.slides.info.get(row.note.slideId),
+                    ),
+                ),
+                (x - elevationBounds.x - row.x + row.w / 2) / scale,
+                (y - elevationBounds.y - row.y) / scale,
             ),
-            (x - elevationBounds.x - row.x + row.w / 2) / scale,
-            (y - elevationBounds.y - row.y) / scale,
-        )
-    const under = new Set(matches.filter(isUnder))
+        ]),
+    )
+    const distance = (row: ElevationRow) => distances.get(row) ?? 0
     const index = new Map(rows.map((row, i) => [row, i]))
-    return (direct.length ? direct : matches).sort(
+    // Every row within reach is a candidate; the nearest shape decides between them.
+    return matches.sort(
         (a, b) =>
-            +under.has(b) - +under.has(a) ||
-            (under.has(a) ? (index.get(b) ?? 0) - (index.get(a) ?? 0) : 0) ||
-            Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y),
+            +(distance(b) === 0) - +(distance(a) === 0) ||
+            (distance(a) === 0
+                ? (index.get(b) ?? 0) - (index.get(a) ?? 0)
+                : distance(a) - distance(b)) ||
+            Math.abs(a.y - y + elevationBounds.y) - Math.abs(b.y - y + elevationBounds.y) ||
+            (index.get(b) ?? 0) - (index.get(a) ?? 0),
     )
 }
 const hit = (x: number, y: number, minimum = 1.5) => {

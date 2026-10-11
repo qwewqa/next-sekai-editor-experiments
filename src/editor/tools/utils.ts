@@ -3,16 +3,13 @@ import { state } from '../../history'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
 import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
-import type { NoteEntity } from '../../state/entities/slides/note'
-import { getNoteVisualType } from '../../state/entities/slides/visualType'
-import { beatToTime } from '../../state/integrals/bpms'
 import { editChanges } from '../../state/operations/properties/plan'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
-import { isOnNoteArtwork } from '../canvas/notes'
 import type { ComposedLayout } from '../composed'
 import { getComposedGridOffset, getComposedLayout, getComposedOffset } from '../composedView'
 import type { CanvasCursor } from '../controls/cursor'
 import type { Modifiers } from '../controls/gestures/pointer'
+import { orderHits } from '../hitModel'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
 import { isEntityInScope } from '../scope'
@@ -144,24 +141,8 @@ export const hitEntitiesAtPoint = <T extends EntityType>(
         ),
         x,
         y,
-        minimumNoteWidth,
     )
 }
-
-// Point priority by type, independent of storage and drawing order.
-const pointHitOrder: EntityType[] = [
-    'note',
-    'stageTransformEventJoint',
-    'stageStyleEventJoint',
-    'stagePivotEventJoint',
-    'stageMaskEventJoint',
-    'cameraEventJoint',
-    'timeScale',
-    'bpm',
-]
-
-export const comparePointHits = (a: Entity, b: Entity) =>
-    pointHitOrder.indexOf(a.type) - pointHitOrder.indexOf(b.type)
 
 export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1.5) => {
     if (editorNavigation.value) return editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
@@ -175,77 +156,21 @@ export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1
         ),
         x,
         y,
-        minimumNoteWidth,
     )
 }
 
-/**
- * Point hits, the one drawn on top first: notes whose artwork lies under the
- * point, then by type, then in reverse drawing order, where an earlier beat and
- * then a later entity in the grid are drawn over the rest. Selection, which also
- * draws on top, is left to the tools, so cycling through the hits stays stable.
- */
+/** Orders point hits as the hit model says. */
 export const orderPointHits = <T extends Entity>(
     hits: T[],
     x: number,
     y: number,
     source: State = state.value,
     composed: ComposedLayout | undefined = getComposedLayout(source),
-) => {
-    const lane = xToLane(x)
-    const units = Math.max(0, yToTime(y)) * ups.value
-    const isUnder = (note: NoteEntity) => {
-        const position = composed?.notePosition(note) ?? note
-        const type = getNoteVisualType(
-            position.size === note.size
-                ? note
-                : { ...note, size: position.size, useInfoOf: note.useInfoOf ?? note },
-            source.store.slides.info.get(note.slideId),
-        )
-        return isOnNoteArtwork(
-            position.size,
-            type,
-            lane - position.left,
-            units - beatToTime(source.bpms, note.beat) * ups.value,
-        )
-    }
-    const under = new Set(hits.filter((entity) => entity.type === 'note' && isUnder(entity)))
-    const index = new Map(hits.map((entity, i) => [entity, i]))
-    return [...hits].sort(
-        (a, b) =>
-            +under.has(b) - +under.has(a) ||
-            comparePointHits(a, b) ||
-            a.beat - b.beat ||
-            (index.get(b) ?? 0) - (index.get(a) ?? 0),
-    )
-}
+) => orderHits(hits, xToLane(x), yToTime(y), ups.value, source, composed)
 
-const filterPointHits = <T extends Entity>(
-    entities: T[],
-    x: number,
-    y: number,
-    minimumNoteWidth: number,
-) => {
-    const hits = entities.filter(isVisible)
-    const lane = xToLane(x)
-    const composed = getComposedLayout()
-    const isDirectNote = (entity: T) => {
-        const hitbox = composed ? composed.hitbox(entity) : entity.hitbox
-        return (
-            entity.type === 'note' &&
-            hitbox &&
-            lane >= hitbox.lane - Math.max(hitbox.w, minimumNoteWidth / 2) &&
-            lane <= hitbox.lane + Math.max(hitbox.w, minimumNoteWidth / 2)
-        )
-    }
-    return orderPointHits(
-        hits.some(isDirectNote)
-            ? hits.filter((entity) => entity.type !== 'note' || isDirectNote(entity))
-            : hits,
-        x,
-        y,
-    )
-}
+// Every object within reach is a candidate; the nearest shape decides between them.
+const filterPointHits = <T extends Entity>(entities: T[], x: number, y: number) =>
+    orderPointHits(entities.filter(isVisible), x, y)
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>
     hitEntities(

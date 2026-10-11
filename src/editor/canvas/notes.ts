@@ -29,23 +29,6 @@ const diamondPoints: readonly Point[] = [
     [0.3, 0],
     [0, 0.15],
 ]
-// The diamond above, as a test: its tips are 0.3 out and up and 0.15 down.
-const isInDiamond = (x: number, y: number) => Math.abs(x) / 0.3 + (y < 0 ? -y / 0.3 : y / 0.15) <= 1
-
-/**
- * Whether a point, in lanes from a note's left edge and from its middle (down
- * the screen), lies on the artwork drawArtwork paints. Anchors paint none.
- */
-export const isOnNoteArtwork = (size: number, type: NoteVisualType, x: number, y: number) => {
-    if (type === 'anchor') return false
-    if ((type === 'tick' || type === 'trace') && size > 0 && isInDiamond(x - size / 2, y))
-        return true
-    // A sized tick is only its diamond.
-    if (type === 'tick' && size > 0) return false
-    const flat = type === 'tick' || type === 'damage' || type === 'trace'
-    const [left, right] = size > 0 ? [0, size] : [-0.1, 0.1]
-    return x >= left && x <= right && Math.abs(y) <= (flat ? 0.15 : 0.3)
-}
 
 const diamondHighlightPoints: readonly Point[] = [
     [-0.25, 0],
