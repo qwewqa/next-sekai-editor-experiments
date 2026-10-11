@@ -6,6 +6,8 @@ export type PreviewEdit = {
     source: State
     resolve: () => State
     dependencies?: readonly unknown[]
+    /** A pending Properties draft, which every layout shows. */
+    draft?: boolean
 }
 
 // Keep speculative edits out of undo history and resolve them only when a
@@ -17,6 +19,7 @@ export const setPreviewEdit = (
     source: State,
     build: () => State,
     dependencies?: readonly unknown[],
+    draft?: boolean,
 ) => {
     const previous = previewEdit.value
     // A drag often emits many pointer updates inside the same snapped cell.
@@ -24,6 +27,7 @@ export const setPreviewEdit = (
     // the pending/resolved transaction and the preview's compiled chart.
     if (
         dependencies &&
+        previous?.draft === draft &&
         previous?.dependencies?.length === dependencies.length &&
         hasSameChartData(previous.source, source) &&
         dependencies.every((value, index) => value === previous.dependencies?.[index])
@@ -36,6 +40,7 @@ export const setPreviewEdit = (
         source,
         resolve: () => (resolved ??= build()),
         dependencies: dependencies && [...dependencies],
+        draft,
     }
 }
 

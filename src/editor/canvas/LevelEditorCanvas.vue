@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef, watchEffect } fr
 import { beats, times } from '..'
 import { isAppActive } from '../../activity'
 import { defaultGroupId } from '../../history/groups'
+import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { Entity } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -17,6 +18,7 @@ import {
     previewSlides,
     sceneCounterparts,
     sceneState,
+    toCommittedEntity,
     toSceneEntity,
 } from '../sceneState'
 import { scopeLookup } from '../scope'
@@ -115,7 +117,9 @@ const orderedEntities = computed(() =>
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
 // Hovered objects are committed ones; a previewed scene draws their counterparts.
 const sceneHovered = computed(() =>
-    sceneCounterparts.value ? hoveredEntities.value.map(toSceneEntity) : hoveredEntities.value,
+    sceneCounterparts.value
+        ? hoveredEntities.value.map((entity) => toSceneEntity(entity))
+        : hoveredEntities.value,
 )
 const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Note spans in lanes and seconds, which scrolling leaves unchanged.
@@ -162,7 +166,7 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         right,
         y: (time * bounds.ups - bounds.t) * scale,
         // Dimmed notes are counted but not selectable.
-        target: isVisible(entity) ? entity : undefined,
+        target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
     // Clear of the range labels in the corners.
     const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT)
@@ -357,7 +361,9 @@ watchEffect(
         const canvas = overlayCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        const creating = isScenePreview.value ? [] : view.entities.creating
+        // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's ghosts.
+        const creating =
+            isScenePreview.value && !previewEdit.value?.draft ? [] : view.entities.creating
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value
