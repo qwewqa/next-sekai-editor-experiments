@@ -38,6 +38,16 @@ export const timeScaleEdgeLabelYs = (
     return ys
 }
 
+/** The ys of the BPM labels beside the beat labels, when BPMs are shown. */
+export const bpmLabelYs = (state: State, beats: Range<number>, ups: number) =>
+    state.bpms
+        .filter(({ x }) => x > beats.min - 1 && x < beats.max + 1)
+        .map(({ x }) => beatToTime(state.bpms, x) * ups)
+
+/** Whether a grid label at `y` gives way to a label at one of `ys`. */
+export const isNearLabel = (ys: number[], y: number) =>
+    ys.some((other) => Math.abs(y - other) < LABEL_CLEARANCE)
+
 // Beat labels closer than this, in pane pixels, are a smear; skipping them bounds their count.
 const MIN_LABEL_SPACING = 2
 
@@ -240,20 +250,14 @@ export const drawGrid = (
     ctx.globalAlpha = 0.5
     // A BPM or edge time scale label takes the place of the beat or time labels
     // it would overlap.
-    const bpmYs = isBpmVisible
-        ? state.bpms
-              .filter(({ x }) => x > beats.min - 1 && x < beats.max + 1)
-              .map(({ x }) => beatToTime(state.bpms, x) * ups)
-        : []
+    const bpmYs = isBpmVisible ? bpmLabelYs(state, beats, ups) : []
     const beatYs = [...bpmYs, ...edgeLabelYs.right]
-    const near = (ys: number[], y: number) =>
-        ys.some((other) => Math.abs(y - other) < LABEL_CLEARANCE)
     for (const { text, y } of labels.right) {
-        if (near(beatYs, y)) continue
+        if (isNearLabel(beatYs, y)) continue
         drawText(context, text, 6.1, y, '#fff', 0.4, 'start', context.figureMiddle)
     }
     for (const { text, y } of labels.left) {
-        if (near(edgeLabelYs.left, y)) continue
+        if (isNearLabel(edgeLabelYs.left, y)) continue
         drawText(context, text, -6.1, y, '#fff', 0.4, 'end', context.figureMiddle)
     }
     ctx.restore()

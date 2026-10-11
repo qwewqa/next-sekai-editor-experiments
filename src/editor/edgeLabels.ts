@@ -19,13 +19,16 @@ export const hoverLabelCenter = computed(
     () => 0.5 * view.h - (view.hoverTime - view.time) * settings.pps,
 )
 
+/** How far the hover labels' figures sit below their box's centre, which is moved up by as much. */
+export const hoverFigureOffset = ref(0)
+
 // A docked dialog (up to 28rem wide, centered at the bottom) covers the lower
 // labels in narrow panes; hidden there rather than left peeking out under its
 // rounded corners.
 export const lowerEdgeLabelsCovered = computed(() => hasToolModal('main') && view.w < 640)
 
 /** The labels' inset from the pane's sides, which lines across the chart also keep from them. */
-export const edgeLabelInset = ref(4)
+const edgeLabelInset = ref(4)
 
 const sizes = new WeakMap<Element, Size>()
 let observer: ResizeObserver | undefined
@@ -67,7 +70,10 @@ const rows = computed(() => {
     return {
         top: rowBoxes(top, 0),
         bottom: rowBoxes(bottom, view.h - height(bottom)),
-        hover: rowBoxes(hover, hoverLabelCenter.value - height(hover) / 2),
+        hover: rowBoxes(
+            hover,
+            hoverLabelCenter.value - hoverFigureOffset.value - height(hover) / 2,
+        ),
     }
 })
 
@@ -87,7 +93,7 @@ export const coveredEdgeLabels = computed(() => {
 
 /** Where the time (left) and beat (right) labels over the chart lie, in pane pixels. */
 export const edgeLabelBoxes = computed(() => {
-    const boxes: { left: LabelBox[]; right: LabelBox[] } = { left: [], right: [] }
+    const boxes: SideBoxes = { left: [], right: [] }
     const add = ({ time, beat }: RowBoxes, hidden = { time: false, beat: false }) => {
         if (!hidden.time) boxes.left.push(time)
         if (!hidden.beat) boxes.right.push(beat)
@@ -103,9 +109,17 @@ export const edgeLabelBoxes = computed(() => {
 /** A line's ends across the pane. */
 export type LineSpan = { left: number; right: number }
 
-/** Where a line across the pane at `y` stops, an inset short of the labels it meets, in pane pixels. */
-export const lineSpanAt = (y: number): LineSpan => {
-    const { left, right } = edgeLabelBoxes.value
+/** Labels on either side of a line, by the side it stops at. */
+export type SideBoxes = { left: LabelBox[]; right: LabelBox[] }
+
+/**
+ * Where a line across the pane at `y` stops, an inset short of the edge labels and
+ * the `other` labels it meets, in pane pixels.
+ */
+export const lineSpanAt = (y: number, other?: SideBoxes): LineSpan => {
+    const edges = edgeLabelBoxes.value
+    const left = other ? [...edges.left, ...other.left] : edges.left
+    const right = other ? [...edges.right, ...other.right] : edges.right
     const inset = edgeLabelInset.value
     // Lines are 2 pixels wide.
     const meets = (box: LabelBox) => box.top - 1 < y && y < box.bottom + 1

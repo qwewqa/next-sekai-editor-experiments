@@ -172,9 +172,10 @@ test('holding a finger still during a mouse drag opens no menu', async ({ page }
 /** The hover labels, the top edge labels, and whether the grid and overlay know the hover. */
 const hoverState = (page: Page) =>
     page.evaluate(async () => {
-        const { edgeLabelBoxes, hoverLabelCenter } = await window.editorTest.appImport<
-            typeof import('../../src/editor/edgeLabels')
-        >('/src/editor/edgeLabels.ts')
+        const { edgeLabelBoxes, hoverFigureOffset, hoverLabelCenter } =
+            await window.editorTest.appImport<typeof import('../../src/editor/edgeLabels')>(
+                '/src/editor/edgeLabels.ts',
+            )
         const visible = (selector: string) =>
             [...document.querySelectorAll(selector)].map(
                 (span) => getComputedStyle(span).visibility === 'visible',
@@ -191,7 +192,9 @@ const hoverState = (page: Page) =>
             gridSkipsHover: [left, right].map((boxes) =>
                 boxes.some(
                     ({ top, bottom }) =>
-                        Math.abs((top + bottom) / 2 - hoverLabelCenter.value) < 0.01,
+                        Math.abs(
+                            (top + bottom) / 2 - hoverLabelCenter.value + hoverFigureOffset.value,
+                        ) < 0.01,
                 ),
             ),
             drawn,

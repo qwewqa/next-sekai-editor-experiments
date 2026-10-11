@@ -38,10 +38,23 @@ import {
     RANGE_LABEL_HEIGHT,
     type OffscreenNoteGroup,
 } from '../offscreenNotes'
-import { edgeLabelBoxes, hoverLabelCenter, lineSpanAt, type LineSpan } from '../edgeLabels'
+import {
+    edgeLabelBoxes,
+    hoverLabelCenter,
+    lineSpanAt,
+    type LineSpan,
+    type SideBoxes,
+} from '../edgeLabels'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
-import { coveredLabelYs, drawGrid, gridLabels, timeScaleEdgeLabelYs } from './grid'
+import {
+    bpmLabelYs,
+    coveredLabelYs,
+    drawGrid,
+    gridLabels,
+    isNearLabel,
+    timeScaleEdgeLabelYs,
+} from './grid'
 import { chartBackground } from './nameColors'
 import { createLabelSprites } from './labelSprites'
 import { createNameLayer, placeNames } from './names'
@@ -296,6 +309,41 @@ const ghostBpmYs = computed<number[]>((previous) => {
     return previous && sameYs(previous, ys) ? previous : ys
 })
 
+// The labels past lanes -6.1 and 6.1 that Basic time lines stop short of, in pane pixels.
+const columnBoxes = computed<SideBoxes | undefined>(() => {
+    if (composed.value) return
+    const bounds = viewBox.value
+    const scale = view.w / bounds.w
+    const covered = coveredYs.value
+    // BPM labels, drag ghosts' too, take the beat labels' place.
+    const bpmYs = [
+        ...(view.visibilities.bpm || settings.showOtherObjects
+            ? bpmLabelYs(sceneState.value, beats.value, bounds.ups)
+            : []),
+        ...ghostBpmYs.value,
+    ]
+    const beatYs = [...bpmYs, ...covered.right]
+    // Half a label's size above and below: 0.4 for the grid's, 0.5 for BPMs'.
+    const box = (y: number, half: number, left: number, right: number) => ({
+        left: (left - bounds.l) * scale,
+        right: (right - bounds.l) * scale,
+        top: (y - half - bounds.t) * scale,
+        bottom: (y + half - bounds.t) * scale,
+    })
+    const { left, right } = labels.value
+    return {
+        left: left
+            .filter(({ y }) => !isNearLabel(covered.left, y))
+            .map(({ y }) => box(y, 0.2, -Infinity, -6.1)),
+        right: [
+            ...right
+                .filter(({ y }) => !isNearLabel(beatYs, y))
+                .map(({ y }) => box(y, 0.2, 6.1, Infinity)),
+            ...bpmYs.map((y) => box(y, 0.25, 6.1, Infinity)),
+        ],
+    }
+})
+
 const drawEntity = (
     context: EditorDrawContext,
     entity: Entity,
@@ -325,11 +373,33 @@ const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined
     ctx.lineTo(ends.right, y)
 }
 
+// The hover line's dash and gap, in pixels.
+const DASH = 6
+const GAP = 4
+
+// Two halves, each starting on a dash at its end, meet in one middle dash up to two dashes long.
+const traceDashedTimeLine = (
+    ctx: CanvasRenderingContext2D,
+    ends: LineSpan | undefined,
+    y: number,
+    scale: number,
+) => {
+    if (!ends) return
+    const length = (ends.right - ends.left) * scale
+    const cycles = Math.max(0, Math.ceil((length - 2 * DASH) / (DASH + GAP)))
+    const middle = length - cycles * (DASH + GAP)
+    const seam = ends.left + (Math.floor(cycles / 2) * (DASH + GAP) + middle / 2) / scale
+    ctx.moveTo(ends.left, y)
+    ctx.lineTo(seam, y)
+    ctx.moveTo(ends.right, y)
+    ctx.lineTo(seam, y)
+}
+
 // Equal ends keep their object, so hovering redraws the chart only when the cursor line changes.
 const cursorLineEnds = computed<LineSpan | undefined>((previous) => {
     const inputs = contextInputs.value
     const y = (view.cursorTime * inputs.ups - inputs.bounds.t) * inputs.scale
-    const ends = timeLineEnds(inputs, 7, lineSpanAt(y))
+    const ends = timeLineEnds(inputs, 7, lineSpanAt(y, columnBoxes.value))
     return previous?.left === ends?.left && previous?.right === ends?.right ? previous : ends
 })
 
@@ -463,7 +533,7 @@ watchEffect(
         const selection = view.selection
         const hoverEnds = view.isHoverHidden
             ? undefined
-            : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value))
+            : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value, columnBoxes.value))
         const hover = view.isHoverHidden ? undefined : view.hoverTime
         overlayFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
@@ -514,7 +584,7 @@ watchEffect(
             ctx.save()
             ctx.strokeStyle = '#fff'
             ctx.fillStyle = '#fff'
-            ctx.setLineDash([6 / inputs.scale, 4 / inputs.scale])
+            ctx.setLineDash([DASH / inputs.scale, GAP / inputs.scale])
             ctx.globalAlpha = 0.5
             for (const entities of [hovered, selected]) {
                 for (const entity of entities) {
@@ -540,7 +610,7 @@ watchEffect(
             }
             if (hover !== undefined) {
                 ctx.beginPath()
-                traceTimeLine(ctx, hoverEnds, hover * inputs.ups)
+                traceDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
                 ctx.stroke()
             }
             ctx.restore()
