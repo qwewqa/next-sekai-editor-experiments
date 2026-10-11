@@ -1,8 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
-import { installCanvasCounters, installEditorFixture, useTool } from './editorFixture'
+import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// The hover highlights exactly what a tap there would act on.
+// The hover highlights exactly what a tap there would act on. Each test plays hundreds of hover and tap
+// rounds, so each round takes few round trips.
+test.describe.configure({ timeout: 90_000 })
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -48,6 +50,8 @@ const showStack = (page: Page) =>
         view.lane = 0
     })
 
+type Which = 'none' | 'inStack' | 'outside'
+
 const keys = (page: Page, of: 'hovered' | 'selected') =>
     page.evaluate((of) => {
         const { view, history } = window.editorTest
@@ -57,31 +61,44 @@ const keys = (page: Page, of: 'hovered' | 'selected') =>
             .sort()
     }, of)
 
-const points = async (page: Page) => {
-    const result = []
-    for (let lane = -2.5; lane <= 3.5; lane += 0.35)
-        for (const beat of [3.9, 3.97, 4, 4.03, 4.08, 4.12])
-            result.push(
-                await page.evaluate(({ lane, beat }) => window.editorTest.point(lane, beat), {
-                    lane,
-                    beat,
-                }),
-            )
-    return result
-}
+const points = (page: Page) =>
+    page.evaluate(() => {
+        const result = []
+        for (let lane = -2.5; lane <= 3.5; lane += 0.35)
+            for (const beat of [3.9, 3.97, 4, 4.03, 4.08, 4.12])
+                result.push(window.editorTest.point(lane, beat))
+        return result
+    })
 
-const select = (page: Page, which: 'none' | 'inStack' | 'outside') =>
-    page.evaluate((which) => {
-        const { history } = window.editorTest
-        const notes = [...history.state.value.store.slides.note.values()].flat()
-        history.replaceState({
-            ...history.state.value,
-            selectedEntities:
-                which === 'none'
-                    ? []
-                    : notes.filter((note) => note.left === (which === 'inStack' ? -1 : 2.3)),
-        })
-    }, which)
+/** Switches to a tool if given and sets the selection; returns the selection it replaces, the last tap's. */
+const select = (page: Page, which: Which, tool?: string) =>
+    page.evaluate(
+        async ({ which, tool }) => {
+            const { history, appImport } = window.editorTest
+            if (tool) {
+                const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                    '/src/editor/tools/index.ts',
+                )
+                switchToolTo(tool as never)
+            }
+            const before = history.state.value.selectedEntities
+                .map(
+                    (entity) =>
+                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
+                )
+                .sort()
+            const notes = [...history.state.value.store.slides.note.values()].flat()
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities:
+                    which === 'none'
+                        ? []
+                        : notes.filter((note) => note.left === (which === 'inStack' ? -1 : 2.3)),
+            })
+            return before
+        },
+        { which, tool },
+    )
 
 const hoverAt = async (page: Page, point: { x: number; y: number }) => {
     await page.mouse.move(point.x - 1, point.y)
@@ -92,34 +109,35 @@ test('Select: the hover is what a tap selects, cycling, with or without a select
     page,
 }) => {
     await showStack(page)
-    await useTool(page, 'select')
+    await select(page, 'none', 'select')
     let checked = 0
+    // Each tap's selection is read as the next round sets its own.
+    let check: ((selected: string[]) => void) | undefined
     for (const point of await points(page)) {
         for (const which of ['none', 'inStack', 'outside'] as const) {
-            await select(page, which)
+            check?.(await select(page, which))
             await hoverAt(page, point)
             const hovered = await keys(page, 'hovered')
-            await page.mouse.down()
-            await page.mouse.up()
-            const selected = await keys(page, 'selected')
-            expect(selected, `${which} at ${point.x},${point.y}`).toEqual(hovered)
+            await page.mouse.click(point.x, point.y)
+            check = (selected) =>
+                expect(selected, `${which} at ${point.x},${point.y}`).toEqual(hovered)
             if (hovered.length) checked++
         }
     }
+    check?.(await keys(page, 'selected'))
     expect(checked).toBeGreaterThan(30)
 })
 
 test('Select with Ctrl: the hover is every object a Ctrl-tap adds or removes', async ({ page }) => {
     await showStack(page)
-    await useTool(page, 'select')
+    await select(page, 'none', 'select')
     for (const point of (await points(page)).filter((_, i) => i % 3 === 0)) {
         await select(page, 'outside')
         await page.keyboard.down('Control')
         await hoverAt(page, point)
         const hovered = await keys(page, 'hovered')
         const before = await keys(page, 'selected')
-        await page.mouse.down()
-        await page.mouse.up()
+        await page.mouse.click(point.x, point.y)
         await page.keyboard.up('Control')
         const after = await keys(page, 'selected')
         if (!hovered.length) {
@@ -134,45 +152,73 @@ test('Select with Ctrl: the hover is every object a Ctrl-tap adds or removes', a
     }
 })
 
-test('Eraser and Note tool: the hover is what a tap removes or selects', async ({ page }) => {
+/** The objects not in `all`, and those of `all` gone; undoes the tap if it changed any. Without `all`, every object. */
+const changed = (page: Page, all?: string[]) =>
+    page.evaluate((all) => {
+        const { store, history } = window.editorTest
+        const now = [...store.getAllEntities()]
+            .filter((entity) => entity.type !== 'bpm' && !entity.type.startsWith('connector'))
+            .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
+        const selected = history.state.value.selectedEntities
+            .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
+            .sort()
+        // As multisets: an add can repeat an object's beat and lane.
+        const minus = (a: string[], b: string[]) => {
+            const rest = [...b]
+            return a.filter((name) => {
+                const i = rest.indexOf(name)
+                if (i >= 0) rest.splice(i, 1)
+                return i < 0
+            })
+        }
+        const added = minus(now, all ?? []).sort()
+        const removed = all ? minus(all, now) : []
+        if (all && (added.length || removed.length)) history.undoState()
+        return { added, removed, selected }
+    }, all)
+
+test('Eraser and Note tool: the hover is what a tap removes or selects, and the add ghost what it adds', async ({
+    page,
+}) => {
     await showStack(page)
-    const notesKeys = () =>
-        page.evaluate(() =>
-            [...window.editorTest.store.getAllEntities()]
-                .filter((entity) => entity.type !== 'bpm')
-                .map(
-                    (entity) =>
-                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
-                )
-                .filter((name) => !name.startsWith('connector'))
-                .sort(),
-        )
-    const all = await notesKeys()
+    const all = (await changed(page)).added
+    let added = 0
     for (const point of (await points(page)).filter((_, i) => i % 2 === 0)) {
-        await useTool(page, 'eraser')
         for (const which of ['none', 'inStack'] as const) {
-            await select(page, which)
+            await select(page, which, 'eraser')
             await hoverAt(page, point)
             const hovered = await keys(page, 'hovered')
-            await page.mouse.down()
-            await page.mouse.up()
-            const left = await notesKeys()
+            await page.mouse.click(point.x, point.y)
             expect(
-                all.filter((name) => !left.includes(name)),
+                (await changed(page, all)).removed,
                 `eraser ${which} at ${point.x},${point.y}`,
             ).toEqual(hovered)
-            if (hovered.length) await page.evaluate(() => window.editorTest.history.undoState())
         }
-        await useTool(page, 'note')
-        await select(page, 'none')
+        await select(page, 'none', 'note')
         await hoverAt(page, point)
-        const hovered = await keys(page, 'hovered')
-        await page.mouse.down()
-        await page.mouse.up()
-        if (hovered.length) expect(await keys(page, 'selected')).toEqual(hovered)
-        else await page.evaluate(() => window.editorTest.history.undoState())
-        await select(page, 'none')
+        const shown = await page.evaluate(() => {
+            const { view } = window.editorTest
+            const key = (entity: (typeof view.entities.hovered)[number]) =>
+                `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`
+            return {
+                hovered: view.entities.hovered.map(key).sort(),
+                ghost: view.entities.creating.map(key).sort(),
+            }
+        })
+        await page.mouse.click(point.x, point.y)
+        const result = await changed(page, all)
+        if (shown.hovered.length)
+            expect(result, `note at ${point.x},${point.y}`).toEqual({
+                added: [],
+                removed: [],
+                selected: shown.hovered,
+            })
+        else {
+            expect(result.added, `note add at ${point.x},${point.y}`).toEqual(shown.ghost)
+            added++
+        }
     }
+    expect(added).toBeGreaterThan(0)
 })
 
 test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page }) => {
@@ -224,16 +270,16 @@ test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page
                 })
         return result
     })
+    let check: ((selected: string[]) => void) | undefined
     for (const point of grid) {
         for (const which of ['none', 'inStack', 'outside'] as const) {
-            await select(page, which)
+            check?.(await select(page, which))
             await hoverAt(page, point)
             const hovered = await keys(page, 'hovered')
-            await page.mouse.down()
-            await page.mouse.up()
-            expect(await keys(page, 'selected'), `${which} at ${point.x},${point.y}`).toEqual(
-                hovered,
-            )
+            await page.mouse.click(point.x, point.y)
+            check = (selected) =>
+                expect(selected, `${which} at ${point.x},${point.y}`).toEqual(hovered)
         }
     }
+    check?.(await keys(page, 'selected'))
 })
