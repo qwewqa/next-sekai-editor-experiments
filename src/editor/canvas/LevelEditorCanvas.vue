@@ -38,6 +38,7 @@ import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndic
 import {
     groupOffscreenNotes,
     isSameOffscreenGroups,
+    offscreenSlotNear,
     RANGE_LABEL_HEIGHT,
     type OffscreenNoteGroup,
 } from '../offscreenNotes'
@@ -189,21 +190,36 @@ const offscreenSideNotes = computed(() => {
         return right < 0 || left > width ? [{ ...note, left, right }] : []
     })
 })
-// Badges are placed from time 0's pane y, so they scroll with the chart; whole device pixels keep them sharp.
+// The pane y badges were last placed from.
+let lastOffscreenAnchor = 0
+// The time badges are placed from, so they scroll with the chart. A zoom moves it to a slot near the pane's
+// middle, from where badges stay put rather than move against their notes.
+const offscreenOrigin = computed<{ time: number; pixels: number }>((previous) => {
+    const { ups, t, w } = viewBox.value
+    const scale = view.w / w
+    const pixels = ups * scale
+    if (previous?.pixels === pixels) return previous
+    if (!previous) return { time: 0, pixels }
+    const y = offscreenSlotNear(lastOffscreenAnchor, view.h / 2)
+    return { time: (y / scale + t) / ups, pixels }
+})
+// Whole device pixels keep the badges sharp.
 const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
-    return Math.round(-viewBox.value.t * (view.w / viewBox.value.w) * ratio) / ratio
+    const { time, pixels } = offscreenOrigin.value
+    const { t, w } = viewBox.value
+    lastOffscreenAnchor = Math.round((time * pixels - t * (view.w / w)) * ratio) / ratio
+    return lastOffscreenAnchor
 })
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
-    const bounds = viewBox.value
-    const scale = view.w / bounds.w
+    const { time: origin, pixels } = offscreenOrigin.value
     const anchor = offscreenAnchor.value
     const notes = offscreenSideNotes.value.map(({ entity, left, right, time, ...note }) => ({
         ...note,
         left,
         right,
-        // From time 0, so notes keep their slots while scrolling.
-        y: time * bounds.ups * scale,
+        // From the origin, so notes keep their slots while scrolling.
+        y: (time - origin) * pixels,
         // Dimmed notes are counted but not selectable.
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))

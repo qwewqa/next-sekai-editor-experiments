@@ -30,9 +30,13 @@ const SLOT = 28
 // Badge height; badges closer than this would overlap.
 const BADGE = 24
 
+/** A pane y on the slot lattice through `anchor`, nearest `y`: where badges re-anchor without moving. */
+export const offscreenSlotNear = (anchor: number, y: number) =>
+    anchor + SLOT * Math.round((y - anchor) / SLOT)
+
 /**
  * Badges sit in slots fixed to the content at `anchor` (a pane y), so they scroll with their notes.
- * Slots within a badge of an edge share one badge held there; notes only ever move to it with the scroll.
+ * Slots within a slot of an edge share one badge held there; notes only ever move to it with the scroll.
  */
 export const groupOffscreenNotes = <T>(
     notes: readonly OffscreenNotePosition<T>[],
@@ -45,17 +49,17 @@ export const groupOffscreenNotes = <T>(
     const first = top + inset
     const last = bottom - inset
     if (!(width > 0) || last - first < BADGE) return []
-    // Too short for two slots: one fixed to the pane, which scrolling can't empty.
-    const short = last - first < 2 * SLOT
+    // No room for a slot between the two held badges: one fixed to the pane, which scrolling can't empty.
+    const short = last - first < 3 * SLOT
+    // Slot centres past these are held at the top and bottom.
+    const holdTop = first + SLOT / 2 + SLOT
+    const holdBottom = last - SLOT / 2 - SLOT
+    // A note counts until its slot leaves the pane, at whole slots from the holds: as one slot leaves, another is held.
+    const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
+    const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
     const groups = new Map<string, OffscreenNoteGroup<T>>()
     for (const note of notes) {
-        if (
-            !Number.isFinite(note.left) ||
-            !Number.isFinite(note.right) ||
-            !Number.isFinite(note.y) ||
-            anchor + note.y < top ||
-            anchor + note.y > bottom
-        )
+        if (!Number.isFinite(note.left) || !Number.isFinite(note.right) || !Number.isFinite(note.y))
             continue
         const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
         if (!side) continue
@@ -63,17 +67,17 @@ export const groupOffscreenNotes = <T>(
         let y = (slot + 0.5) * SLOT
         let fixed = short
         if (short) {
+            if (anchor + note.y < top || anchor + note.y > bottom) continue
             slot = 0
             y = (first + last) / 2
         } else {
-            // Held at the nearer edge whose badge it would overlap.
-            const toTop = anchor + y - (first + SLOT / 2)
-            const toBottom = last - SLOT / 2 - (anchor + y)
-            if (toTop < BADGE && toTop <= toBottom) {
+            const center = anchor + y
+            if (center < exitTop || center > exitBottom) continue
+            if (center < holdTop) {
                 slot = -Infinity
                 y = first + SLOT / 2
                 fixed = true
-            } else if (toBottom < BADGE) {
+            } else if (center > holdBottom) {
                 slot = Infinity
                 y = last - SLOT / 2
                 fixed = true
@@ -129,7 +133,8 @@ export const isSameOffscreenGroups = <T>(
 // Badge width estimate (inset, chevron, digits) with slack; at least a touch target.
 export const offscreenBadgeHitWidth = (count: number) => Math.max(44, 40 + 7 * String(count).length)
 
-// Selectable badge whose hit area (slot band, out from the edge) holds a pane point; the nearest where bands meet.
+// The badge nearest a pane point in its side's hit areas (slot bands, out from the edge), if it has selectable
+// notes. Held badges' areas reach in to the first slot not held, so adjacent badges' areas meet.
 export const hitOffscreenGroup = <T>(
     groups: readonly OffscreenNoteGroup<T>[],
     x: number,
@@ -139,16 +144,27 @@ export const hitOffscreenGroup = <T>(
 ) => {
     let hit: OffscreenNoteGroup<T> | undefined
     let distance = Infinity
+    let inside = false
     for (const group of groups) {
-        const offset = Math.abs(y - (group.fixed ? group.y : anchor + group.y))
-        if (!group.targets.length || offset > group.spacing / 2 || offset >= distance) continue
         const reach = offscreenBadgeHitWidth(group.count)
-        if (group.side === 'left' ? x >= 0 && x <= reach : x <= width && x >= width - reach) {
+        if (group.side === 'left' ? x < 0 || x > reach : x > width || x < width - reach) continue
+        const offset = y - (group.fixed ? group.y : anchor + group.y)
+        const above =
+            group.slot === Infinity
+                ? group.y - (anchor + SLOT * Math.floor((group.y - SLOT / 2 - anchor) / SLOT))
+                : group.spacing / 2
+        const below =
+            group.slot === -Infinity
+                ? anchor + SLOT * Math.ceil((group.y + SLOT / 2 - anchor) / SLOT) - group.y
+                : group.spacing / 2
+        if (offset >= -above && offset <= below) inside = true
+        if (Math.abs(offset) < distance) {
             hit = group
-            distance = offset
+            distance = Math.abs(offset)
         }
     }
-    return hit
+    // A dimmed badge still takes its own area.
+    return inside && hit?.targets.length ? hit : undefined
 }
 
 // Ctrl removes the targets when all are selected and adds them otherwise.

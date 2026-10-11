@@ -23,6 +23,7 @@ import {
 import {
     groupOffscreenNotes,
     isSameOffscreenGroups,
+    offscreenSlotNear,
     offscreenBadgeHitWidth,
     type OffscreenNoteGroup,
 } from '../offscreenNotes'
@@ -253,21 +254,35 @@ const restoreContext = () => {
     redrawVersion.value++
 }
 const hovered = ref<NoteEntity>()
-// Badges are placed from elevation 0's pane y, so they pan with the notes; whole device pixels keep them sharp.
+// The pane y badges were last placed from.
+let lastOffscreenAnchor = 0
+// The elevation badges are placed from, so they pan with the notes. A zoom moves it to a slot near the pane's
+// middle, from where badges stay put rather than move against their notes.
+const offscreenOrigin = computed<{ elevation: number; scale: number }>((previous) => {
+    const { yAt, elevationScale: scale } = elevationLayout.value
+    if (previous?.scale === scale) return previous
+    if (!previous) return { elevation: 0, scale }
+    const y = offscreenSlotNear(lastOffscreenAnchor, elevationBounds.h / 2)
+    return { elevation: (yAt(0) - y) / scale, scale }
+})
+// Whole device pixels keep the badges sharp.
 const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
-    return Math.round(elevationLayout.value.yAt(0) * ratio) / ratio
+    const y = elevationLayout.value.yAt(offscreenOrigin.value.elevation)
+    lastOffscreenAnchor = Math.round(y * ratio) / ratio
+    return lastOffscreenAnchor
 })
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const selected = new Set(elevationState.value.selectedEntities)
-    const { rows, elevationScale } = elevationLayout.value
+    const { rows } = elevationLayout.value
+    const { elevation: origin, scale } = offscreenOrigin.value
     const anchor = offscreenAnchor.value
     const groups = groupOffscreenNotes(
         rows.map((row) => ({
             left: row.x - row.w / 2,
             right: row.x + row.w / 2,
-            // From elevation 0, so notes keep their slots while panning.
-            y: -row.elevation * elevationScale,
+            // From the origin, so notes keep their slots while panning.
+            y: -(row.elevation - origin) * scale,
             highlighted: selected.has(row.note),
             opacity: 1,
             // A pending draft's notes are picked as the committed ones they show.

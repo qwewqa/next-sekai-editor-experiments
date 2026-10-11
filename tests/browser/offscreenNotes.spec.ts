@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput, useTool } from './editorFixture'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -491,10 +491,10 @@ const expectOnlyWithScroll = (
     let previous: number | undefined
     let hops = 0
     for (const { note, badge } of rows) {
-        // Shown while the note is in the pane.
+        // Shown while the note is in the pane, and until its slot leaves it.
         if (note >= pane.top + 2 && note <= pane.height - 2)
             expect(badge, `note at ${note}`).not.toBeNull()
-        if (note < pane.top - 2 || note > pane.height + 2)
+        if (note < pane.top - 56 - 2 || note > pane.height + 56 + 2)
             expect(badge, `note at ${note}`).toBeNull()
         if (badge === null) continue
         expect(badge).toBeGreaterThanOrEqual(pane.first + 14 - 1)
@@ -502,7 +502,7 @@ const expectOnlyWithScroll = (
         if (previous !== undefined) {
             const move = (badge - previous) * direction
             expect(move, `note at ${note}`).toBeGreaterThanOrEqual(0)
-            expect(move, `note at ${note}`).toBeLessThanOrEqual(24 + 3)
+            expect(move, `note at ${note}`).toBeLessThanOrEqual(28 + 3)
             if (move > 3) hops++
         }
         previous = badge
@@ -526,10 +526,10 @@ for (const layout of ['basic', 'composed'] as const) {
         }, layout)
         const height = await page.evaluate(() => window.editorTest.view.h)
         for (const [from, to] of [
-            [200, -10],
-            [-10, 200],
-            [height - 200, height + 10],
-            [height + 10, height - 200],
+            [200, -70],
+            [-70, 200],
+            [height - 200, height + 70],
+            [height + 70, height - 200],
         ] as const) {
             const rows = await page.evaluate(
                 async ({ from, to }) => {
@@ -639,10 +639,10 @@ test('elevation editor badges of elevation 0 notes move only with the scroll', a
     const header = (await page.locator('.elevation-editor .elevation-header').boundingBox())!
     const canvas = (await page.locator('.elevation-canvas').boundingBox())!
     for (const [from, to] of [
-        [canvas.height / 2, -10],
-        [-10, canvas.height / 2],
-        [canvas.height / 2, canvas.height + 10],
-        [canvas.height + 10, canvas.height / 2],
+        [canvas.height / 2, -70],
+        [-70, canvas.height / 2],
+        [canvas.height / 2, canvas.height + 70],
+        [canvas.height + 70, canvas.height / 2],
     ] as const) {
         const rows = await page.evaluate(
             async ({ from, to }) => {
@@ -681,10 +681,15 @@ test('elevation editor badges of elevation 0 notes move only with the scroll', a
             first,
             last: canvas.height,
         })
-        // Riding, the badge stays on its slot just below the note; held, it's at the edge.
-        for (const { badge, offset } of rows)
-            if (badge !== null && badge > first + 14 + 0.5 && badge < canvas.height - 14 - 0.5)
-                expect(Math.abs(offset - 14)).toBeLessThanOrEqual(0.5)
+        // Riding, the badge stays on the note's slot; held, it's at the edge.
+        const riding = rows.flatMap(({ badge, offset }) =>
+            badge !== null && badge > first + 14 + 0.5 && badge < canvas.height - 14 - 0.5
+                ? [offset]
+                : [],
+        )
+        expect(riding.length).toBeGreaterThan(10)
+        expect(Math.max(...riding) - Math.min(...riding)).toBeLessThanOrEqual(1)
+        for (const offset of riding) expect(Math.abs(offset)).toBeLessThanOrEqual(14.5)
     }
 })
 
@@ -838,3 +843,417 @@ for (const pane of ['basic', 'composed', 'elevation'] as const) {
         }
     })
 }
+
+type ZoomFrame = { notes: number[]; badges: number[] }
+
+// Every frame: the pane ys of the notes off the left side, in order, and of the left badges.
+const recordZoom = (page: Page, pane: 'chart' | 'elevation', beats: number[] = []) =>
+    page.evaluate(
+        async ({ pane, beats }) => {
+            const { appImport, view, settings } = window.editorTest
+            const { elevationLayout } = await appImport<
+                typeof import('../../src/editor/elevation/scene')
+            >('/src/editor/elevation/scene.ts')
+            const root = pane === 'chart' ? '.editor-chart ~ div' : '.elevation-canvas ~ div'
+            const frames: ZoomFrame[] = []
+            let recording = true
+            const record = () => {
+                if (!recording) return
+                const top = document.querySelector(root)!.getBoundingClientRect().top
+                frames.push({
+                    // 120 BPM: beat b at b / 2 s.
+                    notes:
+                        pane === 'chart'
+                            ? beats.map(
+                                  (beat) => view.h / 2 - (beat / 2 - view.time) * settings.pps,
+                              )
+                            : elevationLayout.value.rows
+                                  .filter((row) => row.x + row.w / 2 < 0)
+                                  .map((row) => row.y),
+                    badges: [
+                        ...document.querySelectorAll<HTMLElement>(
+                            `${root} .offscreen-note-indicator[data-side="left"]`,
+                        ),
+                    ].map((badge) => {
+                        const { top: y, height } = badge.getBoundingClientRect()
+                        return y + height / 2 - top
+                    }),
+                })
+                requestAnimationFrame(record)
+            }
+            requestAnimationFrame(record)
+            Object.assign(window, {
+                stopZoom: () => {
+                    recording = false
+                    return frames
+                },
+            })
+        },
+        { pane, beats },
+    )
+
+// Notes clear of the edges whose badge, the one drawn nearest, moves against them or while they hold still.
+const zoomProblems = async (page: Page) => {
+    const frames = await page.evaluate(() =>
+        (window as unknown as { stopZoom: () => ZoomFrame[] }).stopZoom(),
+    )
+    const height = await page.evaluate(() => window.editorTest.view.h)
+    const nearest = (badges: number[], y: number) =>
+        badges.reduce<number | undefined>(
+            (best, badge) =>
+                best === undefined || Math.abs(badge - y) < Math.abs(best - y) ? badge : best,
+            undefined,
+        )
+    const problems: string[] = []
+    let moving = 0
+    for (let i = 1; i < frames.length; i++) {
+        const [a, b] = [frames[i - 1]!, frames[i]!]
+        if (a.notes.length !== b.notes.length || a.notes.every((y, k) => y === b.notes[k])) continue
+        moving++
+        a.notes.forEach((from, k) => {
+            const to = b.notes[k]!
+            if ([from, to].some((y) => y < 90 || y > Math.min(height, 600) - 90)) return
+            const [badgeFrom, badgeTo] = [nearest(a.badges, from), nearest(b.badges, to)]
+            if (badgeFrom === undefined || badgeTo === undefined) return
+            if (Math.abs(badgeFrom - from) > 20 || Math.abs(badgeTo - to) > 20) return
+            const [note, badge] = [to - from, badgeTo - badgeFrom]
+            if (
+                Math.abs(badge) > 0.5 &&
+                (Math.abs(note) < 0.5 || Math.sign(badge) !== Math.sign(note))
+            )
+                problems.push(`frame ${i}: note ${from} -> ${to}, badge ${badgeFrom} -> ${badgeTo}`)
+        })
+    }
+    return { moving, problems }
+}
+
+test.describe('zooming', () => {
+    test.use({ hasTouch: true })
+
+    // Notes left of the lanes at many beats around the view, apart by more than a slot.
+    const beats = Array.from({ length: 24 }, (_, i) => 6 + i * 0.5 + (i % 3) * 0.13)
+
+    for (const layout of ['basic', 'composed'] as const)
+        for (const input of ['ctrl-wheel', 'pinch'] as const)
+            test(`${layout}: badges move only with their notes under a ${input} zoom`, async ({
+                page,
+            }) => {
+                await page.evaluate(
+                    ({ layout, beats }) => {
+                        const { fixtures, show, view, settings } = window.editorTest
+                        const base = fixtures.interaction.slides[0]![0]!
+                        show({
+                            ...fixtures.interaction,
+                            slides: beats.map((beat) => [
+                                { ...base, beat, left: -40, size: 2, elevation: 2 },
+                            ]),
+                        })
+                        view.layout = layout
+                        settings.pps = 300
+                        view.lane = 0
+                        // Time 0 well above the pane, so zooming moves it far.
+                        view.time = 6
+                    },
+                    { layout, beats },
+                )
+                const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+                const [x, y] = [chart.x + chart.width / 2, chart.y + chart.height / 2]
+                await page.mouse.move(x, y)
+                await recordZoom(page, 'chart', beats)
+                if (input === 'ctrl-wheel') {
+                    await page.keyboard.down('Control')
+                    for (let i = 0; i < 12; i++) {
+                        await page.mouse.wheel(0, i < 6 ? -40 : 40)
+                        await page.waitForTimeout(60)
+                    }
+                    await page.keyboard.up('Control')
+                } else {
+                    const touch = await touchInput(page)
+                    await touch('touchStart', [
+                        [x, y - 60],
+                        [x, y + 60],
+                    ])
+                    for (let step = 1; step <= 30; step++) {
+                        const distance = 60 + (step <= 15 ? step : 30 - step) * 6
+                        await touch('touchMove', [
+                            [x, y - distance],
+                            [x, y + distance],
+                        ])
+                        await page.waitForTimeout(16)
+                    }
+                    await touch('touchEnd', [])
+                }
+                await page.waitForTimeout(300)
+                const { moving, problems } = await zoomProblems(page)
+                expect(moving).toBeGreaterThan(5)
+                expect(problems).toEqual([])
+            })
+
+    for (const input of ['ctrl-wheel', 'scale'] as const)
+        test(`elevation editor: badges move only with their notes under a ${input} zoom`, async ({
+            page,
+        }) => {
+            await page.evaluate(() => {
+                const { fixtures, show, history } = window.editorTest
+                const base = fixtures.interaction.slides[0]![0]!
+                show(
+                    {
+                        ...fixtures.interaction,
+                        slides: [
+                            ...Array.from({ length: 16 }, (_, i) => [
+                                { ...base, beat: 3, left: -40, size: 2, elevation: 1 + i * 0.37 },
+                            ]),
+                            [{ ...base, beat: 3, left: 0, size: 2, elevation: 2 }],
+                        ],
+                    },
+                    1.5,
+                )
+                const current = history.state.value
+                history.replaceState({
+                    ...current,
+                    selectedEntities: [...current.store.slides.note.values()].at(-1)!,
+                })
+            })
+            await page.keyboard.press('t')
+            const canvas = page.locator('.elevation-canvas')
+            await expect(
+                page.locator('.elevation-editor .offscreen-note-indicator').first(),
+            ).toBeVisible()
+            const box = (await canvas.boundingBox())!
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+            await recordZoom(page, 'elevation')
+            if (input === 'ctrl-wheel') {
+                await page.keyboard.down('Control')
+                for (let i = 0; i < 12; i++) {
+                    await page.mouse.wheel(0, i < 6 ? -40 : 40)
+                    await page.waitForTimeout(60)
+                }
+                await page.keyboard.up('Control')
+            } else
+                await page.evaluate(async () => {
+                    const { elevationViewport } = await window.editorTest.appImport<
+                        typeof import('../../src/editor/elevation/viewport')
+                    >('/src/editor/elevation/viewport.ts')
+                    const scale = elevationViewport.scale
+                    for (let frame = 0; frame < 40; frame++) {
+                        elevationViewport.scale = scale * (1 + 0.005 * frame)
+                        await new Promise((resolve) => requestAnimationFrame(resolve))
+                    }
+                })
+            await page.waitForTimeout(300)
+            const { moving, problems } = await zoomProblems(page)
+            expect(moving).toBeGreaterThan(5)
+            expect(problems).toEqual([])
+        })
+})
+
+test.describe('held badges', () => {
+    // Notes off the left 70 px apart, two or three slots: always one within the hold at each edge.
+    test.beforeEach(async ({ page }) => {
+        await page.evaluate(() => {
+            const { fixtures, show, view, settings } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            settings.pps = 400
+            show(
+                {
+                    ...fixtures.interaction,
+                    bpms: [{ beat: 0, bpm: 120 }],
+                    slides: Array.from({ length: 340 }, (_, i) => [
+                        { ...base, beat: 2 + i * 0.35, left: -40, size: 2, elevation: 2 },
+                    ]),
+                },
+                30,
+            )
+            view.lane = 0
+        })
+        await expect(
+            page.locator('.editor-chart ~ div .offscreen-note-indicator').first(),
+        ).toBeVisible()
+    })
+
+    // Every frame, whether a left badge is held at the top and at the bottom.
+    const recordHeld = (page: Page) =>
+        page.evaluate(() => {
+            const { view } = window.editorTest
+            const frames: { time: number; top: boolean; bottom: boolean }[] = []
+            let recording = true
+            const record = () => {
+                if (!recording) return
+                const ys = [
+                    ...document.querySelectorAll<HTMLElement>(
+                        '.editor-chart ~ div .offscreen-note-indicator[data-side="left"]',
+                    ),
+                ].map((badge) => {
+                    const { top, height } = badge.getBoundingClientRect()
+                    return top + height / 2 - view.y
+                })
+                frames.push({
+                    time: view.time,
+                    top: ys.some((y) => Math.abs(y - 38) < 1),
+                    bottom: ys.some((y) => Math.abs(y - (view.h - 38)) < 1),
+                })
+                requestAnimationFrame(record)
+            }
+            requestAnimationFrame(record)
+            Object.assign(window, {
+                stopHeld: () => {
+                    recording = false
+                    return frames
+                },
+            })
+        })
+    const expectAlwaysHeld = async (page: Page) => {
+        const frames = await page.evaluate(() =>
+            (
+                window as unknown as {
+                    stopHeld: () => { time: number; top: boolean; bottom: boolean }[]
+                }
+            ).stopHeld(),
+        )
+        const moving = frames.filter((frame, i) => i && frame.time !== frames[i - 1]!.time)
+        expect(moving.length).toBeGreaterThan(20)
+        expect(frames.filter((frame) => !frame.top || !frame.bottom)).toEqual([])
+    }
+
+    test('stay on every frame of playback', async ({ page }) => {
+        await recordHeld(page)
+        await page.evaluate(async () => {
+            const player =
+                await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+                    '/src/editor/player.ts',
+                )
+            player.startOrStopPlayer()
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+            player.startOrStopPlayer()
+        })
+        await expectAlwaysHeld(page)
+    })
+
+    for (const edge of ['top', 'bottom'] as const)
+        test(`stay on every frame of a fast pan at the ${edge} edge`, async ({ page }) => {
+            await useTool(page, 'note')
+            const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+            const x = chart.x + chart.width / 2
+            // A new note dragged from the empty lanes, held at the edge.
+            await page.mouse.move(x, chart.y + chart.height / 2)
+            await page.mouse.down()
+            await page.mouse.move(x + 30, chart.y + chart.height / 2 + 30, { steps: 3 })
+            await recordHeld(page)
+            await page.mouse.move(
+                x + 40,
+                edge === 'top' ? chart.y + 2 : chart.y + chart.height - 2,
+                {
+                    steps: 4,
+                },
+            )
+            await page.waitForTimeout(1500)
+            await expectAlwaysHeld(page)
+            await page.mouse.up()
+        })
+})
+
+test('every point down both sides hits the nearest badge, with no gaps between neighbours', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view, settings } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        settings.pps = 300
+        // Clusters and gaps of every few slots, off both sides.
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [{ beat: 0, bpm: 120 }],
+                slides: Array.from({ length: 120 }, (_, i) => [
+                    {
+                        ...base,
+                        beat: 2 + i * 0.13 + (i % 7) * 0.05,
+                        left: i % 2 ? -40 : 40,
+                        size: 2,
+                        elevation: 2,
+                    },
+                ]),
+            },
+            5,
+        )
+        view.lane = 0
+    })
+    await expect(
+        page.locator('.editor-chart ~ div .offscreen-note-indicator').first(),
+    ).toBeVisible()
+    for (const shift of [0, 0.37, 5.81, 13.2, 21.9]) {
+        const problems = await page.evaluate(async (shift) => {
+            const { appImport, view, settings, nextTick } = window.editorTest
+            const { hitOffscreenIndicator } = await appImport<
+                typeof import('../../src/editor/offscreenIndicators')
+            >('/src/editor/offscreenIndicators.ts')
+            view.time = 5 + shift / settings.pps
+            await nextTick()
+            await new Promise((resolve) => requestAnimationFrame(resolve))
+            const problems: string[] = []
+            for (const side of ['left', 'right']) {
+                const x = side === 'left' ? view.x + 8 : view.x + view.w - 8
+                const badges = [
+                    ...document.querySelectorAll<HTMLElement>(
+                        `.editor-chart ~ div .offscreen-note-indicator[data-side="${side}"]`,
+                    ),
+                ]
+                    .map((badge) => {
+                        const { top, height } = badge.getBoundingClientRect()
+                        return { y: top + height / 2, top, bottom: top + height }
+                    })
+                    .sort((a, b) => a.y - b.y)
+                if (badges.length < 4) problems.push(`${side}: ${badges.length} badges`)
+                const nearest = (y: number) =>
+                    badges.reduce((best, badge) =>
+                        Math.abs(badge.y - y) < Math.abs(best.y - y) ? badge : best,
+                    )
+                // The scrolling layer's offset, which riding badges are placed from.
+                const layer = document.querySelector<HTMLElement>(
+                    '.editor-chart ~ div [style*="translateY"]',
+                )!
+                const anchor = Number(/translateY\(([-\d.e+]+)px\)/.exec(layer.style.transform)![1])
+                // The drawn badge a hit test finds.
+                const hitAt = (y: number) => {
+                    const group = hitOffscreenIndicator(x, y)
+                    if (!group) return
+                    const drawn = view.y + (group.fixed ? group.y : anchor + group.y)
+                    return (
+                        badges.find((badge) => Math.abs(badge.y - drawn) < 0.5) ?? {
+                            y: NaN,
+                            top: NaN,
+                            bottom: NaN,
+                        }
+                    )
+                }
+                for (let y = Math.ceil(view.y); y < view.y + view.h; y++) {
+                    const point = y + 0.5
+                    const hit = hitAt(point)
+                    const inside = badges.find(
+                        (badge) => point >= badge.top && point <= badge.bottom,
+                    )
+                    if (hit && Number.isNaN(hit.y))
+                        problems.push(`${side} ${point}: an undrawn badge`)
+                    // Inside a badge, it hits that badge.
+                    if (inside && hit !== inside) problems.push(`${side} ${point}: inside a badge`)
+                    // Anywhere it hits, it's the nearest badge.
+                    if (
+                        hit &&
+                        hit !== nearest(point) &&
+                        Math.abs(hit.y - point) - Math.abs(nearest(point).y - point) > 0.5
+                    )
+                        problems.push(`${side} ${point}: not the nearest`)
+                }
+                // Between neighbours, slots apart with none between, every point hits one of them.
+                for (let i = 1; i < badges.length; i++) {
+                    const [above, below] = [badges[i - 1]!, badges[i]!]
+                    if (below.y - above.y >= 56) continue
+                    for (let y = Math.ceil(above.y); y < below.y; y++)
+                        if (!hitAt(y + 0.5)) problems.push(`${side} ${y + 0.5}: a gap`)
+                }
+            }
+            return problems
+        }, shift)
+        expect(problems).toEqual([])
+    }
+})
