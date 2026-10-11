@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { settings } from '../settings'
 import { hasToolModal } from './toolModals'
 import { view } from './view'
@@ -24,6 +24,9 @@ export const hoverLabelCenter = computed(
 // rounded corners.
 export const lowerEdgeLabelsCovered = computed(() => hasToolModal('main') && view.w < 640)
 
+/** The labels' inset from the pane's sides, which lines across the chart also keep from them. */
+export const edgeLabelInset = ref(4)
+
 const sizes = new WeakMap<Element, Size>()
 let observer: ResizeObserver | undefined
 
@@ -33,9 +36,12 @@ export const observeLabelSize = (element: Element, size: Size) => {
         for (const entry of entries) {
             const target = sizes.get(entry.target)
             const box = entry.borderBoxSize[0]
-            if (!target || !box) continue
+            const content = entry.contentBoxSize[0]
+            if (!target || !box || !content) continue
             target.width = box.inlineSize
             target.height = box.blockSize
+            // Only the outer side is padded.
+            edgeLabelInset.value = box.inlineSize - content.inlineSize
         }
     })
     sizes.set(element, size)
@@ -93,3 +99,18 @@ export const edgeLabelBoxes = computed(() => {
     if (!view.isHoverHidden) add(hover)
     return boxes
 })
+
+/** A line's ends across the pane. */
+export type LineSpan = { left: number; right: number }
+
+/** Where a line across the pane at `y` stops, an inset short of the labels it meets, in pane pixels. */
+export const lineSpanAt = (y: number): LineSpan => {
+    const { left, right } = edgeLabelBoxes.value
+    const inset = edgeLabelInset.value
+    // Lines are 2 pixels wide.
+    const meets = (box: LabelBox) => box.top - 1 < y && y < box.bottom + 1
+    return {
+        left: Math.max(-Infinity, ...left.filter(meets).map((box) => box.right + inset)),
+        right: Math.min(Infinity, ...right.filter(meets).map((box) => box.left - inset)),
+    }
+}
