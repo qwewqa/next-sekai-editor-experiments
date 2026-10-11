@@ -337,6 +337,27 @@ test('further Paste taps while a paste waits for a read are ignored', async ({ p
     expect(await pastedBeats(page)).toEqual([6])
 })
 
+test("the context menu's Paste while a click waits on the same read pastes nothing", async ({
+    page,
+}) => {
+    await clickWaiting(page, 6)
+    await page.evaluate(() => {
+        const { settings, history } = window.editorTest
+        settings.mouseSecondaryTool = 'selectContextMenu'
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+    })
+    // The menu's Paste joins the held read; both would resume when it settles.
+    const menu = await point(page, 0, 8)
+    await page.mouse.click(menu.x, menu.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([])
+    await release(page)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([6])
+})
+
 test('a click where the mouse hovered waits for that read, however long it has run', async ({
     page,
 }) => {
@@ -397,4 +418,44 @@ test("the context menu's Paste waits at most 5 s for a read", async ({ page }) =
     expect(await pastedBeats(page)).toEqual([])
     await page.clock.runFor(1100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])
+})
+
+test('an Elevation Editor Paste drag while a tap waits for a read lands, and the tap pastes nothing', async ({
+    page,
+}) => {
+    await setup(page)
+    await page.evaluate(async () => {
+        const { settings, appImport } = window.editorTest
+        settings.elevationEditorSideBySide = 'disallow'
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(6)
+    })
+    const canvas = page.locator('.elevation-canvas')
+    await expect(canvas).toBeVisible()
+    await useTool(page, 'paste')
+    await hold(page)
+    const bounds = (await canvas.boundingBox())!
+    const y = bounds.y + bounds.height / 2
+    await page.mouse.click(bounds.x + bounds.width * 0.3, y)
+    await settle(page)
+    expect(await pastedBeats(page)).toEqual([])
+    await page.mouse.move(bounds.x + bounds.width * 0.6, y)
+    await page.mouse.down()
+    await page.mouse.move(bounds.x + bounds.width * 0.7, y, { steps: 5 })
+    await page.mouse.up()
+    const lefts = () =>
+        page.evaluate(() =>
+            window.editorTest
+                .snapshot()
+                .notes.filter(({ beat }) => beat !== 2)
+                .map(({ left }) => left),
+        )
+    await expect.poll(lefts).toHaveLength(1)
+    const [left] = await lefts()
+    expect(left).toBeGreaterThan(0)
+    await release(page)
+    await settle(page)
+    expect(await lefts()).toEqual([left])
 })
