@@ -46,9 +46,8 @@ import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
 import { createNoteRenderer } from '../canvas/notes'
-import { noteHitShape, shapeDistance } from '../hitModel'
+import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
 import { toCommittedEntity, toSceneEntity } from '../sceneState'
-import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
@@ -338,18 +337,10 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
         matches.map((row) => [
             row,
             shapeDistance(
-                noteHitShape(
+                shownNoteHitShape(
+                    row.note,
                     row.size,
-                    getNoteVisualType(
-                        row.size === row.note.size
-                            ? row.note
-                            : {
-                                  ...row.note,
-                                  size: row.size,
-                                  useInfoOf: row.note.useInfoOf ?? row.note,
-                              },
-                        elevationState.value.store.slides.info.get(row.note.slideId),
-                    ),
+                    elevationState.value.store.slides.info.get(row.note.slideId),
                 ),
                 (x - elevationBounds.x - row.x + row.w / 2) / scale,
                 (y - elevationBounds.y - row.y) / scale,
@@ -360,8 +351,7 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
     const index = new Map(rows.map((row, i) => [row, i]))
     const ranked = matches.sort(
         (a, b) =>
-            +(distance(b) === 0) - +(distance(a) === 0) ||
-            (distance(a) === 0 ? 0 : distance(a) - distance(b)) ||
+            compareShapeDistance(distance(a), distance(b)) ||
             (index.get(b) ?? 0) - (index.get(a) ?? 0),
     )
     const isDirect = (row: ElevationRow) =>

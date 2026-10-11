@@ -2,6 +2,7 @@ import type { State } from '../state'
 import type { Entity, EntityType } from '../state/entities'
 import { createSlideInfoLookup } from '../state/entities/slides/lookup'
 import type { NoteEntity } from '../state/entities/slides/note'
+import type { SlideNoteInfo } from '../state/entities/slides/semantics'
 import { getNoteVisualType, type NoteVisualType } from '../state/entities/slides/visualType'
 import type { TimeScaleEntity } from '../state/entities/timeScale'
 import { beatToTime } from '../state/integrals/bpms'
@@ -77,6 +78,21 @@ export const noteHitShape = (size: number, type: NoteVisualType): Shape => {
         diamond: (type === 'tick' || type === 'trace') && size > 0 ? size / 2 : undefined,
     }
 }
+
+/** A note's primary shape at a shown size, from its left edge and its middle. */
+export const shownNoteHitShape = (
+    note: NoteEntity,
+    size: number,
+    infos: readonly SlideNoteInfo[] | undefined,
+) =>
+    noteHitShape(
+        size,
+        getNoteVisualType(
+            size === note.size ? note : { ...note, size, useInfoOf: note.useInfoOf ?? note },
+            infos,
+            infos && slideInfoLookup(infos),
+        ),
+    )
 
 const markerBox = (x: number, half: number): Box => ({
     l: x - half,
@@ -186,15 +202,11 @@ export const hitShapeOf = (
     if (entity.type !== 'note') return eventHitShape(source, entity)
     const note: NoteEntity = entity
     const position = composed?.notePosition(note) ?? note
-    const infos = source.store.slides.info.get(note.slideId)
-    const type = getNoteVisualType(
-        position.size === note.size
-            ? note
-            : { ...note, size: position.size, useInfoOf: note.useInfoOf ?? note },
-        infos,
-        infos && slideInfoLookup(infos),
+    const { boxes, diamond } = shownNoteHitShape(
+        note,
+        position.size,
+        source.store.slides.info.get(note.slideId),
     )
-    const { boxes, diamond } = noteHitShape(position.size, type)
     return {
         boxes: boxes.map(({ l, r, t, b }) => ({
             l: l + position.left,
@@ -205,6 +217,10 @@ export const hitShapeOf = (
         diamond: diamond === undefined ? undefined : diamond + position.left,
     }
 }
+
+/** Hits on their shape first, the rest nearest first, by their shapes' distances. */
+export const compareShapeDistance = (a: number, b: number) =>
+    +(b === 0) - +(a === 0) || (a === 0 ? 0 : a - b)
 
 /**
  * Orders the objects a point hits, at a lane and time, as the hit model says.
@@ -228,16 +244,13 @@ export const orderHits = <T extends Entity>(
     )
     const index = new Map(hits.map((entity, i) => [entity, i]))
     const distance = (entity: T) => distances.get(entity) ?? Number.POSITIVE_INFINITY
-    return [...hits].sort((a, b) => {
-        const onA = distance(a) === 0
-        const onB = distance(b) === 0
-        return (
-            +onB - +onA ||
-            (onA
+    return [...hits].sort(
+        (a, b) =>
+            compareShapeDistance(distance(a), distance(b)) ||
+            (distance(a) === 0
                 ? precedence.indexOf(a.type) - precedence.indexOf(b.type)
-                : distance(a) - distance(b) || comparePointHitTypes(a, b)) ||
+                : comparePointHitTypes(a, b)) ||
             a.beat - b.beat ||
-            (index.get(b) ?? 0) - (index.get(a) ?? 0)
-        )
-    })
+            (index.get(b) ?? 0) - (index.get(a) ?? 0),
+    )
 }
