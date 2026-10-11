@@ -386,6 +386,22 @@ export const useTool = (page: Page, name: string) =>
         switchToolTo(name as never)
     }, name)
 
+/** Sends the touches still down, by id. */
+export type TouchInput = (
+    type: 'touchStart' | 'touchMove' | 'touchEnd',
+    points: [number, number][],
+) => Promise<unknown>
+
+/** A CDP touch sender. */
+export const touchInput = async (page: Page): Promise<TouchInput> => {
+    const client = await page.context().newCDPSession(page)
+    return (type, points) =>
+        client.send('Input.dispatchTouchEvent', {
+            type,
+            touchPoints: points.map(([x, y], id) => ({ x, y, id })),
+        })
+}
+
 /** Adds a property to the brush through its Add Property menu. */
 export const addBrushProperty = async (scope: Locator, key: string) => {
     await scope.getByRole('button', { name: 'Add Property', exact: true }).click()

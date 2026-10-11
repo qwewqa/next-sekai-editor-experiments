@@ -1,18 +1,23 @@
-import { expect, test, type CDPSession, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { expect, test, type Page } from '@playwright/test'
+import {
+    installCanvasCounters,
+    installEditorFixture,
+    touchInput,
+    type TouchInput,
+} from './editorFixture'
 
 // The Paste tool reads the system clipboard on a press too, as a hover does for the mouse.
 
 test.use({ hasTouch: true })
 
-let client: CDPSession
+let touch: TouchInput
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
-    client = await page.context().newCDPSession(page)
+    touch = await touchInput(page)
 })
 
 type Clip = {
@@ -112,12 +117,6 @@ const pasted = (page: Page) =>
             .notes.filter(({ beat }) => beat !== 2)
             .map(({ size }) => size),
     )
-
-const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', points: [number, number][]) =>
-    client.send('Input.dispatchTouchEvent', {
-        type,
-        touchPoints: points.map(([x, y], id) => ({ x, y, id })),
-    })
 
 test('a touch tap reads the clipboard once and pastes what it holds now', async ({ page }) => {
     await setup(page)
