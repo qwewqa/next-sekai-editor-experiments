@@ -101,6 +101,7 @@ const readClipboardAt = (x: number, y: number) => {
 
 // Whether a paste waits on a clipboard read; other pastes meanwhile are ignored.
 let isPasteWaiting = false
+export const hasWaitingPaste = () => isPasteWaiting
 
 /**
  * Waits for a clipboard read before a paste. False drops it: another paste is waiting, or an
