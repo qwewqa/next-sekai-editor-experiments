@@ -465,6 +465,7 @@ test('a Select move of a BPM change and its notes keeps the grid from before the
     await settle(page)
     await switchTool(page, 'select')
     const before = await drawn(page)
+    expect(before.lines).toContain(5.5)
     // Grabbed by its note at 3.5 and dropped near 5.3: its line 5.5, so the block moves by 2.
     const from = await point(page, -3, 3.5)
     const to = await point(page, -3, 5.3)
@@ -539,6 +540,7 @@ test('a scaling translate of a BPM change and its notes keeps the grid from befo
             }
         })
     const before = await drawn(page)
+    expect(before.lines).toContain(2)
     // Pressed on its line 3.5 and dropped near 2.2: the line 2, so the block moves by 1.5.
     const to = await point(page, -3, 2.2)
     await page.mouse.down()
