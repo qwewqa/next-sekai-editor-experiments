@@ -4,7 +4,7 @@ import { easeValues } from '../../ease'
 import { ease, lerp, safeUnlerpClamped, type EaseTypeValue } from '../../preview/engine/math'
 import type { PreviewChart, PreviewStage } from '../../preview/engine/model'
 import { getStageProps } from '../../preview/engine/stage'
-import { alignComputed, clamp, shiftComputed } from '../../utils/math'
+import { alignComputed, clamp, nearlyEqual, shiftComputed } from '../../utils/math'
 import type { EntityOfType } from '../entities'
 import type { SlideId } from '../entities/slides'
 import { sameBeatAttachmentFraction } from '../entities/slides/attachment'
@@ -80,12 +80,12 @@ const createStageLookup = (source: State, chart?: PreviewChart) => {
     }
 }
 
-/** Gameplay places of interior attached ticks, from their slides and stages alone. */
-export const getMaterializedNotePositions = (
+const placeTicks = (
     source: State,
     notes: NoteEntity[],
-    compiledChart?: PreviewChart,
-    { translation = true } = {},
+    compiledChart: PreviewChart | undefined,
+    translation: boolean,
+    detached: boolean,
 ) => {
     const positions = new Map<NoteEntity, Position>()
     const toTime = (beat: number) => beatToTime(source.bpms, beat)
@@ -132,32 +132,41 @@ export const getMaterializedNotePositions = (
             : 0
         const headElevation = head.elevation + headStage.elevation
         const tailElevation = tail.elevation + tailStage.elevation
+        let elevation = alignComputed(
+            headElevation + (tailElevation - headElevation) * elevationFrac - stage.elevation,
+        )
+        if (detached && head.beat === tail.beat) {
+            // The input elevation, clamped as gameplay places it, stays where it plays the same.
+            const kept = clamp(
+                note.elevation,
+                Math.min(head.elevation, tail.elevation),
+                Math.max(head.elevation, tail.elevation),
+            )
+            if (nearlyEqual(kept, elevation)) elevation = kept
+        }
         positions.set(note, {
             left: shiftComputed(
                 alignComputed(headLane + (tailLane - headLane) * frac - stage.pivotLane - halfSize),
                 translate,
             ),
             size: alignComputed(halfSize * 2),
-            elevation: alignComputed(
-                headElevation + (tailElevation - headElevation) * elevationFrac - stage.elevation,
-            ),
+            elevation,
         })
     }
     return positions
 }
 
-/**
- * Gameplay places that detached ticks keep. A same-beat tick's elevation is input, so it stays,
- * clamped to its ends' range as gameplay places it.
- */
-export const getDetachedNotePositions = (source: State, notes: NoteEntity[]) => {
-    const positions = getMaterializedNotePositions(source, notes)
-    for (const [note, position] of positions) {
-        const info = source.store.slides.info.get(note.slideId)?.find((info) => info.note === note)
-        if (!info || info.attachHead.beat !== info.attachTail.beat) continue
-        const head = info.attachHead.elevation
-        const tail = info.attachTail.elevation
-        position.elevation = clamp(note.elevation, Math.min(head, tail), Math.max(head, tail))
-    }
-    return positions
-}
+/** Gameplay places of interior attached ticks, from their slides and stages alone. */
+export const getMaterializedNotePositions = (
+    source: State,
+    notes: NoteEntity[],
+    compiledChart?: PreviewChart,
+    { translation = true } = {},
+) => placeTicks(source, notes, compiledChart, translation, false)
+
+/** Gameplay places that detached ticks keep, as stored on their own stage. */
+export const getDetachedNotePositions = (
+    source: State,
+    notes: NoteEntity[],
+    compiledChart?: PreviewChart,
+) => placeTicks(source, notes, compiledChart, true, true)

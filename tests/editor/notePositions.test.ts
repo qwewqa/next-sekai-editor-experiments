@@ -8,17 +8,21 @@ import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import { eases, type Ease } from '../../src/ease'
 import { attachEasedFrac, buildPreviewChart } from '../../src/preview/engine/chart'
+import { effectiveNoteElevation } from '../../src/preview/engine/elevation'
 import { getStageProps } from '../../src/preview/engine/stage'
 import { createState, type State } from '../../src/state'
 import { sameBeatAttachmentFraction } from '../../src/state/entities/slides/attachment'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
+import { removeNote } from '../../src/state/mutations/slides/note'
 import { flipVertical } from '../../src/state/operations/flipVertical'
 import {
     getDetachedNotePositions,
     getMaterializedNotePositions,
 } from '../../src/state/operations/notePositions'
 import { scaleSelection } from '../../src/state/operations/scaleSelection'
+import { splitHold } from '../../src/state/operations/splitHold'
 import { translateSelection } from '../../src/state/operations/translateSelection'
+import { createTransaction } from '../../src/state/transaction'
 import { alignComputed, shiftComputed } from '../../src/utils/math'
 
 const groupId = 1 as GroupId
@@ -452,4 +456,82 @@ test('the cross-stage fixture places its tick as the whole-chart compile does', 
     assert.equal(expected.size, 1)
     assertSame(getMaterializedNotePositions(source, notes), expected)
     assert.deepEqual([...expected.values()], [{ left: -5.25, size: 2.5, elevation: 2 }])
+})
+
+// Where gameplay plays a note's height: the compiled chart's effective elevation at its time.
+const playedHeight = (source: State, entity: NoteEntity) => {
+    const chart = buildPreviewChart(source, 10)
+    const compiled = chart.notes.find((note) => note.source === entity)!
+    return effectiveNoteElevation(compiled, (index) => {
+        const stage = chart.stages[index]
+        return stage && getStageProps(stage, compiled.targetTime)
+    })
+}
+
+// Head, tick and tail at beat 2 on stages raised 0.5, 1 and 2.
+const sameBeatAcrossStages = (head: number, tick: number, tail: number, isDynamicStages = true) =>
+    state(
+        [
+            [
+                note(2, -4, { elevation: head }),
+                note(2, 0, { stageId: stageIds[1]!, isAttached: true, elevation: tick }),
+                note(2, 2, { stageId: stageIds[2]!, elevation: tail }),
+            ],
+        ],
+        {
+            isDynamicStages,
+            stageTransformEvents: [0.5, 1, 2].map((elevation, index) => ({
+                stageId: stageIds[index]!,
+                beat: 0,
+                rotation: 0,
+                xTranslation: 0,
+                yTranslation: 0,
+                elevation,
+                anchor: 'default',
+                eventEase: 'linear',
+            })),
+        },
+    )
+
+const sameBeatCases = [
+    [0, 1, 4],
+    [0, 6, 4],
+    [0, -3, 4],
+    [2, 1, 2],
+    [3, 1.2345678901, 1],
+]
+
+// The tick as an end of its slide in the result, after Split Slide at it or deleting its head.
+const detachedTicks = (source: State) => {
+    const tick = all(source).find((entity) => entity.isAttached)!
+    const transaction = createTransaction(source)
+    removeNote(transaction, all(source)[0]!)
+    return [splitHold(source, [tick]), transaction.commit([])].map((result) => {
+        const note = all(result).find((entity) => entity.stageId === stageIds[1])!
+        const notes = result.store.slides.note.get(note.slideId)!
+        assert.ok(note === notes[0] || note === notes.at(-1))
+        return { result, note }
+    })
+}
+
+test('a detached same-beat tick keeps the height it played at, across stage elevations', () => {
+    for (const isDynamicStages of [true, false]) {
+        for (const [head, elevation, tail] of sameBeatCases) {
+            const source = sameBeatAcrossStages(head!, elevation!, tail!, isDynamicStages)
+            const tick = all(source).find((entity) => entity.isAttached)!
+            const played = playedHeight(source, tick)
+            for (const { result, note } of detachedTicks(source))
+                assert.ok(Math.abs(playedHeight(result, note) - played) < 1e-9)
+        }
+    }
+})
+
+test('a detached same-beat tick keeps its exact stored elevation where its stages add the same height', () => {
+    for (const [head, elevation, tail] of sameBeatCases) {
+        const source = sameBeatAcrossStages(head!, elevation!, tail!, false)
+        const tick = all(source).find((entity) => entity.isAttached)!
+        const kept = Math.min(Math.max(elevation!, Math.min(head!, tail!)), Math.max(head!, tail!))
+        assert.equal(getDetachedNotePositions(source, [tick]).get(tick)!.elevation, kept)
+        for (const { note } of detachedTicks(source)) assert.equal(note.elevation, kept)
+    }
 })

@@ -8,7 +8,7 @@ import { beatToTime } from '../integrals/bpms'
 import { addNote, removeNote } from '../mutations/slides/note'
 import { createTransaction } from '../transaction'
 import { connectorProperties } from './connectorProperties'
-import { getMaterializedNotePositions } from './notePositions'
+import { getDetachedNotePositions } from './notePositions'
 
 export const combineNotes = (source: State, selected: Entity[]): State => {
     const slideIds = new Set(
@@ -48,7 +48,7 @@ export const combineNotes = (source: State, selected: Entity[]): State => {
             ? buildPreviewChart(source, 10)
             : undefined
     const stages = chart?.stages ?? []
-    const positions = getMaterializedNotePositions(
+    const positions = getDetachedNotePositions(
         source,
         unordered.map(({ note }) => note),
         chart,

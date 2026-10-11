@@ -5,7 +5,7 @@ import type { NoteEntity } from '../entities/slides/note'
 import { addNote, removeNote } from '../mutations/slides/note'
 import { createTransaction } from '../transaction'
 import { connectorProperties } from './connectorProperties'
-import { getMaterializedNotePositions } from './notePositions'
+import { getDetachedNotePositions } from './notePositions'
 
 export const getSplitHoldNotes = (source: State, selected: Entity[]) => {
     const selectedNotes = new Set(
@@ -24,7 +24,7 @@ export const splitHold = (source: State, selected: Entity[]): State => {
 
     const slideIds = new Set([...cuts].map((note) => note.slideId))
     const notes = [...slideIds].flatMap((id) => source.store.slides.note.get(id) ?? [])
-    const positions = getMaterializedNotePositions(source, notes)
+    const positions = getDetachedNotePositions(source, notes)
     const transaction = createTransaction(source)
     const replacements = new Map<NoteEntity, NoteEntity>()
 
