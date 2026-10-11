@@ -91,6 +91,7 @@ import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
+import { toSceneEntity } from '../sceneState'
 import { isEntityInScope } from '../scope'
 import { isLatticeMoved, type Lattice } from '../snapping'
 import {
@@ -215,17 +216,27 @@ const resolveDrag = (
     }
 }
 
-// The order a cycle of taps steps through, kept while the same objects are hit, so jitter can't skip one.
+// The order a cycle of taps steps through. It keeps its order for objects still hit, so a pixel of
+// jitter can't skip one, and adds newly hit ones after them.
 let cycle: Entity[] = []
-const cycleOrder = (hits: Entity[]) =>
-    hits.length === cycle.length && hits.every((entity) => cycle.includes(entity)) ? cycle : hits
 
-/** What a tap at a point selects: with Ctrl every hit, else the hit after the selection's first, or the top one. */
+/**
+ * What a tap at a point selects: with Ctrl every object hit together; else the next one after the
+ * selection's first among them, or, with the selection elsewhere, the top one.
+ */
 const tapTargets = (x: number, y: number, modifiers: Modifiers) => {
-    const { hits, set } = pointHitsAt(x, y)
-    if (modifiers.ctrl) return { order: hits, targets: modifyEntities(set, modifiers) }
-    const order = cycleOrder(hits)
+    const { set } = pointHitsAt(x, y)
+    if (modifiers.ctrl) return { order: set, targets: modifyEntities(set, modifiers) }
     const current = selectedEntities.value[0]
+    // A pending draft's click replaces the selection it edits, which ends the cycle.
+    const kept =
+        current &&
+        set.includes(current) &&
+        cycle.includes(current) &&
+        toSceneEntity(current) === current
+            ? cycle.filter((entity) => set.includes(entity))
+            : []
+    const order = [...kept, ...set.filter((entity) => !kept.includes(entity))]
     const index = current ? (order.indexOf(current) + 1) % order.length : 0
     const entity = order[index]
     return { order, targets: modifyEntities(entity ? [entity] : [], modifiers) }
@@ -268,7 +279,6 @@ export const select: Tool = {
                 ...state.value,
                 selectedEntities: targets,
             })
-            previewTap(x, y, modifiers)
             focusEntityAtBeat(entity.beat)
 
             notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
@@ -279,7 +289,6 @@ export const select: Tool = {
                 ...state.value,
                 selectedEntities: entities,
             })
-            previewTap(x, y, modifiers)
 
             if (entity) {
                 focusEntityAtBeat(entity.beat)

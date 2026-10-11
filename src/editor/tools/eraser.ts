@@ -49,7 +49,12 @@ export const eraser: Tool = {
         const target = tapTarget(x, y)
 
         view.entities = {
-            hovered: target === 'selection' ? selectedEntities.value : target ? [target] : [],
+            hovered:
+                target === 'selection'
+                    ? selectedEntities.value.filter(canRemove)
+                    : target
+                      ? [target]
+                      : [],
             creating: [],
         }
     },

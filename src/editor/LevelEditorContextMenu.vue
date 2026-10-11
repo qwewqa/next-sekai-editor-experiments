@@ -155,7 +155,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
     if (name === 'editElevations') {
         if (point) {
             const note = (
-                point.selection ? selectedEntities.value : pointHitsAt(point.x, point.y).set
+                point.selection ? selectedEntities.value : pointHitsAt(point.x, point.y).hits
             ).find((entity) => entity.type === 'note' && selectedEntities.value.includes(entity))
             openElevationEditor(
                 note?.beat ??

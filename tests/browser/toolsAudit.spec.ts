@@ -340,14 +340,15 @@ for (const [tool, beat] of [
         const before = await undoCount(page)
         await dragAndReturn(page, [0, beat], [2, beat + 0.25])
         await expect(page.locator('.notification'), tool).toHaveCount(0)
-        // The drag's preview goes too; read before undoCount, whose undos would clear it.
+        // The drag's preview goes too, and the resting mouse hovers the object it is back on;
+        // read before undoCount, whose undos would clear it.
         expect(
             await page.evaluate(() => {
                 const { hovered, creating } = window.editorTest.view.entities
                 return [hovered.length, creating.length]
             }),
             tool,
-        ).toEqual([0, 0])
+        ).toEqual([1, 0])
         expect(await undoCount(page), tool).toBe(before)
     })
 }

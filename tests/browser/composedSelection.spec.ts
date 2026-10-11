@@ -52,12 +52,12 @@ test('point, box, brush, and eraser target projected notes, with scope filtering
 }) => {
     const result = await page.evaluate(async () => {
         const { appImport, point, view } = window.editorTest
-        const { hitEntitiesAtPoint, hitAllEntitiesInSelection } = await appImport<
+        const { pointHitsOfType, hitAllEntitiesInSelection } = await appImport<
             typeof import('../../src/editor/tools/utils')
         >('/src/editor/tools/utils.ts')
         const hits = (lane: number) => {
             const p = point(lane, 4)
-            return hitEntitiesAtPoint('note', p.x, p.y).map((note) => note.stageId)
+            return pointHitsOfType('note', p.x, p.y).hits.map((note) => note.stageId)
         }
         const atDisplayed = hits(3)
         const atRaw = hits(-1)
@@ -218,12 +218,12 @@ test('attached cross-stage notes hit at their interpolated stage position', asyn
             await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
         const layout = createComposedLayout(history.state.value)
         const p = point(layout.noteLeft(attached) + 1, 4)
-        const { hitEntitiesAtPoint } = await appImport<
-            typeof import('../../src/editor/tools/utils')
-        >('/src/editor/tools/utils.ts')
+        const { pointHitsOfType } = await appImport<typeof import('../../src/editor/tools/utils')>(
+            '/src/editor/tools/utils.ts',
+        )
         return {
             left: layout.noteLeft(attached),
-            hits: hitEntitiesAtPoint('note', p.x, p.y).map((note) => note.isAttached),
+            hits: pointHitsOfType('note', p.x, p.y).hits.map((note) => note.isAttached),
         }
     })
     expect(result).toEqual({ left: 0, hits: [true] })

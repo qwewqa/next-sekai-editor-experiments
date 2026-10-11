@@ -29,7 +29,7 @@ import {
     revertOnEscape,
     trackTypedText,
 } from '../../modals/form/resync'
-import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
+import { clearPreviewEdit, previewEdit, setPreviewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
@@ -47,13 +47,14 @@ import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
 import { createNoteRenderer } from '../canvas/notes'
 import { noteHitShape, shapeDistance } from '../hitModel'
+import { toCommittedEntity, toSceneEntity } from '../sceneState'
 import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
 import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
-import { cancelMouseControls } from '../controls/mouse'
+import { cancelMouseControls, hoverAgain } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { notifyPaneMoved } from '../controls/gestures/recognizers/drag'
@@ -366,15 +367,26 @@ const hitRows = (x: number, y: number, minimum = 1.5) => {
     const isDirect = (row: ElevationRow) =>
         Math.abs(x - elevationBounds.x - row.x) <=
         Math.max(row.w, minimum * elevationLayout.value.laneScale) / 2
+    // A pending Properties draft's rows are hit as the committed notes they show.
+    const shown = ranked.flatMap((row) => {
+        const note = previewEdit.value?.draft
+            ? toCommittedEntity(row.note, elevationState.value)
+            : row.note
+        return note
+            ? [{ row: note === row.note ? row : { ...row, note }, isDirect: isDirect(row) }]
+            : []
+    })
+    const filtered = shown.some(({ isDirect }) => isDirect)
     return {
-        rows: ranked,
-        set: ranked.some(isDirect) ? ranked.filter((row, i) => !i || isDirect(row)) : ranked,
+        rows: shown.map(({ row }) => row),
+        set: shown.flatMap(({ row, isDirect }, i) => (!i || !filtered || isDirect ? [row] : [])),
     }
 }
 // A selected row in reach, else the first.
 const hit = (x: number, y: number, minimum = 1.5) => {
     const { rows, set } = hitRows(x, y, minimum)
-    return set.find((row) => elevationState.value.selectedEntities.includes(row.note)) ?? rows[0]
+    const selected = (previewEdit.value?.draft ? state : elevationState).value.selectedEntities
+    return set.find((row) => selected.includes(row.note)) ?? rows[0]
 }
 const cancel = () => {
     if (drag) clearPreviewEdit()
@@ -444,12 +456,23 @@ const selectedFor = (notesOnly: boolean) =>
     notesOnly
         ? state.value.selectedEntities.filter((entity) => entity.type === 'note')
         : state.value.selectedEntities
-// The notes a cycle of taps steps through, kept while the same rows are hit, so jitter can't skip one.
+// The notes a cycle of taps steps through, as the chart's: its order kept for rows still hit,
+// newly hit ones after them.
 let cycled: NoteEntity[] = []
-const cycleOrder = (rows: ElevationRow[]) =>
-    rows.length === cycled.length && rows.every((row) => cycled.includes(row.note))
-        ? cycled.flatMap((note) => rows.find((row) => row.note === note) ?? [])
-        : rows
+const cycleOrder = (
+    rows: ElevationRow[],
+    current: State['selectedEntities'][number] | undefined,
+) => {
+    // A pending draft's click replaces the selection it edits, which ends the cycle.
+    const kept =
+        rows.some((row) => row.note === current) &&
+        cycled.some((note) => note === current) &&
+        !!current &&
+        toSceneEntity(current, elevationState.value) === current
+            ? cycled.flatMap((note) => rows.find((row) => row.note === note) ?? [])
+            : []
+    return [...kept, ...rows.filter((row) => !kept.includes(row))]
+}
 /** What a tap selects among rows: with Ctrl all of them, else the next after the selection's first. */
 const selectTargets = (
     hits: ElevationRow[],
@@ -457,8 +480,8 @@ const selectTargets = (
     cycle = false,
     notesOnly = false,
 ) => {
-    const rows = cycle ? cycleOrder(hits) : hits
     const current = selectedFor(notesOnly)[0]
+    const rows = cycle ? cycleOrder(hits, current) : hits
     const index =
         cycle && current && rows.length
             ? (rows.findIndex((row) => row.note === current) + 1) % rows.length
@@ -474,7 +497,7 @@ const selectAt = (rows: ElevationRow[], modifiers: Modifiers, cycle = false, not
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
     const targets = selectTargets(rows, modifiers, cycle, notesOnly)
-    if (cycle) cycled = cycleOrder(rows).map((row) => row.note)
+    if (cycle) cycled = cycleOrder(rows, selected[0]).map((row) => row.note)
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -601,11 +624,7 @@ const controls: Pick<
                 ? applyToVisibleSelection(hits, modifiers)
                 : toolName.value === 'note' || toolName.value === 'slide'
                   ? modifyEntities(row ? [row.note] : [], modifiers)
-                  : selectTargets(
-                        modifiers.ctrl ? hits.set : hits.rows,
-                        modifiers,
-                        !modifiers.ctrl,
-                    ),
+                  : selectTargets(hits.set, modifiers, !modifiers.ctrl),
             creating: creating.value.map((row) => row.note),
         }
     },
@@ -669,9 +688,7 @@ const controls: Pick<
             selectAt([row], modifiers, false, true)
             return
         }
-        selectAt(modifiers.ctrl ? hits.set : hits.rows, modifiers, !modifiers.ctrl)
-        // What the next tap would select.
-        void controls.hover?.(x, y, modifiers)
+        selectAt(hits.set, modifiers, !modifiers.ctrl)
     },
     cursor(x, y) {
         const target = resolveDrag(x, y)
@@ -1000,6 +1017,10 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 // Its scroll and zoom move where a drag in it lands.
 watch([() => elevationViewport.center, () => elevationViewport.scale], notifyPaneMoved)
+// They, and its beat, move what a resting mouse hovers.
+watch([() => elevationViewport.center, () => elevationViewport.scale, elevationBeat], () => {
+    if (editorNavigation.value === navigation) hoverAgain()
+})
 watch([() => elevationBounds.w, () => elevationBounds.h], () => {
     cancelMouseControls()
     cancelTouchControls()
@@ -1084,7 +1105,9 @@ watchEffect(() => {
         (connection) => connection.connector.segmentHead.connectorLayer === 'over',
     )
     const selected = new Set(current.selectedEntities)
-    const hover = new Set(hoveredEntities.value)
+    const hover = new Set(
+        hoveredEntities.value.map((entity) => toSceneEntity(entity, elevationState.value)),
+    )
     const ghosts = creating.value.map((row) => ({
         ...row,
         x: layout.xAt(row.lane),

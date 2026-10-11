@@ -1,5 +1,6 @@
 import type { State } from '../state'
 import type { Entity, EntityType } from '../state/entities'
+import { createSlideInfoLookup } from '../state/entities/slides/lookup'
 import type { NoteEntity } from '../state/entities/slides/note'
 import { getNoteVisualType, type NoteVisualType } from '../state/entities/slides/visualType'
 import type { TimeScaleEntity } from '../state/entities/timeScale'
@@ -34,6 +35,9 @@ import type { ComposedLayout } from './composed'
 
 export type Box = { l: number; r: number; t: number; b: number }
 export type Shape = { boxes: Box[]; diamond?: number }
+
+// Each slide's roles, found without searching it.
+const slideInfoLookup = createSlideInfoLookup()
 
 const MARKER = 0.1
 const TIME_SCALE_MARKER = 0.135
@@ -182,11 +186,13 @@ export const hitShapeOf = (
     if (entity.type !== 'note') return eventHitShape(source, entity)
     const note: NoteEntity = entity
     const position = composed?.notePosition(note) ?? note
+    const infos = source.store.slides.info.get(note.slideId)
     const type = getNoteVisualType(
         position.size === note.size
             ? note
             : { ...note, size: position.size, useInfoOf: note.useInfoOf ?? note },
-        source.store.slides.info.get(note.slideId),
+        infos,
+        infos && slideInfoLookup(infos),
     )
     const { boxes, diamond } = noteHitShape(position.size, type)
     return {

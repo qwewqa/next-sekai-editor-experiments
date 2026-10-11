@@ -92,7 +92,7 @@ const sweep = (
             return Array.from({ length: steps + 1 }, (_, i) => {
                 const x = from.x + ((to.x - from.x) * i) / steps
                 const y = from.y + ((to.y - from.y) * i) / steps
-                const [hit] = utils.hitAllEntitiesAtPoint(x, y, minimumNoteWidth)
+                const [hit] = utils.pointHitsAt(x, y, minimumNoteWidth).hits
                 return {
                     x,
                     y,
@@ -171,8 +171,8 @@ test("a tick's width box takes the point over a note in reach, and they meet hal
                 typeof import('../../src/editor/tools/utils')
             >('/src/editor/tools/utils.ts')
             return utils
-                .hitAllEntitiesAtPoint(on.x, on.y)
-                .map((hit) => `${hit.type}:${hit.beat}:${hit.type === 'note' ? hit.left : ''}`)
+                .pointHitsAt(on.x, on.y)
+                .hits.map((hit) => `${hit.type}:${hit.beat}:${hit.type === 'note' ? hit.left : ''}`)
         }, on),
     ).toEqual(['note:4:-2', 'note:4:2.2'])
     await page.mouse.move(on.x - 2, on.y)

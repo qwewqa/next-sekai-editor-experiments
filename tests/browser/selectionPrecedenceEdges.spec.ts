@@ -69,8 +69,8 @@ for (const layout of ['basic', 'composed'] as const) {
                     const at = window.editorTest.point(0, 4)
                     const describe = () =>
                         hits
-                            .hitAllEntitiesAtPoint(at.x, at.y, minimumWidth)
-                            .map((entity) =>
+                            .pointHitsAt(at.x, at.y, minimumWidth)
+                            .hits.map((entity) =>
                                 entity.type === 'note' ? `note:${entity.noteStyle}` : entity.type,
                             )
                     const direct = describe()

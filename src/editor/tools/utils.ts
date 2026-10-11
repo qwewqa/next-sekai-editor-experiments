@@ -14,9 +14,9 @@ import { orderHits } from '../hitModel'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
 import { sceneState, toCommittedEntity } from '../sceneState'
-import { isEntityInScope } from '../scope'
+import { isEntityInScope, scopeLookup } from '../scope'
 import { snappedOffset } from '../snapping'
-import { alignLane, ups, view, xToLane, yToTime, type Selection } from '../view'
+import { alignLane, ups, view, viewBox, xToLane, yToTime, type Selection } from '../view'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
 
@@ -141,33 +141,59 @@ export const pointHitsOfType = <T extends EntityType>(
         const { hits, set } = editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
         return { hits: hits.filter(isType), set: set.filter(isType) }
     }
-    return findPointHits(
-        hitEntities(type, ...pointWindow(x, y), minimumNoteWidth, sceneState.value),
-        x,
-        y,
-        minimumNoteWidth,
+    return remember(type, x, y, minimumNoteWidth, () =>
+        findPointHits(
+            hitEntities(type, ...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+            x,
+            y,
+            minimumNoteWidth,
+        ),
     )
 }
 
 export const pointHitsAt = (x: number, y: number, minimumNoteWidth = 1.5): PointHits =>
     editorNavigation.value
         ? editorNavigation.value.hitPoint(x, y, minimumNoteWidth)
-        : findPointHits(
-              hitAllEntities(...pointWindow(x, y), minimumNoteWidth, sceneState.value),
-              x,
-              y,
-              minimumNoteWidth,
+        : remember(undefined, x, y, minimumNoteWidth, () =>
+              findPointHits(
+                  hitAllEntities(...pointWindow(x, y), minimumNoteWidth, sceneState.value),
+                  x,
+                  y,
+                  minimumNoteWidth,
+              ),
           )
 
-export const hitEntitiesAtPoint = <T extends EntityType>(
-    type: T,
+// The hover and the cursor ask for the same point each frame; they share one answer.
+let remembered: { key: unknown[]; hits: PointHits<never> } | undefined
+const remember = <T extends Entity>(
+    type: EntityType | undefined,
     x: number,
     y: number,
-    minimumNoteWidth = 1.5,
-) => pointHitsOfType(type, x, y, minimumNoteWidth).hits
-
-export const hitAllEntitiesAtPoint = (x: number, y: number, minimumNoteWidth = 1.5) =>
-    pointHitsAt(x, y, minimumNoteWidth).hits
+    minimumNoteWidth: number,
+    find: () => PointHits<T>,
+): PointHits<T> => {
+    const key = [
+        type,
+        x,
+        y,
+        minimumNoteWidth,
+        state.value,
+        sceneState.value,
+        viewBox.value,
+        view.x,
+        view.y,
+        view.w,
+        view.h,
+        view.layout,
+        // Read through, as a change in place keeps its identity.
+        Object.values(view.visibilities).join(),
+        scopeLookup.value,
+    ]
+    if (remembered?.key.every((value, i) => value === key[i])) return remembered.hits
+    const hits = find()
+    remembered = { key, hits: hits as PointHits<never> }
+    return hits
+}
 
 /** A selected object in reach, as the set counts them. */
 export const selectedHit = <T extends Entity>({ set }: PointHits<T>) =>
@@ -200,7 +226,6 @@ const findPointHits = <T extends Entity>(
     const source = sceneState.value
     const composed = getComposedLayout(source)
     const visible = entities.filter(isVisible)
-    const hits = orderPointHits(visible, x, y, source, composed)
     const lane = xToLane(x)
     const isDirectNote = (entity: T) => {
         const hitbox = composed ? composed.hitbox(entity) : entity.hitbox
@@ -211,11 +236,17 @@ const findPointHits = <T extends Entity>(
             lane <= hitbox.lane + Math.max(hitbox.w, minimumNoteWidth / 2)
         )
     }
-    const set = visible.some(isDirectNote)
-        ? hits.filter((entity, i) => !i || entity.type !== 'note' || isDirectNote(entity))
-        : hits
-    const committed = (list: T[]) => list.flatMap((entity) => toCommittedEntity(entity) ?? [])
-    return { hits: committed(hits), set: committed(set) }
+    const filtered = visible.some(isDirectNote)
+    const shown = orderPointHits(visible, x, y, source, composed).flatMap((entity) => {
+        const committed = toCommittedEntity(entity)
+        return committed
+            ? [{ committed, inSet: !filtered || entity.type !== 'note' || isDirectNote(entity) }]
+            : []
+    })
+    return {
+        hits: shown.map(({ committed }) => committed),
+        set: shown.flatMap(({ committed, inSet }, i) => (!i || inSet ? [committed] : [])),
+    }
 }
 
 export const hitEntitiesInSelection = <T extends EntityType>(type: T, selection: Selection) =>

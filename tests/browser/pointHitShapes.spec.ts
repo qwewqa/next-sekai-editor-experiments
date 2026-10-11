@@ -153,8 +153,8 @@ const hits = (page: Page, point: { x: number; y: number }, type?: 'note') =>
             >('/src/editor/tools/utils.ts')
             return (
                 type
-                    ? utils.hitEntitiesAtPoint(type, point.x, point.y)
-                    : utils.hitAllEntitiesAtPoint(point.x, point.y)
+                    ? utils.pointHitsOfType(type, point.x, point.y).hits
+                    : utils.pointHitsAt(point.x, point.y).hits
             ).map((entity) => `${entity.type}:${entity.beat}`)
         },
         { point, type },

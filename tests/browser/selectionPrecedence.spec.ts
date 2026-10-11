@@ -141,8 +141,8 @@ test('category sorting preserves typed-note and box hit order and excludes conne
             '/src/editor/tools/utils.ts',
         )
         const at = window.editorTest.point(0, 4)
-        const all = hits.hitAllEntitiesAtPoint(at.x, at.y)
-        const typed = hits.hitEntitiesAtPoint('note', at.x, at.y)
+        const all = hits.pointHitsAt(at.x, at.y).hits
+        const typed = hits.pointHitsOfType('note', at.x, at.y).hits
         const box = hits.hitAllEntitiesInSelection({
             laneMin: -0.1,
             laneMax: 0.1,

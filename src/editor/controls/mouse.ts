@@ -11,6 +11,7 @@ import { zoomYOut } from '../commands/zooms/zoomYOut'
 import { closeContextMenu, openContextMenu } from '../contextMenu'
 import { editorNavigation, getControlBounds } from '../navigation'
 import { cancelPreviewFollow, stopPlayer } from '../player'
+import { sceneState } from '../sceneState'
 import { scopeLookup } from '../scope'
 import { switchToolTo, tool, toolName, type ToolName } from '../tools'
 import {
@@ -195,6 +196,9 @@ const mouseup = (event: MouseEvent) => {
     }
 
     if (showMenu) openContextMenu(p.x, p.y)
+    // A gesture that changed nothing still leaves the mouse resting here; a landed paste keeps
+    // its ghost hidden until the mouse moves.
+    else if (!mouseGesture.pointerCount && toolName.value !== 'paste') hoverAgain()
     event.preventDefault()
 }
 
@@ -286,12 +290,14 @@ const wheel = (event: WheelEvent) => {
     event.preventDefault()
 }
 
-const hoverAgain = () => {
+/** Hovers again under a resting mouse; a tool without a hover, such as a dialog's, shows none. */
+export const hoverAgain = () => {
     if (!isHovering || view.isHoverHidden) return
     if (mouseGesture.pointerCount || isDragging.value) return
     const { x, y, modifiers } = view.pointer
     setViewHover(y)
-    void tool.value.hover?.(x, y, modifiers)
+    if (tool.value.hover) void tool.value.hover(x, y, modifiers)
+    else view.entities = { hovered: [], creating: [] }
 }
 
 // Scrolling under a still mouse, as playback, the wheel or a pan does, moves what it hovers.
@@ -317,9 +323,13 @@ watch(
 
 // The hover previews a tap, which edits, undo, selection and scope changes all move. A landed
 // paste keeps its ghost hidden until the mouse moves.
-watch([state, scopeLookup, () => view.visibilities, () => settings.showOtherObjects], () => {
-    if (toolName.value !== 'paste') hoverAgain()
-})
+watch(
+    [state, sceneState, scopeLookup, () => view.visibilities, () => settings.showOtherObjects],
+    () => {
+        if (toolName.value !== 'paste') hoverAgain()
+    },
+)
+watch(tool, hoverAgain)
 
 // Ctrl and Shift change what a tap would act on; the hover follows them without a move.
 const followModifiers = (event: KeyboardEvent) => {
@@ -331,6 +341,11 @@ const followModifiers = (event: KeyboardEvent) => {
 }
 addEventListener('keydown', followModifiers)
 addEventListener('keyup', followModifiers)
+// A key released in another window never reaches this one.
+addEventListener('blur', () => {
+    view.pointer = { ...view.pointer, modifiers: { ctrl: false, shift: false } }
+    hoverAgain()
+})
 
 export const mouseControlListeners = {
     mousedown,
