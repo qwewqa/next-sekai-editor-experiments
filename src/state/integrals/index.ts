@@ -25,7 +25,11 @@ export const integrate = <T extends Integral>(integrals: T[]) => {
     })
 }
 
-export const findIntegral = <T extends Integral>(integrals: T[], key: 'x' | 'y', value: number) => {
+export const findIntegral = <K extends 'x' | 'y', T extends Record<K, number>>(
+    integrals: T[],
+    key: K,
+    value: number,
+) => {
     const index = bisect(integrals, key, value)
 
     const integral = integrals[integrals[index]?.[key] === value ? index : index - 1]

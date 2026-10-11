@@ -304,15 +304,25 @@ test('measure modes emphasize off-grid boundaries and keep phone labels visible'
         )!
         expect(major.alpha).toBeCloseTo(0.7)
         expect(major.positions).toEqual([0, 1.0625, 2.5625])
-        expect(
-            strokes.some(
+        const lines = (alpha: number) =>
+            strokes.find(
                 (stroke) =>
                     stroke.mode === mode &&
                     Math.abs(stroke.width - 0.1) < 1e-6 &&
-                    Math.abs(stroke.alpha - 0.35) < 1e-6,
-            ),
-        ).toBe(true)
+                    Math.abs(stroke.alpha - alpha) < 1e-6,
+            )!.positions
+        // Beats restart at the 2.125 bar (2's line, a pixel above it, gives way).
+        expect(lines(0.35)).toEqual([0, 0.5, 1, 1.5625, 2.0625, 2.5625, 3.0625, 3.5625])
+        // Quarters follow the bar: 2.375, not 2.5.
+        expect(lines(0.15)).toContain(1.1875)
+        expect(lines(0.15)).not.toContain(1.25)
     }
+    // The beat display keeps the global grid.
+    const beatLines = strokes.filter(
+        (stroke) => stroke.mode === 'beat' && Math.abs(stroke.width - 0.1) < 1e-6,
+    )
+    expect(beatLines.at(-1)!.positions).toEqual([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4])
+    expect(beatLines.at(-2)!.positions).toContain(1.25)
     for (const width of [320, 768]) {
         await page.setViewportSize({ width, height: 812 })
         await page.evaluate(() => {

@@ -7,7 +7,8 @@ import { hasSameChartData } from '../state/data'
 import type { Entity, EntityType } from '../state/entities'
 import type { SlideId } from '../state/entities/slides'
 import type { NoteEntity } from '../state/entities/slides/note'
-import type { BpmIntegral } from '../state/integrals/bpms'
+import type { BpmIntegral, GridBpm } from '../state/integrals/bpms'
+import { gridOf, liftedDrawnBpms } from './beatGrid'
 import { view } from './view'
 
 const isSameTempo = (a: BpmIntegral[], b: BpmIntegral[]) =>
@@ -74,6 +75,10 @@ export const previewSlides = computed(() => {
                 : entity.type === 'connector' && slideIds.has(entity.head.slideId),
     }
 })
+
+/** The bars drawn: during a BPM change move, without the moved changes once they move. */
+export const drawnBpms = computed<GridBpm[]>(() => liftedDrawnBpms.value ?? sceneBpms.value)
+export const drawnGrid = computed(() => gridOf(drawnBpms.value))
 
 export const cullAllSceneEntities = (minKey: number, maxKey: number) =>
     cullAllEntities(minKey, maxKey, sceneState.value.store)

@@ -9,6 +9,9 @@ export type BpmIntegral = Integral & {
     measureBeat: number
 }
 
+/** A BPM list's bars, without its tempo. */
+export type GridBpm = Pick<BpmIntegral, 'x' | 'meter' | 'measure' | 'measureBeat'>
+
 export const createBpms = (chart: Chart) => calculateBpms(chart.bpms.map(toBpmIntegral))
 
 export const calculateBpms = (bpms: (Integral & { meter?: number })[]): BpmIntegral[] => {
@@ -34,17 +37,17 @@ export const toBpmIntegral = (object: BpmObject): BpmIntegral => ({
     measureBeat: 0,
 })
 
-const roundBoundary = (value: number) =>
+export const roundBoundary = (value: number) =>
     Math.abs(value - Math.round(value)) < 1e-9 ? Math.round(value) : value
 
-export const beatToMeasure = (bpms: BpmIntegral[], beat: number) => {
+export const beatToMeasure = (bpms: GridBpm[], beat: number) => {
     const { meter, measure, measureBeat } = findIntegral(bpms, 'x', beat)
     const position = roundBoundary((beat - measureBeat) / meter)
     const offset = Math.floor(position)
     return { measure: measure + offset + 1, beat: (position - offset) * meter + 1 }
 }
 
-export const getMeasureBeats = (bpms: BpmIntegral[], min: number, max: number, limit = 100) => {
+export const getMeasureBeats = (bpms: GridBpm[], min: number, max: number, limit = 100) => {
     const beats: number[] = []
     const index = bisect(bpms, 'x', min)
     for (let i = Math.max(0, bpms[index]?.x === min ? index : index - 1); i < bpms.length; i++) {

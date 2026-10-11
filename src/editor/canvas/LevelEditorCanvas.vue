@@ -11,7 +11,7 @@ import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
 import { culledEntities, selectedEntitySet, visibleSelectedEntities } from '../entities/visible'
 import { entityScopeVisibility } from '../scopeRules'
-import { isScenePreview, previewSlides, sceneState } from '../sceneState'
+import { drawnGrid, isScenePreview, previewSlides, sceneState } from '../sceneState'
 import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
@@ -199,6 +199,7 @@ const labels = computed(() =>
         beats.value,
         times.value,
         settings.beatDisplay,
+        drawnGrid.value,
     ),
 )
 
@@ -260,6 +261,7 @@ watchEffect(
         const division = view.division
         const laneDivision = view.laneDivision
         const beatDisplay = settings.beatDisplay
+        const grid = drawnGrid.value
         const cursor = view.cursorTime
         const covered = coveredYs.value
         const currentLabels = labels.value
@@ -310,6 +312,7 @@ watchEffect(
                 isBpmVisible,
                 edgeLabelYs,
                 currentLabels,
+                grid,
             )
             ctx.save()
             ctx.strokeStyle = '#fff'

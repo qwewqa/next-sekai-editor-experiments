@@ -4,6 +4,7 @@ import { replaceState, state } from '../history'
 import { selectedEntities } from '../history/selectedEntities'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
+import { committedGrid } from './beatGrid'
 import { isEditableEntity } from '../state/operations/editable'
 import { canMakeVertical } from '../state/operations/makeVerticalValues'
 import { canScaleSelection } from '../state/operations/scaleValues'
@@ -205,6 +206,7 @@ watch(
         () => settings.width,
         () => settings.pps,
         () => view.division,
+        committedGrid,
         // Focus, visibility overrides and their settings.
         scopeLookup,
         () => view.visibilities,

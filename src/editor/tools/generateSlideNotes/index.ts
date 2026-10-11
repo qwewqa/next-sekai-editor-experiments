@@ -9,10 +9,12 @@ import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import type { SlideId } from '../../../state/entities/slides'
 import type { NoteEntity } from '../../../state/entities/slides/note'
+import { gridLines, isGlobalGrid } from '../../../state/integrals/grid'
 import { addNote } from '../../../state/mutations/slides/note'
 import { createTransaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { bisect } from '../../../utils/ordered'
+import { committedGrid } from '../../beatGrid'
 import { notify } from '../../notification'
 import { revealAuthoredEntities } from '../../scope'
 import {
@@ -140,6 +142,31 @@ export const generateSlideNotes: Tool = {
     },
 }
 
+// The grid lines strictly between the ends that no slide note holds.
+const generatedBeats = (slideNotes: NoteEntity[], minBeat: number, maxBeat: number) => {
+    const division = view.division
+    const grid = committedGrid.value
+    if (isGlobalGrid(grid, division)) {
+        const disallowed = new Set(slideNotes.map((entity) => entity.beat * division))
+        const beats: number[] = []
+        const min = Math.floor(minBeat * division) + 1
+        const max = Math.ceil(maxBeat * division) - 1
+        for (let i = min; i <= max; i++) if (!disallowed.has(i)) beats.push(i / division)
+        return beats
+    }
+    // Bar grid lines within rounding error of a note or an end are held.
+    const epsilon = 1e-6 / division
+    const lines = gridLines(grid, minBeat + epsilon, maxBeat - epsilon, division, 100_000) ?? []
+    return lines
+        .map(({ beat }) => beat)
+        .filter((beat) => {
+            const index = bisect(slideNotes, 'beat', beat)
+            return [slideNotes[index - 1], slideNotes[index]].every(
+                (note) => !note || Math.abs(note.beat - beat) >= epsilon,
+            )
+        })
+}
+
 export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
     const transaction = createTransaction(state.value)
 
@@ -176,15 +203,7 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         const slideNotes = store.value.slides.note.get(slideId)
         if (!slideNotes) throw new Error('Unexpected notes not found')
 
-        const disallowed = new Set(slideNotes.map((entity) => entity.beat * view.division))
-
-        const min = Math.floor(minBeat * view.division) + 1
-        const max = Math.ceil(maxBeat * view.division) - 1
-        for (let i = min; i <= max; i++) {
-            if (disallowed.has(i)) continue
-
-            const beat = i / view.division
-
+        for (const beat of generatedBeats(slideNotes, minBeat, maxBeat)) {
             const index = bisect(slideNotes, 'beat', beat)
             const nearest = slideNotes[index - 1] ?? slideNotes[index]
 
