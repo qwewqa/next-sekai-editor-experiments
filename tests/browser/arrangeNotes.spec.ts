@@ -448,3 +448,35 @@ test('vertical flip handles occupied timing destinations within each group and l
         [3, 4],
     ])
 })
+
+test('Flip Vertical lands flipped beats on the grid without float noise', async ({ page }) => {
+    await page.evaluate(() => {
+        const { fixtures, show, history, view } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show({
+            ...fixtures.interaction,
+            slides: [0, 1 / 3, 1].map((beat, i) => [{ ...base, beat, left: 2 * i - 2 }]),
+        })
+        view.division = 3
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: [...source.store.slides.note.values()].flat(),
+        })
+    })
+    await page.evaluate(async () => {
+        const { flipVertical } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/flipVertical')
+        >('/src/editor/commands/flipVertical/index.ts')
+        await flipVertical.execute()
+    })
+    const beats = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.slides.note.values()]
+                .flat()
+                .map((note) => note.beat)
+                .sort((a, b) => a - b),
+        )
+    // 1 - 1/3 alone is 0.6666666666666667.
+    await expect.poll(beats).toEqual([0, 2 / 3, 1])
+})
