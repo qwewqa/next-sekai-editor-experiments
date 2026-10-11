@@ -10,7 +10,7 @@ import { GLOBAL_GRID, toBeatGrid } from '../state/integrals/grid'
 import { liftBpms } from '../state/mutations/bpm'
 
 // Measure and Both show bars, so beats snap from them; Beat keeps the global grid.
-export const isBarGrid = computed(() => settings.beatDisplay !== 'beat')
+const isBarGrid = computed(() => settings.beatDisplay !== 'beat')
 
 export const gridOf = (bpms: GridBpm[]) => (isBarGrid.value ? toBeatGrid(bpms) : GLOBAL_GRID)
 

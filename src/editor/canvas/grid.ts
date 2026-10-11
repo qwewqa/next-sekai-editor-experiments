@@ -45,7 +45,7 @@ const MIN_LINE_SPACING = 2
 const MAX_LINES = 2000
 
 /** The grid a display mode draws: measures restart it at bars. */
-export const defaultGrid = (state: State, beatDisplay: BeatDisplay) =>
+const defaultGrid = (state: State, beatDisplay: BeatDisplay) =>
     beatDisplay === 'beat' ? GLOBAL_GRID : toBeatGrid(state.bpms)
 
 const isWhole = (beat: number) => Math.abs(beat - Math.round(beat)) < 1e-6

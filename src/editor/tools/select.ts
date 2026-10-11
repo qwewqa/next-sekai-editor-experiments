@@ -348,7 +348,7 @@ export const select: Tool = {
 
                 // Moved BPM changes redraw the bars only once they leave their beats.
                 setLiftDrawn(beatOffset !== 0)
-                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
+                const last = `${lane} ${beatOffset} ${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 if (active.last === last) break
                 active.last = last
                 const source = state.value
@@ -383,7 +383,7 @@ export const select: Tool = {
                 // Selection transforms only change geometry. Pointer movement
                 // within the same snapped cells should not rebuild the preview.
                 // The preview reads snapping when drawn, so a snapping change rebuilds it.
-                const snapping = `${view.laneDivision} ${view.laneSnapping} ${getBeatSnap()}`
+                const snapping = `${view.laneDivision} ${view.laneSnapping} ${beatSnapKey()}`
                 const previous = active.ghosts
                 if (
                     previous?.shown === view.entities.creating &&
@@ -674,7 +674,7 @@ const getRawMove = (
     // and attached anchors can also change the projection while they move.
     if (active.onlyType === 'note' && !focus.isAttached) return
     let response = active.response
-    const beatSnap = getBeatSnap()
+    const beatSnap = beatSnapKey()
     if (
         response?.source !== source ||
         response.beatOffset !== beatOffset ||
@@ -691,7 +691,10 @@ const getRawMove = (
             if (!layout) return { value: NaN, lattice: undefined }
             return {
                 value: layout.noteLeft(note),
-                lattice: getComposedLattice(anchor.stageId, plan.beat, result.state),
+                lattice:
+                    delta === 0
+                        ? getComposedLattice(anchor.stageId, plan.beat, result.state)
+                        : undefined,
             }
         }
         const zero = probe(0)
@@ -773,7 +776,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
     // Without a beat change, or in a resize, no tick crosses an end.
     if (!beatOffset || isSelectResize(active.onlyType, active.focus, active.lane)) return new Map()
     const cached = active.bases
-    const beatSnap = getBeatSnap()
+    const beatSnap = beatSnapKey()
     if (
         cached?.source === source &&
         cached.beatOffset === beatOffset &&
@@ -789,7 +792,7 @@ const getMoveBases = (source: State, active: MoveActive, beatOffset: number): Ba
 }
 
 // What moved beats are cleaned against: the beat division and grid.
-const getBeatSnap = () => `${view.division} ${beatGridKey(snapGrid.value)}`
+const beatSnapKey = () => `${view.division} ${beatGridKey(snapGrid.value)}`
 
 const moveSelectedLane = (
     value: number,
