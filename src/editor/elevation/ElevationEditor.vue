@@ -41,7 +41,7 @@ import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
-import { isGlobalGrid, nearGridBeat, stepGridBeat } from '../../state/integrals/grid'
+import { nearGridBeat, snapBeat, stepGridBeat } from '../../state/integrals/grid'
 import { editSelectedNote } from '../../state/operations/note'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
 import { editChanges } from '../../state/operations/properties/plan'
@@ -84,7 +84,7 @@ import CloseIcon from '../workspace/CloseIcon.vue'
 import { hasToolModal, showToolModal } from '../toolModals'
 import type { CommandName } from '../commands'
 import { deselect } from '../commands/deselect'
-import { fromDisplayedBeat, toDisplayedBeat } from '../beatDisplay'
+import { fromDisplayedBeat, shortDisplayedBeat } from '../beatDisplay'
 import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '../tools/utils'
 import { scopeLookup } from '../scope'
@@ -106,7 +106,13 @@ import {
     previewElevationNoteRow,
     previewElevationPasteRows,
 } from './actions'
-import { elevationLayout, elevationNotes, elevationState, getElevationStageProps } from './scene'
+import {
+    elevationLaneScale,
+    elevationLayout,
+    elevationNotes,
+    elevationState,
+    getElevationStageProps,
+} from './scene'
 import {
     closeElevationEditor,
     elevationBeat,
@@ -122,6 +128,7 @@ import {
 } from './viewport'
 import { drawElevationConnections, getElevationConnections } from './connections'
 import SelectValue from '../../modals/form/SelectValue.vue'
+import SquareGridIcon from './SquareGridIcon.vue'
 import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
@@ -236,13 +243,25 @@ const availableCommands: CommandName[] = [
 const fitViewport = () => {
     if (!needsElevationFit.value || !elevationBounds.h) return
     needsElevationFit.value = false
-    fitElevationViewport(elevationBounds.h, elevationNotes.value, {
-        top:
-            (header.value?.clientHeight ?? 80) +
-            Math.max(20, 1.25 * elevationLayout.value.laneScale),
-        bottom: 140,
-    })
+    fitElevationViewport(
+        elevationBounds.h,
+        elevationNotes.value,
+        {
+            top: (header.value?.clientHeight ?? 80) + Math.max(20, 1.25 * elevationLaneScale.value),
+            bottom: 140,
+        },
+        settings.elevationSquareGrid ? squareScale.value : undefined,
+    )
 }
+// The y-scale of a 1:1 grid; while locked, it follows the lane zoom.
+const squareScale = computed(() => clamp(elevationLaneScale.value, 1, 1200))
+watch(
+    [() => settings.elevationSquareGrid, squareScale],
+    ([square, scale]) => {
+        if (square) elevationViewport.scale = scale
+    },
+    { immediate: true, flush: 'sync' },
+)
 const frame = createFrameScheduler()
 const notes = createNoteRenderer()
 const nameSprites = createLabelSprites()
@@ -1001,24 +1020,27 @@ const changeBeat = (beat: number) => {
 }
 // Written on change only, so re-renders never overwrite the typing.
 const beatField = computed({
-    get: () => toDisplayedBeat(elevationBeat.value),
+    get: () => shortDisplayedBeat(elevationBeat.value),
     set: (value: number | string) => {
-        // Arrow steps carry decimal noise; on the grid they store its exact beat, as Next does.
         if (typeof value === 'number' && Number.isFinite(value) && value >= 1)
-            changeBeat(nearGridBeat(committedGrid.value, fromDisplayedBeat(value), view.division))
+            changeBeat(typedBeat(value))
     },
 })
-// The native step counts from beat one on the global grid; a bar grid steps through its lines.
-const isBarStepped = computed(() => !isGlobalGrid(committedGrid.value, view.division))
+// A shown value is a grid line rounded to three decimals, so it stores that line, as Next does.
+const typedBeat = (value: number) => {
+    const beat = fromDisplayedBeat(value)
+    const line = snapBeat(committedGrid.value, beat, view.division)
+    return view.division < 1000 && Math.abs(line - beat) <= 5e-4 + 1e-9
+        ? line
+        : nearGridBeat(committedGrid.value, beat, view.division)
+}
+// Arrows step through grid lines, which a rounded value isn't on for the native step.
 const stepBeatField = (event: Event, direction: 1 | -1) => {
-    if (!isBarStepped.value) return
     event.preventDefault()
     // From a typed value too, as the native step does.
     const typed = (event.currentTarget as HTMLInputElement).valueAsNumber
     const from =
-        Number.isFinite(typed) && typed !== beatField.value
-            ? nearGridBeat(committedGrid.value, fromDisplayedBeat(typed), view.division)
-            : elevationBeat.value
+        Number.isFinite(typed) && typed !== beatField.value ? typedBeat(typed) : elevationBeat.value
     const beat = Math.max(0, stepGridBeat(committedGrid.value, from, view.division, direction))
     if (!(direction > 0 ? beat > from : beat < from)) return
     changeBeat(beat)
@@ -1390,7 +1412,9 @@ onMounted(() => {
         getScaleY: () => elevationViewport.scale,
         setScaleY: (scale) => {
             closeContextMenu()
-            elevationViewport.scale = clamp(scale, 1, 1200)
+            // Locked, the lane zoom follows (the setting clamps it), and the y-scale with it.
+            if (settings.elevationSquareGrid) settings.width = elevationBounds.w / (scale * 1.1)
+            else elevationViewport.scale = clamp(scale, 1, 1200)
         },
         hitPoint: (x, y, minimum) => {
             const { rows, set } = hitRows(x, y, minimum)
@@ -1505,7 +1529,7 @@ onUnmounted(() => {
                                 class="focus:ring-2"
                                 type="number"
                                 min="1"
-                                :step="isBarStepped ? 'any' : 1 / view.division"
+                                step="any"
                                 :aria-label="i18n.elevation.beat"
                                 @change="resyncInput($event, () => `${beatField}`)"
                                 @keydown.esc="revertOnEscape($event, `${beatField}`)"
@@ -1525,39 +1549,52 @@ onUnmounted(() => {
                             <ChevronIcon direction="right" />
                         </button>
                     </div>
-                    <label class="elevation-snap"
-                        ><span class="elevation-label">{{ i18n.elevation.snap }}</span
-                        ><span class="elevation-select group"
-                            ><select
-                                v-model="settings.elevationSnap"
-                                :title="
-                                    settings.elevationSnap
-                                        ? `1/${settings.elevationSnap}`
-                                        : i18n.elevation.off
-                                "
-                                :class="headerField"
-                                class="cursor-pointer focus-visible:ring-2"
-                                :aria-label="i18n.elevation.snapping"
-                            >
-                                <option :value="0">{{ i18n.elevation.off }}</option>
-                                <option
-                                    v-for="division in [1, 2, 4, 8, 16, 32, 64]"
-                                    :key="division"
-                                    :value="division"
+                    <div class="elevation-y">
+                        <label class="elevation-snap"
+                            ><span class="elevation-label">{{ i18n.elevation.snap }}</span
+                            ><span class="elevation-select group"
+                                ><select
+                                    v-model="settings.elevationSnap"
+                                    :title="
+                                        settings.elevationSnap
+                                            ? `1/${settings.elevationSnap}`
+                                            : i18n.elevation.off
+                                    "
+                                    :class="headerField"
+                                    class="cursor-pointer focus-visible:ring-2"
+                                    :aria-label="i18n.elevation.snapping"
                                 >
-                                    1/{{ division }}
-                                </option></select
-                            ><SelectValue
-                                :value="
-                                    settings.elevationSnap
-                                        ? `1/${settings.elevationSnap}`
-                                        : i18n.elevation.off
-                                "
-                                class="z-[2] px-3 text-base tabular-nums text-fg group-active:text-on-accent" /><span
-                                class="elevation-select-icon group-active:text-on-accent"
-                                aria-hidden="true"
-                                ><ChevronIcon direction="down" /></span></span
-                    ></label>
+                                    <option :value="0">{{ i18n.elevation.off }}</option>
+                                    <option
+                                        v-for="division in [1, 2, 4, 8, 16, 32, 64]"
+                                        :key="division"
+                                        :value="division"
+                                    >
+                                        1/{{ division }}
+                                    </option></select
+                                ><SelectValue
+                                    :value="
+                                        settings.elevationSnap
+                                            ? `1/${settings.elevationSnap}`
+                                            : i18n.elevation.off
+                                    "
+                                    class="z-[2] px-3 text-base tabular-nums text-fg group-active:text-on-accent" /><span
+                                    class="elevation-select-icon group-active:text-on-accent"
+                                    aria-hidden="true"
+                                    ><ChevronIcon direction="down" /></span></span
+                        ></label>
+                        <button
+                            type="button"
+                            class="elevation-square"
+                            :class="headerIconButton"
+                            :aria-label="i18n.elevation.squareGrid"
+                            :title="i18n.elevation.squareGrid"
+                            :aria-pressed="settings.elevationSquareGrid"
+                            @click="settings.elevationSquareGrid = !settings.elevationSquareGrid"
+                        >
+                            <SquareGridIcon class="size-4" />
+                        </button>
+                    </div>
                 </div>
                 <button
                     type="button"
@@ -1634,6 +1671,39 @@ onUnmounted(() => {
     gap: 0.5rem;
 }
 
+/* The y-axis controls wrap together, with room for the 1:1 fill beside the field. */
+.elevation-y {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Its hit area reaches the field across the gap. */
+@media not (pointer: coarse) {
+    .elevation-square::before {
+        left: -0.25rem;
+    }
+}
+
+/* The lock on, as the toolbar's tool in use; high contrast selects it. */
+@media not (forced-colors: active) {
+    .elevation-square[aria-pressed='true']:not(:active) {
+        @apply bg-accent text-on-accent;
+    }
+
+    .elevation-square[aria-pressed='true']:focus-visible {
+        @apply ring-white;
+    }
+}
+
+@media (forced-colors: active) {
+    .elevation-square[aria-pressed='true'] {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        color: HighlightText;
+    }
+}
+
 .elevation-label {
     white-space: nowrap;
 }
@@ -1678,10 +1748,11 @@ onUnmounted(() => {
 }
 
 /* Each field is sized for its values rather than squeezed to keep one row: the
-   beat holds values such as 123.0625, and snapping at most "1/64". Narrow
+   beat holds values such as 123.063, and snapping at most "1/64". Narrow
    headers wrap the snap field onto its own row instead. */
 .elevation-beat-field .elevation-field {
-    width: 6rem;
+    width: 5rem;
+    padding-inline: 0.625rem;
 }
 
 .elevation-snap .elevation-field {
@@ -1717,8 +1788,13 @@ onUnmounted(() => {
 
     .elevation-beat,
     .elevation-beat-field,
+    .elevation-y,
     .elevation-snap {
         display: contents;
+    }
+
+    .elevation-square {
+        grid-column: 4;
     }
 
     .elevation-label {
@@ -1762,8 +1838,13 @@ onUnmounted(() => {
         padding-right: 0;
     }
 
-    .elevation-beat > button {
+    .elevation-beat > button,
+    .elevation-square {
         align-self: end;
+    }
+
+    .elevation-square {
+        grid-column: 3;
     }
 }
 </style>

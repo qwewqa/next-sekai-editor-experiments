@@ -6,6 +6,9 @@ export type BeatDisplay = 'beat' | 'measure' | 'both'
 // Added in decimal: 0.14 shows as 1.14, and typed 1.01 holds 0.01, not 0.010000000000000009.
 export const toDisplayedBeat = (chartBeat: number) => addDecimal(chartBeat, 1)
 export const fromDisplayedBeat = (displayedBeat: number) => addDecimal(displayedBeat, -1)
+// At most three decimals, trailing zeros trimmed: 1/3 shows as 1.333.
+export const shortDisplayedBeat = (chartBeat: number) =>
+    Number(toDisplayedBeat(chartBeat).toFixed(3))
 
 export const formatBeatPosition = (
     bpms: GridBpm[],

@@ -107,13 +107,15 @@ export const elevationNotes = computed(() => {
     }
     return notes
 })
+// Pixels per lane: the chart's lane zoom, with a margin.
+export const elevationLaneScale = computed(() => elevationBounds.w / (settings.width * 1.1))
 export const elevationLayout = computed(() => {
     const width = settings.width * 1.1
     return layoutElevationNotes(elevationNotes.value, {
         width: elevationBounds.w,
         height: elevationBounds.h,
         laneLeft: view.lane - width / 2,
-        laneScale: elevationBounds.w / width,
+        laneScale: elevationLaneScale.value,
         elevationCenter: elevationViewport.center,
         elevationScale: elevationViewport.scale,
     })

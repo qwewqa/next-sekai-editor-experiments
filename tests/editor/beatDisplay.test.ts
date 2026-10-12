@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
     formatBeatPosition,
     fromDisplayedBeat,
+    shortDisplayedBeat,
     toDisplayedBeat,
 } from '../../src/editor/beatDisplay'
 import { toBpmEntity } from '../../src/state/entities/bpm'
@@ -22,6 +23,18 @@ test('displayed beat conversion leaves zero-based chart positions and fractional
         assert.equal(fromDisplayedBeat(toDisplayedBeat(chartBeat)), chartBeat)
     }
     assert.equal(fromDisplayedBeat(1), 0)
+})
+
+test('short displayed beats keep at most three decimals, without trailing zeros', () => {
+    for (const [chartBeat, shown] of [
+        [0, 1],
+        [0.5, 1.5],
+        [1 / 3, 1.333],
+        [2 / 3, 1.667],
+        [1 / 16, 1.063],
+        [122.0625, 123.063],
+    ] as const)
+        assert.equal(shortDisplayedBeat(chartBeat), shown)
 })
 
 test('legacy BPM changes default to four beats per measure', () => {

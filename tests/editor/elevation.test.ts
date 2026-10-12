@@ -103,6 +103,15 @@ test('initial elevation fitting adapts to height and includes elevations outside
         })
         assert.ok(layout.yAt(8) >= 0)
         assert.ok(layout.yAt(-1) <= 600)
+        // A given scale fits only the centre, framing the notes as well as it can.
+        fitElevationViewport(600, notes, undefined, 30)
+        assert.equal(elevationViewport.scale, 30)
+        const fixed = layoutElevationNotes(notes, {
+            ...viewport,
+            elevationCenter: elevationViewport.center,
+            elevationScale: 30,
+        })
+        assert.ok(Math.abs(fixed.yAt(8) - 80 - (600 - 140 - fixed.yAt(-1))) < 1e-9)
     } finally {
         Object.assign(elevationViewport, saved)
     }

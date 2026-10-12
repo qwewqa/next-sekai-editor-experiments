@@ -612,6 +612,7 @@
         "nextBeat": "Next Beat",
         "snap": "Snap",
         "snapping": "Elevation Snapping",
+        "squareGrid": "1:1 Grid",
         "auto": "Auto",
         "allow": "Allow",
         "disallow": "Don’t Allow",

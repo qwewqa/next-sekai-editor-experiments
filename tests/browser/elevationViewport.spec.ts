@@ -149,3 +149,207 @@ test.describe('the view', () => {
         expect(top).toBeLessThan(height)
     })
 })
+
+test.describe('the 1:1 grid', () => {
+    const lock = (page: Page) => page.getByRole('button', { name: '1:1 Grid', exact: true })
+    const axes = async (page: Page) => ({
+        ...(await elevation(page)),
+        width: await page.evaluate(() => window.editorTest.settings.width),
+    })
+    const expectSquare = async (page: Page) => {
+        const { scale, laneScale } = await axes(page)
+        expect(scale).toBeCloseTo(laneScale, 9)
+    }
+    const pinch = async (page: Page, axis: 'x' | 'y', from: number, to: number) => {
+        const box = (await page.locator('.elevation-canvas').boundingBox())!
+        const touch = (type: string, distance: number) =>
+            page.evaluate(
+                ({ type, x, y, distance, axis }) => {
+                    const target = document.querySelector('.elevation-editor .editor')!
+                    const changedTouches = [-1, 1].map(
+                        (direction, index) =>
+                            new Touch({
+                                identifier: index + 1,
+                                target,
+                                clientX: x + (axis === 'x' ? direction * distance : 0),
+                                clientY: y + (axis === 'y' ? direction * distance : 0),
+                            }),
+                    )
+                    target.dispatchEvent(
+                        new TouchEvent(type, { changedTouches, bubbles: true, cancelable: true }),
+                    )
+                },
+                { type, x: box.x + box.width / 2, y: box.y + box.height / 2, distance, axis },
+            )
+        await touch('touchstart', from)
+        await touch('touchmove', (from + to) / 2)
+        await settle(page)
+        await touch('touchmove', to)
+        await settle(page)
+        await touch('touchend', to)
+        await settle(page)
+    }
+
+    test('locks the y-zoom to the lane zoom about the centre, and is stored', async ({ page }) => {
+        await open(page)
+        const before = await axes(page)
+        await expect(lock(page)).toHaveAttribute('aria-pressed', 'false')
+        expect(before.scale).not.toBeCloseTo(before.laneScale, 3)
+        await lock(page).click()
+        await expect(lock(page)).toHaveAttribute('aria-pressed', 'true')
+        const after = await axes(page)
+        expect(after.scale).toBe(after.laneScale)
+        expect(after.center).toBe(before.center)
+        expect(after.width).toBe(before.width)
+        expect(
+            await page.evaluate(() =>
+                localStorage.getItem('sonolus-next-sekai-editor.elevationSquareGrid'),
+            ),
+        ).toBe('true')
+    })
+
+    test('stays locked across reopening and a reload', async ({ page }) => {
+        await open(page)
+        await lock(page).click()
+        await close(page)
+        await page.evaluate(() => (window.editorTest.settings.width = 30))
+        await open(page)
+        await expect(lock(page)).toHaveAttribute('aria-pressed', 'true')
+        await expectSquare(page)
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await showChart(page, [2])
+        await open(page)
+        await expect(lock(page)).toHaveAttribute('aria-pressed', 'true')
+        await expectSquare(page)
+        // The fit after the load keeps the scale and frames the notes.
+        const { center } = await viewport(page)
+        expect(center).toBeGreaterThan(0)
+        expect(center).toBeLessThan(5)
+    })
+
+    test('follows a lane zoom', async ({ page }) => {
+        await open(page)
+        await lock(page).click()
+        const before = await axes(page)
+        await page.keyboard.press(']')
+        await settle(page)
+        const after = await axes(page)
+        expect(after.width).toBeLessThan(before.width)
+        expect(after.scale).toBeGreaterThan(before.scale)
+        expect(after.center).toBe(before.center)
+        await expectSquare(page)
+    })
+
+    test('zooms lanes on a y-zoom, within the width range', async ({ page }) => {
+        await open(page)
+        await lock(page).click()
+        const before = await axes(page)
+        await page.keyboard.press('-')
+        await settle(page)
+        const out = await axes(page)
+        expect(out.width).toBeCloseTo(before.width * 1.1, 6)
+        expect(out.scale).toBeLessThan(before.scale)
+        await expectSquare(page)
+        // Ctrl+wheel zooms in y.
+        const box = (await page.locator('.elevation-canvas').boundingBox())!
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.keyboard.down('Control')
+        await page.mouse.wheel(0, -100)
+        await page.keyboard.up('Control')
+        await settle(page)
+        const wheeled = await axes(page)
+        expect(wheeled.width).toBeLessThan(out.width)
+        await expectSquare(page)
+        // Past the width range, a zoom stops.
+        await page.evaluate(() => (window.editorTest.settings.width = 16))
+        await settle(page)
+        const narrowest = await axes(page)
+        await page.keyboard.press('=')
+        await settle(page)
+        expect(await axes(page)).toEqual(narrowest)
+        await page.evaluate(() => (window.editorTest.settings.width = 100))
+        await settle(page)
+        const widest = await axes(page)
+        await page.keyboard.press('-')
+        await settle(page)
+        expect(await axes(page)).toEqual(widest)
+    })
+
+    test.describe('with touch', () => {
+        test.use({ hasTouch: true })
+
+        test('zooms both axes with either pinch', async ({ page }) => {
+            await open(page)
+            await lock(page).click()
+            const before = await axes(page)
+            await pinch(page, 'y', 100, 50)
+            const pinched = await axes(page)
+            expect(pinched.width).toBeGreaterThan(before.width)
+            await expectSquare(page)
+            await pinch(page, 'x', 100, 200)
+            const spread = await axes(page)
+            expect(spread.width).toBeLessThan(pinched.width)
+            await expectSquare(page)
+        })
+    })
+
+    test('follows the pane width side by side', async ({ page }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.elevationEditorSideBySide = 'allow'
+        })
+        await open(page)
+        await lock(page).click()
+        const before = await axes(page)
+        const divider = page.getByRole('separator', {
+            name: 'Resize Elevation Editor',
+            exact: true,
+        })
+        const separator = (await divider.boundingBox())!
+        await page.mouse.move(separator.x + separator.width / 2, separator.y + 200)
+        await page.mouse.down()
+        await page.mouse.move(separator.x - 160, separator.y + 200, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        const after = await axes(page)
+        expect(after.scale).toBeGreaterThan(before.scale)
+        await expectSquare(page)
+    })
+
+    test('shows the lock on in Highlight in high contrast', async ({ page }) => {
+        await page.emulateMedia({ forcedColors: 'active' })
+        await open(page)
+        await lock(page).click()
+        await page.mouse.move(0, 0)
+        const highlight = await page.evaluate(() => {
+            const probe = document.createElement('span')
+            probe.style.color = 'Highlight'
+            document.body.append(probe)
+            const { color } = getComputedStyle(probe)
+            probe.remove()
+            return color
+        })
+        // Past its colour transition.
+        await expect
+            .poll(() => lock(page).evaluate((button) => getComputedStyle(button).backgroundColor))
+            .toBe(highlight)
+    })
+
+    test('unlocks keeping both zooms', async ({ page }) => {
+        await open(page)
+        await lock(page).click()
+        await lock(page).click()
+        await expect(lock(page)).toHaveAttribute('aria-pressed', 'false')
+        const unlocked = await axes(page)
+        expect(unlocked.scale).toBe(unlocked.laneScale)
+        await page.keyboard.press('=')
+        await settle(page)
+        const zoomed = await axes(page)
+        expect(zoomed.width).toBe(unlocked.width)
+        expect(zoomed.scale).toBeGreaterThan(unlocked.scale)
+        await page.keyboard.press('[')
+        await settle(page)
+        expect((await axes(page)).scale).toBe(zoomed.scale)
+    })
+})

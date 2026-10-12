@@ -712,7 +712,7 @@ test('the Elevation Editor steps through the bar grid', async ({ page }) => {
     await beat.press('Tab')
     expect(await elevationBeat()).toBe(3.5)
 
-    // The beat display keeps the native step.
+    // The beat display steps on the global grid.
     await page.evaluate(() => {
         window.editorTest.settings.beatDisplay = 'beat'
     })
@@ -722,7 +722,6 @@ test('the Elevation Editor steps through the bar grid', async ({ page }) => {
     await beat.press('ArrowUp')
     await beat.press('Tab')
     expect(await elevationBeat()).toBe(3)
-    expect(await beat.getAttribute('step')).toBe('1')
 })
 
 for (const display of ['measure', 'beat'] as const)

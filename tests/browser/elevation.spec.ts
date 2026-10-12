@@ -544,8 +544,10 @@ test('previous and next beat steps stay on the division grid across a tempo chan
         await page.getByRole('button', { name: 'Previous Beat' }).click()
         values.push(await beat.inputValue())
     }
-    // Displayed beats are one-based: chart beat 3 + k/12 shows as 4 + k/12.
-    const expected = [...Array(12).keys()].map((i) => `${(36 + i + 1) / 12 + 1}`)
+    // Displayed beats are one-based, to three decimals: chart beat 3 + k/12 shows as 4 + k/12.
+    const expected = [...Array(12).keys()].map(
+        (i) => `${Number(((36 + i + 1) / 12 + 1).toFixed(3))}`,
+    )
     expect(values).toEqual([...expected, ...expected.slice(0, -1).reverse(), '4'])
 })
 

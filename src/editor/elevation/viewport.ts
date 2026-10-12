@@ -14,6 +14,8 @@ export const fitElevationViewport = (
     height: number,
     notes: ElevationNote[],
     padding = { top: 80, bottom: 140 },
+    // A given scale fits only the centre.
+    scale?: number,
 ) => {
     let min = 0
     let max = 5
@@ -23,6 +25,6 @@ export const fitElevationViewport = (
     }
     const top = Math.min(padding.top, Math.max(0, height - 1))
     const bottom = Math.min(padding.bottom, Math.max(0, (height - top) / 2))
-    elevationViewport.scale = clamp((height - top - bottom) / (max - min), 0.01, 400)
+    elevationViewport.scale = scale ?? clamp((height - top - bottom) / (max - min), 0.01, 400)
     elevationViewport.center = (min + max) / 2 + (top - bottom) / (2 * elevationViewport.scale)
 }
