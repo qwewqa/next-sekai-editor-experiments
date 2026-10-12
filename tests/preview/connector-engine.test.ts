@@ -40,10 +40,19 @@ const anchor = (beat: number, lane: number, connectorEase: Ease): NoteObject => 
     connectorPresentation: 'default',
 })
 
-const guideQuads = (ease: Ease, now = 0.7) => {
+type Point = readonly [beat: number, lane: number]
+type Camera = { tilt: number; zoom: number; head: Point; tail: Point }
+
+const guideQuads = (ease: Ease, now = 0.7, camera?: Camera) => {
+    const [[headBeat, headLane], [tailBeat, tailLane]] = camera
+        ? [camera.head, camera.tail]
+        : [
+              [1, -3],
+              [2, 3],
+          ]
     const chart: Chart = {
         initialLife: 1000,
-        isDynamicStages: false,
+        isDynamicStages: !!camera,
         bpms: [{ beat: 0, bpm: 60 }],
         groups: new Map([[groupId, { name: 'Default' }]]),
         stages: new Map([
@@ -52,13 +61,28 @@ const guideQuads = (ease: Ease, now = 0.7) => {
                 { name: 'Stage', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
             ],
         ]),
-        cameraEvents: [],
+        cameraEvents: camera
+            ? [
+                  {
+                      beat: 0,
+                      cameraLeft: -6,
+                      cameraSize: 12,
+                      cameraZoom: camera.zoom,
+                      cameraZoomTargetLane: 0,
+                      cameraZoomTargetY: 0,
+                      cameraZoomVerticalAlign: 'default',
+                      cameraRotation: 0,
+                      cameraStageTilt: camera.tilt,
+                      eventEase: 'linear',
+                  },
+              ]
+            : [],
         stageMaskEvents: [],
         stagePivotEvents: [],
         stageStyleEvents: [],
         stageTransformEvents: [],
         timeScales: [],
-        slides: [[anchor(1, -3, ease), anchor(2, 3, 'linear')]],
+        slides: [[anchor(headBeat, headLane, ease), anchor(tailBeat, tailLane, 'linear')]],
     }
     const guide: Sprite = { u0: 0, v0: 0, u1: 1, v1: 1 }
     const skin = resolveSkin((name) => (name === 'Sekai Guide Green' ? guide : undefined))
@@ -88,16 +112,39 @@ const coordinateSum = (quads: Quad[]) =>
 test('connectors split into the same segments as the engine', () => {
     // Watch mode draws at note speed 6, from the packaged engine callbacks.
     for (const [ease, count, sum] of [
-        ['inQuad', 11, 14.114541189],
-        ['outCirc', 27, 3.447804943],
-        ['inOutBack', 32, 47.795279385],
-        ['outElastic', 35, 77.015405547],
+        ['inQuad', 13, 16.694660941],
+        ['outCirc', 30, 3.308608918],
+        ['inOutBack', 24, 32.557121271],
+        ['outElastic', 40, 87.375179059],
         ['inOutStep', 2, 2.834125739],
         ['outInStep', 1, 1.50055448],
     ] as const) {
         const quads = guideQuads(ease)
         assert.equal(quads.length, count, ease)
         assert.ok(Math.abs(coordinateSum(quads) - sum) < 1e-6, `${ease}: ${coordinateSum(quads)}`)
+    }
+})
+
+test('connectors past the vanishing point at low tilt curve as the engine draws them', () => {
+    // Far ends at travel <= 0 still have lane width; tilt 0 has no perspective term.
+    const long = [
+        [1, -3],
+        [4, 3],
+    ] as const
+    const far = [
+        [2.5, 1],
+        [3, -2],
+    ] as const
+    for (const [name, [head, tail], tilt, zoom, count, sum] of [
+        ['long tilt 0', long, 0, 0.5, 6, 4.258098402],
+        ['far tilt 0', far, 0, 0.5, 4, 2.450178471],
+        ['long tilt 0.5', long, 0.5, 0.5, 9, 3.91434682],
+        ['far tilt 0.5', far, 0.5, 0.5, 4, 2.772565239],
+        ['long tilt 0 zoom 1', long, 0, 1, 5, 5.982950264],
+    ] as const) {
+        const quads = guideQuads('outQuad', 0.7, { tilt, zoom, head, tail })
+        assert.equal(quads.length, count, name)
+        assert.ok(Math.abs(coordinateSum(quads) - sum) < 1e-6, `${name}: ${coordinateSum(quads)}`)
     }
 })
 

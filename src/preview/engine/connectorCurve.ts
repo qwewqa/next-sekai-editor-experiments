@@ -3,7 +3,7 @@ import { EaseType, clamp, ease, isStepEase, lerp, safeUnlerp, type EaseTypeValue
 
 // sekai/lib/connector.py connector_curve_detail and circular_connector_fracs.
 
-export const CONNECTOR_CURVE_ERROR = 2 * (2.5 / 1080)
+export const CONNECTOR_CURVE_ERROR = 2 * (2 / 1080)
 
 const CURVE_BINS = 16
 const CURVE_BIN_SAMPLES = 16
@@ -94,11 +94,13 @@ export const connectorCurveDetail = (
     startTravel: number,
     endTravel: number,
 ) => {
+    const startWidth = tiltWidthFactor(layout, startTravel)
+    const endWidth = tiltWidthFactor(layout, endTravel)
     if (
         isStepEase(easeType) ||
         (leftChange === 0 && rightChange === 0) ||
         Math.abs(tailEased - headEased) < 1e-6 ||
-        Math.min(startTravel, endTravel) <= 0
+        Math.min(startWidth, endWidth) <= 0
     )
         return 0
     const start = Math.min(startEaseFrac, endEaseFrac)
@@ -106,8 +108,8 @@ export const connectorCurveDetail = (
     const span = end - start
     const laneChange =
         Math.max(Math.abs(leftChange), Math.abs(rightChange)) / Math.abs(tailEased - headEased)
-    const approachRate = Math.abs(Math.log(endTravel / startTravel))
-    const width = tiltWidthFactor(layout, Math.max(startTravel, endTravel)) * layout.wScale
+    const approachRate = Math.abs(Math.log(endWidth / startWidth))
+    const width = Math.max(startWidth, endWidth) * layout.wScale
     const bend =
         span * easeDerivativeBound(easeType, 2, start, end) +
         approachRate * easeDerivativeBound(easeType, 1, start, end)
