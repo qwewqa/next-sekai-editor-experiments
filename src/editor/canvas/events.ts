@@ -138,36 +138,6 @@ const nextTimeScale = ({ state }: EditorDrawContext, entity: TimeScaleEntity) =>
     return next.get(entity)
 }
 
-const stacks = new WeakMap<Map<number, Set<Entity>>, Map<Entity, readonly Entity[]>>()
-
-/**
- * Objects at one beat of one track (a group's time scales, a stage's events),
- * in the order the chart plays them, for each object stacked with others.
- */
-const stackOf = <T extends Entity>(
-    grid: Map<number, Set<T>>,
-    entity: T,
-    track: (entity: T) => unknown,
-): readonly T[] | undefined => {
-    let stacked = stacks.get(grid) as Map<T, readonly T[]> | undefined
-    if (!stacked) {
-        stacked = new Map()
-        for (const entities of grid.values()) {
-            const byTrack = new Map<string, T[]>()
-            for (const other of entities) {
-                const key = `${String(track(other))}:${other.beat}`
-                const list = byTrack.get(key)
-                if (list) list.push(other)
-                else byTrack.set(key, [other])
-            }
-            for (const list of byTrack.values())
-                if (list.length > 1) for (const other of list) stacked.set(other, list)
-        }
-        stacks.set(grid, stacked)
-    }
-    return stacked.get(entity)
-}
-
 // Lanes, in proportion to the 0.5-lane label font; nearer its value than its marker.
 const EASE_GLYPH = { width: 0.3, height: 0.34, gap: 0.06, stroke: 0.05 }
 
@@ -185,14 +155,10 @@ const timeScaleLabelDirection = (
     return fits(outward) || !fits(-outward as 1 | -1) ? outward : (-outward as 1 | -1)
 }
 
-/** A time scale's label, if this one draws it: a same-beat stack labels once, at its first change. */
+/** A time scale's label: its text, which way it points and the lanes it spans. */
 export const timeScaleLabel = (context: EditorDrawContext, entity: TimeScaleEntity) => {
-    const stack = stackOf(context.state.store.grid.timeScale, entity, ({ groupId }) => groupId)
-    if (stack && stack[0] !== entity) return
     const x = entity.editorLane
-    const text = (stack ?? [entity])
-        .map(({ timeScale, skip }) => formatTimeScale(timeScale, skip))
-        .join('→')
+    const text = formatTimeScale(entity.timeScale, entity.skip)
     const textWidth = measureCachedText(context, text, 0.5)
     const width = LABEL_OFFSET + EASE_GLYPH.width + EASE_GLYPH.gap + textWidth
     const direction = timeScaleLabelDirection(x, width, context.bounds)
@@ -339,28 +305,15 @@ export const drawEvent = (
             break
         }
         case 'timeScale': {
-            const stack = stackOf(state.store.grid.timeScale, entity, ({ groupId }) => groupId)
-            // A same-beat jump shares one marker on its first change's lane.
-            const lead = stack?.[0] ?? entity
-            if (lead !== entity && lead.editorLane === entity.editorLane) break
-            const members =
-                lead === entity
-                    ? (stack ?? [entity]).filter(
-                          ({ editorLane }) => editorLane === entity.editorLane,
-                      )
-                    : [entity]
             const x = entity.editorLane
             const y = beatToTime(state.bpms, entity.beat) * ups
-            const isScroll = members.some(
-                ({ timeScaleTransition }) => timeScaleTransition === 'scroll',
-            )
-            const hideNotes = members.some(({ hideNotes }) => hideNotes)
+            const isScroll = entity.timeScaleTransition === 'scroll'
             // Hollow markers keep the line out of their interior.
-            const gap = hideNotes ? (isScroll ? DIAMOND_RADIUS : 0.1) : 0
+            const gap = entity.hideNotes ? (isScroll ? DIAMOND_RADIUS : 0.1) : 0
             if (part !== 'marker') {
                 ctx.strokeStyle = '#ff0'
                 ctx.globalAlpha *= 0.5
-                if (hideNotes) ctx.setLineDash([2 / context.scale, 2 / context.scale])
+                if (entity.hideNotes) ctx.setLineDash([2 / context.scale, 2 / context.scale])
                 ctx.lineDashOffset = 0
                 if (x - gap > Math.min(x, -6)) line(ctx, Math.min(x, -6), y, x - gap, y)
                 if (x + gap < Math.max(x, 6)) line(ctx, x + gap, y, Math.max(x, 6), y)
@@ -368,20 +321,10 @@ export const drawEvent = (
                 ctx.setLineDash([])
             }
             if (part === 'line') break
-            timeScaleMarker(ctx, x, y, isScroll, hideNotes)
-            // A same-beat jump reads as one label, in the order it plays.
-            const label = timeScaleLabel(context, entity)
-            if (!label) break
-            const { text, textWidth, direction } = label
+            timeScaleMarker(ctx, x, y, isScroll, entity.hideNotes)
+            const { text, textWidth, direction } = timeScaleLabel(context, entity)
             const labelX = x + LABEL_OFFSET * direction
-            const glyphWidth = drawEaseGlyph(
-                context,
-                stack?.at(-1) ?? entity,
-                labelX,
-                y,
-                direction,
-                '#ff0',
-            )
+            const glyphWidth = drawEaseGlyph(context, entity, labelX, y, direction, '#ff0')
             const textX = labelX + glyphWidth * direction
             drawText(
                 context,
@@ -393,19 +336,17 @@ export const drawEvent = (
                 direction > 0 ? 'start' : 'end',
                 context.figureMiddle,
             )
-            const isStackHighlighted =
-                highlighted || !!stack?.some((member) => context.isHighlighted?.(member))
             if (
                 context.showGroupName &&
                 entity.groupId !== context.defaultGroupId &&
-                (isStackHighlighted || context.recentlyActive)
+                (highlighted || context.recentlyActive)
             ) {
                 // Opposite the label, unless it turned inward for want of room there.
                 const side = direction === (x > 0 ? 1 : -1) ? -direction : direction
                 drawName(
                     context,
                     entity,
-                    isStackHighlighted,
+                    highlighted,
                     state.groups.get(entity.groupId)?.name ?? '',
                     side === direction ? textX + (textWidth + 0.2) * direction : x + 0.2 * side,
                     y,
@@ -438,26 +379,7 @@ export const drawEvent = (
             }
             ctx.globalAlpha *= 2
             ctx.strokeStyle = '#fff'
-            for (const x of xs) {
-                marker(ctx, x, y)
-            }
-            // Same-beat joints of one track draw as one; say how many there are.
-            const stack = stackOf(
-                state.store.grid[entity.type] as Map<number, Set<Entity>>,
-                entity,
-                (joint) => ('stageId' in joint ? joint.stageId : undefined),
-            )
-            if (stack?.[0] === entity)
-                drawText(
-                    context,
-                    `×${stack.length}`,
-                    x + 0.15,
-                    y - 0.25,
-                    color,
-                    0.35,
-                    'start',
-                    context.figureMiddle,
-                )
+            for (const x of xs) marker(ctx, x, y)
             if (
                 entity.type !== 'cameraEventJoint' &&
                 context.showStageName &&

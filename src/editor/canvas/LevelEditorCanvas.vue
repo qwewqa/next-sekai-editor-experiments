@@ -460,7 +460,6 @@ watchEffect(
         if (!canvas || !inputs.width || !inputs.height) return
         const entities = drawSteps.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
-        const selected = shownEntities.value.selected
         const preview = previewSlides.value
         const visibilities = view.visibilities
         // Captured here: the frame callback runs untracked.
@@ -494,12 +493,7 @@ watchEffect(
                 inputs.bounds,
             )
             if (!ctx) return
-            const base = {
-                ...inputs,
-                ctx,
-                nameSprites,
-                isHighlighted: (entity: Entity) => selected.has(entity) || !!hovered?.has(entity),
-            }
+            const base = { ...inputs, ctx, nameSprites }
             // Measured with the frame's font and bounds, as the labels are drawn.
             const timeScaleYs = timeScaleEdgeLabelYs(base, entities)
             const edgeLabelYs = {

@@ -94,7 +94,7 @@ const show = (page: Page, build: Build, layout: 'basic' | 'composed' = 'basic') 
                     ]
                     break
                 case 'stack':
-                    // A same-beat jump: one marker, drawn by its first change.
+                    // A same-beat jump: a marker for each change, on one spot.
                     chart.timeScales = [
                         { ...timeScale, beat: 4, editorLane: 3, timeScale: 2 },
                         { ...timeScale, beat: 4, editorLane: 3, timeScale: 3 },
@@ -231,35 +231,21 @@ test("a style marker beside a narrow note's body takes the style", async ({ page
     expect(await selected(page)).toMatchObject([{ type: 'note', beat: 4 }])
 })
 
-test('a same-beat time-scale jump is taken by the change that draws its marker', async ({
-    page,
-}) => {
+test('clicks on a same-beat time-scale jump reach each change in turn', async ({ page }) => {
     await show(page, 'stack')
     await useTool(page, 'select')
-    const lead = await page.evaluate(
-        () =>
-            [...window.editorTest.history.state.value.store.grid.timeScale.get(4)!].find(
-                (entity) => entity.beat === 4,
-            )!.timeScale,
-    )
     const point = await at(page, 3, 4)
-    await click(page, point)
-    expect(
-        await page.evaluate(() =>
+    const picked = async () => {
+        await click(page, point)
+        return page.evaluate(() =>
             window.editorTest.history.state.value.selectedEntities.map((entity) =>
                 entity.type === 'timeScale' ? entity.timeScale : undefined,
             ),
-        ),
-    ).toEqual([lead])
-    // A second click cycles to the other change.
-    await click(page, point)
-    expect(
-        await page.evaluate(() =>
-            window.editorTest.history.state.value.selectedEntities.map((entity) =>
-                entity.type === 'timeScale' ? entity.timeScale : undefined,
-            ),
-        ),
-    ).toEqual([lead === 2 ? 3 : 2])
+        )
+    }
+    const first = await picked()
+    const second = await picked()
+    expect([...first, ...second].sort()).toEqual([2, 3])
 })
 
 for (const layout of ['basic', 'composed'] as const) {

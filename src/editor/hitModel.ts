@@ -4,9 +4,7 @@ import { createSlideInfoLookup } from '../state/entities/slides/lookup'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { SlideNoteInfo } from '../state/entities/slides/semantics'
 import { getNoteVisualType, type NoteVisualType } from '../state/entities/slides/visualType'
-import type { TimeScaleEntity } from '../state/entities/timeScale'
 import { beatToTime } from '../state/integrals/bpms'
-import { beatToKey } from '../state/store/grid'
 import { clamp } from '../utils/math'
 import type { ComposedLayout } from './composed'
 
@@ -81,16 +79,7 @@ const markerBox = (x: number, half: number): Box => ({
     b: half,
 })
 
-// The first of a same-beat jump draws the marker on its lane.
-const isTimeScaleMarked = (source: State, entity: TimeScaleEntity) => {
-    for (const other of source.store.grid.timeScale.get(beatToKey(entity.beat)) ?? []) {
-        if (other.groupId !== entity.groupId || other.beat !== entity.beat) continue
-        return other === entity || other.editorLane !== entity.editorLane
-    }
-    return true
-}
-
-const eventHitShape = (source: State, entity: Entity): Shape | undefined => {
+const eventHitShape = (entity: Entity): Shape | undefined => {
     switch (entity.type) {
         case 'cameraEventJoint':
             return {
@@ -113,9 +102,7 @@ const eventHitShape = (source: State, entity: Entity): Shape | undefined => {
         case 'stageTransformEventJoint':
             return { boxes: [markerBox(entity.xTranslation, MARKER)] }
         case 'timeScale':
-            return isTimeScaleMarked(source, entity)
-                ? { boxes: [markerBox(entity.editorLane, TIME_SCALE_MARKER)] }
-                : undefined
+            return { boxes: [markerBox(entity.editorLane, TIME_SCALE_MARKER)] }
         case 'bpm': {
             const box = entity.hitbox
             return (
@@ -179,7 +166,7 @@ export const hitShapeOf = (
     source: State,
     composed: ComposedLayout | undefined,
 ): Shape | undefined => {
-    if (entity.type !== 'note') return eventHitShape(source, entity)
+    if (entity.type !== 'note') return eventHitShape(entity)
     const note: NoteEntity = entity
     const position = composed?.notePosition(note) ?? note
     const { boxes, diamond } = shownNoteHitShape(

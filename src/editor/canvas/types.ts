@@ -1,6 +1,5 @@
 import type { GroupId } from '../../chart/groups'
 import type { State } from '../../state'
-import type { Entity } from '../../state/entities'
 import type { StoreSlides } from '../../state/store/slides'
 import type { createComposedLayout } from '../composed'
 import type { LabelSprites } from './labelSprites'
@@ -40,8 +39,6 @@ export type EditorDrawContext = {
     fontFamily: string
     fontMiddle: number
     figureMiddle: number
-    /** Whether another object is selected or hovered, for labels that stand for several. */
-    isHighlighted?: (entity: Entity) => boolean
     /** Collects the frame's names to place them together; without it they draw at once. */
     names?: NameLayer
     /** Draws names from rasterised sprites; without it they draw as text. */

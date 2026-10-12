@@ -30,7 +30,6 @@ export const timeScaleEdgeLabelYs = (
     for (const { entity, part } of steps) {
         if (entity.type !== 'timeScale' || part === 'line') continue
         const label = timeScaleLabel(context, entity)
-        if (!label) continue
         const y = beatToTime(context.state.bpms, entity.beat) * context.ups
         if (label.min < -6.1) ys.left.push(y)
         if (label.max > 6.1) ys.right.push(y)

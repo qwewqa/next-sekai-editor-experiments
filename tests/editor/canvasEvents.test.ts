@@ -721,7 +721,7 @@ test('overshooting mask connections keep the engine minimum width instead of cro
     ])
 })
 
-test('a same-beat pair draws one label in the order it plays', () => {
+test('each change of a same-beat pair draws its own label, and same-beat joints no count', () => {
     const timeScale = (value: number): TimeScaleObject => ({
         groupId,
         beat: 2,
@@ -754,11 +754,11 @@ test('a same-beat pair draws one label in the order it plays', () => {
             for (const entity of entities) drawEvent(context, entity, false)
     assert.deepEqual(
         canvas.labels.map(({ text }) => text),
-        ['1x→2x', '×2'],
+        ['1x', '2x'],
     )
 })
 
-test('a same-beat pair rounds each value in its one label', () => {
+test('a same-beat pair rounds the value in each label', () => {
     const timeScale = (value: number): TimeScaleObject => ({
         groupId,
         beat: 2,
@@ -776,7 +776,7 @@ test('a same-beat pair rounds each value in its one label', () => {
         for (const entity of entities) drawEvent(context, entity, false)
     assert.deepEqual(
         canvas.labels.map(({ text }) => text),
-        ['1.1235x+1.2346→0.3333x+1.2346'],
+        ['1.1235x+1.2346', '0.3333x+1.2346'],
     )
 })
 
@@ -806,9 +806,12 @@ test('time-scale labels turn inward only where outward would leave the view', ()
     assert.deepEqual(
         canvas.labels.map(({ text, x, align }) => [text, Math.round(x * 100) / 100, align]),
         [
+            // Of a same-beat pair, only the label without room outside turns inward.
+            ['1x', -8.59, 'end'],
+            ['B', -7.8, 'start'],
             // A label turned inward takes its group name along, after its text.
-            ['1x→0.25x', -7.41, 'start'],
-            ['B', -4.81, 'start'],
+            ['0.25x', -7.41, 'start'],
+            ['B', -5.71, 'start'],
             ['2x', -6.59, 'end'],
             ['B', -5.8, 'start'],
             ['4x', 8.91, 'end'],
@@ -890,15 +893,19 @@ test('edge time scale labels take the place of the time and beat labels they rea
     for (const shown of ['00:03', '00:04', '9', '11']) assert.ok(texts.includes(shown), shown)
 })
 
-test('labels that turn inward or sit on another lane leave the columns alone', () => {
+test('labels that turn inward or sit mid-stage leave the columns alone', () => {
     // No room outside: the edge labels turn inward, away from the columns.
     const turned = gridLabelsBeside([edgeTimeScale(4, -6), edgeTimeScale(6, 6)], { l: -7, r: 7 })
     assert.deepEqual(turned.edges, { left: [], right: [] })
     assert.ok(turned.texts.includes('00:02') && turned.texts.includes('7'))
-    // A same-beat stack labels only at its first change, here mid-stage.
-    const stacked = gridLabelsBeside([edgeTimeScale(4, 0), edgeTimeScale(4, -7)])
-    assert.deepEqual(stacked.edges, { left: [], right: [] })
-    assert.ok(stacked.texts.includes('00:02'))
+    // Mid-stage, a label stays clear of the columns.
+    const mid = gridLabelsBeside([edgeTimeScale(4, 0)])
+    assert.deepEqual(mid.edges, { left: [], right: [] })
+    assert.ok(mid.texts.includes('00:02'))
+    // Each change of a same-beat pair makes its own room.
+    const pair = gridLabelsBeside([edgeTimeScale(4, 0), edgeTimeScale(4, -7)])
+    assert.deepEqual(pair.edges, { left: [-20], right: [] })
+    assert.ok(!pair.texts.includes('00:02'))
 })
 
 test('time and beat labels under the labels over the chart are left out', () => {
@@ -986,7 +993,7 @@ test('a BPM label stays drawn where a time scale label reaches the beat column',
     )
 })
 
-test('a same-beat stack shares one marker showing every change on its lane', () => {
+test('each change of a same-beat jump draws its own marker and line', () => {
     const timeScale = (
         editorLane: number,
         timeScaleTransition: 'timeScale' | 'scroll',
@@ -1009,17 +1016,22 @@ test('a same-beat stack shares one marker showing every change on its lane', () 
     const markers = canvas.strokes.filter(({ path }) =>
         (path as unknown[][]).some(([command]) => command === 'Z' || command === 'arc'),
     )
-    // One hollow diamond on dashed lines.
+    // A hollow circle on dashed lines, then a filled diamond on solid ones.
     assert.deepEqual(
         markers.map(({ path, color }) => [(path as unknown[][]).length, color]),
-        [[5, '#ff0']],
+        [
+            [1, '#ff0'],
+            [5, '#fff'],
+        ],
     )
-    assert.ok(
-        canvas.strokes
-            .filter(({ color }) => color === '#ff0')
-            .slice(0, 2)
-            .every(({ dash }) => dash.length),
+    const lines = canvas.strokes.filter(({ path }) =>
+        (path as unknown[][]).every(([command]) => command === 'M' || command === 'L'),
     )
+    assert.deepEqual(
+        lines.slice(0, 2).map(({ dash }) => dash.length > 0),
+        [true, true],
+    )
+    assert.ok(lines.slice(2).every(({ dash }) => !dash.length))
 })
 
 test('a time scale draws its line and its marker and label as separate parts', () => {
@@ -1055,7 +1067,7 @@ test('a time scale draws its line and its marker and label as separate parts', (
     assert.deepEqual(draw(), { lines: 2, markers: 1, labels: ['2x'] })
 })
 
-test('any highlighted change of a same-beat stack shows its group name', () => {
+test('of a same-beat pair, only the highlighted change shows its group name', () => {
     const timeScale = (value: number): TimeScaleObject => ({
         groupId: 2 as GroupId,
         beat: 2,
@@ -1073,13 +1085,11 @@ test('any highlighted change of a same-beat stack shows its group name', () => {
     const [first, second] = [...context.state.store.grid.timeScale.values()].flatMap((entities) => [
         ...entities,
     ])
-    // Only the second change is selected; the first draws the shared label.
-    context.isHighlighted = (entity) => entity === second
     drawEvent(context, first!, false)
     drawEvent(context, second!, true)
     assert.deepEqual(
         canvas.labels.map(({ text }) => text),
-        ['1x→2x', 'B'],
+        ['1x', '2x', 'B'],
     )
 })
 
