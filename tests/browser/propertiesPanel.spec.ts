@@ -1284,3 +1284,15 @@ test('a narrow tab strip shortens Selection first, keeping Tool and View whole',
         await expect.poll(cut, `${locale} at ${width}px`).toEqual(expected)
     }
 })
+
+test('a tall but narrow panel stacks its sections, with whole headers', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await open(page, { rightDockWidth: 200 })
+    expect((await panel(page).boundingBox())!.width).toBeLessThan(240)
+    await expect(panel(page).getByRole('tablist')).toHaveCount(0)
+    await expect(panel(page).locator('[data-properties-section]')).toHaveCount(3)
+    for (const name of ['Selection', 'Tool', 'View']) {
+        const label = header(page, name).locator('span').last()
+        expect(await label.evaluate((span) => span.scrollWidth <= span.clientWidth)).toBe(true)
+    }
+})

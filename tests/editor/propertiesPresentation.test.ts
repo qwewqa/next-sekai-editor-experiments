@@ -8,29 +8,27 @@ import {
 
 const propertiesSections = ['selection', 'tool', 'view'] as const
 
-test('tall panels stack sections while short or narrow panels use section tabs', () => {
+test('tall panels stack sections while short panels use section tabs', () => {
     // Desktop right dock below a toolbar.
-    assert.equal(propertiesPresentation(352, 960), 'sections')
+    assert.equal(propertiesPresentation(960), 'sections')
     // Landscape phone side dock.
-    assert.equal(propertiesPresentation(260, 354), 'tabs')
+    assert.equal(propertiesPresentation(354), 'tabs')
     // Portrait phone and tablet top docks at their default heights.
-    assert.equal(propertiesPresentation(354, defaultDockSize('top', 390, 844)), 'tabs')
-    assert.equal(propertiesPresentation(784, defaultDockSize('top', 820, 1180)), 'tabs')
+    assert.equal(propertiesPresentation(defaultDockSize('top', 390, 844)), 'tabs')
+    assert.equal(propertiesPresentation(defaultDockSize('top', 820, 1180)), 'tabs')
     // A side tile shared with another panel.
-    assert.equal(propertiesPresentation(352, 430), 'tabs')
-    // A very narrow but tall tile.
-    assert.equal(propertiesPresentation(200, 900), 'tabs')
+    assert.equal(propertiesPresentation(430), 'tabs')
+    // A very narrow but tall tile stacks too.
+    assert.equal(propertiesPresentation(900), 'sections')
 })
 
 test('resizing across the threshold keeps the current presentation within a band', () => {
     // Shrinking from sections switches only well below the threshold.
-    assert.equal(propertiesPresentation(352, 500, 'sections'), 'sections')
-    assert.equal(propertiesPresentation(352, 489, 'sections'), 'tabs')
+    assert.equal(propertiesPresentation(500, 'sections'), 'sections')
+    assert.equal(propertiesPresentation(489, 'sections'), 'tabs')
     // Growing from tabs switches back only well above it.
-    assert.equal(propertiesPresentation(352, 540, 'tabs'), 'tabs')
-    assert.equal(propertiesPresentation(352, 550, 'tabs'), 'sections')
-    assert.equal(propertiesPresentation(250, 900, 'tabs'), 'tabs')
-    assert.equal(propertiesPresentation(230, 900, 'sections'), 'sections')
+    assert.equal(propertiesPresentation(540, 'tabs'), 'tabs')
+    assert.equal(propertiesPresentation(550, 'tabs'), 'sections')
 })
 
 test('section tab keys wrap and jump to the ends', () => {

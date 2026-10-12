@@ -47,18 +47,17 @@ const bodyId = (section: PropertiesSection) => `properties-section-${section}`
 const presentation = shallowRef<PropertiesPresentation>()
 let observer: ResizeObserver | undefined
 
-const measure = (width: number, height: number) => {
-    const next = propertiesPresentation(width, height, presentation.value)
+const measure = (height: number) => {
+    const next = propertiesPresentation(height, presentation.value)
     if (next !== presentation.value) presentation.value = next
 }
 
 onMounted(() => {
     const element = root.value
     if (!element) return
-    const { width, height } = element.getBoundingClientRect()
-    measure(width, height)
+    measure(element.getBoundingClientRect().height)
     observer = new ResizeObserver(([entry]) => {
-        if (entry) measure(entry.contentRect.width, entry.contentRect.height)
+        if (entry) measure(entry.contentRect.height)
         updateRaised()
     })
     observer.observe(element)
