@@ -58,12 +58,22 @@ for (const scenario of cases) {
             const preview = getPreviewState(source)
             const previewStore = serialize(preview.store)
             const updatedTime = view.cursorTime
+            // The preview's lines hold the moved joint, so selecting it raises them.
+            const moved = preview.selectedEntities[0]
+            const lines = preview.store.grid[`${scenario.tool}Connection`] as Map<
+                number,
+                Set<{ min: unknown; max: unknown }>
+            >
+            const raisesLines = [...lines.values()].some((set) =>
+                [...set].some(({ min, max }) => min === moved || max === moved),
+            )
             const during = {
                 changed: preview.store !== source.store,
                 sourceUnchanged: history.state.value === source,
                 canUndo: history.canUndo.value,
                 beat: preview.selectedEntities[0]?.beat,
                 memoized: getPreviewState(source) === preview,
+                raisesLines,
             }
 
             tool.dragUpdate!(end.x, end.y, modifiers)
@@ -117,6 +127,7 @@ for (const scenario of cases) {
             canUndo: false,
             beat: scenario.end[1],
             memoized: true,
+            raisesLines: true,
         })
         expect(result.cancelled).toEqual({
             cleared: true,

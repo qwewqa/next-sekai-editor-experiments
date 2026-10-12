@@ -407,22 +407,28 @@ export const drawEvent = (
     ctx.restore()
 }
 
+/** Which extensions a pass draws: a selected end joint's are raised, unless faint. */
+type InfinityPass = { selected: ReadonlySet<Entity>; isRaised: boolean }
+
 const drawInfinity = (
     context: EditorDrawContext,
     range: Range<EventJointEntity>,
     fromStart: boolean,
     untilEnd: boolean,
-    opacity: number,
+    isFull: boolean,
+    pass: InfinityPass,
 ) => {
     const { ctx, state, ups, bounds } = context
+    const isInPass = (joint: EventJointEntity) =>
+        (isFull && pass.selected.has(joint)) === pass.isRaised
     ctx.save()
-    ctx.globalAlpha *= 0.5 * opacity
+    ctx.globalAlpha *= 0.5 * (isFull ? 1 : 0.25)
     ctx.strokeStyle = eventColor(range.min)
-    if (fromStart) {
+    if (fromStart && isInPass(range.min)) {
         const y = beatToTime(state.bpms, range.min.beat) * ups
         for (const x of jointXs(range.min)) line(ctx, x, 0, x, y)
     }
-    if (untilEnd) {
+    if (untilEnd && isInPass(range.max)) {
         const y = beatToTime(state.bpms, range.max.beat) * ups
         for (const x of jointXs(range.max)) line(ctx, x, y, x, bounds.t)
     }
@@ -434,6 +440,7 @@ const drawStageInfinities = (
     ranges: Iterable<[StageId, Range<StageEventJointEntity>]>,
     isEventVisible: boolean,
     scope: ScopeLookup,
+    pass: InfinityPass,
 ) => {
     for (const [id, range] of ranges) {
         const visibility = scope.stage(range.min.stageId)
@@ -447,7 +454,8 @@ const drawStageInfinities = (
             range,
             !isMask || !!stage?.isFromStart,
             !isMask || !!stage?.isUntilEnd,
-            isVisible ? 1 : 0.25,
+            isVisible,
+            pass,
         )
     }
 }
@@ -463,16 +471,21 @@ const infinityTypes = [
 /**
  * Draws the lines extending event ranges to the chart start and end. Stage
  * ranges follow their stage's scope like the event connections they extend;
- * hidden event types are drawn faintly unless other objects are hidden.
+ * hidden event types are drawn faintly unless other objects are hidden. The
+ * extensions from selected end joints are left to the raised pass, which draws
+ * only them.
  */
 export const drawEventInfinities = (
     context: EditorDrawContext,
     visibilities: Record<EntityType, boolean>,
     scope: ScopeLookup,
     showOtherObjects: boolean,
+    selected: ReadonlySet<Entity> = new Set(),
+    isRaisedPass = false,
 ) => {
     const { ctx, state } = context
     const { stageEventRanges } = state.store
+    const pass = { selected, isRaised: isRaisedPass }
     ctx.save()
     ctx.lineWidth = 2 / context.scale
     ctx.lineCap = 'butt'
@@ -484,11 +497,17 @@ export const drawEventInfinities = (
         switch (type) {
             case 'cameraEventConnection': {
                 const range = state.store.globalEventRanges.cameraEventJoint
-                if (range) drawInfinity(context, range, true, true, isVisible ? 1 : 0.25)
+                if (range) drawInfinity(context, range, true, true, isVisible, pass)
                 break
             }
             case 'stageMaskEventConnection':
-                drawStageInfinities(context, stageEventRanges.stageMaskEventJoint, isVisible, scope)
+                drawStageInfinities(
+                    context,
+                    stageEventRanges.stageMaskEventJoint,
+                    isVisible,
+                    scope,
+                    pass,
+                )
                 break
             case 'stagePivotEventConnection':
                 drawStageInfinities(
@@ -496,6 +515,7 @@ export const drawEventInfinities = (
                     stageEventRanges.stagePivotEventJoint,
                     isVisible,
                     scope,
+                    pass,
                 )
                 break
             case 'stageStyleEventConnection':
@@ -504,6 +524,7 @@ export const drawEventInfinities = (
                     stageEventRanges.stageStyleEventJoint,
                     isVisible,
                     scope,
+                    pass,
                 )
                 break
             case 'stageTransformEventConnection':
@@ -512,6 +533,7 @@ export const drawEventInfinities = (
                     stageEventRanges.stageTransformEventJoint,
                     isVisible,
                     scope,
+                    pass,
                 )
                 break
         }

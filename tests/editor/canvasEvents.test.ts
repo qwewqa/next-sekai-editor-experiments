@@ -16,6 +16,7 @@ import { createState } from '../../src/state'
 import type { EntityType } from '../../src/state/entities'
 import type { StageMaskEventJointEntity } from '../../src/state/entities/events/joints/stage/mask'
 import type { StagePivotEventJointEntity } from '../../src/state/entities/events/joints/stage/pivot'
+import type { StageTransformEventJointEntity } from '../../src/state/entities/events/joints/stage/transform'
 import type { TimeScaleEntity } from '../../src/state/entities/timeScale'
 import { calculateBpms } from '../../src/state/integrals/bpms'
 
@@ -397,6 +398,98 @@ test('event visibility orders faint infinity layers before visible layers', () =
             ['#00f', 0.125],
             ['#0f0', 0.5],
             ['#0f0', 0.5],
+        ],
+    )
+})
+
+// Infinities read only these fields.
+const transform = (beat: number, xTranslation: number) =>
+    ({
+        type: 'stageTransformEventJoint',
+        stageId,
+        beat,
+        xTranslation,
+    }) as StageTransformEventJointEntity
+
+test('selected end joints raise their extensions into the raised pass, drawing each once', () => {
+    const { context, canvas } = makeContext()
+    const ranges = context.state.store.stageEventRanges.stageTransformEventJoint
+    const paths = (selected: Set<StageTransformEventJointEntity>, isRaisedPass: boolean) => {
+        canvas.strokes = []
+        drawEventInfinities(context, visibilities, fullScope, false, selected, isRaisedPass)
+        return canvas.strokes.map(({ path }) => path)
+    }
+    const start = [
+        ['M', 1, 0],
+        ['L', 1, -10],
+    ]
+    const end = [
+        ['M', 3, -20],
+        ['L', 3, -100],
+    ]
+
+    const min = transform(2, 1)
+    const max = transform(4, 3)
+    ranges.set(stageId, { min, max })
+    assert.deepEqual(paths(new Set(), false), [start, end])
+    assert.deepEqual(paths(new Set(), true), [])
+    assert.deepEqual(paths(new Set([min]), false), [end])
+    assert.deepEqual(paths(new Set([min]), true), [start])
+
+    // One joint raises both.
+    const only = transform(2, 1)
+    ranges.set(stageId, { min: only, max: only })
+    assert.deepEqual(paths(new Set([only]), false), [])
+    assert.deepEqual(paths(new Set([only]), true), [
+        start,
+        [
+            ['M', 1, -10],
+            ['L', 1, -100],
+        ],
+    ])
+
+    // From the ranges: a last joint below the pane, culled from the drawn entities, still raises its extension.
+    context.bounds = { ...context.bounds, t: -100, b: -50, h: 50 }
+    ranges.set(stageId, { min, max })
+    assert.deepEqual(paths(new Set([max]), true), [end])
+
+    // Faint ones stay in the base pass.
+    canvas.strokes = []
+    drawEventInfinities(
+        context,
+        { ...visibilities, stageTransformEventConnection: false },
+        fullScope,
+        true,
+        new Set([min]),
+        true,
+    )
+    assert.equal(canvas.strokes.length, 0)
+})
+
+test('the raised pass keeps a mask stage that is not from the start without its start extension', () => {
+    const { context, canvas } = makeContext()
+    const min = mask(2)
+    context.state.store.stageEventRanges.stageMaskEventJoint.set(stageId, { min, max: mask(4) })
+    context.state.stages.set(stageId, {
+        name: 'Stage A',
+        isFromStart: false,
+        isUntilEnd: true,
+        generateSimLines: 'global',
+    })
+    drawEventInfinities(context, visibilities, fullScope, false, new Set([min]), true)
+    assert.equal(canvas.strokes.length, 0)
+    drawEventInfinities(context, visibilities, fullScope, false, new Set([min]))
+    assert.deepEqual(
+        canvas.strokes.map(({ path }) => path),
+        [
+            [
+                ['M', -4, -20],
+                ['L', -4, -100],
+            ],
+            [
+                ['M', 4, -20],
+                ['L', 4, -100],
+            ],
         ],
     )
 })

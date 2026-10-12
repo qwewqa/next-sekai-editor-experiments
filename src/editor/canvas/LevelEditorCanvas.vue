@@ -461,7 +461,8 @@ watchEffect(
         const canvas = chartCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        const { objects, labels: entityLabels } = drawSteps.value
+        const { objects, raisedAt, labels: entityLabels } = drawSteps.value
+        const { selected } = shownEntities.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
         const preview = previewSlides.value
         const visibilities = view.visibilities
@@ -520,9 +521,11 @@ watchEffect(
             traceTimeLine(ctx, cursorEnds, cursor * inputs.ups)
             ctx.stroke()
             ctx.restore()
-            drawEventInfinities(context, visibilities, scope, showOtherObjects)
-            const drawEach = (steps: DrawStep[]) => {
-                for (const { entity, highlighted, opacity, part } of steps) {
+            drawEventInfinities(context, visibilities, scope, showOtherObjects, selected)
+            const drawEach = (steps: DrawStep[], from = 0, to = steps.length) => {
+                for (const [index, { entity, highlighted, opacity, part }] of steps.entries()) {
+                    if (index < from) continue
+                    if (index >= to) break
                     drawEntity(
                         previewContext && preview.entities.has(entity) ? previewContext : context,
                         entity,
@@ -532,7 +535,11 @@ watchEffect(
                     )
                 }
             }
-            drawEach(objects)
+            drawEach(objects, 0, raisedAt)
+            // Selected end joints' extensions rise with their lines.
+            if (selected.size)
+                drawEventInfinities(context, visibilities, scope, showOtherObjects, selected, true)
+            drawEach(objects, raisedAt)
             // Text goes above every object.
             drawGridLabels(
                 context,
