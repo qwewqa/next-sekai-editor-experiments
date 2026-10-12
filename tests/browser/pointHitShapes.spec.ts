@@ -19,7 +19,7 @@ type Build =
     | 'pivotInAnchor'
     | 'timeScaleInAnchor'
     | 'styleBesideNote'
-    | 'stack'
+    | 'jump'
     | 'edge'
 
 // Each chart at 120 BPM, as the fixture's point() assumes.
@@ -93,7 +93,7 @@ const show = (page: Page, build: Build, layout: 'basic' | 'composed' = 'basic') 
                         { ...events.stageStyleEvents[0]!, beat: 4, editorLane: 0.85 },
                     ]
                     break
-                case 'stack':
+                case 'jump':
                     // A same-beat jump: a marker for each change, on one spot.
                     chart.timeScales = [
                         { ...timeScale, beat: 4, editorLane: 3, timeScale: 2 },
@@ -232,9 +232,11 @@ test("a style marker beside a narrow note's body takes the style", async ({ page
 })
 
 test('clicks on a same-beat time-scale jump reach each change in turn', async ({ page }) => {
-    await show(page, 'stack')
+    await show(page, 'jump')
     await useTool(page, 'select')
     const point = await at(page, 3, 4)
+    // Each change has its own box.
+    expect(await hits(page, point)).toEqual(['timeScale:4', 'timeScale:4'])
     const picked = async () => {
         await click(page, point)
         return page.evaluate(() =>
@@ -243,9 +245,9 @@ test('clicks on a same-beat time-scale jump reach each change in turn', async ({
             ),
         )
     }
-    const first = await picked()
-    const second = await picked()
-    expect([...first, ...second].sort()).toEqual([2, 3])
+    // Identical boxes go to the one stored later first.
+    expect(await picked()).toEqual([3])
+    expect(await picked()).toEqual([2])
 })
 
 for (const layout of ['basic', 'composed'] as const) {
