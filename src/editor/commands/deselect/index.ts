@@ -15,7 +15,7 @@ export const deselect: Command = {
     },
 
     execute() {
-        // Dismisses a note marker even with nothing selected; a cursor marker stays.
+        // Dismisses an entity marker even with nothing selected; a cursor marker stays.
         if (view.touchMarker?.kind === 'entity') view.touchMarker = undefined
 
         if (!selectedEntities.value.length) {

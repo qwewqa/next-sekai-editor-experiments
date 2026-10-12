@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { bpms } from '../history/bpms'
 import { settings } from '../settings'
-import { timeToBeat } from '../state/integrals/bpms'
+import { isSameTempo, timeToBeat } from '../state/integrals/bpms'
 import { formatTime } from '../utils/format'
 import { formatBeatPosition } from './beatDisplay'
 import { measureFigureMiddle } from './canvas/text'
@@ -24,7 +24,7 @@ const hover = computed(() => {
     if (!view.isHoverHidden || !marker || time === undefined)
         return { time: view.hoverTime, beat: timeToBeat(sceneBpms.value, view.hoverTime) }
     // A tempo preview moves the grid under the cursor.
-    if (marker.kind === 'cursor' && sceneBpms.value !== bpms.value)
+    if (marker.kind === 'cursor' && !isSameTempo(sceneBpms.value, bpms.value))
         return { time, beat: timeToBeat(sceneBpms.value, time) }
     return { time, beat: marker.beat }
 })

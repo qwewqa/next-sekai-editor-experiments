@@ -202,6 +202,8 @@ test('a Ctrl+tap on empty space keeps a cursor marker', async ({ page }) => {
     // Without Ctrl, it would place the cursor at beat 3.
     await tap(page, 0, 3, 2)
     await page.evaluate(() => window.editorTest.nextTick())
+    // A recognized tap moves the hover to beat 3.
+    expect(await page.evaluate(() => window.editorTest.view.hoverTime)).toBeCloseTo(1.5)
     expect(await markerState(page)).toEqual(marked)
     expect(await cursorTime(page)).toBe(2)
 })
