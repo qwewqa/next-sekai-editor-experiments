@@ -426,10 +426,13 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
 })
 
 // Records the cursor line's ends in lanes, by chart frame: full-opacity white horizontal lines.
-const recordCursorEnds = (page: Page) =>
-    page.evaluate(() => {
+// `nearWheel` keeps only frames drawn within 100 ms of a wheel event.
+const recordCursorEnds = (page: Page, nearWheel = false) =>
+    page.evaluate((nearWheel) => {
         const ends: string[] = []
         ;(window as unknown as { cursorEnds: string[] }).cursorEnds = ends
+        let wheeled = -Infinity
+        addEventListener('wheel', () => (wheeled = performance.now()), { capture: true })
         const proto = CanvasRenderingContext2D.prototype
         const { moveTo, lineTo } = proto
         let from: [number, number] | undefined
@@ -444,12 +447,13 @@ const recordCursorEnds = (page: Page) =>
                 this.strokeStyle === '#ffffff' &&
                 from?.[1] === y &&
                 from[0] < 0 &&
-                x > 0
+                x > 0 &&
+                (!nearWheel || performance.now() - wheeled < 100)
             )
                 ends.push(`${from[0]},${x}`)
             return lineTo.call(this, x, y)
         }
-    })
+    }, nearWheel)
 
 const recordedCursorEnds = (page: Page) =>
     page.evaluate(() => {
@@ -497,7 +501,8 @@ test('scrubbing from the preview, the Basic cursor line keeps its ends as grid l
     await page.route('**/resource/particle.scp*', (route) =>
         route.fulfill({ body: resource('particles') }),
     )
-    await recordCursorEnds(page)
+    // A wheel slower than the scrub's gap ends it, and a rest near a label rightly cuts the line.
+    await recordCursorEnds(page, true)
     await setup(page, 'basic', 16)
     await useTool(page, 'select')
     await page.evaluate(() => {
@@ -681,13 +686,14 @@ for (const deviceScaleFactor of [1, 1.25, 1.5, 2]) {
                     )
                     for (const middle of await figureMiddles(page)) offsets.push(middle - line)
                 }
-                // Within half a pixel, as text lands on whole ones, and centred on average. Where device
-                // pixels aren't whole pixels, each whole pixel falls at another phase of them, and the ink,
-                // found in whole device pixels, can be off by half of one at every shift: in the mean too.
+                // Within half a pixel, as text lands on whole ones, and centred on average; device
+                // pixels that aren't whole pixels add up to half of one.
                 const uneven = Number.isInteger(deviceScaleFactor) ? 0 : 0.5 / deviceScaleFactor
                 const mean = offsets.reduce((a, b) => a + b) / offsets.length
                 expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(0.51 + uneven)
-                expect(Math.abs(mean)).toBeLessThanOrEqual(0.2 + uneven)
+                // At 1.25x the ink's device pixel phase can be off by half of one in the mean too.
+                const skew = deviceScaleFactor === 1.25 ? uneven : uneven / 2
+                expect(Math.abs(mean)).toBeLessThanOrEqual(0.2 + skew)
             })
         })
     }

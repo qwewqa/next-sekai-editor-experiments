@@ -108,6 +108,8 @@ const hoverAt = async (page: Page, point: { x: number; y: number }) => {
 test('Select: the hover is what a tap selects, cycling, with or without a selection there', async ({
     page,
 }) => {
+    // Every point, tapped three ways.
+    test.slow()
     await showStack(page)
     await select(page, 'none', 'select')
     let checked = 0
