@@ -2,6 +2,7 @@ import { clipboardEntry, updateClipboard } from '../clipboard'
 import type { Modifiers } from './controls/gestures/pointer'
 import { editorNavigation } from './navigation'
 import { pasteAtPosition, pastePositionAt, waitToPaste } from './tools/paste'
+import { markTouchBeat } from './view'
 
 export const pasteAtContextPosition = async (
     x: number,
@@ -15,8 +16,9 @@ export const pasteAtContextPosition = async (
     const data = clipboardEntry.value?.data
     if (!data) return false
 
-    await pasteAtPosition(position.lane, position.beatOffset(data.beat), modifiers, {
+    const beat = await pasteAtPosition(position.lane, position.beatOffset(data.beat), modifiers, {
         composed: true,
     })
+    if (beat !== undefined) markTouchBeat(beat)
     return true
 }

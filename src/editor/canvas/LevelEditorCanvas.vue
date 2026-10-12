@@ -524,9 +524,10 @@ watchEffect(
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects, selected)
             const drawEach = (steps: DrawStep[], from = 0, to = steps.length) => {
-                for (const [index, { entity, highlighted, opacity, part }] of steps.entries()) {
-                    if (index < from) continue
-                    if (index >= to) break
+                for (let index = from; index < to; index++) {
+                    const step = steps[index]
+                    if (!step) continue
+                    const { entity, highlighted, opacity, part } = step
                     drawEntity(
                         previewContext && preview.entities.has(entity) ? previewContext : context,
                         entity,

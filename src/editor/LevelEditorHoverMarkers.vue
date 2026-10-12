@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { bpms } from '../history/bpms'
 import { settings } from '../settings'
 import { timeToBeat } from '../state/integrals/bpms'
 import { formatTime } from '../utils/format'
@@ -16,13 +17,16 @@ import { shownMarkerTime } from './hoverMarker'
 import { drawnBpms, sceneBpms } from './sceneState'
 import { view } from './view'
 
-// The touch marker keeps its exact beat; hidden, the labels measure at the last hover.
+// Touch markers keep their exact beat; otherwise the labels follow the hover.
 const hover = computed(() => {
     const time = shownMarkerTime.value
     const marker = view.touchMarker
-    return view.isHoverHidden && marker && time !== undefined
-        ? { time, beat: marker.beat }
-        : { time: view.hoverTime, beat: timeToBeat(sceneBpms.value, view.hoverTime) }
+    if (!view.isHoverHidden || !marker || time === undefined)
+        return { time: view.hoverTime, beat: timeToBeat(sceneBpms.value, view.hoverTime) }
+    // A tempo preview moves the grid under the cursor.
+    if (marker.kind === 'cursor' && sceneBpms.value !== bpms.value)
+        return { time, beat: timeToBeat(sceneBpms.value, time) }
+    return { time, beat: marker.beat }
 })
 
 // The grid leaves out its own labels under these; a little inset keeps them clear of dock shadows.

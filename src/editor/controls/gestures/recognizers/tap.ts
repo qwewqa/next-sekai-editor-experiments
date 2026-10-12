@@ -18,8 +18,9 @@ export const tap = (maxDuration = 250, hold?: HoldPoint): Recognizer<1> => ({
         if (isDragging.value) return true
         const at = hold?.(id, x, y) ?? { x, y }
         setViewHover(at.y)
-        // The tap's own focus marks it again; one that focuses nothing leaves no marker.
-        if (!editorNavigation.value) view.touchMarker = undefined
+        // The tap's own focus marks it again; a cursor marker holds while the cursor does.
+        if (!editorNavigation.value && view.touchMarker?.kind === 'entity')
+            view.touchMarker = undefined
         void tool.value.tap?.(at.x, at.y, modifiers)
         return true
     },

@@ -140,9 +140,11 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 if (isDragging.value) return true
                 const startState = state.value
                 const noticeBefore = notification.value.id
-                // The drag's own focus marks where it lands.
+                // Its focus marks where it lands; a cursor marker holds while the cursor does.
                 const marker = view.touchMarker
-                if (!editorNavigation.value) view.touchMarker = undefined
+                if (!editorNavigation.value && marker?.kind === 'entity')
+                    view.touchMarker = undefined
+                const kept = view.touchMarker
                 if (!tool.value.dragStart?.(sx, sy, modifiers)) {
                     view.touchMarker = marker
                     return true
@@ -156,7 +158,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
 
                 const at = toolPoint(id, x, y)
                 // Shows the finger, not the start's focus marker, before the first update.
-                if (view.touchMarker) setViewHover(at.y)
+                if (view.touchMarker !== kept) setViewHover(at.y)
                 active = {
                     type: 'drag',
                     id,

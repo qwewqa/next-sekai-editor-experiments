@@ -226,6 +226,29 @@ test('faint lines and their joints stay under when a joint is selected, and a fa
     ])
 })
 
+test('lines and joints of a faint stage stay under when a joint is selected', () => {
+    const {
+        joints: [a, b, c],
+        connections: [ab, bc],
+    } = eventChain('stageTransform', [0, 2, 4])
+    const centerNote = note(5, { stageId: otherStage })
+    assert.deepEqual(
+        orderEntities(
+            [centerNote, a!, b!, c!, ab!, bc!],
+            new Set([b!]),
+            visibility({ stageId: otherStage }),
+        ).map(({ entity, raised, opacity }) => [entity, raised, opacity]),
+        [
+            [bc, false, 0.25],
+            [ab, false, 0.25],
+            [c, false, 0.25],
+            [a, false, 0.25],
+            [centerNote, false, 1],
+            [b, false, 0.25],
+        ],
+    )
+})
+
 test('group, stage and type filters remain independent and never bypass filtering for selection', () => {
     const matching = note(1)
     const wrongGroup = note(2, { groupId: otherGroup })

@@ -448,22 +448,26 @@ test('selected end joints raise their extensions into the raised pass, drawing e
         ],
     ])
 
-    // From the ranges: a last joint below the pane, culled from the drawn entities, still raises its extension.
+    // A last joint below the pane still raises its extension.
     context.bounds = { ...context.bounds, t: -100, b: -50, h: 50 }
     ranges.set(stageId, { min, max })
     assert.deepEqual(paths(new Set([max]), true), [end])
 
     // Faint ones stay in the base pass.
-    canvas.strokes = []
-    drawEventInfinities(
-        context,
-        { ...visibilities, stageTransformEventConnection: false },
-        fullScope,
-        true,
-        new Set([min]),
-        true,
-    )
-    assert.equal(canvas.strokes.length, 0)
+    const faint = (isRaisedPass: boolean) => {
+        canvas.strokes = []
+        drawEventInfinities(
+            context,
+            { ...visibilities, stageTransformEventConnection: false },
+            fullScope,
+            true,
+            new Set([min]),
+            isRaisedPass,
+        )
+        return canvas.strokes.map(({ path }) => path)
+    }
+    assert.deepEqual(faint(true), [])
+    assert.deepEqual(faint(false), [start, end])
 })
 
 test('the raised pass keeps a mask stage that is not from the start without its start extension', () => {

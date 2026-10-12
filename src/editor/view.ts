@@ -277,7 +277,7 @@ export const clampViewToReach = () => {
     view.lane = clamp(view.lane, min, max)
 }
 
-// A newly loaded chart opens within its own reach, with no sideways scroll or touch marker left from the last one.
+// A newly loaded chart opens within its own reach, with no sideways scroll or touch marker left.
 onResetState(() => {
     view.scrollingX = undefined
     view.touchMarker = undefined

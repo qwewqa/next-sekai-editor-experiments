@@ -388,19 +388,21 @@ export const useTool = (page: Page, name: string) =>
         switchToolTo(name as never)
     }, name)
 
-/** Sends the touches still down, by id. */
+/** Sends the touches still down, by id, with CDP modifier bits (2 is Ctrl). */
 export type TouchInput = (
     type: 'touchStart' | 'touchMove' | 'touchEnd',
     points: [number, number][],
+    modifiers?: number,
 ) => Promise<unknown>
 
 /** A CDP touch sender. */
 export const touchInput = async (page: Page): Promise<TouchInput> => {
     const client = await page.context().newCDPSession(page)
-    return (type, points) =>
+    return (type, points, modifiers = 0) =>
         client.send('Input.dispatchTouchEvent', {
             type,
             touchPoints: points.map(([x, y], id) => ({ x, y, id })),
+            modifiers,
         })
 }
 

@@ -15,6 +15,9 @@ export const deselect: Command = {
     },
 
     execute() {
+        // Dismisses a note marker even with nothing selected; a cursor marker stays.
+        if (view.touchMarker?.kind === 'entity') view.touchMarker = undefined
+
         if (!selectedEntities.value.length) {
             // A second Deselect leaves the current tool for the Select tool.
             if (settings.deselectSwitchesToSelect && toolName.value !== 'select') {
@@ -32,8 +35,6 @@ export const deselect: Command = {
             hovered: [],
             creating: [],
         }
-        // A cursor marker stays where it was placed.
-        if (view.touchMarker?.kind === 'entity') view.touchMarker = undefined
 
         notify(() => i18n.value.commands.deselect.deselected)
     },

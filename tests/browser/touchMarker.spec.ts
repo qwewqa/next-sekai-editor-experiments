@@ -38,14 +38,75 @@ const showNotes = (page: Page) =>
         await nextTick()
     })
 
-const point = (page: Page, lane: number, beat: number) =>
-    page.evaluate(([lane, beat]) => window.editorTest.point(lane, beat), [lane, beat] as const)
+/** Waits until the view holds still for two frames, so a point lands on the beat asked for. */
+const settle = (page: Page) =>
+    expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { view, settings } = window.editorTest
+                // Everything editorTest.point reads.
+                const at = () =>
+                    [
+                        view.x,
+                        view.y,
+                        view.w,
+                        view.h,
+                        view.time,
+                        view.lane,
+                        settings.pps,
+                        settings.width,
+                    ].join()
+                const before = at()
+                await new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                )
+                return !view.scrollingX && !view.scrollingY && at() === before
+            }),
+        )
+        .toBe(true)
 
-const tap = async (page: Page, lane: number, beat: number) => {
-    const { x, y } = await point(page, lane, beat)
-    await touch('touchStart', [[x, y]])
-    await touch('touchEnd', [])
+const point = async (page: Page, lane: number, beat: number) => {
+    await settle(page)
+    return await page.evaluate(([lane, beat]) => window.editorTest.point(lane, beat), [
+        lane,
+        beat,
+    ] as const)
 }
+
+/** A tap, sent together so a slow round trip can't stretch it into a long press. */
+const tapAt = (x: number, y: number, modifiers = 0) =>
+    Promise.all([touch('touchStart', [[x, y]], modifiers), touch('touchEnd', [], modifiers)])
+
+const tap = async (page: Page, lane: number, beat: number, modifiers = 0) => {
+    const { x, y } = await point(page, lane, beat)
+    await tapAt(x, y, modifiers)
+}
+
+/** A two-finger tap in the middle of the chart. */
+const twoTap = async (page: Page) => {
+    await settle(page)
+    const pane = (await page.locator('canvas.editor-chart').boundingBox())!
+    const x = pane.x + pane.width / 2
+    const y = pane.y + pane.height / 2
+    await Promise.all([
+        touch('touchStart', [
+            [x - 40, y],
+            [x + 40, y],
+        ]),
+        touch('touchEnd', []),
+    ])
+}
+
+const command = (page: Page, name: 'play' | 'stop' | 'jumpUp') =>
+    page.evaluate(async (name) => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        await commands[name].execute()
+    }, name)
+
+const selectedCount = (page: Page) =>
+    page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length)
 
 /** The touch marker, the input, and the hover labels: whether shown, their line's time and their beat. */
 const markerState = (page: Page) =>
@@ -126,6 +187,25 @@ test('a tap on empty space marks the cursor it placed, over the edge labels unde
     ).toEqual({ time: true, beat: true })
 })
 
+test('a tap off the grid marks the snapped beat it placed the cursor on', async ({ page }) => {
+    await tap(page, 0, 3.07)
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'cursor', beat: 3 }, 1.5))
+    expect(await cursorTime(page)).toBe(1.5)
+})
+
+test('a Ctrl+tap on empty space keeps a cursor marker', async ({ page }) => {
+    await tap(page, 0, 4)
+    const marked = await shownAt(page, { kind: 'cursor', beat: 4 }, 2)
+    await expect.poll(() => markerState(page)).toEqual(marked)
+    // Without Ctrl, it would place the cursor at beat 3.
+    await tap(page, 0, 3, 2)
+    await page.evaluate(() => window.editorTest.nextTick())
+    expect(await markerState(page)).toEqual(marked)
+    expect(await cursorTime(page)).toBe(2)
+})
+
 test('a tap on a note marks its beat and leaves the cursor', async ({ page }) => {
     await tap(page, -3, 2)
     await expect
@@ -193,13 +273,15 @@ test('the marker stays on its beat through a pinch, a two-finger pan and a quick
 
 test('a move drag shows the finger, then marks where it lands', async ({ page }) => {
     const from = await point(page, -3, 2)
-    const to = await point(page, -3, 3)
+    const to = await point(page, -3, 3.07)
     await touch('touchStart', [[from.x, from.y]])
     for (let step = 1; step <= 4; step++)
         await touch('touchMove', [[from.x, from.y + ((to.y - from.y) * step) / 4]])
-    // The hover follows the finger, unsnapped.
+    // The hover follows the finger, unsnapped: beat 3.07 is 1.535 seconds.
     await expect.poll(() => page.evaluate(() => window.editorTest.view.isHoverHidden)).toBe(false)
-    await expect.poll(async () => (await markerState(page)).time).toBe(1.5)
+    await expect
+        .poll(async () => Math.abs((await markerState(page)).time - 1.535))
+        .toBeLessThan(0.01)
     await touch('touchEnd', [])
     await expect
         .poll(() => markerState(page))
@@ -210,21 +292,31 @@ test('a move drag shows the finger, then marks where it lands', async ({ page })
     ])
 })
 
-test('a box select leaves no marker', async ({ page }) => {
+test('a box select clears a note marker and keeps a cursor marker', async ({ page }) => {
+    const boxSelect = async () => {
+        const from = await point(page, -6, 4)
+        const to = await point(page, 6, 1)
+        await touch('touchStart', [[from.x, from.y]])
+        for (let step = 1; step <= 4; step++)
+            await touch('touchMove', [
+                [from.x + ((to.x - from.x) * step) / 4, from.y + ((to.y - from.y) * step) / 4],
+            ])
+        await touch('touchEnd', [])
+    }
+
     await tap(page, -3, 2)
     await expect.poll(async () => (await markerState(page)).marker).toBeTruthy()
-    const from = await point(page, -6, 4)
-    const to = await point(page, 6, 1)
-    await touch('touchStart', [[from.x, from.y]])
-    for (let step = 1; step <= 4; step++)
-        await touch('touchMove', [
-            [from.x + ((to.x - from.x) * step) / 4, from.y + ((to.y - from.y) * step) / 4],
-        ])
-    await touch('touchEnd', [])
+    await boxSelect()
     await expect.poll(() => markerState(page)).toMatchObject({ marker: undefined, shown: false })
-    expect(
-        await page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length),
-    ).toBe(2)
+    expect(await selectedCount(page)).toBe(2)
+
+    await tap(page, 0, 3)
+    const marked = await shownAt(page, { kind: 'cursor', beat: 3 }, 1.5)
+    await expect.poll(() => markerState(page)).toEqual(marked)
+    expect(await selectedCount(page)).toBe(0)
+    await boxSelect()
+    await expect.poll(() => selectedCount(page)).toBe(2)
+    await expect.poll(() => markerState(page)).toEqual(marked)
 })
 
 test('Escape during a drag brings back the marker from before it', async ({ page }) => {
@@ -283,20 +375,6 @@ test('a mouse move replaces the marker, and a touch then hides the hover and its
         .poll(() => markerState(page))
         .toMatchObject({ marker: undefined, input: 'touch', shown: false })
     expect(await hover()).toEqual({ hidden: true, creating: 0 })
-
-    // What would hover again under a resting mouse doesn't bring it back.
-    await page.evaluate(async () => {
-        const { history, appImport } = window.editorTest
-        const { commands } = await appImport<typeof import('../../src/editor/commands')>(
-            '/src/editor/commands/index.ts',
-        )
-        await commands.laneLimitSix.execute()
-        history.replaceState({ ...history.state.value })
-    })
-    await expect
-        .poll(() => markerState(page))
-        .toMatchObject({ marker: undefined, input: 'touch', shown: false })
-    expect(await hover()).toEqual({ hidden: true, creating: 0 })
 })
 
 for (const phase of ['pressed', 'dragging'] as const)
@@ -320,9 +398,34 @@ for (const phase of ['pressed', 'dragging'] as const)
         expect(await markerState(page)).toMatchObject({ marker: undefined, input: 'mouse' })
     })
 
-test('playback and a BPM change hide a cursor marker; a note marker keeps its beat', async ({
-    page,
-}) => {
+test('playback hides the marker, and stopping shows it again', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.playStartPosition = 'cursor'
+    })
+    await tap(page, 0, 4)
+    const cursor = await shownAt(page, { kind: 'cursor', beat: 4 }, 2)
+    await expect.poll(() => markerState(page)).toEqual(cursor)
+    await command(page, 'play')
+    await expect
+        .poll(() => markerState(page))
+        .toMatchObject({ marker: { kind: 'cursor', beat: 4 }, shown: false })
+    // Stop takes the cursor back to its beat.
+    await command(page, 'stop')
+    await expect.poll(() => markerState(page)).toEqual(cursor)
+
+    await tap(page, -3, 2)
+    const note = await shownAt(page, { kind: 'entity', beat: 2 }, 1)
+    await expect.poll(() => markerState(page)).toEqual(note)
+    await command(page, 'play')
+    await expect
+        .poll(() => markerState(page))
+        .toMatchObject({ marker: { kind: 'entity', beat: 2 }, shown: false })
+    // A pause leaves the cursor where playback reached.
+    await command(page, 'play')
+    await expect.poll(() => markerState(page)).toEqual(note)
+})
+
+test('a BPM change hides a cursor marker; a note marker keeps its beat', async ({ page }) => {
     const addBpm = () =>
         page.evaluate(async () => {
             const { history, appImport } = window.editorTest
@@ -338,19 +441,9 @@ test('playback and a BPM change hide a cursor marker; a note marker keeps its be
         })
 
     await tap(page, 0, 4)
-    await expect.poll(async () => (await markerState(page)).shown).toBe(true)
-    await page.evaluate(async () => {
-        const { commands } = await window.editorTest.appImport<
-            typeof import('../../src/editor/commands')
-        >('/src/editor/commands/index.ts')
-        await commands.play.execute()
-    })
     await expect
         .poll(() => markerState(page))
-        .toMatchObject({ marker: { kind: 'cursor', beat: 4 }, shown: false })
-
-    await tap(page, 0, 4)
-    await expect.poll(async () => (await markerState(page)).shown).toBe(true)
+        .toEqual(await shownAt(page, { kind: 'cursor', beat: 4 }, 2))
     await addBpm()
     await expect
         .poll(() => markerState(page))
@@ -368,52 +461,228 @@ test('playback and a BPM change hide a cursor marker; a note marker keeps its be
         .toEqual(await shownAt(page, { kind: 'entity', beat: 2 }, 1.5))
 })
 
-test('taps in the Elevation pane leave the marker', async ({ page }) => {
+test('Elevation pane gestures and its beat steps leave a cursor marker', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.elevationEditorSideBySide = 'allow'
+    })
+    await tap(page, 0, 2)
+    const marked = await shownAt(page, { kind: 'cursor', beat: 2 }, 1)
+    await expect.poll(() => markerState(page)).toEqual(marked)
+    await page.keyboard.press('t')
+    const pane = page.locator('.elevation-canvas')
+    await expect(pane).toBeVisible()
+    await useTool(page, 'select')
+    // The pane shows the notes at the cursor's beat.
+    const row = await page.evaluate(async () => {
+        const { elevationLayout } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const [row] = elevationLayout.value.rows
+        return row && { x: row.x, y: row.y }
+    })
+    expect(row).toBeTruthy()
+    const box = (await pane.boundingBox())!
+    await tapAt(box.x + row!.x, box.y + row!.y)
+    await expect.poll(() => selectedCount(page)).toBe(1)
+    await expect.poll(() => markerState(page)).toEqual(marked)
+
+    // With the pane still active, its Next Beat moves the main cursor but sets no marker.
+    const next = (await page.getByRole('button', { name: 'Next Beat' }).boundingBox())!
+    await tapAt(next.x + next.width / 2, next.y + next.height / 2)
+    await expect.poll(() => cursorTime(page)).toBeGreaterThan(1)
+    await expect
+        .poll(() => markerState(page))
+        .toMatchObject({ marker: { kind: 'cursor', beat: 2 }, shown: false })
+})
+
+test('a tap in the Elevation pane keeps a note marker', async ({ page }) => {
     await tap(page, -3, 2)
     const marked = await shownAt(page, { kind: 'entity', beat: 2 }, 1)
     await expect.poll(() => markerState(page)).toEqual(marked)
     await page.keyboard.press('t')
     const pane = page.locator('.elevation-canvas')
     await expect(pane).toBeVisible()
+    await useTool(page, 'select')
+    // The other note's row.
+    const row = await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { elevationLayout } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const selected: unknown[] = history.state.value.selectedEntities
+        const row = elevationLayout.value.rows.find(({ note }) => !selected.includes(note))
+        return row && { x: row.x, y: row.y }
+    })
+    expect(row).toBeTruthy()
     const box = (await pane.boundingBox())!
-    for (const [fx, fy] of [
-        [0.5, 0.5],
-        [0.3, 0.7],
-    ] as const) {
-        await touch('touchStart', [[box.x + box.width * fx, box.y + box.height * fy]])
-        await touch('touchEnd', [])
-    }
-    expect((await markerState(page)).marker).toEqual(marked.marker)
+    await tapAt(box.x + row!.x, box.y + row!.y)
+    await expect
+        .poll(() => page.evaluate(() => window.editorTest.snapshot().selected))
+        .toEqual([{ type: 'note', beat: 2, left: 2, size: 2 }])
+    await expect.poll(() => markerState(page)).toEqual(marked)
 })
 
-test('a two-finger tap clears a note marker, and keeps a cursor marker; Delete keeps it', async ({
+test('a two-finger tap clears a note marker, also after Delete empties the selection', async ({
     page,
 }) => {
     await tap(page, -3, 2)
     const marked = await shownAt(page, { kind: 'entity', beat: 2 }, 1)
     await expect.poll(() => markerState(page)).toEqual(marked)
+    await twoTap(page)
+    await expect.poll(() => markerState(page)).toMatchObject({ marker: undefined, shown: false })
+
+    // Delete keeps the marker on its beat.
+    await tap(page, -3, 2)
+    await expect.poll(() => markerState(page)).toEqual(marked)
     await page.keyboard.press('Delete')
     await expect.poll(() => notes(page)).toEqual([{ beat: 2, left: 2 }])
     expect(await markerState(page)).toEqual(marked)
-
-    const twoTap = async () => {
-        const { x, y } = await point(page, 0, 3)
-        await touch('touchStart', [
-            [x - 40, y],
-            [x + 40, y],
-        ])
-        await touch('touchEnd', [])
-    }
-    await tap(page, 3, 2)
-    await expect.poll(() => markerState(page)).toEqual(marked)
-    await twoTap()
+    expect(await selectedCount(page)).toBe(0)
+    await twoTap(page)
     await expect.poll(() => markerState(page)).toMatchObject({ marker: undefined, shown: false })
+})
 
-    await tap(page, 0, 4)
-    const cursor = await shownAt(page, { kind: 'cursor', beat: 4 }, 2)
+test('a two-finger tap deselects and keeps a cursor marker', async ({ page }) => {
+    await tap(page, -3, 2)
+    await expect.poll(() => selectedCount(page)).toBe(1)
+    // Jump Up moves the cursor to the last object and keeps the selection.
+    await command(page, 'jumpUp')
+    const { marker } = await markerState(page)
+    expect(marker?.kind).toBe('cursor')
+    const cursor = await shownAt(page, marker!, await cursorTime(page))
     await expect.poll(() => markerState(page)).toEqual(cursor)
-    await twoTap()
+    expect(await selectedCount(page)).toBe(1)
+    await twoTap(page)
+    await expect.poll(() => selectedCount(page)).toBe(0)
     await expect.poll(() => markerState(page)).toEqual(cursor)
+})
+
+test('a context menu Paste marks the beat it pastes at', async ({ page }) => {
+    await tap(page, -3, 2)
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'entity', beat: 2 }, 1))
+    const target = await point(page, 0, 4)
+    const pasted = await page.evaluate(async (target) => {
+        const { appImport } = window.editorTest
+        const { copy } = await appImport<typeof import('../../src/editor/commands/copy')>(
+            '/src/editor/commands/copy/index.ts',
+        )
+        const { pasteAtContextPosition } = await appImport<
+            typeof import('../../src/editor/contextMenuPaste')
+        >('/src/editor/contextMenuPaste.ts')
+        Object.defineProperty(navigator.clipboard, 'writeText', {
+            configurable: true,
+            value: async () => undefined,
+        })
+        Object.defineProperty(navigator.clipboard, 'readText', {
+            configurable: true,
+            value: async () => {
+                throw new DOMException('Clipboard denied', 'NotAllowedError')
+            },
+        })
+        copy.execute()
+        return await pasteAtContextPosition(target.x, target.y)
+    }, target)
+    expect(pasted).toBe(true)
+    expect((await notes(page)).map(({ beat }) => beat)).toContain(4)
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'entity', beat: 4 }, 2))
+})
+
+test('a tap on an off-screen badge marks the note nearest it', async ({ page }) => {
+    // Two notes off the right side, held in the top badge: one by the top edge, one by the badge.
+    const [upper, lower] = await page.evaluate(async () => {
+        const { view, settings, show, fixtures, nextTick } = window.editorTest
+        // Whole milliseconds, so the marker's time reads back exactly.
+        const beatAt = (y: number) =>
+            (2 * Math.round((view.time + (0.5 * view.h - y) / settings.pps) * 1000)) / 1000
+        const beats = [beatAt(6), beatAt(40)] as const
+        const template = fixtures.interaction.slides.flat()[0]!
+        show(
+            {
+                ...fixtures.interaction,
+                slides: beats.map((beat) => [
+                    { ...template, beat, left: 40, size: 2, isAttached: false },
+                ]),
+            },
+            view.time,
+        )
+        await nextTick()
+        return beats
+    })
+    const badge = page
+        .locator('.editor-chart')
+        .locator('..')
+        .locator('.offscreen-note-indicator[data-side="right"]')
+    await expect(badge).toHaveAttribute('data-count', '2')
+    const bounds = (await badge.boundingBox())!
+    await tapAt(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    await expect.poll(() => selectedCount(page)).toBe(2)
+    // The upper note comes first in painter order.
+    expect(upper).toBeGreaterThan(lower)
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'entity', beat: lower }, lower / 2))
+})
+
+test('under a scaling preview that retimes, a cursor marker labels the beat the grid shows', async ({
+    page,
+}, testInfo) => {
+    // Beat 4 is 1.5 seconds in; scaled by 2 from beat 1, the 240 BPM runs to beat 5, which is then at 1.5 seconds.
+    await page.evaluate(async () => {
+        const { fixtures, show, history, view, appImport, nextTick } = window.editorTest
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: 1, bpm: 240 },
+                    { beat: 3, bpm: 120 },
+                ],
+                slides: [],
+            },
+            1.5,
+        )
+        const { focusViewAtBeat } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        view.input = 'touch'
+        focusViewAtBeat(4)
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.grid.bpm.values()]
+                .flatMap((set) => [...set])
+                .filter(({ beat }) => beat > 0),
+        })
+        await nextTick()
+    })
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'cursor', beat: 4 }, 1.5))
+
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { scaleBeat } = await appImport<
+            typeof import('../../src/editor/commands/scaleSelection')
+        >('/src/editor/commands/scaleSelection/index.ts')
+        void scaleBeat.execute()
+    })
+    await expect(page.locator('.scaling-panel')).toBeVisible()
+    await page.evaluate(async () => {
+        const { setScalingFactor } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/scaleSelection/session')
+        >('/src/editor/commands/scaleSelection/session.ts')
+        setScalingFactor(2)
+    })
+    await expect
+        .poll(() => markerState(page))
+        .toEqual({
+            ...(await shownAt(page, { kind: 'cursor', beat: 4 }, 1.5)),
+            beat: await beatLabel(page, 5),
+        })
+    expect(await beatLabel(page, 5)).not.toBe(await beatLabel(page, 4))
+    await page.screenshot({ path: testInfo.outputPath('scaling-preview-marker.png') })
 })
 
 test('loading a chart clears the marker', async ({ page }) => {

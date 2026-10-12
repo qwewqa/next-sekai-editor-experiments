@@ -273,8 +273,16 @@ export const select: Tool = {
         const indicator = hitOffscreenIndicator(x, y)
         if (indicator) {
             selectOffscreenNotes(indicator.targets, modifiers)
-            const [first] = indicator.targets
-            if (first) markTouchBeat(first.beat)
+            // Of its notes, the one nearest the badge.
+            const at = yToBeat(y)
+            const beat = indicator.targets.reduce<number | undefined>(
+                (best, note) =>
+                    best === undefined || Math.abs(note.beat - at) < Math.abs(best - at)
+                        ? note.beat
+                        : best,
+                undefined,
+            )
+            if (beat !== undefined) markTouchBeat(beat)
             return
         }
 
