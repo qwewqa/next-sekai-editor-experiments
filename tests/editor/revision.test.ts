@@ -2,8 +2,8 @@ import type { LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Chart } from '../../src/chart'
-import { ImportRefusal } from '../../src/chart/refusal'
 import { serializeToLevelDataEntities } from '../../src/levelData/entities/serialize'
+import { parseLevelData } from '../../src/levelData/parse'
 import {
     LATEST_REVISION,
     getLevelDataRevision,
@@ -74,14 +74,17 @@ test('level data revision reads the Initialization value, and missing is revisio
     )
     // A ref is not a value.
     assert.equal(getLevelDataRevision(initialization([{ name: 'revision', ref: 'x' }])), 1)
-    assert.throws(
-        () => getLevelDataRevision(initialization([{ name: 'revision', value: 'two' as never }])),
-        (error) => error instanceof ImportRefusal && error.reason === 'invalidValue',
-    )
+})
+
+test('revision 0 always warns, as revision 1 changes its scoring', () => {
+    for (const revision of [0, 0.5]) {
+        for (const value of [noteElevation, stageElevation, flat, chart()])
+            assert.equal(getRevisionWarning(revision, value), 'older')
+    }
 })
 
 test('an older revision warns only when a later revision step affects the chart', () => {
-    for (const revision of [0, 1, 1.5]) {
+    for (const revision of [1, 1.5]) {
         assert.equal(getRevisionWarning(revision, noteElevation), 'older')
         assert.equal(getRevisionWarning(revision, stageElevation), 'older')
         assert.equal(getRevisionWarning(revision, flat), undefined)
@@ -98,7 +101,7 @@ test('a newer revision always warns', () => {
     }
 })
 
-test('serialized level data is the latest revision and reads back without a warning', () => {
+test('serialized level data is the latest revision and reads back with it', () => {
     const state = chartState([[note(0), note(1, 0, { elevation: 3 })]])
     const entities = serializeToLevelDataEntities(
         1000,
@@ -114,6 +117,12 @@ test('serialized level data is the latest revision and reads back without a warn
             { name: 'revision', value: LATEST_REVISION },
         ],
     })
-    assert.equal(getLevelDataRevision(entities), LATEST_REVISION)
-    assert.equal(getRevisionWarning(getLevelDataRevision(entities), noteElevation), undefined)
+    const reparsed = parseLevelData(JSON.parse(JSON.stringify({ bgmOffset: 0, entities }))).entities
+    assert.equal(getLevelDataRevision(reparsed), LATEST_REVISION)
+    // The elevation survives, yet the revision read back does not warn.
+    assert.deepEqual(
+        reparsed.flatMap((entity) => entity.data.filter((data) => data.name === 'elevation')),
+        [{ name: 'elevation', value: 3 }],
+    )
+    assert.equal(getRevisionWarning(getLevelDataRevision(reparsed), noteElevation), undefined)
 })

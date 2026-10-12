@@ -150,14 +150,14 @@ export const useAutoSave = () => {
         const restored = await restoreRecoveries(data, aside)
         if (!restored?.warning) return
 
-        // After any recovery dialogs, about the chart that ended up loaded.
+        // Shown after any recovery dialogs, for the chart loaded.
         const warning = restored.warning
         await showModal(InfoModal, {
             title: () => i18n.value.history.autoSave.title,
             message: () => i18n.value.commands.open.revision[warning],
         })
-        // Rewritten once at the latest revision so later starts stay quiet; only this tab's own.
-        if (written !== undefined && storageGetText(key) === written) {
+        // An older one is saved once at the latest revision, so restarts stay quiet; only this tab's.
+        if (warning === 'older' && written !== undefined && storageGetText(key) === written) {
             savedState = undefined
             flush()
         }

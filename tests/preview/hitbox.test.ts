@@ -31,7 +31,7 @@ import {
     identityStageTransform,
     stageTransformToAffine,
 } from '../../src/preview/engine/layout'
-import { EaseType, type Quad, type Vec } from '../../src/preview/engine/math'
+import { EaseType, subVec, type Quad, type Vec } from '../../src/preview/engine/math'
 import { NoteKind, type PreviewChart, type PreviewNote } from '../../src/preview/engine/model'
 import { renderPreviewFrame } from '../../src/preview/engine/render'
 import type { PreviewRenderer, ZKey } from '../../src/preview/gl'
@@ -659,6 +659,40 @@ test('masked zero-width notes and collapsed elevation keep the leniency and heig
         Math.hypot(flat.bounds.tr.x - flat.bounds.tl.x, flat.bounds.tr.y - flat.bounds.tl.y),
         4 * laneW,
     )
+})
+
+test('at stage tilt 0 stage and note elevation move the hitbox with the drawn note', () => {
+    const isBody = ({ sprite }: Draw) => sprite?.startsWith('Sekai Normal Note') ?? false
+    const build = (stageElevation: number, noteElevation: number) =>
+        preview(
+            chart([[note(2, { elevation: noteElevation })]], {
+                isDynamicStages: true,
+                stageTransformEvents: [transform(0, 0, { elevation: stageElevation })],
+                cameraEvents: [camera(0, { cameraStageTilt: 0 })],
+            }),
+        )
+    const flat = build(0, 0)
+    const flatTarget = scoredHitbox(flat, () => true).target
+    const flatBody = render(flat, 2, { showHitboxes: false }).filter(isBody)
+    assert.ok(flatBody.length > 0)
+    for (const [stageElevation, noteElevation] of [
+        [2, 0],
+        [0, 1.5],
+        [2, -1.5],
+    ] as const) {
+        const raised = build(stageElevation, noteElevation)
+        const { target } = scoredHitbox(raised, () => true)
+        // Tilt 0 raises by a translation, the same for the hitbox and every drawn corner.
+        const shift = subVec(target.l, flatTarget.l)
+        assert.ok(Math.hypot(shift.x, shift.y) > 0.1 * laneW)
+        closeVec(subVec(target.r, flatTarget.r), shift)
+        const body = render(raised, 2, { showHitboxes: false }).filter(isBody)
+        assert.equal(body.length, flatBody.length)
+        body.forEach(({ quad }, i) => {
+            for (const key of ['bl', 'br', 'tl', 'tr'] as const)
+                closeVec(subVec(quad[key], flatBody[i]!.quad[key]), shift, key)
+        })
+    }
 })
 
 test('attached notes interpolate their endpoints across stages, including untransformed pivots', () => {

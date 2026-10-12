@@ -9,6 +9,7 @@ const older =
 const newer =
     'This level was made for a newer engine revision than this editor supports. Some parts may not show or save as intended.'
 const recoveryKey = 'sonolus-next-sekai-editor.autoSave.levelData'
+const asideKey = 'sonolus-next-sekai-editor.autoSave.unreadable'
 
 // A tap as the editor saves it.
 const tap = (beat: number, lane: number, elevation: number) => ({
@@ -135,6 +136,12 @@ const dialogsAfterLoading = (page: Page) =>
         return modals.map((modal) => (modal.props as { message?: () => string }).message?.())
     })
 
+/** No dialog is open, in the modal list or on the page. */
+const expectNoDialogs = async (page: Page) => {
+    expect(await dialogsAfterLoading(page)).toEqual([])
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
 const dismiss = async (page: Page, title: string, message: string) => {
     const dialog = page.getByRole('dialog', { name: title })
     await expect(dialog).toContainText(message)
@@ -158,8 +165,33 @@ const save = async (page: Page) => {
 const storedRecovery = (page: Page) =>
     page.evaluate((key) => localStorage.getItem(key), recoveryKey)
 
+/** Resizes the first note, with auto save writing at once. */
+const edit = (page: Page) =>
+    page.evaluate(async () => {
+        const urls = new Map(
+            performance
+                .getEntriesByType('resource')
+                .map((entry) => [new URL(entry.name).pathname, entry.name]),
+        )
+        const appImport = <T>(pathname: string): Promise<T> =>
+            import(urls.get(pathname) ?? pathname)
+        const history =
+            await appImport<typeof import('../../src/history/index')>('/src/history/index.ts')
+        const { settings } =
+            await appImport<typeof import('../../src/settings')>('/src/settings.ts')
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default/index')
+        >('/src/editor/sidebars/default/index.ts')
+        settings.autoSaveDelay = 0
+        const [note] = [...history.state.value.store.slides.note.values()].flat()
+        history.replaceState({ ...history.state.value, selectedEntities: [note!] })
+        editSelectedEditableEntities({ size: 3 })
+    })
+
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+        // Keeps every module URL, so page imports reach the app's own modules.
+        performance.setResourceTimingBufferSize(5000)
         // The file input path, as in browsers without the File System Access API.
         Object.defineProperty(window, 'showOpenFilePicker', {
             configurable: true,
@@ -184,13 +216,14 @@ test('opening an older level with elevation warns, and its save is the latest re
     expect(elevations(saved)).toEqual([1.5])
 
     await open(page, 'resaved', Buffer.from(JSON.stringify(saved)))
-    expect(await dialogsAfterLoading(page)).toEqual([])
+    await expectNoDialogs(page)
     expect((await current(page)).elevations).toEqual([0, 1.5])
 })
 
 for (const [label, revision, elevation, warning] of [
     ['older with stage-free note elevation', 1, -2, older],
     ['revision 0 with elevation', 0, 3, older],
+    ['revision 0 without elevation', 0, 0, older],
     ['older without elevation', 1, 0, undefined],
     ['missing a revision, without elevation', undefined, 0, undefined],
     ['the latest revision with elevation', 2, 3, undefined],
@@ -198,8 +231,10 @@ for (const [label, revision, elevation, warning] of [
 ] as const) {
     test(`opening level data ${label} ${warning ? 'warns' : 'is silent'}`, async ({ page }) => {
         await open(page, 'level', Buffer.from(JSON.stringify(level(revision, elevation))))
-        expect(await dialogsAfterLoading(page)).toEqual(warning ? [warning] : [])
-        if (warning) await dismiss(page, 'Open', warning)
+        if (warning) {
+            expect(await dialogsAfterLoading(page)).toEqual([warning])
+            await dismiss(page, 'Open', warning)
+        } else await expectNoDialogs(page)
         expect((await current(page)).elevations).toEqual([0, elevation])
     })
 }
@@ -289,7 +324,7 @@ test('chart imports carry no revision and never warn', async ({ page }) => {
     ] as const) {
         await open(page, name, buffer)
         await expect(page.locator('.notification')).toHaveText(message)
-        expect(await dialogsAfterLoading(page)).toEqual([])
+        await expectNoDialogs(page)
     }
 })
 
@@ -317,13 +352,12 @@ test('pasting copied data from an older revision with elevation never warns', as
         )
     }, entities)
     expect(pasted).toEqual([0, 2])
-    expect(await dialogsAfterLoading(page)).toEqual([])
+    await expectNoDialogs(page)
 })
 
 for (const [label, revision, elevation, warning] of [
     ['older with elevation', undefined, 1.5, older],
     ['older without elevation', 1, 0, undefined],
-    ['newer', 3, 0, newer],
 ] as const) {
     test(`restoring an auto save ${label} ${warning ? 'warns once' : 'is silent'}`, async ({
         page,
@@ -335,11 +369,13 @@ for (const [label, revision, elevation, warning] of [
         ] as const)
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        expect(await dialogsAfterLoading(page)).toEqual(warning ? [warning] : [])
-        if (warning) await dismiss(page, 'Auto Save', warning)
+        if (warning) {
+            expect(await dialogsAfterLoading(page)).toEqual([warning])
+            await dismiss(page, 'Auto Save', warning)
+        } else await expectNoDialogs(page)
         expect((await current(page)).elevations).toEqual([0, elevation])
 
-        // Rewritten once at the latest revision, so the next start restores it quietly.
+        // An older one is rewritten once at the latest revision, so the next start restores it quietly.
         const stored = await storedRecovery(page)
         expect(stored).not.toBeNull()
         const restored = parseAutoSave(JSON.parse(stored!)).levelData
@@ -348,10 +384,39 @@ for (const [label, revision, elevation, warning] of [
         )
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        expect(await dialogsAfterLoading(page)).toEqual([])
+        await expectNoDialogs(page)
         expect((await current(page)).elevations).toEqual([0, elevation])
     })
 }
+
+test('restoring a newer auto save warns on every start and keeps it as stored until an edit', async ({
+    page,
+}) => {
+    const text = JSON.stringify(level(3, 0))
+    await page.evaluate(([key, text]) => localStorage.setItem(key, text), [
+        recoveryKey,
+        text,
+    ] as const)
+    for (let start = 0; start < 2; start++) {
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        expect(await dialogsAfterLoading(page)).toEqual([newer])
+        await dismiss(page, 'Auto Save', newer)
+        expect(await storedRecovery(page)).toBe(text)
+    }
+
+    // An edit saves it at the latest revision, which restores quietly.
+    await edit(page)
+    await expect
+        .poll(async () => {
+            const stored = await storedRecovery(page)
+            return stored === null ? null : revisionOf(parseAutoSave(JSON.parse(stored)).levelData)
+        })
+        .toEqual({ name: 'revision', value: 2 })
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await expectNoDialogs(page)
+})
 
 for (const [label, primary, aside, choice, warning] of [
     [
@@ -375,17 +440,21 @@ for (const [label, primary, aside, choice, warning] of [
         'Restore',
         undefined,
     ],
+    [
+        'discarding it warns for an older last one',
+        level(undefined, 1.5),
+        level(2, 0),
+        'Discard',
+        older,
+    ],
 ] as const) {
     test(`with an earlier recovery set aside, ${label}`, async ({ page }) => {
         await page.evaluate(
-            ([key, primary, aside]) => {
+            ([key, asideKey, primary, aside]) => {
                 localStorage.setItem(key, JSON.stringify(primary))
-                localStorage.setItem(
-                    'sonolus-next-sekai-editor.autoSave.unreadable',
-                    JSON.stringify(aside),
-                )
+                localStorage.setItem(asideKey, JSON.stringify(aside))
             },
-            [recoveryKey, primary, aside] as const,
+            [recoveryKey, asideKey, primary, aside] as const,
         )
         await page.reload()
         const dialog = page.getByRole('dialog')
@@ -393,9 +462,32 @@ for (const [label, primary, aside, choice, warning] of [
         // The choice comes alone; the warning waits for it.
         expect(await dialogsAfterLoading(page)).toEqual([undefined])
         await dialog.getByRole('button', { name: choice, exact: true }).click()
-        expect(await dialogsAfterLoading(page)).toEqual(warning ? [warning] : [])
-        if (warning) await dismiss(page, 'Auto Save', warning)
+        if (warning) {
+            expect(await dialogsAfterLoading(page)).toEqual([warning])
+            await dismiss(page, 'Auto Save', warning)
+        } else await expectNoDialogs(page)
         const loaded = choice === 'Restore' ? aside : primary
         expect((await current(page)).elevations).toEqual([0, elevations(loaded)[0] ?? 0])
     })
 }
+
+test('with an unreadable last recovery, an older earlier one warns once that is offered', async ({
+    page,
+}) => {
+    await page.evaluate(
+        ([key, asideKey, aside]) => {
+            localStorage.setItem(key, '{"damaged')
+            localStorage.setItem(asideKey, JSON.stringify(aside))
+        },
+        [recoveryKey, asideKey, level(undefined, 1.5)] as const,
+    )
+    await page.reload()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('could not restore the unsaved chart from your last session')
+    // The offer comes alone; the warning waits for it.
+    expect(await dialogsAfterLoading(page)).toEqual([undefined])
+    await dialog.getByRole('button', { name: 'OK', exact: true }).click()
+    expect(await dialogsAfterLoading(page)).toEqual([older])
+    await dismiss(page, 'Auto Save', older)
+    expect((await current(page)).elevations).toEqual([0, 1.5])
+})

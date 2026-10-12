@@ -1,8 +1,5 @@
 import type { LevelDataEntity } from '@sonolus/core'
-import Type from 'typebox'
-import Value from 'typebox/value'
 import type { Chart } from '../chart'
-import { ImportRefusal } from '../chart/refusal'
 
 type RevisionStep = {
     revision: number
@@ -11,6 +8,8 @@ type RevisionStep = {
 }
 
 const revisionSteps: RevisionStep[] = [
+    // Below revision 1 the engine scores by unweighted combo.
+    { revision: 1, affects: () => true },
     // Elevation is no longer scaled by stage tilt.
     { revision: 2, affects: (chart) => hasElevation(chart) },
 ]
@@ -27,7 +26,6 @@ export const getLevelDataRevision = ([entity]: LevelDataEntity[]) => {
     if (entity?.archetype !== 'Initialization') return 1
     const data = entity.data.find((data) => data.name === 'revision')
     if (!data || !('value' in data)) return 1
-    if (!Value.Check(Type.Number(), data.value)) throw new ImportRefusal('invalidValue', 'revision')
     return data.value
 }
 

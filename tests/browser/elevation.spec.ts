@@ -64,7 +64,7 @@ const install = async (page: Page) => {
         }
     })
 }
-// These drags snap to eighths, the default before it became halves.
+// These drags snap to eighths.
 const snapToEighths = (page: Page) =>
     page.evaluate(() => {
         Object.assign(window.editorTest.settings, { elevationSnap: 8 })
@@ -620,6 +620,14 @@ for (const split of [false, true]) {
         ).toEqual([before.beat])
     })
 }
+
+test('the elevation snap defaults to halves', async ({ page }) => {
+    await open(page)
+    await expect(
+        page.getByRole('combobox', { name: 'Elevation Snapping', exact: true }),
+    ).toHaveValue('2')
+    await expect(page.locator('.elevation-snap .select-value')).toHaveText('1/2')
+})
 
 test('body drags edit lane and snapped elevation live with one undo step', async ({ page }) => {
     await snapToEighths(page)
