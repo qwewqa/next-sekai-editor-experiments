@@ -40,7 +40,7 @@ const title = (section: PropertiesSection) => i18n.value.workspace.properties[se
 const headerId = (section: PropertiesSection) => `properties-section-${section}-header`
 const bodyId = (section: PropertiesSection) => `properties-section-${section}`
 
-// The presentation follows the panel's own size, which depends on its dock and
+// The presentation follows the panel's own height, which depends on its dock and
 // siblings rather than on the viewport, with hysteresis so resizing across the
 // threshold does not flip it repeatedly. Measuring before the first content
 // render avoids flashing the wrong presentation.
