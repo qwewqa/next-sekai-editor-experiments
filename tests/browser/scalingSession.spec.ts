@@ -183,6 +183,8 @@ const prepareThree = async (page: Page, axis: 'beat' | 'elevation') => {
     if (axis === 'elevation') {
         await page.evaluate(() => {
             window.editorTest.settings.elevationEditorSideBySide = 'allow'
+            // Quarter-step drags need a finer snap than the default halves.
+            Object.assign(window.editorTest.settings, { elevationSnap: 8 })
         })
         await page.keyboard.press('t')
         await expect(page.locator('.elevation-canvas')).toBeVisible()

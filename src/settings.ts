@@ -216,7 +216,7 @@ const settingsProperties = {
 
     elevationSnap: Type.Union(
         [0, 1, 2, 4, 8, 16, 32, 64].map((value) => Type.Literal(value)),
-        { default: 8 },
+        { default: 2 },
     ),
     elevationEditorSideBySide: Type.Union(
         [Type.Literal('auto'), Type.Literal('allow'), Type.Literal('disallow')],

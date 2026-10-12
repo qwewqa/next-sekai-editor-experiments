@@ -64,6 +64,11 @@ const install = async (page: Page) => {
         }
     })
 }
+// These drags snap to eighths, the default before it became halves.
+const snapToEighths = (page: Page) =>
+    page.evaluate(() => {
+        Object.assign(window.editorTest.settings, { elevationSnap: 8 })
+    })
 const open = async (page: Page) => {
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-editor')).toBeVisible()
@@ -617,6 +622,7 @@ for (const split of [false, true]) {
 }
 
 test('body drags edit lane and snapped elevation live with one undo step', async ({ page }) => {
+    await snapToEighths(page)
     await open(page)
     await expect(
         page.getByRole('combobox', { name: 'Elevation Snapping', exact: true }),
@@ -1156,6 +1162,7 @@ test('mobile touch dragging uses the same editor controls and cancellation', asy
     page,
 }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
+    await snapToEighths(page)
     await open(page)
     const header = await page.locator('.elevation-header').boundingBox()
     const canvas = await page.locator('.elevation-canvas').boundingBox()
@@ -1561,6 +1568,7 @@ test('each canvas uses its own coordinates and meaning for note drags when side 
     await page.evaluate(() => {
         window.editorTest.settings.elevationEditorSideBySide = 'allow'
     })
+    await snapToEighths(page)
     await open(page)
     await page.keyboard.press('f')
     const start = await page.evaluate(() => window.editorTest.point(1, 6))
