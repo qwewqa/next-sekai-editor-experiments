@@ -248,6 +248,10 @@
       "unsupported": "不支持的文件。请打开关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
       "invalidLevel": "无效的关卡：{0}",
       "invalidChart": "无效的谱面：{0}",
+      "revision": {
+        "older": "此关卡是为较旧的引擎修订版制作的。它现在使用当前修订版，请检查其显示和游玩效果是否仍符合预期。",
+        "newer": "此关卡是为比此编辑器所支持的更新的引擎修订版制作的。部分内容可能无法按预期显示或保存。"
+      },
       "refusals": {
         "dynamicStages": "使用了动态舞台功能，但未启用动态舞台",
         "cyclicEventRef": "事件引用“{0}”形成循环",

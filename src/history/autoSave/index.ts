@@ -6,6 +6,11 @@ import { validateChart } from '../../chart/validate'
 import { notify } from '../../editor/notification'
 import { i18n } from '../../i18n'
 import { serializeEditorMetadata } from '../../levelData/editorMetadata'
+import {
+    getLevelDataRevision,
+    getRevisionWarning,
+    type RevisionWarning,
+} from '../../levelData/revision'
 import { serializeToLevelData } from '../../levelData/serialize'
 import { showModal } from '../../modals'
 import InfoModal from '../../modals/InfoModal.vue'
@@ -142,6 +147,28 @@ export const useAutoSave = () => {
     }
 
     const restore = async (data: string | undefined, aside: string | undefined) => {
+        const restored = await restoreRecoveries(data, aside)
+        if (!restored?.warning) return
+
+        // After any recovery dialogs, about the chart that ended up loaded.
+        const warning = restored.warning
+        await showModal(InfoModal, {
+            title: () => i18n.value.history.autoSave.title,
+            message: () => i18n.value.commands.open.revision[warning],
+        })
+        // Rewritten once at the latest revision so later starts stay quiet; only this tab's own.
+        if (written !== undefined && storageGetText(key) === written) {
+            savedState = undefined
+            flush()
+        }
+    }
+
+    /** Restores what it can and offers the rest; returns the recovery now loaded, if any. */
+    const restoreRecoveries = async (
+        data: string | undefined,
+        aside: string | undefined,
+    ): Promise<ParsedRecovery | undefined> => {
+        let restored: ParsedRecovery | undefined
         const loaded: { primary?: ParsedRecovery; earlier?: ParsedRecovery; done: boolean } = {
             done: false,
         }
@@ -177,6 +204,7 @@ export const useAutoSave = () => {
             resetState(true, primary.chart, primary.offset, primary.filename)
             savedState = state.value
             adopt(data)
+            restored = primary
         }
 
         let unreadable: UnreadableRecovery | undefined
@@ -187,6 +215,7 @@ export const useAutoSave = () => {
             if (choice === 'restore') {
                 resetState(true, earlier.chart, earlier.offset, earlier.filename)
                 savedState = state.value
+                restored = earlier
                 notify(() => i18n.value.history.autoSave.unreadable.restored)
                 // Moved back only over what this tab read; another tab's newer one stays, and it stays aside.
                 const replaced = storageGetText(key) !== data
@@ -199,14 +228,14 @@ export const useAutoSave = () => {
                 if (storageGetText(key) !== written) adopt(aside)
                 if (replaced) {
                     restoring = false
-                    return
+                    return restored
                 }
             }
         }
 
         if (data === undefined || primary) {
             restoring = false
-            return
+            return restored
         }
         // Never let the next edit replace a recovery this version cannot open.
         unreadable ??= setRecoveryAside(data)
@@ -214,12 +243,18 @@ export const useAutoSave = () => {
         restoring = unreadable !== 'aside'
         // Once a recovery kept in place is handled, auto save resumes.
         if ((await offerUnreadable(data, unreadable)) && unreadable !== 'aside') restoring = false
+        return restored
     }
 
     if (data !== undefined || initialAside !== undefined) void restore(data, initialAside)
 }
 
-type ParsedRecovery = { chart: Chart; offset: number; filename?: string }
+type ParsedRecovery = {
+    chart: Chart
+    offset: number
+    filename?: string
+    warning?: RevisionWarning
+}
 
 /** A stored recovery as a chart, the same way whichever slot it is in; undefined when it cannot open. */
 const parseRecovery = (text: string): ParsedRecovery | undefined => {
@@ -227,7 +262,12 @@ const parseRecovery = (text: string): ParsedRecovery | undefined => {
         const parsed = parseAutoSave(JSON.parse(text))
         const chart = parseLevelDataChart(parsed.levelData.entities, parsed.defaultGuideColors)
         validateChart(chart)
-        return { chart, offset: parsed.levelData.bgmOffset, filename: parsed.filename }
+        return {
+            chart,
+            offset: parsed.levelData.bgmOffset,
+            filename: parsed.filename,
+            warning: getRevisionWarning(getLevelDataRevision(parsed.levelData.entities), chart),
+        }
     } catch (error) {
         console.error('Failed to restore chart recovery:', error)
         return

@@ -142,14 +142,16 @@ test('full-tilt elevation raises the judgment line by lane widths with perspecti
     }
 })
 
-test('zero and near-zero tilt keep elevation finite and approach the original geometry', () => {
+test('zero tilt raises elevation by a translation that near-zero tilt approaches', () => {
     const point = vec(0.4, -0.7)
     for (const elevation of [-5, 0, 5]) {
+        const raised = vec(point.x, point.y + elevation * 0.1 * STAGE_WIDTH_MID)
         const flat = elevationProjection(camera(0), elevation)
-        closeVec(applyAffine(flat, point), point)
-        assert.equal(flat.elevation, 0)
+        closeVec(applyAffine(flat, point), raised)
+        // Nonzero whenever elevated, so the identity fast paths skip it.
+        close(flat.elevation, elevation)
         for (const tilt of [1e-12, 1e-9, 1e-6]) {
-            closeVec(applyAffine(elevationProjection(camera(tilt), elevation), point), point, 1e-6)
+            closeVec(applyAffine(elevationProjection(camera(tilt), elevation), point), raised, 1e-6)
         }
     }
 })
@@ -166,7 +168,7 @@ test('elevation follows camera rotation and preserves the partial-tilt vanishing
             for (const depth of [0, 0.25, 1, 2]) {
                 const point = vec(0.4, c.t + c.hScale * depth)
                 const width = tilt * depth + (1 - tilt) * STAGE_WIDTH_MID
-                const raised = vec(point.x, point.y + 3 * c.wScale * tilt * width)
+                const raised = vec(point.x, point.y + 3 * c.wScale * width)
                 closeVec(
                     applyAffine(projection, rotateVec(point, -rotation)),
                     rotateVec(raised, -rotation),
@@ -179,7 +181,7 @@ test('elevation follows camera rotation and preserves the partial-tilt vanishing
 test('elevation caps at a line instead of flipping stage geometry', () => {
     for (const tilt of [0.01, 0.2, 0.5, 1]) {
         const c = camera(tilt)
-        const maximum = -c.hScale / (c.wScale * tilt ** 2)
+        const maximum = -c.hScale / (c.wScale * tilt)
         const vanishY = c.t - (c.hScale * (1 - tilt) * STAGE_WIDTH_MID) / tilt
         for (const elevation of [maximum, maximum * 2]) {
             const projection = elevationProjection(c, elevation)
@@ -205,10 +207,10 @@ test('combined camera and stage transforms match the engine reference geometry',
     )
     const screen = stageTransformToAffine(transform)
 
-    // Reference: engine 9e93ba0, sekai.lib.layout.compute_stage_transform with these inputs.
-    close(transform.px, 0.25181455987483137)
-    close(transform.py, 0.013869882246752063)
-    closeVec(applyAffine(screen, vec(-0.25, 0.45)), vec(-0.46396571156346417, 0.4008507457570851))
+    // Revision 2 at elevation 4 is revision 1 at 4 / tilt: the revision 1 mirror (a2b8fab8) at 8.
+    close(transform.px, 0.31032987309797533)
+    close(transform.py, 0.09940147842702726)
+    closeVec(applyAffine(screen, vec(-0.25, 0.45)), vec(-0.38953895729773663, 0.46686928711007036))
     assert.equal(screen.elevation, 4)
 })
 

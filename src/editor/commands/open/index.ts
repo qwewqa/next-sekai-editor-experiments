@@ -10,7 +10,13 @@ import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { checkState, resetState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
+import {
+    getLevelDataRevision,
+    getRevisionWarning,
+    type RevisionWarning,
+} from '../../../levelData/revision'
 import { showModal } from '../../../modals'
+import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
@@ -38,6 +44,7 @@ export const open: Command = {
             return
         }
 
+        let warning: RevisionWarning | undefined
         await showModal(LoadingModal, {
             title: () => i18n.value.commands.open.title,
             async *task(signal: AbortSignal) {
@@ -67,8 +74,13 @@ export const open: Command = {
 
                             const chart = parseLevelDataChart(levelData.entities)
                             validateChart(chart)
+                            const revisionWarning = getRevisionWarning(
+                                getLevelDataRevision(levelData.entities),
+                                chart,
+                            )
 
                             resetState(false, chart, levelData.bgmOffset, getFilename(file), handle)
+                            warning = revisionWarning
                             break
                         }
                         case 'usc': {
@@ -99,6 +111,13 @@ export const open: Command = {
 
                 notify(() => i18n.value.commands.open[openedMessages[type]])
             },
+        })
+        if (!warning) return
+
+        const message = warning
+        void showModal(InfoModal, {
+            title: () => i18n.value.commands.open.title,
+            message: () => i18n.value.commands.open.revision[message],
         })
     },
 }

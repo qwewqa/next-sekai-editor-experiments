@@ -143,6 +143,9 @@ test('level data serialization is byte-identical to the output before the shared
         for (const entity of levelData.entities) {
             if (value(entity, 'isAttached'))
                 entity.data = entity.data.filter(({ name }) => name !== 'lane' && name !== 'size')
+            // Recorded before the engine revision was written.
+            if (entity.archetype === 'Initialization')
+                entity.data = entity.data.filter(({ name }) => name !== 'revision')
         }
         return (
             createHash('sha256')

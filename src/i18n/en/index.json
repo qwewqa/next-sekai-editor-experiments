@@ -248,6 +248,10 @@
             "unsupported": "Unsupported file. Open level data, a Chart Cyanvas level, or a USC or SUS chart.",
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
+            "revision": {
+                "older": "This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.",
+                "newer": "This level was made for a newer engine revision than this editor supports. Some parts may not show or save as intended."
+            },
             "refusals": {
                 "dynamicStages": "dynamic stage features used but not enabled",
                 "cyclicEventRef": "cyclic event ref \"{0}\"",

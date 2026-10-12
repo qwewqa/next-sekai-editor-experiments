@@ -248,6 +248,10 @@
       "unsupported": "Desteklenmeyen dosya. Seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
+      "revision": {
+        "older": "Bu seviye daha eski bir motor revizyonu için yapılmış. Artık güncel revizyonu kullanıyor, bu yüzden hâlâ beklendiği gibi göründüğünü ve oynandığını kontrol edin.",
+        "newer": "Bu seviye, bu editörün desteklediğinden daha yeni bir motor revizyonu için yapılmış. Bazı kısımlar amaçlandığı gibi görünmeyebilir veya kaydedilmeyebilir."
+      },
       "refusals": {
         "dynamicStages": "dinamik sahneler etkin değilken dinamik sahne özellikleri kullanılıyor",
         "cyclicEventRef": "döngüsel olay referansı \"{0}\"",

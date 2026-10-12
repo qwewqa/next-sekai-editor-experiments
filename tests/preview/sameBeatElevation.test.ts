@@ -125,7 +125,7 @@ test('linear elevation recomputes rotated stage centers and clamps the interpola
         true,
     )
     const camera = currentLayoutTransform(layout)
-    const limit = -camera.hScale / camera.wScale / camera.stageTilt ** 2
+    const limit = -camera.hScale / camera.wScale / camera.stageTilt
     const head = {
         ...noteElevationTransform(undefined),
         rotate: 0.7,

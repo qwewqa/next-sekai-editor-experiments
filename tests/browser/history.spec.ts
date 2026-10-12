@@ -43,6 +43,8 @@ for (const format of ['compressed', 'unversioned'] as const) {
             if (entity.archetype === '#BPM_CHANGE' && !entity.data.some((d) => d.name === 'meter'))
                 entity.data.push({ name: 'meter', value: 4 })
         }
+        // And the latest engine revision, after the initial life.
+        upgraded.entities[0]!.data.splice(1, 0, { name: 'revision', value: 2 })
         expect(upgraded).not.toEqual(levelData)
         expect(
             levelData.entities.some((entity) =>
@@ -78,6 +80,11 @@ for (const format of ['compressed', 'unversioned'] as const) {
                 }),
             )
             .toEqual(upgraded)
+        // It predates engine revisions and has elevation.
+        const warning = page.getByRole('dialog', { name: 'Auto Save' })
+        await expect(warning).toContainText('older engine revision')
+        await warning.getByRole('button', { name: 'OK', exact: true }).click()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
         expect(
             await page.evaluate(async () => {
                 const { state } = await import('/src/history/index.ts')

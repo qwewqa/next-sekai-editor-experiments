@@ -248,6 +248,10 @@
       "unsupported": "Fichier non pris en charge. Ouvrez des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
       "invalidLevel": "Niveau non valide : {0}",
       "invalidChart": "Partition non valide : {0}",
+      "revision": {
+        "older": "Ce niveau a été créé pour une révision plus ancienne du moteur. Il utilise maintenant la révision actuelle, alors vérifiez qu’il s’affiche et se joue toujours comme prévu.",
+        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être enregistrées comme prévu."
+      },
       "refusals": {
         "dynamicStages": "fonctionnalités de scènes dynamiques utilisées sans être activées",
         "cyclicEventRef": "référence d’événement circulaire \"{0}\"",

@@ -119,6 +119,32 @@ const renderSprite = (
 
 const renderNotes = (source: Chart, now = 0.75) => renderSprite(source, now)
 
+/** The vertical offset that moves every point of `base` onto `moved`. */
+const verticalShift = (moved: Quad[], base: Quad[]) => {
+    assert.equal(moved.length, base.length)
+    const shift = moved[0]!.bl.y - base[0]!.bl.y
+    moved.forEach((quad, i) => {
+        for (const corner of ['bl', 'br', 'tl', 'tr'] as const) {
+            assert.ok(Math.abs(quad[corner].x - base[i]![corner].x) < 1e-9)
+            assert.ok(Math.abs(quad[corner].y - base[i]![corner].y - shift) < 1e-9)
+        }
+    })
+    return shift
+}
+
+const flatCamera = {
+    beat: 0,
+    cameraLeft: -6,
+    cameraSize: 12,
+    cameraZoom: 1,
+    cameraZoomTargetLane: 0,
+    cameraZoomTargetY: 0,
+    cameraZoomVerticalAlign: 'default',
+    cameraRotation: 0,
+    cameraStageTilt: 0,
+    eventEase: 'inStep',
+} as const
+
 test('chart compilation preserves all time scale eases and transition styles', () => {
     const eases: TimeScaleEase[] = [
         'inStep',
@@ -263,7 +289,7 @@ test('rendering clips an overlapping note and hides a note outside the enabled m
     assert.equal(renderNotes(source).length, 1)
 })
 
-test('rendered elevation changes note geometry and has no effect with a flat stage', () => {
+test('rendered elevation changes note geometry and lifts a flat stage by a translation', () => {
     const source = chart({
         stageTransformEvents: [
             {
@@ -284,21 +310,12 @@ test('rendered elevation changes note geometry and has no effect with a flat sta
     assert.equal(ground.length, 1)
     assert.notDeepEqual(raised, ground)
 
-    source.cameraEvents = [
-        {
-            beat: 0,
-            cameraLeft: -6,
-            cameraSize: 12,
-            cameraZoom: 1,
-            cameraZoomTargetLane: 0,
-            cameraZoomTargetY: 0,
-            cameraZoomVerticalAlign: 'default',
-            cameraRotation: 0,
-            cameraStageTilt: 0,
-            eventEase: 'inStep',
-        },
-    ]
-    assert.deepEqual(renderNotes(source), renderNotes({ ...source, stageTransformEvents: [] }))
+    source.cameraEvents = [flatCamera]
+    const flat = renderNotes({ ...source, stageTransformEvents: [] })
+    const shift = verticalShift(renderNotes(source), flat)
+    assert.ok(shift > 0)
+    source.stageTransformEvents[0]!.elevation = 2
+    assert.ok(Math.abs(verticalShift(renderNotes(source), flat) - 2 * shift) < 1e-9)
 })
 
 test('rendering uses scroll transition distance across the next time scale change', () => {
@@ -505,20 +522,12 @@ test('standalone notes and attached ticks follow per-note elevation', () => {
     })
     assert.deepEqual(renderNotes(raised), renderNotes(stageRaised))
     assert.notDeepEqual(renderNotes(raised), renderNotes(chart()))
-    const flat = {
-        beat: 0,
-        cameraLeft: -6,
-        cameraSize: 12,
-        cameraZoom: 1,
-        cameraZoomTargetLane: 0,
-        cameraZoomTargetY: 0,
-        cameraZoomVerticalAlign: 'default',
-        cameraRotation: 0,
-        cameraStageTilt: 0,
-        eventEase: 'inStep',
-    } as const
-    raised.cameraEvents = [flat]
-    assert.deepEqual(renderNotes(raised), renderNotes(chart({ cameraEvents: [flat] })))
+    raised.cameraEvents = [flatCamera]
+    stageRaised.cameraEvents = [flatCamera]
+    assert.deepEqual(renderNotes(raised), renderNotes(stageRaised))
+    assert.ok(
+        verticalShift(renderNotes(raised), renderNotes(chart({ cameraEvents: [flatCamera] }))) > 0,
+    )
     const slide = [
         note({ beat: 2, elevation: 1 }),
         note({ beat: 4, isAttached: true, noteType: 'trace', elevation: 99 }),

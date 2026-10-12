@@ -491,12 +491,13 @@ export const transformBillboard = (transform: AffineTransform, quad: Quad, ancho
     return { bl: place(quad.bl), br: place(quad.br), tl: place(quad.tl), tr: place(quad.tr) }
 }
 
+// Engine revision 2: elevation is not scaled by tilt, so tilt 0 raises by a translation.
 export const elevationProjection = (
     camera: LayoutTransform,
     elevation: number,
 ): StageScreenTransform => {
     const tilt = camera.stageTilt
-    let amount = elevation * camera.wScale * tilt
+    let amount = elevation * camera.wScale
     if (tilt > 0) amount = Math.min(amount, -camera.hScale / tilt)
     const scaleDelta = (amount * tilt) / camera.hScale
     const shift = amount * ((1 - tilt) * STAGE_WIDTH_MID - (tilt * camera.t) / camera.hScale)
@@ -509,7 +510,7 @@ export const elevationProjection = (
         a10: scaleDelta * sn * cs,
         a11: 1 + scaleDelta * cs * cs,
         a12: shift * cs,
-        elevation: tilt > 0 ? amount / camera.wScale / tilt : 0,
+        elevation: amount / camera.wScale,
     }
 }
 

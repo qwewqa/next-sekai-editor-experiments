@@ -2,6 +2,7 @@ import { groupFolderArchetype, stageFolderArchetype, type Folders } from '../../
 import type { Groups } from '../../../chart/groups'
 import type { Stages } from '../../../chart/stages'
 import type { Store } from '../../../state/store'
+import { LATEST_REVISION } from '../../revision'
 import { serializeBpmsToLevelDataEntities } from './bpm'
 import { serializeCameraEventsToLevelDataEntities } from './events/camera'
 import { serializeStageMaskEventsToLevelDataEntities } from './events/stage/mask'
@@ -32,6 +33,10 @@ export const serializeToLevelDataEntities = (
             {
                 name: 'initialLife',
                 value: initialLife,
+            },
+            {
+                name: 'revision',
+                value: LATEST_REVISION,
             },
         ],
     }
