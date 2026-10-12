@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Sizes assume a 16px rem for now, whatever the browser's default font size. */
+html {
+    font-size: 16px;
+}
+
 :root {
     --viewport-height: 100vh;
 }
