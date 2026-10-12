@@ -127,10 +127,12 @@ test('selection draws last, faded entities draw first, and equal-depth ties stay
 })
 
 // Event joints and the connections between them, sharing the joints as the store does.
-const eventChain = (type: 'stageTransform' | 'camera', beats: number[]) => {
-    const joints = beats.map(
-        (beat) => ({ type: `${type}EventJoint`, beat, stageId: stage }) as Entity,
-    )
+const eventChain = (
+    type: 'stageTransform' | 'stagePivot' | 'camera',
+    beats: number[],
+    stageId = stage,
+) => {
+    const joints = beats.map((beat) => ({ type: `${type}EventJoint`, beat, stageId }) as Entity)
     const connections = joints.slice(1).map(
         (max, index) =>
             ({
@@ -143,90 +145,182 @@ const eventChain = (type: 'stageTransform' | 'camera', beats: number[]) => {
     return { joints, connections }
 }
 
-test('the lines either side of a selected joint draw above unselected objects, under the selection', () => {
+test('a selected joint raises its whole chain above unselected objects, under the selection', () => {
     const {
-        joints: [a, b, c, d, e],
-        connections: [ab, bc, cd, de],
-    } = eventChain('stageTransform', [0, 2, 4, 6, 8])
+        joints: [a, b, c, d],
+        connections: [ab, bc, cd],
+    } = eventChain('stageTransform', [0, 2, 4, 6])
+    const otherStageChain = eventChain('stageTransform', [1, 3], otherStage)
+    const [x, y] = otherStageChain.joints
+    const [xy] = otherStageChain.connections
+    const otherTypeChain = eventChain('stagePivot', [1, 3])
+    const [p, q] = otherTypeChain.joints
+    const [pq] = otherTypeChain.connections
     const slide = connector('over', 'active')
     const centerNote = note(5)
-    const source = [slide, centerNote, a!, b!, c!, d!, e!, ab!, bc!, cd!, de!]
+    const selectedSlide = connector('over', 'guide')
+    const selectedNote = note(7)
+    const source = [
+        slide,
+        centerNote,
+        selectedSlide,
+        selectedNote,
+        a!,
+        b!,
+        c!,
+        d!,
+        ab!,
+        bc!,
+        cd!,
+        x!,
+        y!,
+        xy!,
+        p!,
+        q!,
+        pq!,
+    ]
     const order = (selected: Entity[]) => orderEntities(source, new Set(selected), visibility())
 
     const unselected = order([])
     assert.deepEqual(
         unselected.map(({ entity }) => entity),
-        [de, cd, bc, ab, e, d, c, b, a, centerNote, slide],
+        [
+            pq,
+            q,
+            p,
+            cd,
+            bc,
+            xy,
+            ab,
+            d,
+            c,
+            y,
+            b,
+            x,
+            a,
+            selectedNote,
+            centerNote,
+            slide,
+            selectedSlide,
+        ],
     )
     assert.ok(unselected.every(({ raised }) => !raised))
 
-    // Only the two adjacent lines, then both their joints.
+    // Every joint and line of the type on that stage, not another stage's or another type's.
     const result = order([b!])
     assert.deepEqual(
-        result.map(({ entity }) => entity),
-        [de, cd, e, d, centerNote, slide, bc, ab, c, a, b],
-    )
-    assert.deepEqual(
-        result.map(({ raised }) => raised),
-        [false, false, false, false, false, false, true, true, true, true, false],
-    )
-    assert.deepEqual(
-        result.map(({ highlighted }) => highlighted),
-        [false, false, false, false, false, false, false, false, false, false, true],
+        result.map(({ entity, raised, highlighted }) => [entity, raised, highlighted]),
+        [
+            [pq, false, false],
+            [q, false, false],
+            [p, false, false],
+            [xy, false, false],
+            [y, false, false],
+            [x, false, false],
+            [selectedNote, false, false],
+            [centerNote, false, false],
+            [slide, false, false],
+            [selectedSlide, false, false],
+            [cd, true, false],
+            [bc, true, false],
+            [ab, true, false],
+            [d, true, false],
+            [c, true, false],
+            [a, true, false],
+            [b, false, true],
+        ],
     )
     assert.ok(result.every(({ opacity }) => opacity === 1))
 
-    const camera = eventChain('camera', [0, 2, 4])
-    const [p, q, r] = camera.joints
-    const [pq, qr] = camera.connections
+    // Selected notes and slides stay above the raised chain.
     assert.deepEqual(
-        orderEntities([centerNote, p!, q!, r!, pq!, qr!], new Set([r!]), visibility()).map(
-            ({ entity, raised }) => [entity, raised],
-        ),
-        [
-            [pq, false],
-            [p, false],
-            [centerNote, false],
-            [qr, true],
-            [q, true],
-            [r, false],
-        ],
+        order([b!, selectedNote, selectedSlide])
+            .slice(-10)
+            .map(({ entity }) => entity),
+        [slide, cd, bc, ab, d, c, a, b, selectedNote, selectedSlide],
     )
 })
 
-test('faint lines and their joints stay under when a joint is selected, and a faint selected joint stays last', () => {
+test('a selected camera joint raises the camera chain, and several chains rise at once', () => {
+    const {
+        joints: [p, q, r],
+        connections: [pq, qr],
+    } = eventChain('camera', [0, 2, 4])
+    const {
+        joints: [a, b],
+        connections: [ab],
+    } = eventChain('stageTransform', [1, 3])
+    const {
+        joints: [x, y],
+        connections: [xy],
+    } = eventChain('stageTransform', [1, 3], otherStage)
+    const centerNote = note(5)
+    const source = [centerNote, p!, q!, r!, pq!, qr!, a!, b!, ab!, x!, y!, xy!]
+    const order = (selected: Entity[]) =>
+        orderEntities(source, new Set(selected), visibility()).map(({ entity, raised }) => [
+            entity,
+            raised,
+        ])
+
+    assert.deepEqual(order([q!]), [
+        [ab, false],
+        [xy, false],
+        [b, false],
+        [y, false],
+        [a, false],
+        [x, false],
+        [centerNote, false],
+        [qr, true],
+        [pq, true],
+        [r, true],
+        [p, true],
+        [q, false],
+    ])
+    assert.deepEqual(order([q!, a!, y!]), [
+        [centerNote, false],
+        [qr, true],
+        [pq, true],
+        [r, true],
+        [p, true],
+        [ab, true],
+        [xy, true],
+        [b, true],
+        [x, true],
+        [q, false],
+        [y, false],
+        [a, false],
+    ])
+})
+
+test('a chain of a hidden type stays under when its joint is selected, and the selected joint stays last', () => {
     const {
         joints: [a, b, c],
         connections: [ab, bc],
     } = eventChain('stageTransform', [0, 2, 4])
     const centerNote = note(5)
     const source = [centerNote, a!, b!, c!, ab!, bc!]
-    const order = (hidden: EntityType) =>
-        orderEntities(
-            source,
-            new Set([b!]),
-            visibility({ visibilities: { ...allTypesVisible, [hidden]: false } }),
-        ).map(({ entity, raised }) => [entity, raised])
-
-    assert.deepEqual(order('stageTransformEventConnection'), [
-        [bc, false],
-        [ab, false],
-        [c, false],
-        [a, false],
-        [centerNote, false],
-        [b, false],
-    ])
-    assert.deepEqual(order('stageTransformEventJoint'), [
-        [c, false],
-        [a, false],
-        [centerNote, false],
-        [bc, true],
-        [ab, true],
-        [b, false],
-    ])
+    // Joints and lines are hidden together; other objects are shown.
+    const visibilities = {
+        ...allTypesVisible,
+        stageTransformEventJoint: false,
+        stageTransformEventConnection: false,
+    }
+    assert.deepEqual(
+        orderEntities(source, new Set([b!]), visibility({ visibilities })).map(
+            ({ entity, raised }) => [entity, raised],
+        ),
+        [
+            [bc, false],
+            [ab, false],
+            [c, false],
+            [a, false],
+            [centerNote, false],
+            [b, false],
+        ],
+    )
 })
 
-test('lines and joints of a faint stage stay under when a joint is selected', () => {
+test("a dimmed stage's chain stays under when its joint is selected", () => {
     const {
         joints: [a, b, c],
         connections: [ab, bc],
@@ -696,12 +790,12 @@ test('time scale labels paint above a selected BPM label on the same beat', () =
 
 test('raised and selected objects start at raisedAt, with time scale markers still last', () => {
     const {
-        joints: [a, b, c],
-        connections: [ab, bc],
-    } = eventChain('stageTransform', [0, 2, 4])
+        joints: [a, b, c, d],
+        connections: [ab, bc, cd],
+    } = eventChain('stageTransform', [0, 2, 4, 6])
     const timeScale = { type: 'timeScale', beat: 2, groupId: group } as Entity
     const centerNote = note(5)
-    const source = [centerNote, timeScale, a!, b!, c!, ab!, bc!]
+    const source = [centerNote, timeScale, a!, b!, c!, d!, ab!, bc!, cd!]
     const steps = (selected: Entity[]) => {
         const { objects, raisedAt } = toDrawSteps(
             orderEntities(source, new Set(selected), visibility()),
@@ -714,8 +808,10 @@ test('raised and selected objects start at raisedAt, with time scale markers sti
     assert.deepEqual(steps([]), {
         below: [
             [timeScale, 'line'],
+            [cd, undefined],
             [bc, undefined],
             [ab, undefined],
+            [d, undefined],
             [c, undefined],
             [b, undefined],
             [a, undefined],
@@ -723,17 +819,19 @@ test('raised and selected objects start at raisedAt, with time scale markers sti
         ],
         above: [[timeScale, 'marker']],
     })
-    assert.deepEqual(steps([b!]), {
+    assert.deepEqual(steps([c!]), {
         below: [
             [timeScale, 'line'],
             [centerNote, undefined],
         ],
         above: [
+            [cd, undefined],
             [bc, undefined],
             [ab, undefined],
-            [c, undefined],
-            [a, undefined],
+            [d, undefined],
             [b, undefined],
+            [a, undefined],
+            [c, undefined],
             [timeScale, 'marker'],
         ],
     })

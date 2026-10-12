@@ -69,7 +69,7 @@ import { chartBackground } from './nameColors'
 import { createLabelSprites } from './labelSprites'
 import { createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
-import { orderEntities, toDrawSteps, type DrawStep } from './ordering'
+import { orderEntities, raisedChains, toDrawSteps, type DrawStep } from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
 import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
@@ -118,10 +118,19 @@ const artEntities = computedVisibleEntities(
     () => culledEntities.value,
     () => artRange.value,
 )
+// The selection, with a dropping drag's own selected entities.
+const shownSelected = computed(() => {
+    const preview = previewSlides.value
+    if (!preview) return selectedEntitySet.value
+    return new Set([
+        ...selectedEntitySet.value,
+        ...preview.state.selectedEntities.filter(preview.includes),
+    ])
+})
 // Slides a drag changes beyond its ghosts are drawn as they drop; only then is the range read.
 const showEntities = (shown: Entity[], range: () => { min: number; max: number }) => {
     const preview = previewSlides.value
-    if (!preview) return { entities: shown, selected: selectedEntitySet.value }
+    if (!preview) return { entities: shown, selected: shownSelected.value }
     const { min, max } = range()
     // In the drop's store order, which settles same-beat ties; the source's own entities stay in place.
     const source = shown.filter((entity) => !preview.includes(entity))
@@ -139,13 +148,7 @@ const showEntities = (shown: Entity[], range: () => { min: number; max: number }
         next = index + 1
     }
     entities.push(...source.slice(next))
-    return {
-        entities,
-        selected: new Set([
-            ...selectedEntitySet.value,
-            ...preview.state.selectedEntities.filter(preview.includes),
-        ]),
-    }
+    return { entities, selected: shownSelected.value }
 }
 const shownEntities = computed(() => showEntities(artEntities.value, () => artRange.value))
 const visibility = () => ({
@@ -153,8 +156,15 @@ const visibility = () => ({
     visibilities: view.visibilities,
     showOtherObjects: settings.showOtherObjects,
 })
+// Built per selection; ordering and the extension passes share it.
+const chains = computed(() => raisedChains(shownSelected.value))
 const orderedEntities = computed(() =>
-    orderEntities(shownEntities.value.entities, shownEntities.value.selected, visibility()),
+    orderEntities(
+        shownEntities.value.entities,
+        shownEntities.value.selected,
+        visibility(),
+        chains.value,
+    ),
 )
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
 // Hovered objects are committed ones; a previewed scene draws their counterparts.
@@ -177,7 +187,7 @@ const offscreenCandidates = computed(() => {
     const bpms = sceneState.value.bpms
     const layout = composed.value
     const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
-    return orderEntities(entities, selected, visibility()).flatMap(
+    return orderEntities(entities, selected, visibility(), chains.value).flatMap(
         ({ entity, highlighted, opacity }) => {
             if (entity.type !== 'note') return []
             const position = layout?.notePosition(entity) ?? entity
@@ -463,7 +473,7 @@ watchEffect(
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
         const { objects, raisedAt, labels: entityLabels } = drawSteps.value
-        const { selected } = shownEntities.value
+        const raised = chains.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
         const preview = previewSlides.value
         const visibilities = view.visibilities
@@ -522,7 +532,7 @@ watchEffect(
             traceTimeLine(ctx, cursorEnds, cursor * inputs.ups)
             ctx.stroke()
             ctx.restore()
-            drawEventInfinities(context, visibilities, scope, showOtherObjects, selected)
+            drawEventInfinities(context, visibilities, scope, showOtherObjects, raised)
             const drawEach = (steps: DrawStep[], from = 0, to = steps.length) => {
                 for (let index = from; index < to; index++) {
                     const step = steps[index]
@@ -538,9 +548,9 @@ watchEffect(
                 }
             }
             drawEach(objects, 0, raisedAt)
-            // Selected end joints' extensions rise with their lines.
-            if (selected.size)
-                drawEventInfinities(context, visibilities, scope, showOtherObjects, selected, true)
+            // Raised chains' extensions rise with their lines.
+            if (raised.size)
+                drawEventInfinities(context, visibilities, scope, showOtherObjects, raised, true)
             drawEach(objects, raisedAt)
             // Text goes above every object.
             drawGridLabels(

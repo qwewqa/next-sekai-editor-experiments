@@ -35,6 +35,9 @@ for (const scenario of cases) {
             )
             const { getPreviewState, previewEdit } =
                 await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+            const { isInRaisedChain, raisedChains } = await appImport<
+                typeof import('../../src/editor/canvas/ordering')
+            >('/src/editor/canvas/ordering.ts')
             const { history, view, point, show, fixtures, nextTick } = window.editorTest
             show(fixtures.events, 3)
             view.cursorTime = 3.125
@@ -58,14 +61,11 @@ for (const scenario of cases) {
             const preview = getPreviewState(source)
             const previewStore = serialize(preview.store)
             const updatedTime = view.cursorTime
-            // The preview's lines hold the moved joint, so selecting it raises them.
-            const moved = preview.selectedEntities[0]
-            const lines = preview.store.grid[`${scenario.tool}Connection`] as Map<
-                number,
-                Set<{ min: unknown; max: unknown }>
-            >
+            // Selecting the moved joint raises the preview's lines of its chain.
+            const chains = raisedChains(new Set(preview.selectedEntities))
+            const lines = preview.store.grid[`${scenario.tool}Connection`]
             const raisesLines = [...lines.values()].some((set) =>
-                [...set].some(({ min, max }) => min === moved || max === moved),
+                [...set].some((line) => isInRaisedChain(chains, line)),
             )
             const during = {
                 changed: preview.store !== source.store,

@@ -7,13 +7,14 @@ import type { TimeScaleObject } from '../../src/chart/timeScale'
 import { drawEvent, drawEventInfinities, type EventPart } from '../../src/editor/canvas/events'
 import { coveredLabelYs, drawGrid, timeScaleEdgeLabelYs } from '../../src/editor/canvas/grid'
 import { createNameLayer, placeNames } from '../../src/editor/canvas/names'
+import { raisedChains } from '../../src/editor/canvas/ordering'
 import { clearTextWidths } from '../../src/editor/canvas/text'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import { createComposedLayout } from '../../src/editor/composed'
 import { getPathD, getRangePathDs } from '../../src/editor/entities/events/path'
-import { createScopeLookup, fullScope } from '../../src/editor/scopeRules'
+import { createScopeLookup, fullScope, type ScopeLookup } from '../../src/editor/scopeRules'
 import { createState } from '../../src/state'
-import type { EntityType } from '../../src/state/entities'
+import type { Entity, EntityType } from '../../src/state/entities'
 import type { StageMaskEventJointEntity } from '../../src/state/entities/events/joints/stage/mask'
 import type { StagePivotEventJointEntity } from '../../src/state/entities/events/joints/stage/pivot'
 import type { StageTransformEventJointEntity } from '../../src/state/entities/events/joints/stage/transform'
@@ -411,13 +412,18 @@ const transform = (beat: number, xTranslation: number) =>
         xTranslation,
     }) as StageTransformEventJointEntity
 
-test('selected end joints raise their extensions into the raised pass, drawing each once', () => {
+test('a raised chain raises both its extensions into the raised pass, drawing each once', () => {
     const { context, canvas } = makeContext()
     const ranges = context.state.store.stageEventRanges.stageTransformEventJoint
-    const paths = (selected: Set<StageTransformEventJointEntity>, isRaisedPass: boolean) => {
-        canvas.strokes = []
-        drawEventInfinities(context, visibilities, fullScope, false, selected, isRaisedPass)
-        return canvas.strokes.map(({ path }) => path)
+    // The base and raised passes' strokes.
+    const both = (selected: Entity[], shown = visibilities, scope: ScopeLookup = fullScope) => {
+        const chains = raisedChains(new Set(selected))
+        const paths = (isRaisedPass: boolean) => {
+            canvas.strokes = []
+            drawEventInfinities(context, shown, scope, true, chains, isRaisedPass)
+            return canvas.strokes.map(({ path }) => path)
+        }
+        return { base: paths(false), raised: paths(true) }
     }
     const start = [
         ['M', 1, 0],
@@ -427,47 +433,59 @@ test('selected end joints raise their extensions into the raised pass, drawing e
         ['M', 3, -20],
         ['L', 3, -100],
     ]
+    const down = { base: [start, end], raised: [] }
+    const up = { base: [], raised: [start, end] }
 
     const min = transform(2, 1)
+    const middle = transform(3, 2)
     const max = transform(4, 3)
     ranges.set(stageId, { min, max })
-    assert.deepEqual(paths(new Set(), false), [start, end])
-    assert.deepEqual(paths(new Set(), true), [])
-    assert.deepEqual(paths(new Set([min]), false), [end])
-    assert.deepEqual(paths(new Set([min]), true), [start])
+    assert.deepEqual(both([]), down)
+    assert.deepEqual(both([min]), up)
+    assert.deepEqual(both([middle]), up)
+    assert.deepEqual(both([max]), up)
+
+    // Another stage's chain, or another type's, leaves it down.
+    assert.deepEqual(both([{ ...middle, stageId: 2 as StageId }]), down)
+    assert.deepEqual(
+        both([{ type: 'stagePivotEventJoint', stageId, beat: 3 } as StagePivotEventJointEntity]),
+        down,
+    )
 
     // One joint raises both.
     const only = transform(2, 1)
     ranges.set(stageId, { min: only, max: only })
-    assert.deepEqual(paths(new Set([only]), false), [])
-    assert.deepEqual(paths(new Set([only]), true), [
-        start,
-        [
-            ['M', 1, -10],
-            ['L', 1, -100],
+    assert.deepEqual(both([only]), {
+        base: [],
+        raised: [
+            start,
+            [
+                ['M', 1, -10],
+                ['L', 1, -100],
+            ],
         ],
-    ])
+    })
 
-    // A last joint below the pane still raises its extension.
+    // A chain whose joints are all below the pane still raises its extensions.
     context.bounds = { ...context.bounds, t: -100, b: -50, h: 50 }
     ranges.set(stageId, { min, max })
-    assert.deepEqual(paths(new Set([max]), true), [end])
+    assert.deepEqual(both([middle]), up)
 
-    // Faint ones stay in the base pass.
-    const faint = (isRaisedPass: boolean) => {
-        canvas.strokes = []
-        drawEventInfinities(
-            context,
-            { ...visibilities, stageTransformEventConnection: false },
-            fullScope,
-            true,
-            new Set([min]),
-            isRaisedPass,
-        )
-        return canvas.strokes.map(({ path }) => path)
+    // Faint chains stay in the base pass.
+    const hidden = {
+        ...visibilities,
+        stageTransformEventJoint: false,
+        stageTransformEventConnection: false,
     }
-    assert.deepEqual(faint(true), [])
-    assert.deepEqual(faint(false), [start, end])
+    assert.deepEqual(both([middle], hidden), down)
+    assert.deepEqual(
+        both(
+            [middle],
+            visibilities,
+            createScopeLookup({ stageId: 2 as StageId, showOtherStages: true }),
+        ),
+        down,
+    )
 })
 
 test('the raised pass keeps a mask stage that is not from the start without its start extension', () => {
@@ -480,9 +498,10 @@ test('the raised pass keeps a mask stage that is not from the start without its 
         isUntilEnd: true,
         generateSimLines: 'global',
     })
-    drawEventInfinities(context, visibilities, fullScope, false, new Set([min]), true)
+    const chains = raisedChains(new Set([min]))
+    drawEventInfinities(context, visibilities, fullScope, false, chains)
     assert.equal(canvas.strokes.length, 0)
-    drawEventInfinities(context, visibilities, fullScope, false, new Set([min]))
+    drawEventInfinities(context, visibilities, fullScope, false, chains, true)
     assert.deepEqual(
         canvas.strokes.map(({ path }) => path),
         [

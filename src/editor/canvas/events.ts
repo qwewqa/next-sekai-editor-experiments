@@ -14,6 +14,7 @@ import type { Range } from '../../utils/range'
 import { getPathD, getRangePathDs } from '../entities/events/path'
 import type { ScopeLookup } from '../scopeRules'
 import { drawName, stageNameColor } from './names'
+import { isInRaisedChain, type RaisedChains } from './ordering'
 import { drawText, measureCachedText } from './text'
 import type { CanvasBounds, EditorDrawContext } from './types'
 
@@ -407,8 +408,8 @@ export const drawEvent = (
     ctx.restore()
 }
 
-/** Which extensions a pass draws: a selected end joint's are raised, unless faint. */
-type InfinityPass = { selected: ReadonlySet<Entity>; isRaised: boolean }
+/** Which extensions a pass draws: a raised chain's are raised, unless faint. */
+type InfinityPass = { chains: RaisedChains; isRaised: boolean }
 
 const drawInfinity = (
     context: EditorDrawContext,
@@ -418,17 +419,16 @@ const drawInfinity = (
     isFull: boolean,
     pass: InfinityPass,
 ) => {
+    if ((isFull && isInRaisedChain(pass.chains, range.min)) !== pass.isRaised) return
     const { ctx, state, ups, bounds } = context
-    const isInPass = (joint: EventJointEntity) =>
-        (isFull && pass.selected.has(joint)) === pass.isRaised
     ctx.save()
     ctx.globalAlpha *= 0.5 * (isFull ? 1 : 0.25)
     ctx.strokeStyle = eventColor(range.min)
-    if (fromStart && isInPass(range.min)) {
+    if (fromStart) {
         const y = beatToTime(state.bpms, range.min.beat) * ups
         for (const x of jointXs(range.min)) line(ctx, x, 0, x, y)
     }
-    if (untilEnd && isInPass(range.max)) {
+    if (untilEnd) {
         const y = beatToTime(state.bpms, range.max.beat) * ups
         for (const x of jointXs(range.max)) line(ctx, x, y, x, bounds.t)
     }
@@ -472,20 +472,20 @@ const infinityTypes = [
  * Draws the lines extending event ranges to the chart start and end. Stage
  * ranges follow their stage's scope like the event connections they extend;
  * hidden event types are drawn faintly unless other objects are hidden. The
- * extensions from selected end joints are left to the raised pass, which draws
- * only them.
+ * extensions of raised chains are left to the raised pass, which draws only
+ * them.
  */
 export const drawEventInfinities = (
     context: EditorDrawContext,
     visibilities: Record<EntityType, boolean>,
     scope: ScopeLookup,
     showOtherObjects: boolean,
-    selected: ReadonlySet<Entity> = new Set(),
+    chains: RaisedChains = new Map(),
     isRaisedPass = false,
 ) => {
     const { ctx, state } = context
     const { stageEventRanges } = state.store
-    const pass = { selected, isRaised: isRaisedPass }
+    const pass = { chains, isRaised: isRaisedPass }
     ctx.save()
     ctx.lineWidth = 2 / context.scale
     ctx.lineCap = 'butt'

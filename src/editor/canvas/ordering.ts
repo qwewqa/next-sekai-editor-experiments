@@ -1,4 +1,6 @@
+import type { StageId } from '../../chart/stages'
 import type { Entity, EntityType } from '../../state/entities'
+import type { EventJointEntity, EventJointEntityType } from '../../state/entities/events/joints'
 import { entityScopeVisibility, type ScopeLookup } from '../scopeRules'
 import type { EventPart } from './events'
 
@@ -74,41 +76,67 @@ export type EntityVisibility = {
     showOtherObjects: boolean
 }
 
-const isFullyVisible = (entity: Entity, visibility: EntityVisibility) =>
-    entityScopeVisibility(entity, visibility.scope) === 'full' &&
-    visibility.visibilities[entity.type]
+/** Event joint types with a selected joint, and their stages; camera's stage is undefined. */
+export type RaisedChains = ReadonlyMap<EventJointEntityType, ReadonlySet<StageId | undefined>>
 
-// The full event connections either side of selected joints, and their joints.
-const raisedEntities = (
-    entities: Entity[],
-    selected: ReadonlySet<Entity>,
-    visibility: EntityVisibility,
-) => {
-    const raised = new Set<Entity>()
-    if (!selected.size) return raised
-    for (const entity of entities) {
-        // Only event connections have a min and max.
-        if (!('min' in entity) || !(selected.has(entity.min) || selected.has(entity.max))) continue
-        // Faint lines stay under, and so do their joints.
-        if (!isFullyVisible(entity, visibility)) continue
-        raised.add(entity).add(entity.min).add(entity.max)
+// The joint whose chain an entity is in; a connection is in its min's.
+const chainJoint = (entity: Entity): EventJointEntity | undefined => {
+    switch (entity.type) {
+        case 'cameraEventJoint':
+        case 'stageMaskEventJoint':
+        case 'stagePivotEventJoint':
+        case 'stageStyleEventJoint':
+        case 'stageTransformEventJoint':
+            return entity
+        case 'cameraEventConnection':
+        case 'stageMaskEventConnection':
+        case 'stagePivotEventConnection':
+        case 'stageStyleEventConnection':
+        case 'stageTransformEventConnection':
+            return entity.min
+        case 'bpm':
+        case 'timeScale':
+        case 'note':
+        case 'connector':
+            return undefined
     }
-    return raised
+}
+
+const chainStage = (joint: EventJointEntity) =>
+    joint.type === 'cameraEventJoint' ? undefined : joint.stageId
+
+export const raisedChains = (selected: ReadonlySet<Entity>): RaisedChains => {
+    const chains = new Map<EventJointEntityType, Set<StageId | undefined>>()
+    for (const entity of selected) {
+        const joint = chainJoint(entity)
+        if (!joint) continue
+        const stages = chains.get(joint.type) ?? new Set()
+        chains.set(joint.type, stages.add(chainStage(joint)))
+    }
+    return chains
+}
+
+/** Whether an event joint or connection is in a chain with a selected joint. */
+export const isInRaisedChain = (chains: RaisedChains, entity: Entity) => {
+    if (!chains.size) return false
+    const joint = chainJoint(entity)
+    return !!joint && !!chains.get(joint.type)?.has(chainStage(joint))
 }
 
 /**
  * Painter order and opacity for the main editor. An entity is drawn unless its
  * group/stage scope is hidden or its type is hidden (with other objects not
  * shown); it is drawn at full opacity only when both are fully visible. The
- * lines either side of selected joints draw above unselected objects.
+ * full joints and lines of event chains with a selected joint draw above
+ * unselected objects.
  */
 export const orderEntities = (
     entities: Entity[],
     selected: ReadonlySet<Entity>,
     visibility: EntityVisibility,
-) => {
-    const raised = raisedEntities(entities, selected, visibility)
-    return entities
+    chains = raisedChains(selected),
+) =>
+    entities
         .map((entity) => {
             const scope = entityScopeVisibility(entity, visibility.scope)
             const isVisibleByType = visibility.visibilities[entity.type]
@@ -119,7 +147,7 @@ export const orderEntities = (
                 isSelected,
                 isDrawn: scope !== 'hidden' && (visibility.showOtherObjects || isVisibleByType),
                 isFull,
-                tier: isSelected ? 2 : raised.has(entity) && isFull ? 1 : 0,
+                tier: isSelected ? 2 : isFull && isInRaisedChain(chains, entity) ? 1 : 0,
                 layer: getLayer(entity),
             }
         })
@@ -137,7 +165,6 @@ export const orderEntities = (
             raised: info.tier === 1,
             opacity: info.isFull ? 1 : 0.25,
         }))
-}
 
 export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: EventPart }
 
