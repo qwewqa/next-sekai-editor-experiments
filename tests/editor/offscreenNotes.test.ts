@@ -248,8 +248,7 @@ test('badges scroll with their notes, changing only at the edges', () => {
         [314, 1, false],
         [362, 1, true],
     ])
-    // Scrolled 40 px up, the top notes are in the inset, held at the top edge; 370's slot is within a slot
-    // of the bottom edge badge, so it is still held there.
+    // Scrolled 40 px up, the top notes are held at the top; 370's slot is still in the bottom hold.
     assert.deepEqual(drawn(show(-40), -40), [
         [38, 2, true],
         [170, 1, false],
@@ -343,8 +342,7 @@ test('a held badge stays as one note leaves past the edge and the next is held',
         [66, 1, false],
     ])
     assert.deepEqual(show(-32.5), [[38, 1, true]])
-    // Notes up to three slots apart keep a badge held at each edge they pass, at any anchor, in either pane.
-    // The main pane's holds span three slots, the Elevation Editor's two.
+    // Notes up to three slots apart keep a badge held at each edge (main pane holds 3 slots, EE 2).
     for (const [top, inset, spacings] of [
         [0, 24, [50, 70, 84]],
         [84, 0, [30, 50, 56]],
@@ -463,9 +461,9 @@ test('a dimmed badge keeps its hit area from a neighbour', () => {
     assert.equal(hitOffscreenGroup(held, 2, 56, 300, 30)?.targets[0], 'b')
 })
 
-test('a band with no room for a slot between the held badges keeps one badge fixed to the pane', () => {
-    // Bands 56 to 83 px would otherwise hop a lone badge from one hold to the other.
-    for (const band of [56, 70, 83])
+test('a band with under half a badge of ride between the held badges keeps one badge fixed to the pane', () => {
+    // Bands 56 to 95 px would hop a lone badge twice with under half a badge of ride between.
+    for (const band of [56, 70, 83, 84, 90, 95])
         for (const anchor of [-20, 0, 13, 44]) {
             const groups = groupOffscreenNotes(
                 [note(-10, -1, -30), note(-10, -1, 10), note(-10, -1, 30)],
@@ -480,10 +478,19 @@ test('a band with no room for a slot between the held badges keeps one badge fix
                 [[24 + band / 2, true, 0]],
             )
         }
-    // From 84 px, held badges.
-    assert.deepEqual(drawn(groupOffscreenNotes([note(-10, -1, 10)], 300, 0, 132, 24, 20), 20), [
+    // From 96 px, held badges.
+    assert.deepEqual(drawn(groupOffscreenNotes([note(-10, -1, 10)], 300, 0, 144, 24, 20), 20), [
         [38, 1, true],
     ])
+    // A lone badge rides at least half a badge between its hops.
+    for (const band of [96, 100, 111]) {
+        let ride = 0
+        for (let anchor = -100; anchor < band + 100; anchor += 0.25) {
+            const [badge] = groupOffscreenNotes([note(-10, -1, 0)], 300, 0, band + 48, 24, anchor)
+            if (badge && !badge.fixed) ride += 0.25
+        }
+        assert.ok(ride >= 12, `${band}: ${ride}`)
+    }
 })
 
 test('a band too short for two slots keeps one badge fixed to the pane', () => {

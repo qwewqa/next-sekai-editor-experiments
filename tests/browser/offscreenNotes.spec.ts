@@ -638,11 +638,15 @@ test('elevation editor badges of elevation 0 notes move only with the scroll', a
     await expect(badge).toHaveAttribute('data-count', '1')
     const header = (await page.locator('.elevation-editor .elevation-header').boundingBox())!
     const canvas = (await page.locator('.elevation-canvas').boundingBox())!
+    const first = header.y + header.height - canvas.y + 4
+    // From inside each edge's riding badges, past the edge.
+    const top = Math.min(first + 150, canvas.height / 2)
+    const bottom = Math.max(canvas.height - 150, canvas.height / 2)
     for (const [from, to] of [
-        [canvas.height / 2, -70],
-        [-70, canvas.height / 2],
-        [canvas.height / 2, canvas.height + 70],
-        [canvas.height + 70, canvas.height / 2],
+        [top, -70],
+        [-70, top],
+        [bottom, canvas.height + 70],
+        [canvas.height + 70, bottom],
     ] as const) {
         const rows = await page.evaluate(
             async ({ from, to }) => {
@@ -674,7 +678,6 @@ test('elevation editor badges of elevation 0 notes move only with the scroll', a
             },
             { from, to },
         )
-        const first = header.y + header.height - canvas.y + 4
         expectOnlyWithScroll(rows, {
             top: first,
             height: canvas.height,
@@ -1129,6 +1132,69 @@ test.describe('held badges', () => {
         await expectAlwaysHeld(page)
     })
 
+    // Notes 80 px apart, counted further past the pane than drawn notes' padding of a few px a lane.
+    const showWide = (page: Page) =>
+        page.evaluate(() => {
+            const { fixtures, show, view, settings } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            settings.width = 100
+            show(
+                {
+                    ...fixtures.interaction,
+                    bpms: [{ beat: 0, bpm: 120 }],
+                    slides: Array.from({ length: 300 }, (_, i) => [
+                        { ...base, beat: 2 + i * 0.4, left: -80, size: 2, elevation: 2 },
+                    ]),
+                },
+                30,
+            )
+            view.lane = 0
+        })
+
+    test('stay on every frame of playback at a wide lane zoom', async ({ page }) => {
+        await showWide(page)
+        await recordHeld(page)
+        await page.evaluate(async () => {
+            const player =
+                await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+                    '/src/editor/player.ts',
+                )
+            player.startOrStopPlayer()
+            await new Promise((resolve) => setTimeout(resolve, 2500))
+            player.startOrStopPlayer()
+        })
+        await expectAlwaysHeld(page)
+    })
+
+    test('stay at every step of a fine scroll at a wide lane zoom', async ({ page }) => {
+        await showWide(page)
+        // Notes on whole beats pass the top edge too, just past the beat buckets in view.
+        const missing = await page.evaluate(async () => {
+            const { view, settings, nextTick } = window.editorTest
+            const start = view.time
+            const missing: number[] = []
+            for (let scroll = 0; scroll < 3000; scroll += 0.5) {
+                view.time = start + scroll / settings.pps
+                await nextTick()
+                const ys = [
+                    ...document.querySelectorAll<HTMLElement>(
+                        '.editor-chart ~ div .offscreen-note-indicator[data-side="left"]',
+                    ),
+                ].map((badge) => {
+                    const { top, height } = badge.getBoundingClientRect()
+                    return top + height / 2 - view.y
+                })
+                if (
+                    !ys.some((y) => Math.abs(y - 38) < 1) ||
+                    !ys.some((y) => Math.abs(y - (view.h - 38)) < 1)
+                )
+                    missing.push(scroll)
+            }
+            return missing
+        })
+        expect(missing).toEqual([])
+    })
+
     for (const edge of ['top', 'bottom'] as const)
         test(`stay on every frame of a fast pan at the ${edge} edge`, async ({ page }) => {
             await useTool(page, 'note')
@@ -1256,4 +1322,308 @@ test('every point down both sides hits the nearest badge, with no gaps between n
         }, shift)
         expect(problems).toEqual([])
     }
+})
+
+// Every frame the pointer hovers a badge: whether exactly that badge, as drawn, has the ring.
+const recordHoverRing = (page: Page, root: string) =>
+    page.evaluate(async (root) => {
+        const { appImport, view } = window.editorTest
+        const { hitOffscreenIndicator } = await appImport<
+            typeof import('../../src/editor/offscreenIndicators')
+        >('/src/editor/offscreenIndicators.ts')
+        const result = { hovered: 0, problems: [] as string[] }
+        let recording = true
+        const record = () => {
+            if (!recording) return
+            const group = hitOffscreenIndicator(view.pointer.x, view.pointer.y)
+            if (group) {
+                result.hovered++
+                const rings = [
+                    ...document.querySelectorAll<HTMLElement>(
+                        `${root} .offscreen-note-indicator.is-hovered`,
+                    ),
+                ]
+                const ring = rings[0]
+                const layers = ring?.closest('.overflow-hidden')
+                const layer = layers?.querySelector<HTMLElement>('[style*="translateY"]')
+                const anchor = Number(
+                    /translateY\(([-\d.e+]+)px\)/.exec(layer?.style.transform ?? '')?.[1],
+                )
+                const bounds = ring?.getBoundingClientRect()
+                const y = bounds
+                    ? bounds.top + bounds.height / 2 - layers!.getBoundingClientRect().top
+                    : NaN
+                const drawn = group.fixed ? group.y : anchor + group.y
+                if (
+                    rings.length !== 1 ||
+                    ring!.dataset.side !== group.side ||
+                    ring!.dataset.count !== String(group.count) ||
+                    !(Math.abs(y - drawn) < 0.5)
+                )
+                    result.problems.push(
+                        `${group.side} ${group.count} at ${drawn}: ${rings.length} rings, ${ring?.dataset.count} at ${y}`,
+                    )
+            }
+            requestAnimationFrame(record)
+        }
+        requestAnimationFrame(record)
+        Object.assign(window, {
+            stopHoverRing: () => {
+                recording = false
+                return result
+            },
+        })
+    }, root)
+const expectHoverRing = async (page: Page) => {
+    const { hovered, problems } = await page.evaluate(() =>
+        (
+            window as unknown as { stopHoverRing: () => { hovered: number; problems: string[] } }
+        ).stopHoverRing(),
+    )
+    expect(hovered).toBeGreaterThan(20)
+    expect(problems).toEqual([])
+}
+// Every 10 frames, selects or deselects the notes of the badges held at the edges, leaving the rest as they are.
+const toggleHeldSelection = (page: Page, root: string) =>
+    page.evaluate(async (root) => {
+        const { appImport, history } = window.editorTest
+        const { hitOffscreenIndicator } = await appImport<
+            typeof import('../../src/editor/offscreenIndicators')
+        >('/src/editor/offscreenIndicators.ts')
+        for (let frame = 0; frame < 100; frame++) {
+            if (frame % 10 === 5) {
+                const [top, , bottom] = document
+                    .querySelector(`${root} .offscreen-note-indicator`)!
+                    .closest('.overflow-hidden')!.children
+                const held = [top!, bottom!].flatMap((layer) =>
+                    [...layer.querySelectorAll('.offscreen-note-indicator')].flatMap((badge) => {
+                        const { left, top, width, height } = badge.getBoundingClientRect()
+                        return (
+                            hitOffscreenIndicator(left + width / 2, top + height / 2)?.targets ?? []
+                        )
+                    }),
+                )
+                const state = history.state.value
+                history.replaceState({
+                    ...state,
+                    selectedEntities: state.selectedEntities.length ? [] : held,
+                })
+            }
+            await new Promise((resolve) => requestAnimationFrame(resolve))
+        }
+    }, root)
+
+test.describe('the hover ring', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.evaluate(() => {
+            const { fixtures, show, view, settings } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show({
+                ...fixtures.interaction,
+                slides: Array.from({ length: 60 }, (_, i) => [
+                    { ...base, beat: i * 0.37 + (i % 4) * 0.05, left: -40, size: 2, elevation: 2 },
+                ]),
+            })
+            settings.pps = 300
+            view.lane = 0
+            view.time = 5
+        })
+        await useTool(page, 'select')
+    })
+
+    const hoverRiding = async (page: Page, root: string, index: number) => {
+        const riding = page
+            .locator(`${root} [style*="translateY"] .offscreen-note-indicator`)
+            .nth(index)
+        const { x, y } = await center(riding)
+        await page.mouse.move(x, y)
+        await expect(riding).toHaveClass(/is-hovered/)
+        await recordHoverRing(page, root)
+    }
+
+    test('stays on the hovered badge as the chart scrolls', async ({ page }) => {
+        await hoverRiding(page, '.editor-chart ~ div', 3)
+        await page.evaluate(async () => {
+            const { view, settings } = window.editorTest
+            for (let frame = 0; frame < 300; frame++) {
+                view.time += 1 / settings.pps
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+            }
+        })
+        await expectHoverRing(page)
+    })
+
+    test('stays on the hovered badge in playback', async ({ page }) => {
+        await hoverRiding(page, '.editor-chart ~ div', 3)
+        await page.evaluate(async () => {
+            const player =
+                await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+                    '/src/editor/player.ts',
+                )
+            player.startOrStopPlayer()
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            player.startOrStopPlayer()
+        })
+        await expectHoverRing(page)
+    })
+
+    test('stays on the hovered badge as held notes are selected', async ({ page }) => {
+        await hoverRiding(page, '.editor-chart ~ div', 3)
+        await toggleHeldSelection(page, '.editor-chart ~ div')
+        await expectHoverRing(page)
+    })
+
+    test('stays on the hovered badge in the elevation editor', async ({ page }) => {
+        await page.evaluate(() => {
+            const { fixtures, show, history } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [
+                        ...Array.from({ length: 120 }, (_, i) => [
+                            { ...base, beat: 3, left: -40, size: 2, elevation: i * 0.53 },
+                        ]),
+                        [{ ...base, beat: 3, left: 0, size: 2, elevation: 30 }],
+                    ],
+                },
+                1.5,
+            )
+            const current = history.state.value
+            history.replaceState({
+                ...current,
+                selectedEntities: [...current.store.slides.note.values()].at(-1)!,
+            })
+        })
+        await page.keyboard.press('t')
+        await expect(
+            page.locator('.elevation-editor .offscreen-note-indicator').first(),
+        ).toBeVisible()
+        await page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            elevationViewport.scale = 40
+            elevationViewport.center = 30.13
+        })
+        await hoverRiding(page, '.elevation-editor', 5)
+        await page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            for (let frame = 0; frame < 120; frame++) {
+                elevationViewport.center += 1 / elevationViewport.scale
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+            }
+        })
+        await toggleHeldSelection(page, '.elevation-editor')
+        await expectHoverRing(page)
+    })
+})
+
+// Each chart badge's side, pane y and count.
+const chartBadges = (page: Page) =>
+    page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('.editor-chart ~ div .offscreen-note-indicator')]
+            .map((badge) => {
+                const { top, height } = badge.getBoundingClientRect()
+                const y = top + height / 2 - window.editorTest.view.y
+                return `${badge.dataset.side} ${y.toFixed(2)} ${badge.dataset.count}`
+            })
+            .sort(),
+    )
+
+test('badges keep their slots as the pane and the lanes change width', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, view, settings } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        settings.pps = 300
+        settings.width = 40
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        // Notes at every phase of the slots, off the left at every width here.
+        show({
+            ...fixtures.interaction,
+            bpms: [{ beat: 0, bpm: 120 }],
+            slides: Array.from({ length: 80 }, (_, i) => [
+                { ...base, beat: 6 + i * 0.18753, left: -80, size: 2, elevation: 2 },
+            ]),
+        })
+        view.lane = 0
+        // Badges placed from a fractional pane y.
+        view.time = 9 + 0.43 / settings.pps
+    })
+    await expect(
+        page.locator('.editor-chart ~ div .offscreen-note-indicator').first(),
+    ).toBeVisible()
+    const before = await chartBadges(page)
+    const height = await page.evaluate(() => window.editorTest.view.h)
+    expect(before.length).toBeGreaterThan(10)
+    for (const width of [...Array.from({ length: 30 }, (_, i) => 12 + i * 2.913), 40]) {
+        await page.evaluate((width) => {
+            window.editorTest.settings.width = width
+        }, width)
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+        expect(await chartBadges(page), `width ${width}`).toEqual(before)
+    }
+    for (const width of [1563, 1499, 1437, 1381, 1290, 1211, 1187, 1123, 1600]) {
+        const previous = await page.evaluate(() => window.editorTest.view.w)
+        await page.setViewportSize({ width, height: 1000 })
+        await expect.poll(() => page.evaluate(() => window.editorTest.view.w)).not.toBe(previous)
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+        expect(await page.evaluate(() => window.editorTest.view.h)).toBe(height)
+        expect(await chartBadges(page), `pane ${width}`).toEqual(before)
+    }
+})
+
+test('the badge of a note at the zoom centre stays put as the chart zooms', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, view, settings } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show({
+            ...fixtures.interaction,
+            bpms: [{ beat: 0, bpm: 120 }],
+            slides: Array.from({ length: 24 }, (_, i) => [
+                { ...base, beat: i * 0.5 + (i % 3) * 0.13, left: -40, size: 2, elevation: 2 },
+            ]),
+        })
+        view.lane = 0
+        // The fixture's zoom on setup placed badges from the middle at time 3: the note of beat 6.
+        view.time = 3
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        settings.pps = 300
+    })
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
+    await page.waitForTimeout(100)
+    const middle = await page.evaluate(
+        () => window.editorTest.view.y + window.editorTest.view.h / 2,
+    )
+    // The badge nearest the middle note.
+    const badgeY = () =>
+        page.evaluate(
+            (middle) =>
+                Math.min(
+                    ...[
+                        ...document.querySelectorAll(
+                            '.editor-chart ~ div .offscreen-note-indicator',
+                        ),
+                    ].map((badge) => {
+                        const { top, height } = badge.getBoundingClientRect()
+                        return Math.abs(top + height / 2 - middle) < 28
+                            ? top + height / 2
+                            : Infinity
+                    }),
+                ),
+            middle,
+        )
+    const ys = new Set([await badgeY()])
+    await page.keyboard.down('Control')
+    for (let i = 0; i < 12; i++) {
+        await page.mouse.wheel(0, i < 6 ? -40 : 40)
+        await page.waitForTimeout(60)
+        ys.add(await badgeY())
+    }
+    await page.keyboard.up('Control')
+    expect(await page.evaluate(() => window.editorTest.view.time)).toBe(3)
+    expect([...ys]).toHaveLength(1)
 })

@@ -29,6 +29,8 @@ export const RANGE_LABEL_HEIGHT = 24
 const SLOT = 28
 // Badge height; badges closer than this would overlap.
 const BADGE = 24
+// Notes count until at most this far past an edge, where their slots leave.
+export const OFFSCREEN_REACH = 2 * SLOT
 
 /** A pane y on the slot lattice through `anchor`, nearest `y`: where badges re-anchor without moving. */
 export const offscreenSlotNear = (anchor: number, y: number) =>
@@ -49,12 +51,12 @@ export const groupOffscreenNotes = <T>(
     const first = top + inset
     const last = bottom - inset
     if (!(width > 0) || last - first < BADGE) return []
-    // No room for a slot between the two held badges: one fixed to the pane, which scrolling can't empty.
-    const short = last - first < 3 * SLOT
+    // Less than half a badge of ride between holds reads as one double hop: one badge fixed instead.
+    const short = last - first < 3 * SLOT + BADGE / 2
     // Slot centres past these are held at the top and bottom.
     const holdTop = first + SLOT / 2 + SLOT
     const holdBottom = last - SLOT / 2 - SLOT
-    // A note counts until its slot leaves the pane, at whole slots from the holds: as one slot leaves, another is held.
+    // Notes count until their slot leaves, whole slots past the holds: one goes as the next is held.
     const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
     const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
     const groups = new Map<string, OffscreenNoteGroup<T>>()
@@ -133,8 +135,7 @@ export const isSameOffscreenGroups = <T>(
 // Badge width estimate (inset, chevron, digits) with slack; at least a touch target.
 export const offscreenBadgeHitWidth = (count: number) => Math.max(44, 40 + 7 * String(count).length)
 
-// The badge nearest a pane point in its side's hit areas (slot bands, out from the edge), if it has selectable
-// notes. Held badges' areas reach in to the first slot not held, so adjacent badges' areas meet.
+// The nearest badge whose hit area holds a point, if selectable; held areas reach the next slot.
 export const hitOffscreenGroup = <T>(
     groups: readonly OffscreenNoteGroup<T>[],
     x: number,

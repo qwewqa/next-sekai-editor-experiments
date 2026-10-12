@@ -12,6 +12,7 @@ import type { Entity } from '../../state/entities'
 import { BPM_LABEL } from '../../state/entities/bpm'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
+import { computedArray } from '../../utils/array'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
@@ -38,6 +39,7 @@ import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndic
 import {
     groupOffscreenNotes,
     isSameOffscreenGroups,
+    OFFSCREEN_REACH,
     offscreenSlotNear,
     RANGE_LABEL_HEIGHT,
     type OffscreenNoteGroup,
@@ -99,25 +101,25 @@ const composed = computed(() =>
 const waveform = createWaveformRenderer(() => waveformVersion.value++)
 let creatingCanvas: HTMLCanvasElement | undefined
 
-const artRange = computed(() => {
-    const scale = view.w / viewBox.value.w
-    const padding = (1.25 * scale + 4) / settings.pps
+// The beats in the pane and `padding` px past it.
+const beatRange = (padding: number) => {
+    const bpms = sceneState.value.bpms
     return {
-        min: timeToBeat(sceneState.value.bpms, Math.max(0, times.value.min - padding)),
-        max: timeToBeat(sceneState.value.bpms, times.value.max + padding),
+        min: timeToBeat(bpms, Math.max(0, times.value.min - padding / settings.pps)),
+        max: timeToBeat(bpms, times.value.max + padding / settings.pps),
     }
-})
+}
+const artRange = computed(() => beatRange(1.25 * (view.w / viewBox.value.w) + 4))
 const artEntities = computedVisibleEntities(
     () => culledEntities.value,
     () => artRange.value,
 )
 // Slides a drag changes beyond its ghosts are drawn as they drop.
-const shownEntities = computed(() => {
+const showEntities = (shown: Entity[], { min, max }: { min: number; max: number }) => {
     const preview = previewSlides.value
-    if (!preview) return { entities: artEntities.value, selected: selectedEntitySet.value }
-    const { min, max } = artRange.value
+    if (!preview) return { entities: shown, selected: selectedEntitySet.value }
     // In the drop's store order, which settles same-beat ties; the source's own entities stay in place.
-    const source = artEntities.value.filter((entity) => !preview.includes(entity))
+    const source = shown.filter((entity) => !preview.includes(entity))
     const indices = new Map(source.map((entity, index) => [entity, index]))
     const entities: Entity[] = []
     let next = 0
@@ -139,13 +141,15 @@ const shownEntities = computed(() => {
             ...preview.state.selectedEntities.filter(preview.includes),
         ]),
     }
+}
+const shownEntities = computed(() => showEntities(artEntities.value, artRange.value))
+const visibility = () => ({
+    scope: scopeLookup.value,
+    visibilities: view.visibilities,
+    showOtherObjects: settings.showOtherObjects,
 })
 const orderedEntities = computed(() =>
-    orderEntities(shownEntities.value.entities, shownEntities.value.selected, {
-        scope: scopeLookup.value,
-        visibilities: view.visibilities,
-        showOtherObjects: settings.showOtherObjects,
-    }),
+    orderEntities(shownEntities.value.entities, shownEntities.value.selected, visibility()),
 )
 const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
 // Hovered objects are committed ones; a previewed scene draws their counterparts.
@@ -155,24 +159,35 @@ const sceneHovered = computed(() =>
         : hoveredEntities.value,
 )
 const hoveredSet = computed(() => new Set(sceneHovered.value))
+// Badges count notes past the art's padding, as far as their slots reach.
+const offscreenRange = computed(() => beatRange(OFFSCREEN_REACH + 4))
+const offscreenNotes = computedArray(() => {
+    const { min, max } = offscreenRange.value
+    return culledEntities.value.filter(
+        (entity) => entity.type === 'note' && isEntityInBeatRange(entity, min, max),
+    )
+})
 // Note spans in lanes and seconds, which scrolling leaves unchanged.
 const offscreenCandidates = computed(() => {
     const bpms = sceneState.value.bpms
     const layout = composed.value
-    return orderedEntities.value.flatMap(({ entity, highlighted, opacity }) => {
-        if (entity.type !== 'note') return []
-        const position = layout?.notePosition(entity) ?? entity
-        return [
-            {
-                entity,
-                left: position.left,
-                right: position.left + position.size,
-                time: beatToTime(bpms, entity.beat),
-                highlighted,
-                opacity,
-            },
-        ]
-    })
+    const { entities, selected } = showEntities(offscreenNotes.value, offscreenRange.value)
+    return orderEntities(entities, selected, visibility()).flatMap(
+        ({ entity, highlighted, opacity }) => {
+            if (entity.type !== 'note') return []
+            const position = layout?.notePosition(entity) ?? entity
+            return [
+                {
+                    entity,
+                    left: position.left,
+                    right: position.left + position.size,
+                    time: beatToTime(bpms, entity.beat),
+                    highlighted,
+                    opacity,
+                },
+            ]
+        },
+    )
 })
 // Only horizontal scrolling and zoom change which notes are off a side.
 const offscreenAxis = computed<{ l: number; scale: number; width: number }>((previous) => {
@@ -190,26 +205,28 @@ const offscreenSideNotes = computed(() => {
         return right < 0 || left > width ? [{ ...note, left, right }] : []
     })
 })
-// The pane y badges were last placed from.
+// The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
-// The time badges are placed from, so they scroll with the chart. A zoom moves it to a slot near the pane's
-// middle, from where badges stay put rather than move against their notes.
+// The time badges scroll from; a zoom moves it onto the slot lattice near the middle.
 const offscreenOrigin = computed<{ time: number; pixels: number }>((previous) => {
-    const { ups, t, w } = viewBox.value
-    const scale = view.w / w
-    const pixels = ups * scale
+    // ups · scale without float error, so resizes and lane widths don't re-anchor.
+    const pixels = -settings.pps
     if (previous?.pixels === pixels) return previous
     if (!previous) return { time: 0, pixels }
+    const { t, w } = viewBox.value
+    const shift = t * (view.w / w)
     const y = offscreenSlotNear(lastOffscreenAnchor, view.h / 2)
-    return { time: (y / scale + t) / ups, pixels }
+    // Kept when already there, so float error can't flip a note on it between slots.
+    if (Math.abs(previous.time * pixels - shift - y) < 1e-6) return { time: previous.time, pixels }
+    return { time: (y + shift) / pixels, pixels }
 })
-// Whole device pixels keep the badges sharp.
 const offscreenAnchor = computed(() => {
-    const ratio = pixelRatio.value
     const { time, pixels } = offscreenOrigin.value
     const { t, w } = viewBox.value
-    lastOffscreenAnchor = Math.round((time * pixels - t * (view.w / w)) * ratio) / ratio
-    return lastOffscreenAnchor
+    lastOffscreenAnchor = time * pixels - t * (view.w / w)
+    // Whole device pixels keep the badges sharp.
+    const ratio = pixelRatio.value
+    return Math.round(lastOffscreenAnchor * ratio) / ratio
 })
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const { time: origin, pixels } = offscreenOrigin.value
@@ -397,8 +414,7 @@ const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined
 const DASH = 6
 const GAP = 4
 
-// Dashes on the hover line; kept within 0.75 of the length's own count, so small length changes don't regroup
-// them, yet a length draws (almost) the same however it was reached.
+// Hover line dashes; kept within 0.75 of the length's count so small changes don't regroup them.
 let hoverDashes = 0
 
 // Stretches the dash pattern slightly so the line starts and ends on a whole dash.

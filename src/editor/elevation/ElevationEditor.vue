@@ -254,23 +254,24 @@ const restoreContext = () => {
     redrawVersion.value++
 }
 const hovered = ref<NoteEntity>()
-// The pane y badges were last placed from.
+// The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
-// The elevation badges are placed from, so they pan with the notes. A zoom moves it to a slot near the pane's
-// middle, from where badges stay put rather than move against their notes.
+// The elevation badges pan from; a zoom moves it onto the slot lattice near the middle.
 const offscreenOrigin = computed<{ elevation: number; scale: number }>((previous) => {
     const { yAt, elevationScale: scale } = elevationLayout.value
     if (previous?.scale === scale) return previous
     if (!previous) return { elevation: 0, scale }
     const y = offscreenSlotNear(lastOffscreenAnchor, elevationBounds.h / 2)
+    // Kept when already there, so float error can't flip a note on it between slots.
+    if (Math.abs(yAt(previous.elevation) - y) < 1e-6)
+        return { elevation: previous.elevation, scale }
     return { elevation: (yAt(0) - y) / scale, scale }
 })
-// Whole device pixels keep the badges sharp.
 const offscreenAnchor = computed(() => {
+    lastOffscreenAnchor = elevationLayout.value.yAt(offscreenOrigin.value.elevation)
+    // Whole device pixels keep the badges sharp.
     const ratio = pixelRatio.value
-    const y = elevationLayout.value.yAt(offscreenOrigin.value.elevation)
-    lastOffscreenAnchor = Math.round(y * ratio) / ratio
-    return lastOffscreenAnchor
+    return Math.round(lastOffscreenAnchor * ratio) / ratio
 })
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const selected = new Set(elevationState.value.selectedEntities)
