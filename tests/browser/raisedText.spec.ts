@@ -14,7 +14,8 @@ declare global {
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     // What the chart and Elevation Editor draw, in order: Path2D fills (slide bodies), plain
-    // fills (connections), images (notes), single-segment lines (with their colour and y) and texts.
+    // fills (connections), images (notes), name sprites, single-segment lines (with their colour
+    // and y) and texts.
     await page.addInitScript(() => {
         window.canvasOps = { chart: [], elevation: [] }
         const opsOf = (ctx: CanvasRenderingContext2D) => {
@@ -51,7 +52,8 @@ test.beforeEach(async ({ page }) => {
             if (args.length || ys?.length !== 2 || ys[0] !== ys[1]) return
             ops.push(`line:${String(ctx.strokeStyle)}:${ys[0]}`)
         })
-        wrap('drawImage', (_, __, ops) => ops.push('image'))
+        // Name sprites blit at their own size; notes are scaled.
+        wrap('drawImage', (_, args, ops) => ops.push(args.length === 3 ? 'name' : 'image'))
         wrap('fillText', (_, args, ops) => ops.push(`text:${String(args[0])}`))
     })
     await page.goto('/')
@@ -121,14 +123,23 @@ for (const layout of ['basic', 'composed'] as const) {
                     ({ color, y }) => color === '#ffffff' && Math.abs(y - cursorTime * ups) < 1e-6,
                 )
                 const drawn = texts(ops)
+                // Slides, notes, connections and BPM and time scale lines.
+                const firstObject = ops.findIndex(
+                    (op) =>
+                        op === 'slide' ||
+                        op === 'fill' ||
+                        op === 'image' ||
+                        op.startsWith('line:#ff00ff:') ||
+                        op.startsWith('line:#ffff00:'),
+                )
                 return {
                     slides: lastSlide >= 0,
                     labels: ['90', '2x', '00:02'].filter((text) =>
                         drawn.some((label) => label.text === text),
                     ),
                     below: drawn.filter(({ index }) => index < lastSlide).map(({ text }) => text),
-                    // Before the first object: the BPM line, the lowest.
-                    cursorFirst: !!cursor && !!bpmLine && cursor.index < bpmLine.index,
+                    // Before the first object, the time scale line.
+                    cursorFirst: !!cursor && firstObject >= 0 && cursor.index < firstObject,
                 }
             })
             .toEqual({ slides: true, labels: ['90', '2x', '00:02'], below: [], cursorFirst: true })

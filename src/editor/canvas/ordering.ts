@@ -115,13 +115,17 @@ export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: Event
 /** Objects, with time scale markers above slides and notes, and the BPM and time scale labels. */
 export const toDrawSteps = (ordered: ReturnType<typeof orderEntities>) => {
     const markers: DrawStep[] = []
-    const labels: DrawStep[] = []
+    const bpmLabels: DrawStep[] = []
+    const timeScaleLabels: DrawStep[] = []
     const steps = ordered.map((step): DrawStep => {
         const { type } = step.entity
-        if (type !== 'bpm' && type !== 'timeScale') return step
-        if (type === 'timeScale') markers.push({ ...step, part: 'marker' })
-        labels.push({ ...step, part: 'label' })
+        if (type === 'bpm') bpmLabels.push({ ...step, part: 'label' })
+        else if (type === 'timeScale') {
+            markers.push({ ...step, part: 'marker' })
+            timeScaleLabels.push({ ...step, part: 'label' })
+        } else return step
         return { ...step, part: 'line' }
     })
-    return { objects: [...steps, ...markers], labels }
+    // Time scale labels paint above every BPM label, as at their markers.
+    return { objects: [...steps, ...markers], labels: [...bpmLabels, ...timeScaleLabels] }
 }

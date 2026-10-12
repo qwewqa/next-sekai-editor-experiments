@@ -271,7 +271,6 @@ export const drawEvent = (
     part?: EventPart,
 ) => {
     const { ctx, state, ups } = context
-    const draws = (drawn: EventPart) => part === undefined || part === drawn
     ctx.save()
     ctx.globalAlpha *= opacity
     ctx.lineWidth = 2 / context.scale
@@ -289,13 +288,13 @@ export const drawEvent = (
             break
         case 'bpm': {
             const y = beatToTime(state.bpms, entity.beat) * ups
-            if (draws('line')) {
+            if (part === undefined || part === 'line') {
                 ctx.strokeStyle = '#f0f'
                 ctx.globalAlpha *= 0.5
                 line(ctx, -6, y, 6, y)
                 ctx.globalAlpha *= 2
             }
-            if (draws('label'))
+            if (part === undefined || part === 'label')
                 drawText(
                     context,
                     formatBpm(entity.bpm),
@@ -314,7 +313,7 @@ export const drawEvent = (
             const isScroll = entity.timeScaleTransition === 'scroll'
             // Hollow markers keep the line out of their interior.
             const gap = entity.hideNotes ? (isScroll ? DIAMOND_RADIUS : 0.1) : 0
-            if (draws('line')) {
+            if (part === undefined || part === 'line') {
                 ctx.strokeStyle = '#ff0'
                 ctx.globalAlpha *= 0.5
                 if (entity.hideNotes) ctx.setLineDash([2 / context.scale, 2 / context.scale])
@@ -324,8 +323,9 @@ export const drawEvent = (
                 ctx.globalAlpha *= 2
                 ctx.setLineDash([])
             }
-            if (draws('marker')) timeScaleMarker(ctx, x, y, isScroll, entity.hideNotes)
-            if (!draws('label')) break
+            if (part === undefined || part === 'marker')
+                timeScaleMarker(ctx, x, y, isScroll, entity.hideNotes)
+            if (part !== undefined && part !== 'label') break
             const { text, textWidth, direction } = timeScaleLabel(context, entity)
             const labelX = x + LABEL_OFFSET * direction
             const glyphWidth = drawEaseGlyph(context, entity, labelX, y, direction, '#ff0')
