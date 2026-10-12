@@ -6,10 +6,12 @@ import type { SlideNoteInfo } from '../state/entities/slides/semantics'
 import { getNoteVisualType, type NoteVisualType } from '../state/entities/slides/visualType'
 import { beatToTime } from '../state/integrals/bpms'
 import { clamp } from '../utils/math'
+import { isInRaisedChain, raisedOf } from './canvas/ordering'
 import type { ComposedLayout } from './composed'
 
 // The hit model, the ground truth for picking; drawing follows it (hitModelConsistency.spec).
-// Within 10 px, hits on a primary shape go first by precedence, earlier beat, later in the grid;
+// Within 10 px, hits on a primary shape go first: time scale markers, then joints of raised chains
+// unless a selected object is hit, then by precedence, earlier beat, later in the grid;
 // the rest nearest first, then by type. Flick arrows, names and outlines are decoration.
 
 export type Box = { l: number; r: number; t: number; b: number }
@@ -191,7 +193,8 @@ export const compareShapeDistance = (a: number, b: number) =>
 
 /**
  * Orders the objects a point hits, at a lane and time, as the hit model says.
- * Selection is left to the tools, so cycling through the hits stays stable.
+ * Selection counts only through raised chains; the tools handle the rest, and a tap cycle keeps
+ * its own order.
  */
 export const orderHits = <T extends Entity>(
     hits: readonly T[],
@@ -211,11 +214,18 @@ export const orderHits = <T extends Entity>(
     )
     const index = new Map(hits.map((entity, i) => [entity, i]))
     const distance = (entity: T) => distances.get(entity) ?? Number.POSITIVE_INFINITY
+    const { selected, chains } = raisedOf(source)
+    // A selected object hit is drawn above raised chains.
+    const raise = !hits.some((entity) => distance(entity) === 0 && selected.has(entity))
+    // Direct hits rank as drawn: time scale markers on top, then joints of raised chains.
+    // Callers pass only visible hits, which draw full.
+    const rank = (entity: T) =>
+        entity.type === 'timeScale' ? 0 : raise && isInRaisedChain(chains, entity) ? 1 : 2
     return [...hits].sort(
         (a, b) =>
             compareShapeDistance(distance(a), distance(b)) ||
             (distance(a) === 0
-                ? precedence.indexOf(a.type) - precedence.indexOf(b.type)
+                ? rank(a) - rank(b) || precedence.indexOf(a.type) - precedence.indexOf(b.type)
                 : comparePointHitTypes(a, b)) ||
             a.beat - b.beat ||
             (index.get(b) ?? 0) - (index.get(a) ?? 0),

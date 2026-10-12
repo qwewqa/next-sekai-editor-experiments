@@ -275,3 +275,95 @@ test('Eraser removes the top drawn object: the time-scale marker, then the top n
     })
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
+
+// Pivots at lane 0 at beats 4 and 8, and a note across them at 4; selects those named by beat.
+const showChain = (page: Page, selection: ('pivot:4' | 'pivot:8' | 'note')[]) =>
+    page.evaluate((selection) => {
+        const { fixtures, show, history, store } = window.editorTest
+        const events = fixtures.events
+        const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0 }
+        show(
+            {
+                ...events,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [
+                    { ...pivot, beat: 4 },
+                    { ...pivot, beat: 8 },
+                ],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                slides: [[{ ...fixtures.interaction.slides[0]![0]!, beat: 4, left: -1, size: 2 }]],
+            },
+            2,
+        )
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...store.getAllEntities()].filter((entity) =>
+                (selection as string[]).includes(
+                    entity.type === 'stagePivotEventJoint' ? `pivot:${entity.beat}` : entity.type,
+                ),
+            ),
+        })
+    }, selection)
+
+const chainState = (page: Page) =>
+    page.evaluate(() => ({
+        pivots: [...window.editorTest.store.getAllEntities()]
+            .filter((entity) => entity.type === 'stagePivotEventJoint')
+            .map((entity) => [entity.beat, entity.pivotLane]),
+        notes: [...window.editorTest.history.state.value.store.slides.note.values()]
+            .flat()
+            .map((note) => [note.beat, note.left]),
+    }))
+
+test("with a joint selected, a press on a chain-mate's marker over a note takes the marker", async ({
+    page,
+}) => {
+    await showChain(page, ['pivot:8'])
+    const at = await point(page)
+    const delta = await page.evaluate(
+        () => window.editorTest.view.w / window.editorTest.settings.width,
+    )
+    await page.mouse.move(at.x, at.y)
+    await page.mouse.down()
+    await page.mouse.move(at.x + delta, at.y, { steps: 5 })
+    await page.mouse.up()
+    expect(await chainState(page)).toEqual({
+        pivots: [
+            [4, 1],
+            [8, 0],
+        ],
+        notes: [[4, -1]],
+    })
+})
+
+test('with a raised joint and the note over it selected, a press focuses the note', async ({
+    page,
+}) => {
+    await showChain(page, ['pivot:4', 'note'])
+    const focus = await page.evaluate(async () => {
+        const { pointHitsAt, pressTarget } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools/utils')
+        >('/src/editor/tools/utils.ts')
+        const at = window.editorTest.point(0, 4)
+        return pressTarget(pointHitsAt(at.x, at.y))?.type
+    })
+    expect(focus).toBe('note')
+})
+
+test("with a joint selected, the Eraser removes a chain-mate's marker over a note", async ({
+    page,
+}) => {
+    await showChain(page, ['pivot:8'])
+    await page.evaluate(async () => {
+        const { switchToolTo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools')
+        >('/src/editor/tools/index.ts')
+        switchToolTo('eraser')
+    })
+    await click(page)
+    expect(await chainState(page)).toEqual({ pivots: [[8, 0]], notes: [[4, -1]] })
+})

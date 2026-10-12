@@ -369,6 +369,102 @@ test('a forceNonTick attached note shown at another size is hit on its body', as
     expect(order).toEqual([4, 2])
 })
 
+// A selected joint raises its chain over notes; hits follow, unless a selected object is hit.
+test('a joint of a raised chain drawn over a note is hit first, as drawn', async ({ page }) => {
+    // Pivots at lane 0: beats 4 and 8 on stage 1, beat 4 on stage 2; a note across it at beat 4.
+    const show = (withTimeScale: boolean) =>
+        page.evaluate((withTimeScale) => {
+            const { show, fixtures } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            const events = fixtures.events
+            const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0 }
+            show(
+                {
+                    ...events,
+                    bpms: [{ beat: 0, bpm: 120 }],
+                    cameraEvents: [],
+                    stageMaskEvents: [],
+                    stagePivotEvents: [
+                        { ...pivot, beat: 4 },
+                        { ...pivot, beat: 8 },
+                        { ...pivot, beat: 4, stageId: 2 as typeof pivot.stageId },
+                    ],
+                    stageStyleEvents: [],
+                    stageTransformEvents: [],
+                    timeScales: withTimeScale
+                        ? [
+                              {
+                                  ...events.timeScales[0]!,
+                                  groupId: base.groupId,
+                                  beat: 4,
+                                  editorLane: 0,
+                                  hideNotes: false,
+                              },
+                          ]
+                        : [],
+                    slides: [[{ ...base, beat: 4, left: -1, size: 2 }]],
+                },
+                2,
+            )
+        }, withTimeScale)
+    // The hits at the spot and the one drawn on top of them, with these selected.
+    const order = async (selection: string[]) => {
+        const point = await at(page, 0, 4)
+        return page.evaluate(
+            async ({ point, selection }) => {
+                const { history, view, settings, appImport } = window.editorTest
+                const { orderEntities, toDrawSteps } = await appImport<
+                    typeof import('../../src/editor/canvas/ordering')
+                >('/src/editor/canvas/ordering.ts')
+                const { pointHitsAt } = await appImport<
+                    typeof import('../../src/editor/tools/utils')
+                >('/src/editor/tools/utils.ts')
+                const { scopeLookup } =
+                    await appImport<typeof import('../../src/editor/scope')>('/src/editor/scope.ts')
+                type Hit = ReturnType<typeof pointHitsAt>['hits'][number]
+                const key = (entity: Hit) =>
+                    `${entity.type}:${entity.beat}${'stageId' in entity ? `:${entity.stageId}` : ''}`
+                const source = history.state.value
+                history.replaceState({
+                    ...source,
+                    selectedEntities: [...window.editorTest.store.getAllEntities()].filter(
+                        (entity) => selection.includes(key(entity)),
+                    ),
+                })
+                const { hits } = pointHitsAt(point.x, point.y)
+                const drawn = toDrawSteps(
+                    orderEntities(hits, new Set(history.state.value.selectedEntities), {
+                        scope: scopeLookup.value,
+                        visibilities: view.visibilities,
+                        showOtherObjects: settings.showOtherObjects,
+                    }),
+                ).objects
+                return { hits: hits.map(key), top: key(drawn.at(-1)!.entity) }
+            },
+            { point, selection },
+        )
+    }
+    const [K, J, other, N, T] = [
+        'stagePivotEventJoint:4:1',
+        'stagePivotEventJoint:8:1',
+        'stagePivotEventJoint:4:2',
+        'note:4:1',
+        'timeScale:4',
+    ]
+    await show(false)
+    // The other stage's pivot is in reach and full, but not raised.
+    expect(await order([J])).toEqual({ hits: [K, N, other], top: K })
+    expect(await order([])).toMatchObject({
+        hits: [N, expect.any(String), expect.any(String)],
+        top: N,
+    })
+    // A selected object hit keeps the order, K's own selection too.
+    expect((await order([K])).hits.filter((hit) => hit !== other)).toEqual([N, K])
+    expect((await order([J, N])).hits.filter((hit) => hit !== other)).toEqual([N, K])
+    await show(true)
+    expect(await order([J])).toEqual({ hits: [T, K, N, other], top: T })
+})
+
 // Real levels from the engine's resource cache: SEKAI_LEVELS=<...>/resources/levels.
 const levels = process.env.SEKAI_LEVELS
 const level = levels && join(levels, 'coconut-next-sekai-15003', 'data')

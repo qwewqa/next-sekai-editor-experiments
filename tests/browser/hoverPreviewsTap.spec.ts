@@ -285,3 +285,59 @@ test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page
     }
     check?.(await keys(page, 'selected'))
 })
+
+test("Select: with a joint selected, the hover on a chain-mate's marker over a note is what a tap selects", async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { show, fixtures, appImport } = window.editorTest
+        const events = fixtures.events
+        const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0 }
+        show(
+            {
+                ...events,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [
+                    { ...pivot, beat: 4 },
+                    { ...pivot, beat: 8 },
+                ],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                slides: [[{ ...fixtures.interaction.slides[0]![0]!, beat: 4, left: -1, size: 2 }]],
+            },
+            2,
+        )
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo('select')
+    })
+    const spot = await page.evaluate(() => window.editorTest.point(0, 4))
+    // The joint at beat 8 raises the one at 4 over the note; with the note selected too, it is on top.
+    for (const [selection, expected] of [
+        [['pivot:8'], ['stagePivotEventJoint:4:']],
+        [['pivot:8', 'note'], ['note:4:-1']],
+    ] as const) {
+        await page.evaluate((selection) => {
+            const { history, store } = window.editorTest
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: selection.map((name) =>
+                    [...store.getAllEntities()].find(
+                        (entity) =>
+                            (entity.type === 'stagePivotEventJoint'
+                                ? `pivot:${entity.beat}`
+                                : entity.type) === name,
+                    )!,
+                ),
+            })
+        }, selection)
+        await hoverAt(page, spot)
+        expect(await keys(page, 'hovered')).toEqual(expected)
+        await page.mouse.click(spot.x, spot.y)
+        expect(await keys(page, 'selected')).toEqual(expected)
+    }
+})

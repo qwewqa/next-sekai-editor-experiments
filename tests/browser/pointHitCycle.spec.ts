@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Clicks cycle an overlap top to bottom, once per lap; the order never depends on the selection.
+// Clicks cycle an overlap top to bottom, once per lap; selection affects it only via raised chains.
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -189,4 +189,48 @@ test('a selection made elsewhere starts a new cycle in its spot, not an old cycl
         return [...cycled, tap(0.8)]
     })
     expect(taps).toEqual(['stagePivotEventJoint', 'note', 'note'])
+})
+
+test("with a joint selected, taps on a chain-mate's marker over a note start at the marker", async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { show, fixtures, history, appImport } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        const events = fixtures.events
+        const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0 }
+        show(
+            {
+                ...events,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                stagePivotEvents: [
+                    { ...pivot, beat: 4 },
+                    { ...pivot, beat: 8 },
+                ],
+                slides: [[{ ...base, beat: 4, left: -1, size: 2 }]],
+            },
+            2,
+        )
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        switchToolTo('select')
+        // The joint at beat 8 raises the chain, drawing the one at 4 over the note.
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...window.editorTest.store.getAllEntities()].filter(
+                (entity) => entity.type === 'stagePivotEventJoint' && entity.beat === 8,
+            ),
+        })
+    })
+    const spot = await page.evaluate(() => window.editorTest.point(0, 4))
+    for (const entity of ['stagePivotEventJoint', '4:-1', 'stagePivotEventJoint']) {
+        await click(page, spot)
+        expect(await selected(page)).toEqual([entity])
+    }
 })

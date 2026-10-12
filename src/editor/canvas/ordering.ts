@@ -1,4 +1,5 @@
 import type { StageId } from '../../chart/stages'
+import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import type { EventJointEntity, EventJointEntityType } from '../../state/entities/events/joints'
 import { entityScopeVisibility, type ScopeLookup } from '../scopeRules'
@@ -105,7 +106,7 @@ const chainJoint = (entity: Entity): EventJointEntity | undefined => {
 const chainStage = (joint: EventJointEntity) =>
     joint.type === 'cameraEventJoint' ? undefined : joint.stageId
 
-export const raisedChains = (selected: ReadonlySet<Entity>): RaisedChains => {
+export const raisedChains = (selected: Iterable<Entity>): RaisedChains => {
     const chains = new Map<EventJointEntityType, Set<StageId | undefined>>()
     for (const entity of selected) {
         const joint = chainJoint(entity)
@@ -114,6 +115,21 @@ export const raisedChains = (selected: ReadonlySet<Entity>): RaisedChains => {
         chains.set(joint.type, stages.add(chainStage(joint)))
     }
     return chains
+}
+
+export type Raised = { selected: ReadonlySet<Entity>; chains: RaisedChains }
+
+// Keyed on the selection array, which a committed state never mutates.
+const bySelection = new WeakMap<readonly Entity[], Raised>()
+
+/** A state's selection as a set, with its raised chains. */
+export const raisedOf = ({ selectedEntities }: State): Raised => {
+    let raised = bySelection.get(selectedEntities)
+    if (!raised) {
+        raised = { selected: new Set(selectedEntities), chains: raisedChains(selectedEntities) }
+        bySelection.set(selectedEntities, raised)
+    }
+    return raised
 }
 
 /** Whether an event joint or connection is in a chain with a selected joint. */
