@@ -74,7 +74,15 @@ import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
 import { revealAuthoringTarget, scopeLookup } from '../../scope'
 import { entityScopeIds } from '../../scopeRules'
-import { alignLane, toMovedBeat, view, xToLane, yToBeat, yToBeatOffset } from '../../view'
+import {
+    alignLane,
+    markTouchBeat,
+    toMovedBeat,
+    view,
+    xToLane,
+    yToBeat,
+    yToBeatOffset,
+} from '../../view'
 import { getOnlyEntityType } from '../entityType'
 import { toolName } from '../state'
 import PasteSidebar from './PasteSidebar.vue'
@@ -190,9 +198,15 @@ export const paste: Tool = {
         const data = clipboardEntry.value?.data
         if (!data) return
 
-        await pasteAtPosition(position.lane, position.beatOffset(data.beat), modifiers, {
-            composed: true,
-        })
+        const beat = await pasteAtPosition(
+            position.lane,
+            position.beatOffset(data.beat),
+            modifiers,
+            {
+                composed: true,
+            },
+        )
+        if (beat !== undefined) markTouchBeat(beat)
     },
 
     cursor() {
@@ -581,6 +595,7 @@ export type PastePositionOptions = {
     mapNote?: (entity: NoteEntity, beat: number) => Partial<NoteObject>
 }
 
+/** Pastes, and returns the beat the copy's beat lands on. */
 export const pasteAtPosition = async (
     lane: number,
     beatOffset: number,
@@ -616,7 +631,7 @@ export const pasteAtPosition = async (
                 data.beat,
             ),
         )
-        return
+        return toMovedBeat(data.beat, shiftedOffset)
     }
 
     const selectedEntities: Entity[] = []
@@ -659,6 +674,7 @@ export const pasteAtPosition = async (
     clearPasteGhost()
 
     notify(interpolate(() => i18n.value.tools.paste.pasted, `${selectedEntities.length}`))
+    return toMovedBeat(data.beat, shiftedOffset)
 }
 
 type ClipboardChart = {

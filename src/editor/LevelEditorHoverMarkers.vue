@@ -12,13 +12,18 @@ import {
     observeLabelSize,
     unobserveLabelSize,
 } from './edgeLabels'
+import { shownMarkerTime } from './hoverMarker'
 import { drawnBpms, sceneBpms } from './sceneState'
 import { view } from './view'
 
-const hover = computed(() => ({
-    time: view.hoverTime,
-    beat: timeToBeat(sceneBpms.value, view.hoverTime),
-}))
+// The touch marker keeps its exact beat; hidden, the labels measure at the last hover.
+const hover = computed(() => {
+    const time = shownMarkerTime.value
+    const marker = view.touchMarker
+    return view.isHoverHidden && marker && time !== undefined
+        ? { time, beat: marker.beat }
+        : { time: view.hoverTime, beat: timeToBeat(sceneBpms.value, view.hoverTime) }
+})
 
 // The grid leaves out its own labels under these; a little inset keeps them clear of dock shadows.
 const time = useTemplateRef<HTMLElement>('time')
@@ -52,7 +57,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         class="editor-hover-labels pointer-events-none absolute flex w-full -translate-y-1/2 justify-between tabular-nums text-white/70 forced-color-adjust-none"
-        :class="{ invisible: view.isHoverHidden }"
+        :class="{ invisible: shownMarkerTime === undefined }"
         :style="{ top: `${hoverLabelCenter - hoverFigureOffset}px` }"
     >
         <span ref="time" class="pl-1"

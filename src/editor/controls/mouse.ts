@@ -18,6 +18,7 @@ import {
     scrollViewXBy,
     scrollViewYBy,
     setViewHover,
+    setViewInput,
     snappingSources,
     updateViewPointer,
     view,
@@ -77,6 +78,21 @@ let contextClick: { x: number; y: number } | undefined
 // The mouse rests over the chart, unpressed.
 let isHovering = false
 
+/** Ends the mouse's rest over the chart, as a touch takes over, and its ghosts unless pressed. */
+export const endMouseHover = () => {
+    isHovering = false
+    if (mouseGesture.pointerCount || isDragging.value) return
+    if (view.entities.hovered.length || view.entities.creating.length)
+        view.entities = { hovered: [], creating: [] }
+}
+
+// Mouse events fired for a touch don't make the input a mouse.
+const markMouseInput = (
+    event: MouseEvent & { sourceCapabilities?: { firesTouchEvents: boolean } | null },
+) => {
+    if (!event.sourceCapabilities?.firesTouchEvents) setViewInput('mouse')
+}
+
 export const cancelMouseControls = (restoreTool = true) => {
     if (switchingSecondaryTool) return
     contextClick = undefined
@@ -91,6 +107,7 @@ export const cancelMouseControls = (restoreTool = true) => {
 
 const mousedown = (event: MouseEvent) => {
     isHovering = false
+    markMouseInput(event)
     closeContextMenu()
     // Selected page text would keep its native copy over the objects pressed after it.
     clearPageSelection()
@@ -161,6 +178,7 @@ const mousemove = (event: MouseEvent) => {
         mouseGesture.move([p])
     } else if (!isDragging.value) {
         isHovering = true
+        markMouseInput(event)
         setViewHover(p.y)
         void tool.value.hover?.(p.x, p.y, p.modifiers)
     }

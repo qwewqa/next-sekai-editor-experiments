@@ -1,5 +1,6 @@
+import { editorNavigation } from '../../../navigation'
 import { tool } from '../../../tools'
-import { setViewHover } from '../../../view'
+import { setViewHover, view } from '../../../view'
 import type { HoldPoint } from '../pointer'
 import { isDragging } from './drag'
 import type { Recognizer } from './recognizer'
@@ -17,6 +18,8 @@ export const tap = (maxDuration = 250, hold?: HoldPoint): Recognizer<1> => ({
         if (isDragging.value) return true
         const at = hold?.(id, x, y) ?? { x, y }
         setViewHover(at.y)
+        // The tap's own focus marks it again; one that focuses nothing leaves no marker.
+        if (!editorNavigation.value) view.touchMarker = undefined
         void tool.value.tap?.(at.x, at.y, modifiers)
         return true
     },

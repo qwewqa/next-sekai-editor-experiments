@@ -92,6 +92,7 @@ import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import {
     focusEntityAtBeat,
     focusViewAtBeat,
+    markTouchBeat,
     setViewHover,
     toMovedBeat,
     view,
@@ -272,6 +273,8 @@ export const select: Tool = {
         const indicator = hitOffscreenIndicator(x, y)
         if (indicator) {
             selectOffscreenNotes(indicator.targets, modifiers)
+            const [first] = indicator.targets
+            if (first) markTouchBeat(first.beat)
             return
         }
 

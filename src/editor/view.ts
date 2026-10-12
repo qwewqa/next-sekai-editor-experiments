@@ -35,9 +35,14 @@ export const view = shallowReactive({
     layout: 'basic' as EditorLayout,
     time: 0,
     hoverTime: 0,
-    // Touch has no hover; it shows the marker only while dragging.
+    // Touch has no hover; a drag shows it, and a tap leaves the touch marker.
     isHoverHidden: matchMedia('(hover: none)').matches,
     cursorTime: 0,
+    // Where a touch tap placed the cursor or found an entity, shown while the hover is hidden.
+    touchMarker: optional<{ kind: 'cursor' | 'entity'; beat: number }>(),
+    // The chart's last pointer input; keys leave it.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    input: (matchMedia('(hover: none)').matches ? 'touch' : 'mouse') as 'mouse' | 'touch',
 
     lane: 0,
 
@@ -272,9 +277,10 @@ export const clampViewToReach = () => {
     view.lane = clamp(view.lane, min, max)
 }
 
-// A newly loaded chart opens within its own reach, with no sideways scroll left from the last one.
+// A newly loaded chart opens within its own reach, with no sideways scroll or touch marker left from the last one.
 onResetState(() => {
     view.scrollingX = undefined
+    view.touchMarker = undefined
     clampViewToReach()
 })
 
@@ -340,8 +346,27 @@ export const hideViewHover = () => {
     view.isHoverHidden = true
 }
 
+// Mouse input clears the touch marker, which only touch sets.
+export const setViewInput = (input: 'mouse' | 'touch') => {
+    view.input = input
+    if (input === 'mouse') view.touchMarker = undefined
+}
+
+// Drags refocus every frame; an unchanged marker is left as it is.
+const markTouch = (kind: 'cursor' | 'entity', beat: number) => {
+    if (view.input !== 'touch' || editorNavigation.value) return
+    if (view.touchMarker?.kind === kind && view.touchMarker.beat === beat) return
+    view.touchMarker = { kind, beat }
+}
+
+/** Marks an entity's beat for touch, without a focus's audio preview or pan. */
+export const markTouchBeat = (beat: number) => {
+    markTouch('entity', beat)
+}
+
 export const focusViewAtBeat = (beat: number) => {
     focusView(beatToTime(bpms.value, beat))
+    markTouch('cursor', beat)
 }
 
 export const focusView = (t: number) => {
@@ -354,6 +379,7 @@ export const focusEntityAtBeat = (beat: number) => {
     const time = beatToTime(bpms.value, beat)
     requestAudioPreview(time)
     panView(time)
+    markTouch('entity', beat)
 }
 
 const panView = (t: number) => {

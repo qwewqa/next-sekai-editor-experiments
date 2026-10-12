@@ -324,6 +324,8 @@ export const installEditorFixture = async () => {
             selection: undefined,
             lastActive: -100,
             entities: { hovered: [], creating: [] },
+            // As a fresh load starts; the reset cleared the touch marker.
+            input: matchMedia('(hover: none)').matches ? 'touch' : 'mouse',
         })
     }
     const brief = (entity: Entity): BriefEntity => ({

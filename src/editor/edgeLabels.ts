@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { settings } from '../settings'
+import { shownMarkerTime } from './hoverMarker'
 import { hasToolModal } from './toolModals'
 import { view } from './view'
 
@@ -16,7 +17,7 @@ export const edgeLabelSizes = reactive({ top: row(), bottom: row(), hover: row()
 
 /** Where the hover time's labels are centred, in pane pixels. */
 export const hoverLabelCenter = computed(
-    () => 0.5 * view.h - (view.hoverTime - view.time) * settings.pps,
+    () => 0.5 * view.h - ((shownMarkerTime.value ?? view.hoverTime) - view.time) * settings.pps,
 )
 
 /** How far the hover labels' figures sit below their box's centre, which is moved up by as much. */
@@ -84,7 +85,8 @@ const overlaps = (a: LabelBox, b: LabelBox) =>
 export const coveredEdgeLabels = computed(() => {
     const { top, bottom, hover } = rows.value
     const covered = (box: LabelBox) =>
-        !view.isHoverHidden && (overlaps(box, hover.time) || overlaps(box, hover.beat))
+        shownMarkerTime.value !== undefined &&
+        (overlaps(box, hover.time) || overlaps(box, hover.beat))
     return {
         top: { time: covered(top.time), beat: covered(top.beat) },
         bottom: { time: covered(bottom.time), beat: covered(bottom.beat) },
@@ -102,7 +104,7 @@ export const edgeLabelBoxes = computed(() => {
     const covered = coveredEdgeLabels.value
     add(top, covered.top)
     if (!lowerEdgeLabelsCovered.value) add(bottom, covered.bottom)
-    if (!view.isHoverHidden) add(hover)
+    if (shownMarkerTime.value !== undefined) add(hover)
     return boxes
 })
 

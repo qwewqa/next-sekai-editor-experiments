@@ -201,11 +201,16 @@ const hoverState = (page: Page) =>
         }
     })
 
-test('touch leaves no hover marker, and the edge labels under it come back', async ({ page }) => {
-    await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.interaction, 5))
-    const pane = (await page.locator('canvas.editor-chart').boundingBox())!
-    const x = pane.x + 30
-    const y = pane.y + 15
+test('a tap shows the marker at the cursor it placed, a mouse move replaces it, and touch then hides it', async ({
+    page,
+}) => {
+    // A quarter beat 15 to 30 pixels below the top, where the labels cover the top edge labels.
+    const { x, y, time } = await page.evaluate(() => {
+        const { view, settings, show, fixtures, point } = window.editorTest
+        show(fixtures.interaction, 5)
+        const beat = Math.floor((view.time + (view.h / 2 - 15) / settings.pps) * 8) / 4
+        return { ...point(-9, beat), time: beat / 2 }
+    })
     const state = () => hoverState(page)
     const hidden = {
         hover: [false, false],
@@ -222,12 +227,14 @@ test('touch leaves no hover marker, and the edge labels under it come back', asy
 
     await touch('touchStart', [[x, y]])
     await touch('touchEnd', [])
-    await expect.poll(state).toEqual(hidden)
-
-    await page.mouse.move(x, y)
     await expect.poll(state).toEqual(shown)
+    expect(await page.evaluate(() => window.editorTest.view.cursorTime)).toBe(time)
 
-    // A pinch starts by clearing the mouse's marker.
+    await page.mouse.move(x, y + 1)
+    await expect.poll(state).toEqual(shown)
+    expect(await page.evaluate(() => window.editorTest.view.touchMarker)).toBeUndefined()
+
+    // A pinch starts by clearing the mouse's marker, and the mouse left no touch marker.
     await touch('touchStart', [
         [x, y + 100],
         [x + 100, y + 100],

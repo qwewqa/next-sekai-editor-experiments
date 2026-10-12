@@ -53,6 +53,7 @@ import {
     type LineSpan,
     type SideBoxes,
 } from '../edgeLabels'
+import { shownMarkerTime } from '../hoverMarker'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
 import {
@@ -582,10 +583,11 @@ watchEffect(
               ]
             : visibleSelectedEntities.value
         const selection = view.selection
-        const hoverEnds = view.isHoverHidden
-            ? undefined
-            : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value, columnBoxes.value))
-        const hover = view.isHoverHidden ? undefined : view.hoverTime
+        const hover = shownMarkerTime.value
+        const hoverEnds =
+            hover === undefined
+                ? undefined
+                : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value, columnBoxes.value))
         overlayFrame.schedule((timestamp) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)

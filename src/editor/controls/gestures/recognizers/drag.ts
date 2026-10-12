@@ -3,10 +3,17 @@ import { replaceState, state } from '../../../../history'
 import { settings } from '../../../../settings'
 import { time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
-import { getControlBounds } from '../../../navigation'
+import { editorNavigation, getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
 import { tool, type Tool } from '../../../tools'
-import { scrollViewXBy, scrollViewYBy, snappingSources, view, viewBox } from '../../../view'
+import {
+    scrollViewXBy,
+    scrollViewYBy,
+    setViewHover,
+    snappingSources,
+    view,
+    viewBox,
+} from '../../../view'
 import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
 
@@ -42,6 +49,8 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
               state: (typeof state)['value']
               // The last notice the drag posted, if any.
               notice?: number
+              // The touch marker before the drag, back on a cancel.
+              marker: (typeof view)['touchMarker']
               pointer: { x: number; y: number; modifiers: Modifiers }
           }
         | {
@@ -131,7 +140,13 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 if (isDragging.value) return true
                 const startState = state.value
                 const noticeBefore = notification.value.id
-                if (!tool.value.dragStart?.(sx, sy, modifiers)) return true
+                // The drag's own focus marks where it lands.
+                const marker = view.touchMarker
+                if (!editorNavigation.value) view.touchMarker = undefined
+                if (!tool.value.dragStart?.(sx, sy, modifiers)) {
+                    view.touchMarker = marker
+                    return true
+                }
 
                 isDragging.value++
                 held = {
@@ -140,6 +155,8 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 }
 
                 const at = toolPoint(id, x, y)
+                // Shows the finger, not the start's focus marker, before the first update.
+                if (view.touchMarker) setViewHover(at.y)
                 active = {
                     type: 'drag',
                     id,
@@ -147,6 +164,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                     state: startState,
                     notice:
                         notification.value.id !== noticeBefore ? notification.value.id : undefined,
+                    marker,
                     pointer: { ...at, modifiers },
                 }
                 update = {
@@ -228,6 +246,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 }
                 view.selection = undefined
                 view.entities = { hovered: [], creating: [] }
+                if (view.input === 'touch') view.touchMarker = cancelled.marker
             }
             if (!cancelled && active?.type === 'scroll' && settings.touchScrollInertia) {
                 const dx = updates

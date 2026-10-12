@@ -5,7 +5,7 @@ import { beginAudioPreviewInteraction } from '../audioPreview'
 import { openContextMenu } from '../contextMenu'
 import { stopPlayer } from '../player'
 import { tool } from '../tools'
-import { hideViewHover, updateViewPointer, view } from '../view'
+import { hideViewHover, setViewInput, updateViewPointer, view } from '../view'
 import { gesture } from './gestures/gesture'
 import { drag, isDragging } from './gestures/recognizers/drag'
 import { pan } from './gestures/recognizers/pan'
@@ -14,6 +14,7 @@ import { threeTap } from './gestures/recognizers/threeTap'
 import { twoTap } from './gestures/recognizers/twoTap'
 import { zoomX } from './gestures/recognizers/zoomX'
 import { zoomY } from './gestures/recognizers/zoomY'
+import { endMouseHover, hasMouseControls } from './mouse'
 import { clearPageSelection } from './pageSelection'
 
 // The pane each touch started in.
@@ -112,6 +113,11 @@ const touchstart = (event: TouchEvent) => {
     if (!touchGesture.pointerCount) beginAudioPreviewInteraction()
     // A mouse drag keeps its marker.
     if (!isDragging.value) hideViewHover()
+    // A mouse press keeps the mouse's input until its release.
+    if (!hasMouseControls()) {
+        setViewInput('touch')
+        endMouseHover()
+    }
 
     const [first] = ps
     if (first && !touchGesture.pointerCount) tool.value.press?.(first.x, first.y)

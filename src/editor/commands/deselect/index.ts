@@ -32,6 +32,8 @@ export const deselect: Command = {
             hovered: [],
             creating: [],
         }
+        // A cursor marker stays where it was placed.
+        if (view.touchMarker?.kind === 'entity') view.touchMarker = undefined
 
         notify(() => i18n.value.commands.deselect.deselected)
     },
