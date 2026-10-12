@@ -1616,7 +1616,10 @@ test('the badge of a note at the zoom centre stays put as the chart zooms', asyn
                 ),
             middle,
         )
-    const ys = new Set([await badgeY()])
+    const start = await badgeY()
+    // On a slot boundary, its badge half a slot off the middle.
+    expect(Math.abs(Math.abs(start - middle) - 14)).toBeLessThanOrEqual(0.5)
+    const ys = new Set([start])
     await page.keyboard.down('Control')
     for (let i = 0; i < 12; i++) {
         await page.mouse.wheel(0, i < 6 ? -40 : 40)

@@ -425,8 +425,7 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
     expect(frames.overlay).toBeGreaterThanOrEqual(4)
 })
 
-// Records the cursor line's ends in lanes, by chart frame: full-opacity white horizontal lines.
-// `nearWheel` keeps only frames drawn within 100 ms of a wheel event.
+// Cursor line ends in lanes per chart frame (opaque white lines); `nearWheel`: only near a wheel.
 const recordCursorEnds = (page: Page, nearWheel = false) =>
     page.evaluate((nearWheel) => {
         const ends: string[] = []
