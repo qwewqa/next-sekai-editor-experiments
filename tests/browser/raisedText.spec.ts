@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Text goes above every object: BPM, time scale and grid labels draw after an 'over' slide
-// that crosses them. The cursor line stays below notes and slides.
+// that crosses them, and Elevation Editor axis labels after over connections and selected rows.
+// The cursor line stays below notes and slides.
 
 declare global {
     interface Window {
@@ -133,3 +134,55 @@ for (const layout of ['basic', 'composed'] as const) {
             .toEqual({ slides: true, labels: ['90', '2x', '00:02'], below: [], cursorFirst: true })
     })
 }
+
+test('Elevation Editor axis labels draw above over connections and selected rows', async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { fixtures, show, settings, history, appImport } = window.editorTest
+        const base = {
+            ...fixtures.interaction.slides[0]![0]!,
+            beat: 3,
+            left: -2,
+            size: 4,
+            noteType: 'forceNonTick' as const,
+            connectorLayer: 'over' as const,
+        }
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [
+                        { ...base, elevation: 0 },
+                        { ...base, elevation: 2 },
+                        { ...base, elevation: 4 },
+                    ],
+                ],
+            },
+            3,
+        )
+        settings.showPreview = false
+        settings.showSidebar = false
+        settings.elevationEditorSideBySide = 'disallow'
+        const middle = [...history.state.value.store.slides.note.values()]
+            .flat()
+            .find((note) => note.elevation === 2)!
+        history.replaceState({ ...history.state.value, selectedEntities: [middle] })
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(3)
+    })
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    await expect
+        .poll(async () => {
+            const { ops } = await frameOps(page, 'elevation')
+            const axis = texts(ops).filter(({ text }) => /^-?\d+$/.test(text))
+            const lastObject = Math.max(ops.lastIndexOf('image'), ops.lastIndexOf('fill'))
+            return {
+                drawn: axis.length > 0 && lastObject >= 0,
+                below: axis.filter(({ index }) => index < lastObject).map(({ text }) => text),
+            }
+        })
+        .toEqual({ drawn: true, below: [] })
+})

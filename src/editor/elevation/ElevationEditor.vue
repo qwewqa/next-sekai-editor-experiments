@@ -1189,10 +1189,10 @@ watchEffect(() => {
         const max = layout.elevationCenter + layout.height / 2 / layout.elevationScale
         const division = elevationGridDivision(layout.elevationScale, elevationSnap)
         ctx.save()
-        ctx.textAlign = axisLabelLeft === undefined ? 'right' : 'left'
         ctx.textBaseline = 'alphabetic'
         const digits = ctx.measureText('0123456789')
         const labelBaseline = (digits.actualBoundingBoxAscent - digits.actualBoundingBoxDescent) / 2
+        const axisLabels: { label: string; y: number }[] = []
         for (let i = Math.ceil(min * division); i <= Math.floor(max * division); i++) {
             const y = layout.yAt(i / division)
             const label = i % division === 0 ? `${i / division}` : undefined
@@ -1206,10 +1206,7 @@ watchEffect(() => {
             }
             ctx.lineTo(layout.width, y)
             ctx.stroke()
-            if (label !== undefined) {
-                ctx.fillStyle = '#ffffff80'
-                ctx.fillText(label, axisLabelLeft ?? 28, y + labelBaseline)
-            }
+            if (label !== undefined) axisLabels.push({ label, y })
         }
         ctx.restore()
         const laneDivision =
@@ -1297,6 +1294,15 @@ watchEffect(() => {
         for (const row of visibleRows) {
             if (ghostSet.has(row)) drawRow(row, true)
         }
+        // Axis labels go over every row and connection, as the chart's text does.
+        ctx.save()
+        ctx.font = '12px sans-serif'
+        ctx.textAlign = axisLabelLeft === undefined ? 'right' : 'left'
+        ctx.textBaseline = 'alphabetic'
+        ctx.fillStyle = '#ffffff80'
+        for (const { label, y } of axisLabels)
+            ctx.fillText(label, axisLabelLeft ?? 28, y + labelBaseline)
+        ctx.restore()
         // Names go over every row and connection, as on the chart.
         ctx.save()
         ctx.scale(layout.laneScale, layout.laneScale)
