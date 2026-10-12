@@ -459,7 +459,7 @@ for (const [label, primary, aside, choice, warning] of [
         await page.reload()
         const dialog = page.getByRole('dialog')
         await expect(dialog).toContainText('can now restore an unsaved chart')
-        // The choice comes alone; the warning waits for it.
+        // The warning waits until after the choice.
         expect(await dialogsAfterLoading(page)).toEqual([undefined])
         await dialog.getByRole('button', { name: choice, exact: true }).click()
         if (warning) {
@@ -471,7 +471,7 @@ for (const [label, primary, aside, choice, warning] of [
     })
 }
 
-test('with an unreadable last recovery, an older earlier one warns once that is offered', async ({
+test('with an unreadable last recovery, an older earlier one warns after the offer', async ({
     page,
 }) => {
     await page.evaluate(
@@ -484,7 +484,7 @@ test('with an unreadable last recovery, an older earlier one warns once that is 
     await page.reload()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('could not restore the unsaved chart from your last session')
-    // The offer comes alone; the warning waits for it.
+    // The warning waits until after the offer.
     expect(await dialogsAfterLoading(page)).toEqual([undefined])
     await dialog.getByRole('button', { name: 'OK', exact: true }).click()
     expect(await dialogsAfterLoading(page)).toEqual([older])

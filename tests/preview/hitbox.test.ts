@@ -661,7 +661,7 @@ test('masked zero-width notes and collapsed elevation keep the leniency and heig
     )
 })
 
-test('at stage tilt 0 stage and note elevation move the hitbox with the drawn note', () => {
+test('at stage tilt 0, stage and note elevation move the hitbox with the drawn note', () => {
     const isBody = ({ sprite }: Draw) => sprite?.startsWith('Sekai Normal Note') ?? false
     const build = (stageElevation: number, noteElevation: number) =>
         preview(

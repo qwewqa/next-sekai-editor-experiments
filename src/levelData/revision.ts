@@ -3,7 +3,7 @@ import type { Chart } from '../chart'
 
 type RevisionStep = {
     revision: number
-    /** Whether the chart shows differently under this revision than the one before. */
+    /** Whether the chart plays or shows differently under this revision than the one before. */
     affects: (chart: Chart) => boolean
 }
 
@@ -31,7 +31,7 @@ export const getLevelDataRevision = ([entity]: LevelDataEntity[]) => {
 
 export type RevisionWarning = 'older' | 'newer'
 
-/** Opening a chart from another revision warns only when the change can show. */
+/** Opening a chart from another revision warns only when the change can matter. */
 export const getRevisionWarning = (revision: number, chart: Chart): RevisionWarning | undefined => {
     if (revision > LATEST_REVISION) return 'newer'
     if (revisionSteps.some((step) => step.revision > revision && step.affects(chart)))

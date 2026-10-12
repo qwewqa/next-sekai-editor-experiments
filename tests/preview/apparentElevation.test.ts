@@ -26,7 +26,7 @@ type Case = [
     screen: Screen,
 ]
 
-// Reference: engine e295221 at revision 2, sekai.lib.layout.elevation_projection and
+// Reference: engine d3a3cef at revision 2, sekai.lib.layout.elevation_projection and
 // compute_stage_transform(..., stage_rotate=0.3, x_lane_translate=0.5, y_lane_translate=-0.2, mask_lane=2),
 // with a 16:9 field, the default and a zoomed camera, camera rotations 0 and 0.8, tilts 0 to 1, and negative, zero and clamped elevations.
 const cases: Case[] = [

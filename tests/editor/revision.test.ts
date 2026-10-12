@@ -119,7 +119,7 @@ test('serialized level data is the latest revision and reads back with it', () =
     })
     const reparsed = parseLevelData(JSON.parse(JSON.stringify({ bgmOffset: 0, entities }))).entities
     assert.equal(getLevelDataRevision(reparsed), LATEST_REVISION)
-    // The elevation survives, yet the revision read back does not warn.
+    // The elevation survives and the revision read back doesn't warn.
     assert.deepEqual(
         reparsed.flatMap((entity) => entity.data.filter((data) => data.name === 'elevation')),
         [{ name: 'elevation', value: 3 }],
