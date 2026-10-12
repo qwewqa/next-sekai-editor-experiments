@@ -790,7 +790,10 @@ for (const pane of ['basic', 'composed', 'elevation'] as const) {
             })
         }, pane)
         if (pane === 'elevation') await page.keyboard.press('t')
-        const root = pane === 'elevation' ? '.elevation-canvas ~ div' : '.editor-chart ~ div'
+        const root =
+            pane === 'elevation'
+                ? '.elevation-canvas ~ .offscreen-notes'
+                : '.editor-chart ~ .offscreen-notes'
         await expect(page.locator(`${root} .offscreen-note-indicator`).first()).toBeVisible()
         const box = (await page.locator(root).boundingBox())!
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
@@ -859,7 +862,10 @@ const recordZoom = (page: Page, pane: 'chart' | 'elevation', beats: number[] = [
             const { elevationLayout } = await appImport<
                 typeof import('../../src/editor/elevation/scene')
             >('/src/editor/elevation/scene.ts')
-            const root = pane === 'chart' ? '.editor-chart ~ div' : '.elevation-canvas ~ div'
+            const root =
+                pane === 'chart'
+                    ? '.editor-chart ~ .offscreen-notes'
+                    : '.elevation-canvas ~ .offscreen-notes'
             const frames: ZoomFrame[] = []
             let recording = true
             const record = () => {
@@ -1282,7 +1288,7 @@ test('every point down both sides hits the nearest badge, with no gaps between n
                     )
                 // The scrolling layer's offset, which riding badges are placed from.
                 const layer = document.querySelector<HTMLElement>(
-                    '.editor-chart ~ div [style*="translateY"]',
+                    '.editor-chart ~ .offscreen-notes [style*="translateY"]',
                 )!
                 const anchor = Number(/translateY\(([-\d.e+]+)px\)/.exec(layer.style.transform)![1])
                 // The drawn badge a hit test finds.
@@ -1448,7 +1454,7 @@ test.describe('the hover ring', () => {
     }
 
     test('stays on the hovered badge as the chart scrolls', async ({ page }) => {
-        await hoverRiding(page, '.editor-chart ~ div', 3)
+        await hoverRiding(page, '.editor-chart ~ .offscreen-notes', 3)
         await page.evaluate(async () => {
             const { view, settings } = window.editorTest
             for (let frame = 0; frame < 300; frame++) {
@@ -1460,7 +1466,7 @@ test.describe('the hover ring', () => {
     })
 
     test('stays on the hovered badge in playback', async ({ page }) => {
-        await hoverRiding(page, '.editor-chart ~ div', 3)
+        await hoverRiding(page, '.editor-chart ~ .offscreen-notes', 3)
         await page.evaluate(async () => {
             const player =
                 await window.editorTest.appImport<typeof import('../../src/editor/player')>(
@@ -1474,8 +1480,8 @@ test.describe('the hover ring', () => {
     })
 
     test('stays on the hovered badge as held notes are selected', async ({ page }) => {
-        await hoverRiding(page, '.editor-chart ~ div', 3)
-        await toggleHeldSelection(page, '.editor-chart ~ div')
+        await hoverRiding(page, '.editor-chart ~ .offscreen-notes', 3)
+        await toggleHeldSelection(page, '.editor-chart ~ .offscreen-notes')
         await expectHoverRing(page)
     })
 

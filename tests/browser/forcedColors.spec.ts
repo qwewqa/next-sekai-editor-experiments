@@ -497,7 +497,7 @@ for (const colorScheme of ['light', 'dark'] as const)
         const bg = colorScheme === 'dark' ? 'rgb(35, 37, 57)' : 'rgb(64, 68, 100)'
         expect(await backdrop('.chart-pane:has(canvas.editor-chart)')).toBe(bg)
         // The time and beat labels on it stay light.
-        const label = page.locator('.chart-pane > div:first-of-type span').first()
+        const label = page.locator('.editor-range-labels span').first()
         await expect(label).toBeVisible()
         expect(await label.evaluate((element) => getComputedStyle(element).color)).toBe(
             'rgba(255, 255, 255, 0.7)',

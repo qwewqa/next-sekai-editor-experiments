@@ -15,9 +15,7 @@ import LevelEditorContextMenu from './LevelEditorContextMenu.vue'
 import { activateEditorNavigation, useControlLifecycle } from './controls'
 import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
-import LevelEditorHoverMarkers from './LevelEditorHoverMarkers.vue'
 import LevelEditorNotification from './LevelEditorNotification.vue'
-import LevelEditorRangeMarkers from './LevelEditorRangeMarkers.vue'
 import { groupScope, stageScope } from './scope'
 import LevelEditorToolbar from './toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from './EditorToolModalHost.vue'
@@ -244,8 +242,6 @@ const stageCount = computed(() =>
                 @pointerdown="container?.focus()"
             >
                 <template v-if="view.w && view.h">
-                    <LevelEditorRangeMarkers />
-                    <LevelEditorHoverMarkers />
                     <LevelEditorCanvas />
                 </template>
                 <LevelEditorNotification pane="main" />

@@ -186,8 +186,8 @@ const hoverState = (page: Page) =>
         for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) drawn = true
         const { left, right } = edgeLabelBoxes.value
         return {
-            hover: visible('.chart-pane > div:nth-of-type(2) > span'),
-            top: visible('.chart-pane > div:first-of-type > div:first-child > span'),
+            hover: visible('.editor-hover-labels > span'),
+            top: visible('.editor-range-labels > div:first-child > span'),
             // The grid leaves out its labels under the hover labels' boxes.
             gridSkipsHover: [left, right].map((boxes) =>
                 boxes.some(

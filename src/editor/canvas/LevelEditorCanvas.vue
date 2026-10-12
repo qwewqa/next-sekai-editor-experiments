@@ -34,6 +34,8 @@ import { tool, tools } from '../tools'
 import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
 import { isVisible } from '../tools/utils'
 import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
+import LevelEditorHoverMarkers from '../LevelEditorHoverMarkers.vue'
+import LevelEditorRangeMarkers from '../LevelEditorRangeMarkers.vue'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
 import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndicators'
 import {
@@ -725,6 +727,9 @@ onUnmounted(() => {
             class="editor-overlay pointer-events-none absolute size-full"
             @contextrestored="restoreContext"
         />
+        <!-- The time and beat labels sit above everything drawn, under the badges. -->
+        <LevelEditorRangeMarkers />
+        <LevelEditorHoverMarkers />
         <OffscreenNoteIndicators
             :groups="offscreenGroups"
             :hovered="hoveredOffscreenGroup"

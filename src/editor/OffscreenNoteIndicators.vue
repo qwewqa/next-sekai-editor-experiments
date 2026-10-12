@@ -26,7 +26,7 @@ const hoveredKey = computed(() => props.hovered && `${props.hovered.side}:${prop
 </script>
 
 <template>
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <div class="offscreen-notes pointer-events-none absolute inset-0 overflow-hidden">
         <!-- Badges held at the top edge, or the short band's one badge. -->
         <div v-memo="[top, hoveredKey]" class="absolute inset-x-0 top-0">
             <OffscreenNoteBadge

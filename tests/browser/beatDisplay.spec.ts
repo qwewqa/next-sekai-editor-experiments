@@ -384,9 +384,7 @@ test('the grid knows where the time and beat labels over the chart lie', async (
             >('/src/editor/edgeLabels.ts')
             const pane = document.querySelector('canvas.editor-chart')!.getBoundingClientRect()
             const spans = [
-                ...document.querySelectorAll<HTMLElement>(
-                    '.chart-pane > div:first-of-type > div > span',
-                ),
+                ...document.querySelectorAll<HTMLElement>('.editor-range-labels > div > span'),
             ].map((span) => {
                 const { left, right, top, bottom } = span.getBoundingClientRect()
                 return [left - pane.left, right - pane.left, top - pane.top, bottom - pane.top]
@@ -420,11 +418,7 @@ test('the grid knows where the hover time and beat labels lie', async ({ page })
                 typeof import('../../src/editor/edgeLabels')
             >('/src/editor/edgeLabels.ts')
             const pane = document.querySelector('canvas.editor-chart')!.getBoundingClientRect()
-            const spans = [
-                ...document.querySelectorAll<HTMLElement>(
-                    '.chart-pane > div:nth-of-type(2) > span',
-                ),
-            ]
+            const spans = [...document.querySelectorAll<HTMLElement>('.editor-hover-labels > span')]
             const { left, right } = edgeLabelBoxes.value
             return [left.at(-1), right.at(-1)].every((box, index) => {
                 const rect = spans[index]!.getBoundingClientRect()
@@ -449,7 +443,7 @@ test('the grid knows where the hover time and beat labels lie', async ({ page })
 
 test('a device with hover shows the hover labels from load', async ({ page }) => {
     expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(false)
-    const spans = page.locator('.chart-pane > div:nth-of-type(2) > span')
+    const spans = page.locator('.editor-hover-labels > span')
     await expect(spans).toHaveCount(2)
     for (const span of await spans.all()) await expect(span).toBeVisible()
 })
@@ -462,9 +456,7 @@ test('an edge label under the hover time and beat labels is hidden', async ({ pa
             const { edgeLabelBoxes } = await window.editorTest.appImport<
                 typeof import('../../src/editor/edgeLabels')
             >('/src/editor/edgeLabels.ts')
-            const rows = document.querySelectorAll<HTMLElement>(
-                '.chart-pane > div:first-of-type > div',
-            )
+            const rows = document.querySelectorAll<HTMLElement>('.editor-range-labels > div')
             const visible = (row: Element) =>
                 [...row.children].map((span) => getComputedStyle(span).visibility === 'visible')
             const { left, right } = edgeLabelBoxes.value

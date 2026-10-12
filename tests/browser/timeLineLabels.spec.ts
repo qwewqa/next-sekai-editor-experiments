@@ -63,7 +63,7 @@ const lineRow = (page: Page, line: Line, at?: number) =>
             )
             const labels = [
                 ...document.querySelectorAll<HTMLElement>(
-                    '.chart-pane > div:first-of-type > div > span, .chart-pane > div:nth-of-type(2) > span',
+                    '.editor-range-labels > div > span, .editor-hover-labels > span',
                 ),
             ].filter((span) => span.checkVisibility({ visibilityProperty: true }))
             const met = labels.flatMap((span) => {
@@ -586,26 +586,24 @@ const figureMiddles = async (page: Page) => {
         const pane = document.querySelector('.chart-pane')!.getBoundingClientRect()
         for (const canvas of document.querySelectorAll<HTMLCanvasElement>('.chart-pane canvas'))
             canvas.style.visibility = 'hidden'
-        return [...document.querySelectorAll('.chart-pane > div:nth-of-type(2) > span')].map(
-            (span) => {
-                const range = document.createRange()
-                range.setStart(span.firstChild!, 0)
-                range.setEnd(span.firstChild!, 2)
-                const text = range.getBoundingClientRect()
-                const box = span.getBoundingClientRect()
-                // Whole pixels, so the shot's rows start where the clip does.
-                const y = Math.floor(box.top) - 2
-                return {
-                    paneTop: pane.top,
-                    clip: {
-                        x: Math.floor(text.left),
-                        y,
-                        width: Math.ceil(text.width),
-                        height: Math.ceil(box.bottom) + 2 - y,
-                    },
-                }
-            },
-        )
+        return [...document.querySelectorAll('.editor-hover-labels > span')].map((span) => {
+            const range = document.createRange()
+            range.setStart(span.firstChild!, 0)
+            range.setEnd(span.firstChild!, 2)
+            const text = range.getBoundingClientRect()
+            const box = span.getBoundingClientRect()
+            // Whole pixels, so the shot's rows start where the clip does.
+            const y = Math.floor(box.top) - 2
+            return {
+                paneTop: pane.top,
+                clip: {
+                    x: Math.floor(text.left),
+                    y,
+                    width: Math.ceil(text.width),
+                    height: Math.ceil(box.bottom) + 2 - y,
+                },
+            }
+        })
     })
     const middles = []
     for (const { clip, paneTop } of clips) {
