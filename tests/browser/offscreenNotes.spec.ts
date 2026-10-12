@@ -756,6 +756,8 @@ for (const pane of ['basic', 'composed', 'elevation'] as const) {
     test(`dense badges take notes in only with the scroll at the ${pane} edges`, async ({
         page,
     }) => {
+        // Real wheel scrolls over many frames; slow under a loaded run.
+        test.slow()
         await page.evaluate((pane) => {
             const { fixtures, show, view, settings, history } = window.editorTest
             settings.mouseSmoothScrolling = true
