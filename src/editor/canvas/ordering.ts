@@ -1,5 +1,6 @@
 import type { Entity, EntityType } from '../../state/entities'
 import { entityScopeVisibility, type ScopeLookup } from '../scopeRules'
+import type { EventPart } from './events'
 
 const layers = {
     timeScale: 0,
@@ -109,15 +110,18 @@ export const orderEntities = (
             opacity: info.isFull ? 1 : 0.25,
         }))
 
-export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: 'line' | 'marker' }
+export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: EventPart }
 
-/** Time scale markers and labels go above slides and notes; their lines stay in place. */
-export const toDrawSteps = (ordered: ReturnType<typeof orderEntities>): DrawStep[] => {
+/** Objects, with time scale markers above slides and notes, and the BPM and time scale labels. */
+export const toDrawSteps = (ordered: ReturnType<typeof orderEntities>) => {
     const markers: DrawStep[] = []
+    const labels: DrawStep[] = []
     const steps = ordered.map((step): DrawStep => {
-        if (step.entity.type !== 'timeScale') return step
-        markers.push({ ...step, part: 'marker' })
+        const { type } = step.entity
+        if (type !== 'bpm' && type !== 'timeScale') return step
+        if (type === 'timeScale') markers.push({ ...step, part: 'marker' })
+        labels.push({ ...step, part: 'label' })
         return { ...step, part: 'line' }
     })
-    return [...steps, ...markers]
+    return { objects: [...steps, ...markers], labels }
 }

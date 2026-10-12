@@ -14,7 +14,7 @@ import { formatIntegerTime } from '../../utils/format'
 import type { Range } from '../../utils/range'
 import { formatBeatPosition, type BeatDisplay } from '../beatDisplay'
 import type { LabelBox } from '../edgeLabels'
-import { timeScaleLabel } from './events'
+import { timeScaleLabel, type EventPart } from './events'
 import { drawText, measureText } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 
@@ -24,11 +24,11 @@ const LABEL_CLEARANCE = 0.45
 /** Where drawn time scale labels cross into the time and beat columns, past lanes -6.1 and 6.1. */
 export const timeScaleEdgeLabelYs = (
     context: EditorDrawContext,
-    steps: { entity: Entity; part?: 'line' | 'marker' }[],
+    steps: { entity: Entity; part?: EventPart }[],
 ): EdgeLabelYs => {
     const ys: EdgeLabelYs = { left: [], right: [] }
     for (const { entity, part } of steps) {
-        if (entity.type !== 'timeScale' || part === 'line') continue
+        if (entity.type !== 'timeScale' || (part && part !== 'label')) continue
         const label = timeScaleLabel(context, entity)
         const y = beatToTime(context.state.bpms, entity.beat) * context.ups
         if (label.min < -6.1) ys.left.push(y)
@@ -145,16 +145,13 @@ export const coveredLabelYs = (
     }
 }
 
-export const drawGrid = (
+/** Draws the lane, beat and measure lines, under every object. */
+export const drawGridLines = (
     context: EditorDrawContext,
     beats: Range<number>,
-    times: Range<number>,
     division: number,
     laneDivision = 1,
     beatDisplay: BeatDisplay = 'measure',
-    isBpmVisible = false,
-    edgeLabelYs: EdgeLabelYs = { left: [], right: [] },
-    labels = gridLabels(context.state, context.ups, context.scale, beats, times, beatDisplay),
     grid: BeatGrid = defaultGrid(context.state, beatDisplay),
 ) => {
     const { ctx, bounds, scale, state, ups } = context
@@ -245,7 +242,21 @@ export const drawGrid = (
         }
         ctx.stroke()
     }
+    ctx.restore()
+}
 
+/** Draws the time and beat labels, above every object. */
+export const drawGridLabels = (
+    context: EditorDrawContext,
+    beats: Range<number>,
+    times: Range<number>,
+    beatDisplay: BeatDisplay = 'measure',
+    isBpmVisible = false,
+    edgeLabelYs: EdgeLabelYs = { left: [], right: [] },
+    labels = gridLabels(context.state, context.ups, context.scale, beats, times, beatDisplay),
+) => {
+    const { ctx, state, ups } = context
+    ctx.save()
     ctx.globalAlpha = 0.5
     // A BPM or edge time scale label takes the place of the beat or time labels
     // it would overlap.
@@ -260,6 +271,23 @@ export const drawGrid = (
         drawText(context, text, -6.1, y, '#fff', 0.4, 'end', context.figureMiddle)
     }
     ctx.restore()
+}
+
+/** Draws the grid lines, then its labels; the chart draws objects between them. */
+export const drawGrid = (
+    context: EditorDrawContext,
+    beats: Range<number>,
+    times: Range<number>,
+    division: number,
+    laneDivision = 1,
+    beatDisplay: BeatDisplay = 'measure',
+    isBpmVisible = false,
+    edgeLabelYs: EdgeLabelYs = { left: [], right: [] },
+    labels = gridLabels(context.state, context.ups, context.scale, beats, times, beatDisplay),
+    grid: BeatGrid = defaultGrid(context.state, beatDisplay),
+) => {
+    drawGridLines(context, beats, division, laneDivision, beatDisplay, grid)
+    drawGridLabels(context, beats, times, beatDisplay, isBpmVisible, edgeLabelYs, labels)
 }
 
 /** Keeps beat lines apart by the spacing, then division lines clear of every kept line. */

@@ -4,7 +4,7 @@ import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { StageId } from '../../src/chart/stages'
 import type { TimeScaleObject } from '../../src/chart/timeScale'
-import { drawEvent, drawEventInfinities } from '../../src/editor/canvas/events'
+import { drawEvent, drawEventInfinities, type EventPart } from '../../src/editor/canvas/events'
 import { coveredLabelYs, drawGrid, timeScaleEdgeLabelYs } from '../../src/editor/canvas/grid'
 import { createNameLayer, placeNames } from '../../src/editor/canvas/names'
 import { clearTextWidths } from '../../src/editor/canvas/text'
@@ -872,6 +872,7 @@ const gridLabelsBeside = (timeScales: TimeScaleObject[], bounds?: { l: number; r
     const steps = [...entities].flatMap((entity) => [
         { entity, part: 'line' as const },
         { entity, part: 'marker' as const },
+        { entity, part: 'label' as const },
     ])
     const edges = timeScaleEdgeLabelYs(context, steps)
     drawGrid(context, { min: 1, max: 13 }, { min: 1, max: 7 }, 1, 1, 'beat', false, edges)
@@ -952,7 +953,7 @@ test('time scale labels are measured once per font and zoom, and again after a f
         return measure(text)
     }
     const steps = [...context.state.store.grid.timeScale.values()].flatMap((bucket) =>
-        [...bucket].map((entity) => ({ entity, part: 'marker' as const })),
+        [...bucket].map((entity) => ({ entity, part: 'label' as const })),
     )
     // The edge label pass and the drawing pass of each frame share a width.
     const frame = (scale = 10) => {
@@ -981,7 +982,7 @@ test('a BPM label stays drawn where a time scale label reaches the beat column',
         timeScales: [edgeTimeScale(6, 5), edgeTimeScale(8, 3)],
     })
     const steps = [...context.state.store.grid.timeScale.values()].flatMap((bucket) =>
-        [...bucket].map((entity) => ({ entity, part: 'marker' as const })),
+        [...bucket].map((entity) => ({ entity, part: 'label' as const })),
     )
     // The overlap stays visible, so the time scale can be moved clear of it.
     assert.ok(timeScaleEdgeLabelYs(context, steps).right.length > 0)
@@ -1034,7 +1035,7 @@ test('each change of a same-beat jump draws its own marker and line', () => {
     assert.ok(lines.slice(2).every(({ dash }) => !dash.length))
 })
 
-test('a time scale draws its line and its marker and label as separate parts', () => {
+test('a time scale draws its line, marker and label as separate parts', () => {
     const { context, canvas } = makeContext()
     const entity: TimeScaleEntity = {
         type: 'timeScale',
@@ -1047,7 +1048,7 @@ test('a time scale draws its line and its marker and label as separate parts', (
         timeScaleTransition: 'timeScale',
         hideNotes: false,
     }
-    const draw = (part?: 'line' | 'marker') => {
+    const draw = (part?: EventPart) => {
         canvas.strokes = []
         canvas.labels = []
         drawEvent(context, entity, false, 1, part)
@@ -1063,7 +1064,8 @@ test('a time scale draws its line and its marker and label as separate parts', (
     }
     // Lines span the stage to the marker, and the ease glyph is a line too.
     assert.deepEqual(draw('line'), { lines: 1, markers: 0, labels: [] })
-    assert.deepEqual(draw('marker'), { lines: 1, markers: 1, labels: ['2x'] })
+    assert.deepEqual(draw('marker'), { lines: 0, markers: 1, labels: [] })
+    assert.deepEqual(draw('label'), { lines: 1, markers: 0, labels: ['2x'] })
     assert.deepEqual(draw(), { lines: 2, markers: 1, labels: ['2x'] })
 })
 

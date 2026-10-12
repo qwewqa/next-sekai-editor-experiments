@@ -153,11 +153,6 @@ test('each object is drawn where its primary hit shape is, and nowhere else', as
                 t: -0.8,
                 b: 0.8,
             }
-            // A time scale's label is decoration beside its marker.
-            if (entity.type === 'timeScale') {
-                box.l = shape.boxes[0]!.l - 0.08
-                box.r = shape.boxes[0]!.r + 0.08
-            }
             const px = (lane: number) => Math.round((lane - bounds.l) * scale)
             const py = (y: number) => Math.round((units + y - bounds.t) * scale)
             const x0 = px(box.l)

@@ -56,7 +56,8 @@ import { drawEvent, drawEventInfinities } from './events'
 import {
     bpmLabelYs,
     coveredLabelYs,
-    drawGrid,
+    drawGridLabels,
+    drawGridLines,
     gridLabels,
     isNearLabel,
     timeScaleEdgeLabelYs,
@@ -458,7 +459,7 @@ watchEffect(
         const canvas = chartCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        const entities = drawSteps.value
+        const { objects, labels: entityLabels } = drawSteps.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
         const preview = previewSlides.value
         const visibilities = view.visibilities
@@ -495,7 +496,7 @@ watchEffect(
             if (!ctx) return
             const base = { ...inputs, ctx, nameSprites }
             // Measured with the frame's font and bounds, as the labels are drawn.
-            const timeScaleYs = timeScaleEdgeLabelYs(base, entities)
+            const timeScaleYs = timeScaleEdgeLabelYs(base, entityLabels)
             const edgeLabelYs = {
                 left: [...timeScaleYs.left, ...covered.left],
                 right: [...timeScaleYs.right, ...covered.right, ...ghostYs],
@@ -510,18 +511,7 @@ watchEffect(
                 clearTimeout(stageSettleTimer)
                 stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
             }
-            drawGrid(
-                context,
-                currentBeats,
-                currentTimes,
-                division,
-                laneDivision,
-                beatDisplay,
-                isBpmVisible,
-                edgeLabelYs,
-                currentLabels,
-                grid,
-            )
+            drawGridLines(context, currentBeats, division, laneDivision, beatDisplay, grid)
             ctx.save()
             ctx.strokeStyle = '#fff'
             ctx.beginPath()
@@ -529,15 +519,29 @@ watchEffect(
             ctx.stroke()
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects)
-            for (const { entity, highlighted, opacity, part } of entities) {
-                drawEntity(
-                    previewContext && preview.entities.has(entity) ? previewContext : context,
-                    entity,
-                    highlighted || !!hovered?.has(entity),
-                    opacity,
-                    part,
-                )
+            const drawEach = (steps: DrawStep[]) => {
+                for (const { entity, highlighted, opacity, part } of steps) {
+                    drawEntity(
+                        previewContext && preview.entities.has(entity) ? previewContext : context,
+                        entity,
+                        highlighted || !!hovered?.has(entity),
+                        opacity,
+                        part,
+                    )
+                }
             }
+            drawEach(objects)
+            // Text goes above every object.
+            drawGridLabels(
+                context,
+                currentBeats,
+                currentTimes,
+                beatDisplay,
+                isBpmVisible,
+                edgeLabelYs,
+                currentLabels,
+            )
+            drawEach(entityLabels)
             placeNames(context, context.names)
         })
     },

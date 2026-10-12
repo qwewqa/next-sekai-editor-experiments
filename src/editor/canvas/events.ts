@@ -259,18 +259,19 @@ const drawConnection = (context: EditorDrawContext, entity: EventConnectionEntit
     for (const path of cached.paths) ctx.stroke(path)
 }
 
-/** A time scale's line, or its marker and label, for drawing them in separate layers. */
-export type TimeScalePart = 'line' | 'marker'
+/** A BPM's or time scale's line, marker or label, for drawing them in separate layers. */
+export type EventPart = 'line' | 'marker' | 'label'
 
-/** Draws one event without retaining reactive editor state. */
+/** Draws one event, or only `part` of it, without retaining reactive editor state. */
 export const drawEvent = (
     context: EditorDrawContext,
     entity: DrawnEventEntity,
     highlighted: boolean,
     opacity = 1,
-    part?: TimeScalePart,
+    part?: EventPart,
 ) => {
     const { ctx, state, ups } = context
+    const draws = (drawn: EventPart) => part === undefined || part === drawn
     ctx.save()
     ctx.globalAlpha *= opacity
     ctx.lineWidth = 2 / context.scale
@@ -288,20 +289,23 @@ export const drawEvent = (
             break
         case 'bpm': {
             const y = beatToTime(state.bpms, entity.beat) * ups
-            ctx.strokeStyle = '#f0f'
-            ctx.globalAlpha *= 0.5
-            line(ctx, -6, y, 6, y)
-            ctx.globalAlpha *= 2
-            drawText(
-                context,
-                formatBpm(entity.bpm),
-                BPM_LABEL.lane,
-                y,
-                '#f0f',
-                BPM_LABEL.size,
-                'start',
-                context.figureMiddle,
-            )
+            if (draws('line')) {
+                ctx.strokeStyle = '#f0f'
+                ctx.globalAlpha *= 0.5
+                line(ctx, -6, y, 6, y)
+                ctx.globalAlpha *= 2
+            }
+            if (draws('label'))
+                drawText(
+                    context,
+                    formatBpm(entity.bpm),
+                    BPM_LABEL.lane,
+                    y,
+                    '#f0f',
+                    BPM_LABEL.size,
+                    'start',
+                    context.figureMiddle,
+                )
             break
         }
         case 'timeScale': {
@@ -310,7 +314,7 @@ export const drawEvent = (
             const isScroll = entity.timeScaleTransition === 'scroll'
             // Hollow markers keep the line out of their interior.
             const gap = entity.hideNotes ? (isScroll ? DIAMOND_RADIUS : 0.1) : 0
-            if (part !== 'marker') {
+            if (draws('line')) {
                 ctx.strokeStyle = '#ff0'
                 ctx.globalAlpha *= 0.5
                 if (entity.hideNotes) ctx.setLineDash([2 / context.scale, 2 / context.scale])
@@ -320,8 +324,8 @@ export const drawEvent = (
                 ctx.globalAlpha *= 2
                 ctx.setLineDash([])
             }
-            if (part === 'line') break
-            timeScaleMarker(ctx, x, y, isScroll, entity.hideNotes)
+            if (draws('marker')) timeScaleMarker(ctx, x, y, isScroll, entity.hideNotes)
+            if (!draws('label')) break
             const { text, textWidth, direction } = timeScaleLabel(context, entity)
             const labelX = x + LABEL_OFFSET * direction
             const glyphWidth = drawEaseGlyph(context, entity, labelX, y, direction, '#ff0')

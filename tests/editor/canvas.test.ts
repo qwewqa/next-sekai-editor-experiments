@@ -532,17 +532,24 @@ test('canvas surfaces reuse backing storage while applying DPR, scrolling and no
     }
 })
 
-test('time scale markers draw above slides and notes while their lines stay below', () => {
+test('time scale markers draw above slides and notes, labels apart, while lines stay below', () => {
     const timeScale = { type: 'timeScale', beat: 2, groupId: group } as Entity
+    const bpm = { type: 'bpm', beat: 3, bpm: 120 } as Entity
     const slide = connector('over', 'active')
     const centerNote = note(5)
-    const steps = toDrawSteps(
-        orderEntities([centerNote, slide, timeScale], new Set(), visibility()),
-    ).map(({ entity, part }) => [entity, part])
-    assert.deepEqual(steps, [
+    const { objects, labels } = toDrawSteps(
+        orderEntities([centerNote, slide, timeScale, bpm], new Set(), visibility()),
+    )
+    const parts = (steps: typeof objects) => steps.map(({ entity, part }) => [entity, part])
+    assert.deepEqual(parts(objects), [
         [timeScale, 'line'],
+        [bpm, 'line'],
         [centerNote, undefined],
         [slide, undefined],
         [timeScale, 'marker'],
+    ])
+    assert.deepEqual(parts(labels), [
+        [timeScale, 'label'],
+        [bpm, 'label'],
     ])
 })
