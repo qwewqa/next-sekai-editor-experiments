@@ -122,6 +122,7 @@ import {
 } from './state'
 import {
     elevationBounds,
+    elevationSelection,
     elevationViewport,
     fitElevationViewport,
     needsElevationFit,
@@ -346,7 +347,6 @@ const creating = shallowRef<ElevationNote[]>([])
 // Lane and origin are displayed, on the lattice of the stage new notes go on.
 let adding: { lane: number; origin: number; elevation: number; slide: boolean } | undefined
 let mounted = false
-const selection = ref<{ x: number; y: number; w: number; h: number }>()
 let drag:
     | {
           source: State
@@ -371,8 +371,8 @@ let drag:
     | undefined
 let marquee:
     | {
-          x: number
-          y: number
+          lane: number
+          elevation: number
           selected: State['selectedEntities']
           targets: State['selectedEntities']
       }
@@ -448,7 +448,7 @@ const cancel = () => {
     marquee = undefined
     adding = undefined
     creating.value = []
-    selection.value = undefined
+    elevationSelection.value = undefined
 }
 const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     if (!getNoteFieldsIn(active.source.store, note).left)
@@ -781,8 +781,8 @@ const controls: Pick<
         }
         if (target.type === 'marquee') {
             marquee = {
-                x: x - elevationBounds.x,
-                y: y - elevationBounds.y,
+                lane: xToLane(x),
+                elevation: yToElevation(y),
                 selected: state.value.selectedEntities,
                 targets: [],
             }
@@ -863,20 +863,28 @@ const controls: Pick<
             return
         }
         if (marquee) {
+            // Anchored in lanes and elevations, as the chart's is in lanes and times.
+            const lane = xToLane(x)
+            const elevation = yToElevation(y)
             const rect = {
-                x: Math.min(marquee.x, x - elevationBounds.x),
-                y: Math.min(marquee.y, y - elevationBounds.y),
-                w: Math.abs(x - elevationBounds.x - marquee.x),
-                h: Math.abs(y - elevationBounds.y - marquee.y),
+                laneMin: Math.min(marquee.lane, lane),
+                laneMax: Math.max(marquee.lane, lane),
+                elevationMin: Math.min(marquee.elevation, elevation),
+                elevationMax: Math.max(marquee.elevation, elevation),
             }
-            selection.value = rect
-            const hits = elevationLayout.value.rows
+            elevationSelection.value = rect
+            const { rows, xAt, yAt } = elevationLayout.value
+            const left = xAt(rect.laneMin)
+            const right = xAt(rect.laneMax)
+            const top = yAt(rect.elevationMax)
+            const bottom = yAt(rect.elevationMin)
+            const hits = rows
                 .filter(
                     (row) =>
-                        row.x + row.w / 2 >= rect.x &&
-                        row.x - row.w / 2 <= rect.x + rect.w &&
-                        row.y + 14 >= rect.y &&
-                        row.y - 14 <= rect.y + rect.h,
+                        row.x + row.w / 2 >= left &&
+                        row.x - row.w / 2 <= right &&
+                        row.y + 14 >= top &&
+                        row.y - 14 <= bottom,
                 )
                 .map((row) => row.note)
             const targets = isSecondaryTool()
@@ -1182,7 +1190,7 @@ watchEffect(() => {
     }))
     // A paste ghost's notes are drawn as their pasted slides make them, as on the chart.
     const ghostInfos = toolName.value === 'paste' ? pasteGhostInfos() : undefined
-    const rect = selection.value
+    const rect = elevationSelection.value
     const ratio = pixelRatio.value
     const labels = i18n.value.elevation
     const showGroupName = settings.showGroupName
@@ -1339,6 +1347,9 @@ watchEffect(() => {
             if (selected.has(row.note) || hover.has(row.note)) {
                 // At least the 0.2-lane placeholder a zero-width note draws.
                 const w = Math.max(row.w, layout.laneScale * 0.2)
+                ctx.save()
+                // As the chart's outlines.
+                ctx.lineWidth = 2
                 ctx.setLineDash([6, 4])
                 ctx.strokeStyle = '#ffffff80'
                 ctx.strokeRect(
@@ -1347,14 +1358,24 @@ watchEffect(() => {
                     w + 6,
                     layout.laneScale * 0.6 + 6,
                 )
-                ctx.setLineDash([])
+                ctx.restore()
             }
         }
         if (rect) {
-            ctx.fillStyle = '#ffffff40'
-            ctx.strokeStyle = '#ffffff80'
-            ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
-            ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
+            // The chart's box selection: a quarter white fill under a half white dashed edge.
+            const left = layout.xAt(rect.laneMin)
+            const top = layout.yAt(rect.elevationMax)
+            const w = layout.xAt(rect.laneMax) - left
+            const h = layout.yAt(rect.elevationMin) - top
+            ctx.save()
+            ctx.fillStyle = ctx.strokeStyle = '#fff'
+            ctx.lineWidth = 2
+            ctx.setLineDash([6, 4])
+            ctx.globalAlpha = 0.25
+            ctx.fillRect(left, top, w, h)
+            ctx.globalAlpha = 0.5
+            ctx.strokeRect(left, top, w, h)
+            ctx.restore()
         }
         if (!layout.rows.length) {
             ctx.fillStyle = '#ffffff80'

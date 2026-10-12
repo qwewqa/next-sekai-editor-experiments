@@ -1,10 +1,17 @@
-import { ref, shallowReactive } from 'vue'
+import { ref, shallowReactive, shallowRef } from 'vue'
 import { onResetState } from '../../history/resetHooks'
 import { clamp } from '../../utils/math'
 import type { ElevationNote } from './layout'
 
 export const elevationViewport = shallowReactive({ center: 2.5, scale: 64 })
 export const elevationBounds = shallowReactive({ x: 0, y: 0, w: 0, h: 0 })
+// The box selection being dragged, in lanes and elevations, so it stays on them as the view moves.
+export const elevationSelection = shallowRef<{
+    laneMin: number
+    laneMax: number
+    elevationMin: number
+    elevationMax: number
+}>()
 // The view is kept for the session; the first open after a chart load fits it.
 export const needsElevationFit = ref(true)
 onResetState(() => {
