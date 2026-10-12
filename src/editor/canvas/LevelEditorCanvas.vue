@@ -114,10 +114,11 @@ const artEntities = computedVisibleEntities(
     () => culledEntities.value,
     () => artRange.value,
 )
-// Slides a drag changes beyond its ghosts are drawn as they drop.
-const showEntities = (shown: Entity[], { min, max }: { min: number; max: number }) => {
+// Slides a drag changes beyond its ghosts are drawn as they drop; only then is the range read.
+const showEntities = (shown: Entity[], range: () => { min: number; max: number }) => {
     const preview = previewSlides.value
     if (!preview) return { entities: shown, selected: selectedEntitySet.value }
+    const { min, max } = range()
     // In the drop's store order, which settles same-beat ties; the source's own entities stay in place.
     const source = shown.filter((entity) => !preview.includes(entity))
     const indices = new Map(source.map((entity, index) => [entity, index]))
@@ -142,7 +143,7 @@ const showEntities = (shown: Entity[], { min, max }: { min: number; max: number 
         ]),
     }
 }
-const shownEntities = computed(() => showEntities(artEntities.value, artRange.value))
+const shownEntities = computed(() => showEntities(artEntities.value, () => artRange.value))
 const visibility = () => ({
     scope: scopeLookup.value,
     visibilities: view.visibilities,
@@ -159,7 +160,7 @@ const sceneHovered = computed(() =>
         : hoveredEntities.value,
 )
 const hoveredSet = computed(() => new Set(sceneHovered.value))
-// Badges count notes past the art's padding, as far as their slots reach.
+// Badges count notes as far past the pane as their slots reach.
 const offscreenRange = computed(() => beatRange(OFFSCREEN_REACH + 4))
 const offscreenNotes = computedArray(() => {
     const { min, max } = offscreenRange.value
@@ -171,7 +172,7 @@ const offscreenNotes = computedArray(() => {
 const offscreenCandidates = computed(() => {
     const bpms = sceneState.value.bpms
     const layout = composed.value
-    const { entities, selected } = showEntities(offscreenNotes.value, offscreenRange.value)
+    const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
     return orderEntities(entities, selected, visibility()).flatMap(
         ({ entity, highlighted, opacity }) => {
             if (entity.type !== 'note') return []

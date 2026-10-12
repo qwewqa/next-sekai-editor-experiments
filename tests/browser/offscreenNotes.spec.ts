@@ -1118,17 +1118,29 @@ test.describe('held badges', () => {
         expect(frames.filter((frame) => !frame.top || !frame.bottom)).toEqual([])
     }
 
-    test('stay on every frame of playback', async ({ page }) => {
-        await recordHeld(page)
-        await page.evaluate(async () => {
+    // Plays until the view has moved on 40 frames, however slow the machine.
+    const play = (page: Page) =>
+        page.evaluate(async () => {
+            const { view } = window.editorTest
             const player =
                 await window.editorTest.appImport<typeof import('../../src/editor/player')>(
                     '/src/editor/player.ts',
                 )
             player.startOrStopPlayer()
-            await new Promise((resolve) => setTimeout(resolve, 2000))
+            let moved = 0
+            let last = view.time
+            const end = performance.now() + 20000
+            while (moved < 40 && performance.now() < end) {
+                await new Promise(requestAnimationFrame)
+                if (view.time !== last) moved++
+                last = view.time
+            }
             player.startOrStopPlayer()
         })
+
+    test('stay on every frame of playback', async ({ page }) => {
+        await recordHeld(page)
+        await play(page)
         await expectAlwaysHeld(page)
     })
 
@@ -1154,15 +1166,7 @@ test.describe('held badges', () => {
     test('stay on every frame of playback at a wide lane zoom', async ({ page }) => {
         await showWide(page)
         await recordHeld(page)
-        await page.evaluate(async () => {
-            const player =
-                await window.editorTest.appImport<typeof import('../../src/editor/player')>(
-                    '/src/editor/player.ts',
-                )
-            player.startOrStopPlayer()
-            await new Promise((resolve) => setTimeout(resolve, 2500))
-            player.startOrStopPlayer()
-        })
+        await play(page)
         await expectAlwaysHeld(page)
     })
 
@@ -1587,7 +1591,7 @@ test('the badge of a note at the zoom centre stays put as the chart zooms', asyn
             ]),
         })
         view.lane = 0
-        // The fixture's zoom on setup placed badges from the middle at time 3: the note of beat 6.
+        // The note of beat 6 starts on a slot boundary, as asserted below.
         view.time = 3
         await new Promise((resolve) => requestAnimationFrame(resolve))
         settings.pps = 300
