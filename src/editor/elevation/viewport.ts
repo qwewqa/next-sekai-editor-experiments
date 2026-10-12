@@ -1,9 +1,15 @@
-import { shallowReactive } from 'vue'
+import { ref, shallowReactive } from 'vue'
+import { onResetState } from '../../history/resetHooks'
 import { clamp } from '../../utils/math'
 import type { ElevationNote } from './layout'
 
 export const elevationViewport = shallowReactive({ center: 2.5, scale: 64 })
 export const elevationBounds = shallowReactive({ x: 0, y: 0, w: 0, h: 0 })
+// The view is kept for the session; the first open after a chart load fits it.
+export const needsElevationFit = ref(true)
+onResetState(() => {
+    needsElevationFit.value = true
+})
 export const fitElevationViewport = (
     height: number,
     notes: ElevationNote[],

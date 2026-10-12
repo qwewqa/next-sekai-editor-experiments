@@ -114,7 +114,12 @@ import {
     isElevationEditorOpen,
     isElevationSideBySide,
 } from './state'
-import { elevationBounds, elevationViewport, fitElevationViewport } from './viewport'
+import {
+    elevationBounds,
+    elevationViewport,
+    fitElevationViewport,
+    needsElevationFit,
+} from './viewport'
 import { drawElevationConnections, getElevationConnections } from './connections'
 import SelectValue from '../../modals/form/SelectValue.vue'
 import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
@@ -227,7 +232,10 @@ const availableCommands: CommandName[] = [
     'scrollPageUp',
     'scrollPageDown',
 ]
+// Fits once its pane has a size, when a chart load asks for it.
 const fitViewport = () => {
+    if (!needsElevationFit.value || !elevationBounds.h) return
+    needsElevationFit.value = false
     fitElevationViewport(elevationBounds.h, elevationNotes.value, {
         top:
             (header.value?.clientHeight ?? 80) +
@@ -318,7 +326,6 @@ const hoveredOffscreenGroup = computed(() =>
 const creating = shallowRef<ElevationNote[]>([])
 // Lane and origin are displayed, on the lattice of the stage new notes go on.
 let adding: { lane: number; origin: number; elevation: number; slide: boolean } | undefined
-let viewportAdjusted = false
 let mounted = false
 const selection = ref<{ x: number; y: number; w: number; h: number }>()
 let drag:
@@ -991,7 +998,6 @@ const changeBeat = (beat: number) => {
     else view.cursorTime = beatToTime(state.value.bpms, target)
     // Moving the cursor converts back from time; keep the exact beat.
     elevationBeat.value = target
-    fitViewport()
 }
 // Written on change only, so re-renders never overwrite the typing.
 const beatField = computed({
@@ -1064,7 +1070,6 @@ watch([() => elevationBounds.w, () => elevationBounds.h], () => {
     cancelMouseControls()
     cancelTouchControls()
     cancel()
-    if (!viewportAdjusted) fitViewport()
     pixelRatio.value = devicePixelRatio || 1
 })
 watch(elevationBeat, () => {
@@ -1073,9 +1078,9 @@ watch(elevationBeat, () => {
         cancelTouchControls()
     }
     cancel()
-    viewportAdjusted = false
-    fitViewport()
 })
+// A chart load while open fits it now.
+watch(needsElevationFit, fitViewport)
 // Focus, hidden groups/stages and type filters change which notes are editable.
 // Pure reveals (including authoring revealing its target) never hide a note.
 watch([scopeLookup, () => view.visibilities], ([scope, visibilities], [previous, before]) => {
@@ -1345,7 +1350,7 @@ onMounted(() => {
     }
     const observer = new ResizeObserver(() => {
         updateBounds()
-        if (!viewportAdjusted) fitViewport()
+        fitViewport()
     })
     if (container.value) observer.observe(container.value)
     if (header.value) observer.observe(header.value)
@@ -1378,14 +1383,12 @@ onMounted(() => {
     navigation = {
         bounds: elevationBounds,
         scrollY: (pixels) => {
-            viewportAdjusted = true
             closeContextMenu()
             elevationViewport.center += pixels / elevationViewport.scale
         },
         getScaleX: () => elevationLayout.value.laneScale,
         getScaleY: () => elevationViewport.scale,
         setScaleY: (scale) => {
-            viewportAdjusted = true
             closeContextMenu()
             elevationViewport.scale = clamp(scale, 1, 1200)
         },
