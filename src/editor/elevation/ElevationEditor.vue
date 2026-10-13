@@ -352,6 +352,7 @@ const restoreContext = () => {
 const hovered = ref<NoteEntity>()
 // A 12px text baseline below the notice at the top, keeping a one-line notice's room (16px above,
 // 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
+// The notice's rem sizes in pixels, while index.css fixes the rem at 16px.
 const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
     const pill = container.value?.querySelector('.notification')?.getBoundingClientRect()
     const bottom = pill?.height ? pill.bottom - canvas.getBoundingClientRect().top : 0

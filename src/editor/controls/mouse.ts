@@ -110,7 +110,10 @@ export const cancelMouseControls = (restoreTool = true) => {
 watch(
     isElevationEditorOpen,
     (open) => {
-        if (open && secondarySwitchBack.value) cancelMouseControls(false)
+        if (!open || !secondarySwitchBack.value) return
+        cancelMouseControls(false)
+        // Its hover goes too, as a tool change's would.
+        view.entities = { hovered: [], creating: [] }
     },
     { flush: 'sync' },
 )

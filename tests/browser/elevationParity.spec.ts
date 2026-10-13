@@ -31,6 +31,15 @@ const toolName = (page: Page) =>
         async (path) => (await window.editorTest.appImport<ToolState>(path)).toolName.value,
         toolStatePath,
     )
+const isSideBySide = (page: Page) =>
+    page.evaluate(
+        async () =>
+            (
+                await window.editorTest.appImport<
+                    typeof import('../../src/editor/elevation/state')
+                >('/src/editor/elevation/state.ts')
+            ).isElevationSideBySide.value,
+    )
 const open = async (page: Page) => {
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-canvas')).toBeVisible()
@@ -385,6 +394,7 @@ test('opening the Elevation Editor during a right press ends the press on Select
             await page.mouse.down({ button: 'right' })
             expect(await toolName(page)).toBe('select')
             await open(page)
+            expect(await isSideBySide(page)).toBe(sideBySide === 'allow')
             await page.mouse.up({ button: 'right' })
             await settle(page)
             await expect(page.locator('.elevation-editor')).toBeVisible()
