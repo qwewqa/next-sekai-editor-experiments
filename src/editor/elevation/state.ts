@@ -47,14 +47,11 @@ export const closeElevationEditor = () => {
     isElevationEditorOpen.value = false
 }
 
+// Full screen, it closes on a tool it lacks, whether the tool or the layout changes.
 watch(
-    toolName,
-    (name) => {
-        if (
-            isElevationEditorOpen.value &&
-            !isElevationSideBySide.value &&
-            !elevationToolNames.includes(name)
-        )
+    [toolName, isElevationSideBySide],
+    ([name, sideBySide]) => {
+        if (isElevationEditorOpen.value && !sideBySide && !elevationToolNames.includes(name))
             isElevationEditorOpen.value = false
     },
     { flush: 'sync' },

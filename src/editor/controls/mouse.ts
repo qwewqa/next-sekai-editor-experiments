@@ -1,4 +1,4 @@
-import { watch } from 'vue'
+import { shallowRef, watch } from 'vue'
 import { state } from '../../history'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
@@ -72,7 +72,8 @@ const stopTracking = () => {
     removeEventListener('mouseup', trackUp, true)
 }
 
-let secondarySwitchBack: ToolName | undefined
+// The tool a right press switched from, until it switches back.
+export const secondarySwitchBack = shallowRef<ToolName>()
 let switchingSecondaryTool = false
 let contextClick: { x: number; y: number } | undefined
 // The mouse rests over the chart, unpressed.
@@ -100,8 +101,8 @@ export const cancelMouseControls = (restoreTool = true) => {
     mouseGesture.cancel()
     stopTracking()
     unlockCursor()
-    const previous = secondarySwitchBack
-    secondarySwitchBack = undefined
+    const previous = secondarySwitchBack.value
+    secondarySwitchBack.value = undefined
     if (restoreTool && previous) switchToolTo(previous)
 }
 
@@ -122,10 +123,10 @@ const mousedown = (event: MouseEvent) => {
     if (
         !mouseGesture.pointerCount &&
         event.buttons & 2 &&
-        !secondarySwitchBack &&
+        !secondarySwitchBack.value &&
         tool.value.secondaryTool !== false
     ) {
-        secondarySwitchBack = toolName.value
+        secondarySwitchBack.value = toolName.value
         switchingSecondaryTool = true
         try {
             switchToolTo(
@@ -204,9 +205,9 @@ const mouseup = (event: MouseEvent) => {
     if (showMenu) mouseGesture.cancel()
     else mouseGesture.end([p])
 
-    if (!mouseGesture.pointerCount && secondarySwitchBack) {
-        switchToolTo(secondarySwitchBack)
-        secondarySwitchBack = undefined
+    if (!mouseGesture.pointerCount && secondarySwitchBack.value) {
+        switchToolTo(secondarySwitchBack.value)
+        secondarySwitchBack.value = undefined
     }
     if (!mouseGesture.pointerCount) {
         unlockCursor()

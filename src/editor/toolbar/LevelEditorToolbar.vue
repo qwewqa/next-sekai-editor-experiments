@@ -3,8 +3,13 @@ import type { CommandName as Name } from '../commands'
 
 // Each pane and layout's shown members, kept while a tool dialog hides the toolbar.
 const shownByLayout = new Map<string, Name[]>()
-// Each pane and layout's faces a tool in use displaced until it ends, and groups with a tool in use.
-type Temporary = { displaced: (Name | undefined)[]; inUse: boolean[] }
+// Each pane and layout's faces a tool in use displaced until it ends, groups with a tool in use,
+// and faces a right press's tool displaced until its release.
+type Temporary = {
+    displaced: (Name | undefined)[]
+    inUse: boolean[]
+    returning: (Name | undefined)[]
+}
 const temporaryByLayout = new Map<string, Temporary>()
 const layoutOf = (toolbar: Name[][]) => toolbar.map((group) => group.join(',')).join('|')
 </script>
@@ -25,6 +30,7 @@ import { settings } from '../../settings'
 import { commands, type CommandName } from '../commands'
 import { flyoutEscapes } from '../controls'
 import { repeatsWhenHeld } from '../controls/keyboard'
+import { secondarySwitchBack } from '../controls/mouse'
 import { isDragging } from '../controls/gestures/recognizers/drag'
 import { isCoarsePointer } from '../workspace'
 import type { ToolModalPane } from '../toolModals'
@@ -60,7 +66,7 @@ const hasToolInUse = (index: number) =>
     }) ?? false
 
 const activeNames = ref<CommandName[]>([])
-let temporary: Temporary = { displaced: [], inUse: [] }
+let temporary: Temporary = { displaced: [], inUse: [], returning: [] }
 
 watch(
     toolbar,
@@ -79,6 +85,7 @@ watch(
                 hasToolInUse(index) ? before.find((name) => group.includes(name)) : undefined,
             ),
             inUse: [],
+            returning: [],
         }
         temporaryByLayout.set(keyOf(toolbar), temporary)
     },
@@ -98,26 +105,41 @@ const followsValues = (index: number) => {
 
 // A group shows its tool in use, else its value in use where values move it, nearest its default.
 watch(
-    () => toolbar.value.map((group) => group.filter((name) => isCommandPressed(name, group))),
-    (pressed) => {
+    [
+        () => toolbar.value.map((group) => group.filter((name) => isCommandPressed(name, group))),
+        () => !!secondarySwitchBack.value,
+    ],
+    ([pressed, switched]) => {
         for (const [index, names] of pressed.entries()) {
             const tools = names.filter((name) => stateOf(name, index)?.kind === 'tool')
-            const { displaced, inUse } = temporary
+            const { displaced, inUse, returning } = temporary
             const wasInUse = inUse[index]
             inUse[index] = tools.length > 0
             const restored = displaced[index]
             if (!tools.length && restored) {
                 displaced[index] = undefined
+                returning[index] = undefined
                 activeNames.value[index] = restored
                 continue
+            }
+            // A right press's release returns the face it displaced, unless another tool took it.
+            const back = returning[index]
+            if (back && !switched) {
+                returning[index] = undefined
+                if (!tools.length || tools.includes(back)) {
+                    activeNames.value[index] = back
+                    continue
+                }
             }
             // A group with a tool never follows values.
             const candidates = followsValues(index) ? names : tools
             const shown = activeNames.value[index]
             const name = candidates[candidates.length - 1]
             if (!name || !shown || candidates.includes(shown)) continue
+            // A right press's tool shows over any face until its release.
+            if (switched && inUse[index]) returning[index] ??= shown
             // A tool coming into use over an action or value shows until it ends.
-            if (inUse[index] && wasInUse === false && stateOf(shown, index)?.kind !== 'tool')
+            else if (inUse[index] && wasInUse === false && stateOf(shown, index)?.kind !== 'tool')
                 displaced[index] = shown
             activeNames.value[index] = name
         }

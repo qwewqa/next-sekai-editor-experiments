@@ -851,6 +851,51 @@ test('a group of tools keeps the last tool used on its face', async ({ page }) =
     await expectFace('Select')
 })
 
+test('a right press’s tool shows on its group only until the release', async ({ page }) => {
+    const expectGroup = (face: string) => expect.poll(async () => (await faces(page))[3]).toBe(face)
+    const start = await page.evaluate(() => window.editorTest.point(-5, 1))
+    // Holds the right button over the chart, with the given face meanwhile, and drags unless it clicks.
+    const rightPress = async (during: string, drag = true) => {
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down({ button: 'right' })
+        if (drag) await page.mouse.move(start.x + 40, start.y - 40, { steps: 4 })
+        await expectGroup(during)
+        await page.mouse.up({ button: 'right' })
+    }
+    await page.keyboard.press('b')
+    await page.keyboard.press('a')
+    await expectGroup('Brush')
+
+    // The context menu's Select, from Note.
+    await rightPress('Select*', false)
+    await expect(page.getByRole('menu')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await expectGroup('Brush')
+    expect((await faces(page))[5]).toBe('Note*')
+
+    // A Select drag.
+    await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'select'))
+    await rightPress('Select*')
+    await expectGroup('Brush')
+
+    // An Eraser drag.
+    await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'eraser'))
+    await rightPress('Eraser*')
+    await expectGroup('Brush')
+    expect((await faces(page))[5]).toBe('Note*')
+
+    // From a tool of its own group, which stays the face once it ends.
+    await page.keyboard.press('b')
+    await expectGroup('Brush*')
+    await rightPress('Eraser*')
+    await expectGroup('Brush*')
+    await page.keyboard.press('f')
+    await expectGroup('Select*')
+    await page.keyboard.press('a')
+    await expectGroup('Select')
+})
+
 test('a pick over a tool’s temporary face becomes the face', async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.toolbar = [

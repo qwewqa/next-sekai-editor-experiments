@@ -237,6 +237,35 @@ test('a tool picked in the Elevation Editor stays once it closes', async ({ page
     await expect(brush).toHaveAttribute('aria-pressed', 'true')
 })
 
+test('going full screen with a tool the Elevation Editor lacks closes it', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    const sideBySide = (value: 'allow' | 'disallow') =>
+        page.evaluate(
+            (value) => (window.editorTest.settings.elevationEditorSideBySide = value),
+            value,
+        )
+    await sideBySide('allow')
+    await open(page)
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    // Beside the chart, it stays open on the chart's tools.
+    await page.keyboard.press('q')
+    expect(await toolName(page)).toBe('bpm')
+    await expect(page.locator('.elevation-editor')).toBeVisible()
+    await sideBySide('disallow')
+    await expect(page.locator('.elevation-editor')).toHaveCount(0)
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    expect(await toolName(page)).toBe('bpm')
+
+    // A tool it has keeps it open.
+    await sideBySide('allow')
+    await open(page)
+    await page.keyboard.press('b')
+    await sideBySide('disallow')
+    await expect(page.locator('canvas.editor-chart')).toHaveCount(0)
+    await expect(page.locator('.elevation-editor')).toBeVisible()
+    expect(await toolName(page)).toBe('brush')
+})
+
 type Clip = { text: string; reads: number; copies: string[] }
 const clip = (page: Page) => page.evaluate(() => (window as never as { clip: Clip }).clip)
 // A stubbed system clipboard; copies go to it, and a read takes a turn.
