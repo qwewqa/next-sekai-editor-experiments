@@ -7,6 +7,7 @@ import type { PreviewChart, PreviewNote } from '../../preview/engine/model'
 import { getStageProps } from '../../preview/engine/stage'
 import { settings } from '../../settings'
 import type { State } from '../../state'
+import { hasSameChartData } from '../../state/data'
 import type { SlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -23,8 +24,6 @@ import { elevationBeat } from './state'
 import { elevationBounds, elevationViewport } from './viewport'
 
 const buildChart = createPreviewChartBuilder()
-// The committed chart under a Basic drag's ghosts; its state holds for the drag, so it compiles once.
-const buildCommittedChart = createPreviewChartBuilder()
 export const elevationState = computed(() => getPreviewState(state.value, previewEdit.value))
 type CompiledChart = {
     chart: PreviewChart
@@ -152,10 +151,29 @@ export const isElevationGhostDrag = computed(
         elevationState.value !== state.value &&
         !isScenePreview.value,
 )
+type CommittedChart = { state: State; noteSpeed: number; compiled: CompiledChart }
+// The chart last compiled for committed data, kept through a drag for its ghosts to go over.
+const committedChart = computed<CommittedChart | undefined>((previous) =>
+    elevationState.value === state.value
+        ? {
+              state: state.value,
+              noteSpeed: settings.previewNoteSpeed,
+              compiled: compiledChart.value,
+          }
+        : previewEdit.value?.isDrag
+          ? previous
+          : undefined,
+)
 const committedNotes = computed(() => {
+    const last = committedChart.value
     if (!isElevationGhostDrag.value) return
     const committed = state.value
-    const compiled = indexChart(buildCommittedChart(committed, settings.previewNoteSpeed))
+    const noteSpeed = settings.previewNoteSpeed
+    // Opened mid-drag, it compiles once, keeping nothing.
+    const compiled =
+        last && hasSameChartData(last.state, committed) && last.noteSpeed === noteSpeed
+            ? last.compiled
+            : indexChart(createPreviewChartBuilder()(committed, noteSpeed))
     return notesOf(
         compiled,
         committed.store.grid.note,
