@@ -231,6 +231,59 @@ test('a beat change during a box selection cancels it and restores the selection
     expect((await status(page)).selected).toEqual([5])
 })
 
+test('a box selection follows a 1:1 lock zooming with the lanes', async ({ page }) => {
+    await page.evaluate(() => (window.editorTest.settings.elevationSquareGrid = true))
+    await settle(page)
+    const start = await at(page, 4, 0.5)
+    const end = await at(page, -2, 2)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(end.x, end.y, { steps: 5 })
+    await settle(page)
+    const held = await status(page)
+    expect(held.selected).toEqual([1])
+    // Zooming lanes out zooms elevations with them, under the resting pointer.
+    await page.evaluate(() => (window.editorTest.settings.width = 64))
+    await settle(page)
+    expect(await elevationAt(page, end.y)).toBeGreaterThan(3)
+    const zoomed = await status(page)
+    expect(zoomed.selection!.laneMax).toBe(held.selection!.laneMax)
+    expect(zoomed.selection!.elevationMin).toBe(held.selection!.elevationMin)
+    expect(zoomed.selected).toEqual([1, 3])
+    await page.mouse.up()
+    expect((await status(page)).selected).toEqual([1, 3])
+})
+
+test('a box selection takes a note its edge cuts, as far as the note is drawn', async ({
+    page,
+}) => {
+    const layout = () =>
+        page.evaluate(async (scenePath) => {
+            const { laneScale } = (await window.editorTest.appImport<Scene>(scenePath))
+                .elevationLayout.value
+            return { laneScale }
+        }, scenePath)
+    // The chart's closest lane zoom: notes are drawn 0.6 lane tall.
+    await page.evaluate(() => (window.editorTest.settings.width = 16))
+    await settle(page)
+    const { laneScale } = await layout()
+    expect(laneScale * 0.3).toBeGreaterThan(24)
+    const note = await at(page, 1, 3)
+    const box = async (offset: number) => {
+        const start = await at(page, 4, 3.6)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(note.x - 200, note.y - offset, { steps: 5 })
+        await settle(page)
+        const { selected } = await status(page)
+        await page.mouse.up()
+        return selected
+    }
+    // An edge 6px into the note's top half takes it; one 6px above it doesn't.
+    expect(await box(Math.floor(laneScale * 0.3) - 6)).toEqual([3])
+    expect(await box(Math.ceil(laneScale * 0.3) + 6)).toEqual([])
+})
+
 test('a box selection is drawn as the chart draws its own', async ({ page }) => {
     await page.evaluate(() => {
         const calls: unknown[] = []
@@ -400,7 +453,12 @@ test.describe('on a phone', () => {
     test('a touch box selection stays on its elevations as a drag pans the view', async ({
         page,
     }) => {
-        await page.evaluate(() => (window.editorTest.settings.dragToPanY = true))
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.dragToPanY = true
+            // The drag starts near the right edge, where a quick scroll would take it.
+            settings.touchQuickScrollZone = 0
+        })
         const touch = (type: string, x: number, y: number) =>
             page.evaluate(
                 ({ type, x, y }) => {

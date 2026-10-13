@@ -352,22 +352,27 @@ for (const { name, width, side } of [
         await expect(top).toHaveAttribute('data-count', '2')
         await expect(bottom).toHaveAttribute('data-count', '1')
         await expect(top).toHaveAttribute('aria-label', 'Notes Off-Screen Above: 2')
-        const header = (await pane.locator('.elevation-header').boundingBox())!
-        const toolbar = (await pane.locator('[data-editor-toolbar] > div').boundingBox())!
-        const topBox = (await top.boundingBox())!
-        const bottomBox = (await bottom.boundingBox())!
-        // Clear of the header and the toolbar.
-        expect(topBox.y).toBeGreaterThanOrEqual(header.y + header.height)
-        expect(bottomBox.y + bottomBox.height).toBeLessThanOrEqual(toolbar.y)
+        // Once laid out: clear of the header and the toolbar, and within half a cell of their lanes.
+        const placement = async () => {
+            const header = (await pane.locator('.elevation-header').boundingBox())!
+            const toolbar = (await pane.locator('[data-editor-toolbar] > div').boundingBox())!
+            const topBox = (await top.boundingBox())!
+            const bottomBox = (await bottom.boundingBox())!
+            return {
+                belowHeader: topBox.y >= header.y + header.height,
+                aboveToolbar: bottomBox.y + bottomBox.height <= toolbar.y,
+                topAtLane:
+                    Math.abs(topBox.x + topBox.width / 2 - (await elevationLaneX(page, 1))) <= 24,
+                bottomAtLane:
+                    Math.abs(bottomBox.x + bottomBox.width / 2 - (await elevationLaneX(page, 3))) <=
+                    24,
+            }
+        }
+        await expect
+            .poll(placement)
+            .toEqual({ belowHeader: true, aboveToolbar: true, topAtLane: true, bottomAtLane: true })
         await expect(top).toBeInViewport({ ratio: 1 })
         await expect(bottom).toBeInViewport({ ratio: 1 })
-        // At their notes' lanes, within half a cell.
-        expect(
-            Math.abs(topBox.x + topBox.width / 2 - (await elevationLaneX(page, 1))),
-        ).toBeLessThanOrEqual(24)
-        expect(
-            Math.abs(bottomBox.x + bottomBox.width / 2 - (await elevationLaneX(page, 3))),
-        ).toBeLessThanOrEqual(24)
     })
 }
 
@@ -395,6 +400,123 @@ test('top and bottom badges select their notes as the side badges do', async ({ 
     expect(await selectedCount(page)).toBe(0)
 })
 
+test('Shift extends a top badge selection to the whole slides', async ({ page }) => {
+    // The notes above head slides that go on at beat 5.
+    await page.evaluate(() => {
+        const { fixtures, show, view } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [{ ...base, beat: 3, left: 0, size: 2, elevation: 2 }],
+                    [
+                        { ...base, beat: 3, left: 0, size: 2, elevation: 40 },
+                        { ...base, beat: 5, left: 0, size: 2, elevation: 0 },
+                    ],
+                    [
+                        { ...base, beat: 3, left: 0, size: 2, elevation: 41 },
+                        { ...base, beat: 5, left: 4, size: 2, elevation: 0 },
+                    ],
+                ],
+            },
+            1.5,
+        )
+        view.cursorTime = 1.5
+    })
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    await page.evaluate(async () => {
+        const { elevationViewport } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/viewport')
+        >('/src/editor/elevation/viewport.ts')
+        Object.assign(elevationViewport, { center: 2, scale: 60 })
+    })
+    const top = page.locator('.elevation-editor [data-side="top"]')
+    await expect(top).toHaveAttribute('data-count', '2')
+    const { x, y } = await center(top)
+    await page.mouse.move(x, y)
+    await page.keyboard.down('Shift')
+    await page.mouse.click(x, y)
+    await page.keyboard.up('Shift')
+    expect(await selectedCount(page)).toBe(4)
+    await page.mouse.click(x, y)
+    expect(await selectedCount(page)).toBe(2)
+})
+
+test('a note under a top badge cell, off its pill, takes the press', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+    })
+    await showAboveAndBelow(page)
+    const pane = page.locator('.elevation-editor')
+    const top = pane.locator('[data-side="top"]')
+    await expect(top).toHaveAttribute('data-count', '2')
+    const pill = (await top.boundingBox())!
+    // The note at elevation 2, in the same cell just below the pill.
+    const noteY = pill.y + pill.height / 2 + 16
+    await page.evaluate(async (noteY) => {
+        const { elevationViewport, elevationBounds } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/viewport')
+        >('/src/editor/elevation/viewport.ts')
+        elevationViewport.center =
+            2 - (elevationBounds.h / 2 - (noteY - elevationBounds.y)) / elevationViewport.scale
+    }, noteY)
+    await expect(top).toHaveAttribute('data-count', '2')
+    // Under the pill's middle, on the note across lanes 0 to 2.
+    const x = pill.x + pill.width / 2
+    expect(x).toBeGreaterThan(await elevationLaneX(page, 0))
+    expect(x).toBeLessThan(await elevationLaneX(page, 2))
+    expect(noteY).toBeGreaterThan(pill.y + pill.height)
+    const elevations = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.slides.note.values()]
+                .flat()
+                .filter((note) => note.beat === 3 && note.elevation < 10 && note.elevation > -10)
+                .map((note) => note.elevation),
+        )
+    // The pill itself still selects its notes, though the note is in reach there.
+    await clickIndicator(page, top)
+    expect(await selectedCount(page)).toBe(2)
+    await page.mouse.move(x, noteY)
+    await expect(pane.locator('.editor')).toHaveCSS('cursor', 'move')
+    await expect(top).not.toHaveClass(/is-hovered/)
+    await page.mouse.down()
+    await page.mouse.move(x, noteY + 60, { steps: 5 })
+    await page.mouse.up()
+    const [moved] = await elevations()
+    expect(moved).toBeLessThan(2)
+})
+
+for (const deviceScaleFactor of [1, 2])
+    test.describe(`at ${deviceScaleFactor}x`, () => {
+        test.use({ deviceScaleFactor })
+
+        test('top and bottom badges land on device pixels', async ({ page }) => {
+            await page.evaluate(() => {
+                window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+            })
+            await showAboveAndBelow(page)
+            const badges = page.locator(
+                '.elevation-editor :is([data-side="top"], [data-side="bottom"])',
+            )
+            await expect(badges).toHaveCount(2)
+            await expect
+                .poll(() =>
+                    badges.evaluateAll((elements) =>
+                        elements.flatMap((element) => {
+                            const { left, top } = element.getBoundingClientRect()
+                            return [left, top].map((value) => {
+                                const pixels = value * devicePixelRatio
+                                return Math.abs(pixels - Math.round(pixels)) < 1e-3
+                            })
+                        }),
+                    ),
+                )
+                .toEqual([true, true, true, true])
+        })
+    })
+
 test('top and bottom badges follow beat changes, scrolling and zooming', async ({ page }) => {
     await showAboveAndBelow(page)
     const pane = page.locator('.elevation-editor')
@@ -404,18 +526,27 @@ test('top and bottom badges follow beat changes, scrolling and zooming', async (
     await expect.poll(() => badgeCount(page, 'bottom')).toBe(0)
     await pane.getByRole('button', { name: 'Previous Beat', exact: true }).click()
     await expect.poll(() => badgeCount(page, 'top')).toBe(2)
-    // Notes under the header count as above.
-    await page.evaluate(async () => {
-        const { elevationViewport, elevationBounds } = await window.editorTest.appImport<
+    // Notes under the header count as above: these are 10 and 20px past where they would count.
+    const under = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { elevationViewport, elevationBounds } = await appImport<
             typeof import('../../src/editor/elevation/viewport')
         >('/src/editor/elevation/viewport.ts')
+        const { elevationLayout } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
         const header = document.querySelector('.elevation-header')!.getBoundingClientRect()
-        const scale = 20
+        const above = header.height - elevationLayout.value.laneScale * 0.3
+        const scale = 10
         Object.assign(elevationViewport, {
             scale,
-            center: 40.5 - (elevationBounds.h / 2 - header.height / 2) / scale,
+            center: 40.5 - (elevationBounds.h / 2 - (above - 15)) / scale,
         })
+        const { yAt } = elevationLayout.value
+        return { notes: [yAt(41), yAt(40)], header: header.height }
     })
+    expect(under.notes[0]).toBeGreaterThan(0)
+    expect(under.notes[1]).toBeLessThan(under.header)
     await expect.poll(() => badgeCount(page, 'top')).toBe(2)
     await page.evaluate(async () => {
         const { elevationViewport } = await window.editorTest.appImport<

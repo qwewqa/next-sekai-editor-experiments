@@ -378,8 +378,13 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
             ? toCommittedEntity(row.note, elevationState.value)
             : row.note,
     }))
+    const ratio = pixelRatio.value
+    // Badges land on device pixels.
+    const pixel = (x: number) => Math.round(x * ratio) / ratio
+    const width = pixel(elevationBounds.w)
+    const height = pixel(elevationBounds.h)
     const top = headerHeight.value + 4
-    const sides = groupOffscreenNotes(notes, elevationBounds.w, top, elevationBounds.h, 0, anchor)
+    const sides = groupOffscreenNotes(notes, width, top, height, 0, anchor)
     // Top and bottom badges keep right of the axis labels and clear of the right badges.
     const labelLeft = axisLabelLeftOf(sides)
     // Without left badges, the grid starts right of the labels.
@@ -402,23 +407,18 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
             .filter(({ side }) => side === 'right')
             .map(({ count }) => offscreenBadgeHitWidth(count)),
     )
-    const ratio = pixelRatio.value
-    const edges = groupOffscreenEdgeNotes(
-        notes,
-        elevationBounds.w,
-        top,
-        elevationBounds.h,
-        0,
-        anchor,
-        {
-            above: headerHeight.value - layout.laneScale * 0.3,
-            below: elevationBounds.h + layout.laneScale * 0.3,
-            floor: bottomChrome.value - 4,
-            left: labelRight + 4,
-            right: elevationBounds.w - rightReach - 4,
-            origin: Math.round(layout.xAt(0) * ratio) / ratio,
-        },
-    )
+    const edges = groupOffscreenEdgeNotes(notes, width, top, height, 0, anchor, {
+        above: headerHeight.value - layout.laneScale * 0.3,
+        below: height + layout.laneScale * 0.3,
+        floor: pixel(bottomChrome.value - 4),
+        left: labelRight + 4,
+        right: width - rightReach - 4,
+        // The end cells meet the side badges' hit areas.
+        reachLeft: labelLeft === undefined ? 0 : labelLeft - 4,
+        reachRight: width - rightReach,
+        origin: pixel(layout.xAt(0)),
+        pixelRatio: ratio,
+    })
     const groups = [...sides, ...edges]
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
@@ -430,11 +430,20 @@ useOffscreenIndicators({
     anchor: () => offscreenAnchor.value,
     edges: true,
 })
-// Only the select-like tools pick notes from the badges.
-const hitIndicator = (x: number, y: number) =>
-    toolName.value === 'select' || toolName.value === 'elevation'
-        ? hitOffscreenIndicator(x, y)
-        : undefined
+// Whether a client point is on a top or bottom badge's pill.
+const isOnEdgeBadge = ({ side, slot }: OffscreenNoteGroup, x: number, y: number) => {
+    const rect = container.value
+        ?.querySelector(`.offscreen-note-indicator[data-side="${side}"][data-slot="${slot}"]`)
+        ?.getBoundingClientRect()
+    return !!rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+// Only the select-like tools pick notes from the badges. Off its pill, a top or bottom cell
+// leaves the point to a note there.
+const hitIndicator = (x: number, y: number) => {
+    if (toolName.value !== 'select' && toolName.value !== 'elevation') return
+    const indicator = hitOffscreenIndicator(x, y)
+    if (indicator?.x === undefined || isOnEdgeBadge(indicator, x, y) || !hit(x, y)) return indicator
+}
 const hoveredOffscreenGroup = computed(() =>
     cursor.value === 'pointer' ? hitIndicator(view.pointer.x, view.pointer.y) : undefined,
 )
@@ -969,18 +978,20 @@ const controls: Pick<
                 elevationMax: Math.max(marquee.elevation, elevation),
             }
             elevationSelection.value = rect
-            const { rows, xAt, yAt } = elevationLayout.value
+            const { rows, xAt, yAt, laneScale } = elevationLayout.value
             const left = xAt(rect.laneMin)
             const right = xAt(rect.laneMax)
             const top = yAt(rect.elevationMax)
             const bottom = yAt(rect.elevationMin)
+            // Notes count as far as they are drawn: 0.6 lane tall.
+            const half = laneScale * 0.3
             const hits = rows
                 .filter(
                     (row) =>
                         row.x + row.w / 2 >= left &&
                         row.x - row.w / 2 <= right &&
-                        row.y + 14 >= top &&
-                        row.y - 14 <= bottom,
+                        row.y + half >= top &&
+                        row.y - half <= bottom,
                 )
                 .map((row) => row.note)
             const targets = isSecondaryTool()
@@ -1305,6 +1316,8 @@ watchEffect(() => {
     const axisLabelLeft = axisLabelLeftOf(offscreenGroups.value)
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
+        // A collapsed pane's last frame would show stretched as it reopens.
+        if (element && isAppActive.value) element.width = element.height = 0
         return
     }
     frame.schedule((timestamp) => {

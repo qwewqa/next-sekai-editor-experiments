@@ -16,8 +16,10 @@ export type OffscreenNoteGroup<T = unknown> = {
     // Held at the band's edge: y is a pane y, not one from the anchor.
     fixed: boolean
     y: number
-    // A top or bottom badge's pane x.
+    // A top or bottom badge's pane x, and the pane xs its hit area spans.
     x?: number
+    hitLeft?: number
+    hitRight?: number
     spacing: number
     count: number
     highlighted: boolean
@@ -38,6 +40,9 @@ export const OFFSCREEN_REACH = 2 * SLOT
 export const offscreenSlotNear = (anchor: number, y: number) =>
     anchor + SLOT * Math.round((y - anchor) / SLOT)
 
+const offSide = (note: OffscreenNotePosition, width: number) =>
+    note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
+
 // Where a side badge takes a note, if one does.
 const placeOnSide = (width: number, top: number, bottom: number, inset: number, anchor: number) => {
     const first = top + inset
@@ -52,7 +57,7 @@ const placeOnSide = (width: number, top: number, bottom: number, inset: number, 
     const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
     const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
     return (note: OffscreenNotePosition) => {
-        const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
+        const side = offSide(note, width)
         if (!side) return
         let slot = Math.floor(note.y / SLOT)
         let y = (slot + 0.5) * SLOT
@@ -81,7 +86,10 @@ const placeOnSide = (width: number, top: number, bottom: number, inset: number, 
 const isFinitePosition = (note: OffscreenNotePosition) =>
     Number.isFinite(note.left) && Number.isFinite(note.right) && Number.isFinite(note.y)
 
-type Placement = Pick<OffscreenNoteGroup, 'side' | 'slot' | 'fixed' | 'y' | 'x' | 'spacing'>
+type Placement = Pick<
+    OffscreenNoteGroup,
+    'side' | 'slot' | 'fixed' | 'y' | 'x' | 'hitLeft' | 'hitRight' | 'spacing'
+>
 
 const addToGroup = <T>(
     groups: Map<string, OffscreenNoteGroup<T>>,
@@ -141,8 +149,13 @@ export type OffscreenEdges = {
     // Pane xs the cells stay between, clear of the side badges and axis labels.
     left: number
     right: number
+    // Pane xs the end cells' hit areas reach, to meet the side badges'.
+    reachLeft: number
+    reachRight: number
     // Pane x of a cell's centre, so cells scroll with their notes.
     origin: number
+    // Device pixels per pane pixel, which the badges land on.
+    pixelRatio: number
 }
 
 const isEdgeGroup = (group: OffscreenNoteGroup) => group.side === 'top' || group.side === 'bottom'
@@ -150,6 +163,7 @@ const isEdgeGroup = (group: OffscreenNoteGroup) => group.side === 'top' || group
 /**
  * Top and bottom badges for the notes above and below that no side badge takes, given the side
  * grouping's arguments: each note is on one badge. Cells sit at their notes' x, held at the row ends.
+ * A note off a side that no side badge takes goes to the row nearer it.
  */
 export const groupOffscreenEdgeNotes = <T>(
     notes: readonly OffscreenNotePosition<T>[],
@@ -160,11 +174,15 @@ export const groupOffscreenEdgeNotes = <T>(
     anchor: number,
     edges: OffscreenEdges,
 ) => {
+    if (!(width > 0) || !(bottom > top)) return []
     const place = placeOnSide(width, top, bottom, inset, anchor)
+    const ratio = edges.pixelRatio
+    const pixel = (x: number) => Math.round(x * ratio) / ratio
     const rows = {
-        top: top + inset + SLOT / 2,
-        bottom: Math.min(bottom - inset, edges.floor) - SLOT / 2,
+        top: pixel(top + inset + SLOT / 2),
+        bottom: pixel(Math.min(bottom - inset, edges.floor) - SLOT / 2),
     }
+    const middle = (top + bottom) / 2
     const firstCell = Math.ceil((edges.left - edges.origin) / CELL + 0.5)
     const lastCell = Math.floor((edges.right - edges.origin) / CELL - 0.5)
     // Too narrow for a cell: one badge in the middle.
@@ -173,16 +191,28 @@ export const groupOffscreenEdgeNotes = <T>(
     for (const note of notes) {
         if (!isFinitePosition(note) || place(note)) continue
         const y = anchor + note.y
-        const side = y < edges.above ? 'top' : y > edges.below ? 'bottom' : undefined
+        const side = offSide(note, width)
+            ? y < middle
+                ? 'top'
+                : 'bottom'
+            : y < edges.above
+              ? 'top'
+              : y > edges.below
+                ? 'bottom'
+                : undefined
         if (!side) continue
         const cell = Math.round(((note.left + note.right) / 2 - edges.origin) / CELL)
         const slot = single ? 0 : Math.min(Math.max(cell, firstCell), lastCell)
+        const x = single ? pixel((edges.left + edges.right) / 2) : edges.origin + slot * CELL
+        // The end cells' hit areas reach the row's ends.
         addToGroup(groups, note, {
             side,
             slot,
             fixed: true,
             y: rows[side],
-            x: single ? (edges.left + edges.right) / 2 : edges.origin + slot * CELL,
+            x,
+            hitLeft: single || slot === firstCell ? edges.reachLeft : x - CELL / 2,
+            hitRight: single || slot === lastCell ? edges.reachRight : x + CELL / 2,
             spacing: CELL,
         })
     }
@@ -203,6 +233,8 @@ export const isSameOffscreenGroups = <T>(
             group.fixed === other.fixed &&
             group.y === other.y &&
             group.x === other.x &&
+            group.hitLeft === other.hitLeft &&
+            group.hitRight === other.hitRight &&
             group.spacing === other.spacing &&
             group.count === other.count &&
             group.highlighted === other.highlighted &&
@@ -227,7 +259,8 @@ export const hitOffscreenGroup = <T>(
     for (const group of groups) {
         if (
             isEdgeGroup(group) &&
-            Math.abs(x - (group.x ?? 0)) <= group.spacing / 2 &&
+            x >= (group.hitLeft ?? 0) &&
+            x <= (group.hitRight ?? 0) &&
             Math.abs(y - group.y) <= ROW_REACH / 2
         )
             return group.targets.length ? group : undefined

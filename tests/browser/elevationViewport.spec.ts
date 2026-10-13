@@ -153,6 +153,21 @@ test.describe('the view', () => {
         expect(top).toBeLessThan(height)
     })
 
+    test('drops its last frame while its pane has no size', async ({ page }) => {
+        await open(page)
+        const canvas = page.locator('.elevation-canvas')
+        const size = () => canvas.evaluate((element: HTMLCanvasElement) => element.width)
+        expect(await size()).toBeGreaterThan(0)
+        const hide = (display: string) =>
+            page.evaluate((display) => {
+                document.querySelector<HTMLElement>('.elevation-editor')!.style.display = display
+            }, display)
+        await hide('none')
+        await expect.poll(size).toBe(0)
+        await hide('')
+        await expect.poll(size).toBeGreaterThan(0)
+    })
+
     test('is fitted on a chart load while open side by side', async ({ page }) => {
         await page.evaluate(() => {
             window.editorTest.settings.elevationEditorSideBySide = 'allow'

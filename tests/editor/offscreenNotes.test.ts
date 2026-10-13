@@ -512,7 +512,17 @@ test('a note on a slot boundary stays in its slot wherever the anchor is', () =>
 })
 
 // A 600 by 400 pane whose cells are clear of 60px at either side, from lane x 300.
-const edges = { above: 0, below: 400, floor: 360, left: 60, right: 540, origin: 300 }
+const edges = {
+    above: 0,
+    below: 400,
+    floor: 360,
+    left: 60,
+    right: 540,
+    reachLeft: 0,
+    reachRight: 600,
+    origin: 300,
+    pixelRatio: 1,
+}
 const groupWithEdges = (notes: OffscreenNotePosition<string>[]) => {
     const args = [600, 0, 400, 0, 0] as const
     return [
@@ -650,4 +660,122 @@ test('groupings with top and bottom badges compare their xs', () => {
     assert.ok(isSameOffscreenGroups(at(300), at(300)))
     assert.equal(at(310)[0]!.slot, at(300)[0]!.slot)
     assert.ok(!isSameOffscreenGroups(at(300), at(310)))
+})
+
+// The Elevation Editor's arguments for a pane under a 48px header, at the chart's 16 lane zoom.
+const editorGrouping = (
+    notes: OffscreenNotePosition<string>[],
+    width: number,
+    height: number,
+    anchor: number,
+    reach = { left: 0, right: 0 },
+) => {
+    const header = 48
+    const laneScale = width / (16 * 1.1)
+    const edges = {
+        above: header - laneScale * 0.3,
+        below: height + laneScale * 0.3,
+        floor: height - 60,
+        left: Math.max(42, reach.left + 30),
+        right: width - reach.right - 4,
+        reachLeft: reach.left,
+        reachRight: width - reach.right,
+        origin: Math.round(width / 2),
+        pixelRatio: 1,
+    }
+    const args = [width, header + 4, height, 0, anchor] as const
+    return {
+        edges,
+        groups: [
+            ...groupOffscreenNotes(notes, ...args),
+            ...groupOffscreenEdgeNotes(notes, ...args, edges),
+        ],
+    }
+}
+
+test('every note off the pane is on one badge at any anchor, past the side bands too', () => {
+    for (const [width, height] of [
+        [1600, 900],
+        [700, 900],
+        [390, 760],
+    ] as const) {
+        for (const anchor of [0, 7.25, 13.5, 21.75, 100.3]) {
+            const notes: OffscreenNotePosition<string>[] = []
+            for (let y = -400; y <= height + 400; y++)
+                for (const [left, right] of [
+                    [-30, -20],
+                    [width / 2 - 10, width / 2 + 10],
+                    [width + 20, width + 30],
+                ] as const)
+                    notes.push({ ...note(left, right, y - anchor), target: `${left} ${y}` })
+            const { edges, groups } = editorGrouping(notes, width, height, anchor)
+            const shown = groups.flatMap((group) => group.targets)
+            const off = notes.filter(
+                (note) =>
+                    note.right < 0 ||
+                    note.left > width ||
+                    anchor + note.y < edges.above ||
+                    anchor + note.y > edges.below,
+            )
+            const name = `${width} ${anchor}`
+            assert.equal(new Set(shown).size, shown.length, name)
+            assert.deepEqual(new Set(shown), new Set(off.map((note) => note.target)), name)
+        }
+    }
+})
+
+test('a pane without a size has no top or bottom badges', () => {
+    const notes = [note(-20, -10, -500), note(290, 310, -50)]
+    const { edges } = editorGrouping(notes, 600, 400, 0)
+    assert.deepEqual(groupOffscreenEdgeNotes(notes, 0, 52, 0, 0, 0, edges), [])
+    assert.deepEqual(groupOffscreenEdgeNotes(notes, 600, 52, 52, 0, 0, edges), [])
+})
+
+test('the end cells reach the side badges, so the top row tiles with them', () => {
+    const reach = offscreenBadgeHitWidth(1)
+    // Held at the top of either side, and far past either end of the top row.
+    const notes = [
+        { ...note(-20, -10, 70), target: 'left' },
+        { ...note(610, 620, 70), target: 'right' },
+        { ...note(-300, -290, -50), target: 'top left' },
+        { ...note(900, 910, -50), target: 'top right' },
+    ]
+    const { groups } = editorGrouping(notes, 600, 400, 0, { left: reach, right: reach })
+    const top = groups.filter(({ side }) => side === 'top')
+    assert.equal(top.length, 2)
+    const y = top[0]!.y
+    assert.ok(groups.some(({ side, fixed, y: held }) => side === 'left' && fixed && held === y))
+    for (let x = 0; x <= 600; x += 0.5) {
+        const hit = hitOffscreenGroup(groups, x, y, 600)
+        const expected = x < reach ? 'left' : x > 600 - reach ? 'right' : undefined
+        if (expected) assert.equal(hit?.side, expected, `${x}`)
+        else if (x <= top[0]!.x! + 24 || x >= top[1]!.x! - 24)
+            assert.equal(hit?.side, 'top', `${x}`)
+    }
+    // One badge for the row reaches across it.
+    const narrow = editorGrouping([notes[2]!], 120, 400, 0, { left: 20, right: 20 })
+    const [single] = narrow.groups
+    assert.deepEqual([single!.hitLeft, single!.hitRight], [20, 100])
+})
+
+test('top and bottom badges land on device pixels', () => {
+    for (const [pixelRatio, x, bottom] of [
+        [1, 50, 346],
+        [2, 50.5, 345.5],
+    ] as const) {
+        const [single] = groupOffscreenEdgeNotes([note(0, 10, -50)], 100, 0, 400, 0, 0, {
+            ...edges,
+            left: 30.6,
+            right: 70,
+            origin: 0,
+            pixelRatio,
+        })
+        assert.equal(single!.x, x)
+        const [row] = groupOffscreenEdgeNotes([note(290, 310, 450)], 600, 0, 400, 0, 0, {
+            ...edges,
+            floor: 359.7,
+            pixelRatio,
+        })
+        assert.equal(row!.y, bottom)
+    }
 })
