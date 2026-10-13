@@ -62,7 +62,7 @@ import {
 } from '../canvas/text'
 import { createNoteRenderer } from '../canvas/notes'
 import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
-import { toCommittedEntity, toSceneEntity } from '../sceneState'
+import { isScenePreview, toCommittedEntity, toSceneEntity } from '../sceneState'
 import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler, prepareSurface } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
@@ -1462,7 +1462,7 @@ const connectionsOf = (
         source.bpms,
         source.store.slides.info,
     )
-// Solid connections, and a Basic drag's ghosts: the preview's at its moved rows.
+// Solid connections, and a Basic drag's ghosts: pieces its moved notes' slides gain, as on the chart.
 const connections = computed(() => {
     const drag = elevationDragRows.value
     const preview = elevationState.value
@@ -1478,14 +1478,23 @@ const connections = computed(() => {
         committed.bpms,
         new Map([...slideIds].map((id) => [id, sourceOf(id).store.slides.info.get(id) ?? []])),
     )
-    const ghosts = new Set(drag.ghosts)
+    // A drag selects the notes it moves; its solid previewed slides have no ghosts.
+    const moved = new Set(
+        preview.selectedEntities.flatMap((entity) =>
+            entity.type === 'note' && !drag.live.has(entity.slideId) ? [entity.slideId] : [],
+        ),
+    )
+    // Pieces the committed slides lack, such as one a note leaving the beat makes between two here.
+    const tails = new Map(
+        [...moved].flatMap((id) =>
+            (committed.store.slides.connector.get(id) ?? []).map(({ head, tail }) => [head, tail]),
+        ),
+    )
     return {
         solid,
-        ghosts: connectionsOf(
-            elevationLayout.value.rows,
-            preview,
-            new Set(drag.ghosts.map((row) => row.note.slideId)),
-        ).filter((connection) => ghosts.has(connection.head) || ghosts.has(connection.tail)),
+        ghosts: connectionsOf(elevationLayout.value.rows, preview, moved).filter(
+            ({ connector }) => tails.get(connector.head) !== connector.tail,
+        ),
     }
 })
 
@@ -1511,7 +1520,9 @@ watchEffect(() => {
             ? hoveredEntities.value
             : hoveredEntities.value.map((entity) => toSceneEntity(entity, current)),
     )
-    const creatingRows = creating.value.map((row) => ({
+    // A preview scene, but a draft's, hides them, as on the chart.
+    const shownCreating = isScenePreview.value && !previewEdit.value?.isDraft ? [] : creating.value
+    const creatingRows = shownCreating.map((row) => ({
         ...row,
         x: layout.xAt(row.lane),
         y: layout.yAt(row.elevation),
@@ -1521,7 +1532,7 @@ watchEffect(() => {
     // A paste ghost's notes are drawn as their pasted slides make them, as on the chart.
     const ghostInfos = isPaste ? pasteGhostInfos() : undefined
     const ghosts = [...(drag?.ghosts ?? []), ...creatingRows]
-    // Connectors under the ghost notes: a paste's built ones, a drag's at its moved notes.
+    // Connectors under the ghost notes: a paste's built ones, a drag's new pieces.
     const ghostConnections = [
         ...dragConnections,
         ...(isPaste && creatingRows.length
@@ -1707,7 +1718,7 @@ watchEffect(() => {
             if (selected.has(row.note)) drawSolid(row)
         }
         // As the chart's: ghosts composite as one layer at half opacity, so overlaps don't darken.
-        if (ghosts.length) {
+        if (ghosts.length || ghostConnections.length) {
             ghostCanvas ??= document.createElement('canvas')
             const ghostCtx = prepareSurface(ghostCanvas, layout.width, layout.height, ratio, {
                 l: 0,

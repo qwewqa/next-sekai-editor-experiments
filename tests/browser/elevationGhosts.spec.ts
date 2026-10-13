@@ -58,10 +58,15 @@ type Note = {
 const seed = (
     page: Page,
     slides: Note[][],
-    options: { layout?: 'basic' | 'composed'; sideBySide?: boolean; groupName?: boolean } = {},
+    options: {
+        layout?: 'basic' | 'composed'
+        sideBySide?: boolean
+        groupName?: boolean
+        bpms?: { beat: number; bpm: number }[]
+    } = {},
 ) =>
     page.evaluate(
-        async ({ slides, layout, sideBySide, groupName }) => {
+        async ({ slides, layout, sideBySide, groupName, bpms }) => {
             const { fixtures, show, settings, view, history, appImport, nextTick } =
                 window.editorTest
             const base = fixtures.interaction.slides[0]![0]!
@@ -70,6 +75,7 @@ const seed = (
                 {
                     ...fixtures.interaction,
                     isDynamicStages: true,
+                    ...(bpms ? { bpms } : {}),
                     stagePivotEvents: [
                         { ...pivot, stageId: base.stageId, beat: 0, pivotLane: 0.5 },
                     ],
@@ -107,6 +113,7 @@ const seed = (
             layout: options.layout ?? 'basic',
             sideBySide: !!options.sideBySide,
             groupName: !!options.groupName,
+            bpms: options.bpms,
         },
     )
 
@@ -346,6 +353,8 @@ test('overlapping paste ghosts composite as one half-opacity layer, coloured as 
     expect(landed[3]).toBe(255)
     expectClose(single.slice(0, 3), landed.slice(0, 3), 2)
     await useTool(page, 'select')
+    // Once drawn, without its ghosts.
+    await settle(page)
     expect(await leftovers(page)).toEqual(none)
 })
 
@@ -384,7 +393,8 @@ test('a Slide add ghost draws no ribbon', async ({ page }) => {
         history.replaceState({ ...history.state.value, selectedEntities: [head!] })
     })
     await useTool(page, 'slide')
-    const ribbon = await at(page, 8, 5)
+    // Where its ribbon would run, from the tail at lane 0 and elevation 4 to the ghost at lane 8 and 6.
+    const ribbon = await at(page, 4, 5)
     const sample = await clearPoint(page, 'elevation', { x: ribbon.x, y: ribbon.y })
     const target = await at(page, 8, 6)
     await page.mouse.move(target.x - 3, target.y)
@@ -437,6 +447,128 @@ test('a Basic move ghosts the moved note and its ribbons over the solid committe
     expect(droppedNote[3]).toBe(255)
     expectClose(ghostNote.slice(0, 3), droppedNote.slice(0, 3), 2)
     expect(await leftovers(page)).toEqual(none)
+})
+
+/** Once the chart's eased scroll to the beat ends. */
+const scrolled = (page: Page) =>
+    expect
+        .poll(() =>
+            page.evaluate(() => {
+                const { view } = window.editorTest
+                return !view.scrollingX && !view.scrollingY && !view.scrollingPane
+            }),
+        )
+        .toBe(true)
+
+test('a Composed drag that retimes keeps the committed notes solid under its ghosts, as the chart', async ({
+    page,
+}) => {
+    // A note at beat 1 and the tempo change at 2, both moved 2 beats later.
+    await seed(page, [[{ beat: 1, left: -2, elevation: 1 }]], {
+        layout: 'composed',
+        sideBySide: true,
+        bpms: [
+            { beat: 0, bpm: 120 },
+            { beat: 2, bpm: 60 },
+        ],
+    })
+    await scrolled(page)
+    const sample = await clearPoint(page, 'elevation', await at(page, 0, 1))
+    // The pointer goes to the chart, which takes the press.
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(chart.x + 20, chart.y + 20)
+    const drag = await page.evaluate(async () => {
+        const { history, store, point, appImport } = window.editorTest
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const { isScenePreview } = await appImport<typeof import('../../src/editor/sceneState')>(
+            '/src/editor/sceneState.ts',
+        )
+        const { isElevationGhostDrag } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const { beatToTime } = await appImport<typeof import('../../src/state/integrals/bpms')>(
+            '/src/state/integrals/bpms.ts',
+        )
+        const source = history.state.value
+        const [note] = [...source.store.slides.note.values()].flat()
+        history.replaceState({
+            ...source,
+            selectedEntities: [...store.getAllEntities()].filter(
+                (entity) => entity.type === 'note' || (entity.type === 'bpm' && entity.beat > 0),
+            ),
+        })
+        const lane = createComposedLayout(source).noteLeft(note!) + note!.size / 2
+        const start = point(lane, beatToTime(source.bpms, note!.beat) * 2)
+        const end = point(lane, beatToTime(source.bpms, note!.beat + 2) * 2)
+        const modifiers = { ctrl: false, shift: false }
+        select.dragStart!(start.x, start.y, modifiers)
+        select.dragUpdate!(end.x, end.y, modifiers)
+        return { scenePreview: isScenePreview.value, ghostDrag: isElevationGhostDrag.value }
+    })
+    expect(drag).toEqual({ scenePreview: false, ghostDrag: true })
+    await settle(page)
+    // The pane follows the press to beat 1, where the note stays drawn as committed.
+    expect(await leftovers(page)).toMatchObject({ preview: true })
+    expect((await pixel(page, 'elevation', sample))[3]).toBe(255)
+    await page.evaluate(async () => {
+        const { select } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools/select')
+        >('/src/editor/tools/select.ts')
+        select.dragCancel!()
+    })
+})
+
+test('a preview scene hides a hover ghost, as on the chart', async ({ page }) => {
+    await seed(page, [[{ left: 4, elevation: 1 }]], { layout: 'composed' })
+    const target = await at(page, -4, 3.5)
+    const sample = await clearPoint(page, 'elevation', target)
+    await copy(page, [0])
+    await hover(page, target)
+    expect(await leftovers(page)).toMatchObject({ rows: 1, canvas: true })
+    expect((await pixel(page, 'elevation', sample))[3]).toBeGreaterThan(100)
+    // A preview that isn't a draft, such as a dialog's, shows in Composed.
+    await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { setPreviewEdit } =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const source = history.state.value
+        setPreviewEdit(source, () => ({ ...source }))
+    })
+    await settle(page)
+    expect(await leftovers(page)).toMatchObject({ rows: 1, canvas: false })
+    expect((await pixel(page, 'elevation', sample))[3]).toBe(0)
+})
+
+test('a chart move taking a note off the beat ghosts the ribbon it leaves between unmoved notes', async ({
+    page,
+}) => {
+    // The middle note is off to the right, so the ribbon joining the others runs clear of it.
+    await seed(
+        page,
+        [
+            [
+                { left: -2, elevation: 0 },
+                { left: 2, elevation: 2 },
+                { left: -2, elevation: 4 },
+            ],
+        ],
+        { sideBySide: true },
+    )
+    await scrolled(page)
+    await settle(page)
+    const sample = await clearPoint(page, 'elevation', await at(page, 0, 2))
+    const point = (lane: number, beat: number) =>
+        page.evaluate(({ lane, beat }) => window.editorTest.point(lane, beat), { lane, beat })
+    await hold(page, await point(4, 3), await point(4, 5))
+    expect(await leftovers(page)).toMatchObject({ preview: true, dragGhosts: 0, canvas: true })
+    const ghost = await pixel(page, 'elevation', sample)
+    expect(ghost[3]).toBeGreaterThan(30)
+    expect(ghost[3]).toBeLessThan(160)
+    await page.mouse.up()
 })
 
 test('a Composed move stays live', async ({ page }) => {

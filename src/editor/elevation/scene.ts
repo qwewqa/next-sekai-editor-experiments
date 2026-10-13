@@ -13,6 +13,7 @@ import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
 import { dominantDivision } from '../composed'
 import { getComposedLayout } from '../composedView'
+import { isScenePreview } from '../sceneState'
 import { scopeLookup } from '../scope'
 import { entityScopeVisibility } from '../scopeRules'
 import { view } from '../view'
@@ -144,18 +145,23 @@ const notesOf = (
 export const elevationNotes = computed(() =>
     notesOf(compiledChart.value, gridNotes.value, bpms.value, elevationComposed.value),
 )
-/** Whether a drag's preview shows as ghosts over the committed notes: in Basic, as on the chart. */
+/** Whether a drag shows as ghosts over the committed notes: as on the chart, unless its scene is the preview. */
 export const isElevationGhostDrag = computed(
     () =>
         !!previewEdit.value?.isDrag &&
         elevationState.value !== state.value &&
-        (view.layout !== 'composed' || !state.value.isDynamicStages),
+        !isScenePreview.value,
 )
 const committedNotes = computed(() => {
     if (!isElevationGhostDrag.value) return
     const committed = state.value
     const compiled = indexChart(buildCommittedChart(committed, settings.previewNoteSpeed))
-    return notesOf(compiled, committed.store.grid.note, committed.bpms, undefined)
+    return notesOf(
+        compiled,
+        committed.store.grid.note,
+        committed.bpms,
+        getComposedLayout(committed),
+    )
 })
 // Pixels per lane: the chart's lane zoom, with a margin.
 export const elevationLaneScale = computed(() => elevationBounds.w / (settings.width * 1.1))
