@@ -134,20 +134,19 @@ export const view = shallowReactive({
                   viewTime: number
               }
           }
-        | {
-              // Another pane's eased scroll, in its own units.
-              type: 'paneEase'
-              navigation: EditorNavigation
-              from: {
-                  time: number
-                  value: number
-              }
-              to: {
-                  time: number
-                  value: number
-              }
-          }
     >(),
+    // Another pane's eased scroll, in its own units; the chart's own scrolls leave it.
+    scrollingPane: optional<{
+        navigation: EditorNavigation
+        from: {
+            time: number
+            value: number
+        }
+        to: {
+            time: number
+            value: number
+        }
+    }>(),
 })
 
 // Under reduced motion, eased scrolls jump to their end unless smooth scrolling is chosen.
@@ -212,20 +211,19 @@ watch(time, ({ now, delta }) => {
                 )
                 break
             }
-            case 'paneEase': {
-                // A pane switch clears it, as it does every scroll.
-                const { navigation, from, to } = view.scrollingY
-                if (now >= to.time || isInstant()) {
-                    view.scrollingY = undefined
-                    navigation.setScrollY?.(to.value)
-                    break
-                }
-                navigation.setScrollY?.(
-                    lerp(from.value, to.value, 1 - (1 - unlerp(from.time, to.time, now)) ** 2),
-                )
-                break
-            }
         }
+    }
+
+    if (view.scrollingPane) {
+        // A pane switch clears it, as it does every scroll.
+        const { navigation, from, to } = view.scrollingPane
+        if (now >= to.time || isInstant()) {
+            view.scrollingPane = undefined
+            navigation.setScrollY?.(to.value)
+        } else
+            navigation.setScrollY?.(
+                lerp(from.value, to.value, 1 - (1 - unlerp(from.time, to.time, now)) ** 2),
+            )
     }
 })
 
@@ -338,11 +336,12 @@ export const scrollViewYBy = (dy: number, smooth = false) => {
 
     const navigation = editorNavigation.value
     if (navigation) {
-        const ease = view.scrollingY?.type === 'paneEase' ? view.scrollingY : undefined
+        const ease = view.scrollingPane
         if (smooth && navigation.getScrollY && navigation.setScrollY) {
             const value = navigation.getScrollY()
-            view.scrollingY = {
-                type: 'paneEase',
+            // Set now, so a refit before its first step can't drop it.
+            navigation.setScrollY(value)
+            view.scrollingPane = {
                 navigation,
                 from: { time: time.value.now, value },
                 to: {

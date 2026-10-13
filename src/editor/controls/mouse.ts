@@ -117,6 +117,7 @@ const mousedown = (event: MouseEvent) => {
 
     view.scrollingY = undefined
     view.scrollingX = undefined
+    view.scrollingPane = undefined
     stopPlayer(false)
     if (!mouseGesture.pointerCount) beginAudioPreviewInteraction()
 

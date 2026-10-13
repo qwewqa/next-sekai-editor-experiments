@@ -21,6 +21,7 @@ export const activateEditorNavigation = (navigation?: EditorNavigation) => {
     if (editorNavigation.value !== navigation) {
         view.scrollingX = undefined
         view.scrollingY = undefined
+        view.scrollingPane = undefined
         view.entities = { hovered: [], creating: [] }
         editorNavigation.value = navigation
     }

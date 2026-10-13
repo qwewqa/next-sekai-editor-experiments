@@ -276,7 +276,7 @@ const fitViewport = () => {
     needsElevationFit.value = false
     elevationFitSize.value = { w, h }
     // An eased scroll would move it off the fit.
-    if (view.scrollingY?.type === 'paneEase') view.scrollingY = undefined
+    view.scrollingPane = undefined
     fitElevationViewport(
         elevationBounds.h,
         elevationNotes.value,
@@ -1706,6 +1706,7 @@ onMounted(() => {
     document.fonts.addEventListener('loadingdone', updateFont)
     view.scrollingY = undefined
     view.scrollingX = undefined
+    view.scrollingPane = undefined
     fitViewport()
     panelTools.value = Object.fromEntries(
         (Object.keys(tools) as (keyof typeof tools)[]).map((name) => [
@@ -1781,6 +1782,7 @@ onUnmounted(() => {
     if (editorNavigation.value === navigation) editorNavigation.value = undefined
     view.scrollingX = undefined
     view.scrollingY = undefined
+    view.scrollingPane = undefined
     view.entities = { hovered: [], creating: [] }
 })
 </script>

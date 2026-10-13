@@ -108,6 +108,7 @@ const touchstart = (event: TouchEvent) => {
 
     view.scrollingY = undefined
     view.scrollingX = undefined
+    view.scrollingPane = undefined
     if (!touchGesture.pointerCount) wasPlaying = isPlaying.value
     stopPlayer(false)
     if (!touchGesture.pointerCount) beginAudioPreviewInteraction()

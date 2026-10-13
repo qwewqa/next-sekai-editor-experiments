@@ -622,20 +622,52 @@ test.describe('smooth scrolling', () => {
     const viewport = (page: Page) =>
         page.evaluate(async (path) => {
             const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
-            const scrolling = window.editorTest.view.scrollingY
+            const ease = window.editorTest.view.scrollingPane
             return {
                 center: elevationViewport.center,
                 scale: elevationViewport.scale,
-                type: scrolling?.type,
-                target: scrolling?.type === 'paneEase' ? scrolling.to.value : undefined,
+                easing: !!ease,
+                target: ease?.to.value,
             }
         }, viewportPath)
+    /**
+     * Wheels over the pane, or presses Page Down, and stretches the ease it starts to two seconds
+     * in the same turn, so it is still running when read.
+     */
+    const startEase = (page: Page, input: number | 'PageDown') =>
+        page.evaluate(
+            async ({ path, input }) => {
+                const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
+                const before = elevationViewport.center
+                if (input === 'PageDown')
+                    document.body.dispatchEvent(
+                        new KeyboardEvent('keydown', {
+                            key: 'PageDown',
+                            code: 'PageDown',
+                            bubbles: true,
+                            cancelable: true,
+                        }),
+                    )
+                else
+                    document.querySelector('.elevation-editor .editor')!.dispatchEvent(
+                        new WheelEvent('wheel', {
+                            deltaY: input,
+                            bubbles: true,
+                            cancelable: true,
+                        }),
+                    )
+                const ease = window.editorTest.view.scrollingPane
+                if (ease) ease.to.time = ease.from.time + 2
+                return { before, target: ease?.to.value }
+            },
+            { path: viewportPath, input },
+        )
     // The centre each frame until the scroll ends.
     const frames = (page: Page) =>
         page.evaluate(async (path) => {
             const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
             const centers: number[] = []
-            for (let i = 0; i < 120 && window.editorTest.view.scrollingY; i++) {
+            for (let i = 0; i < 600 && window.editorTest.view.scrollingPane; i++) {
                 await new Promise((resolve) => requestAnimationFrame(resolve))
                 centers.push(elevationViewport.center)
             }
@@ -653,55 +685,45 @@ test.describe('smooth scrolling', () => {
     })
 
     test('the wheel eases the view to where it scrolls', async ({ page }) => {
-        const start = await viewport(page)
-        await page.mouse.wheel(0, 200)
-        const easing = await viewport(page)
-        expect(easing.type).toBe('paneEase')
-        const target = start.center - 200 / start.scale
-        expect(easing.target).toBeCloseTo(target, 9)
+        const { scale } = await viewport(page)
+        const { before, target } = await startEase(page, 200)
+        expect(target).toBeCloseTo(before - 200 / scale, 9)
         const centers = await frames(page)
-        expect(centers.some((center) => isBetween(center, start.center, target))).toBe(true)
-        expect(centers.at(-1)).toBeCloseTo(target, 9)
+        expect(centers.some((center) => isBetween(center, before, target!))).toBe(true)
+        expect(centers.at(-1)).toBeCloseTo(target!, 9)
         // A second wheel mid-way adds to where the first was going.
-        await page.mouse.wheel(0, 100)
-        await page.mouse.wheel(0, 100)
-        expect((await viewport(page)).target).toBeCloseTo(target - 200 / start.scale, 9)
+        await startEase(page, 100)
+        expect((await startEase(page, 100)).target).toBeCloseTo(target! - 200 / scale, 9)
     })
 
     test('Page Down eases', async ({ page }) => {
-        const start = await viewport(page)
-        await page.keyboard.press('PageDown')
-        const easing = await viewport(page)
-        expect(easing.type).toBe('paneEase')
+        const { before, target } = await startEase(page, 'PageDown')
+        expect(target).toBeLessThan(before)
         const centers = await frames(page)
-        expect(centers.some((center) => isBetween(center, start.center, easing.target!))).toBe(true)
-        expect(centers.at(-1)).toBeCloseTo(easing.target!, 9)
-        expect(easing.target).toBeLessThan(start.center)
+        expect(centers.some((center) => isBetween(center, before, target!))).toBe(true)
+        expect(centers.at(-1)).toBeCloseTo(target!, 9)
     })
 
     test('a press stops it where it is', async ({ page }) => {
-        const start = await viewport(page)
-        const target = start.center - 400 / start.scale
-        await page.mouse.wheel(0, 400)
+        const { before, target } = await startEase(page, 400)
+        await settle(page)
         await page.mouse.down()
         const stopped = await viewport(page)
-        expect(stopped.type).toBeUndefined()
+        expect(stopped.easing).toBe(false)
         await settle(page)
         expect((await viewport(page)).center).toBe(stopped.center)
-        expect(stopped.center).not.toBeCloseTo(target, 3)
-        expect(stopped.center).toBeLessThanOrEqual(start.center)
+        expect(isBetween(stopped.center, before, target!)).toBe(true)
         await page.mouse.up()
     })
 
     test('a direct scroll during it moves where it ends', async ({ page }) => {
-        const start = await viewport(page)
-        await page.keyboard.press('PageDown')
-        const { target } = await viewport(page)
+        const { scale } = await viewport(page)
+        const { target } = await startEase(page, 'PageDown')
         await page.evaluate(() => (window.editorTest.settings.mouseSmoothScrolling = false))
         await page.mouse.wheel(0, 100)
-        expect((await viewport(page)).target).toBeCloseTo(target! - 100 / start.scale, 9)
+        expect((await viewport(page)).target).toBeCloseTo(target! - 100 / scale, 9)
         const centers = await frames(page)
-        expect(centers.at(-1)).toBeCloseTo(target! - 100 / start.scale, 9)
+        expect(centers.at(-1)).toBeCloseTo(target! - 100 / scale, 9)
     })
 
     test('with reduced motion and smooth scrolling off, Page Down jumps', async ({ page }) => {
@@ -735,19 +757,42 @@ test.describe('smooth scrolling', () => {
     })
 
     test('a chart load fitting the view drops it', async ({ page }) => {
-        await page.mouse.wheel(0, 400)
-        expect((await viewport(page)).type).toBe('paneEase')
-        // As a chart load while it's open asks.
-        await page.evaluate(async (path) => {
+        const { target } = await startEase(page, 400)
+        await settle(page)
+        // As a chart load while it's open asks, while it runs.
+        const fit = await page.evaluate(async (path) => {
+            const easing = !!window.editorTest.view.scrollingPane
             const { needsElevationFit } = await window.editorTest.appImport<Viewport>(path)
             needsElevationFit.value = true
             await window.editorTest.nextTick()
+            return easing
         }, viewportPath)
+        expect(fit).toBe(true)
         const fitted = await viewport(page)
-        expect(fitted.type).toBeUndefined()
+        expect(fitted.easing).toBe(false)
+        expect(fitted.center).not.toBeCloseTo(target!, 3)
         await settle(page)
         await settle(page)
         expect((await viewport(page)).center).toBe(fitted.center)
+    })
+
+    test('a wheel keeps the view from a refit as the pane settles', async ({ page }) => {
+        const kept = await page.evaluate(async (path) => {
+            const { elevationFitSize } = await window.editorTest.appImport<Viewport>(path)
+            const fitted = !!elevationFitSize.value
+            document
+                .querySelector('.elevation-editor .editor')!
+                .dispatchEvent(new WheelEvent('wheel', { deltaY: 400, bubbles: true }))
+            const ease = window.editorTest.view.scrollingPane!
+            ease.to.time = ease.from.time + 2
+            return { fitted, kept: !elevationFitSize.value, target: ease.to.value }
+        }, viewportPath)
+        expect(kept.fitted).toBe(true)
+        expect(kept.kept).toBe(true)
+        // A new pane size refits only a view not yet adjusted.
+        await page.setViewportSize({ width: 1180, height: 640 })
+        const centers = await frames(page)
+        expect(centers.at(-1)).toBeCloseTo(kept.target, 9)
     })
 
     test('switching panes drops it', async ({ page }) => {
@@ -761,16 +806,72 @@ test.describe('smooth scrolling', () => {
         await page.mouse.move(empty.x, empty.y)
         const time = await page.evaluate(() => window.editorTest.view.time)
         const chart = (await page.locator('canvas.editor-chart').boundingBox())!
-        const start = await viewport(page)
-        const target = start.center - 400 / start.scale
-        await page.mouse.wheel(0, 400)
+        const { before, target } = await startEase(page, 400)
+        await settle(page)
         await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
-        expect((await viewport(page)).type).toBeUndefined()
+        expect((await viewport(page)).easing).toBe(false)
         await settle(page)
         const { center } = await viewport(page)
         await settle(page)
         expect((await viewport(page)).center).toBe(center)
-        expect(center).not.toBeCloseTo(target, 3)
+        expect(isBetween(center, before, target!)).toBe(true)
         expect(await page.evaluate(() => window.editorTest.view.time)).toBe(time)
     })
+
+    for (const first of ['pane', 'chart'] as const)
+        test(`a scroll here and a pan of the chart beside it both finish (${first} first)`, async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 1920, height: 1080 })
+            await page.evaluate(() => {
+                window.editorTest.settings.elevationEditorSideBySide = 'allow'
+            })
+            await expect(page.locator('canvas.editor-chart')).toBeVisible()
+            await settle(page)
+            const empty = await at(page, 6, 6)
+            await page.mouse.move(empty.x, empty.y)
+            // In one turn: a wheel here, and a typed beat far off, which pans the chart to it.
+            const targets = await page.evaluate((first) => {
+                const { view } = window.editorTest
+                const wheel = () =>
+                    document
+                        .querySelector('.elevation-editor .editor')!
+                        .dispatchEvent(new WheelEvent('wheel', { deltaY: 400, bubbles: true }))
+                const pan = () => {
+                    const beat = document.querySelector<HTMLInputElement>(
+                        '.elevation-beat-field input',
+                    )!
+                    beat.value = '40'
+                    beat.dispatchEvent(new Event('change'))
+                }
+                if (first === 'pane') {
+                    wheel()
+                    pan()
+                } else {
+                    pan()
+                    wheel()
+                }
+                return {
+                    pane: view.scrollingPane?.to.value,
+                    chart:
+                        view.scrollingY?.type === 'ease' ? view.scrollingY.to.viewTime : undefined,
+                }
+            }, first)
+            expect(targets.pane).toBeDefined()
+            expect(targets.chart).toBeDefined()
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            !window.editorTest.view.scrollingPane &&
+                            !window.editorTest.view.scrollingY,
+                    ),
+                )
+                .toBe(true)
+            expect((await viewport(page)).center).toBeCloseTo(targets.pane!, 9)
+            expect(await page.evaluate(() => window.editorTest.view.time)).toBeCloseTo(
+                targets.chart!,
+                9,
+            )
+        })
 })
