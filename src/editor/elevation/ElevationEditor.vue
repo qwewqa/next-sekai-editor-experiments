@@ -47,6 +47,7 @@ import { editSelectedNote } from '../../state/operations/note'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
 import { editChanges } from '../../state/operations/properties/plan'
 import { createTransaction } from '../../state/transaction'
+import { interpolate } from '../../utils/interpolate'
 import { isComposingKey } from '../../utils/composition'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
 import { committedGrid } from '../beatGrid'
@@ -92,7 +93,7 @@ import { quickEdit } from '../utils/quickEdit'
 import LevelEditorToolbar from '../toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from '../EditorToolModalHost.vue'
 import LevelEditorNotification from '../LevelEditorNotification.vue'
-import { notification } from '../notification'
+import { clearNotification, notification, notify } from '../notification'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
 import { hasToolModal, showToolModal } from '../toolModals'
@@ -506,6 +507,8 @@ let marquee:
           elevation: number
           selected: State['selectedEntities']
           targets: State['selectedEntities']
+          // The selection's size last said.
+          count: number
       }
     | undefined
 
@@ -623,6 +626,31 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
         },
     )
 }
+// As the chart's: a width change edits, a lane change moves; else only elevations changed.
+const editMessage = (active: NonNullable<typeof drag>, changed: NoteEntity[]) => {
+    const store = active.source.store
+    const changes = (key: 'left' | 'size') =>
+        changed.some((note) => {
+            const object = editedObject(active, note)
+            return (
+                'left' in object &&
+                editChanges(
+                    store,
+                    note,
+                    key === 'left' ? { left: object.left } : { size: object.size },
+                )
+            )
+        })
+    const tool = noticeTool()
+    const count = `${changed.length}`
+    if (changes('size'))
+        return interpolate(
+            () => i18n.value.tools[tool === 'slide' ? 'slide' : 'note'].edited,
+            count,
+        )
+    if (changes('left')) return interpolate(() => i18n.value.tools[tool].moved, count)
+    return interpolate(() => i18n.value.elevation.changed, count)
+}
 const edit = (active: NonNullable<typeof drag>) => {
     const transaction = createTransaction(active.source)
     const replacements = new Map(
@@ -681,11 +709,31 @@ const selectTargets = (hits: ElevationRow[], modifiers: Modifiers, at?: TapPoint
         targets: modifyEntities(step.target ? [step.target] : [], modifiers),
     }
 }
-const selectAt = (rows: ElevationRow[], modifiers: Modifiers, at?: TapPoint, notesOnly = false) => {
+// The tool whose notices a selection or drag posts, as on the chart.
+const noticeTool = () =>
+    toolName.value === 'note' || toolName.value === 'slide' ? toolName.value : 'select'
+const notifySelected = () => {
+    const tool = noticeTool()
+    notify(
+        interpolate(
+            () => i18n.value.tools[tool].selected,
+            `${state.value.selectedEntities.length}`,
+        ),
+    )
+}
+/** Selects what a tap at rows selects, saying so as the chart's tools do unless `quiet`. */
+const selectAt = (
+    rows: ElevationRow[],
+    modifiers: Modifiers,
+    at?: TapPoint,
+    notesOnly = false,
+    quiet = false,
+) => {
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
     const { cycle, targets } = selectTargets(rows, modifiers, at)
     if (cycle) cycled = cycle
+    const previous = state.value.selectedEntities.length
     replaceState({
         ...state.value,
         selectedEntities: modifiers.ctrl
@@ -694,6 +742,16 @@ const selectAt = (rows: ElevationRow[], modifiers: Modifiers, at?: TapPoint, not
                 : [...new Set([...selected, ...targets])]
             : targets,
     })
+    if (quiet) return
+    if (modifiers.ctrl || targets.length) notifySelected()
+    else if (previous) {
+        const tool = toolName.value
+        notify(() =>
+            tool === 'eraser' || tool === 'brush' || tool === 'generateSlideNotes'
+                ? i18n.value.tools[tool].deselected
+                : i18n.value.tools.select.deselected,
+        )
+    }
 }
 const positionAtPoint = (x: number, y: number) => ({
     lane: xToLane(x),
@@ -911,6 +969,7 @@ const controls: Pick<
                 elevation: position.elevation,
                 slide,
             }
+            notify(interpolate(() => i18n.value.tools[slide ? 'slide' : 'note'].adding, '1'))
             return true
         }
         if (target.type === 'marquee') {
@@ -919,6 +978,7 @@ const controls: Pick<
                 elevation: yToElevation(y),
                 selected: state.value.selectedEntities,
                 targets: [],
+                count: -1,
             }
             return true
         }
@@ -928,8 +988,12 @@ const controls: Pick<
             replaceState({ ...state.value, selectedEntities: [row.note] })
             view.entities = { hovered: [], creating: [] }
         } else if (!state.value.selectedEntities.includes(row.note))
-            selectAt([row], { ctrl: false, shift: false })
-        if (target.type === 'select') return false
+            selectAt([row], { ctrl: false, shift: false }, undefined, false, true)
+        // It only selects, as a tap does.
+        if (target.type === 'select') {
+            notifySelected()
+            return false
+        }
         const eligible = new Set(
             elevationNotes.value
                 .filter((item) => getNoteFieldsIn(state.value.store, item.note).elevation)
@@ -971,6 +1035,18 @@ const controls: Pick<
                 }
             }
         }
+        // Posted now, so a cancel clears it.
+        const tool = noticeTool()
+        const count = `${drag.targets.length}`
+        notify(
+            interpolate(
+                () =>
+                    tool === 'select'
+                        ? i18n.value.tools.select.moving
+                        : i18n.value.tools[tool][target.type === 'resize' ? 'editing' : 'moving'],
+                count,
+            ),
+        )
         return true
     },
     dragUpdate(x, y, modifiers) {
@@ -1031,13 +1107,28 @@ const controls: Pick<
                 ? secondaryTargets(hits, modifiers)
                 : modifyEntities(hits, modifiers)
             marquee.targets = targets
-            replaceState({
-                ...state.value,
-                selectedEntities:
-                    modifiers.ctrl && !isSecondaryTool()
-                        ? [...new Set([...marquee.selected, ...targets])]
-                        : targets,
-            })
+            const selection =
+                modifiers.ctrl && !isSecondaryTool()
+                    ? [...new Set([...marquee.selected, ...targets])]
+                    : targets
+            replaceState({ ...state.value, selectedEntities: selection })
+            // Said on a change only, as a scroll re-runs it.
+            if (marquee.count === selection.length) return
+            marquee.count = selection.length
+            const tool = toolName.value
+            notify(
+                interpolate(
+                    () =>
+                        tool === 'eraser'
+                            ? i18n.value.tools.eraser.erasing
+                            : tool === 'brush'
+                              ? i18n.value.tools.brush.brushing
+                              : tool === 'generateSlideNotes'
+                                ? i18n.value.tools.generateSlideNotes.selecting
+                                : i18n.value.tools.select.selecting,
+                    `${selection.length}`,
+                ),
+            )
             return
         }
         if (!drag) return
@@ -1129,17 +1220,28 @@ const controls: Pick<
             else applyGeneratedSlideNotes(targets)
             return
         }
+        if (marquee) {
+            cancel()
+            notifySelected()
+            return
+        }
         const active = drag
         cancel()
-        // A drop that changes nothing adds no undo step.
-        if (
-            active &&
-            (active.resizing || active.deltaLane || active.deltaElevation) &&
-            active.targets.some((note) =>
-                editChanges(active.source.store, note, editedObject(active, note)),
-            )
-        )
-            pushState(() => i18n.value.elevation.history, edit(active))
+        if (!active) return
+        const changed =
+            active.resizing || active.deltaLane || active.deltaElevation
+                ? active.targets.filter((note) =>
+                      editChanges(active.source.store, note, editedObject(active, note)),
+                  )
+                : []
+        // A drop that changes nothing adds no undo step, and its notice no longer holds.
+        if (!changed.length) {
+            clearNotification()
+            return
+        }
+        const message = editMessage(active, changed)
+        pushState(message, edit(active))
+        notify(message)
     },
     dragCancel: cancel,
 }

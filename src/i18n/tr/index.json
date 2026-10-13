@@ -619,7 +619,7 @@
     "off": "Kapalı",
     "canvas": "Nota yükseklikleri",
     "empty": "Bu vuruşta nota yok",
-    "history": "Nota yüksekliği değiştirildi",
+    "changed": "{0} notanın yüksekliği değiştirildi",
     "close": "Yükseklik editörünü kapat",
     "resize": "Yükseklik editörünü yeniden boyutlandır"
   },

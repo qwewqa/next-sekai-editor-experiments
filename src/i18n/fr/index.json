@@ -619,7 +619,7 @@
     "off": "Désactivé",
     "canvas": "Élévation des notes",
     "empty": "Aucune note à ce temps",
-    "history": "Élévation des notes modifiée",
+    "changed": "Élévation modifiée pour {0} note|Élévation modifiée pour {0} notes",
     "close": "Fermer l’éditeur d’élévation",
     "resize": "Redimensionner l’éditeur d’élévation"
   },

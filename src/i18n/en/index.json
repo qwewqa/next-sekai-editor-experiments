@@ -619,7 +619,7 @@
         "off": "Off",
         "canvas": "Note Elevations",
         "empty": "No notes at this beat",
-        "history": "Changed note elevation",
+        "changed": "Changed elevation of {0} note|Changed elevation of {0} notes",
         "close": "Close Elevation Editor",
         "resize": "Resize Elevation Editor"
     },
