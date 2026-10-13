@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
+type Scene = typeof import('../../src/editor/elevation/scene')
+type ToolState = typeof import('../../src/editor/tools/state')
+const scenePath = '/src/editor/elevation/scene.ts'
+const toolStatePath = '/src/editor/tools/state.ts'
 const errors = new WeakMap<Page, string[]>()
 const settle = (page: Page) =>
     page.evaluate(async () => {
@@ -9,6 +13,24 @@ const settle = (page: Page) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
     })
+// The page point of a lane and elevation in the Elevation Editor.
+const at = async (page: Page, lane: number, elevation: number) => {
+    const local = await page.evaluate(
+        async ({ scenePath, lane, elevation }) => {
+            const { xAt, yAt } = (await window.editorTest.appImport<Scene>(scenePath))
+                .elevationLayout.value
+            return { x: xAt(lane), y: yAt(elevation) }
+        },
+        { scenePath, lane, elevation },
+    )
+    const box = (await page.locator('.elevation-canvas').boundingBox())!
+    return { x: box.x + local.x, y: box.y + local.y }
+}
+const toolName = (page: Page) =>
+    page.evaluate(
+        async (path) => (await window.editorTest.appImport<ToolState>(path)).toolName.value,
+        toolStatePath,
+    )
 const open = async (page: Page) => {
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-canvas')).toBeVisible()
@@ -107,4 +129,48 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
     const canvas = (await page.locator('.elevation-canvas').boundingBox())!
     await expect.poll(lastEmptyY).toBe(header + 80)
     expect(header + 80 - 16).toBeGreaterThanOrEqual(pill.y + pill.height - canvas.y)
+})
+
+test("the Elevation Editor's own context menu doesn't offer to edit elevations", async ({
+    page,
+}) => {
+    await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'selectContextMenu'))
+    await open(page)
+    const note = await at(page, -3, 1)
+    await page.mouse.click(note.x, note.y, { button: 'right' })
+    const menu = page.getByRole('menu')
+    await expect(menu.getByRole('menuitem', { name: 'Copy', exact: true })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toHaveCount(
+        0,
+    )
+    await page.keyboard.press('Escape')
+    // Empty space neither.
+    const empty = await at(page, 6, 6)
+    await page.mouse.click(empty.x, empty.y, { button: 'right' })
+    await page.mouse.click(empty.x, empty.y, { button: 'right' })
+    await expect(menu.getByRole('menuitem', { name: 'Paste', exact: true })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toHaveCount(
+        0,
+    )
+})
+
+test('Edit Elevations from the chart beside an open Elevation Editor changes its beat and keeps the tool', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    await page.evaluate(() => {
+        window.editorTest.settings.mouseSecondaryTool = 'selectContextMenu'
+        window.editorTest.settings.elevationEditorSideBySide = 'allow'
+    })
+    await open(page)
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    await expect(beat).toHaveValue('7')
+    await page.keyboard.press('a')
+    expect(await toolName(page)).toBe('note')
+    const note = await page.evaluate(() => window.editorTest.point(1, 8))
+    await page.mouse.click(note.x, note.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Edit Elevations', exact: true }).click()
+    await expect(beat).toHaveValue('9')
+    expect(await toolName(page)).toBe('note')
 })

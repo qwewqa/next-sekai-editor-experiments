@@ -1,10 +1,14 @@
 import { ref, shallowReactive, shallowRef } from 'vue'
 import { onResetState } from '../../history/resetHooks'
 import { clamp } from '../../utils/math'
+import type { EditorNavigation } from '../navigation'
 import type { ElevationNote } from './layout'
 
 export const elevationViewport = shallowReactive({ center: 2.5, scale: 64 })
 export const elevationBounds = shallowReactive({ x: 0, y: 0, w: 0, h: 0 })
+/** Whether a navigation is the Elevation Editor's, which moves in its bounds. */
+export const isElevationNavigation = (navigation: EditorNavigation | undefined) =>
+    navigation?.bounds === elevationBounds
 // The box selection being dragged, in lanes and elevations, so it stays on them as the view moves.
 export const elevationSelection = shallowRef<{
     laneMin: number

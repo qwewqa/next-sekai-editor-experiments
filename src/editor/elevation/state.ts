@@ -29,7 +29,8 @@ let previousTool: ToolName = 'select'
 export const openElevationEditor = (beat?: number) => {
     if (isElevationEditorOpen.value && beat === undefined) return
 
-    if (!isElevationEditorOpen.value) previousTool = toolName.value
+    const wasOpen = isElevationEditorOpen.value
+    if (!wasOpen) previousTool = toolName.value
     const note = selectedEntities.value.filter((entity) => entity.type === 'note').pop()
     const displayedBeat =
         beat ??
@@ -42,7 +43,8 @@ export const openElevationEditor = (beat?: number) => {
     isElevationEditorOpen.value = true
     view.cursorTime = beatToTime(bpms.value, displayedBeat)
     elevationBeat.value = displayedBeat
-    switchToolTo('elevation')
+    // Open beside the chart, it only changes beat; the tool stays.
+    if (!wasOpen) switchToolTo('elevation')
 }
 
 export const closeElevationEditor = () => {

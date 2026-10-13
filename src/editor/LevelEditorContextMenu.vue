@@ -24,6 +24,7 @@ import SelectSlideNotesIcon from './contextMenu/SelectSlideNotesIcon.vue'
 import { pasteAtContextPosition } from './contextMenuPaste'
 import { canEditSelectionProperties, focusSelectionProperties } from './editSelectionProperties'
 import { openElevationEditor } from './elevation/state'
+import { isElevationNavigation } from './elevation/viewport'
 import PropertiesIcon from './commands/properties/PropertiesIcon.vue'
 import { isCoarsePointer } from './workspace'
 import { editorNavigation } from './navigation'
@@ -62,9 +63,11 @@ const actions = computed(() => {
     const groups: ActionName[][] = []
     const editable = selection.some(isEditableEntity)
     const point = contextMenu.value
-    // Elevations belong to notes: offer the editor for notes or empty space.
+    // Elevations belong to notes: offer the editor for notes or empty space, outside it.
     const canEditElevations =
-        point && (selection.some((entity) => entity.type === 'note') || !selection.length)
+        point &&
+        !isElevationNavigation(editorNavigation.value) &&
+        (selection.some((entity) => entity.type === 'note') || !selection.length)
     if (
         selection.some(
             (entity) =>
