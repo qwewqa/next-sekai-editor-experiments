@@ -923,7 +923,11 @@ const controls: Pick<
             return true
         }
         const { row } = target
-        if (!state.value.selectedEntities.includes(row.note))
+        // As the chart's, Note and Slide edit the pressed note alone, selecting it.
+        if (toolName.value === 'note' || toolName.value === 'slide') {
+            replaceState({ ...state.value, selectedEntities: [row.note] })
+            view.entities = { hovered: [], creating: [] }
+        } else if (!state.value.selectedEntities.includes(row.note))
             selectAt([row], { ctrl: false, shift: false })
         if (target.type === 'select') return false
         const eligible = new Set(

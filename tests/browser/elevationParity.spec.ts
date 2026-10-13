@@ -366,3 +366,49 @@ test.describe('with touch', () => {
         expect((await clip(page)).reads).toBeGreaterThan(reads)
     })
 })
+
+const elevations = (page: Page) =>
+    page.evaluate(() => {
+        const { snapshot, history } = window.editorTest
+        const notes = [...history.state.value.store.slides.note.values()].flat()
+        const selected = history.state.value.selectedEntities
+        return {
+            all: notes
+                .filter((note) => note.beat === 6)
+                .map((note) => note.elevation)
+                .sort((a, b) => a - b),
+            selected: notes
+                .filter((note) => selected.includes(note))
+                .map((note) => note.elevation)
+                .sort((a, b) => a - b),
+            count: snapshot().notes.length,
+        }
+    })
+
+for (const tool of ['Note', 'Slide'] as const)
+    test(`a ${tool} tool drag edits only the pressed note, selecting it`, async ({ page }) => {
+        await open(page)
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: [...history.state.value.store.slides.note.values()]
+                    .flat()
+                    .filter((note) => note.beat === 6),
+            })
+        })
+        expect((await elevations(page)).selected).toEqual([1, 3])
+        await page.keyboard.press(tool === 'Note' ? 'a' : 's')
+        const start = await at(page, 3, 3)
+        const end = await at(page, 3, 5)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(end.x, end.y, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await elevations(page)).toEqual({ all: [1, 5], selected: [5], count: 3 })
+        // Undo returns it, still alone selected, as on the chart.
+        await page.keyboard.press('Control+z')
+        await settle(page)
+        expect(await elevations(page)).toEqual({ all: [1, 3], selected: [3], count: 3 })
+    })
