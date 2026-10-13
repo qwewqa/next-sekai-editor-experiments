@@ -8,7 +8,6 @@ import { scalingTool } from '../scaling/tool'
 import { view } from '../view'
 import { bpm } from './bpm'
 import { brush } from './brush'
-import { elevation } from './elevation'
 import { eraser } from './eraser'
 import { cameraEvent } from './events/camera'
 import { stageMaskEvent } from './events/stage/mask'
@@ -47,7 +46,6 @@ export type Tool = {
 
 export const tools = {
     select,
-    elevation,
     eraser,
     brush,
     paste,
@@ -77,9 +75,7 @@ export const panelTools = shallowRef<Partial<Record<ToolName, Tool>>>({})
 const normalTool = computed(() =>
     editorNavigation.value
         ? (panelTools.value[toolName.value] ?? tools[toolName.value])
-        : toolName.value === 'elevation'
-          ? tools.select
-          : tools[toolName.value],
+        : tools[toolName.value],
 )
 
 const inspectingTool: Tool = {

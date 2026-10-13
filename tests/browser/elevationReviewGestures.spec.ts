@@ -42,53 +42,45 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('.elevation-canvas')).toBeVisible()
 })
 
-for (const tool of ['select', 'elevation'] as const) {
-    for (const modifier of ['Control', 'Shift']) {
-        test(`${tool} ${modifier} drag of an unselected note moves only the grabbed note`, async ({
-            page,
-        }) => {
-            await page.evaluate(async (tool) => {
-                const { switchToolTo } = await window.editorTest.appImport<
-                    typeof import('../../src/editor/tools')
-                >('/src/editor/tools/index.ts')
-                switchToolTo(tool)
-            }, tool)
-            const local = await page.evaluate(async () => {
-                const { elevationLayout } = await window.editorTest.appImport<
-                    typeof import('../../src/editor/elevation/scene')
-                >('/src/editor/elevation/scene.ts')
-                const row = elevationLayout.value.rows.find((row) => row.note.noteStyle === 'red')!
-                return { x: row.x, y: row.y, delta: elevationLayout.value.laneScale }
-            })
-            const box = (await page.locator('.elevation-canvas').boundingBox())!
-            await page.keyboard.down(modifier)
-            await page.mouse.move(box.x + local.x, box.y + local.y)
-            await page.mouse.down()
-            await page.mouse.move(box.x + local.x + local.delta, box.y + local.y, { steps: 5 })
-            await page.mouse.up()
-            await page.keyboard.up(modifier)
-            expect(
-                await page.evaluate(() =>
-                    [...window.editorTest.history.state.value.store.slides.note.values()]
-                        .flat()
-                        .map((note) => ({ style: note.noteStyle, left: note.left })),
-                ),
-            ).toEqual([
-                { style: 'red', left: -3 },
-                { style: 'green', left: -4 },
-                { style: 'blue', left: 2 },
-            ])
-            expect(
-                await page.evaluate(() =>
-                    window.editorTest.history.state.value.selectedEntities.map(
-                        (note) => note.type === 'note' && note.noteStyle,
-                    ),
-                ),
-            ).toEqual(['red'])
-            await page.evaluate(() => window.editorTest.history.undoState())
-            expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+for (const modifier of ['Control', 'Shift']) {
+    test(`select ${modifier} drag of an unselected note moves only the grabbed note`, async ({
+        page,
+    }) => {
+        const local = await page.evaluate(async () => {
+            const { elevationLayout } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/scene')
+            >('/src/editor/elevation/scene.ts')
+            const row = elevationLayout.value.rows.find((row) => row.note.noteStyle === 'red')!
+            return { x: row.x, y: row.y, delta: elevationLayout.value.laneScale }
         })
-    }
+        const box = (await page.locator('.elevation-canvas').boundingBox())!
+        await page.keyboard.down(modifier)
+        await page.mouse.move(box.x + local.x, box.y + local.y)
+        await page.mouse.down()
+        await page.mouse.move(box.x + local.x + local.delta, box.y + local.y, { steps: 5 })
+        await page.mouse.up()
+        await page.keyboard.up(modifier)
+        expect(
+            await page.evaluate(() =>
+                [...window.editorTest.history.state.value.store.slides.note.values()]
+                    .flat()
+                    .map((note) => ({ style: note.noteStyle, left: note.left })),
+            ),
+        ).toEqual([
+            { style: 'red', left: -3 },
+            { style: 'green', left: -4 },
+            { style: 'blue', left: 2 },
+        ])
+        expect(
+            await page.evaluate(() =>
+                window.editorTest.history.state.value.selectedEntities.map(
+                    (note) => note.type === 'note' && note.noteStyle,
+                ),
+            ),
+        ).toEqual(['red'])
+        await page.evaluate(() => window.editorTest.history.undoState())
+        expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+    })
 }
 
 for (const tool of ['select', 'brush'] as const) {

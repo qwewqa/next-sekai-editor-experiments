@@ -15,7 +15,6 @@ export const isElevationSideBySide = ref(false)
 
 export const elevationToolNames: readonly ToolName[] = [
     'select',
-    'elevation',
     'note',
     'slide',
     'eraser',
@@ -24,13 +23,10 @@ export const elevationToolNames: readonly ToolName[] = [
     'generateSlideNotes',
 ]
 
-let previousTool: ToolName = 'select'
-
 export const openElevationEditor = (beat?: number) => {
     if (isElevationEditorOpen.value && beat === undefined) return
 
     const wasOpen = isElevationEditorOpen.value
-    if (!wasOpen) previousTool = toolName.value
     const note = selectedEntities.value.filter((entity) => entity.type === 'note').pop()
     const displayedBeat =
         beat ??
@@ -43,13 +39,12 @@ export const openElevationEditor = (beat?: number) => {
     isElevationEditorOpen.value = true
     view.cursorTime = beatToTime(bpms.value, displayedBeat)
     elevationBeat.value = displayedBeat
-    // Open beside the chart, it only changes beat; the tool stays.
-    if (!wasOpen) switchToolTo('elevation')
+    // It opens on Select; already open, it only changes beat.
+    if (!wasOpen) switchToolTo('select')
 }
 
 export const closeElevationEditor = () => {
     isElevationEditorOpen.value = false
-    if (toolName.value === 'elevation') switchToolTo(previousTool)
 }
 
 watch(

@@ -176,15 +176,16 @@ test('Edit Elevations from the chart beside an open Elevation Editor changes its
 })
 
 for (const sideBySide of [false, true])
-    test(`Select shows pressed for the Elevation tool, which it and Deselect keep (${sideBySide ? 'side by side' : 'full screen'})`, async ({
+    test(`the Elevation Editor opens on Select, which shows pressed and which it and Deselect keep (${sideBySide ? 'side by side' : 'full screen'})`, async ({
         page,
     }) => {
         await page.setViewportSize({ width: 1920, height: 1080 })
         await page.evaluate((sideBySide) => {
             window.editorTest.settings.elevationEditorSideBySide = sideBySide ? 'allow' : 'disallow'
         }, sideBySide)
+        await page.keyboard.press('a')
         await open(page)
-        expect(await toolName(page)).toBe('elevation')
+        expect(await toolName(page)).toBe('select')
         const toolbars = page.locator('[data-editor-toolbar]')
         await expect(toolbars).toHaveCount(sideBySide ? 2 : 1)
         const selects = toolbars
@@ -212,14 +213,29 @@ for (const sideBySide of [false, true])
             await commands.deselect.execute()
         })
         expect(await noticeId()).toBe(before)
-        expect(await toolName(page)).toBe('elevation')
+        expect(await toolName(page)).toBe('select')
 
         await page.locator('.elevation-editor').locator(selects).click()
         await expect(page.locator('.notification')).toHaveText('Switched to Select tool')
-        expect(await toolName(page)).toBe('elevation')
+        expect(await toolName(page)).toBe('select')
         for (const select of await selects.all())
             await expect(select).toHaveAttribute('aria-pressed', 'true')
     })
+
+test('a tool picked in the Elevation Editor stays once it closes', async ({ page }) => {
+    await page.keyboard.press('a')
+    await open(page)
+    expect(await toolName(page)).toBe('select')
+    await page.keyboard.press('b')
+    expect(await toolName(page)).toBe('brush')
+    await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    expect(await toolName(page)).toBe('brush')
+    const brush = page
+        .locator('[data-editor-toolbar] > div > div > button')
+        .and(page.getByTitle('Brush', { exact: true }))
+    await expect(brush).toHaveAttribute('aria-pressed', 'true')
+})
 
 type Clip = { text: string; reads: number; copies: string[] }
 const clip = (page: Page) => page.evaluate(() => (window as never as { clip: Clip }).clip)

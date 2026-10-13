@@ -794,9 +794,6 @@
     }
   },
   "tools": {
-    "elevation": {
-      "title": "높이 편집기"
-    },
     "bpm": {
       "title": "BPM",
       "adding": "{0}개의 BPM 추가",

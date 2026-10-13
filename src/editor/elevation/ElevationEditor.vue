@@ -476,7 +476,7 @@ const isOnEdgeBadge = ({ side, slot }: OffscreenNoteGroup, x: number, y: number)
 // Only the select-like tools pick notes from the badges. Off its pill, a top or bottom cell
 // leaves the point to a note there.
 const hitIndicator = (x: number, y: number) => {
-    if (toolName.value !== 'select' && toolName.value !== 'elevation') return
+    if (toolName.value !== 'select') return
     const indicator = hitOffscreenIndicator(x, y)
     if (indicator?.x === undefined || isOnEdgeBadge(indicator, x, y) || !hit(x, y)) return indicator
 }
@@ -1342,9 +1342,7 @@ const onKeydown = (event: KeyboardEvent) => {
     // A drag's Escape only cancels it, before this runs.
     // Side by side, it runs Deselect, so a second press switches to Select as on the chart.
     if (!isElevationSideBySide.value) closeElevationEditor()
-    // The Elevation tool already selects here, and closing returns the tool from before.
-    else if (state.value.selectedEntities.length || toolName.value !== 'elevation')
-        void deselect.execute()
+    else void deselect.execute()
 }
 // Its scroll and zoom move where a drag in it lands.
 watch([() => elevationViewport.center, () => elevationViewport.scale], notifyPaneMoved)

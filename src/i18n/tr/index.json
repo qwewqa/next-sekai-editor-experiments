@@ -794,9 +794,6 @@
     }
   },
   "tools": {
-    "elevation": {
-      "title": "Yükseklik Editörü"
-    },
     "bpm": {
       "title": "BPM",
       "adding": "{0} BPM değişikliği ekleniyor",

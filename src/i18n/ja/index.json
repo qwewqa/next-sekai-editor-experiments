@@ -794,9 +794,6 @@
     }
   },
   "tools": {
-    "elevation": {
-      "title": "高さエディター"
-    },
     "bpm": {
       "title": "BPM",
       "adding": "{0}個のBPMを追加します",

@@ -794,9 +794,6 @@
     }
   },
   "tools": {
-    "elevation": {
-      "title": "Éditeur d’élévation"
-    },
     "bpm": {
       "title": "BPM",
       "adding": "Ajout de {0} changement de BPM|Ajout de {0} changements de BPM",

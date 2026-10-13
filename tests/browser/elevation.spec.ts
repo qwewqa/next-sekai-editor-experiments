@@ -218,7 +218,9 @@ test.describe('phone elevation scale', () => {
     })
 })
 
-test('elevation mode replaces the chart and closes back to the previous tool', async ({ page }) => {
+test('elevation mode replaces the chart and opens on Select, which closing keeps', async ({
+    page,
+}) => {
     await page.keyboard.press('a')
     await open(page)
     await expect(page.locator('canvas.editor-chart')).toHaveCount(0)
@@ -236,7 +238,7 @@ test('elevation mode replaces the chart and closes back to the previous tool', a
     expect(axis.bottom).toBeLessThanOrEqual(box!.height)
     await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(/^Note(?: |$)/)
+    await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(/^Select(?: |$)/)
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
@@ -433,7 +435,7 @@ test('Escape side by side deselects, then switches to Select as Deselect does', 
     await expect(page.locator('.elevation-editor')).toBeVisible()
 })
 
-test('Escape side by side keeps the Elevation tool, so closing returns the tool from before', async ({
+test('Escape side by side deselects on the Select the editor opened on, which closing keeps', async ({
     page,
 }) => {
     await page.setViewportSize({ width: 1920, height: 1080 })
@@ -450,6 +452,7 @@ test('Escape side by side keeps the Elevation tool, so closing returns the tool 
             >('/src/editor/tools/state.ts')
             return toolName.value
         })
+    expect(await tool()).toBe('select')
     const empty = await at(page, 5, 1)
     await page.mouse.move(empty.x, empty.y)
     await page.evaluate(() => {
@@ -460,11 +463,11 @@ test('Escape side by side keeps the Elevation tool, so closing returns the tool 
     await page.keyboard.press('Escape')
     expect((await page.evaluate(() => window.editorTest.snapshot())).selected).toEqual([])
     await page.keyboard.press('Escape')
-    expect(await tool()).toBe('elevation')
+    expect(await tool()).toBe('select')
     await expect(page.locator('.notification')).toHaveText('Deselected all objects')
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-editor')).toHaveCount(0)
-    expect(await tool()).toBe('note')
+    expect(await tool()).toBe('select')
 })
 
 test('the header fields keep their edge at rest and thicken it on focus in high contrast', async ({

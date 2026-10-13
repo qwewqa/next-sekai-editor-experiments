@@ -50,9 +50,7 @@ export const commandState = (
     // The view shows these modes itself; their actions never force a group face.
     if (name === 'elevation' || name === 'editorLayout') return undefined
     if (name === 'event') return tool(eventTools.includes(toolName.value))
-    // The Elevation tool is the Elevation Editor's Select.
-    if (name === 'select')
-        return tool(toolName.value === 'select' || toolName.value === 'elevation')
+    if (name === 'select') return tool(toolName.value === 'select')
 
     const preset = /^(note|slide)(\d+)$/.exec(name)
     if (preset) {

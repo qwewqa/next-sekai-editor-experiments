@@ -794,9 +794,6 @@
     }
   },
   "tools": {
-    "elevation": {
-      "title": "高度編輯器"
-    },
     "bpm": {
       "title": "BPM",
       "adding": "正在新增 {0} 個 BPM",

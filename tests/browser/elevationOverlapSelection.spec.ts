@@ -93,24 +93,16 @@ test.beforeEach(async ({ page }) => {
     await settle(page)
 })
 
-for (const tool of ['select', 'elevation'] as const) {
-    test(`${tool} cycles three overlapping styles and wraps in stable geometry order`, async ({
-        page,
-    }) => {
-        await page.evaluate(async (tool) => {
-            const { switchToolTo } = await window.editorTest.appImport<
-                typeof import('../../src/editor/tools')
-            >('/src/editor/tools/index.ts')
-            switchToolTo(tool)
-        }, tool)
-        // The top row first: later rows are drawn over earlier ones.
-        for (const style of ['blue', 'green', 'red', 'blue', 'green']) {
-            await click(page)
-            expect(await selected(page)).toEqual([`${style}:3`])
-        }
-        expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
-    })
-}
+test('select cycles three overlapping styles and wraps in stable geometry order', async ({
+    page,
+}) => {
+    // The top row first: later rows are drawn over earlier ones.
+    for (const style of ['blue', 'green', 'red', 'blue', 'green']) {
+        await click(page)
+        expect(await selected(page)).toEqual([`${style}:3`])
+    }
+    expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+})
 
 test('Ctrl toggles every overlap, completes partial selection, and preserves unrelated notes', async ({
     page,
