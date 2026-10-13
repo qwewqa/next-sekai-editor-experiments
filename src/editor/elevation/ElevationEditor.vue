@@ -86,6 +86,7 @@ import { quickEdit } from '../utils/quickEdit'
 import LevelEditorToolbar from '../toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from '../EditorToolModalHost.vue'
 import LevelEditorNotification from '../LevelEditorNotification.vue'
+import { notification } from '../notification'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
 import { hasToolModal, showToolModal } from '../toolModals'
@@ -1334,6 +1335,13 @@ watchEffect(() => {
     const textMiddle = fontMiddle.value
     const numberMiddle = figureMiddle.value
     const axisLabelLeft = axisLabelLeftOf(offscreenGroups.value)
+    // Under the header, and under the notice a tool dialog moves to its top (one 40px line).
+    const emptyY =
+        headerHeight.value +
+        (!isElevationSideBySide.value && hasToolModal('elevation') && notification.value.message
+            ? 56
+            : 0) +
+        24
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         // A collapsed pane's last frame would show stretched as it reopens.
@@ -1531,7 +1539,7 @@ watchEffect(() => {
         }
         if (!layout.rows.length) {
             ctx.fillStyle = '#ffffff80'
-            ctx.fillText(labels.empty, 48, 90)
+            ctx.fillText(labels.empty, 48, emptyY)
         }
     })
 })
@@ -1738,11 +1746,7 @@ onUnmounted(() => {
                             ><span class="elevation-select group"
                                 ><select
                                     v-model="settings.elevationSnap"
-                                    :title="
-                                        settings.elevationSnap
-                                            ? `1/${settings.elevationSnap}`
-                                            : i18n.elevation.off
-                                    "
+                                    :title="i18n.elevation.snapping"
                                     :class="headerField"
                                     class="cursor-pointer focus-visible:ring-2"
                                     :aria-label="i18n.elevation.snapping"
