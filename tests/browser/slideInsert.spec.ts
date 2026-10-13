@@ -407,7 +407,7 @@ test("an Elevation Editor insert takes the selected note's beat exactly", async 
     ])
 })
 
-test("the shared Slide add preview is its anchor's", async ({ page }) => {
+test('the shared Slide add preview is keyed by the anchor', async ({ page }) => {
     await seed(
         page,
         [

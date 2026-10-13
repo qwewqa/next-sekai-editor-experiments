@@ -399,7 +399,7 @@ const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
 
 export const getSlidePropertiesFromSelection = (beat: number) => {
     const note = getNoteFromSelection()
-    // An insert after the note takes its own.
+    // An insert after the note takes its properties.
     const nearest =
         note && (sameBeat(note.beat, beat) ? note : getNearestNoteInSlide(note.slideId, beat))
 
@@ -469,10 +469,7 @@ const tryFind = (
     return [undefined, beat, lane]
 }
 
-/**
- * The selected note a Slide add at its beat goes right after, as a pending draft shows it, if
- * it is in its slide in the source.
- */
+// The selected note a Slide add at its beat goes right after (as drafted), if the source has it.
 export const getSlideInsertAnchor = (source: State, beat: number) => {
     if (selectedEntities.value.length !== 1) return
     const [entity] = selectedEntities.value
@@ -544,7 +541,7 @@ const landing = (slideId: SlideId, added: NoteObject) => {
     const object = after ? { ...added, beat: after.beat } : added
     const preview = previewSlideAdd(source, slideId, object, after)
     if (!preview) return toNoteEntity(slideId, object)
-    // A preview is its anchor's, so another anchor's never shows.
+    // The preview is keyed by the anchor, so it follows the selection.
     if (lastLanding?.preview !== preview || lastLanding.layout !== view.layout)
         lastLanding = {
             preview,

@@ -103,7 +103,6 @@ export const previewElevationNoteRow = (
     asSlide: boolean,
     size?: number,
 ): ElevationNote => {
-    // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
     const source = previewEdit.value?.isDraft ? elevationState.value : state.value
     const { note, after } = elevationAdd(source, lane, elevation, beat, asSlide, size)
     const { laneOffset } = getElevationStageProps(note.stageId, beat)
@@ -117,6 +116,7 @@ export const previewElevationNoteRow = (
         attached: false,
         order: 0,
     }
+    // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
     const preview = previewSlideAdd(source, note.slideId, note, after)
     if (!preview) return row
     if (!note.isAttached) {
