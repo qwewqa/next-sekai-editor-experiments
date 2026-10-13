@@ -78,12 +78,11 @@ test.afterEach(async ({ page }) => {
     expect(errors.get(page)).toEqual([])
 })
 
-test('the snap field is titled by what it sets', async ({ page }) => {
+test('the snap field shows its value on hover and is named by what it sets', async ({ page }) => {
     await open(page)
-    await expect(page.locator('.elevation-snap select')).toHaveAttribute(
-        'title',
-        'Elevation Snapping',
-    )
+    const select = page.locator('.elevation-snap select')
+    await expect(select).toHaveAttribute('title', '1/2')
+    await expect(select).toHaveAccessibleName('Elevation Snapping')
 })
 
 // Records where the Elevation Editor draws its empty beat note.

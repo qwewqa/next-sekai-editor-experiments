@@ -2029,7 +2029,11 @@ onUnmounted(() => {
                             ><span class="elevation-select group"
                                 ><select
                                     v-model="settings.elevationSnap"
-                                    :title="i18n.elevation.snapping"
+                                    :title="
+                                        settings.elevationSnap
+                                            ? `1/${settings.elevationSnap}`
+                                            : i18n.elevation.off
+                                    "
                                     :class="headerField"
                                     class="cursor-pointer focus-visible:ring-2"
                                     :aria-label="i18n.elevation.snapping"
