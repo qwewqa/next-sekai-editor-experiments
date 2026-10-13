@@ -352,7 +352,7 @@ const restoreContext = () => {
 const hovered = ref<NoteEntity>()
 // A 12px text baseline below the notice at the top, keeping a one-line notice's room (16px above,
 // 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
-// The notice's rem sizes in pixels, while index.css fixes the rem at 16px.
+// In pixels: index.css fixes the rem at 16px.
 const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
     const pill = container.value?.querySelector('.notification')?.getBoundingClientRect()
     const bottom = pill?.height ? pill.bottom - canvas.getBoundingClientRect().top : 0
@@ -416,7 +416,7 @@ const measureLabel = (label: number, family: string) => {
     labelMeasure.font = `12px ${family}`
     return labelMeasure.measureText(`${label}`).width
 }
-// The selection drawn: under a Basic drag's ghosts, the committed one and its solid previewed slides'.
+// The selection drawn: under a drag's ghosts, the committed one and its solid previewed slides'.
 const drawnSelection = computed(() => {
     const drag = elevationDragRows.value
     const shown = elevationState.value.selectedEntities
@@ -431,7 +431,7 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
     const layout = elevationLayout.value
     const { elevation: origin, scale } = offscreenOrigin.value
     const anchor = offscreenAnchor.value
-    // A Basic drag's ghosts aren't counted, as on the chart.
+    // A drag's ghosts aren't counted, as on the chart.
     const notes = (elevationDragRows.value?.rows ?? layout.rows).map((row) => ({
         left: row.x - row.w / 2,
         right: row.x + row.w / 2,
@@ -1463,7 +1463,7 @@ const connectionsOf = (
         source.bpms,
         source.store.slides.info,
     )
-// Solid connections, and a Basic drag's ghosts: pieces its moved notes' slides gain, as on the chart.
+// Solid connections, and a drag's ghosts: pieces its moved notes' slides gain, as on the chart.
 const connections = computed(() => {
     const drag = elevationDragRows.value
     const preview = elevationState.value
@@ -1507,7 +1507,7 @@ watchEffect(() => {
     const current = elevationState.value
     const drag = elevationDragRows.value
     const committed = state.value
-    // A Basic drag's committed rows, or the shown ones.
+    // A drag's committed rows, or the shown ones.
     const solidRows = drag?.rows ?? layout.rows
     const { solid, ghosts: dragConnections } = connections.value
     const belowNotes = solid.filter(
@@ -1523,7 +1523,7 @@ watchEffect(() => {
             ? hoveredEntities.value
             : hoveredEntities.value.map((entity) => toSceneEntity(entity, current)),
     )
-    // A preview scene, but a draft's, hides them, as on the chart.
+    // A preview scene other than a draft's hides them, as on the chart.
     const shownCreating = isScenePreview.value && !previewEdit.value?.isDraft ? [] : creating.value
     const creatingRows = shownCreating.map((row) => ({
         ...row,

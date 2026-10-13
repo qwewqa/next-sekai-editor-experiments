@@ -194,7 +194,7 @@ const elevationAxes = computed(() => ({
 export const elevationLayout = computed(() =>
     layoutElevationNotes(elevationNotes.value, elevationAxes.value),
 )
-/** The committed rows under a Basic drag's ghosts; otherwise the shown ones. */
+/** The committed rows under a drag's ghosts; otherwise the shown ones. */
 export const committedElevationLayout = computed(() =>
     committedNotes.value
         ? layoutElevationNotes(committedNotes.value, elevationAxes.value)
@@ -206,7 +206,7 @@ const isSameRow = (a: ElevationRow, b: ElevationRow) =>
     Math.abs(a.size - b.size) < 1e-7 &&
     Math.abs(a.elevation - b.elevation) < 1e-7
 /**
- * A Basic drag's rows as the chart draws its drag: committed ones solid, moved ones as ghosts,
+ * A ghost drag's rows as the chart draws it: committed ones solid, moved ones as ghosts,
  * and slides it changes beyond them, such as by shifting an attached tick, solid as they drop.
  */
 export const elevationDragRows = computed(() => {
