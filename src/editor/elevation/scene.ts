@@ -217,7 +217,7 @@ export const elevationDragRows = computed(() => {
     // A drag selects the notes it moves.
     const moved = new Set(elevationState.value.selectedEntities)
     const live = new Set<SlideId>()
-    // A retiming drag ghosts only its moved notes, as on the chart.
+    // A retiming drag draws no slide live, as on the chart.
     if (isSameTempo(elevationState.value.bpms, state.value.bpms))
         for (const row of preview.rows) {
             const was = before.get(row.note)
@@ -229,7 +229,10 @@ export const elevationDragRows = computed(() => {
             ...committed.rows.filter((row) => !isLive(row)),
             ...preview.rows.filter(isLive),
         ].sort((a, b) => a.elevation - b.elevation || a.order - b.order),
-        ghosts: preview.rows.filter((row) => !before.has(row.note) && !isLive(row)),
+        // Only moved notes ghost, not ticks a retime rebuilds.
+        ghosts: preview.rows.filter(
+            (row) => moved.has(row.note) && !before.has(row.note) && !isLive(row),
+        ),
         live,
     }
 })

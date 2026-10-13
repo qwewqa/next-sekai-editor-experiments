@@ -526,7 +526,8 @@ test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbo
     page,
 }) => {
     // The middle note leaves the beat, opening a ribbon between the others; moving the far
-    // slide's tail shifts its tick here. The tempo change at 2 moves with them.
+    // slide's tail shifts its tick here; a note at 1 lands here. The tempo change at 2 moves with
+    // them, rebuilding the unmoved tick of the slide across it, whose ends' lanes differ.
     await seed(
         page,
         [
@@ -539,6 +540,12 @@ test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbo
                 { beat: 1, left: 6, elevation: 0 },
                 { left: 6, isAttached: true },
                 { beat: 5, left: 6, elevation: 4 },
+            ],
+            [{ beat: 1, left: -10, elevation: -3 }],
+            [
+                { beat: 0, left: -12, elevation: -2 },
+                { left: -12, isAttached: true },
+                { beat: 6, left: -4, elevation: -2 },
             ],
         ],
         {
@@ -562,9 +569,12 @@ test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbo
         const { isScenePreview, previewSlides } = await appImport<
             typeof import('../../src/editor/sceneState')
         >('/src/editor/sceneState.ts')
-        const { elevationDragRows } = await appImport<
+        const { elevationDragRows, elevationState } = await appImport<
             typeof import('../../src/editor/elevation/scene')
         >('/src/editor/elevation/scene.ts')
+        const { elevationBeat } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
         const { beatToTime } = await appImport<typeof import('../../src/state/integrals/bpms')>(
             '/src/state/integrals/bpms.ts',
         )
@@ -572,11 +582,15 @@ test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbo
         const notes = [...source.store.slides.note.values()].flat()
         const middle = notes.find((note) => note.left === 2)!
         const tail = notes.find((note) => note.beat === 5)!
+        const landing = notes.find((note) => note.left === -10)!
+        const head = notes.find((note) => note.beat === 0)!
+        const tick = notes.find((note) => note.isAttached && note.slideId === head.slideId)!
         history.replaceState({
             ...source,
             selectedEntities: [
                 middle,
                 tail,
+                landing,
                 ...[...store.getAllEntities()].filter(
                     (entity) => entity.type === 'bpm' && entity.beat > 0,
                 ),
@@ -596,17 +610,21 @@ test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbo
             scenePreview: isScenePreview.value,
             chartSlides: !!previewSlides.value,
             chartGhosts: view.entities.creating.length,
+            beat: elevationBeat.value,
+            rebuilt: !elevationState.value.store.slides.note.get(tick.slideId)!.includes(tick),
             ghostRibbons: editor.connections.ghosts.length,
-            ghostRows: elevationDragRows.value?.ghosts.length,
+            ghostRows: elevationDragRows.value?.ghosts.map((row) => row.note.left),
             live: elevationDragRows.value?.live.size,
         }
     })
     expect(drag).toEqual({
         scenePreview: false,
         chartSlides: false,
-        chartGhosts: 3,
+        chartGhosts: 4,
+        beat: 3,
+        rebuilt: true,
         ghostRibbons: 0,
-        ghostRows: 0,
+        ghostRows: [-10],
         live: 0,
     })
     await settle(page)
