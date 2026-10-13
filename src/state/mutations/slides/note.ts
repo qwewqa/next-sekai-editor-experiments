@@ -4,9 +4,15 @@ import { toNoteEntity, type NoteEntity } from '../../entities/slides/note'
 import { addToStoreGrid, removeFromStoreGrid } from '../../store/grid'
 import type { Transaction } from '../../transaction'
 
-export const addNote = ({ store }: Transaction, slideId: SlideId, object: NoteObject) => {
+/** `after`, one of the slide's notes at the same beat, places the new note right after it. */
+export const addNote = (
+    { store }: Transaction,
+    slideId: SlideId,
+    object: NoteObject,
+    after?: NoteEntity,
+) => {
     const note = toNoteEntity(slideId, object)
-    store.noteDrafts.add(note)
+    store.noteDrafts.add(note, after)
     addToStoreGrid(store.grid, note, note.beat)
     store.markDirty(slideId)
 

@@ -393,10 +393,11 @@ test('a Slide add ghost draws its ribbon from the last same-beat note over the s
     page,
 }) => {
     await seed(page, pair)
+    // The tail selected, so the add goes after it.
     await page.evaluate(() => {
         const { history } = window.editorTest
-        const [head] = [...history.state.value.store.slides.note.values()].flat()
-        history.replaceState({ ...history.state.value, selectedEntities: [head!] })
+        const tail = [...history.state.value.store.slides.note.values()].flat().at(-1)
+        history.replaceState({ ...history.state.value, selectedEntities: [tail!] })
     })
     await useTool(page, 'slide')
     // Its ribbon runs from the tail at lane 0 and elevation 4 to the ghost at lane 8 and 6.
@@ -421,6 +422,49 @@ test('a Slide add ghost draws its ribbon from the last same-beat note over the s
     expect(landed[3]).toBeGreaterThan(100)
     expect(Math.abs(ghost[3]! - landed[3]! / 2)).toBeLessThanOrEqual(1)
     expectClose(ghost.slice(0, 3), landed.slice(0, 3), 2)
+})
+
+test('a Slide insert after the selected same-beat note ghosts its ribbons to the next over the solid one between them', async ({
+    page,
+}) => {
+    await seed(page, pair)
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const [head] = [...history.state.value.store.slides.note.values()].flat()
+        history.replaceState({ ...history.state.value, selectedEntities: [head!] })
+    })
+    await useTool(page, 'slide')
+    // The ghost at lane 8 and elevation 1 goes between the head at 0 and the note at 2, both at lane 0.
+    const samples = {
+        fromHead: await clearPoint(page, 'elevation', await at(page, 4, 0.5)),
+        toNext: await clearPoint(page, 'elevation', await at(page, 4, 1.5)),
+        // Where an append's, from the tail at 4, would run.
+        fromTail: await clearPoint(page, 'elevation', await at(page, 4, 2.5)),
+    }
+    const committed = await devicePoint(page, 'elevation', await at(page, 0, 1))
+    await settle(page)
+    const before = await pixel(page, 'elevation', committed)
+    expect(before[3]).toBeGreaterThan(100)
+    await hover(page, await at(page, 8, 1))
+    expect(
+        await page.evaluate(async () => {
+            const { view, appImport } = window.editorTest
+            const { slideAddGhost } = await appImport<
+                typeof import('../../src/editor/tools/slide/addPreview')
+            >('/src/editor/tools/slide/addPreview.ts')
+            return slideAddGhost(view.entities.creating)?.connectors.map(({ head, tail }) => [
+                head.elevation,
+                tail.elevation,
+            ])
+        }),
+    ).toEqual([
+        [0, 1],
+        [1, 2],
+    ])
+    expect((await pixel(page, 'elevation', samples.fromHead))[3]).toBeGreaterThan(30)
+    expect((await pixel(page, 'elevation', samples.toNext))[3]).toBeGreaterThan(30)
+    expect((await pixel(page, 'elevation', samples.fromTail))[3]).toBe(0)
+    expect(await pixel(page, 'elevation', committed)).toEqual(before)
 })
 
 test('an Elevation Editor Slide add ghosts the ribbons it changes on the chart beside it', async ({
@@ -1377,6 +1421,41 @@ for (const layout of ['basic', 'composed'] as const) {
         expect(await alphaAt(page, 'overlay', middle, 5)).toBe(0)
     })
 }
+
+test("chart basic: a Slide insert at the selected note's beat ghosts the pieces to and from it, not on from it", async ({
+    page,
+}) => {
+    // A and B at beat 2, C at beat 6; A selected.
+    await showChart(
+        page,
+        [
+            [
+                { beat: 2, left: -6 },
+                { beat: 2, left: 2 },
+                { beat: 6, left: -6 },
+            ],
+        ],
+        [0],
+    )
+    await useTool(page, 'slide')
+    await hover(page, await chartPoint(page, -1, 2))
+    const pieces = await page.evaluate(async () => {
+        const { view, appImport } = window.editorTest
+        const { slideAddGhost } = await appImport<
+            typeof import('../../src/editor/tools/slide/addPreview')
+        >('/src/editor/tools/slide/addPreview.ts')
+        return slideAddGhost(view.entities.creating)?.connectors.map(({ head, tail }) => [
+            head.left,
+            tail.left,
+        ])
+    })
+    expect(pieces).toEqual([
+        [-6, -1],
+        [-1, 2],
+    ])
+    // B to C stays as it is; an append would ghost one from the new note to C.
+    expect(await alphaAt(page, 'overlay', -3, 4)).toBe(0)
+})
 
 test('chart basic: a Slide add past the tail ghosts the ribbon to it', async ({ page }) => {
     await showChart(page, twoNotes, [0])

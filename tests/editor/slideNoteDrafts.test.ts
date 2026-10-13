@@ -154,6 +154,25 @@ test('stale replacements and removals fail without corrupting another note', () 
     assert.deepEqual(map.get(slideId), [replacement])
 })
 
+test('an add after a note takes the slot right after it, a replaced note by its replacement', () => {
+    const first = note(4, 1)
+    const second = note(4, 2)
+    const source = [first, second, note(8, 3)]
+    Object.freeze(source)
+    const map = new Map([[slideId, source]])
+    const drafts = createSlideNoteDrafts(() => map)
+    const replacement = note(4, 10)
+    drafts.replace(first, replacement)
+    const inserted = note(4, 11)
+    const chained = note(4, 12)
+    drafts.add(inserted, replacement)
+    drafts.add(chained, inserted)
+    assert.throws(() => drafts.add(note(4, 13), first), /Unexpected note not found/)
+    drafts.flush()
+    assert.deepEqual(map.get(slideId), [replacement, inserted, chained, second, source[2]])
+    assert.deepEqual(source, [first, second, note(8, 3)])
+})
+
 test('large replacement, forward deletion and addition batches retain order', () => {
     const source = Array.from({ length: 10000 }, (_, i) => note(Math.floor(i / 2), i))
     Object.freeze(source)

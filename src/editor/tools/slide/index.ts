@@ -26,6 +26,7 @@ import {
     getComposedNoteOffset,
     getComposedOffset,
 } from '../../composedView'
+import { sameBeat } from '../../elevation/layout'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
 import { sceneState, toSceneEntity, withDraft } from '../../sceneState'
@@ -398,7 +399,9 @@ const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
 
 export const getSlidePropertiesFromSelection = (beat: number) => {
     const note = getNoteFromSelection()
-    const nearest = note && getNearestNoteInSlide(note.slideId, beat)
+    // An insert after the note takes its own.
+    const nearest =
+        note && (sameBeat(note.beat, beat) ? note : getNearestNoteInSlide(note.slideId, beat))
 
     return {
         groupId: view.groupId ?? note?.groupId ?? defaultGroupId.value,
@@ -466,6 +469,20 @@ const tryFind = (
     return [undefined, beat, lane]
 }
 
+/**
+ * The selected note a Slide add at its beat goes right after, as a pending draft shows it, if
+ * it is in its slide in the source.
+ */
+export const getSlideInsertAnchor = (source: State, beat: number) => {
+    if (selectedEntities.value.length !== 1) return
+    const [entity] = selectedEntities.value
+    if (entity?.type !== 'note') return
+    const anchor = withDraft(entity)
+    if (!sameBeat(anchor.beat, beat)) return
+    // A draft the source doesn't show leaves the add to append.
+    return source.store.slides.note.get(anchor.slideId)?.includes(anchor) ? anchor : undefined
+}
+
 export const getSelectedSlideId = () => {
     if (!selectedEntities.value.every((entity) => entity.type === 'note')) return
 
@@ -511,17 +528,23 @@ const update = (message: () => string, action: (transaction: Transaction) => Ent
 const add = (slideId: SlideId, object: NoteObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
+    const after = getSlideInsertAnchor(state.value, object.beat)
     update(
         () => i18n.value.tools.slide.added,
-        (transaction) => addNote(transaction, slideId, object),
+        (transaction) =>
+            addNote(transaction, slideId, after ? { ...object, beat: after.beat } : object, after),
     )
 }
 
 // An add inside a slide shows the pieces and ticks it changes; an attached note shows on its path.
-const landing = (slideId: SlideId, object: NoteObject) => {
+const landing = (slideId: SlideId, added: NoteObject) => {
     const source = landingSource()
-    const preview = previewSlideAdd(source, slideId, object)
+    const after = getSlideInsertAnchor(source, added.beat)
+    // At the anchor's beat exactly, as sorting and attaching compare beats exactly.
+    const object = after ? { ...added, beat: after.beat } : added
+    const preview = previewSlideAdd(source, slideId, object, after)
     if (!preview) return toNoteEntity(slideId, object)
+    // A preview is its anchor's, so another anchor's never shows.
     if (lastLanding?.preview !== preview || lastLanding.layout !== view.layout)
         lastLanding = {
             preview,

@@ -24,20 +24,31 @@ export type SlideAddPreview = {
 let last: { keys: unknown[]; preview: SlideAddPreview } | undefined
 
 // Object values are skipped: addNote reads only the primitives.
-const toKeys = (source: State, slideId: SlideId, object: NoteObject): unknown[] => [
+const toKeys = (
+    source: State,
+    slideId: SlideId,
+    object: NoteObject,
+    after: NoteEntity | undefined,
+): unknown[] => [
     source,
     slideId,
+    after,
     ...Object.entries(object).flatMap((entry) => (typeof entry[1] === 'object' ? [] : entry)),
 ]
 
-/** An add into the slide, if it exists in the source. */
-export const previewSlideAdd = (source: State, slideId: SlideId, object: NoteObject) => {
+/** An add into the slide, if it exists in the source, right after `after` if given. */
+export const previewSlideAdd = (
+    source: State,
+    slideId: SlideId,
+    object: NoteObject,
+    after?: NoteEntity,
+) => {
     if (!source.store.slides.note.has(slideId)) return
-    const keys = toKeys(source, slideId, object)
+    const keys = toKeys(source, slideId, object, after)
     if (last?.keys.length === keys.length && last.keys.every((key, i) => key === keys[i]))
         return last.preview
     const transaction = createTransaction(source)
-    const result = transaction.commit(addNote(transaction, slideId, object))
+    const result = transaction.commit(addNote(transaction, slideId, object, after))
     const landed = result.selectedEntities[0] as NoteEntity
     const kept = new Set(source.store.slides.note.get(slideId))
     // Pieces the slide lacks, as a drag's ghosts: the pair rule.

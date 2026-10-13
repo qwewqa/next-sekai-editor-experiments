@@ -4,6 +4,7 @@ import { ease } from '../../ease'
 import { pushState, state } from '../../history'
 import { i18n } from '../../i18n'
 import { previewEdit } from '../../preview/edit'
+import type { State } from '../../state'
 import { createSlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -28,7 +29,11 @@ import {
     toMovedNoteObject,
     toPasteBeatOffset,
 } from '../tools/paste'
-import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
+import {
+    getSelectedSlideId,
+    getSlideInsertAnchor,
+    getSlidePropertiesFromSelection,
+} from '../tools/slide'
 import { previewSlideAdd, showSlideAdd } from '../tools/slide/addPreview'
 import { alignLane, toMovedBeat, view } from '../view'
 import { sameBeat, type ElevationNote } from './layout'
@@ -71,6 +76,22 @@ export const previewElevationNote = (
     )
 }
 
+// A Slide add at the selected note's beat goes right after it, at its beat exactly.
+const elevationAdd = (
+    source: State,
+    lane: number,
+    elevation: number,
+    beat: number,
+    asSlide: boolean,
+    size?: number,
+) => {
+    const after = asSlide ? getSlideInsertAnchor(source, beat) : undefined
+    return {
+        note: previewElevationNote(lane, elevation, after?.beat ?? beat, asSlide, size),
+        after,
+    }
+}
+
 /**
  * The add ghost's row; an add inside a slide shows with the pieces it changes, and an attached
  * note on its path, where it lands.
@@ -82,7 +103,9 @@ export const previewElevationNoteRow = (
     asSlide: boolean,
     size?: number,
 ): ElevationNote => {
-    const note = previewElevationNote(lane, elevation, beat, asSlide, size)
+    // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
+    const source = previewEdit.value?.isDraft ? elevationState.value : state.value
+    const { note, after } = elevationAdd(source, lane, elevation, beat, asSlide, size)
     const { laneOffset } = getElevationStageProps(note.stageId, beat)
     const shown = (point: NoteEntity) =>
         point.elevation + getElevationStageProps(point.stageId, beat).elevation
@@ -94,12 +117,7 @@ export const previewElevationNoteRow = (
         attached: false,
         order: 0,
     }
-    // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
-    const preview = previewSlideAdd(
-        previewEdit.value?.isDraft ? elevationState.value : state.value,
-        note.slideId,
-        note,
-    )
+    const preview = previewSlideAdd(source, note.slideId, note, after)
     if (!preview) return row
     if (!note.isAttached) {
         showSlideAdd(preview, note)
@@ -140,11 +158,11 @@ export const createElevationNote = (
     asSlide: boolean,
     size?: number,
 ) => {
-    const note = previewElevationNote(lane, elevation, beat, asSlide, size)
+    const { note, after } = elevationAdd(state.value, lane, elevation, beat, asSlide, size)
     // Authoring reveals its target so the new note never vanishes.
     revealAuthoringTarget(note)
     const transaction = createTransaction(state.value)
-    const entities = addNote(transaction, note.slideId, note)
+    const entities = addNote(transaction, note.slideId, note, after)
     const message = interpolate(
         () => (asSlide ? i18n.value.tools.slide.added : i18n.value.tools.note.added),
         `${entities.length}`,

@@ -88,10 +88,17 @@ export const createSlideNoteDrafts = (getMap: () => StoreSlides['note']) => {
     }
 
     return {
-        add(note: NoteEntity) {
+        add(note: NoteEntity, after?: NoteEntity) {
             const draft = getDraft(note.slideId, true)
+            const slot = after && draft.lookup.get(after)
+            if (after && !slot) throw new Error('Unexpected note not found')
             detach(note.slideId, draft)
-            draft.slots.set(note, note)
+            if (slot) {
+                // Right after another's slot, so it stays there among equal-beat notes.
+                const slots = [...draft.slots]
+                slots.splice(slots.findIndex(([key]) => key === slot) + 1, 0, [note, note])
+                draft.slots = new Map(slots)
+            } else draft.slots.set(note, note)
             draft.lookup.set(note, note)
             pending.add(note.slideId)
         },
