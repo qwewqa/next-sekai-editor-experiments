@@ -60,15 +60,34 @@ export const getElevationStageProps = (stageId: StageId, beat: number) => {
         gridOffset: layout?.gridOffset(stageId, beat) ?? 0,
     }
 }
-/** The focused stage's division size, else the first stage's; 2 in Basic or without a pivot. */
-export const elevationDivisionSize = computed(() => {
+const everySecondLane = { size: 2, origin: 0, divider: 0 }
+/**
+ * The selected stage's division size, 2 without a pivot; its lanes in Composed: the lane its notes
+ * snap from and the whole lanes from there to a divider. Else, every second elevation and lane.
+ */
+export const elevationStageGrid = computed(() => {
     const current = elevationState.value
-    const index = view.stageId ? [...current.stages.keys()].indexOf(view.stageId) : 0
-    // Basic charts compile no stages.
-    const stage = compiledChart.value.chart.stages[index]
-    if (!stage) return 2
-    const { division } = getStageProps(stage, beatToTime(current.bpms, elevationBeat.value))
-    return dominantDivision(division).size || 2
+    const stageId = view.stageId
+    // Charts without dynamic stages compile none.
+    const stage =
+        stageId && compiledChart.value.chart.stages[[...current.stages.keys()].indexOf(stageId)]
+    if (!stage) return { size: 2, lanes: everySecondLane }
+    const beat = elevationBeat.value
+    const { division } = getStageProps(stage, beatToTime(current.bpms, beat))
+    const { size, parity } = dominantDivision(division)
+    // The Basic layout's lanes are the chart's: every second one, where notes snap.
+    const layout = getComposedLayout(current)
+    if (!layout) return { size: size || 2, lanes: everySecondLane }
+    const gridOffset = layout.gridOffset(stageId, beat)
+    // As the chart draws them, the dividers start half a division past the pivot when odd.
+    return {
+        size: size || 2,
+        lanes: {
+            size: size || 2,
+            origin: layout.offset(stageId, beat) + gridOffset,
+            divider: (parity * size) / 2 - gridOffset,
+        },
+    }
 })
 export const elevationNotes = computed(() => {
     const { chart, bySource } = compiledChart.value

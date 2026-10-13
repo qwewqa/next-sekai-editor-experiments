@@ -114,10 +114,10 @@ import {
     previewElevationPasteRows,
 } from './actions'
 import {
-    elevationDivisionSize,
     elevationLaneScale,
     elevationLayout,
     elevationNotes,
+    elevationStageGrid,
     elevationState,
     getElevationStageProps,
 } from './scene'
@@ -1318,7 +1318,7 @@ watchEffect(() => {
     // Name contrast is measured against it.
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
-    const divisionSize = elevationDivisionSize.value
+    const stageGrid = elevationStageGrid.value
     void redrawVersion.value
     const family = fontFamily.value
     const textMiddle = fontMiddle.value
@@ -1356,7 +1356,7 @@ watchEffect(() => {
                     ? '#ffffff06'
                     : i === 0
                       ? '#ffffff80'
-                      : (i / division) % divisionSize === 0
+                      : (i / division) % stageGrid.size === 0
                         ? '#ffffff40'
                         : '#ffffff0d'
             ctx.beginPath()
@@ -1375,22 +1375,32 @@ watchEffect(() => {
             layout.laneScale / view.laneDivision >= 8 && view.laneDivision <= 32
                 ? view.laneDivision
                 : 1
+        // From where the selected stage's notes snap; its dividers are brighter.
+        const { size, origin, divider } = stageGrid.lanes
         for (
-            let i = Math.ceil(layout.laneLeft * laneDivision);
-            i <= (layout.laneLeft + layout.width / layout.laneScale) * laneDivision;
+            let i = Math.ceil((layout.laneLeft - origin) * laneDivision);
+            i <= (layout.laneLeft + layout.width / layout.laneScale - origin) * laneDivision;
             i++
         ) {
-            const lane = i / laneDivision
+            const lane = origin + i / laneDivision
             const x = layout.xAt(lane)
-            if (x < 38) continue
+            // Lanes ±6 are drawn after.
+            if (x < 38 || Math.abs(Math.abs(lane) - 6) < 1e-9) continue
             ctx.strokeStyle =
                 i % laneDivision !== 0
                     ? '#ffffff06'
-                    : lane === -6 || lane === 6
-                      ? '#ffffff80'
-                      : lane % 2 === 0
-                        ? '#ffffff40'
-                        : '#ffffff0d'
+                    : (i / laneDivision - divider) % size === 0
+                      ? '#ffffff40'
+                      : '#ffffff0d'
+            ctx.beginPath()
+            ctx.moveTo(x, 52)
+            ctx.lineTo(x, layout.height)
+            ctx.stroke()
+        }
+        ctx.strokeStyle = '#ffffff80'
+        for (const lane of [-6, 6]) {
+            const x = layout.xAt(lane)
+            if (x < 38 || x > layout.width) continue
             ctx.beginPath()
             ctx.moveTo(x, 52)
             ctx.lineTo(x, layout.height)
