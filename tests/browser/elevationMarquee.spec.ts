@@ -371,9 +371,10 @@ test('a note outline is the chart hitbox with a 0.1 lane margin', async ({ page 
     expect(outline[4]).toBe(2)
 })
 
-test('grid lines and axis labels are drawn in the chart styles and font', async ({ page }) => {
-    await page.evaluate(() => {
-        const lines: { style: string; width: number; vertical: boolean }[] = []
+// Records the Elevation Editor's grid strokes and number label fonts, per frame.
+const recordGrid = (page: Page) =>
+    page.evaluate(() => {
+        const lines: { style: string; width: number; vertical: boolean; y: number }[] = []
         const fonts: string[] = []
         Object.assign(window, { gridLines: lines, labelFonts: fonts })
         const prototype = CanvasRenderingContext2D.prototype
@@ -395,7 +396,12 @@ test('grid lines and axis labels are drawn in the chart styles and font', async 
         // The editor strokes its own paths.
         prototype.stroke = function (this: CanvasRenderingContext2D) {
             if (this.canvas.classList.contains('elevation-canvas') && !this.getLineDash().length)
-                lines.push({ style: String(this.strokeStyle), width: this.lineWidth, vertical })
+                lines.push({
+                    style: String(this.strokeStyle),
+                    width: this.lineWidth,
+                    vertical,
+                    y: start[1]!,
+                })
             return (stroke as () => void).call(this)
         }
         prototype.fillText = function (text, x, y, maxWidth) {
@@ -404,47 +410,200 @@ test('grid lines and axis labels are drawn in the chart styles and font', async 
             return fillText.call(this, text, x, y, maxWidth)
         }
     })
-    await page.evaluate(async (viewportPath) => {
+// The drawn grid: lane styles, each elevation line's style by elevation, widths and fonts.
+const drawnGrid = (page: Page) =>
+    page.evaluate(async (scenePath) => {
+        const { gridLines, labelFonts } = window as unknown as {
+            gridLines: { style: string; width: number; vertical: boolean; y: number }[]
+            labelFonts: string[]
+        }
+        const { elevationLayout } = await window.editorTest.appImport<Scene>(scenePath)
+        const { height, elevationCenter, elevationScale } = elevationLayout.value
+        const probe = document.createElement('canvas').getContext('2d')!
+        probe.font = `12px ${getComputedStyle(document.querySelector('.elevation-editor')!).fontFamily}`
+        const style = (color: string) => ((probe.strokeStyle = color), String(probe.strokeStyle))
+        const elevations: Record<string, string> = {}
+        for (const line of gridLines) {
+            if (line.vertical) continue
+            const elevation = elevationCenter + (height / 2 - line.y) / elevationScale
+            elevations[`${Math.round(elevation * 1000) / 1000}`] = line.style
+        }
+        return {
+            lanes: [
+                ...new Set(gridLines.filter((line) => line.vertical).map((line) => line.style)),
+            ],
+            elevations,
+            widths: [...new Set(gridLines.map((line) => line.width))],
+            fonts: [...new Set(labelFonts)],
+            font: probe.font,
+            // Elevation 0 and lane 6, division multiples and even lanes, other whole
+            // elevations and odd lanes, and quarters and half lanes.
+            styles: ['#ffffff80', '#ffffff40', '#ffffff0d', '#ffffff06'].map(style),
+        }
+    }, scenePath)
+// The styles of these elevations' lines.
+const stylesAt = (grid: Awaited<ReturnType<typeof drawnGrid>>, elevations: number[]) =>
+    elevations.map((elevation) => grid.elevations[`${elevation}`])
+// The grid's view: quarters, half lanes, and elevations -5 to 6.
+const gridView = (page: Page) =>
+    page.evaluate(async (viewportPath) => {
         const { view, settings, appImport } = window.editorTest
         settings.elevationSnap = 4 as never
         view.laneDivision = 2
         const { elevationViewport } = await appImport<Viewport>(viewportPath)
-        Object.assign(elevationViewport, { center: 0.5, scale: 100 })
+        Object.assign(elevationViewport, { center: 0.5, scale: 80 })
     }, viewportPath)
+// Shows the notes again with these stage pivot events, in the Elevation Editor at beat 6.
+const showPivots = async (
+    page: Page,
+    pivots: { stage: number; beat: number; size: number; parity?: 'odd' | 'even' }[],
+    dynamic = true,
+) => {
+    await page.evaluate(
+        ({ pivots, dynamic, elevations }) => {
+            const { fixtures, show, view } = window.editorTest
+            const stages = [...fixtures.interaction.stages.keys()]
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: elevations.map((elevation) => [
+                        { ...base, beat: 6, left: 0, size: 2, elevation },
+                    ]),
+                    isDynamicStages: dynamic,
+                    stagePivotEvents: pivots.map(({ stage, beat, size, parity }) => ({
+                        stageId: stages[stage]!,
+                        beat,
+                        pivotLane: 0,
+                        divisionSize: size,
+                        divisionParity: parity ?? 'even',
+                        yOffset: 0,
+                        yOffsetBeat: 0,
+                        eventEase: 'linear' as const,
+                    })),
+                },
+                3,
+            )
+            view.cursorTime = 3
+        },
+        { pivots, dynamic, elevations },
+    )
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    await gridView(page)
     await settle(page)
-    const result = await page.evaluate(() => {
-        const { gridLines, labelFonts } = window as unknown as {
-            gridLines: { style: string; width: number; vertical: boolean }[]
-            labelFonts: string[]
-        }
-        const probe = document.createElement('canvas').getContext('2d')!
-        probe.font = `12px ${getComputedStyle(document.querySelector('.elevation-editor')!).fontFamily}`
-        const style = (color: string) => ((probe.strokeStyle = color), String(probe.strokeStyle))
-        const name = (line: { style: string; vertical: boolean }) =>
-            `${line.vertical ? 'lane' : 'elevation'} ${line.style}`
-        return {
-            lines: [...new Set(gridLines.map(name))].sort(),
-            widths: [...new Set(gridLines.map((line) => line.width))],
-            fonts: [...new Set(labelFonts)],
-            font: probe.font,
-            expected: [
-                // Lane 6, even and odd lanes, and half lanes.
-                ...['#ffffff80', '#ffffff40', '#ffffff0d', '#ffffff06'].map(
-                    (color) => `lane ${style(color)}`,
-                ),
-                // Elevation 0, whole elevations, and quarters.
-                ...['#ffffff80', '#ffffff59', '#ffffff26'].map(
-                    (color) => `elevation ${style(color)}`,
-                ),
-            ].sort(),
+}
+const focusStage = (page: Page, stage: number | undefined) =>
+    page.evaluate((stage) => {
+        const { fixtures, view } = window.editorTest
+        view.stageId =
+            stage === undefined ? undefined : [...fixtures.interaction.stages.keys()][stage]
+    }, stage)
+
+test.describe('grid lines and axis labels', () => {
+    test.beforeEach(async ({ page }) => {
+        await recordGrid(page)
+        await gridView(page)
+        await settle(page)
+    })
+
+    test('are drawn in the chart styles and font, as the lanes', async ({ page }) => {
+        const grid = await drawnGrid(page)
+        const [zero, multiple, whole, sub] = grid.styles
+        expect(grid.widths).toEqual([2])
+        expect(grid.lanes.sort()).toEqual([...grid.styles].sort())
+        // Without dynamic stages, even elevations are the division multiples.
+        expect(stylesAt(grid, [0, 2, -2, 4, 1, -1, 3, 0.25, 0.5, -0.75])).toEqual([
+            zero,
+            multiple,
+            multiple,
+            multiple,
+            whole,
+            whole,
+            whole,
+            sub,
+            sub,
+            sub,
+        ])
+        expect(new Set(Object.values(grid.elevations)).size).toBe(4)
+        // The editor's font, not the canvas default.
+        expect(grid.font).not.toBe('12px sans-serif')
+        expect(grid.fonts).toEqual([grid.font])
+    })
+
+    test("follow the current stage's division size, not its parity", async ({ page }) => {
+        const elevations = [0, 3, -3, 1, 2, -2, 4, 0.25]
+        for (const parity of ['even', 'odd'] as const) {
+            await showPivots(page, [{ stage: 0, beat: 0, size: 3, parity }])
+            await settle(page)
+            const grid = await drawnGrid(page)
+            const [zero, multiple, whole, sub] = grid.styles
+            expect(stylesAt(grid, elevations)).toEqual([
+                zero,
+                multiple,
+                multiple,
+                whole,
+                whole,
+                whole,
+                whole,
+                sub,
+            ])
+            // Lanes stay as they were.
+            expect(grid.lanes.sort()).toEqual([...grid.styles].sort())
         }
     })
-    expect(result.widths).toEqual([2])
-    expect(result.lines).toEqual(result.expected)
-    expect(result.lines).toHaveLength(7)
-    // The editor's font, not the canvas default.
-    expect(result.font).not.toBe('12px sans-serif')
-    expect(result.fonts).toEqual([result.font])
+
+    test('use the focused stage, else the first, and 2 without dynamic stages', async ({
+        page,
+    }) => {
+        const pivots = [
+            { stage: 0, beat: 0, size: 3 },
+            { stage: 1, beat: 0, size: 4 },
+        ]
+        const elevations = [2, 3, 4]
+        await showPivots(page, pivots)
+        await settle(page)
+        let grid = await drawnGrid(page)
+        const [, multiple, whole] = grid.styles
+        expect(stylesAt(grid, elevations)).toEqual([whole, multiple, whole])
+        await focusStage(page, 1)
+        await settle(page)
+        grid = await drawnGrid(page)
+        expect(stylesAt(grid, elevations)).toEqual([whole, whole, multiple])
+        await focusStage(page, 0)
+        await settle(page)
+        grid = await drawnGrid(page)
+        expect(stylesAt(grid, elevations)).toEqual([whole, multiple, whole])
+        // The same pivots in Basic don't apply.
+        await showPivots(page, pivots, false)
+        await settle(page)
+        grid = await drawnGrid(page)
+        expect(stylesAt(grid, elevations)).toEqual([multiple, whole, multiple])
+    })
+
+    test("take a change's dominant size, and 2 for a stage without a pivot", async ({ page }) => {
+        // At beat 6, the change to 3 is three quarters done.
+        await showPivots(page, [
+            { stage: 0, beat: 0, size: 4 },
+            { stage: 0, beat: 8, size: 3 },
+        ])
+        await settle(page)
+        let grid = await drawnGrid(page)
+        const [, multiple, whole] = grid.styles
+        expect(stylesAt(grid, [2, 3, 4])).toEqual([whole, multiple, whole])
+        // And here a quarter.
+        await showPivots(page, [
+            { stage: 0, beat: 4, size: 4 },
+            { stage: 0, beat: 12, size: 3 },
+        ])
+        await settle(page)
+        grid = await drawnGrid(page)
+        expect(stylesAt(grid, [2, 3, 4])).toEqual([whole, whole, multiple])
+        await showPivots(page, [{ stage: 1, beat: 0, size: 3 }])
+        await settle(page)
+        grid = await drawnGrid(page)
+        expect(stylesAt(grid, [2, 3, 4])).toEqual([multiple, whole, multiple])
+    })
 })
 
 test.describe('on a phone', () => {

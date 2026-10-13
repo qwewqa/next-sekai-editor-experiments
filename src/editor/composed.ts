@@ -50,9 +50,13 @@ const unique = <T>(grid: Map<number, Set<T>>) => [
 const divisionPhase = ({ size, parity }: { size: number; parity: number }) =>
     size > 0 && parity === 1 && Math.trunc(size) % 2 !== 0 ? 0.5 : 0
 
-/** Edge-grid phase of the dominant divider set; equal weights select the new set. */
+/** The dominant divider set of a crossfade; equal weights select the new set. */
+export const dominantDivision = (division: StageProps['division']) =>
+    division.progress >= 0.5 ? division.end : division.start
+
+/** Edge-grid phase of the dominant divider set. */
 export const divisionGridOffset = (division: StageProps['division']) =>
-    divisionPhase(division.progress >= 0.5 ? division.end : division.start)
+    divisionPhase(dominantDivision(division))
 
 const gridCrossingCache = new Map<EaseTypeValue, readonly number[]>()
 

@@ -9,6 +9,7 @@ import { settings } from '../../settings'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
+import { dominantDivision } from '../composed'
 import { getComposedLayout } from '../composedView'
 import { scopeLookup } from '../scope'
 import { entityScopeVisibility } from '../scopeRules'
@@ -59,6 +60,16 @@ export const getElevationStageProps = (stageId: StageId, beat: number) => {
         gridOffset: layout?.gridOffset(stageId, beat) ?? 0,
     }
 }
+/** The focused stage's division size, else the first stage's; 2 in Basic or without a pivot. */
+export const elevationDivisionSize = computed(() => {
+    const current = elevationState.value
+    const index = view.stageId ? [...current.stages.keys()].indexOf(view.stageId) : 0
+    // Basic charts compile no stages.
+    const stage = compiledChart.value.chart.stages[index]
+    if (!stage) return 2
+    const { division } = getStageProps(stage, beatToTime(current.bpms, elevationBeat.value))
+    return dominantDivision(division).size || 2
+})
 export const elevationNotes = computed(() => {
     const { chart, bySource } = compiledChart.value
     const props = chart.stages.map((stage) =>

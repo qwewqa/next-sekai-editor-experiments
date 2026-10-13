@@ -482,3 +482,48 @@ test('the pressed 1:1 glows on hover, as the toolbar tool in use does', async ({
     await page.mouse.move(0, 0)
     await expect.poll(shadow).not.toContain(`rgb(${accent.split(/\s+/).join(', ')})`)
 })
+
+for (const coarse of [false, true])
+    test.describe(`the 1:1 button with a ${coarse ? 'coarse' : 'fine'} pointer`, () => {
+        test.use(coarse ? { hasTouch: true, isMobile: true } : {})
+
+        for (const width of [1600, 390])
+            test(`rests raised, unlike the arrows, and ends the controls row at ${width}px`, async ({
+                page,
+            }) => {
+                await page.setViewportSize({ width, height: 844 })
+                await open(page)
+                const look = (selector: string) =>
+                    page.locator(`.elevation-editor ${selector}`).evaluate((element) => {
+                        const { backgroundColor, boxShadow } = getComputedStyle(element)
+                        return { backgroundColor, shadow: boxShadow !== 'none' }
+                    })
+                const square = await look('.elevation-square')
+                expect(square.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+                expect(square.shadow).toBe(true)
+                expect(await look('.elevation-beat > button:last-child')).toEqual({
+                    backgroundColor: 'rgba(0, 0, 0, 0)',
+                    shadow: false,
+                })
+                const box = async (selector: string) =>
+                    (await page.locator(`.elevation-editor ${selector}`).boundingBox())!
+                const lock = await box('.elevation-square')
+                const controls = await box('.elevation-controls')
+                const snap = await box('.elevation-snap')
+                expect(lock.x + lock.width).toBeCloseTo(controls.x + controls.width, 1)
+                expect(lock.x - (snap.x + snap.width)).toBeGreaterThan(8)
+                // Its whole round top edge takes the press, under the close button too.
+                const top = await page.evaluate(
+                    ({ x, y, width }) =>
+                        [-0.75, -0.5, 0, 0.5, 0.75].map((offset) => {
+                            const radius = width / 2
+                            const edge = radius - Math.sqrt(1 - offset ** 2) * radius
+                            return !!document
+                                .elementFromPoint(x + radius + offset * radius, y + edge + 1)
+                                ?.closest('.elevation-square')
+                        }),
+                    lock,
+                )
+                expect(top).toEqual([true, true, true, true, true])
+            })
+    })
