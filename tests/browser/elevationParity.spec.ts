@@ -412,3 +412,102 @@ for (const tool of ['Note', 'Slide'] as const)
         await settle(page)
         expect(await elevations(page)).toEqual({ all: [1, 3], selected: [3], count: 3 })
     })
+
+test('names and anchor outlines show while the view is in use or the note is highlighted, as on the chart', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: true,
+                slides: [
+                    [{ ...base, beat: 6, left: 2, size: 2, elevation: 3, stageId: 2 as never }],
+                    [{ ...base, beat: 6, left: -4, size: 2, elevation: 1, noteType: 'anchor' }],
+                ],
+            },
+            3,
+        )
+        view.cursorTime = 3
+    })
+    await open(page)
+    // Names drawn on the canvas in a redraw.
+    const draws = () =>
+        page.evaluate(async () => {
+            const { history } = window.editorTest
+            const names: string[] = []
+            let count = 0
+            const prototype = CanvasRenderingContext2D.prototype
+            const { drawImage } = prototype
+            prototype.drawImage = function (...args: unknown[]) {
+                if (
+                    this.canvas instanceof HTMLCanvasElement &&
+                    this.canvas.matches('.elevation-canvas')
+                ) {
+                    count++
+                    const label = window.editorLabels.get(args[0] as HTMLCanvasElement)?.text
+                    if (label) names.push(label)
+                }
+                return (drawImage as (...args: unknown[]) => void).apply(this, args)
+            }
+            // An equal selection redraws it.
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: [...history.state.value.selectedEntities],
+            })
+            await window.editorTest.nextTick()
+            await new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            )
+            prototype.drawImage = drawImage
+            return { names: [...new Set(names)], count }
+        })
+    // The brightest pixel over the anchor, which only its outline reaches.
+    const anchorAlpha = () =>
+        page.evaluate(async (scenePath) => {
+            const { elevationLayout } = await window.editorTest.appImport<Scene>(scenePath)
+            const { rows, laneScale } = elevationLayout.value
+            const row = rows.find((row) => row.note.noteType === 'anchor')!
+            const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
+            const ratio = canvas.width / canvas.clientWidth
+            const half = laneScale * 0.25
+            const data = canvas
+                .getContext('2d')!
+                .getImageData(
+                    Math.round((row.x - row.w / 2 + 4) * ratio),
+                    Math.round((row.y - half) * ratio),
+                    Math.round((row.w - 8) * ratio),
+                    Math.round(2 * half * ratio),
+                ).data
+            let max = 0
+            for (let i = 3; i < data.length; i += 4) max = Math.max(max, data[i]!)
+            return max
+        }, scenePath)
+    const setLastActive = (value: number) =>
+        page.evaluate((value) => (window.editorTest.view.lastActive = value), value)
+
+    await setLastActive(Number.POSITIVE_INFINITY)
+    await settle(page)
+    expect((await draws()).names.sort()).toEqual(['Center', 'Side stage'])
+    const active = await anchorAlpha()
+
+    // Idle, they go.
+    await setLastActive(Number.NEGATIVE_INFINITY)
+    await settle(page)
+    expect(await anchorAlpha()).toBeLessThan(active - 60)
+    const idle = await draws()
+    expect(idle.count).toBeGreaterThan(0)
+    expect(idle.names).toEqual([])
+    const idleAlpha = await anchorAlpha()
+
+    // A hovered note keeps its name and outline while idle.
+    const anchor = await at(page, -3, 1)
+    await page.mouse.move(anchor.x, anchor.y)
+    await page.mouse.move(anchor.x + 2, anchor.y)
+    await setLastActive(Number.NEGATIVE_INFINITY)
+    await settle(page)
+    expect((await draws()).names).toEqual(['Center'])
+    expect(await anchorAlpha()).toBeGreaterThan(idleAlpha + 60)
+})

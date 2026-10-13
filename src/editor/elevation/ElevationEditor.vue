@@ -105,7 +105,14 @@ import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '
 import { scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { dockKeysAttribute, isInWorkspaceDock } from '../workspace'
-import { alignLane, view, focusViewAtBeat, hoveredEntities } from '../view'
+import {
+    alignLane,
+    view,
+    focusViewAtBeat,
+    hoveredEntities,
+    isViewRecentlyActive,
+    updateViewLastActive,
+} from '../view'
 import {
     elevationGridDivision,
     snapElevation,
@@ -1263,6 +1270,8 @@ const changeBeat = (beat: number) => {
     cancelTouchControls()
     cancel()
     const target = Math.max(0, beat)
+    // A new beat shows its names, as a scroll does on the chart.
+    updateViewLastActive()
     if (isElevationSideBySide.value) focusViewAtBeat(target)
     else view.cursorTime = beatToTime(state.value.bpms, target)
     // Moving the cursor converts back from time; keep the exact beat.
@@ -1441,6 +1450,8 @@ watchEffect(() => {
     const showGroupName = settings.showGroupName
     const showStageName = settings.showStageName
     const nameContrast = settings.nameContrast
+    // As on the chart, names and anchor outlines show while the view is in use, and on highlighted notes.
+    const recentlyActive = isViewRecentlyActive.value
     // Name contrast is measured against it.
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
@@ -1559,7 +1570,7 @@ watchEffect(() => {
             showGroupName,
             showStageName,
             nameContrast,
-            recentlyActive: true,
+            recentlyActive,
             fontFamily: family,
             fontMiddle: textMiddle,
             figureMiddle: numberMiddle,

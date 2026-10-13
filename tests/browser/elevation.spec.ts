@@ -2211,7 +2211,9 @@ test('names draw after every row, overlapping, with selected rows on top', async
     // Bodies and names drawn on the elevation canvas in the next frames, in order.
     const draws = (selectIndex?: number) =>
         page.evaluate(async (selectIndex) => {
-            const { history } = window.editorTest
+            const { history, view } = window.editorTest
+            // Unselected names show while the view is in use.
+            view.lastActive = Number.POSITIVE_INFINITY
             const drawn: string[] = []
             const prototype = CanvasRenderingContext2D.prototype
             const { drawImage, fill, fillText } = prototype
