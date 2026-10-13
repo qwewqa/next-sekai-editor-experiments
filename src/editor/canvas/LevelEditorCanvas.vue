@@ -8,10 +8,12 @@ import { cullAllEntities } from '../../history/store'
 import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
+import { hasSameChartData } from '../../state/data'
 import type { Entity } from '../../state/entities'
+import type { ConnectorEntity } from '../../state/entities/slides/connector'
 import { BPM_LABEL } from '../../state/entities/bpm'
 import type { NoteEntity } from '../../state/entities/slides/note'
-import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
+import { beatToTime, isSameTempo, timeToBeat } from '../../state/integrals/bpms'
 import { computedArray } from '../../utils/array'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
@@ -327,6 +329,37 @@ const coveredYs = computed<EdgeLabelYs>((previous) => {
         : ys
 })
 
+// A Basic drag's ghost ribbons, as a paste's: its preview's connectors at the notes it moves.
+const dragGhostConnectors = computed<ConnectorEntity[]>(() => {
+    const edit = previewEdit.value
+    const ghosts = view.entities.creating
+    if (!edit?.isDrag || isScenePreview.value || !ghosts.length) return []
+    const source = state.value
+    if (!hasSameChartData(source, edit.source)) return []
+    const committed = source.store.slides.note
+    // Only slides with connectors; the rest skip building the preview.
+    const slideIds = new Set(
+        ghosts.flatMap((ghost) =>
+            ghost.type === 'note' && (committed.get(ghost.slideId)?.length ?? 0) > 1
+                ? [ghost.slideId]
+                : [],
+        ),
+    )
+    if (!slideIds.size) return []
+    const preview = edit.resolve()
+    if (!isSameTempo(preview.bpms, source.bpms)) return []
+    // Previewed slides are drawn solid as they drop.
+    const solid = previewSlides.value
+    return [...slideIds].flatMap((id) => {
+        const kept = new Set(committed.get(id))
+        return (preview.store.slides.connector.get(id) ?? []).filter(
+            (connector) =>
+                !solid?.includes(connector) &&
+                (!kept.has(connector.head) || !kept.has(connector.tail)),
+        )
+    })
+})
+
 /** The ghosts the overlay draws, and the state they're drawn through. */
 const shownGhosts = () => {
     // A drag's preview scene shows its drop itself; a pending draft's still shows a tool's
@@ -342,9 +375,13 @@ const shownGhosts = () => {
     // Previewed slides are drawn solid as they drop, without ghosts.
     const entities = !showsGhosts
         ? []
-        : preview
-          ? view.entities.creating.filter((entity) => !preview.includes(entity))
-          : view.entities.creating
+        : [
+              // Under the notes, as a paste's.
+              ...dragGhostConnectors.value,
+              ...(preview
+                  ? view.entities.creating.filter((entity) => !preview.includes(entity))
+                  : view.entities.creating),
+          ]
     return { entities, state: isComposedPaste ? pasteGhostState() : undefined }
 }
 
