@@ -389,7 +389,9 @@ test('a paste ghost of a same-beat slide draws its ribbons at half their alpha',
     expectClose(ghost.slice(0, 3), landed.slice(0, 3), 2)
 })
 
-test('a Slide add ghost draws no ribbon', async ({ page }) => {
+test('a Slide add ghost draws its ribbon from the last same-beat note over the solid committed slide', async ({
+    page,
+}) => {
     await seed(page, pair)
     await page.evaluate(() => {
         const { history } = window.editorTest
@@ -397,15 +399,63 @@ test('a Slide add ghost draws no ribbon', async ({ page }) => {
         history.replaceState({ ...history.state.value, selectedEntities: [head!] })
     })
     await useTool(page, 'slide')
-    // Where its ribbon would run, from the tail at lane 0 and elevation 4 to the ghost at lane 8 and 6.
+    // Its ribbon runs from the tail at lane 0 and elevation 4 to the ghost at lane 8 and 6.
     const ribbon = await at(page, 4, 5)
     const sample = await clearPoint(page, 'elevation', { x: ribbon.x, y: ribbon.y })
-    const target = await at(page, 8, 6)
-    await page.mouse.move(target.x - 3, target.y)
-    await page.mouse.move(target.x, target.y)
+    // The committed ribbon from 0 to 2.
+    const committed = await devicePoint(page, 'elevation', await at(page, 0, 1))
     await settle(page)
+    const before = await pixel(page, 'elevation', committed)
+    expect(before[3]).toBeGreaterThan(100)
+    const target = await at(page, 8, 6)
+    await hover(page, target)
     expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(1)
-    expect((await pixel(page, 'elevation', sample))[3]).toBe(0)
+    const ghost = await pixel(page, 'elevation', sample)
+    expect(await pixel(page, 'elevation', committed)).toEqual(before)
+    await page.mouse.down()
+    await page.mouse.up()
+    await settle(page)
+    await page.mouse.move(target.x, target.y + 300)
+    await settle(page)
+    const landed = await pixel(page, 'elevation', sample)
+    expect(landed[3]).toBeGreaterThan(100)
+    expect(Math.abs(ghost[3]! - landed[3]! / 2)).toBeLessThanOrEqual(1)
+    expectClose(ghost.slice(0, 3), landed.slice(0, 3), 2)
+})
+
+test('an Elevation Editor Slide add ghosts the ribbons it changes on the chart beside it', async ({
+    page,
+}) => {
+    // From beat 1 to 5 at lanes -2 to 2; the editor is at beat 3.
+    await seed(
+        page,
+        [
+            [
+                { beat: 1, left: -2 },
+                { beat: 5, left: -2 },
+            ],
+        ],
+        { sideBySide: true },
+    )
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const [head] = [...history.state.value.store.slides.note.values()].flat()
+        history.replaceState({ ...history.state.value, selectedEntities: [head!] })
+    })
+    await useTool(page, 'slide')
+    await hover(page, await at(page, 8, 1))
+    // Its ribbons from the head and to the tail, at beats 2 and 4, are centred halfway to it.
+    const middle = await page.evaluate(() => {
+        const [ghost] = window.editorTest.view.entities.creating
+        return ghost?.type === 'note' ? (ghost.left + ghost.size / 2) / 2 : NaN
+    })
+    expect(middle).toBeGreaterThan(3)
+    expect(await alphaAt(page, 'overlay', middle, 2)).toBeGreaterThan(30)
+    expect(await alphaAt(page, 'overlay', middle, 4)).toBeGreaterThan(30)
+    await page.mouse.move(0, 0)
+    await settle(page)
+    expect(await alphaAt(page, 'overlay', middle, 2)).toBe(0)
+    expect(await leftovers(page)).toEqual(none)
 })
 
 test('a Basic move ghosts the moved note and its ribbons over the solid committed slide', async ({
@@ -1118,12 +1168,17 @@ for (const layout of ['basic', 'composed'] as const) {
     })
 }
 
-type ChartNote = { beat: number; left: number; isAttached?: boolean }
+type ChartNote = { beat: number; left: number; isAttached?: boolean; noteType?: 'default' }
 
-/** Slides of two-lane notes on the chart in Basic, with those at these indexes, in store order, selected. */
-const showChart = (page: Page, slides: ChartNote[][], selected: number[] = []) =>
+/** Slides of two-lane notes on the chart, with those at these indexes, in store order, selected. */
+const showChart = (
+    page: Page,
+    slides: ChartNote[][],
+    selected: number[] = [],
+    layout: 'basic' | 'composed' = 'basic',
+) =>
     page.evaluate(
-        ({ slides, selected }) => {
+        ({ slides, selected, layout }) => {
             const { show, fixtures, view, settings, history } = window.editorTest
             const base = fixtures.interaction.slides[0]![0]!
             show(
@@ -1141,7 +1196,7 @@ const showChart = (page: Page, slides: ChartNote[][], selected: number[] = []) =
                 },
                 4,
             )
-            view.layout = 'basic'
+            view.layout = layout
             settings.showStageName = false
             settings.showGroupName = false
             const notes = [...history.state.value.store.slides.note.values()].flat()
@@ -1150,7 +1205,7 @@ const showChart = (page: Page, slides: ChartNote[][], selected: number[] = []) =
                 selectedEntities: selected.map((index) => notes[index]!),
             })
         },
-        { slides, selected },
+        { slides, selected, layout },
     )
 
 /** A chart lane and beat, in client pixels. */
@@ -1269,6 +1324,162 @@ for (const tool of ['note', 'slide'] as const) {
         await page.mouse.up()
     })
 }
+
+/** The chart's Slide add ghost: its note's centre, and its preview's ribbons and ticks. */
+const chartAddGhost = (page: Page) =>
+    page.evaluate(async () => {
+        const { view, appImport } = window.editorTest
+        const { slideAddGhost } = await appImport<
+            typeof import('../../src/editor/tools/slide/addPreview')
+        >('/src/editor/tools/slide/addPreview.ts')
+        const [ghost] = view.entities.creating
+        const preview = slideAddGhost(view.entities.creating)
+        return {
+            centre: ghost?.type === 'note' ? ghost.left + ghost.size / 2 : NaN,
+            connectors: preview?.connectors.length ?? 0,
+            ticks: preview?.ticks.map((tick) => tick.left + tick.size / 2) ?? [],
+        }
+    })
+
+// A slide from lanes -4 to -2 at beat 2 to beat 4, its head selected.
+const twoNotes: ChartNote[][] = [
+    [
+        { beat: 2, left: -4 },
+        { beat: 4, left: -4 },
+    ],
+]
+
+for (const layout of ['basic', 'composed'] as const) {
+    test(`chart ${layout}: a Slide add between two notes ghosts the ribbons it makes over the solid one`, async ({
+        page,
+    }) => {
+        await showChart(page, [[...twoNotes[0]!, { beat: 8, left: -4 }]], [0], layout)
+        await useTool(page, 'slide')
+        await settle(page)
+        const solid = await devicePoint(page, 'chart', await chartPoint(page, -3, 6))
+        const committed = await pixel(page, 'chart', solid)
+        expect(committed[3]).toBeGreaterThan(100)
+        await hover(page, await chartPoint(page, 4, 6))
+        const ghost = await chartAddGhost(page)
+        expect(ghost.connectors).toBe(2)
+        // From the second note to the ghost at beat 5, and from it to the last at beat 7, halfway.
+        const middle = (-3 + ghost.centre) / 2
+        for (const beat of [5, 7]) {
+            const alpha = await alphaAt(page, 'overlay', middle, beat)
+            expect(alpha).toBeGreaterThan(30)
+            expect(alpha).toBeLessThan(160)
+        }
+        // The first piece is unchanged, and the one replaced stays solid.
+        expect(await alphaAt(page, 'overlay', -3, 3)).toBe(0)
+        expect(await pixel(page, 'chart', solid)).toEqual(committed)
+        await page.mouse.move(0, 0)
+        await settle(page)
+        expect(await alphaAt(page, 'overlay', middle, 5)).toBe(0)
+    })
+}
+
+test('chart basic: a Slide add past the tail ghosts the ribbon to it', async ({ page }) => {
+    await showChart(page, twoNotes, [0])
+    await useTool(page, 'slide')
+    await hover(page, await chartPoint(page, 4, 6))
+    const ghost = await chartAddGhost(page)
+    expect(ghost.connectors).toBe(1)
+    expect(await alphaAt(page, 'overlay', (-3 + ghost.centre) / 2, 5)).toBeGreaterThan(30)
+    expect(await alphaAt(page, 'overlay', -3, 3)).toBe(0)
+})
+
+test('chart basic: a Slide add that re-attaches a tick ghosts it at its new lane', async ({
+    page,
+}) => {
+    // The tick at beat 4 sits on lanes -6 to -4 between the ends.
+    await showChart(
+        page,
+        [
+            [
+                { beat: 2, left: -6 },
+                { beat: 4, left: -6, isAttached: true, noteType: 'default' },
+                { beat: 6, left: -6 },
+            ],
+        ],
+        [0],
+    )
+    await useTool(page, 'slide')
+    const target = await chartPoint(page, 4, 5)
+    await hover(page, target)
+    const ghost = await chartAddGhost(page)
+    // Between the head and the ghost at beat 5, it moves two thirds of the way.
+    expect(ghost.ticks).toHaveLength(1)
+    const tick = ghost.ticks[0]!
+    expect(tick).toBeCloseTo(-5 + ((ghost.centre + 5) * 2) / 3, 1)
+    // Opaque over the ghost ribbon, which alone composites to less.
+    expect(await alphaAt(page, 'overlay', tick, 4)).toBeGreaterThan(120)
+    expect(await alphaAt(page, 'overlay', (-5 + ghost.centre) / 2, 3.5)).toBeLessThan(115)
+    await page.mouse.click(target.x, target.y)
+    await settle(page)
+    const landed = await page.evaluate(() => {
+        const [slide] = window.editorTest.history.state.value.store.slides.note.values()
+        const note = slide!.find((note) => note.beat === 4)!
+        return note.left + note.size / 2
+    })
+    expect(landed).toBeCloseTo(tick, 9)
+})
+
+test('chart basic: a Slide width-drag add ghosts the ribbon it makes', async ({ page }) => {
+    await showChart(page, twoNotes, [0])
+    await useTool(page, 'slide')
+    await hold(page, await chartPoint(page, 2, 6), await chartPoint(page, 5, 6))
+    const ghost = await chartAddGhost(page)
+    expect(ghost.connectors).toBe(1)
+    expect(await alphaAt(page, 'overlay', (-3 + ghost.centre) / 2, 5)).toBeGreaterThan(30)
+    await page.mouse.up()
+    await settle(page)
+    expect(await chartAddGhost(page)).toMatchObject({ connectors: 0, ticks: [] })
+})
+
+test('chart basic: a Slide hover near a note ghosts nothing', async ({ page }) => {
+    await showChart(page, twoNotes, [0])
+    await useTool(page, 'slide')
+    await hover(page, await chartPoint(page, 4, 6))
+    const middle = (-3 + (await chartAddGhost(page)).centre) / 2
+    expect(await alphaAt(page, 'overlay', middle, 5)).toBeGreaterThan(30)
+    await hover(page, await chartPoint(page, -3, 4))
+    expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(0)
+    expect(await alphaAt(page, 'overlay', middle, 5)).toBe(0)
+})
+
+test('chart basic: a Slide hover within one snapped cell keeps its add preview', async ({
+    page,
+}) => {
+    await showChart(page, twoNotes, [0])
+    await useTool(page, 'slide')
+    // The ghost note and a ribbon of the add, kept on the page.
+    const keep = () =>
+        page.evaluate(async () => {
+            const { view, appImport } = window.editorTest
+            const { slideAddGhost } = await appImport<
+                typeof import('../../src/editor/tools/slide/addPreview')
+            >('/src/editor/tools/slide/addPreview.ts')
+            const kept = ((window as unknown as { kept?: unknown[][] }).kept ??= [])
+            kept.push([
+                view.entities.creating[0],
+                slideAddGhost(view.entities.creating)?.connectors[0],
+            ])
+        })
+    const point = await chartPoint(page, 4.1, 6)
+    await hover(page, point)
+    await keep()
+    await page.mouse.move(point.x + 2, point.y + 1)
+    await settle(page)
+    await keep()
+    expect(
+        await page.evaluate(() => {
+            const [[ghost, connector], [next, nextConnector]] = (
+                window as unknown as { kept: unknown[][] }
+            ).kept as [unknown[], unknown[]]
+            return [!!ghost && ghost === next, !!connector && connector === nextConnector]
+        }),
+    ).toEqual([true, true])
+})
 
 test.describe('with touch', () => {
     test.use({ hasTouch: true })
