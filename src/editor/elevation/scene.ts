@@ -11,7 +11,7 @@ import { hasSameChartData } from '../../state/data'
 import type { SlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
-import { beatToTime } from '../../state/integrals/bpms'
+import { beatToTime, isSameTempo } from '../../state/integrals/bpms'
 import { dominantDivision } from '../composed'
 import { getComposedLayout } from '../composedView'
 import { isScenePreview } from '../sceneState'
@@ -217,10 +217,12 @@ export const elevationDragRows = computed(() => {
     // A drag selects the notes it moves.
     const moved = new Set(elevationState.value.selectedEntities)
     const live = new Set<SlideId>()
-    for (const row of preview.rows) {
-        const was = before.get(row.note)
-        if (was ? !isSameRow(was, row) : !moved.has(row.note)) live.add(row.note.slideId)
-    }
+    // A retiming drag ghosts only its moved notes, as on the chart.
+    if (isSameTempo(elevationState.value.bpms, state.value.bpms))
+        for (const row of preview.rows) {
+            const was = before.get(row.note)
+            if (was ? !isSameRow(was, row) : !moved.has(row.note)) live.add(row.note.slideId)
+        }
     const isLive = (row: ElevationRow) => live.has(row.note.slideId)
     return {
         rows: [

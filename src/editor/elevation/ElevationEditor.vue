@@ -42,7 +42,7 @@ import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
 import type { SlideId } from '../../state/entities/slides'
 import type { NoteEntity } from '../../state/entities/slides/note'
-import { beatToTime } from '../../state/integrals/bpms'
+import { beatToTime, isSameTempo } from '../../state/integrals/bpms'
 import { nearGridBeat, snapBeat, stepGridBeat } from '../../state/integrals/grid'
 import { editSelectedNote } from '../../state/operations/note'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
@@ -1479,6 +1479,8 @@ const connections = computed(() => {
         committed.bpms,
         new Map([...slideIds].map((id) => [id, sourceOf(id).store.slides.info.get(id) ?? []])),
     )
+    // A retiming drag ghosts no ribbons, as on the chart.
+    if (!isSameTempo(preview.bpms, committed.bpms)) return { solid, ghosts: [] }
     // A drag selects the notes it moves; its solid previewed slides have no ghosts.
     const moved = new Set(
         preview.selectedEntities.flatMap((entity) =>

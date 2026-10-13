@@ -522,6 +522,104 @@ test('a Composed drag that retimes keeps the committed notes solid under its gho
     })
 })
 
+test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbons or live slides, as the chart', async ({
+    page,
+}) => {
+    // The middle note leaves the beat, opening a ribbon between the others; moving the far
+    // slide's tail shifts its tick here. The tempo change at 2 moves with them.
+    await seed(
+        page,
+        [
+            [
+                { left: -2, elevation: 0 },
+                { left: 2, elevation: 2 },
+                { left: -2, elevation: 4 },
+            ],
+            [
+                { beat: 1, left: 6, elevation: 0 },
+                { left: 6, isAttached: true },
+                { beat: 5, left: 6, elevation: 4 },
+            ],
+        ],
+        {
+            sideBySide: true,
+            bpms: [
+                { beat: 0, bpm: 120 },
+                { beat: 2, bpm: 60 },
+            ],
+        },
+    )
+    await scrolled(page)
+    await settle(page)
+    const sample = await clearPoint(page, 'elevation', await at(page, 0, 2))
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(chart.x + 20, chart.y + 20)
+    const drag = await page.evaluate(async () => {
+        const { history, store, point, appImport, view } = window.editorTest
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const { isScenePreview, previewSlides } = await appImport<
+            typeof import('../../src/editor/sceneState')
+        >('/src/editor/sceneState.ts')
+        const { elevationDragRows } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const { beatToTime } = await appImport<typeof import('../../src/state/integrals/bpms')>(
+            '/src/state/integrals/bpms.ts',
+        )
+        const source = history.state.value
+        const notes = [...source.store.slides.note.values()].flat()
+        const middle = notes.find((note) => note.left === 2)!
+        const tail = notes.find((note) => note.beat === 5)!
+        history.replaceState({
+            ...source,
+            selectedEntities: [
+                middle,
+                tail,
+                ...[...store.getAllEntities()].filter(
+                    (entity) => entity.type === 'bpm' && entity.beat > 0,
+                ),
+            ],
+        })
+        const start = point(4, beatToTime(source.bpms, 3) * 2)
+        const end = point(4, beatToTime(source.bpms, 5) * 2)
+        const modifiers = { ctrl: false, shift: false }
+        select.dragStart!(start.x, start.y, modifiers)
+        select.dragUpdate!(end.x, end.y, modifiers)
+        const editor = (
+            document.querySelector('.elevation-canvas') as unknown as {
+                __vueParentComponent: { setupState: { connections: { ghosts: unknown[] } } }
+            }
+        ).__vueParentComponent.setupState
+        return {
+            scenePreview: isScenePreview.value,
+            chartSlides: !!previewSlides.value,
+            chartGhosts: view.entities.creating.length,
+            ghostRibbons: editor.connections.ghosts.length,
+            ghostRows: elevationDragRows.value?.ghosts.length,
+            live: elevationDragRows.value?.live.size,
+        }
+    })
+    expect(drag).toEqual({
+        scenePreview: false,
+        chartSlides: false,
+        chartGhosts: 3,
+        ghostRibbons: 0,
+        ghostRows: 0,
+        live: 0,
+    })
+    await settle(page)
+    // No ribbon is ghosted between the notes left on the beat.
+    expect((await pixel(page, 'elevation', sample))[3]).toBe(0)
+    await page.evaluate(async () => {
+        const { select } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools/select')
+        >('/src/editor/tools/select.ts')
+        select.dragCancel!()
+    })
+})
+
 test('a preview scene hides a hover ghost, as on the chart', async ({ page }) => {
     await seed(page, [[{ left: 4, elevation: 1 }]], { layout: 'composed' })
     const target = await at(page, -4, 3.5)
