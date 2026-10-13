@@ -677,10 +677,11 @@ test.describe('grid lines and axis labels', () => {
         await focusStage(page, 0)
         await useLayout(page, 'basic')
         await expectGrid({ elevations: [whole, multiple, whole], lanes: everySecond.lanes })
-        // Without dynamic stages, the same pivots don't apply, with a stage selected too.
+        // Without dynamic stages, the same pivots don't apply, and a stage can't be selected.
         await showPivots(page, pivots, false)
         await focusStage(page, 0)
         await expectGrid(everySecond)
+        expect(await page.evaluate(() => window.editorTest.view.stageId)).toBeUndefined()
     })
 
     test("take a change's dominant size, and 2 for a stage without a pivot", async ({ page }) => {

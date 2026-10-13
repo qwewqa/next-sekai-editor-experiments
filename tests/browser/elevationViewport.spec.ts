@@ -148,6 +148,7 @@ test.describe('the view', () => {
             view.height / 2 - (value - view.center) * view.scale
         for (const width of [1600, 390]) {
             await page.setViewportSize({ width, height: 844 })
+            await settle(page)
             await showChart(page, [2])
             await open(page)
             const fitted = await elevation(page)
@@ -177,6 +178,55 @@ test.describe('the view', () => {
             const zoomed = await elevation(page)
             expect(zoomed.laneScale).toBeGreaterThan(high.laneScale)
             expect(zoomed.scale).toBe(high.scale)
+            await close(page)
+        }
+    })
+
+    test('fits a new pane size until it is first adjusted', async ({ page }) => {
+        const resize = async (width: number, height: number) => {
+            await page.setViewportSize({ width, height })
+            await settle(page)
+        }
+        const openHigh = async () => {
+            await resize(1600, 844)
+            await showChart(page, [20])
+            await open(page)
+        }
+        // Unadjusted, a pane settling to another size gets a new 1:1 fit, 0 at its lowest.
+        await openHigh()
+        const fitted = await elevation(page)
+        await resize(1200, 700)
+        const refitted = await elevation(page)
+        expect(refitted.laneScale).toBeLessThan(fitted.laneScale)
+        expect(refitted.scale).toBe(refitted.laneScale)
+        expect(refitted.height / 2 - (0 - refitted.center) * refitted.scale).toBeCloseTo(
+            refitted.toolbar - 16,
+            6,
+        )
+        await close(page)
+        // Scrolling, zooming either axis or toggling 1:1 keeps the view.
+        const box = async () => (await page.locator('.elevation-canvas').boundingBox())!
+        const lock = page.getByRole('button', { name: '1:1 Grid', exact: true })
+        const adjustments = [
+            async () => {
+                const { x, y, width, height } = await box()
+                await page.mouse.move(x + width / 2, y + height / 2)
+                await page.mouse.wheel(0, 120)
+            },
+            () => page.keyboard.press('='),
+            () => page.keyboard.press(']'),
+            async () => {
+                await lock.click()
+                await lock.click()
+            },
+        ]
+        for (const adjust of adjustments) {
+            await openHigh()
+            await adjust()
+            await settle(page)
+            const kept = await viewport(page)
+            await resize(1200, 700)
+            expect(await viewport(page)).toEqual(kept)
             await close(page)
         }
     })

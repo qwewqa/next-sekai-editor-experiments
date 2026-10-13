@@ -130,6 +130,7 @@ import {
 } from './state'
 import {
     elevationBounds,
+    elevationFitSize,
     elevationSelection,
     elevationViewport,
     fitElevationViewport,
@@ -252,9 +253,13 @@ const availableCommands: CommandName[] = [
     'scrollPageDown',
 ]
 // Fits once its pane has a size, when a chart load asks for it; it starts at 1:1.
+// Until the view is adjusted, a pane settling to another size fits it again.
 const fitViewport = () => {
-    if (!needsElevationFit.value || !elevationBounds.h) return
+    const { w, h } = elevationBounds
+    const size = elevationFitSize.value
+    if (!h || (!needsElevationFit.value && (!size || (size.w === w && size.h === h)))) return
     needsElevationFit.value = false
+    elevationFitSize.value = { w, h }
     fitElevationViewport(
         elevationBounds.h,
         elevationNotes.value,
@@ -279,6 +284,11 @@ watch(
     },
     { immediate: true, flush: 'sync' },
 )
+// Scrolling, zooming either axis or toggling 1:1 keeps the view from then on.
+const keepViewport = () => {
+    elevationFitSize.value = undefined
+}
+watch([() => settings.width, () => settings.elevationSquareGrid], keepViewport)
 const frame = createFrameScheduler()
 const notes = createNoteRenderer()
 const nameSprites = createLabelSprites()
@@ -1574,12 +1584,14 @@ onMounted(() => {
         bounds: elevationBounds,
         scrollY: (pixels) => {
             closeContextMenu()
+            keepViewport()
             elevationViewport.center += pixels / elevationViewport.scale
         },
         getScaleX: () => elevationLayout.value.laneScale,
         getScaleY: () => elevationViewport.scale,
         setScaleY: (scale) => {
             closeContextMenu()
+            keepViewport()
             // Locked, the lane zoom follows (the setting clamps it), and the y-scale with it.
             if (settings.elevationSquareGrid) settings.width = elevationBounds.w / (scale * 1.1)
             else elevationViewport.scale = clamp(scale, 1, 1200)
@@ -1854,7 +1866,7 @@ onUnmounted(() => {
     margin-left: auto;
 }
 
-/* Its hit area covers the gap before it, reaching the snap field when the row is tight. */
+/* Its hit area covers the gap before it. */
 @media not (pointer: coarse) {
     .elevation-square::before {
         left: -0.25rem;
