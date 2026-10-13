@@ -524,7 +524,7 @@ let marquee:
           elevation: number
           selected: State['selectedEntities']
           targets: State['selectedEntities']
-          // The selection's size last said.
+          // The count last posted.
           count: number
       }
     | undefined
@@ -729,8 +729,7 @@ const selectTargets = (hits: ElevationRow[], modifiers: Modifiers, at?: TapPoint
 // The tool whose notices a selection or drag posts, as on the chart.
 const noticeTool = () =>
     toolName.value === 'note' || toolName.value === 'slide' ? toolName.value : 'select'
-const notifySelected = () => {
-    const tool = noticeTool()
+const notifySelected = (tool: ReturnType<typeof noticeTool> = noticeTool()) => {
     notify(
         interpolate(
             () => i18n.value.tools[tool].selected,
@@ -738,13 +737,13 @@ const notifySelected = () => {
         ),
     )
 }
-/** Selects what a tap at rows selects, saying so as the chart's tools do unless `quiet`. */
+/** Selects what a tap at rows selects, saying so as the chart's tools do, or as `notice` says. */
 const selectAt = (
     rows: ElevationRow[],
     modifiers: Modifiers,
     at?: TapPoint,
     notesOnly = false,
-    quiet = false,
+    notice?: 'select' | 'quiet',
 ) => {
     const selected = selectedFor(notesOnly)
     if (modifiers.ctrl && !rows.length) return
@@ -759,10 +758,10 @@ const selectAt = (
                 : [...new Set([...selected, ...targets])]
             : targets,
     })
-    if (quiet) return
-    if (modifiers.ctrl || targets.length) notifySelected()
+    if (notice === 'quiet') return
+    if (modifiers.ctrl || targets.length) notifySelected(notice)
     else if (previous) {
-        const tool = toolName.value
+        const tool = notice ?? toolName.value
         notify(() =>
             tool === 'eraser' || tool === 'brush' || tool === 'generateSlideNotes'
                 ? i18n.value.tools[tool].deselected
@@ -1005,7 +1004,7 @@ const controls: Pick<
             replaceState({ ...state.value, selectedEntities: [row.note] })
             view.entities = { hovered: [], creating: [] }
         } else if (!state.value.selectedEntities.includes(row.note))
-            selectAt([row], { ctrl: false, shift: false }, undefined, false, true)
+            selectAt([row], { ctrl: false, shift: false }, undefined, false, 'quiet')
         // It only selects, as a tap does.
         if (target.type === 'select') {
             notifySelected()
@@ -1129,7 +1128,7 @@ const controls: Pick<
                     ? [...new Set([...marquee.selected, ...targets])]
                     : targets
             replaceState({ ...state.value, selectedEntities: selection })
-            // Said on a change only, as a scroll re-runs it.
+            // Posted on a count change; scrolls re-run it.
             if (marquee.count === selection.length) return
             marquee.count = selection.length
             const tool = toolName.value
@@ -1239,7 +1238,7 @@ const controls: Pick<
         }
         if (marquee) {
             cancel()
-            notifySelected()
+            notifySelected('select')
             return
         }
         const active = drag
@@ -1746,9 +1745,10 @@ onMounted(() => {
             const { rows, set } = hitRows(x, y, minimum)
             return { hits: rows.map((row) => row.note), set: set.map((row) => row.note) }
         },
+        // As the chart's, it says so as Select does.
         selectPoint: (x, y) => {
             const row = hit(x, y)
-            selectAt(row ? [row] : [], { ctrl: false, shift: false })
+            selectAt(row ? [row] : [], { ctrl: false, shift: false }, undefined, false, 'select')
         },
         positionAtPoint,
         pasteAtPoint,

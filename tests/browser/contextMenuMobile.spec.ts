@@ -235,11 +235,10 @@ test('elevation toolbar context handles off-slice selected notes without losing 
             (entity) => entity.beat,
         ),
     ).toEqual([5])
-    // The menu is the Elevation Editor's own, so it doesn't offer to open it.
-    await expect(page.getByRole('menuitem', { name: 'Copy', exact: true })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toHaveCount(
-        0,
-    )
+    await page.getByRole('menuitem', { name: 'Edit Elevations', exact: true }).tap()
+    await expect(
+        page.locator('.elevation-editor').getByRole('spinbutton', { name: 'Beat', exact: true }),
+    ).toHaveValue('6')
 })
 
 test('split toolbar action targets the pane that owns the button', async ({ page }) => {

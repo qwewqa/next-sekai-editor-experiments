@@ -124,6 +124,15 @@ test('taps say what they select and deselect', async ({ page }) => {
     expect(await notice(page)).toBe('Selected 1 note')
 })
 
+test("the context menu's selection says it as Select does, whatever the tool", async ({ page }) => {
+    await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'selectContextMenu'))
+    await page.keyboard.press('a')
+    const { x, y } = await at(page, -3, 1)
+    await page.mouse.click(x, y, { button: 'right' })
+    await expect(page.getByRole('menu')).toBeVisible()
+    expect(await notice(page)).toBe('Selected 1 object')
+})
+
 test('an empty tap with the Eraser deselects in its own words', async ({ page }) => {
     // Japanese words Select's and the Eraser's apart.
     await page.evaluate(() => (window.editorTest.settings.locale = 'ja'))

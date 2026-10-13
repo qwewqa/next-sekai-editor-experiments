@@ -190,27 +190,45 @@ test('beside the chart, the empty beat note stays under the header as the chart 
     expect((await emptyNotes(page)).at(-1)).toBe(header + 24)
 })
 
-test("the Elevation Editor's own context menu doesn't offer to edit elevations", async ({
+test("Edit Elevations in the Elevation Editor's own context menu jumps to the selection's beat and keeps the tool", async ({
     page,
 }) => {
     await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'selectContextMenu'))
     await open(page)
+    await page.keyboard.press('a')
+    const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    await expect(beat).toHaveValue('7')
+    const menu = page.getByRole('menu')
+    const edit = menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })
+    // Offered on a note here, and on empty space.
     const note = await at(page, -3, 1)
     await page.mouse.click(note.x, note.y, { button: 'right' })
-    const menu = page.getByRole('menu')
     await expect(menu.getByRole('menuitem', { name: 'Copy', exact: true })).toBeVisible()
-    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toHaveCount(
-        0,
-    )
+    await expect(edit).toBeVisible()
     await page.keyboard.press('Escape')
-    // Empty space neither.
     const empty = await at(page, 6, 6)
     await page.mouse.click(empty.x, empty.y, { button: 'right' })
     await page.mouse.click(empty.x, empty.y, { button: 'right' })
     await expect(menu.getByRole('menuitem', { name: 'Paste', exact: true })).toBeVisible()
-    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toHaveCount(
-        0,
-    )
+    await expect(edit).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    // On a selected note off this beat, it goes to the note's beat.
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const source = history.state.value
+        const note = [...source.store.slides.note.values()].flat().find((note) => note.beat === 8)!
+        history.replaceState({ ...source, selectedEntities: [note] })
+    })
+    await page.evaluate(async () => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        await commands.openContextMenu.execute()
+    })
+    await edit.click()
+    await expect(beat).toHaveValue('9')
+    expect(await toolName(page)).toBe('note')
 })
 
 test('Edit Elevations from the chart beside an open Elevation Editor changes its beat and keeps the tool', async ({
