@@ -2130,8 +2130,8 @@ test('a zero-width note is outlined as wide as its placeholder', async ({ page }
         CanvasRenderingContext2D.prototype.strokeRect = strokeRect
         return { widths, laneScale: window.elevationTest.scene.elevationLayout.value.laneScale }
     })
-    // The placeholder is 0.2 lanes wide, as on the main canvas.
-    expect(result.widths.at(-1)).toBeCloseTo(0.2 * result.laneScale + 6, 6)
+    // The 0.1-lane margin around an empty hitbox, as on the main canvas.
+    expect(result.widths.at(-1)).toBeCloseTo(0.2 * result.laneScale, 6)
 })
 
 test('header controls take keys as dock controls do', async ({ page }) => {

@@ -21,11 +21,11 @@ export const sameBeat = (a: number, b: number) => Math.abs(a - b) < 1e-7
 export const snapElevation = (value: number, division: number) =>
     division > 0 ? Math.round(value * division) / division : value
 
-// Lines per unit: the snap's, halved until they're at least 7.5px apart; by zoom when snap is off.
+// Lines per unit: the snap's, halved until they're at least 15px apart; by zoom when snap is off.
 export const elevationGridDivision = (scale: number, snap: number) => {
-    if (snap <= 0) return scale >= 60 ? 8 : scale >= 30 ? 4 : 1
+    if (snap <= 0) return scale >= 120 ? 8 : scale >= 60 ? 4 : 1
     let division = snap
-    while (division > 1 && scale / division < 7.5) division /= 2
+    while (division > 1 && scale / division < 15) division /= 2
     return division
 }
 

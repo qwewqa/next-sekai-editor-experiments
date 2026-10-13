@@ -51,6 +51,12 @@ import { alignComputed, clamp, shiftComputed } from '../../utils/math'
 import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
+import {
+    clearTextWidths,
+    FIGURE_MIDDLE,
+    measureFigureMiddle,
+    measureTextMiddle,
+} from '../canvas/text'
 import { createNoteRenderer } from '../canvas/notes'
 import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
 import { toCommittedEntity, toSceneEntity } from '../sceneState'
@@ -275,6 +281,20 @@ const updatePixelRatio = () => {
     pixelRatioQuery.addEventListener('change', updatePixelRatio)
 }
 const redrawVersion = ref(0)
+// The editor's font, as the chart's.
+const fontFamily = ref('sans-serif')
+const fontMiddle = ref(0.25)
+const figureMiddle = ref(FIGURE_MIDDLE)
+const updateFont = () => {
+    if (container.value) {
+        fontFamily.value = getComputedStyle(container.value).fontFamily
+        fontMiddle.value = measureTextMiddle(fontFamily.value, container.value)
+        figureMiddle.value = measureFigureMiddle(fontFamily.value)
+    }
+    clearTextWidths()
+    nameSprites.clear()
+    redrawVersion.value++
+}
 const restoreContext = () => {
     notes.clear()
     nameSprites.clear()
@@ -1200,6 +1220,9 @@ watchEffect(() => {
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
     void redrawVersion.value
+    const family = fontFamily.value
+    const textMiddle = fontMiddle.value
+    const numberMiddle = figureMiddle.value
     // Axis labels move right of any left badges, which would cover them.
     const leftBadges = offscreenGroups.value.filter(({ side }) => side === 'left')
     const axisLabelLeft = leftBadges.length
@@ -1218,20 +1241,18 @@ watchEffect(() => {
         if (!ctx) return
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
         ctx.clearRect(0, 0, layout.width, layout.height)
-        ctx.font = '12px sans-serif'
-        ctx.lineWidth = 1
+        ctx.font = `12px ${family}`
+        ctx.lineWidth = 2
         const min = layout.elevationCenter - layout.height / 2 / layout.elevationScale
         const max = layout.elevationCenter + layout.height / 2 / layout.elevationScale
         const division = elevationGridDivision(layout.elevationScale, elevationSnap)
         ctx.save()
-        ctx.textBaseline = 'alphabetic'
-        const digits = ctx.measureText('0123456789')
-        const labelBaseline = (digits.actualBoundingBoxAscent - digits.actualBoundingBoxDescent) / 2
+        const labelBaseline = numberMiddle * 12
         const axisLabels: { label: string; y: number }[] = []
         for (let i = Math.ceil(min * division); i <= Math.floor(max * division); i++) {
             const y = layout.yAt(i / division)
             const label = i % division === 0 ? `${i / division}` : undefined
-            ctx.strokeStyle = i === 0 ? '#ffffff80' : i % division === 0 ? '#ffffff40' : '#ffffff0d'
+            ctx.strokeStyle = i === 0 ? '#ffffff80' : i % division === 0 ? '#ffffff59' : '#ffffff26'
             ctx.beginPath()
             ctx.moveTo(38, y)
             // Inside the grid, the line breaks around its label.
@@ -1257,7 +1278,13 @@ watchEffect(() => {
             const x = layout.xAt(lane)
             if (x < 38) continue
             ctx.strokeStyle =
-                lane === -6 || lane === 6 ? '#ffffff80' : lane % 2 === 0 ? '#ffffff40' : '#ffffff0d'
+                i % laneDivision !== 0
+                    ? '#ffffff06'
+                    : lane === -6 || lane === 6
+                      ? '#ffffff80'
+                      : lane % 2 === 0
+                        ? '#ffffff40'
+                        : '#ffffff0d'
             ctx.beginPath()
             ctx.moveTo(x, 52)
             ctx.lineTo(x, layout.height)
@@ -1284,9 +1311,9 @@ watchEffect(() => {
             showStageName,
             nameContrast,
             recentlyActive: true,
-            fontFamily: 'sans-serif',
-            fontMiddle: 0.25,
-            figureMiddle: 0.35,
+            fontFamily: family,
+            fontMiddle: textMiddle,
+            figureMiddle: numberMiddle,
             names,
             nameSprites,
         }
@@ -1331,7 +1358,7 @@ watchEffect(() => {
         }
         // Axis labels go over every row and connection, as the chart's text does.
         ctx.save()
-        ctx.font = '12px sans-serif'
+        ctx.font = `12px ${family}`
         ctx.textAlign = axisLabelLeft === undefined ? 'right' : 'left'
         ctx.textBaseline = 'alphabetic'
         ctx.fillStyle = '#ffffff80'
@@ -1345,18 +1372,17 @@ watchEffect(() => {
         ctx.restore()
         for (const row of visibleRows) {
             if (selected.has(row.note) || hover.has(row.note)) {
-                // At least the 0.2-lane placeholder a zero-width note draws.
-                const w = Math.max(row.w, layout.laneScale * 0.2)
+                // As the chart's outlines: the hitbox and 0.1 lane around it.
+                const pad = layout.laneScale * 0.1
                 ctx.save()
-                // As the chart's outlines.
                 ctx.lineWidth = 2
                 ctx.setLineDash([6, 4])
                 ctx.strokeStyle = '#ffffff80'
                 ctx.strokeRect(
-                    row.x - w / 2 - 3,
-                    row.y - layout.laneScale * 0.3 - 3,
-                    w + 6,
-                    layout.laneScale * 0.6 + 6,
+                    row.x - row.w / 2 - pad,
+                    row.y - layout.laneScale * 0.4,
+                    row.w + 2 * pad,
+                    layout.laneScale * 0.8,
                 )
                 ctx.restore()
             }
@@ -1408,6 +1434,8 @@ onMounted(() => {
     window.addEventListener('keydown', onKeydown, true)
     updatePixelRatio()
     window.addEventListener('resize', updatePixelRatio)
+    updateFont()
+    document.fonts.addEventListener('loadingdone', updateFont)
     view.scrollingY = undefined
     view.scrollingX = undefined
     fitViewport()
@@ -1466,6 +1494,7 @@ onUnmounted(() => {
     window.removeEventListener('keydown', onKeydown, true)
     window.removeEventListener('resize', updatePixelRatio)
     pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
+    document.fonts.removeEventListener('loadingdone', updateFont)
     cancel()
     frame.cancel()
     notes.clear()

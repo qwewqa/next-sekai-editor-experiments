@@ -289,6 +289,111 @@ test('a box selection is drawn as the chart draws its own', async ({ page }) => 
     await page.mouse.up()
 })
 
+test('a note outline is the chart hitbox with a 0.1 lane margin', async ({ page }) => {
+    await page.evaluate(() => {
+        const calls: number[][] = []
+        ;(window as unknown as { outlines: number[][] }).outlines = calls
+        const method = CanvasRenderingContext2D.prototype.strokeRect
+        CanvasRenderingContext2D.prototype.strokeRect = function (x, y, w, h) {
+            if (this.canvas.classList.contains('elevation-canvas') && this.getLineDash().length)
+                calls.push([x, y, w, h, this.lineWidth])
+            return method.call(this, x, y, w, h)
+        }
+    })
+    await selectElevation(page, 3)
+    await settle(page)
+    const { outline, lane } = await page.evaluate(async (scenePath) => {
+        const { outlines } = window as unknown as { outlines: number[][] }
+        const layout = (await window.editorTest.appImport<Scene>(scenePath)).elevationLayout.value
+        return {
+            outline: outlines.at(-1)!,
+            lane: { left: layout.xAt(0), top: layout.yAt(3), scale: layout.laneScale },
+        }
+    }, scenePath)
+    // Lanes 0 to 2 and 0.3 lane above and below, each 0.1 lane further out.
+    expect(outline[0]).toBeCloseTo(lane.left - 0.1 * lane.scale, 6)
+    expect(outline[1]).toBeCloseTo(lane.top - 0.4 * lane.scale, 6)
+    expect(outline[2]).toBeCloseTo(2.2 * lane.scale, 6)
+    expect(outline[3]).toBeCloseTo(0.8 * lane.scale, 6)
+    expect(outline[4]).toBe(2)
+})
+
+test('grid lines and axis labels are drawn in the chart styles and font', async ({ page }) => {
+    await page.evaluate(() => {
+        const lines: { style: string; width: number; vertical: boolean }[] = []
+        const fonts: string[] = []
+        Object.assign(window, { gridLines: lines, labelFonts: fonts })
+        const prototype = CanvasRenderingContext2D.prototype
+        const { moveTo, lineTo, stroke, fillText, clearRect } = prototype
+        let start = [0, 0]
+        let vertical = false
+        prototype.clearRect = function (...args) {
+            if (this.canvas.classList.contains('elevation-canvas')) lines.length = fonts.length = 0
+            return clearRect.apply(this, args)
+        }
+        prototype.moveTo = function (x, y) {
+            start = [x, y]
+            return moveTo.call(this, x, y)
+        }
+        prototype.lineTo = function (x, y) {
+            vertical = x === start[0] && y !== start[1]
+            return lineTo.call(this, x, y)
+        }
+        // The editor strokes its own paths.
+        prototype.stroke = function (this: CanvasRenderingContext2D) {
+            if (this.canvas.classList.contains('elevation-canvas') && !this.getLineDash().length)
+                lines.push({ style: String(this.strokeStyle), width: this.lineWidth, vertical })
+            return (stroke as () => void).call(this)
+        }
+        prototype.fillText = function (text, x, y, maxWidth) {
+            if (this.canvas.classList.contains('elevation-canvas') && /^-?\d+$/.test(text))
+                fonts.push(this.font)
+            return fillText.call(this, text, x, y, maxWidth)
+        }
+    })
+    await page.evaluate(async (viewportPath) => {
+        const { view, settings, appImport } = window.editorTest
+        settings.elevationSnap = 4 as never
+        view.laneDivision = 2
+        const { elevationViewport } = await appImport<Viewport>(viewportPath)
+        Object.assign(elevationViewport, { center: 0.5, scale: 100 })
+    }, viewportPath)
+    await settle(page)
+    const result = await page.evaluate(() => {
+        const { gridLines, labelFonts } = window as unknown as {
+            gridLines: { style: string; width: number; vertical: boolean }[]
+            labelFonts: string[]
+        }
+        const probe = document.createElement('canvas').getContext('2d')!
+        probe.font = `12px ${getComputedStyle(document.querySelector('.elevation-editor')!).fontFamily}`
+        const style = (color: string) => ((probe.strokeStyle = color), String(probe.strokeStyle))
+        const name = (line: { style: string; vertical: boolean }) =>
+            `${line.vertical ? 'lane' : 'elevation'} ${line.style}`
+        return {
+            lines: [...new Set(gridLines.map(name))].sort(),
+            widths: [...new Set(gridLines.map((line) => line.width))],
+            fonts: [...new Set(labelFonts)],
+            font: probe.font,
+            expected: [
+                // Lane 6, even and odd lanes, and half lanes.
+                ...['#ffffff80', '#ffffff40', '#ffffff0d', '#ffffff06'].map(
+                    (color) => `lane ${style(color)}`,
+                ),
+                // Elevation 0, whole elevations, and quarters.
+                ...['#ffffff80', '#ffffff59', '#ffffff26'].map(
+                    (color) => `elevation ${style(color)}`,
+                ),
+            ].sort(),
+        }
+    })
+    expect(result.widths).toEqual([2])
+    expect(result.lines).toEqual(result.expected)
+    expect(result.lines).toHaveLength(7)
+    // The editor's font, not the canvas default.
+    expect(result.font).not.toBe('12px sans-serif')
+    expect(result.fonts).toEqual([result.font])
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 

@@ -29,22 +29,23 @@ const viewport = {
 }
 
 test('grid lines follow the elevation snap, thinned to stay readable', () => {
-    // Each snap step while lines stay at least 7.5px apart.
+    // Each snap step while lines stay at least 15px apart.
     assert.equal(elevationGridDivision(120, 8), 8)
-    assert.equal(elevationGridDivision(120, 16), 16)
+    assert.equal(elevationGridDivision(240, 16), 16)
     assert.equal(elevationGridDivision(120, 2), 2)
     // Too dense: halved, so lines still fall on snap points.
-    assert.equal(elevationGridDivision(120, 64), 16)
-    assert.equal(elevationGridDivision(40, 8), 4)
-    assert.equal(elevationGridDivision(20, 8), 2)
+    assert.equal(elevationGridDivision(120, 16), 8)
+    assert.equal(elevationGridDivision(120, 64), 8)
+    assert.equal(elevationGridDivision(40, 8), 2)
+    assert.equal(elevationGridDivision(20, 8), 1)
     assert.equal(elevationGridDivision(5, 8), 1)
     assert.equal(elevationGridDivision(5, 1), 1)
     // Snap off keeps the zoom-based lines.
-    assert.equal(elevationGridDivision(60, 0), 8)
-    assert.equal(elevationGridDivision(30, 0), 4)
-    assert.equal(elevationGridDivision(29, 0), 1)
-    // The default snap matches the zoom-based lines down to 30px per unit.
-    for (const scale of [30, 45, 59, 60, 90, 200]) {
+    assert.equal(elevationGridDivision(120, 0), 8)
+    assert.equal(elevationGridDivision(60, 0), 4)
+    assert.equal(elevationGridDivision(59, 0), 1)
+    // A 1/8 snap matches the zoom-based lines down to 60px per unit.
+    for (const scale of [60, 90, 119, 120, 180, 400]) {
         assert.equal(elevationGridDivision(scale, 8), elevationGridDivision(scale, 0), `${scale}`)
     }
 })
