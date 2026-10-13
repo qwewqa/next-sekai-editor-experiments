@@ -293,6 +293,62 @@ test('an Elevation Editor Slide add under a pending draft goes right after the n
     expect(await ghostPieces(page)).toEqual([[4, 1]])
 })
 
+test('an Elevation Editor Slide add under a Properties draft lands as its ghost: committed, right after the drafted note', async ({
+    page,
+}) => {
+    await seed(
+        page,
+        [
+            { left: -6, elevation: 0 },
+            { left: -6, elevation: 4 },
+        ],
+        [0],
+    )
+    await page.evaluate(() => (window.editorTest.settings.showSidebar = true))
+    await page
+        .locator('#workspace-panel-properties #properties-section-selection label')
+        .filter({ has: page.getByText('Elevation', { exact: true }) })
+        .locator('input')
+        .fill('2')
+    const target = await at(page, 4, 1)
+    await page.mouse.move(target.x - 3, target.y)
+    await page.mouse.move(target.x, target.y)
+    await settle(page)
+    const ghost = await page.evaluate(async () => {
+        const { view, appImport } = window.editorTest
+        const { previewEdit } =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const { slideAddGhost } = await appImport<
+            typeof import('../../src/editor/tools/slide/addPreview')
+        >('/src/editor/tools/slide/addPreview.ts')
+        const preview = slideAddGhost(view.entities.creating)
+        const notes = preview?.result.store.slides.note.get(preview.landed.slideId) ?? []
+        return {
+            draft: !!previewEdit.value?.isDraft,
+            notes: notes.map(({ beat, left, elevation }) => [beat, left, elevation]),
+        }
+    })
+    expect(ghost).toEqual({
+        draft: true,
+        notes: [
+            [3, -6, 2],
+            [3, 4, 1],
+            [3, -6, 4],
+        ],
+    })
+    // The press commits the draft, then adds.
+    await page.mouse.down()
+    await page.mouse.up()
+    await settle(page)
+    expect((await slide(page)).notes).toEqual(ghost.notes)
+    await page.keyboard.press('Control+z')
+    await settle(page)
+    expect((await slide(page)).notes).toEqual([
+        [3, -6, 2],
+        [3, -6, 4],
+    ])
+})
+
 test('a chart Slide add goes right after the selected note only at its beat, taking its beat exactly', async ({
     page,
 }) => {
