@@ -217,22 +217,29 @@ export const elevationDragRows = computed(() => {
     // A drag selects the notes it moves.
     const moved = new Set(elevationState.value.selectedEntities)
     const live = new Set<SlideId>()
+    const isRetime = !isSameTempo(elevationState.value.bpms, state.value.bpms)
     // A retiming drag draws no slide live, as on the chart.
-    if (isSameTempo(elevationState.value.bpms, state.value.bpms))
+    if (!isRetime)
         for (const row of preview.rows) {
             const was = before.get(row.note)
             if (was ? !isSameRow(was, row) : !moved.has(row.note)) live.add(row.note.slideId)
         }
     const isLive = (row: ElevationRow) => live.has(row.note.slideId)
+    // The chart draws a retime's ghosts on its committed lanes.
+    const composed = isRetime ? getComposedLayout(state.value) : undefined
+    const shown = composed
+        ? layoutElevationNotes(
+              notesOf(compiledChart.value, gridNotes.value, bpms.value, composed),
+              elevationAxes.value,
+          ).rows
+        : preview.rows
     return {
         rows: [
             ...committed.rows.filter((row) => !isLive(row)),
             ...preview.rows.filter(isLive),
         ].sort((a, b) => a.elevation - b.elevation || a.order - b.order),
         // Only moved notes ghost, not ticks a retime rebuilds.
-        ghosts: preview.rows.filter(
-            (row) => moved.has(row.note) && !before.has(row.note) && !isLive(row),
-        ),
+        ghosts: shown.filter((row) => moved.has(row.note) && !before.has(row.note) && !isLive(row)),
         live,
     }
 })

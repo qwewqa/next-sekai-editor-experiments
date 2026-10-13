@@ -63,10 +63,11 @@ const seed = (
         sideBySide?: boolean
         groupName?: boolean
         bpms?: { beat: number; bpm: number }[]
+        pivots?: { beat: number; pivotLane: number }[]
     } = {},
 ) =>
     page.evaluate(
-        async ({ slides, layout, sideBySide, groupName, bpms }) => {
+        async ({ slides, layout, sideBySide, groupName, bpms, pivots }) => {
             const { fixtures, show, settings, view, history, appImport, nextTick } =
                 window.editorTest
             const base = fixtures.interaction.slides[0]![0]!
@@ -76,9 +77,11 @@ const seed = (
                     ...fixtures.interaction,
                     isDynamicStages: true,
                     ...(bpms ? { bpms } : {}),
-                    stagePivotEvents: [
-                        { ...pivot, stageId: base.stageId, beat: 0, pivotLane: 0.5 },
-                    ],
+                    stagePivotEvents: pivots.map((event) => ({
+                        ...pivot,
+                        stageId: base.stageId,
+                        ...event,
+                    })),
                     slides: slides.map((slide) =>
                         slide.map((note) => ({
                             ...base,
@@ -114,6 +117,7 @@ const seed = (
             sideBySide: !!options.sideBySide,
             groupName: !!options.groupName,
             bpms: options.bpms,
+            pivots: options.pivots ?? [{ beat: 0, pivotLane: 0.5 }],
         },
     )
 
@@ -463,7 +467,8 @@ const scrolled = (page: Page) =>
 test('a Composed drag that retimes keeps the committed notes solid under its ghosts, as the chart', async ({
     page,
 }) => {
-    // A note at beat 1 and the tempo change at 2, both moved 2 beats later.
+    // A note at beat 1 and the tempo change at 2, both moved 2 beats later. The stage's offset
+    // puts the note's committed lanes, 1.5 to 5.5, clear of its authored ones.
     await seed(page, [[{ beat: 1, left: -2, elevation: 1 }]], {
         layout: 'composed',
         sideBySide: true,
@@ -471,9 +476,10 @@ test('a Composed drag that retimes keeps the committed notes solid under its gho
             { beat: 0, bpm: 120 },
             { beat: 2, bpm: 60 },
         ],
+        pivots: [{ beat: 0, pivotLane: 3.5 }],
     })
     await scrolled(page)
-    const sample = await clearPoint(page, 'elevation', await at(page, 0, 1))
+    const sample = await clearPoint(page, 'elevation', await at(page, 4.5, 1))
     // The pointer goes to the chart, which takes the press.
     const chart = (await page.locator('canvas.editor-chart').boundingBox())!
     await page.mouse.move(chart.x + 20, chart.y + 20)
@@ -507,9 +513,13 @@ test('a Composed drag that retimes keeps the committed notes solid under its gho
         const modifiers = { ctrl: false, shift: false }
         select.dragStart!(start.x, start.y, modifiers)
         select.dragUpdate!(end.x, end.y, modifiers)
-        return { scenePreview: isScenePreview.value, ghostDrag: isElevationGhostDrag.value }
+        return {
+            scenePreview: isScenePreview.value,
+            ghostDrag: isElevationGhostDrag.value,
+            offset: createComposedLayout(source).offset(note!.stageId, note!.beat),
+        }
     })
-    expect(drag).toEqual({ scenePreview: false, ghostDrag: true })
+    expect(drag).toEqual({ scenePreview: false, ghostDrag: true, offset: 3.5 })
     await settle(page)
     // The pane follows the press to beat 1, where the note stays drawn as committed.
     expect(await leftovers(page)).toMatchObject({ preview: true })
@@ -520,6 +530,91 @@ test('a Composed drag that retimes keeps the committed notes solid under its gho
         >('/src/editor/tools/select.ts')
         select.dragCancel!()
     })
+})
+
+test('a Composed drag that retimes places its ghosts on the committed lanes, as the chart', async ({
+    page,
+}) => {
+    // The pressed note leaves the beat as one at 1 lands on it. The stage's offset eases from
+    // 0.5 to 12.5 over beats 0 to 4, so moving the tempo change at 2 to 4 shifts it at beat 3.
+    await seed(
+        page,
+        [[{ beat: 3, left: -10, elevation: 0 }], [{ beat: 1, left: -10, elevation: 1 }]],
+        {
+            layout: 'composed',
+            sideBySide: true,
+            bpms: [
+                { beat: 0, bpm: 120 },
+                { beat: 2, bpm: 60 },
+            ],
+            pivots: [
+                { beat: 0, pivotLane: 0.5 },
+                { beat: 4, pivotLane: 12.5 },
+            ],
+        },
+    )
+    await scrolled(page)
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(chart.x + 20, chart.y + 20)
+    const drag = await page.evaluate(async () => {
+        const { history, store, point, appImport, view } = window.editorTest
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const { select } = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const { isScenePreview, sceneState } = await appImport<
+            typeof import('../../src/editor/sceneState')
+        >('/src/editor/sceneState.ts')
+        const { elevationDragRows, elevationState } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const { elevationBeat } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        const { beatToTime } = await appImport<typeof import('../../src/state/integrals/bpms')>(
+            '/src/state/integrals/bpms.ts',
+        )
+        const source = history.state.value
+        const pressed = [...source.store.slides.note.values()]
+            .flat()
+            .find((note) => note.beat === 3)!
+        history.replaceState({
+            ...source,
+            selectedEntities: [...store.getAllEntities()].filter(
+                (entity) => entity.type === 'note' || (entity.type === 'bpm' && entity.beat > 0),
+            ),
+        })
+        const lane = createComposedLayout(source).noteLeft(pressed) + pressed.size / 2
+        const start = point(lane, beatToTime(source.bpms, 3) * 2)
+        const end = point(lane, beatToTime(source.bpms, 5) * 2)
+        const modifiers = { ctrl: false, shift: false }
+        select.dragStart!(start.x, start.y, modifiers)
+        select.dragUpdate!(end.x, end.y, modifiers)
+        const ghosts = elevationDragRows.value?.ghosts ?? []
+        const [row] = ghosts
+        const ghost = view.entities.creating.find(
+            (entity) => entity.type === 'note' && entity.beat === 3,
+        )
+        const center = (state: typeof source, note: typeof pressed) => {
+            const position = createComposedLayout(state).notePosition(note)
+            return position.left + position.size / 2
+        }
+        const result = {
+            scenePreview: isScenePreview.value,
+            beat: elevationBeat.value,
+            ghosts: ghosts.length,
+            // From the chart's ghost, as its scene places it.
+            chart: ghost?.type === 'note' && row ? center(sceneState.value, ghost) - row.lane : NaN,
+            preview: row ? center(elevationState.value, row.note) - row.lane : NaN,
+        }
+        select.dragCancel!()
+        return result
+    })
+    expect(drag).toMatchObject({ scenePreview: false, beat: 3, ghosts: 1 })
+    expect(Math.abs(drag.chart)).toBeLessThan(1e-6)
+    // The previewed tempo would place it a lane further.
+    expect(Math.abs(drag.preview)).toBeGreaterThan(0.5)
 })
 
 test('a Basic drag that retimes ghosts only its moved notes, with no ghost ribbons or live slides, as the chart', async ({
