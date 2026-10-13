@@ -40,6 +40,7 @@ import { clearPreviewEdit, previewEdit, setPreviewEdit } from '../../preview/edi
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
+import type { SlideId } from '../../state/entities/slides'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
 import { nearGridBeat, snapBeat, stepGridBeat } from '../../state/integrals/grid'
@@ -63,7 +64,7 @@ import { createNoteRenderer } from '../canvas/notes'
 import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
 import { toCommittedEntity, toSceneEntity } from '../sceneState'
 import { chartBackground } from '../canvas/nameColors'
-import { createFrameScheduler } from '../canvas/surface'
+import { createFrameScheduler, prepareSurface } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
 import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
@@ -80,6 +81,7 @@ import { applyBrushToEntities } from '../tools/brush'
 import {
     getPasteNoteEntities,
     hasWaitingPaste,
+    pasteGhostConnectors,
     pasteGhostInfos,
     readPasteClipboardAt,
     waitToPaste,
@@ -129,6 +131,7 @@ import {
     previewElevationPasteRows,
 } from './actions'
 import {
+    elevationDragRows,
     elevationLaneScale,
     elevationLayout,
     elevationNotes,
@@ -332,9 +335,17 @@ const updateFont = () => {
     nameSprites.clear()
     redrawVersion.value++
 }
+// Ghosts' layer, allocated only while there are ghosts.
+let ghostCanvas: HTMLCanvasElement | undefined
+const freeGhostCanvas = () => {
+    if (!ghostCanvas) return
+    ghostCanvas.width = ghostCanvas.height = 1
+    ghostCanvas = undefined
+}
 const restoreContext = () => {
     notes.clear()
     nameSprites.clear()
+    freeGhostCanvas()
     // A restored surface has lost its pixels.
     redrawVersion.value++
 }
@@ -404,12 +415,23 @@ const measureLabel = (label: number, family: string) => {
     labelMeasure.font = `12px ${family}`
     return labelMeasure.measureText(`${label}`).width
 }
+// The selection drawn: under a Basic drag's ghosts, the committed one and its solid previewed slides'.
+const drawnSelection = computed(() => {
+    const drag = elevationDragRows.value
+    const shown = elevationState.value.selectedEntities
+    if (!drag) return new Set(shown)
+    return new Set([
+        ...state.value.selectedEntities,
+        ...shown.filter((entity) => entity.type === 'note' && drag.live.has(entity.slideId)),
+    ])
+})
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
-    const selected = new Set(elevationState.value.selectedEntities)
+    const selected = drawnSelection.value
     const layout = elevationLayout.value
     const { elevation: origin, scale } = offscreenOrigin.value
     const anchor = offscreenAnchor.value
-    const notes = layout.rows.map((row) => ({
+    // A Basic drag's ghosts aren't counted, as on the chart.
+    const notes = (elevationDragRows.value?.rows ?? layout.rows).map((row) => ({
         left: row.x - row.w / 2,
         right: row.x + row.w / 2,
         // From the origin, so notes keep their slots while panning.
@@ -515,6 +537,8 @@ let drag:
           origin: number
           composed: boolean
           attachment?: AttachedElevationDrag
+          // Whether the chart's ghosts are its moved notes.
+          published?: boolean
       }
     | undefined
 let marquee:
@@ -594,6 +618,8 @@ const pickRow = ({ rows, set }: ReturnType<typeof hitRows>) => {
 const hit = (x: number, y: number) => pickRow(hitRows(x, y))
 const cancel = () => {
     if (drag) clearPreviewEdit()
+    // Only its own ghosts: the chart's hover ghosts stay.
+    if (drag?.published) view.entities = { hovered: [], creating: [] }
     drag = undefined
     marquee = undefined
     adding = undefined
@@ -1196,12 +1222,21 @@ const controls: Pick<
         drag.deltaElevation = deltaElevation
         drag.resized = resized
         const active = { ...drag }
-        setPreviewEdit(active.source, () => edit(active), [
-            active.targets,
-            deltaLane,
-            deltaElevation,
-            resized,
-        ])
+        setPreviewEdit(
+            active.source,
+            () => edit(active),
+            [active.targets, deltaLane, deltaElevation, resized],
+            { isDrag: true },
+        )
+        // The chart ghosts the moved notes, as its own drags do; they're the selection's replacements.
+        const kept = new Set(active.source.selectedEntities)
+        view.entities = {
+            hovered: [],
+            creating: elevationState.value.selectedEntities.filter(
+                (entity) => entity.type === 'note' && !kept.has(entity),
+            ),
+        }
+        drag.published = true
     },
     dragEnd(x, y, modifiers) {
         controls.dragUpdate?.(x, y, modifiers)
@@ -1414,42 +1449,91 @@ watch(
     },
 )
 
-const connectorStore = computed(() => elevationState.value.store.slides.connector)
-const connections = computed(() => {
-    const rows = elevationLayout.value.rows
-    const slideIds = new Set(rows.map((row) => row.note.slideId))
-    return getElevationConnections(
+// Rows' connections, of their own slides or those given.
+const connectionsOf = (
+    rows: ElevationRow[],
+    source: State,
+    slideIds = new Set(rows.map((row) => row.note.slideId)),
+) =>
+    getElevationConnections(
         rows,
-        [...slideIds].map((id) => connectorStore.value.get(id) ?? []),
+        [...slideIds].map((id) => source.store.slides.connector.get(id) ?? []),
         view.visibilities.connector,
-        elevationState.value.bpms,
-        elevationState.value.store.slides.info,
+        source.bpms,
+        source.store.slides.info,
     )
+// Solid connections, and a Basic drag's ghosts: the preview's at its moved rows.
+const connections = computed(() => {
+    const drag = elevationDragRows.value
+    const preview = elevationState.value
+    if (!drag) return { solid: connectionsOf(elevationLayout.value.rows, preview), ghosts: [] }
+    const committed = state.value
+    // Its solid previewed slides connect as they drop, the rest as committed.
+    const sourceOf = (id: SlideId) => (drag.live.has(id) ? preview : committed)
+    const slideIds = new Set(drag.rows.map((row) => row.note.slideId))
+    const solid = getElevationConnections(
+        drag.rows,
+        [...slideIds].map((id) => sourceOf(id).store.slides.connector.get(id) ?? []),
+        view.visibilities.connector,
+        committed.bpms,
+        new Map([...slideIds].map((id) => [id, sourceOf(id).store.slides.info.get(id) ?? []])),
+    )
+    const ghosts = new Set(drag.ghosts)
+    return {
+        solid,
+        ghosts: connectionsOf(
+            elevationLayout.value.rows,
+            preview,
+            new Set(drag.ghosts.map((row) => row.note.slideId)),
+        ).filter((connection) => ghosts.has(connection.head) || ghosts.has(connection.tail)),
+    }
 })
 
 watchEffect(() => {
     const element = canvas.value
     const layout = elevationLayout.value
     const current = elevationState.value
-    const currentConnections = connections.value
-    const belowNotes = currentConnections.filter(
+    const drag = elevationDragRows.value
+    const committed = state.value
+    // A Basic drag's committed rows, or the shown ones.
+    const solidRows = drag?.rows ?? layout.rows
+    const { solid, ghosts: dragConnections } = connections.value
+    const belowNotes = solid.filter(
         (connection) => connection.connector.segmentHead.connectorLayer !== 'over',
     )
-    const aboveNotes = currentConnections.filter(
+    const aboveNotes = solid.filter(
         (connection) => connection.connector.segmentHead.connectorLayer === 'over',
     )
-    const selected = new Set(current.selectedEntities)
+    const selected = drawnSelection.value
+    // Hovered notes are committed ones, drawn as such under a drag's ghosts.
     const hover = new Set(
-        hoveredEntities.value.map((entity) => toSceneEntity(entity, elevationState.value)),
+        drag
+            ? hoveredEntities.value
+            : hoveredEntities.value.map((entity) => toSceneEntity(entity, current)),
     )
-    const ghosts = creating.value.map((row) => ({
+    const creatingRows = creating.value.map((row) => ({
         ...row,
         x: layout.xAt(row.lane),
         y: layout.yAt(row.elevation),
         w: row.size * layout.laneScale,
     }))
+    const isPaste = toolName.value === 'paste'
     // A paste ghost's notes are drawn as their pasted slides make them, as on the chart.
-    const ghostInfos = toolName.value === 'paste' ? pasteGhostInfos() : undefined
+    const ghostInfos = isPaste ? pasteGhostInfos() : undefined
+    const ghosts = [...(drag?.ghosts ?? []), ...creatingRows]
+    // Connectors under the ghost notes: a paste's built ones, a drag's at its moved notes.
+    const ghostConnections = [
+        ...dragConnections,
+        ...(isPaste && creatingRows.length
+            ? getElevationConnections(
+                  creatingRows,
+                  [pasteGhostConnectors()],
+                  view.visibilities.connector,
+                  current.bpms,
+                  ghostInfos,
+              )
+            : []),
+    ]
     const rect = elevationSelection.value
     const ratio = pixelRatio.value
     const labels = i18n.value.elevation
@@ -1471,7 +1555,8 @@ watchEffect(() => {
     // A tool dialog moves the notice to the top; with no max width, a centred one can reach the
     // note at any pane width.
     const underNotice = !isElevationSideBySide.value && hasToolModal('elevation')
-    if (underNotice && !layout.rows.length) void notification.value
+    const isEmpty = !solidRows.length && !drag?.ghosts.length
+    if (underNotice && isEmpty) void notification.value
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         // A collapsed pane's last frame would show stretched as it reopens.
@@ -1584,42 +1669,73 @@ watchEffect(() => {
         notes.beginFrame(timestamp)
         nameSprites.beginFrame(timestamp)
         const padding = layout.laneScale * 1.6 + 8
-        const visibleRows = [...layout.rows, ...ghosts].filter(
-            (row) =>
-                row.y + padding >= 0 &&
-                row.y - padding <= layout.height &&
-                row.x + row.w / 2 + padding >= 0 &&
-                row.x - row.w / 2 - padding <= layout.width,
-        )
-        const ghostSet = new Set(ghosts)
-        const ghostContext = { ...context, slideInfos: ghostInfos }
-        const drawRow = (row: ElevationRow, ghost = false) => {
-            ctx.save()
-            ctx.scale(layout.laneScale, layout.laneScale)
-            notes.draw(
-                ghost ? ghostContext : context,
-                row.note,
+        const isVisible = (row: ElevationRow) =>
+            row.y + padding >= 0 &&
+            row.y - padding <= layout.height &&
+            row.x + row.w / 2 + padding >= 0 &&
+            row.x - row.w / 2 - padding <= layout.width
+        const visibleRows = solidRows.filter(isVisible)
+        // Under a drag's ghosts, notes are drawn from the state they come from.
+        const committedContext = drag && { ...context, state: committed }
+        const drawRow = (
+            rowContext: EditorDrawContext,
+            row: ElevationRow,
+            highlighted: boolean,
+        ) => {
+            rowContext.ctx.save()
+            rowContext.ctx.scale(layout.laneScale, layout.laneScale)
+            notes.draw(rowContext, row.note, highlighted, 1, {
+                left: (row.x - row.w / 2) / layout.laneScale,
+                y: row.y / layout.laneScale - 0.3,
+                size: row.size,
+            })
+            rowContext.ctx.restore()
+        }
+        const drawSolid = (row: ElevationRow) => {
+            drawRow(
+                committedContext && !drag.live.has(row.note.slideId) ? committedContext : context,
+                row,
                 selected.has(row.note) || hover.has(row.note),
-                ghost ? 0.5 : 1,
-                {
-                    left: (row.x - row.w / 2) / layout.laneScale,
-                    y: row.y / layout.laneScale - 0.3,
-                    size: row.size,
-                },
             )
-            ctx.restore()
         }
         for (const row of visibleRows) {
-            if (!ghostSet.has(row) && !selected.has(row.note)) drawRow(row)
+            if (!selected.has(row.note)) drawSolid(row)
         }
         drawElevationConnections(ctx, aboveNotes)
-        // Selected notes and creating previews stay in front, as on the chart.
+        // Selected notes stay in front, as on the chart.
         for (const row of visibleRows) {
-            if (!ghostSet.has(row) && selected.has(row.note)) drawRow(row)
+            if (selected.has(row.note)) drawSolid(row)
         }
-        for (const row of visibleRows) {
-            if (ghostSet.has(row)) drawRow(row, true)
-        }
+        // As the chart's: ghosts composite as one layer at half opacity, so overlaps don't darken.
+        if (ghosts.length) {
+            ghostCanvas ??= document.createElement('canvas')
+            const ghostCtx = prepareSurface(ghostCanvas, layout.width, layout.height, ratio, {
+                l: 0,
+                r: layout.width,
+                t: 0,
+                b: layout.height,
+                w: layout.width,
+                h: layout.height,
+            })
+            if (ghostCtx) {
+                ghostCtx.setTransform(ratio, 0, 0, ratio, 0, 0)
+                ghostCtx.lineWidth = 2
+                drawElevationConnections(ghostCtx, ghostConnections)
+                // Without the name layer, their names are drawn in the layer, as the chart's are.
+                const ghostContext = {
+                    ...context,
+                    ctx: ghostCtx,
+                    names: undefined,
+                    slideInfos: ghostInfos,
+                }
+                for (const row of ghosts) if (isVisible(row)) drawRow(ghostContext, row, true)
+                ctx.save()
+                ctx.setTransform(1, 0, 0, 1, 0, 0)
+                ctx.globalAlpha = 0.5
+                ctx.drawImage(ghostCanvas, 0, 0)
+                ctx.restore()
+            }
+        } else freeGhostCanvas()
         // Axis labels go over every row and connection, as the chart's text does.
         ctx.save()
         ctx.font = `12px ${family}`
@@ -1667,7 +1783,7 @@ watchEffect(() => {
             ctx.strokeRect(left, top, w, h)
             ctx.restore()
         }
-        if (!layout.rows.length) {
+        if (isEmpty) {
             ctx.fillStyle = '#ffffff80'
             ctx.fillText(labels.empty, 48, underNotice ? belowNotice(element, emptyY) : emptyY)
         }
@@ -1778,6 +1894,7 @@ onUnmounted(() => {
     frame.cancel()
     notes.clear()
     nameSprites.clear()
+    freeGhostCanvas()
     panelTools.value = {}
     if (editorNavigation.value === navigation) editorNavigation.value = undefined
     view.scrollingX = undefined

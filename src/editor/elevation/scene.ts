@@ -3,9 +3,11 @@ import type { StageId } from '../../chart/stages'
 import { state } from '../../history'
 import { getPreviewState, previewEdit } from '../../preview/edit'
 import { attachEasedFrac, createPreviewChartBuilder } from '../../preview/engine/chart'
-import type { PreviewNote } from '../../preview/engine/model'
+import type { PreviewChart, PreviewNote } from '../../preview/engine/model'
 import { getStageProps } from '../../preview/engine/stage'
 import { settings } from '../../settings'
+import type { State } from '../../state'
+import type { SlideId } from '../../state/entities/slides'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
@@ -15,19 +17,21 @@ import { scopeLookup } from '../scope'
 import { entityScopeVisibility } from '../scopeRules'
 import { view } from '../view'
 import { getNotesAtBeat } from './candidates'
-import { layoutElevationNotes, type ElevationNote } from './layout'
+import { layoutElevationNotes, type ElevationNote, type ElevationRow } from './layout'
 import { elevationBeat } from './state'
 import { elevationBounds, elevationViewport } from './viewport'
 
 const buildChart = createPreviewChartBuilder()
+// The committed chart under a Basic drag's ghosts; its state holds for the drag, so it compiles once.
+const buildCommittedChart = createPreviewChartBuilder()
 export const elevationState = computed(() => getPreviewState(state.value, previewEdit.value))
-const compileChart = () => {
-    const chart = buildChart(elevationState.value, settings.previewNoteSpeed)
+type CompiledChart = {
+    chart: PreviewChart
+    bySource: Map<NoteEntity, { compiled: PreviewNote; order: number; ordinal: number }>
+}
+const indexChart = (chart: PreviewChart): CompiledChart => {
     const orders = new Map<NoteEntity['slideId'], number>()
-    const bySource = new Map<
-        NoteEntity,
-        { compiled: PreviewNote; order: number; ordinal: number }
-    >()
+    const bySource: CompiledChart['bySource'] = new Map()
     for (const [ordinal, compiled] of chart.notes.entries()) {
         const source = compiled.source
         if (!source) continue
@@ -37,9 +41,9 @@ const compileChart = () => {
     }
     return { chart, bySource }
 }
-const compiledChart = computed((previous?: ReturnType<typeof compileChart>) => {
+const compiledChart = computed((previous?: CompiledChart) => {
     const chart = buildChart(elevationState.value, settings.previewNoteSpeed)
-    return previous?.chart === chart ? previous : compileChart()
+    return previous?.chart === chart ? previous : indexChart(chart)
 })
 const gridNotes = computed(() => elevationState.value.store.grid.note)
 // Selection-only states keep the layout, so rows aren't rebuilt for them.
@@ -86,17 +90,20 @@ export const elevationStageGrid = computed(() => {
         },
     }
 })
-export const elevationNotes = computed(() => {
-    const { chart, bySource } = compiledChart.value
+const notesOf = (
+    { chart, bySource }: CompiledChart,
+    grid: State['store']['grid']['note'],
+    bpms: State['bpms'],
+    composed: ReturnType<typeof getComposedLayout>,
+) => {
     const props = chart.stages.map((stage) =>
-        getStageProps(stage, beatToTime(bpms.value, elevationBeat.value)),
+        getStageProps(stage, beatToTime(bpms, elevationBeat.value)),
     )
-    const composed = elevationComposed.value
     const elevationOf = (note: PreviewNote) =>
         (note.elevation ?? 0) + (props[note.stageIndex]?.elevation ?? 0)
     const notes: ElevationNote[] = []
     const scope = scopeLookup.value
-    const candidates = getNotesAtBeat(gridNotes.value, elevationBeat.value).sort(
+    const candidates = getNotesAtBeat(grid, elevationBeat.value).sort(
         (a, b) => (bySource.get(a)?.ordinal ?? 0) - (bySource.get(b)?.ordinal ?? 0),
     )
     for (const note of candidates) {
@@ -133,17 +140,70 @@ export const elevationNotes = computed(() => {
         })
     }
     return notes
+}
+export const elevationNotes = computed(() =>
+    notesOf(compiledChart.value, gridNotes.value, bpms.value, elevationComposed.value),
+)
+/** Whether a drag's preview shows as ghosts over the committed notes: in Basic, as on the chart. */
+export const isElevationGhostDrag = computed(
+    () =>
+        !!previewEdit.value?.isDrag &&
+        elevationState.value !== state.value &&
+        (view.layout !== 'composed' || !state.value.isDynamicStages),
+)
+const committedNotes = computed(() => {
+    if (!isElevationGhostDrag.value) return
+    const committed = state.value
+    const compiled = indexChart(buildCommittedChart(committed, settings.previewNoteSpeed))
+    return notesOf(compiled, committed.store.grid.note, committed.bpms, undefined)
 })
 // Pixels per lane: the chart's lane zoom, with a margin.
 export const elevationLaneScale = computed(() => elevationBounds.w / (settings.width * 1.1))
-export const elevationLayout = computed(() => {
-    const width = settings.width * 1.1
-    return layoutElevationNotes(elevationNotes.value, {
-        width: elevationBounds.w,
-        height: elevationBounds.h,
-        laneLeft: view.lane - width / 2,
-        laneScale: elevationLaneScale.value,
-        elevationCenter: elevationViewport.center,
-        elevationScale: elevationViewport.scale,
-    })
+const elevationAxes = computed(() => ({
+    width: elevationBounds.w,
+    height: elevationBounds.h,
+    laneLeft: view.lane - (settings.width * 1.1) / 2,
+    laneScale: elevationLaneScale.value,
+    elevationCenter: elevationViewport.center,
+    elevationScale: elevationViewport.scale,
+}))
+export const elevationLayout = computed(() =>
+    layoutElevationNotes(elevationNotes.value, elevationAxes.value),
+)
+/** The committed rows under a Basic drag's ghosts; otherwise the shown ones. */
+export const committedElevationLayout = computed(() =>
+    committedNotes.value
+        ? layoutElevationNotes(committedNotes.value, elevationAxes.value)
+        : elevationLayout.value,
+)
+const isSameRow = (a: ElevationRow, b: ElevationRow) =>
+    a.attached === b.attached &&
+    Math.abs(a.lane - b.lane) < 1e-7 &&
+    Math.abs(a.size - b.size) < 1e-7 &&
+    Math.abs(a.elevation - b.elevation) < 1e-7
+/**
+ * A Basic drag's rows as the chart draws its drag: committed ones solid, moved ones as ghosts,
+ * and slides it changes beyond them, such as by shifting an attached tick, solid as they drop.
+ */
+export const elevationDragRows = computed(() => {
+    const committed = committedElevationLayout.value
+    const preview = elevationLayout.value
+    if (committed === preview) return
+    const before = new Map(committed.rows.map((row) => [row.note, row]))
+    // A drag selects the notes it moves.
+    const moved = new Set(elevationState.value.selectedEntities)
+    const live = new Set<SlideId>()
+    for (const row of preview.rows) {
+        const was = before.get(row.note)
+        if (was ? !isSameRow(was, row) : !moved.has(row.note)) live.add(row.note.slideId)
+    }
+    const isLive = (row: ElevationRow) => live.has(row.note.slideId)
+    return {
+        rows: [
+            ...committed.rows.filter((row) => !isLive(row)),
+            ...preview.rows.filter(isLive),
+        ].sort((a, b) => a.elevation - b.elevation || a.order - b.order),
+        ghosts: preview.rows.filter((row) => !before.has(row.note) && !isLive(row)),
+        live,
+    }
 })

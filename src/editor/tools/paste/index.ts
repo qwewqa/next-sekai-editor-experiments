@@ -363,6 +363,10 @@ let pasteProbe: { keys: unknown[]; response: ReturnType<typeof probePaste> } | u
 /** The ghost's slides, for drawing their notes as they'll land. */
 export const pasteGhostInfos = () => ghost?.infos
 
+/** The ghost's connectors, for another pane's ribbons. */
+export const pasteGhostConnectors = () =>
+    ghost?.entities.filter((entity) => entity.type === 'connector') ?? []
+
 /** Includes the pasted events that determine a composed ghost's stage positions. */
 export const pasteGhostState = () => ghost?.state
 
