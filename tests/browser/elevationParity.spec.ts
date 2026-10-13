@@ -511,3 +511,162 @@ test('names and anchor outlines show while the view is in use or the note is hig
     expect((await draws()).names).toEqual(['Center'])
     expect(await anchorAlpha()).toBeGreaterThan(idleAlpha + 60)
 })
+
+test.describe('smooth scrolling', () => {
+    type Viewport = typeof import('../../src/editor/elevation/viewport')
+    const viewportPath = '/src/editor/elevation/viewport.ts'
+    const viewport = (page: Page) =>
+        page.evaluate(async (path) => {
+            const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
+            const scrolling = window.editorTest.view.scrollingY
+            return {
+                center: elevationViewport.center,
+                scale: elevationViewport.scale,
+                type: scrolling?.type,
+                target: scrolling?.type === 'paneEase' ? scrolling.to.value : undefined,
+            }
+        }, viewportPath)
+    // The centre each frame until the scroll ends.
+    const frames = (page: Page) =>
+        page.evaluate(async (path) => {
+            const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
+            const centers: number[] = []
+            for (let i = 0; i < 120 && window.editorTest.view.scrollingY; i++) {
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+                centers.push(elevationViewport.center)
+            }
+            return centers
+        }, viewportPath)
+    // Strictly between, so it passed through.
+    const isBetween = (value: number, a: number, b: number) =>
+        value > Math.min(a, b) + 1e-6 && value < Math.max(a, b) - 1e-6
+
+    test.beforeEach(async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.settings.mouseSmoothScrolling = true))
+        await open(page)
+        const empty = await at(page, 6, 6)
+        await page.mouse.move(empty.x, empty.y)
+    })
+
+    test('the wheel eases the view to where it scrolls', async ({ page }) => {
+        const start = await viewport(page)
+        await page.mouse.wheel(0, 200)
+        const easing = await viewport(page)
+        expect(easing.type).toBe('paneEase')
+        const target = start.center - 200 / start.scale
+        expect(easing.target).toBeCloseTo(target, 9)
+        const centers = await frames(page)
+        expect(centers.some((center) => isBetween(center, start.center, target))).toBe(true)
+        expect(centers.at(-1)).toBeCloseTo(target, 9)
+        // A second wheel mid-way adds to where the first was going.
+        await page.mouse.wheel(0, 100)
+        await page.mouse.wheel(0, 100)
+        expect((await viewport(page)).target).toBeCloseTo(target - 200 / start.scale, 9)
+    })
+
+    test('Page Down eases', async ({ page }) => {
+        const start = await viewport(page)
+        await page.keyboard.press('PageDown')
+        const easing = await viewport(page)
+        expect(easing.type).toBe('paneEase')
+        const centers = await frames(page)
+        expect(centers.some((center) => isBetween(center, start.center, easing.target!))).toBe(true)
+        expect(centers.at(-1)).toBeCloseTo(easing.target!, 9)
+        expect(easing.target).toBeLessThan(start.center)
+    })
+
+    test('a press stops it where it is', async ({ page }) => {
+        const start = await viewport(page)
+        const target = start.center - 400 / start.scale
+        await page.mouse.wheel(0, 400)
+        await page.mouse.down()
+        const stopped = await viewport(page)
+        expect(stopped.type).toBeUndefined()
+        await settle(page)
+        expect((await viewport(page)).center).toBe(stopped.center)
+        expect(stopped.center).not.toBeCloseTo(target, 3)
+        expect(stopped.center).toBeLessThanOrEqual(start.center)
+        await page.mouse.up()
+    })
+
+    test('a direct scroll during it moves where it ends', async ({ page }) => {
+        const start = await viewport(page)
+        await page.keyboard.press('PageDown')
+        const { target } = await viewport(page)
+        await page.evaluate(() => (window.editorTest.settings.mouseSmoothScrolling = false))
+        await page.mouse.wheel(0, 100)
+        expect((await viewport(page)).target).toBeCloseTo(target! - 100 / start.scale, 9)
+        const centers = await frames(page)
+        expect(centers.at(-1)).toBeCloseTo(target! - 100 / start.scale, 9)
+    })
+
+    test('with reduced motion and smooth scrolling off, Page Down jumps', async ({ page }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await page.evaluate(() => (window.editorTest.settings.mouseSmoothScrolling = false))
+        const start = await viewport(page)
+        // The centre over the next frames.
+        const recording = page.evaluate(async (path) => {
+            const { elevationViewport } = await window.editorTest.appImport<Viewport>(path)
+            const centers: number[] = []
+            for (let i = 0; i < 30; i++) {
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+                centers.push(elevationViewport.center)
+            }
+            return centers
+        }, viewportPath)
+        await page.keyboard.press('PageDown')
+        const centers = await recording
+        const height = await page.evaluate(
+            async (path) => (await window.editorTest.appImport<Viewport>(path)).elevationBounds.h,
+            viewportPath,
+        )
+        const target = start.center - height / start.scale
+        expect(centers.at(-1)).toBeCloseTo(target, 9)
+        expect(
+            centers.every(
+                (center) =>
+                    Math.abs(center - start.center) < 1e-9 || Math.abs(center - target) < 1e-9,
+            ),
+        ).toBe(true)
+    })
+
+    test('a chart load fitting the view drops it', async ({ page }) => {
+        await page.mouse.wheel(0, 400)
+        expect((await viewport(page)).type).toBe('paneEase')
+        // As a chart load while it's open asks.
+        await page.evaluate(async (path) => {
+            const { needsElevationFit } = await window.editorTest.appImport<Viewport>(path)
+            needsElevationFit.value = true
+            await window.editorTest.nextTick()
+        }, viewportPath)
+        const fitted = await viewport(page)
+        expect(fitted.type).toBeUndefined()
+        await settle(page)
+        await settle(page)
+        expect((await viewport(page)).center).toBe(fitted.center)
+    })
+
+    test('switching panes drops it', async ({ page }) => {
+        await page.setViewportSize({ width: 1920, height: 1080 })
+        await page.evaluate(() => {
+            window.editorTest.settings.elevationEditorSideBySide = 'allow'
+        })
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await settle(page)
+        const empty = await at(page, 6, 6)
+        await page.mouse.move(empty.x, empty.y)
+        const time = await page.evaluate(() => window.editorTest.view.time)
+        const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+        const start = await viewport(page)
+        const target = start.center - 400 / start.scale
+        await page.mouse.wheel(0, 400)
+        await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
+        expect((await viewport(page)).type).toBeUndefined()
+        await settle(page)
+        const { center } = await viewport(page)
+        await settle(page)
+        expect((await viewport(page)).center).toBe(center)
+        expect(center).not.toBeCloseTo(target, 3)
+        expect(await page.evaluate(() => window.editorTest.view.time)).toBe(time)
+    })
+})

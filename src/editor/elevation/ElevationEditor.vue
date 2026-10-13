@@ -275,6 +275,8 @@ const fitViewport = () => {
     if (!h || (!needsElevationFit.value && (!size || (size.w === w && size.h === h)))) return
     needsElevationFit.value = false
     elevationFitSize.value = { w, h }
+    // An eased scroll would move it off the fit.
+    if (view.scrollingY?.type === 'paneEase') view.scrollingY = undefined
     fitElevationViewport(
         elevationBounds.h,
         elevationNotes.value,
@@ -1720,6 +1722,12 @@ onMounted(() => {
             closeContextMenu()
             keepViewport()
             elevationViewport.center += pixels / elevationViewport.scale
+        },
+        getScrollY: () => elevationViewport.center,
+        setScrollY: (center) => {
+            closeContextMenu()
+            keepViewport()
+            elevationViewport.center = center
         },
         getScaleX: () => elevationLayout.value.laneScale,
         getScaleY: () => elevationViewport.scale,

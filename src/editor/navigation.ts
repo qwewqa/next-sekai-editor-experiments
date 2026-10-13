@@ -6,6 +6,9 @@ import type { Modifiers } from './controls/gestures/pointer'
 export type EditorNavigation = {
     bounds: { x: number; y: number; w: number; h: number }
     scrollY: (pixels: number) => void
+    /** Its vertical scroll, which an eased scroll moves through. */
+    getScrollY?: () => number
+    setScrollY?: (value: number) => void
     getScaleX?: () => number
     getScaleY: () => number
     setScaleY: (scale: number) => void

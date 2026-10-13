@@ -17,7 +17,7 @@ import { committedBarGrid, committedGrid } from './beatGrid'
 import { getComposedLayout } from './composedView'
 import type { Modifiers } from './controls/gestures/pointer'
 import { integrateScrollInertia } from './inertia'
-import { editorNavigation, getControlBounds } from './navigation'
+import { editorNavigation, getControlBounds, type EditorNavigation } from './navigation'
 import type { ScopeOverride } from './scope'
 import { snappedOffset } from './snapping'
 
@@ -134,6 +134,19 @@ export const view = shallowReactive({
                   viewTime: number
               }
           }
+        | {
+              // Another pane's eased scroll, in its own units.
+              type: 'paneEase'
+              navigation: EditorNavigation
+              from: {
+                  time: number
+                  value: number
+              }
+              to: {
+                  time: number
+                  value: number
+              }
+          }
     >(),
 })
 
@@ -196,6 +209,19 @@ watch(time, ({ now, delta }) => {
                     view.scrollingY.from.viewTime,
                     view.scrollingY.to.viewTime,
                     1 - (1 - unlerp(view.scrollingY.from.time, view.scrollingY.to.time, now)) ** 2,
+                )
+                break
+            }
+            case 'paneEase': {
+                // A pane switch clears it, as it does every scroll.
+                const { navigation, from, to } = view.scrollingY
+                if (now >= to.time || isInstant()) {
+                    view.scrollingY = undefined
+                    navigation.setScrollY?.(to.value)
+                    break
+                }
+                navigation.setScrollY?.(
+                    lerp(from.value, to.value, 1 - (1 - unlerp(from.time, to.time, now)) ** 2),
                 )
                 break
             }
@@ -310,8 +336,29 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
 export const scrollViewYBy = (dy: number, smooth = false) => {
     updateViewLastActive()
 
-    if (editorNavigation.value) {
-        editorNavigation.value.scrollY(dy)
+    const navigation = editorNavigation.value
+    if (navigation) {
+        const ease = view.scrollingY?.type === 'paneEase' ? view.scrollingY : undefined
+        if (smooth && navigation.getScrollY && navigation.setScrollY) {
+            const value = navigation.getScrollY()
+            view.scrollingY = {
+                type: 'paneEase',
+                navigation,
+                from: { time: time.value.now, value },
+                to: {
+                    time: time.value.now + 0.25,
+                    value: (ease?.to.value ?? value) + dy / navigation.getScaleY(),
+                },
+            }
+            return
+        }
+        // A direct scroll moves a running ease with it.
+        if (ease) {
+            const shift = dy / navigation.getScaleY()
+            ease.from.value += shift
+            ease.to.value += shift
+        }
+        navigation.scrollY(dy)
         return
     }
 
