@@ -56,6 +56,7 @@ import {
     pressTarget,
     resize,
 } from '../utils'
+import { previewSlideAdd, showSlideAdd, type SlideAddPreview } from './addPreview'
 import SlideSidebar from './SlideSidebar.vue'
 
 export const defaultSlidePropertiesPresetIndex = ref(0)
@@ -516,34 +517,27 @@ const add = (slideId: SlideId, object: NoteObject) => {
     )
 }
 
-// An attached note added inside a slide lands on its path; the ghost shows it there.
+// An add inside a slide shows the pieces and ticks it changes; an attached note shows on its path.
 const landing = (slideId: SlideId, object: NoteObject) => {
-    if (!object.isAttached || !store.value.slides.note.has(slideId))
-        return toNoteEntity(slideId, object)
     const source = landingSource()
-    const last = lastLanding
-    if (
-        last?.source === source &&
-        last.layout === view.layout &&
-        last.slideId === slideId &&
-        Object.keys(object).length === Object.keys(last.object).length &&
-        Object.entries(object).every(
-            ([key, value]) => last.object[key as keyof NoteObject] === value,
-        )
-    )
-        return last.ghost
-    const ghost = placeLanding(source, slideId, object)
-    lastLanding = { source, layout: view.layout, slideId, object, ghost }
-    return ghost
+    const preview = previewSlideAdd(source, slideId, object)
+    if (!preview) return toNoteEntity(slideId, object)
+    if (lastLanding?.preview !== preview || lastLanding.layout !== view.layout)
+        lastLanding = {
+            preview,
+            layout: view.layout,
+            ghost: object.isAttached
+                ? placeLanding(source, preview, object)
+                : toNoteEntity(slideId, object),
+        }
+    return showSlideAdd(preview, lastLanding.ghost)
 }
 
-// The last attached landing, so a hover within one snapped placement doesn't rebuild it.
+// The last landing's ghost, so a hover within one snapped placement keeps it.
 let lastLanding:
     | {
-          source: State
+          preview: SlideAddPreview
           layout: EditorLayout
-          slideId: SlideId
-          object: NoteObject
           ghost: NoteEntity
       }
     | undefined
@@ -551,14 +545,9 @@ let lastLanding:
 // On the path drawn, a pending draft's included, as the click lands once it commits.
 const landingSource = () => (previewEdit.value?.isDraft ? sceneState.value : state.value)
 
-const placeLanding = (source: State, slideId: SlideId, object: NoteObject) => {
-    const ghost = toNoteEntity(slideId, object)
-    const transaction = createTransaction(source)
-    const result = transaction.commit(addNote(transaction, slideId, object))
-    const [landed] = result.selectedEntities
-    if (landed?.type !== 'note') return ghost
+const placeLanding = (source: State, { result, landed }: SlideAddPreview, object: NoteObject) => {
     const position = getComposedLayout(result)?.notePosition(landed)
-    return toNoteEntity(slideId, {
+    return toNoteEntity(landed.slideId, {
         ...object,
         left: position
             ? position.left - getComposedOffset(object.stageId, object.beat, source)

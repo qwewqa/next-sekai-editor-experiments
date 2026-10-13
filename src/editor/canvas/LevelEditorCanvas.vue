@@ -34,6 +34,7 @@ import { scopeLookup } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
 import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
+import { slideAddGhost } from '../tools/slide/addPreview'
 import { isVisible } from '../tools/utils'
 import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
 import LevelEditorHoverMarkers from '../LevelEditorHoverMarkers.vue'
@@ -374,17 +375,25 @@ const shownGhosts = () => {
         !isStalePaste &&
         (!isScenePreview.value || (!!previewEdit.value?.isDraft && !isComposedPaste))
     const preview = previewSlides.value
+    // A Slide add's ghost, from either pane, shows the pieces and ticks it changes.
+    const added = slideAddGhost(view.entities.creating)
     // Previewed slides are drawn solid as they drop, without ghosts.
     const entities = !showsGhosts
         ? []
         : [
               // Under the notes, as a paste's.
               ...dragGhostConnectors.value,
+              ...(added ? [...added.connectors, ...added.ticks] : []),
               ...(preview
                   ? view.entities.creating.filter((entity) => !preview.includes(entity))
                   : view.entities.creating),
           ]
-    return { entities, state: isComposedPaste ? pasteGhostState() : undefined }
+    return {
+        entities,
+        state: isComposedPaste ? pasteGhostState() : undefined,
+        // Notes are drawn as their slides land.
+        infos: tool.value === tools.paste ? pasteGhostInfos() : added?.infos,
+    }
 }
 
 // Beat labels make room for a drag's BPM ghost labels too.
@@ -617,7 +626,7 @@ watchEffect(
         const canvas = overlayCanvas.value
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
-        const { entities: creating, state: ghostState } = shownGhosts()
+        const { entities: creating, state: ghostState, infos: ghostInfos } = shownGhosts()
         const range = artRange.value
         const hovered = sceneHovered.value
         const preview = previewSlides.value
@@ -667,7 +676,7 @@ watchEffect(
                         composed: ghostState ? createComposedLayout(ghostState) : inputs.composed,
                         ctx: creatingContext,
                         nameSprites,
-                        slideInfos: tool.value === tools.paste ? pasteGhostInfos() : undefined,
+                        slideInfos: ghostInfos,
                     }
                     for (const entity of creating) {
                         if (isEntityInBeatRange(entity, range.min, range.max))
