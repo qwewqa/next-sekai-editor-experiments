@@ -69,14 +69,20 @@ import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from
 import { cancelMouseControls, hoverAgain } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
 import type { Modifiers } from '../controls/gestures/pointer'
-import { notifyPaneMoved } from '../controls/gestures/recognizers/drag'
+import { isDragging, notifyPaneMoved } from '../controls/gestures/recognizers/drag'
 import { editorNavigation, type EditorNavigation } from '../navigation'
 import { closeContextMenu, contextMenu } from '../contextMenu'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
 import { isSidebarVisible, revealPropertiesSection } from '../sidebars'
 import { panelTools, tools, toolName, type Tool } from '../tools'
 import { applyBrushToEntities } from '../tools/brush'
-import { hasWaitingPaste, pasteGhostInfos, waitToPaste } from '../tools/paste'
+import {
+    getPasteNoteEntities,
+    hasWaitingPaste,
+    pasteGhostInfos,
+    readPasteClipboardAt,
+    waitToPaste,
+} from '../tools/paste'
 import { remove } from '../tools/eraser'
 import { applyGeneratedSlideNotes } from '../tools/generateSlideNotes'
 import { defaultNoteProperties } from '../tools/note'
@@ -762,7 +768,6 @@ const resolveDrag = (x: number, y: number) => {
     } as const
 }
 const cursors = {
-    paste: 'copy',
     add: 'crosshair',
     select: 'pointer',
     resize: 'ew-resize',
@@ -773,6 +778,8 @@ const controls: Pick<
     'hover' | 'tap' | 'cursor' | 'dragStart' | 'dragUpdate' | 'dragEnd' | 'dragCancel'
 > = {
     hover(x, y, modifiers) {
+        // A pointer hover reads the clipboard, as the Paste tool's does; a paste drag's doesn't.
+        if (toolName.value === 'paste' && !isDragging.value) readPasteClipboardAt(x, y)
         const indicator = hitIndicator(x, y)
         if (indicator) {
             hovered.value = undefined
@@ -881,6 +888,8 @@ const controls: Pick<
     },
     cursor(x, y) {
         const target = resolveDrag(x, y)
+        // It pastes notes only.
+        if (target.type === 'paste') return getPasteNoteEntities().length ? 'copy' : 'default'
         if (target.type !== 'marquee') return cursors[target.type]
         if ('indicator' in target) return 'pointer'
         // A tap applies eraser, brush and generate to the row.
@@ -891,7 +900,7 @@ const controls: Pick<
     },
     dragStart(x, y) {
         const target = resolveDrag(x, y)
-        if (target.type === 'paste') return true
+        if (target.type === 'paste') return getPasteNoteEntities().length > 0
         if (target.type === 'add') {
             const position = positionAtPoint(x, y)
             const slide = toolName.value === 'slide'
@@ -1583,8 +1592,8 @@ onMounted(() => {
                 ...(elevationToolNames.includes(name) ? tools[name] : tools.select),
                 ...controls,
                 secondaryTool: undefined,
-                // Its paste reads the clipboard as it lands.
-                press: undefined,
+                // Only paste presses: it reads the clipboard, as touch has no hover.
+                press: name === 'paste' ? tools.paste.press : undefined,
             },
         ]),
     )

@@ -107,6 +107,12 @@ const readClipboardAt = (x: number, y: number) => {
     void updateClipboard()
 }
 
+/** Reads the clipboard for a hover at a point, as the Paste tool's does. */
+export const readPasteClipboardAt = (x: number, y: number) => {
+    readClipboardAt(x, y)
+    readAt = { x, y }
+}
+
 // Whether a paste waits on a clipboard read; other pastes meanwhile are ignored.
 let isPasteWaiting = false
 export const hasWaitingPaste = () => isPasteWaiting
@@ -159,8 +165,7 @@ export const paste: Tool = {
 
     hover(x, y, modifiers) {
         // Only a pointer move reads the clipboard; a scroll under a still pointer reuses what it read.
-        readClipboardAt(x, y)
-        readAt = { x, y }
+        readPasteClipboardAt(x, y)
 
         const data = clipboardEntry.value?.data
         if (!data) return

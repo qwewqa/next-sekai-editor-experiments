@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 
 type Scene = typeof import('../../src/editor/elevation/scene')
 type ToolState = typeof import('../../src/editor/tools/state')
@@ -220,3 +220,149 @@ for (const sideBySide of [false, true])
         for (const select of await selects.all())
             await expect(select).toHaveAttribute('aria-pressed', 'true')
     })
+
+type Clip = { text: string; reads: number; copies: string[] }
+const clip = (page: Page) => page.evaluate(() => (window as never as { clip: Clip }).clip)
+// A stubbed system clipboard; copies go to it, and a read takes a turn.
+const stubClipboard = (page: Page) =>
+    page.evaluate(() => {
+        const clip: Clip = { text: '', reads: 0, copies: [] }
+        Object.assign(window, { clip })
+        Object.defineProperty(navigator.clipboard, 'writeText', {
+            configurable: true,
+            value: async (value: string) => {
+                clip.text = value
+                clip.copies.push(value)
+            },
+        })
+        Object.defineProperty(navigator.clipboard, 'readText', {
+            configurable: true,
+            value: async () => {
+                clip.reads++
+                const { text } = clip
+                await new Promise((resolve) => setTimeout(resolve))
+                return text
+            },
+        })
+    })
+// Copies the entities of a type through the Copy shortcut.
+const copy = async (page: Page, type: 'note' | 'bpm') => {
+    await page.evaluate((type) => {
+        const { history, store } = window.editorTest
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...store.getAllEntities()].filter(
+                (entity) => entity.type === type && (type !== 'note' || entity.beat === 8),
+            ),
+        })
+    }, type)
+    const copies = (await clip(page)).copies.length
+    await page.keyboard.press('c')
+    await expect.poll(async () => (await clip(page)).copies.length).toBe(copies + 1)
+}
+const noteCount = (page: Page) => page.evaluate(() => window.editorTest.snapshot().notes.length)
+const canvasCursor = (page: Page) =>
+    page
+        .locator('.elevation-editor .editor')
+        .evaluate((element) => getComputedStyle(element).cursor)
+
+for (const held of ['nothing', 'only a BPM'] as const)
+    test(`Paste with ${held} on the clipboard shows the default cursor, and a drag pastes nothing`, async ({
+        page,
+    }) => {
+        await stubClipboard(page)
+        if (held === 'only a BPM') await copy(page, 'bpm')
+        await open(page)
+        await page.keyboard.press('v')
+        const empty = await at(page, 0, 6)
+        await page.mouse.move(empty.x, empty.y)
+        await page.mouse.move(empty.x + 5, empty.y)
+        await expect.poll(async () => (await clip(page)).reads).toBeGreaterThan(0)
+        await settle(page)
+        expect(await canvasCursor(page)).toBe('default')
+        const bpms = await page.evaluate(() => window.editorTest.history.state.value.bpms.length)
+        await page.mouse.down()
+        await page.mouse.move(empty.x + 60, empty.y + 30, { steps: 5 })
+        expect((await page.evaluate(() => window.editorTest.snapshot())).creating).toEqual([])
+        // No drag starts.
+        expect(
+            await page.evaluate(
+                async () =>
+                    (
+                        await window.editorTest.appImport<
+                            typeof import('../../src/editor/controls/gestures/recognizers/drag')
+                        >('/src/editor/controls/gestures/recognizers/drag.ts')
+                    ).isDragging.value,
+            ),
+        ).toBe(0)
+        await page.mouse.up()
+        await settle(page)
+        expect(await noteCount(page)).toBe(3)
+        expect(await page.evaluate(() => window.editorTest.history.state.value.bpms.length)).toBe(
+            bpms,
+        )
+    })
+
+test('Paste with notes on the clipboard shows the copy cursor, and a hover reads the clipboard', async ({
+    page,
+}) => {
+    await stubClipboard(page)
+    await copy(page, 'bpm')
+    await copy(page, 'note')
+    await open(page)
+    await page.keyboard.press('v')
+    const empty = await at(page, 0, 6)
+    await page.mouse.move(empty.x, empty.y)
+    await page.mouse.move(empty.x + 5, empty.y)
+    await expect.poll(() => canvasCursor(page)).toBe('copy')
+    // Another app copies the BPM; the next hover reads it.
+    await page.evaluate(() => {
+        const { clip } = window as never as { clip: Clip }
+        clip.text = clip.copies[0]!
+    })
+    await page.mouse.move(empty.x + 10, empty.y)
+    await expect.poll(() => canvasCursor(page)).toBe('default')
+    // A drag's moves don't read it.
+    await page.evaluate(() => {
+        const { clip } = window as never as { clip: Clip }
+        clip.text = clip.copies[1]!
+    })
+    await page.mouse.move(empty.x + 15, empty.y)
+    await expect.poll(() => canvasCursor(page)).toBe('copy')
+    const reads = (await clip(page)).reads
+    await page.mouse.down()
+    await page.mouse.move(empty.x + 80, empty.y + 40, { steps: 5 })
+    await settle(page)
+    expect((await clip(page)).reads).toBe(reads)
+    await page.mouse.up()
+    await expect.poll(() => noteCount(page)).toBe(4)
+})
+
+test.describe('with touch', () => {
+    test.use({ hasTouch: true })
+
+    test('a Paste touch drag reads the clipboard as it presses and pastes notes copied elsewhere', async ({
+        page,
+    }) => {
+        const touch = await touchInput(page)
+        await stubClipboard(page)
+        // The note is copied in another app: only the BPM's copy is held here.
+        await copy(page, 'note')
+        await copy(page, 'bpm')
+        await open(page)
+        await page.keyboard.press('v')
+        await page.evaluate(() => {
+            const { clip } = window as never as { clip: Clip }
+            clip.text = clip.copies[0]!
+        })
+        const reads = (await clip(page)).reads
+        const empty = await at(page, 0, 6)
+        await touch('touchStart', [[empty.x, empty.y]])
+        await settle(page)
+        for (let step = 1; step <= 4; step++)
+            await touch('touchMove', [[empty.x + step * 10, empty.y - step * 10]])
+        await touch('touchEnd', [])
+        await expect.poll(() => noteCount(page)).toBe(4)
+        expect((await clip(page)).reads).toBeGreaterThan(reads)
+    })
+})
