@@ -339,6 +339,14 @@ const restoreContext = () => {
     redrawVersion.value++
 }
 const hovered = ref<NoteEntity>()
+// A 12px text baseline, moved below a notice over its line as far as it is below the header.
+const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
+    const pill = container.value?.querySelector('.notification')?.getBoundingClientRect()
+    if (!pill?.height) return y
+    const top = canvas.getBoundingClientRect().top
+    // Its line, with a small gap.
+    return pill.top - top < y + 12 && pill.bottom - top > y - 20 ? pill.bottom - top + 24 : y
+}
 // The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
 // The elevation badges pan from; a zoom moves it onto the slot lattice near the middle.
@@ -1461,13 +1469,10 @@ watchEffect(() => {
     const textMiddle = fontMiddle.value
     const numberMiddle = figureMiddle.value
     const axisLabelLeft = axisLabelLeftOf(offscreenGroups.value)
-    // Under the header, and under the notice a tool dialog moves to its top (one 40px line).
-    const emptyY =
-        headerHeight.value +
-        (!isElevationSideBySide.value && hasToolModal('elevation') && notification.value.message
-            ? 56
-            : 0) +
-        24
+    // Under the header; a notice, or a tool dialog moving it to the top, redraws it below that.
+    const emptyY = headerHeight.value + 24
+    void notification.value
+    void hasToolModal('elevation')
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         // A collapsed pane's last frame would show stretched as it reopens.
@@ -1665,7 +1670,7 @@ watchEffect(() => {
         }
         if (!layout.rows.length) {
             ctx.fillStyle = '#ffffff80'
-            ctx.fillText(labels.empty, 48, emptyY)
+            ctx.fillText(labels.empty, 48, belowNotice(element, emptyY))
         }
     })
 })

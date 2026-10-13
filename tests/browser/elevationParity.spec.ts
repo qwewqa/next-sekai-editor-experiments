@@ -77,13 +77,9 @@ test('the snap field is titled by what it sets', async ({ page }) => {
     )
 })
 
-test('the empty beat note sits under a tall header, and under a tool dialog notice', async ({
-    page,
-}) => {
-    // Narrow, the header wraps its controls onto rows.
-    await page.setViewportSize({ width: 280, height: 700 })
-    await page.evaluate(() => (window.editorTest.view.cursorTime = 0.5))
-    await page.evaluate(() => {
+// Records where the Elevation Editor draws its empty beat note.
+const recordEmptyNote = (page: Page) =>
+    page.evaluate(() => {
         const texts: { text: string; y: number }[] = []
         ;(window as unknown as { emptyTexts: typeof texts }).emptyTexts = texts
         const fillText = CanvasRenderingContext2D.prototype.fillText
@@ -96,24 +92,27 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
             return fillText.call(this, text, x, y, ...rest)
         }
     })
-    await open(page)
-    const lastEmptyY = () =>
-        page.evaluate(
-            () =>
-                (window as unknown as { emptyTexts: { text: string; y: number }[] }).emptyTexts
-                    .filter(({ text }) => text === 'No notes at this beat')
-                    .at(-1)?.y,
-        )
-    const header = await page
-        .locator('.elevation-header')
-        .evaluate((element) => element.clientHeight)
-    expect(header).toBeGreaterThan(90)
-    await expect.poll(lastEmptyY).toBe(header + 24)
-
-    // A tool dialog moves the notice to the top, so the note goes under it.
-    await page.keyboard.press('b')
-    // Narrow, Brush shows the Properties panel; its dialog opens as without one.
-    await page.evaluate(async () => {
+// The empty beat note's draws so far.
+const emptyNotes = (page: Page) =>
+    page.evaluate(() =>
+        (window as unknown as { emptyTexts: { text: string; y: number }[] }).emptyTexts
+            .filter(({ text }) => text === 'No notes at this beat')
+            .map(({ y }) => y),
+    )
+// Posts a notice, and waits for the note drawn after it.
+const notifyAndDraw = async (page: Page, message: string) => {
+    const count = (await emptyNotes(page)).length
+    await page.evaluate(async (message) => {
+        const { notify } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        notify(() => message)
+    }, message)
+    await expect.poll(async () => (await emptyNotes(page)).length).toBeGreaterThan(count)
+    await settle(page)
+}
+const showBrushDialog = (page: Page) =>
+    page.evaluate(async () => {
         const { appImport } = window.editorTest
         const { showToolModal } = await appImport<typeof import('../../src/editor/toolModals')>(
             '/src/editor/toolModals.ts',
@@ -123,12 +122,72 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
         )
         void showToolModal(modal.default, {} as never)
     })
+
+test('the empty beat note sits under a tall header, and under a tool dialog notice', async ({
+    page,
+}) => {
+    // Narrow, the header wraps its controls onto rows.
+    await page.setViewportSize({ width: 280, height: 700 })
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 0.5))
+    await recordEmptyNote(page)
+    await open(page)
+    const lastEmptyY = async () => (await emptyNotes(page)).at(-1)
+    const header = await page
+        .locator('.elevation-header')
+        .evaluate((element) => element.clientHeight)
+    expect(header).toBeGreaterThan(90)
+    await expect.poll(lastEmptyY).toBe(header + 24)
+
+    // A tool dialog moves the notice to the top, so the note goes under it.
+    await page.keyboard.press('b')
+    // Narrow, Brush shows the Properties panel; its dialog opens as without one.
+    await showBrushDialog(page)
     await expect(page.locator('[data-tool-dialog]')).toBeVisible()
     await expect(page.locator('.notification')).toHaveText('Switched to Brush tool')
     const pill = (await page.locator('.notification').boundingBox())!
     const canvas = (await page.locator('.elevation-canvas').boundingBox())!
     await expect.poll(lastEmptyY).toBe(header + 80)
     expect(header + 80 - 16).toBeGreaterThanOrEqual(pill.y + pill.height - canvas.y)
+
+    // A two-line notice moves it further.
+    await notifyAndDraw(page, 'Moved 12 objects and changed their elevations')
+    const tall = (await page.locator('.notification').boundingBox())!
+    expect(tall.height).toBeCloseTo(pill.height + 24, 0)
+    expect(await lastEmptyY()).toBeCloseTo(tall.y + tall.height - canvas.y + 24, 3)
+})
+
+test('beside the chart, the empty beat note stays under the header as the chart shows a notice', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.evaluate(() => {
+        window.editorTest.view.cursorTime = 0.5
+        window.editorTest.settings.elevationEditorSideBySide = 'allow'
+    })
+    await recordEmptyNote(page)
+    await open(page)
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    const canvas = (await page.locator('.elevation-canvas').boundingBox())!
+    const header = await page
+        .locator('.elevation-header')
+        .evaluate((element) => element.clientHeight)
+    await expect.poll(async () => (await emptyNotes(page)).at(-1)).toBe(header + 24)
+
+    // The chart's tool dialog moves its notice to the top, level with the note.
+    await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
+    await page.keyboard.press('b')
+    await showBrushDialog(page)
+    await expect(page.locator('[data-tool-dialog]')).toBeVisible()
+    await notifyAndDraw(
+        page,
+        'Moved 12 objects and changed their elevations, then moved them again, and once more after that',
+    )
+    await expect(page.locator('.elevation-editor .notification')).toHaveCount(0)
+    const pill = (await page.locator('.notification').boundingBox())!
+    expect(pill.height).toBeGreaterThan(50)
+    expect(pill.y).toBeLessThan(canvas.y + header + 24)
+    expect(pill.y + pill.height).toBeGreaterThan(canvas.y + header + 12)
+    expect((await emptyNotes(page)).at(-1)).toBe(header + 24)
 })
 
 test("the Elevation Editor's own context menu doesn't offer to edit elevations", async ({
