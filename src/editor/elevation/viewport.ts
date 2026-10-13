@@ -12,7 +12,7 @@ export const elevationSelection = shallowRef<{
     elevationMin: number
     elevationMax: number
 }>()
-// The view is kept for the session; the first open after a chart load fits it.
+// The first open after a chart load fits the view; until it's adjusted, a new pane size fits it again.
 export const needsElevationFit = ref(true)
 // The pane size of the fit, until the view is first adjusted; a new size fits it again.
 export const elevationFitSize = shallowRef<{ w: number; h: number }>()
