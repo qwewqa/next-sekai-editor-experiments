@@ -11,41 +11,55 @@ const props = defineProps<{
 }>()
 
 const root = useTemplateRef<HTMLElement>('root')
-// A top or bottom badge's half width in device pixels, so it centres on whole pixels.
-const half = ref<number>()
+// A top or bottom badge's size, so its corner lands on device pixels.
+const size = ref<{ width: number; height: number }>()
 const measure = () => {
-    if (props.indicator.x === undefined || !root.value) return
-    const ratio = devicePixelRatio || 1
-    half.value = Math.round((root.value.getBoundingClientRect().width / 2) * ratio) / ratio
+    if (!root.value) return
+    const { width, height } = root.value.getBoundingClientRect()
+    size.value = { width, height }
 }
+const ratio = ref(devicePixelRatio || 1)
+let ratioQuery: MediaQueryList | undefined
+const updateRatio = () => {
+    ratio.value = devicePixelRatio || 1
+    ratioQuery?.removeEventListener('change', updateRatio)
+    ratioQuery = matchMedia(`(resolution: ${ratio.value}dppx)`)
+    ratioQuery.addEventListener('change', updateRatio)
+}
+const pixel = (value: number) => Math.round(value * ratio.value) / ratio.value
 let observer: ResizeObserver | undefined
 onMounted(() => {
     if (props.indicator.x === undefined || !root.value) return
     observer = new ResizeObserver(measure)
     observer.observe(root.value)
+    updateRatio()
 })
-onUnmounted(() => observer?.disconnect())
+onUnmounted(() => {
+    observer?.disconnect()
+    ratioQuery?.removeEventListener('change', updateRatio)
+})
 </script>
 
 <template>
     <div
         ref="root"
-        class="offscreen-note-indicator absolute flex h-6 -translate-y-1/2 items-center gap-0.5 rounded-full border bg-preview px-1 text-xs tabular-nums text-white shadow-sm"
+        class="offscreen-note-indicator absolute flex h-6 items-center gap-0.5 rounded-full border bg-preview px-1 text-xs tabular-nums text-white shadow-sm"
         :class="[
             indicator.side === 'left'
                 ? 'left-1'
                 : indicator.side === 'right'
                   ? 'right-1 flex-row-reverse'
-                  : half === undefined && '-translate-x-1/2',
+                  : size === undefined && '-translate-x-1/2',
+            size === undefined && '-translate-y-1/2',
             indicator.highlighted ? 'border-white' : 'border-white/25',
             hovered && 'is-hovered ring-2 ring-accent',
         ]"
         :style="{
-            top: `${indicator.y}px`,
+            top: `${size === undefined ? indicator.y : pixel(indicator.y - size.height / 2)}px`,
             left:
                 indicator.x === undefined
                     ? undefined
-                    : `${half === undefined ? indicator.x : indicator.x - half}px`,
+                    : `${size === undefined ? indicator.x : pixel(indicator.x - size.width / 2)}px`,
             opacity: indicator.opacity,
         }"
         :data-side="indicator.side"

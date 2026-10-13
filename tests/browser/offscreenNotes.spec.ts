@@ -488,7 +488,7 @@ test('a note under a top badge cell, off its pill, takes the press', async ({ pa
     expect(moved).toBeLessThan(2)
 })
 
-for (const deviceScaleFactor of [1, 2])
+for (const deviceScaleFactor of [1, 1.1, 2])
     test.describe(`at ${deviceScaleFactor}x`, () => {
         test.use({ deviceScaleFactor })
 
@@ -501,21 +501,60 @@ for (const deviceScaleFactor of [1, 2])
                 '.elevation-editor :is([data-side="top"], [data-side="bottom"])',
             )
             await expect(badges).toHaveCount(2)
-            await expect
-                .poll(() =>
-                    badges.evaluateAll((elements) =>
-                        elements.flatMap((element) => {
-                            const { left, top } = element.getBoundingClientRect()
-                            return [left, top].map((value) => {
-                                const pixels = value * devicePixelRatio
-                                return Math.abs(pixels - Math.round(pixels)) < 1e-3
-                            })
-                        }),
-                    ),
-                )
-                .toEqual([true, true, true, true])
+            await expect.poll(() => badgesOnPixels(page)).toEqual(onPixels)
         })
     })
+
+// Whether each top and bottom badge's corner is on a device pixel, from the pane, which can start
+// off one. Layout keeps positions in 64ths of a pixel, so fractional ratios land near one.
+const badgesOnPixels = (page: Page, ratio?: number) =>
+    page.locator('.elevation-editor :is([data-side="top"], [data-side="bottom"])').evaluateAll(
+        (elements, ratio) =>
+            elements.flatMap((element) => {
+                const pane = element.closest('.offscreen-notes')!.getBoundingClientRect()
+                const { left, top } = element.getBoundingClientRect()
+                return [left - pane.left, top - pane.top].map((value) => {
+                    const pixels = value * (ratio ?? devicePixelRatio)
+                    return Math.abs(pixels - Math.round(pixels)) < 0.05
+                })
+            }),
+        ratio,
+    )
+const onPixels = [true, true, true, true]
+
+test('top and bottom badges follow a pixel ratio change without a resize', async ({ page }) => {
+    // Headless Chromium fires no resolution query change, so the page's ratio and query are faked.
+    await page.evaluate(() => {
+        const listeners = new Set<() => void>()
+        let ratio = 1
+        Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => ratio })
+        const original = window.matchMedia.bind(window)
+        window.matchMedia = (query: string) =>
+            query.startsWith('(resolution:')
+                ? ({
+                      matches: true,
+                      addEventListener: (_: string, listener: () => void) =>
+                          listeners.add(listener),
+                      removeEventListener: (_: string, listener: () => void) =>
+                          listeners.delete(listener),
+                  } as unknown as MediaQueryList)
+                : original(query)
+        ;(window as unknown as { setRatio: (value: number) => void }).setRatio = (value) => {
+            ratio = value
+            for (const listener of [...listeners]) listener()
+        }
+        window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+    })
+    await showAboveAndBelow(page)
+    await expect(
+        page.locator('.elevation-editor :is([data-side="top"], [data-side="bottom"])'),
+    ).toHaveCount(2)
+    await expect.poll(() => badgesOnPixels(page, 1)).toEqual(onPixels)
+    await page.evaluate(() =>
+        (window as unknown as { setRatio: (value: number) => void }).setRatio(1.1),
+    )
+    await expect.poll(() => badgesOnPixels(page, 1.1)).toEqual(onPixels)
+})
 
 test('top and bottom badges follow beat changes, scrolling and zooming', async ({ page }) => {
     await showAboveAndBelow(page)

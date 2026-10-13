@@ -415,7 +415,7 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         right: width - rightReach - 4,
         // The end cells meet the side badges' hit areas.
         reachLeft: labelLeft === undefined ? 0 : labelLeft - 4,
-        reachRight: width - rightReach,
+        reachRight: elevationBounds.w - rightReach,
         origin: pixel(layout.xAt(0)),
         pixelRatio: ratio,
     })
