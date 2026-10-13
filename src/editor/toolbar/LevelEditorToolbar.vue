@@ -136,11 +136,11 @@ watch(
             const shown = activeNames.value[index]
             const name = candidates[candidates.length - 1]
             if (!name || !shown || candidates.includes(shown)) continue
-            // A right press's tool shows over any face until its release.
-            if (switched && inUse[index]) returning[index] ??= shown
             // A tool coming into use over an action or value shows until it ends.
-            else if (inUse[index] && wasInUse === false && stateOf(shown, index)?.kind !== 'tool')
+            if (inUse[index] && wasInUse === false && stateOf(shown, index)?.kind !== 'tool')
                 displaced[index] = shown
+            // Else a right press's tool shows over the face until its release.
+            else if (switched && inUse[index]) returning[index] ??= shown
             activeNames.value[index] = name
         }
     },

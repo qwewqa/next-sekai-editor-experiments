@@ -896,6 +896,39 @@ test('a right press’s tool shows on its group only until the release', async (
     await expectGroup('Select')
 })
 
+test('a tool switched to during a right press leaves an action face to return, and takes a tool face', async ({
+    page,
+}) => {
+    const expectGroup = (face: string) => expect.poll(async () => (await faces(page))[3]).toBe(face)
+    const start = await page.evaluate(() => window.editorTest.point(-5, 1))
+    // Holds the right button over the chart, switching to Brush and then Note meanwhile.
+    const rightPressSwitching = async () => {
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down({ button: 'right' })
+        await expectGroup('Select*')
+        await page.keyboard.press('b')
+        await expectGroup('Brush*')
+        await page.keyboard.press('a')
+    }
+    await page.keyboard.press('a')
+    await pickAt(page, 3, 'Increase Note Size')
+    await expectGroup('Increase Note Size')
+    await rightPressSwitching()
+    await expectGroup('Increase Note Size')
+    await page.mouse.up({ button: 'right' })
+    await expectGroup('Increase Note Size')
+    expect((await faces(page))[5]).toBe('Note*')
+
+    await pickAt(page, 3, 'Eraser')
+    await page.keyboard.press('a')
+    await expectGroup('Eraser')
+    await rightPressSwitching()
+    await expectGroup('Brush')
+    await page.mouse.up({ button: 'right' })
+    await expectGroup('Brush')
+    expect((await faces(page))[5]).toBe('Note*')
+})
+
 test('a pick over a tool’s temporary face becomes the face', async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.toolbar = [

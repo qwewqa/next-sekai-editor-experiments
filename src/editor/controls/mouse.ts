@@ -9,6 +9,7 @@ import { zoomXOut } from '../commands/zooms/zoomXOut'
 import { zoomYIn } from '../commands/zooms/zoomYIn'
 import { zoomYOut } from '../commands/zooms/zoomYOut'
 import { closeContextMenu, openContextMenu } from '../contextMenu'
+import { isElevationEditorOpen } from '../elevation/state'
 import { editorNavigation, getControlBounds } from '../navigation'
 import { cancelPreviewFollow, stopPlayer } from '../player'
 import { sceneState } from '../sceneState'
@@ -105,6 +106,14 @@ export const cancelMouseControls = (restoreTool = true) => {
     secondarySwitchBack.value = undefined
     if (restoreTool && previous) switchToolTo(previous)
 }
+// Opening the Elevation Editor ends a right press there, as its Select would if the tool changed.
+watch(
+    isElevationEditorOpen,
+    (open) => {
+        if (open && secondarySwitchBack.value) cancelMouseControls(false)
+    },
+    { flush: 'sync' },
+)
 
 const mousedown = (event: MouseEvent) => {
     isHovering = false

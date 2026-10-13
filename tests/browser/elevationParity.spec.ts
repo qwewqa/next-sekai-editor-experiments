@@ -369,6 +369,33 @@ test('a tool picked in the Elevation Editor stays once it closes', async ({ page
     await expect(brush).toHaveAttribute('aria-pressed', 'true')
 })
 
+test('opening the Elevation Editor during a right press ends the press on Select', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    for (const sideBySide of ['disallow', 'allow'] as const)
+        for (const key of ['q', 'a']) {
+            await page.evaluate(
+                (value) => (window.editorTest.settings.elevationEditorSideBySide = value),
+                sideBySide,
+            )
+            await page.keyboard.press(key)
+            const start = await page.evaluate(() => window.editorTest.point(-5, 1))
+            await page.mouse.move(start.x, start.y)
+            await page.mouse.down({ button: 'right' })
+            expect(await toolName(page)).toBe('select')
+            await open(page)
+            await page.mouse.up({ button: 'right' })
+            await settle(page)
+            await expect(page.locator('.elevation-editor')).toBeVisible()
+            expect(await toolName(page)).toBe('select')
+            // Beside the chart, its release opens no context menu there.
+            await expect(page.getByRole('menu')).toHaveCount(0)
+            await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
+            await expect(page.locator('.elevation-editor')).toHaveCount(0)
+        }
+})
+
 test('going full screen with a tool the Elevation Editor lacks closes it', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 })
     const sideBySide = (value: 'allow' | 'disallow') =>
