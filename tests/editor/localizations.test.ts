@@ -207,10 +207,10 @@ test('French text uses one typographic style', () => {
     for (const [key, text] of Object.entries(read('fr'))) {
         assert.doesNotMatch(text, /'/, `fr ${key}: curly apostrophes, as most of fr`)
         // A no-break space before ? ! ; (narrow) and : %, so the mark never wraps alone; "(%)" is a unit.
-        // A ratio such as 1:1 takes none.
+        // A colon between digits is a ratio such as 1:1, which takes none.
         assert.doesNotMatch(
-            text.replace(/\d:\d/g, ''),
-            /[^\u202f][?!;]|[^\u00a0(][:%]/,
+            text,
+            /[^\u202f][?!;]|[^\u00a0(]%|[^\u00a0(](?:(?<!\d):|:(?!\d))/,
             `fr ${key}`,
         )
     }

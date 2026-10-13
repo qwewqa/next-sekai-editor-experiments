@@ -385,6 +385,25 @@ for (const colorScheme of ['light', 'dark'] as const)
         expect(await edge(other)).toBe('4px -4px')
     })
 
+for (const colorScheme of ['light', 'dark'] as const)
+    test(`focus on the pressed 1:1 Grid is an inner ring, as on the tool in use (${colorScheme})`, async ({
+        page,
+    }) => {
+        await page.emulateMedia({ forcedColors: 'active', colorScheme })
+        const selectedText = await systemColor(page, 'HighlightText')
+        await page.evaluate(async () => {
+            window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+            const { commands } = await import('/src/editor/commands/index.ts')
+            await commands.elevation.execute()
+        })
+        const lock = page.getByRole('button', { name: '1:1 Grid', exact: true })
+        await lock.click()
+        await expect(lock).toHaveAttribute('aria-pressed', 'true')
+        await focus(lock)
+        expect(await outline(lock)).toEqual({ style: 'solid', width: '2px', color: selectedText })
+        await expect.poll(() => innerRing(lock)).toBe(selectedText)
+    })
+
 const systemColor = (page: Page, name: string) =>
     page.evaluate((name) => {
         const probe = document.createElement('span')

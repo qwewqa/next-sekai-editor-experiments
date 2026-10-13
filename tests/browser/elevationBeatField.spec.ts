@@ -90,6 +90,21 @@ for (const { name, division, bpms, shown } of [
         }
     })
 
+test('the Beat field keeps a typed beat with more than three decimals', async ({ page }) => {
+    await setUp(page, 3)
+    await page.keyboard.press('t')
+    const field = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    // Within 5e-4 of 7.333 and of the line at 7 1/3, but typed past three decimals.
+    await field.fill('7.3334')
+    await field.press('Enter')
+    await expect(field).toHaveValue('7.333')
+    expect(await elevationBeat(page)).toBe(6.3334)
+    // Three decimals still store the line.
+    await field.fill('7.667')
+    await field.press('Enter')
+    await expect.poll(() => elevationBeat(page)).toBe(20 / 3)
+})
+
 test('the Beat field fits a long beat', async ({ page }) => {
     await setUp(page, 16)
     await page.keyboard.press('t')

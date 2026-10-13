@@ -135,6 +135,24 @@ test.describe('the view', () => {
         expect(top).toBeLessThan(height)
     })
 
+    test('is fitted on reopening after a chart load closes it', async ({ page }) => {
+        await open(page)
+        await moveView(page)
+        // At beat 8 as the load closes it, and reopened at beat 6.
+        const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+        await beat.fill('9')
+        await beat.press('Enter')
+        await settle(page)
+        await showChart(page, [20, -20])
+        await expect(page.locator('.elevation-editor')).toHaveCount(0)
+        await open(page)
+        await expect(beat).toHaveValue('7')
+        // Fitted to beat 6's note, not beat 8's.
+        const { top, height } = await elevation(page)
+        expect(top).toBeGreaterThan(0)
+        expect(top).toBeLessThan(height)
+    })
+
     test('is fitted on a chart load while open side by side', async ({ page }) => {
         await page.evaluate(() => {
             window.editorTest.settings.elevationEditorSideBySide = 'allow'
@@ -352,4 +370,100 @@ test.describe('the 1:1 grid', () => {
         await settle(page)
         expect((await axes(page)).scale).toBe(zoomed.scale)
     })
+})
+
+// Whether every point on a line between two page points hits one of the controls.
+const tiles = (
+    page: Page,
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    selectors: string[],
+) =>
+    page.evaluate(
+        ({ from, to, selectors }) => {
+            const misses: string[] = []
+            const steps = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * 2)
+            for (let i = 0; i <= steps; i++) {
+                const x = from.x + ((to.x - from.x) * i) / steps
+                const y = from.y + ((to.y - from.y) * i) / steps
+                const element = document.elementFromPoint(x, y)
+                if (!selectors.some((selector) => element?.closest(selector)))
+                    misses.push(`${x},${y}: ${element?.className}`)
+            }
+            return misses
+        },
+        { from, to, selectors },
+    )
+
+for (const coarse of [false, true])
+    test.describe(`a narrow header with a ${coarse ? 'coarse' : 'fine'} pointer`, () => {
+        test.use(coarse ? { hasTouch: true, isMobile: true } : {})
+
+        test('keeps the pressed 1:1 off the snap field, its hit areas meeting', async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 300, height: 700 })
+            await open(page)
+            const square = page.locator('.elevation-square')
+            await square.click()
+            await expect(square).toHaveAttribute('aria-pressed', 'true')
+            const box = async (selector: string) =>
+                (await page.locator(`.elevation-editor ${selector}`).boundingBox())!
+            const snap = await box('.elevation-snap select')
+            const beat = await box('.elevation-beat-field input')
+            const next = await box('.elevation-beat > button:last-child')
+            const lock = await box('.elevation-square')
+            // 0.25rem apart, as in wider headers; Next Beat and 1:1 share the column.
+            expect(lock.x - (snap.x + snap.width)).toBeCloseTo(4, 1)
+            expect(next.x - (beat.x + beat.width)).toBeCloseTo(4, 1)
+            expect(lock.x + lock.width).toBeCloseTo(next.x + next.width, 1)
+            const mid = (b: typeof lock) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 })
+            // Across the gaps, each point hits a field or the button beside it.
+            expect(
+                await tiles(page, { x: mid(snap).x, y: mid(lock).y }, mid(lock), [
+                    '.elevation-snap',
+                    '.elevation-square',
+                ]),
+            ).toEqual([])
+            expect(
+                await tiles(page, { x: mid(beat).x, y: mid(next).y }, mid(next), [
+                    '.elevation-beat-field',
+                    '.elevation-beat > button:last-child',
+                ]),
+            ).toEqual([])
+            expect(
+                await tiles(page, mid(next), mid(lock), [
+                    '.elevation-beat > button:last-child',
+                    '.elevation-square',
+                ]),
+            ).toEqual([])
+            // The Beat and snap values start at the same x.
+            const start = (selector: string) =>
+                page
+                    .locator(`.elevation-editor ${selector}`)
+                    .evaluate(
+                        (element) =>
+                            element.getBoundingClientRect().x +
+                            parseFloat(getComputedStyle(element).paddingLeft),
+                    )
+            expect(await start('.elevation-beat-field input')).toBeCloseTo(
+                await start('.elevation-snap select'),
+                1,
+            )
+        })
+    })
+
+test('the pressed 1:1 glows on hover, as the toolbar tool in use does', async ({ page }) => {
+    await open(page)
+    const square = page.locator('.elevation-square')
+    await square.click()
+    const shadow = () => square.evaluate((element) => getComputedStyle(element).boxShadow)
+    const lock = (await square.boundingBox())!
+    await page.mouse.move(lock.x + lock.width / 2, lock.y + lock.height / 2)
+    const accent = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
+    )
+    await expect.poll(shadow).toContain(`rgb(${accent.split(/\s+/).join(', ')})`)
+    await page.mouse.move(0, 0)
+    await expect.poll(shadow).not.toContain(`rgb(${accent.split(/\s+/).join(', ')})`)
 })

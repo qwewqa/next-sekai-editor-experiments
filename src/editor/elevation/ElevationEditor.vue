@@ -1131,14 +1131,17 @@ const beatField = computed({
     },
 })
 // A shown value is a grid line rounded to three decimals, so it stores that line, as Next does.
+// A value with more decimals is kept as typed.
 const typedBeat = (value: number) => {
     const beat = fromDisplayedBeat(value)
     const line = snapBeat(committedGrid.value, beat, view.division)
-    return view.division < 1000 && Math.abs(line - beat) <= 5e-4 + 1e-9
+    return value === Number(value.toFixed(3)) &&
+        view.division < 1000 &&
+        Math.abs(line - beat) <= 5e-4 + 1e-9
         ? line
         : nearGridBeat(committedGrid.value, beat, view.division)
 }
-// Arrows step through grid lines, which a rounded value isn't on for the native step.
+// Arrows step to the next grid line; shown values are rounded, so the native step would miss it.
 const stepBeatField = (event: Event, direction: 1 | -1) => {
     event.preventDefault()
     // From a typed value too, as the native step does.
@@ -1798,7 +1801,7 @@ onUnmounted(() => {
     gap: 0.5rem;
 }
 
-/* The y-axis controls wrap together, with room for the 1:1 fill beside the field. */
+/* The y-axis controls wrap together; the gap keeps the pressed 1:1 off the field. */
 .elevation-y {
     display: flex;
     align-items: center;
@@ -1812,10 +1815,10 @@ onUnmounted(() => {
     }
 }
 
-/* The lock on, as the toolbar's tool in use; high contrast selects it. */
+/* Pressed, it is filled and glows on hover as the toolbar's active tool does. */
 @media not (forced-colors: active) {
     .elevation-square[aria-pressed='true']:not(:active) {
-        @apply bg-accent text-on-accent;
+        @apply bg-accent text-on-accent shadow-md shadow-transparent hover:shadow-accent;
     }
 
     .elevation-square[aria-pressed='true']:focus-visible {
@@ -1823,11 +1826,20 @@ onUnmounted(() => {
     }
 }
 
+/* In high contrast, pressed is Highlight; focus is an inner ring, as on the toolbar's active tool. */
 @media (forced-colors: active) {
     .elevation-square[aria-pressed='true'] {
         forced-color-adjust: none;
         background-color: Highlight;
         color: HighlightText;
+    }
+
+    .elevation-square[aria-pressed='true']:focus-visible {
+        outline: 2px solid HighlightText;
+        outline-offset: -2px;
+        box-shadow:
+            inset 0 0 0 4px Highlight,
+            inset 0 0 0 6px HighlightText;
     }
 }
 
@@ -1906,9 +1918,10 @@ onUnmounted(() => {
 }
 
 @container (max-width: 19rem) {
+    /* The last column keeps its buttons 0.25rem off the fields, as wider layouts do. */
     .elevation-controls {
         display: grid;
-        grid-template-columns: 2rem minmax(0, max-content) minmax(0, 1fr) 2rem;
+        grid-template-columns: 2rem minmax(0, max-content) minmax(0, 1fr) 2.25rem;
         margin-inline: -0.5rem;
         column-gap: 0;
     }
@@ -1922,6 +1935,30 @@ onUnmounted(() => {
 
     .elevation-square {
         grid-column: 4;
+    }
+
+    .elevation-beat > button:last-child,
+    .elevation-square {
+        justify-self: end;
+    }
+
+    /* Hit areas reach the fields, and Next Beat and 1:1 meet across the row gap. */
+    .elevation-beat > button:last-child::before,
+    .elevation-square::before {
+        left: -0.25rem;
+    }
+
+    .elevation-beat > button:last-child::before {
+        bottom: -0.25rem;
+    }
+
+    .elevation-square::before {
+        top: -0.25rem;
+    }
+
+    /* Its text starts where the snap value's does. */
+    .elevation-beat-field .elevation-field {
+        padding-inline: 0.75rem;
     }
 
     .elevation-label {
@@ -1948,7 +1985,7 @@ onUnmounted(() => {
 @container (max-width: 12rem) {
     /* Labels stack above their fields within the header's former height. */
     .elevation-controls {
-        grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+        grid-template-columns: 2rem minmax(0, 1fr) 2.25rem;
         row-gap: 0.25rem;
     }
 
