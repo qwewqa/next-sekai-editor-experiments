@@ -94,12 +94,16 @@ test('initial elevation fitting keeps the scale and centres on 3, keeping 0 and 
     // centre and 160px below; notes keep 0.3 from its edges, and 0 keeps 16px off its bottom.
     const above = 220 / 38
     const below = 160 / 38
-    const centre = (elevations: number[], height = 600) => {
+    const centre = (
+        elevations: number[],
+        height = 600,
+        padding?: { top: number; bottom: number },
+    ) => {
         fitElevationViewport(
             height,
             elevations.map((elevation, i) => note(i, 0, 0, elevation)),
             38,
-            undefined,
+            padding,
             0.3 * 38,
         )
         assert.equal(elevationViewport.scale, 38)
@@ -118,6 +122,11 @@ test('initial elevation fitting keeps the scale and centres on 3, keeping 0 and 
         close(centre([-4, -1]), -4 + below - 0.3)
         // Notes far below: 0 stays at the top, as near them as that allows.
         close(centre([-40]), -above)
+        // Notes too spread to fit with 0: the centre between theirs, as far as 0 allows.
+        close(centre([-10, 12]), (12 - above + 0.3 + (-10 + below - 0.3)) / 2)
+        close(centre([-10, 30]), below - 16 / 38)
+        // A toolbar 60px tall: 0 stays 16px over it.
+        close(centre([40], 600, { top: 80, bottom: 60 }), 240 / 38 - 16 / 38)
         // A 100px pane's band is 10px: 0 is halfway between its two limits.
         close(centre([], 100), (30 / 38 + 40 / 38 - 16 / 38) / 2)
         close(centre([20], 100), (30 / 38 + 40 / 38 - 16 / 38) / 2)

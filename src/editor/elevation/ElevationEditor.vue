@@ -261,7 +261,10 @@ const fitViewport = () => {
         squareScale.value,
         {
             top: (header.value?.clientHeight ?? 80) + Math.max(20, 1.25 * elevationLaneScale.value),
-            bottom: 140,
+            // 0 keeps its margin above the toolbar.
+            bottom: Number.isFinite(bottomChrome.value)
+                ? elevationBounds.h - bottomChrome.value
+                : 140,
         },
         // A note's drawn half height.
         0.3 * elevationLaneScale.value,
@@ -1841,7 +1844,7 @@ onUnmounted(() => {
     margin-left: auto;
 }
 
-/* Its hit area reaches the field across the gap. */
+/* Its hit area covers the gap before it, reaching the snap field when the row is tight. */
 @media not (pointer: coarse) {
     .elevation-square::before {
         left: -0.25rem;

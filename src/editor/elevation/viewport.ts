@@ -17,10 +17,7 @@ export const needsElevationFit = ref(true)
 onResetState(() => {
     needsElevationFit.value = true
 })
-/**
- * Centres the view at a scale between the paddings: 0 shown 16px over the bottom, then the
- * notes shown with a margin, then 3 as near the middle as those allow.
- */
+/** Centres between the paddings at this scale: 0 16px off the bottom, then the notes, then 3. */
 export const fitElevationViewport = (
     height: number,
     notes: ElevationNote[],
@@ -41,11 +38,11 @@ export const fitElevationViewport = (
         const margin = noteMargin / scale
         const notesMin = Math.max(...notes.map((note) => note.elevation)) - above + margin
         const notesMax = Math.min(...notes.map((note) => note.elevation)) + below - margin
-        // Else, 0's centre nearest the notes'.
         if (Math.max(min, notesMin) <= Math.min(max, notesMax)) {
             min = Math.max(min, notesMin)
             max = Math.min(max, notesMax)
         } else {
+            // Notes too spread to fit with 0: as near their middle as 0 allows.
             min = max = clamp((notesMin + notesMax) / 2, min, max)
         }
     }
