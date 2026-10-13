@@ -14,7 +14,7 @@ import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, isSameTempo } from '../../state/integrals/bpms'
 import { dominantDivision } from '../composed'
 import { getComposedLayout } from '../composedView'
-import { isScenePreview } from '../sceneState'
+import { isScenePreview, previewSlides } from '../sceneState'
 import { scopeLookup } from '../scope'
 import { entityScopeVisibility } from '../scopeRules'
 import { view } from '../view'
@@ -216,7 +216,8 @@ export const elevationDragRows = computed(() => {
     const before = new Map(committed.rows.map((row) => [row.note, row]))
     // A drag selects the notes it moves.
     const moved = new Set(elevationState.value.selectedEntities)
-    const live = new Set<SlideId>()
+    // The chart's previewed slides, and those whose rows here change beyond the moved notes.
+    const live = new Set<SlideId>(previewSlides.value?.slideIds)
     const isRetime = !isSameTempo(elevationState.value.bpms, state.value.bpms)
     // A retiming drag draws no slide live, as on the chart.
     if (!isRetime)

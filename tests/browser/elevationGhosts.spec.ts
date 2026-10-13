@@ -836,6 +836,48 @@ test('a Basic drag that shifts an unmoved attached tick draws its slide solid, a
     await page.mouse.up()
 })
 
+test('a Basic drag that shifts a tick off the beat draws its slide solid, as the chart', async ({
+    page,
+}) => {
+    // Moving the middle note's lane shifts the tick it heads at beat 4, so the chart previews the slide.
+    await seed(page, [
+        [
+            { left: -2, elevation: 0 },
+            { left: -2, elevation: 2 },
+            { beat: 4, left: -2, isAttached: true },
+            { beat: 5, left: 2, elevation: 4 },
+        ],
+    ])
+    const from = await at(page, 0, 2)
+    const lane = (await at(page, 1, 0)).x - (await at(page, 0, 0)).x
+    await hold(page, from, { x: from.x + 6 * lane, y: from.y })
+    const scene = await page.evaluate(async () => {
+        const { appImport, view } = window.editorTest
+        const { previewSlides } = await appImport<typeof import('../../src/editor/sceneState')>(
+            '/src/editor/sceneState.ts',
+        )
+        const { elevationDragRows } = await appImport<
+            typeof import('../../src/editor/elevation/scene')
+        >('/src/editor/elevation/scene.ts')
+        const editor = (
+            document.querySelector('.elevation-canvas') as unknown as {
+                __vueParentComponent: { setupState: { connections: { ghosts: unknown[] } } }
+            }
+        ).__vueParentComponent.setupState
+        const rows = elevationDragRows.value!
+        return {
+            chartSlides: previewSlides.value?.slideIds.size,
+            creating: view.entities.creating.length,
+            ghosts: rows.ghosts.length,
+            ghostRibbons: editor.connections.ghosts.length,
+            live: rows.live.size,
+        }
+    })
+    expect(scene).toEqual({ chartSlides: 1, creating: 1, ghosts: 0, ghostRibbons: 0, live: 1 })
+    expect(await leftovers(page)).toMatchObject({ canvas: false })
+    await page.mouse.up()
+})
+
 test('a Basic drag of an attached tick ghosts the tick, as the chart does', async ({ page }) => {
     await seed(page, [
         [

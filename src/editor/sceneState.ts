@@ -69,6 +69,7 @@ export const previewSlides = computed(() => {
     ])
     return {
         state: preview,
+        slideIds,
         entities: new Set(entities),
         /** Whether an entity, from either state, belongs to a previewed slide. */
         includes: (entity: Entity) =>
