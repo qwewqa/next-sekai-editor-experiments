@@ -17,10 +17,13 @@ const subset = (pick: (group: OffscreenNoteGroup) => boolean, sort = false) =>
         if (sort) groups.sort((a, b) => a.y - b.y)
         return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
     })
+const isSide = ({ side }: OffscreenNoteGroup) => side === 'left' || side === 'right'
 // Top to bottom, in the order they are read.
-const top = subset(({ fixed, slot }) => fixed && slot !== Infinity)
+const top = subset((group) => isSide(group) && group.fixed && group.slot !== Infinity)
 const scrolling = subset(({ fixed }) => !fixed, true)
-const bottom = subset(({ slot }) => slot === Infinity)
+const bottom = subset((group) => isSide(group) && group.slot === Infinity)
+// Along the top and bottom rows.
+const edges = subset((group) => !isSide(group))
 // By key: a reused subset holds older objects than the hit test returns.
 const hoveredKey = computed(() => props.hovered && `${props.hovered.side}:${props.hovered.slot}`)
 </script>
@@ -51,6 +54,15 @@ const hoveredKey = computed(() => props.hovered && `${props.hovered.side}:${prop
         <div v-memo="[bottom, hoveredKey]" class="absolute inset-x-0 top-0">
             <OffscreenNoteBadge
                 v-for="indicator in bottom"
+                :key="`${indicator.side}:${indicator.slot}`"
+                :indicator="indicator"
+                :hovered="`${indicator.side}:${indicator.slot}` === hoveredKey"
+            />
+        </div>
+        <!-- Badges for the notes above and below. -->
+        <div v-memo="[edges, hoveredKey]" class="absolute inset-x-0 top-0">
+            <OffscreenNoteBadge
+                v-for="indicator in edges"
                 :key="`${indicator.side}:${indicator.slot}`"
                 :indicator="indicator"
                 :hovered="`${indicator.side}:${indicator.slot}` === hoveredKey"

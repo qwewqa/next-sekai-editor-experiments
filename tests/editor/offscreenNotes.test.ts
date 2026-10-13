@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     combineSelection,
+    groupOffscreenEdgeNotes,
     groupOffscreenNotes,
     hitOffscreenGroup,
     isSameOffscreenGroups,
@@ -508,4 +509,145 @@ test('a note on a slot boundary stays in its slot wherever the anchor is', () =>
         const [badge] = groupOffscreenNotes([note(-10, -1, -0)], 300, 0, 1000, 0, anchor)
         assert.ok(badge!.slot === 0 && badge!.y === 14)
     }
+})
+
+// A 600 by 400 pane whose cells are clear of 60px at either side, from lane x 300.
+const edges = { above: 0, below: 400, floor: 360, left: 60, right: 540, origin: 300 }
+const groupWithEdges = (notes: OffscreenNotePosition<string>[]) => {
+    const args = [600, 0, 400, 0, 0] as const
+    return [
+        ...groupOffscreenNotes(notes, ...args),
+        ...groupOffscreenEdgeNotes(notes, ...args, edges),
+    ]
+}
+
+test('every note off the pane is on one badge, the sides keeping theirs', () => {
+    const notes = [
+        // In view.
+        note(290, 310, 200),
+        // Off the sides, in their bands; one just above, held at the top of its side.
+        note(-20, -10, 200),
+        note(-20, -10, -10),
+        note(610, 620, 200),
+        // Above and below.
+        note(290, 310, -50),
+        note(290, 310, 450),
+        // Off a side and far above: past the side band, so on the top row.
+        note(-20, -10, -500),
+        note(610, 620, 900),
+    ]
+    const groups = groupWithEdges(notes)
+    assert.deepEqual(
+        groups.map(({ side, count }) => [side, count]),
+        [
+            ['left', 1],
+            ['left', 1],
+            ['right', 1],
+            ['top', 1],
+            ['bottom', 1],
+            ['top', 1],
+            ['bottom', 1],
+        ],
+    )
+    assert.equal(
+        groups.reduce((sum, group) => sum + group.count, 0),
+        notes.length - 1,
+    )
+    // The side badges are the main editor's.
+    assert.deepEqual(
+        groupOffscreenNotes(notes, 600, 0, 400),
+        groups.filter(({ side }) => side === 'left' || side === 'right'),
+    )
+})
+
+test('top and bottom badges sit in cells at their notes, held at the row ends', () => {
+    const groups = groupOffscreenEdgeNotes(
+        [
+            // Lane x 300 is a cell centre; these share it.
+            note(280, 300, -50),
+            note(310, 330, -80),
+            // The next cell.
+            note(330, 350, -50),
+            // Past either end, held in the end cells.
+            note(-100, -90, -50),
+            note(10, 20, -50),
+            note(700, 710, -50),
+            note(300, 300, 450),
+        ],
+        600,
+        20,
+        400,
+        0,
+        0,
+        edges,
+    )
+    assert.deepEqual(
+        groups.map(({ side, count, x, y }) => [side, count, x, y]),
+        [
+            ['top', 2, 300, 34],
+            ['top', 1, 348, 34],
+            // The first and last whole cells within 60 to 540.
+            ['top', 2, 108, 34],
+            ['top', 1, 492, 34],
+            // Above the toolbar.
+            ['bottom', 1, 300, 346],
+        ],
+    )
+    // Too narrow for a cell: one badge in the middle.
+    const narrow = groupOffscreenEdgeNotes(
+        [note(0, 10, -50), note(90, 100, -50)],
+        100,
+        0,
+        400,
+        0,
+        0,
+        {
+            ...edges,
+            left: 30,
+            right: 70,
+            origin: 0,
+        },
+    )
+    assert.deepEqual(
+        narrow.map(({ count, x }) => [count, x]),
+        [[2, 50]],
+    )
+})
+
+test('top and bottom cells tile their rows a touch target tall', () => {
+    const groups = groupOffscreenEdgeNotes(
+        [
+            { ...note(290, 310, -50), target: 'a' },
+            { ...note(340, 350, -50), target: 'b' },
+            note(390, 400, -50),
+        ],
+        600,
+        0,
+        400,
+        0,
+        0,
+        edges,
+    )
+    const [a, b] = groups
+    assert.equal(hitOffscreenGroup(groups, 300, a!.y, 600), a)
+    // Adjacent cells meet with no gap.
+    assert.equal(hitOffscreenGroup(groups, 324, a!.y, 600), a)
+    assert.equal(hitOffscreenGroup(groups, 324.01, a!.y, 600), b)
+    assert.equal(hitOffscreenGroup(groups, 300, a!.y + 22, 600), a)
+    assert.equal(hitOffscreenGroup(groups, 300, a!.y + 22.01, 600), undefined)
+    // A cell without selectable notes takes its area.
+    assert.equal(hitOffscreenGroup(groups, 396, a!.y, 600), undefined)
+    assert.equal(hitOffscreenGroup(groups, 250, a!.y, 600), undefined)
+})
+
+test('groupings with top and bottom badges compare their xs', () => {
+    // Scrolled: the same cell, moved.
+    const at = (origin: number) =>
+        groupOffscreenEdgeNotes([note(origin, origin, -50)], 600, 0, 400, 0, 0, {
+            ...edges,
+            origin,
+        })
+    assert.ok(isSameOffscreenGroups(at(300), at(300)))
+    assert.equal(at(310)[0]!.slot, at(300)[0]!.slot)
+    assert.ok(!isSameOffscreenGroups(at(300), at(310)))
 })

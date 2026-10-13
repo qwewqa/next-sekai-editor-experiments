@@ -20,6 +20,8 @@ type IndicatorLayer = {
     groups: () => OffscreenNoteGroup<NoteEntity>[]
     // Pane y the badges are placed from.
     anchor: () => number
+    // Badges also sit along its top and bottom.
+    edges?: boolean
 }
 
 const layers = shallowRef<IndicatorLayer[]>([])
@@ -40,8 +42,9 @@ export const hitOffscreenIndicator = (x: number, y: number) => {
     for (const layer of layers.value) {
         if (layer.navigation() !== editorNavigation.value) continue
         const bounds = layer.bounds()
-        // Hovering asks on every frame; away from the sides, no badge is in reach.
-        if (x - bounds.x > badgeReach && x - bounds.x < bounds.w - badgeReach) continue
+        // Hovering asks on every frame; away from the sides, no side badge is in reach.
+        if (!layer.edges && x - bounds.x > badgeReach && x - bounds.x < bounds.w - badgeReach)
+            continue
         const group = hitOffscreenGroup(
             layer.groups(),
             x - bounds.x,

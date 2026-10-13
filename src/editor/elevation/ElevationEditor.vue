@@ -21,6 +21,7 @@ import {
     useOffscreenIndicators,
 } from '../offscreenIndicators'
 import {
+    groupOffscreenEdgeNotes,
     groupOffscreenNotes,
     isSameOffscreenGroups,
     offscreenSlotNear,
@@ -321,30 +322,104 @@ const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
     return Math.round(lastOffscreenAnchor * ratio) / ratio
 })
+// The top of the toolbar or tool dialog, which the bottom badges stay above.
+const bottomChrome = ref(Infinity)
+const updateBottomChrome = () => {
+    const pane = container.value
+    if (!pane) return
+    const chrome =
+        pane.querySelector('[data-tool-dialog]') ??
+        pane.querySelector('[data-editor-toolbar] > div')
+    const rect = chrome?.getBoundingClientRect()
+    // The toolbar hides during drags; the badges keep their place.
+    if (rect && !rect.height) return
+    bottomChrome.value = rect ? rect.top - pane.getBoundingClientRect().top : Infinity
+}
+const chromeObserver = new ResizeObserver(updateBottomChrome)
+// The toolbar and a tool dialog replace each other.
+const observeBottomChrome = () => {
+    chromeObserver.disconnect()
+    for (const element of container.value?.querySelectorAll(
+        '[data-tool-dialog], [data-editor-toolbar] > div',
+    ) ?? [])
+        chromeObserver.observe(element)
+    updateBottomChrome()
+}
+const chromeMutations = new MutationObserver(observeBottomChrome)
+// Axis labels move right of any left badges, which would cover them.
+const axisLabelLeftOf = (groups: OffscreenNoteGroup[]) => {
+    const left = groups.filter(({ side }) => side === 'left')
+    return left.length
+        ? Math.max(...left.map(({ count }) => offscreenBadgeHitWidth(count))) + 4
+        : undefined
+}
+let labelMeasure: CanvasRenderingContext2D | null | undefined
+// An axis label's width.
+const measureLabel = (label: number, family: string) => {
+    labelMeasure ??= document.createElement('canvas').getContext('2d')
+    if (!labelMeasure) return 0
+    labelMeasure.font = `12px ${family}`
+    return labelMeasure.measureText(`${label}`).width
+}
 const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
     const selected = new Set(elevationState.value.selectedEntities)
-    const { rows } = elevationLayout.value
+    const layout = elevationLayout.value
     const { elevation: origin, scale } = offscreenOrigin.value
     const anchor = offscreenAnchor.value
-    const groups = groupOffscreenNotes(
-        rows.map((row) => ({
-            left: row.x - row.w / 2,
-            right: row.x + row.w / 2,
-            // From the origin, so notes keep their slots while panning.
-            y: -(row.elevation - origin) * scale,
-            highlighted: selected.has(row.note),
-            opacity: 1,
-            // A pending draft's notes are picked as the committed ones they show.
-            target: previewEdit.value?.isDraft
-                ? toCommittedEntity(row.note, elevationState.value)
-                : row.note,
-        })),
+    const notes = layout.rows.map((row) => ({
+        left: row.x - row.w / 2,
+        right: row.x + row.w / 2,
+        // From the origin, so notes keep their slots while panning.
+        y: -(row.elevation - origin) * scale,
+        highlighted: selected.has(row.note),
+        opacity: 1,
+        // A pending draft's notes are picked as the committed ones they show.
+        target: previewEdit.value?.isDraft
+            ? toCommittedEntity(row.note, elevationState.value)
+            : row.note,
+    }))
+    const top = headerHeight.value + 4
+    const sides = groupOffscreenNotes(notes, elevationBounds.w, top, elevationBounds.h, 0, anchor)
+    // Top and bottom badges keep right of the axis labels and clear of the right badges.
+    const labelLeft = axisLabelLeftOf(sides)
+    // Without left badges, the grid starts right of the labels.
+    let labelRight = 38
+    if (labelLeft !== undefined) {
+        const { elevationCenter: center, height, elevationScale } = layout
+        // The labels at the ends have the most characters.
+        labelRight =
+            labelLeft +
+            Math.max(
+                ...[
+                    Math.ceil(center - height / 2 / elevationScale),
+                    Math.floor(center + height / 2 / elevationScale),
+                ].map((label) => measureLabel(label, fontFamily.value)),
+            )
+    }
+    const rightReach = Math.max(
+        0,
+        ...sides
+            .filter(({ side }) => side === 'right')
+            .map(({ count }) => offscreenBadgeHitWidth(count)),
+    )
+    const ratio = pixelRatio.value
+    const edges = groupOffscreenEdgeNotes(
+        notes,
         elevationBounds.w,
-        headerHeight.value + 4,
+        top,
         elevationBounds.h,
         0,
         anchor,
+        {
+            above: headerHeight.value - layout.laneScale * 0.3,
+            below: elevationBounds.h + layout.laneScale * 0.3,
+            floor: bottomChrome.value - 4,
+            left: labelRight + 4,
+            right: elevationBounds.w - rightReach - 4,
+            origin: Math.round(layout.xAt(0) * ratio) / ratio,
+        },
     )
+    const groups = [...sides, ...edges]
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
@@ -353,6 +428,7 @@ useOffscreenIndicators({
     bounds: () => elevationBounds,
     groups: () => offscreenGroups.value,
     anchor: () => offscreenAnchor.value,
+    edges: true,
 })
 // Only the select-like tools pick notes from the badges.
 const hitIndicator = (x: number, y: number) =>
@@ -1223,11 +1299,7 @@ watchEffect(() => {
     const family = fontFamily.value
     const textMiddle = fontMiddle.value
     const numberMiddle = figureMiddle.value
-    // Axis labels move right of any left badges, which would cover them.
-    const leftBadges = offscreenGroups.value.filter(({ side }) => side === 'left')
-    const axisLabelLeft = leftBadges.length
-        ? Math.max(...leftBadges.map(({ count }) => offscreenBadgeHitWidth(count))) + 4
-        : undefined
+    const axisLabelLeft = axisLabelLeftOf(offscreenGroups.value)
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         return
@@ -1416,6 +1488,7 @@ onMounted(() => {
         const rect = container.value?.getBoundingClientRect()
         if (!rect) return
         Object.assign(elevationBounds, { x: rect.x, y: rect.y, w: rect.width, h: rect.height })
+        updateBottomChrome()
     }
     const observer = new ResizeObserver(() => {
         updateBounds()
@@ -1423,6 +1496,8 @@ onMounted(() => {
     })
     if (container.value) observer.observe(container.value)
     if (header.value) observer.observe(header.value)
+    if (container.value) chromeMutations.observe(container.value, { childList: true })
+    observeBottomChrome()
     window.addEventListener('resize', updateBounds)
     window.addEventListener('scroll', updateBounds, true)
     updateBounds()
@@ -1491,6 +1566,8 @@ let cleanupBounds: (() => void) | undefined
 onUnmounted(() => {
     mounted = false
     cleanupBounds?.()
+    chromeMutations.disconnect()
+    chromeObserver.disconnect()
     window.removeEventListener('keydown', onKeydown, true)
     window.removeEventListener('resize', updatePixelRatio)
     pixelRatioQuery?.removeEventListener('change', updatePixelRatio)

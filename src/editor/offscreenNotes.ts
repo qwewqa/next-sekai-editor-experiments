@@ -10,12 +10,14 @@ export type OffscreenNotePosition<T = unknown> = {
 }
 
 export type OffscreenNoteGroup<T = unknown> = {
-    side: 'left' | 'right'
-    // -Infinity and Infinity for the badges held at the top and bottom edges.
+    side: 'left' | 'right' | 'top' | 'bottom'
+    // -Infinity and Infinity for the side badges held at the top and bottom edges; a row's cell.
     slot: number
     // Held at the band's edge: y is a pane y, not one from the anchor.
     fixed: boolean
     y: number
+    // A top or bottom badge's pane x.
+    x?: number
     spacing: number
     count: number
     highlighted: boolean
@@ -36,6 +38,75 @@ export const OFFSCREEN_REACH = 2 * SLOT
 export const offscreenSlotNear = (anchor: number, y: number) =>
     anchor + SLOT * Math.round((y - anchor) / SLOT)
 
+// Where a side badge takes a note, if one does.
+const placeOnSide = (width: number, top: number, bottom: number, inset: number, anchor: number) => {
+    const first = top + inset
+    const last = bottom - inset
+    if (!(width > 0) || last - first < BADGE) return () => undefined
+    // Less than half a badge of ride between holds reads as one double hop: one badge fixed instead.
+    const short = last - first < 3 * SLOT + BADGE / 2
+    // Slot centres past these are held at the top and bottom.
+    const holdTop = first + SLOT / 2 + SLOT
+    const holdBottom = last - SLOT / 2 - SLOT
+    // Notes count until their slot leaves, whole slots past the holds: one goes as the next is held.
+    const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
+    const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
+    return (note: OffscreenNotePosition) => {
+        const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
+        if (!side) return
+        let slot = Math.floor(note.y / SLOT)
+        let y = (slot + 0.5) * SLOT
+        let fixed = short
+        if (short) {
+            if (anchor + note.y < top || anchor + note.y > bottom) return
+            slot = 0
+            y = (first + last) / 2
+        } else {
+            const center = anchor + y
+            if (center < exitTop || center > exitBottom) return
+            if (center < holdTop) {
+                slot = -Infinity
+                y = first + SLOT / 2
+                fixed = true
+            } else if (center > holdBottom) {
+                slot = Infinity
+                y = last - SLOT / 2
+                fixed = true
+            }
+        }
+        return { side, slot, fixed, y, spacing: short ? last - first : SLOT } as const
+    }
+}
+
+const isFinitePosition = (note: OffscreenNotePosition) =>
+    Number.isFinite(note.left) && Number.isFinite(note.right) && Number.isFinite(note.y)
+
+type Placement = Pick<OffscreenNoteGroup, 'side' | 'slot' | 'fixed' | 'y' | 'x' | 'spacing'>
+
+const addToGroup = <T>(
+    groups: Map<string, OffscreenNoteGroup<T>>,
+    note: OffscreenNotePosition<T>,
+    placement: Placement,
+) => {
+    const key = `${placement.side}:${placement.slot}`
+    let group = groups.get(key)
+    if (group) {
+        group.count++
+        group.highlighted ||= note.highlighted
+        group.opacity = Math.max(group.opacity, note.opacity)
+    } else {
+        group = {
+            ...placement,
+            count: 1,
+            highlighted: note.highlighted,
+            opacity: note.opacity,
+            targets: [],
+        }
+        groups.set(key, group)
+    }
+    if (note.target !== undefined) group.targets.push(note.target)
+}
+
 /**
  * Badges sit in slots fixed to the content at `anchor` (a pane y), so they scroll with their notes.
  * Slots within a slot of an edge share one badge held there; notes only ever move to it with the scroll.
@@ -48,64 +119,72 @@ export const groupOffscreenNotes = <T>(
     inset = 0,
     anchor = 0,
 ) => {
-    const first = top + inset
-    const last = bottom - inset
-    if (!(width > 0) || last - first < BADGE) return []
-    // Less than half a badge of ride between holds reads as one double hop: one badge fixed instead.
-    const short = last - first < 3 * SLOT + BADGE / 2
-    // Slot centres past these are held at the top and bottom.
-    const holdTop = first + SLOT / 2 + SLOT
-    const holdBottom = last - SLOT / 2 - SLOT
-    // Notes count until their slot leaves, whole slots past the holds: one goes as the next is held.
-    const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
-    const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
+    const place = placeOnSide(width, top, bottom, inset, anchor)
     const groups = new Map<string, OffscreenNoteGroup<T>>()
     for (const note of notes) {
-        if (!Number.isFinite(note.left) || !Number.isFinite(note.right) || !Number.isFinite(note.y))
-            continue
-        const side = note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
+        const placement = isFinitePosition(note) ? place(note) : undefined
+        if (placement) addToGroup(groups, note, placement)
+    }
+    return [...groups.values()]
+}
+
+// A top or bottom badge's cell width, and its hit area's height.
+const CELL = 48
+const ROW_REACH = 44
+
+export type OffscreenEdges = {
+    // Note centre pane ys past which notes are off the top and bottom.
+    above: number
+    below: number
+    // Pane y the bottom row stays above, as of the toolbar.
+    floor: number
+    // Pane xs the cells stay between, clear of the side badges and axis labels.
+    left: number
+    right: number
+    // Pane x of a cell's centre, so cells scroll with their notes.
+    origin: number
+}
+
+const isEdgeGroup = (group: OffscreenNoteGroup) => group.side === 'top' || group.side === 'bottom'
+
+/**
+ * Top and bottom badges for the notes above and below that no side badge takes, given the side
+ * grouping's arguments: each note is on one badge. Cells sit at their notes' x, held at the row ends.
+ */
+export const groupOffscreenEdgeNotes = <T>(
+    notes: readonly OffscreenNotePosition<T>[],
+    width: number,
+    top: number,
+    bottom: number,
+    inset: number,
+    anchor: number,
+    edges: OffscreenEdges,
+) => {
+    const place = placeOnSide(width, top, bottom, inset, anchor)
+    const rows = {
+        top: top + inset + SLOT / 2,
+        bottom: Math.min(bottom - inset, edges.floor) - SLOT / 2,
+    }
+    const firstCell = Math.ceil((edges.left - edges.origin) / CELL + 0.5)
+    const lastCell = Math.floor((edges.right - edges.origin) / CELL - 0.5)
+    // Too narrow for a cell: one badge in the middle.
+    const single = lastCell < firstCell
+    const groups = new Map<string, OffscreenNoteGroup<T>>()
+    for (const note of notes) {
+        if (!isFinitePosition(note) || place(note)) continue
+        const y = anchor + note.y
+        const side = y < edges.above ? 'top' : y > edges.below ? 'bottom' : undefined
         if (!side) continue
-        let slot = Math.floor(note.y / SLOT)
-        let y = (slot + 0.5) * SLOT
-        let fixed = short
-        if (short) {
-            if (anchor + note.y < top || anchor + note.y > bottom) continue
-            slot = 0
-            y = (first + last) / 2
-        } else {
-            const center = anchor + y
-            if (center < exitTop || center > exitBottom) continue
-            if (center < holdTop) {
-                slot = -Infinity
-                y = first + SLOT / 2
-                fixed = true
-            } else if (center > holdBottom) {
-                slot = Infinity
-                y = last - SLOT / 2
-                fixed = true
-            }
-        }
-        const key = `${side}:${slot}`
-        let group = groups.get(key)
-        if (group) {
-            group.count++
-            group.highlighted ||= note.highlighted
-            group.opacity = Math.max(group.opacity, note.opacity)
-        } else {
-            group = {
-                side,
-                slot,
-                fixed,
-                y,
-                spacing: short ? last - first : SLOT,
-                count: 1,
-                highlighted: note.highlighted,
-                opacity: note.opacity,
-                targets: [],
-            }
-            groups.set(key, group)
-        }
-        if (note.target !== undefined) group.targets.push(note.target)
+        const cell = Math.round(((note.left + note.right) / 2 - edges.origin) / CELL)
+        const slot = single ? 0 : Math.min(Math.max(cell, firstCell), lastCell)
+        addToGroup(groups, note, {
+            side,
+            slot,
+            fixed: true,
+            y: rows[side],
+            x: single ? (edges.left + edges.right) / 2 : edges.origin + slot * CELL,
+            spacing: CELL,
+        })
     }
     return [...groups.values()]
 }
@@ -123,6 +202,7 @@ export const isSameOffscreenGroups = <T>(
             group.slot === other.slot &&
             group.fixed === other.fixed &&
             group.y === other.y &&
+            group.x === other.x &&
             group.spacing === other.spacing &&
             group.count === other.count &&
             group.highlighted === other.highlighted &&
@@ -143,10 +223,20 @@ export const hitOffscreenGroup = <T>(
     width: number,
     anchor = 0,
 ) => {
+    // Top and bottom cells tile their rows, clear of the side badges.
+    for (const group of groups) {
+        if (
+            isEdgeGroup(group) &&
+            Math.abs(x - (group.x ?? 0)) <= group.spacing / 2 &&
+            Math.abs(y - group.y) <= ROW_REACH / 2
+        )
+            return group.targets.length ? group : undefined
+    }
     let hit: OffscreenNoteGroup<T> | undefined
     let distance = Infinity
     let inside = false
     for (const group of groups) {
+        if (isEdgeGroup(group)) continue
         const reach = offscreenBadgeHitWidth(group.count)
         if (group.side === 'left' ? x < 0 || x > reach : x > width || x < width - reach) continue
         const offset = y - (group.fixed ? group.y : anchor + group.y)

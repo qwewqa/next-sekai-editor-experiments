@@ -1405,7 +1405,9 @@
   },
   "offscreenNotes": {
     "left": "Notes hors écran à gauche : {0}",
-    "right": "Notes hors écran à droite : {0}"
+    "right": "Notes hors écran à droite : {0}",
+    "top": "Notes hors écran en haut : {0}",
+    "bottom": "Notes hors écran en bas : {0}"
   },
   "workspace": {
     "panels": {

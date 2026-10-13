@@ -1405,7 +1405,9 @@
   },
   "offscreenNotes": {
     "left": "Ekranın solunda kalan notalar: {0}",
-    "right": "Ekranın sağında kalan notalar: {0}"
+    "right": "Ekranın sağında kalan notalar: {0}",
+    "top": "Ekranın üstünde kalan notalar: {0}",
+    "bottom": "Ekranın altında kalan notalar: {0}"
   },
   "workspace": {
     "panels": {
