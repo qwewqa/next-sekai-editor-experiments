@@ -75,14 +75,16 @@ for (const mode of ['endpoint', 'body', 'mixed-stage'] as const)
             const { openElevationEditor } = await appImport<
                 typeof import('../../src/editor/elevation/state')
             >('/src/editor/elevation/state.ts')
-            const { elevationViewport } = await appImport<
-                typeof import('../../src/editor/elevation/viewport')
-            >('/src/editor/elevation/viewport.ts')
-            elevationViewport.center = 3
-            elevationViewport.scale = 40
             openElevationEditor(2)
         }, mode)
         await expect(page.locator('.elevation-canvas')).toBeVisible()
+        // After the opening fit, a zoom where drags are long.
+        await page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            Object.assign(elevationViewport, { center: 3, scale: 100 })
+        })
         const points = await page.evaluate(async (mode) => {
             const { appImport } = window.editorTest
             const { elevationLayout } = await appImport<

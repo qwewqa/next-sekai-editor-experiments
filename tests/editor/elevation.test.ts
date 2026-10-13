@@ -88,31 +88,39 @@ test('elevation snapping supports eighths, negative values, and disabling snappi
     assert.equal(snapElevation(0.18, 0), 0.18)
 })
 
-test('initial elevation fitting adapts to height and includes elevations outside the default range', () => {
+test('initial elevation fitting keeps the scale and centres on 3, keeping 0 and then the notes in view', () => {
     const saved = { ...elevationViewport }
+    // At 38px per elevation, the band between the paddings reaches 220px above the
+    // centre and 160px below; notes keep 0.3 from its edges, and 0 keeps 16px off its bottom.
+    const above = 220 / 38
+    const below = 160 / 38
+    const centre = (elevations: number[], height = 600) => {
+        fitElevationViewport(
+            height,
+            elevations.map((elevation, i) => note(i, 0, 0, elevation)),
+            38,
+            undefined,
+            0.3 * 38,
+        )
+        assert.equal(elevationViewport.scale, 38)
+        return elevationViewport.center
+    }
+    const close = (actual: number, expected: number) =>
+        assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} is not ${expected}`)
     try {
-        fitElevationViewport(600, [note(1, 0)])
-        const smallScale = elevationViewport.scale
-        fitElevationViewport(900, [note(1, 0)])
-        assert.ok(elevationViewport.scale > smallScale)
-        const notes = [note(1, 0, 0, -1), note(2, 0, 0, 8)]
-        fitElevationViewport(600, notes)
-        const layout = layoutElevationNotes(notes, {
-            ...viewport,
-            elevationCenter: elevationViewport.center,
-            elevationScale: elevationViewport.scale,
-        })
-        assert.ok(layout.yAt(8) >= 0)
-        assert.ok(layout.yAt(-1) <= 600)
-        // A given scale fits only the centre, framing the notes as well as it can.
-        fitElevationViewport(600, notes, undefined, 30)
-        assert.equal(elevationViewport.scale, 30)
-        const fixed = layoutElevationNotes(notes, {
-            ...viewport,
-            elevationCenter: elevationViewport.center,
-            elevationScale: 30,
-        })
-        assert.ok(Math.abs(fixed.yAt(8) - 80 - (600 - 140 - fixed.yAt(-1))) < 1e-9)
+        close(centre([]), 3)
+        close(centre([0, 2, 5]), 3)
+        // The top note sets the lowest centre.
+        close(centre([1, 9]), 9 - above + 0.3)
+        // Notes far above: 0 stays 16px over the bottom, as near them as that allows.
+        close(centre([40, 45]), below - 16 / 38)
+        // Notes below: the bottom note sets the highest centre.
+        close(centre([-4, -1]), -4 + below - 0.3)
+        // Notes far below: 0 stays at the top, as near them as that allows.
+        close(centre([-40]), -above)
+        // A 100px pane's band is 10px: 0 is halfway between its two limits.
+        close(centre([], 100), (30 / 38 + 40 / 38 - 16 / 38) / 2)
+        close(centre([20], 100), (30 / 38 + 40 / 38 - 16 / 38) / 2)
     } finally {
         Object.assign(elevationViewport, saved)
     }

@@ -188,6 +188,13 @@ const prepareThree = async (page: Page, axis: 'beat' | 'elevation') => {
         })
         await page.keyboard.press('t')
         await expect(page.locator('.elevation-canvas')).toBeVisible()
+        // After the opening fit, a zoom where quarter steps pass the 20px a drag starts at.
+        await page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            Object.assign(elevationViewport, { center: 2.5, scale: 100 })
+        })
     }
     await open(page, axis)
 }

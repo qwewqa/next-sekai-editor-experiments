@@ -251,18 +251,20 @@ const availableCommands: CommandName[] = [
     'scrollPageUp',
     'scrollPageDown',
 ]
-// Fits once its pane has a size, when a chart load asks for it.
+// Fits once its pane has a size, when a chart load asks for it; it starts at 1:1.
 const fitViewport = () => {
     if (!needsElevationFit.value || !elevationBounds.h) return
     needsElevationFit.value = false
     fitElevationViewport(
         elevationBounds.h,
         elevationNotes.value,
+        squareScale.value,
         {
             top: (header.value?.clientHeight ?? 80) + Math.max(20, 1.25 * elevationLaneScale.value),
             bottom: 140,
         },
-        settings.elevationSquareGrid ? squareScale.value : undefined,
+        // A note's drawn half height.
+        0.3 * elevationLaneScale.value,
     )
 }
 // The y-scale of a 1:1 grid; while locked, it follows the lane zoom.

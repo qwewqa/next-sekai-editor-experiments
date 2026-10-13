@@ -1377,6 +1377,13 @@ test.describe('zooming', () => {
             await expect(
                 page.locator('.elevation-editor .offscreen-note-indicator').first(),
             ).toBeVisible()
+            // The view the notes had before the 1:1 start: 41px apart, more than a badge slot.
+            await page.evaluate(async () => {
+                const { elevationViewport } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/elevation/viewport')
+                >('/src/editor/elevation/viewport.ts')
+                Object.assign(elevationViewport, { center: 3.057, scale: 112.526 })
+            })
             const box = (await canvas.boundingBox())!
             await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
             await recordZoom(page, 'elevation')

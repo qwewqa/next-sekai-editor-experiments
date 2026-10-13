@@ -22,7 +22,7 @@ const elevation = (page: Page) =>
         ])
         const { center, scale } = viewport.elevationViewport
         const { laneScale, height, yAt } = scene.elevationLayout.value
-        return { center, scale, laneScale, height, top: yAt(20) }
+        return { center, scale, laneScale, height, top: yAt(20), low: yAt(-2) }
     })
 const viewport = async (page: Page) => {
     const { center, scale } = await elevation(page)
@@ -126,13 +126,54 @@ test.describe('the view', () => {
         await showChart(page, [2, [3, 30]])
         await open(page)
         expect(await viewport(page)).toEqual(fitted)
-        // Another chart fits its own notes.
+        // Another chart fits its own notes, above the toolbar.
         await close(page)
-        await showChart(page, [20])
+        await showChart(page, [-2])
         await open(page)
-        const { top, height } = await elevation(page)
-        expect(top).toBeGreaterThan(0)
-        expect(top).toBeLessThan(height)
+        const { low, height } = await elevation(page)
+        expect(low).toBeGreaterThan(0)
+        expect(low).toBeLessThan(height - 140)
+    })
+
+    test('starts at 1:1 with the lock off, keeping 0 and the notes in view, and leaves the zooms apart', async ({
+        page,
+    }) => {
+        // The y of an elevation, and 0's lowest y: 16px over the 140px toolbar padding.
+        const yOf = (view: Awaited<ReturnType<typeof elevation>>, value: number) =>
+            view.height / 2 - (value - view.center) * view.scale
+        for (const width of [1600, 390]) {
+            await page.setViewportSize({ width, height: 844 })
+            await showChart(page, [2])
+            await open(page)
+            const fitted = await elevation(page)
+            expect(fitted.scale).toBe(fitted.laneScale)
+            expect(await page.evaluate(() => window.editorTest.settings.elevationSquareGrid)).toBe(
+                false,
+            )
+            // With 0 and the note in view, 3 is in the middle.
+            expect(fitted.center).toBe(3)
+            expect(yOf(fitted, 2)).toBeLessThan(fitted.height - 140)
+            // Notes too far above for 0 leave 0 at its lowest; on the phone, with the
+            // lanes zoomed out, both fit.
+            await close(page)
+            await showChart(page, [20])
+            await open(page)
+            const high = await elevation(page)
+            expect(high.scale).toBe(high.laneScale)
+            if (width === 1600) {
+                expect(yOf(high, 0)).toBeCloseTo(high.height - 156, 6)
+            } else {
+                expect(high.top).toBeGreaterThan(0)
+                expect(yOf(high, 0)).toBeLessThan(high.height - 156)
+            }
+            // A lane zoom leaves the y-zoom.
+            await page.keyboard.press(']')
+            await settle(page)
+            const zoomed = await elevation(page)
+            expect(zoomed.laneScale).toBeGreaterThan(high.laneScale)
+            expect(zoomed.scale).toBe(high.scale)
+            await close(page)
+        }
     })
 
     test('is fitted on reopening after a chart load closes it', async ({ page }) => {
@@ -143,14 +184,14 @@ test.describe('the view', () => {
         await beat.fill('9')
         await beat.press('Enter')
         await settle(page)
-        await showChart(page, [20, -20])
+        await showChart(page, [-2, 20])
         await expect(page.locator('.elevation-editor')).toHaveCount(0)
         await open(page)
         await expect(beat).toHaveValue('7')
         // Fitted to beat 6's note, not beat 8's.
-        const { top, height } = await elevation(page)
-        expect(top).toBeGreaterThan(0)
-        expect(top).toBeLessThan(height)
+        const { low, height } = await elevation(page)
+        expect(low).toBeGreaterThan(0)
+        expect(low).toBeLessThan(height - 140)
     })
 
     test('drops its last frame while its pane has no size', async ({ page }) => {
@@ -174,12 +215,12 @@ test.describe('the view', () => {
         })
         await open(page)
         await moveView(page)
-        await showChart(page, [20])
+        await showChart(page, [-2])
         await settle(page)
         await expect(page.locator('.elevation-editor')).toBeVisible()
-        const { top, height } = await elevation(page)
-        expect(top).toBeGreaterThan(0)
-        expect(top).toBeLessThan(height)
+        const { low, height } = await elevation(page)
+        expect(low).toBeGreaterThan(0)
+        expect(low).toBeLessThan(height - 140)
     })
 })
 
@@ -225,6 +266,9 @@ test.describe('the 1:1 grid', () => {
 
     test('locks the y-zoom to the lane zoom about the centre, and is stored', async ({ page }) => {
         await open(page)
+        // Away from the 1:1 it starts at.
+        await page.keyboard.press('=')
+        await settle(page)
         const before = await axes(page)
         await expect(lock(page)).toHaveAttribute('aria-pressed', 'false')
         expect(before.scale).not.toBeCloseTo(before.laneScale, 3)

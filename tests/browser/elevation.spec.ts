@@ -2328,6 +2328,11 @@ test('a drag starting near the bottom edge keeps the grid still until it goes de
     await beat.fill('9')
     await beat.press('Enter')
     await expect.poll(async () => (await rows(page)).map((row) => row.elevation)).toEqual([0])
+    // Elevation 0 at 88% of the height.
+    await page.evaluate(() => {
+        const { elevationViewport, elevationBounds } = window.elevationTest.viewport
+        elevationViewport.center = (0.38 * elevationBounds.h) / elevationViewport.scale
+    })
     await settle(page)
     const viewport = () =>
         page.evaluate(() => ({ ...window.elevationTest.viewport.elevationViewport }))

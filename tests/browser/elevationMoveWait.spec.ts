@@ -80,6 +80,14 @@ const setup = async (page: Page, options: Setup) => {
         options,
     )
     await expect(page.locator('.elevation-canvas')).toBeVisible()
+    // The vertical drags of 0.2 are 24px, past the 20px a drag starts at.
+    await page.evaluate(async () => {
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        const { elevationViewport } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/viewport')
+        >('/src/editor/elevation/viewport.ts')
+        Object.assign(elevationViewport, { center: 2.5, scale: 120 })
+    })
 }
 
 // Drags the row at beat 3 drawn at this elevation (the first one) by dx lanes and up by dy.
