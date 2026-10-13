@@ -23,8 +23,7 @@ export type SlideAddPreview = {
 // The last add, so a hover within one snapped placement doesn't rebuild it.
 let last: { keys: unknown[]; preview: SlideAddPreview } | undefined
 
-// The add's inputs, compared one by one; an insert's anchor joins them. An entity's hitbox
-// follows from its fields.
+// Object values are skipped: addNote reads only the primitives.
 const toKeys = (source: State, slideId: SlideId, object: NoteObject): unknown[] => [
     source,
     slideId,

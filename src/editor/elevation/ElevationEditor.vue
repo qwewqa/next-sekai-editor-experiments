@@ -1538,8 +1538,8 @@ watchEffect(() => {
     const ghosts = [...(drag?.ghosts ?? []), ...creatingRows]
     const added = slideAddGhost(shownCreating.map((row) => row.note))
     const [addedRow] = creatingRows
-    // Connectors under the ghost notes: a paste's built ones, a drag's new pieces, a Slide
-    // add's new pieces at this beat, all of which reach the added note.
+    // Connectors under the ghost notes: a paste's built ones, a drag's new pieces, and a Slide
+    // add's new pieces at this beat, each of which reaches the added note.
     const ghostConnections = [
         ...dragConnections,
         ...(added && addedRow
