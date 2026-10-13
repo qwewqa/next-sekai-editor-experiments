@@ -351,11 +351,13 @@ const dragGhostConnectors = computed<ConnectorEntity[]>(() => {
     // Previewed slides are drawn solid as they drop.
     const solid = previewSlides.value
     return [...slideIds].flatMap((id) => {
-        const kept = new Set(committed.get(id))
+        // Pieces the committed slide lacks, such as one a reorder makes between kept notes.
+        const tails = new Map(
+            (source.store.slides.connector.get(id) ?? []).map(({ head, tail }) => [head, tail]),
+        )
         return (preview.store.slides.connector.get(id) ?? []).filter(
             (connector) =>
-                !solid?.includes(connector) &&
-                (!kept.has(connector.head) || !kept.has(connector.tail)),
+                !solid?.includes(connector) && tails.get(connector.head) !== connector.tail,
         )
     })
 })

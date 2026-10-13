@@ -733,6 +733,158 @@ for (const layout of ['basic', 'composed'] as const) {
     })
 }
 
+type ChartNote = { beat: number; left: number; isAttached?: boolean }
+
+/** Slides of two-lane notes on the chart in Basic, with those at these indexes, in store order, selected. */
+const showChart = (page: Page, slides: ChartNote[][], selected: number[] = []) =>
+    page.evaluate(
+        ({ slides, selected }) => {
+            const { show, fixtures, view, settings, history } = window.editorTest
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: true,
+                    slides: slides.map((slide) =>
+                        slide.map((note) => ({
+                            ...base,
+                            size: 2,
+                            noteType: 'forceNonTick' as const,
+                            ...note,
+                        })),
+                    ),
+                },
+                4,
+            )
+            view.layout = 'basic'
+            settings.showStageName = false
+            settings.showGroupName = false
+            const notes = [...history.state.value.store.slides.note.values()].flat()
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: selected.map((index) => notes[index]!),
+            })
+        },
+        { slides, selected },
+    )
+
+/** A chart lane and beat, in client pixels. */
+const chartPoint = (page: Page, lane: number, beat: number) =>
+    page.evaluate(({ lane, beat }) => window.editorTest.point(lane, beat), { lane, beat })
+
+/** The alpha of a pane's pixel at a chart lane and beat. */
+const alphaAt = async (page: Page, pane: Pane, lane: number, beat: number) =>
+    (await pixel(page, pane, await devicePoint(page, pane, await chartPoint(page, lane, beat))))[3]!
+
+test('chart basic: a drag that shifts an attached tick draws its slide solid, with no ghost ribbon over it', async ({
+    page,
+}) => {
+    // The first slide's tick follows its head; the second slide only moves.
+    await showChart(
+        page,
+        [
+            [
+                { beat: 2, left: -6 },
+                { beat: 4, left: -5, isAttached: true },
+                { beat: 6, left: -4 },
+            ],
+            [
+                { beat: 2, left: 0 },
+                { beat: 6, left: 0 },
+            ],
+        ],
+        [0, 3],
+    )
+    await settle(page)
+    // Moved 4 right, the first slide runs from lane -1 by its tick at -2 to -3; the second's ribbon at beat 4 spans 2 to 4.
+    const shifted = [
+        [-1.5, 3],
+        [-2, 5],
+    ] as const
+    const before = await Promise.all(
+        shifted.map(async ([lane, beat]) =>
+            pixel(
+                page,
+                'chart',
+                await devicePoint(page, 'chart', await chartPoint(page, lane, beat)),
+            ),
+        ),
+    )
+    await hold(page, await chartPoint(page, -5, 2), await chartPoint(page, -1, 2))
+    expect(await alphaAt(page, 'overlay', 3.2, 4)).toBeGreaterThan(30)
+    for (const [i, [lane, beat]] of shifted.entries()) {
+        expect(await alphaAt(page, 'overlay', lane, beat)).toBe(0)
+        const point = await devicePoint(page, 'chart', await chartPoint(page, lane, beat))
+        expect(await pixel(page, 'chart', point)).not.toEqual(before[i])
+    }
+    await page.mouse.up()
+})
+
+test('chart basic: moving a slide end ghosts only the ribbon it changes', async ({ page }) => {
+    await showChart(
+        page,
+        [
+            [
+                { beat: 2, left: -4 },
+                { beat: 4, left: -4 },
+                { beat: 6, left: -4 },
+                { beat: 8, left: -4 },
+            ],
+        ],
+        [3],
+    )
+    await settle(page)
+    // Moved 4 right, the last ribbon at beat 7 spans lanes -2 to 0.
+    await hold(page, await chartPoint(page, -3, 8), await chartPoint(page, 1, 8))
+    expect(await alphaAt(page, 'overlay', -1, 7)).toBeGreaterThan(30)
+    expect(await alphaAt(page, 'overlay', -3, 3)).toBe(0)
+    expect(await alphaAt(page, 'overlay', -3, 5)).toBe(0)
+    await page.mouse.up()
+})
+
+test('chart basic: moving a slide note past another ghosts the ribbon its leaving makes', async ({
+    page,
+}) => {
+    await showChart(
+        page,
+        [
+            [
+                { beat: 2, left: -6 },
+                { beat: 4, left: 0 },
+                { beat: 6, left: -6 },
+            ],
+        ],
+        [1],
+    )
+    await settle(page)
+    // Moved to beat 8, the middle note leaves a ribbon from the first to the last, at lane -5.
+    await hold(page, await chartPoint(page, 1, 4), await chartPoint(page, 1, 8))
+    expect(await alphaAt(page, 'overlay', -5, 3)).toBeGreaterThan(30)
+    expect(await alphaAt(page, 'overlay', -5, 5)).toBeGreaterThan(30)
+    await page.mouse.up()
+})
+
+for (const tool of ['note', 'slide'] as const) {
+    test(`chart basic: a ${tool} tool move ghosts its ribbons`, async ({ page }) => {
+        await showChart(page, [
+            [
+                { beat: 2, left: -4 },
+                { beat: 4, left: -2 },
+                { beat: 6, left: 0 },
+            ],
+        ])
+        await useTool(page, tool)
+        await settle(page)
+        // Moved 6 right, the first ribbon at beat 3 spans lanes 0 to 2.
+        await hold(page, await chartPoint(page, -1, 4), await chartPoint(page, 5, 4))
+        expect(await page.evaluate(() => window.editorTest.view.entities.creating.length)).toBe(1)
+        const alpha = await alphaAt(page, 'overlay', 1.5, 3)
+        expect(alpha).toBeGreaterThan(30)
+        expect(alpha).toBeLessThan(160)
+        await page.mouse.up()
+    })
+}
+
 test.describe('with touch', () => {
     test.use({ hasTouch: true })
 
