@@ -90,6 +90,7 @@ import { remove } from '../tools/eraser'
 import { applyGeneratedSlideNotes } from '../tools/generateSlideNotes'
 import { defaultNoteProperties } from '../tools/note'
 import { defaultSlideProperties } from '../tools/slide'
+import { slideAddGhost } from '../tools/slide/addPreview'
 import SelectionPropertiesModal from '../workspace/properties/SelectionPropertiesModal.vue'
 import { quickEdit } from '../utils/quickEdit'
 import LevelEditorToolbar from '../toolbar/LevelEditorToolbar.vue'
@@ -1535,9 +1536,21 @@ watchEffect(() => {
     // A paste ghost's notes are drawn as their pasted slides make them, as on the chart.
     const ghostInfos = isPaste ? pasteGhostInfos() : undefined
     const ghosts = [...(drag?.ghosts ?? []), ...creatingRows]
-    // Connectors under the ghost notes: a paste's built ones, a drag's new pieces.
+    const added = slideAddGhost(shownCreating.map((row) => row.note))
+    const [addedRow] = creatingRows
+    // Connectors under the ghost notes: a paste's built ones, a drag's new pieces, a Slide
+    // add's new pieces at this beat, all of which reach the added note.
     const ghostConnections = [
         ...dragConnections,
+        ...(added && addedRow
+            ? getElevationConnections(
+                  [...layout.rows, { ...addedRow, note: added.landed }],
+                  [added.connectors],
+                  view.visibilities.connector,
+                  added.result.bpms,
+                  added.infos,
+              )
+            : []),
         ...(isPaste && creatingRows.length
             ? getElevationConnections(
                   creatingRows,

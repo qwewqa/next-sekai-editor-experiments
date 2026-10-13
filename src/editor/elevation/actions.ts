@@ -29,6 +29,7 @@ import {
     toPasteBeatOffset,
 } from '../tools/paste'
 import { getSelectedSlideId, getSlidePropertiesFromSelection } from '../tools/slide'
+import { previewSlideAdd, showSlideAdd } from '../tools/slide/addPreview'
 import { alignLane, toMovedBeat, view } from '../view'
 import { sameBeat, type ElevationNote } from './layout'
 import { elevationState, getElevationStageProps } from './scene'
@@ -70,7 +71,10 @@ export const previewElevationNote = (
     )
 }
 
-/** The add ghost's row; an attached note added inside a slide shows on its path, where it lands. */
+/**
+ * The add ghost's row; an add inside a slide shows with the pieces it changes, and an attached
+ * note on its path, where it lands.
+ */
 export const previewElevationNoteRow = (
     lane: number,
     elevation: number,
@@ -90,15 +94,19 @@ export const previewElevationNoteRow = (
         attached: false,
         order: 0,
     }
-    if (!note.isAttached || !state.value.store.slides.note.has(note.slideId)) return row
     // As the chart's Slide ghost: placed by a throwaway add, on a pending draft's path, as drawn.
-    const transaction = createTransaction(
+    const preview = previewSlideAdd(
         previewEdit.value?.isDraft ? elevationState.value : state.value,
+        note.slideId,
+        note,
     )
-    const result = transaction.commit(addNote(transaction, note.slideId, note))
-    const [landed] = result.selectedEntities
-    if (landed?.type !== 'note') return row
-    const slide = result.store.slides.info.get(note.slideId) ?? []
+    if (!preview) return row
+    if (!note.isAttached) {
+        showSlideAdd(preview, note)
+        return row
+    }
+    const { landed } = preview
+    const slide = preview.infos.get(note.slideId) ?? []
     const index = slide.findIndex((info) => info.note === landed)
     const info = index > 0 && index < slide.length - 1 ? slide[index] : undefined
     const position =
@@ -107,11 +115,14 @@ export const previewElevationNoteRow = (
         }) ?? landed
     return {
         // Its own stage's offset puts it there on the chart too.
-        note: toNoteEntity(note.slideId, {
-            ...note,
-            left: position.left - laneOffset,
-            size: position.size,
-        }),
+        note: showSlideAdd(
+            preview,
+            toNoteEntity(note.slideId, {
+                ...note,
+                left: position.left - laneOffset,
+                size: position.size,
+            }),
+        ),
         lane: position.left + position.size / 2,
         size: position.size,
         elevation: info
