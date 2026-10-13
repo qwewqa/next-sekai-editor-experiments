@@ -20,7 +20,11 @@ export const deselect: Command = {
 
         if (!selectedEntities.value.length) {
             // A second Deselect leaves the current tool for the Select tool.
-            if (settings.deselectSwitchesToSelect && toolName.value !== 'select') {
+            if (
+                settings.deselectSwitchesToSelect &&
+                toolName.value !== 'select' &&
+                toolName.value !== 'elevation'
+            ) {
                 switchToolTo('select')
                 notify(() => i18n.value.commands.select.switched)
             }

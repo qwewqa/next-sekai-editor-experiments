@@ -80,9 +80,10 @@ test('the toolbar shows the tool in use as pressed', async ({ page }) => {
     await page.keyboard.press('f')
     await expect.poll(() => pressedTitles(page)).toEqual(['Select', ...values])
 
-    // The open elevation editor shows itself, so its button isn't pressed; its toolbar adds its own values.
+    // The open elevation editor shows itself, so its button isn't pressed; its tool shows as
+    // Select in both toolbars, and its toolbar adds its own values.
     await run(page, 'elevation')
-    await expect.poll(() => pressedTitles(page)).toEqual([...values, ...values])
+    await expect.poll(() => pressedTitles(page)).toEqual(['Select', ...values, 'Select', ...values])
     await run(page, 'elevation')
     await expect.poll(() => pressedTitles(page)).toEqual(['Select', ...values])
 })
@@ -655,10 +656,11 @@ test('the default toolbar’s faces follow the tool and values in use', async ({
     await expectFaces({ 7: 'Time Scale', 9: 'Event*' })
     await run(page, 'stageMaskEvent')
     await expectFaces({})
+    // The Elevation tool shows as Select, which stays the face once used.
     await run(page, 'elevation')
-    await expectFaces({ 9: 'Event' })
+    await expectFaces({ 3: 'Select*', 9: 'Event' })
     await run(page, 'elevation')
-    await expectFaces({ 9: 'Event*' })
+    await expectFaces({ 3: 'Select', 9: 'Event*' })
     await page.keyboard.press('f')
     await expectFaces({ 3: 'Select*', 9: 'Event' })
 

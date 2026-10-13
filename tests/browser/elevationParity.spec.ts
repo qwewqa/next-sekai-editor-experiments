@@ -174,3 +174,49 @@ test('Edit Elevations from the chart beside an open Elevation Editor changes its
     await expect(beat).toHaveValue('9')
     expect(await toolName(page)).toBe('note')
 })
+
+for (const sideBySide of [false, true])
+    test(`Select shows pressed for the Elevation tool, which it and Deselect keep (${sideBySide ? 'side by side' : 'full screen'})`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1920, height: 1080 })
+        await page.evaluate((sideBySide) => {
+            window.editorTest.settings.elevationEditorSideBySide = sideBySide ? 'allow' : 'disallow'
+        }, sideBySide)
+        await open(page)
+        expect(await toolName(page)).toBe('elevation')
+        const toolbars = page.locator('[data-editor-toolbar]')
+        await expect(toolbars).toHaveCount(sideBySide ? 2 : 1)
+        const selects = toolbars
+            .locator(':scope > div > div > button')
+            .and(page.getByTitle('Select', { exact: true }))
+        await expect(selects).toHaveCount(sideBySide ? 2 : 1)
+        for (const select of await selects.all())
+            await expect(select).toHaveAttribute('aria-pressed', 'true')
+
+        // With nothing selected, Deselect neither switches nor says so.
+        const noticeId = () =>
+            page.evaluate(
+                async () =>
+                    (
+                        await window.editorTest.appImport<
+                            typeof import('../../src/editor/notification')
+                        >('/src/editor/notification.ts')
+                    ).notification.value.id,
+            )
+        const before = await noticeId()
+        await page.evaluate(async () => {
+            const { commands } = await window.editorTest.appImport<
+                typeof import('../../src/editor/commands')
+            >('/src/editor/commands/index.ts')
+            await commands.deselect.execute()
+        })
+        expect(await noticeId()).toBe(before)
+        expect(await toolName(page)).toBe('elevation')
+
+        await page.locator('.elevation-editor').locator(selects).click()
+        await expect(page.locator('.notification')).toHaveText('Switched to Select tool')
+        expect(await toolName(page)).toBe('elevation')
+        for (const select of await selects.all())
+            await expect(select).toHaveAttribute('aria-pressed', 'true')
+    })
