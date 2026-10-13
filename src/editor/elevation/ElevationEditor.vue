@@ -339,13 +339,12 @@ const restoreContext = () => {
     redrawVersion.value++
 }
 const hovered = ref<NoteEntity>()
-// A 12px text baseline, moved below a notice over its line as far as it is below the header.
+// A 12px text baseline below the notice at the top, keeping a one-line notice's room (16px above,
+// 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
 const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
     const pill = container.value?.querySelector('.notification')?.getBoundingClientRect()
-    if (!pill?.height) return y
-    const top = canvas.getBoundingClientRect().top
-    // Its line, with a small gap.
-    return pill.top - top < y + 12 && pill.bottom - top > y - 20 ? pill.bottom - top + 24 : y
+    const bottom = pill?.height ? pill.bottom - canvas.getBoundingClientRect().top : 0
+    return Math.max(y + 56, bottom + 24)
 }
 // The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
@@ -1468,10 +1467,11 @@ watchEffect(() => {
     const textMiddle = fontMiddle.value
     const numberMiddle = figureMiddle.value
     const axisLabelLeft = axisLabelLeftOf(offscreenGroups.value)
-    // Under the header; a notice, or a tool dialog moving it to the top, redraws it below that.
     const emptyY = headerHeight.value + 24
-    void notification.value
-    void hasToolModal('elevation')
+    // A tool dialog moves the notice to the top; with no max width, a centred one can reach the
+    // note at any pane width.
+    const underNotice = !isElevationSideBySide.value && hasToolModal('elevation')
+    if (underNotice && !layout.rows.length) void notification.value
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         // A collapsed pane's last frame would show stretched as it reopens.
@@ -1669,7 +1669,7 @@ watchEffect(() => {
         }
         if (!layout.rows.length) {
             ctx.fillStyle = '#ffffff80'
-            ctx.fillText(labels.empty, 48, belowNotice(element, emptyY))
+            ctx.fillText(labels.empty, 48, underNotice ? belowNotice(element, emptyY) : emptyY)
         }
     })
 })

@@ -99,17 +99,31 @@ const emptyNotes = (page: Page) =>
             .filter(({ text }) => text === 'No notes at this beat')
             .map(({ y }) => y),
     )
-// Posts a notice, and waits for the note drawn after it.
-const notifyAndDraw = async (page: Page, message: string) => {
-    const count = (await emptyNotes(page)).length
-    await page.evaluate(async (message) => {
-        const { notify } = await window.editorTest.appImport<
+// Posts a notice, or clears it.
+const notify = (page: Page, message?: string) =>
+    page.evaluate(async (message) => {
+        const { notify, clearNotification } = await window.editorTest.appImport<
             typeof import('../../src/editor/notification')
         >('/src/editor/notification.ts')
-        notify(() => message)
+        if (message === undefined) clearNotification()
+        else notify(() => message)
     }, message)
+// Posts a notice, or clears it, and waits for the note drawn after it.
+const notifyAndDraw = async (page: Page, message?: string) => {
+    const count = (await emptyNotes(page)).length
+    await notify(page, message)
     await expect.poll(async () => (await emptyNotes(page)).length).toBeGreaterThan(count)
     await settle(page)
+}
+// Redraws the Elevation Editor, and waits for the note drawn.
+const redraw = async (page: Page) => {
+    const count = (await emptyNotes(page)).length
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.showGroupName = !settings.showGroupName
+        settings.showGroupName = !settings.showGroupName
+    })
+    await expect.poll(async () => (await emptyNotes(page)).length).toBeGreaterThan(count)
 }
 const showBrushDialog = (page: Page) =>
     page.evaluate(async () => {
@@ -149,12 +163,44 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
     await expect.poll(lastEmptyY).toBe(header + 80)
     expect(header + 80 - 16).toBeGreaterThanOrEqual(pill.y + pill.height - canvas.y)
 
-    // A two-line notice moves it further.
+    // A two-line notice moves it further, until a one-line one replaces it.
     await notifyAndDraw(page, 'Moved 12 objects and changed their elevations')
     const tall = (await page.locator('.notification').boundingBox())!
     expect(tall.height).toBeCloseTo(pill.height + 24, 0)
     expect(await lastEmptyY()).toBeCloseTo(tall.y + tall.height - canvas.y + 24, 3)
+    await notifyAndDraw(page, 'Switched to Brush tool')
+    expect(await lastEmptyY()).toBe(header + 80)
 })
+
+for (const width of [280, 1280])
+    test(`under a tool dialog, notices coming and going leave the empty beat note, ${width}px wide`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 0.5))
+        await recordEmptyNote(page)
+        await open(page)
+        const header = await page
+            .locator('.elevation-header')
+            .evaluate((element) => element.clientHeight)
+        await page.keyboard.press('b')
+        await notify(page)
+        await showBrushDialog(page)
+        await expect(page.locator('[data-tool-dialog]')).toBeVisible()
+        await expect(page.locator('.notification')).toHaveCount(0)
+        // With no notice, it keeps a one-line notice's room.
+        await expect.poll(async () => (await emptyNotes(page)).at(-1)).toBe(header + 80)
+        const from = (await emptyNotes(page)).length - 1
+
+        await notifyAndDraw(page, 'Switched to Brush tool')
+        await expect(page.locator('.notification')).toBeVisible()
+        // Faded.
+        await expect(page.locator('.notification')).toHaveCSS('background-color', /, 0\)$/)
+        await notifyAndDraw(page, 'Switched to Note tool')
+        await notifyAndDraw(page)
+        await expect(page.locator('.notification')).toHaveCount(0)
+        expect([...new Set((await emptyNotes(page)).slice(from))]).toEqual([header + 80])
+    })
 
 test('beside the chart, the empty beat note stays under the header as the chart shows a notice', async ({
     page,
@@ -178,15 +224,24 @@ test('beside the chart, the empty beat note stays under the header as the chart 
     await page.keyboard.press('b')
     await showBrushDialog(page)
     await expect(page.locator('[data-tool-dialog]')).toBeVisible()
-    await notifyAndDraw(
+    await notify(
         page,
         'Moved 12 objects and changed their elevations, then moved them again, and once more after that',
     )
+    // Its notice doesn't redraw the pane.
+    await redraw(page)
     await expect(page.locator('.elevation-editor .notification')).toHaveCount(0)
     const pill = (await page.locator('.notification').boundingBox())!
     expect(pill.height).toBeGreaterThan(50)
     expect(pill.y).toBeLessThan(canvas.y + header + 24)
     expect(pill.y + pill.height).toBeGreaterThan(canvas.y + header + 12)
+    expect((await emptyNotes(page)).at(-1)).toBe(header + 24)
+
+    // Its own tool dialog leaves the notice in the chart's pane.
+    await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2)
+    await showBrushDialog(page)
+    await expect(page.locator('.elevation-editor [data-tool-dialog]')).toBeVisible()
+    await redraw(page)
     expect((await emptyNotes(page)).at(-1)).toBe(header + 24)
 })
 
