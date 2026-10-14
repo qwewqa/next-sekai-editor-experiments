@@ -14,7 +14,7 @@ import {
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import { splitUnit } from '../../utils/unitLabel'
-import { useStackLongValues, useStackLongWords, valueOverflows, wordOverflows } from './fieldLayout'
+import { measureWord, useStackLongValues, useStackLongWords, valueOverflows } from './fieldLayout'
 import { cancelFit, queueFit } from './fitBatch'
 import { holdsTyping } from './resync'
 import { observeWidth, unobserveWidth } from './widthObserver'
@@ -95,7 +95,7 @@ const labelRow = useTemplateRef<HTMLElement>('labelRow')
 const fieldRoot = useTemplateRef<HTMLElement>('fieldRoot')
 const stackLongValues = useStackLongValues()
 const stackLongWords = useStackLongWords()
-let frame = 0
+const labelFitOwner = {}
 
 const overTwoLines = (text: HTMLElement) =>
     text.clientHeight > parseFloat(getComputedStyle(text).lineHeight) * 2 + 1
@@ -111,30 +111,55 @@ const shownValue = (control: ReturnType<typeof controlOf>) =>
           : control?.textContent
 // The value the label was last fitted beside; updates that keep it need no fit.
 let fittedValue: string | undefined
-const fitLabel = () => {
+const fitLabel = (nextFrame = false) => {
     const element = labelRow.value
     const text = element?.querySelector<HTMLElement>('.form-field-text')
     if (!element || !text) return
-    element.classList.remove('form-field-label-roomy')
-    fieldRoot.value?.classList.remove('form-field-value-stacked')
-    if (overTwoLines(text)) element.classList.add('form-field-label-roomy')
-    const control = controlOf()
-    fittedValue = shownValue(control)
-    // An on/off value is measured at its longer state, so a click doesn't move the row.
-    const { enabled, disabled } = i18n.value.modals.form.toggle
-    const others = control?.parentElement?.classList.contains('form-field-toggle')
-        ? [enabled, disabled]
-        : []
-    // Japanese may break between characters, so only its values stack.
-    if (
-        (stackLongValues && control && valueOverflows(control, others)) ||
-        (stackLongWords && !text.matches(':lang(ja)') && wordOverflows(text))
+    let roomy = false
+    let stacked = false
+    let word: ReturnType<typeof measureWord> | undefined
+    // Read every row before changing any: Settings mounts hundreds of fields,
+    // and alternating writes/reads per field forced a full layout for each one.
+    queueFit(
+        labelFitOwner,
+        [
+            () => {
+                element.classList.remove('form-field-label-roomy')
+                fieldRoot.value?.classList.remove('form-field-value-stacked')
+            },
+            () => {
+                roomy = overTwoLines(text)
+            },
+            () => {
+                if (roomy) element.classList.add('form-field-label-roomy')
+            },
+            () => {
+                const control = controlOf()
+                fittedValue = shownValue(control)
+                // Toggles fit their longer value, so switching doesn't move the row.
+                const { enabled, disabled } = i18n.value.modals.form.toggle
+                const others = control?.parentElement?.classList.contains('form-field-toggle')
+                    ? [enabled, disabled]
+                    : []
+                stacked = !!(stackLongValues && control && valueOverflows(control, others))
+                // Japanese may break between characters, so only its values stack.
+                if (!stacked && stackLongWords && !text.matches(':lang(ja)'))
+                    word = measureWord(text)
+            },
+            () => word?.prepare(),
+            () => {
+                if (word) stacked = word.overflows()
+            },
+            () => {
+                word?.restore()
+                if (stacked) fieldRoot.value?.classList.add('form-field-value-stacked')
+            },
+        ],
+        nextFrame,
     )
-        fieldRoot.value?.classList.add('form-field-value-stacked')
 }
 const refitLabel = () => {
-    cancelAnimationFrame(frame)
-    frame = requestAnimationFrame(fitLabel)
+    fitLabel(true)
 }
 
 onMounted(() => {
@@ -142,7 +167,13 @@ onMounted(() => {
     if (fieldRoot.value) observeWidth(fieldRoot.value, refitLabel)
 })
 
-watch(() => props.label, fitLabel, { flush: 'post' })
+watch(
+    () => props.label,
+    () => {
+        fitLabel()
+    },
+    { flush: 'post' },
+)
 // A value can change without a change event, as a shortcut's capture prompt does.
 onUpdated(() => {
     const control = controlOf()
@@ -154,7 +185,7 @@ onUpdated(() => {
 
 onBeforeUnmount(() => {
     if (fieldRoot.value) unobserveWidth(fieldRoot.value)
-    cancelAnimationFrame(frame)
+    cancelFit(labelFitOwner)
 })
 
 /** The detail row: how many objects the field covers, then the values in use. */

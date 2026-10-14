@@ -1,4 +1,4 @@
-// One ResizeObserver for every field, calling back when an element's width changes.
+// One ResizeObserver for every field, calling back with its initial width and changes.
 const callbacks = new WeakMap<Element, { width: number; callback: () => void }>()
 let observer: ResizeObserver | undefined
 
@@ -11,7 +11,9 @@ export const observeWidth = (element: Element, callback: () => void) => {
             target.callback()
         }
     })
-    callbacks.set(element, { width: element.getBoundingClientRect().width, callback })
+    // The first observer entry supplies the width without a synchronous layout
+    // during each field's mount. It also refits a dialog once it is visible.
+    callbacks.set(element, { width: NaN, callback })
     observer.observe(element)
 }
 

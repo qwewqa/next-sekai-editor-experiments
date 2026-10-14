@@ -13,6 +13,25 @@ export const useStackLongWords = () => inject(stackLongWordsKey, false)
 
 let context: CanvasRenderingContext2D | null | undefined
 
+/** Read the available width before any labels switch to their intrinsic width. */
+export const measureWord = (label: HTMLElement) => {
+    const { width, overflowWrap, flexShrink } = label.style
+    const room = label.getBoundingClientRect().width
+    return {
+        prepare() {
+            Object.assign(label.style, {
+                width: 'min-content',
+                overflowWrap: 'normal',
+                flexShrink: '0',
+            })
+        },
+        overflows: () => label.getBoundingClientRect().width > room + 0.01,
+        restore() {
+            Object.assign(label.style, { width, overflowWrap, flexShrink })
+        },
+    }
+}
+
 /**
  * Whether a control's shown value, or any of `others` it can switch to, is wider
  * than the room its pill gives it.
@@ -46,23 +65,11 @@ export const valueOverflows = (control: HTMLElement, others: string[] = []) => {
  * inside. All are read, then all set, then all read again, so layout runs twice in all.
  */
 export const wordsOverflow = (labels: HTMLElement[]) => {
-    const measured = labels.map((label) => {
-        const { width, overflowWrap, flexShrink } = label.style
-        const room = label.getBoundingClientRect().width
-        return { label, style: { width, overflowWrap, flexShrink }, room, longest: 0 }
-    })
+    const measured = labels.map(measureWord)
     // At min-content width, unshrunk, a label is as wide as its longest unbreakable part.
-    for (const { label } of measured)
-        Object.assign(label.style, {
-            width: 'min-content',
-            overflowWrap: 'normal',
-            flexShrink: '0',
-        })
-    for (const entry of measured) entry.longest = entry.label.getBoundingClientRect().width
-    for (const { label, style } of measured) Object.assign(label.style, style)
+    for (const entry of measured) entry.prepare()
+    const overflows = measured.map((entry) => entry.overflows())
+    for (const entry of measured) entry.restore()
     // A word even a fraction wider than the box breaks.
-    return measured.map(({ room, longest }) => longest > room + 0.01)
+    return overflows
 }
-
-/** Whether a label's longest word or phrase is wider than its box, so would break inside. */
-export const wordOverflows = (label: HTMLElement) => wordsOverflow([label]).includes(true)
