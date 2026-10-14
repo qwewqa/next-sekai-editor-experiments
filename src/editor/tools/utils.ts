@@ -14,6 +14,7 @@ import type { Modifiers } from '../controls/gestures/pointer'
 import { orderHits } from '../hitModel'
 import { editorNavigation } from '../navigation'
 import { clearNotification } from '../notification'
+import { raisedToolChain } from '../raisedTool'
 import { sceneState, toCommittedEntity } from '../sceneState'
 import { isEntityInScope, scopeLookup } from '../scope'
 import { snappedOffset } from '../snapping'
@@ -187,6 +188,7 @@ const remember = <T extends Entity>(
         // Read through, as a change in place keeps its identity.
         Object.values(view.visibilities).join(),
         scopeLookup.value,
+        raisedToolChain.value,
     ]
     if (remembered?.key.every((value, i) => value === key[i])) return remembered.hits
     const hits = find()
@@ -230,6 +232,7 @@ export const orderPointHits = <T extends Entity>(
         (POINT_REACH * settings.width) / view.w,
         source,
         composed,
+        raisedToolChain.value,
     )
 
 // A previewed scene is hit where it is shown, as the committed objects it shows.

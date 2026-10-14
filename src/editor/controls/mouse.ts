@@ -1,4 +1,4 @@
-import { shallowRef, watch } from 'vue'
+import { watch } from 'vue'
 import { state } from '../../history'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
@@ -14,7 +14,8 @@ import { editorNavigation, getControlBounds } from '../navigation'
 import { cancelPreviewFollow, stopPlayer } from '../player'
 import { sceneState } from '../sceneState'
 import { scopeLookup } from '../scope'
-import { switchToolTo, tool, toolName, type ToolName } from '../tools'
+import { switchToolTo, tool, toolName } from '../tools'
+import { secondarySwitchBack } from '../tools/state'
 import {
     scrollViewXBy,
     scrollViewYBy,
@@ -73,8 +74,6 @@ const stopTracking = () => {
     removeEventListener('mouseup', trackUp, true)
 }
 
-// The tool a right press switched from, until it switches back.
-export const secondarySwitchBack = shallowRef<ToolName>()
 let switchingSecondaryTool = false
 let contextClick: { x: number; y: number } | undefined
 // The mouse rests over the chart, unpressed.

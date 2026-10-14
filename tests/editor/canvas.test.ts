@@ -3,7 +3,13 @@ import test from 'node:test'
 import type { GroupId } from '../../src/chart/groups'
 import type { ConnectorLayer, ConnectorType } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
-import { orderEntities, toDrawSteps, type EntityVisibility } from '../../src/editor/canvas/ordering'
+import {
+    orderEntities,
+    raisedChains,
+    toDrawSteps,
+    toolChainOf,
+    type EntityVisibility,
+} from '../../src/editor/canvas/ordering'
 import { createFrameScheduler, prepareSurface } from '../../src/editor/canvas/surface'
 import { createScopeLookup, type ScopeInputs } from '../../src/editor/scopeRules'
 import { isClockFrame, openFrame } from '../../src/frame'
@@ -836,6 +842,114 @@ test('raised and selected objects start at raisedAt, time scale markers in their
             [c, undefined],
         ],
     })
+})
+
+test('a lifting tool works on the current stage or group, or every one under All', () => {
+    assert.deepEqual(toolChainOf('stagePivotEvent', stage, group), ['stagePivotEventJoint', stage])
+    assert.deepEqual(toolChainOf('stageMaskEvent', undefined, group), [
+        'stageMaskEventJoint',
+        'all',
+    ])
+    assert.deepEqual(toolChainOf('cameraEvent', stage, group), ['cameraEventJoint', undefined])
+    assert.deepEqual(toolChainOf('timeScale', stage, group), ['timeScale', group])
+    assert.deepEqual(toolChainOf('timeScale', stage, undefined), ['timeScale', 'all'])
+    for (const tool of ['select', 'note', 'slide', 'bpm', 'brush', 'eraser', 'paste'] as const)
+        assert.equal(toolChainOf(tool, stage, group), undefined)
+})
+
+/** The entities a raise lifts, in draw order, and those left under. */
+const lifted = (
+    entities: Entity[],
+    selected: Entity[],
+    chains: ReturnType<typeof raisedChains>,
+) => {
+    const { objects, raisedAt } = toDrawSteps(
+        orderEntities(entities, new Set(selected), visibility(), chains),
+    )
+    const of = (steps: typeof objects) => [...new Set(steps.map(({ entity }) => entity))]
+    return { under: of(objects.slice(0, raisedAt)), over: of(objects.slice(raisedAt)) }
+}
+
+test("a lifting tool raises its type's chain in the current stage over notes and other events", () => {
+    const pivot = { type: 'stagePivotEventJoint', beat: 2, stageId: stage } as Entity
+    const otherPivot = { type: 'stagePivotEventJoint', beat: 3, stageId: otherStage } as Entity
+    const mask = { type: 'stageMaskEventJoint', beat: 2, stageId: stage } as Entity
+    const camera = { type: 'cameraEventJoint', beat: 2 } as Entity
+    const centerNote = note(2)
+    const entities = [centerNote, pivot, otherPivot, mask, camera]
+    // The current stage's.
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('stagePivotEvent', stage, group))),
+        {
+            under: [camera, mask, otherPivot, centerNote],
+            over: [pivot],
+        },
+    )
+    // Under All, every stage's.
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('stagePivotEvent', undefined, group))),
+        { under: [camera, mask, centerNote], over: [otherPivot, pivot] },
+    )
+    // Camera has one chain.
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('cameraEvent', stage, group))),
+        {
+            under: [mask, otherPivot, pivot, centerNote],
+            over: [camera],
+        },
+    )
+    // A tool that doesn't lift raises nothing.
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('note', stage, group))).over,
+        [],
+    )
+})
+
+test("a lifting tool's chain adds to a selection's, of its type or another", () => {
+    const pivot = { type: 'stagePivotEventJoint', beat: 2, stageId: stage } as Entity
+    const otherPivot = { type: 'stagePivotEventJoint', beat: 3, stageId: otherStage } as Entity
+    const otherPivotMate = { type: 'stagePivotEventJoint', beat: 5, stageId: otherStage } as Entity
+    const camera = { type: 'cameraEventJoint', beat: 2 } as Entity
+    const cameraMate = { type: 'cameraEventJoint', beat: 6 } as Entity
+    const mask = { type: 'stageMaskEventJoint', beat: 2, stageId: stage } as Entity
+    const centerNote = note(2)
+    const entities = [centerNote, pivot, otherPivot, otherPivotMate, camera, cameraMate, mask]
+    const tool = toolChainOf('stagePivotEvent', stage, group)
+    // A selected pivot in another stage keeps its chain up beside the tool's.
+    assert.deepEqual(lifted(entities, [otherPivotMate], raisedChains([otherPivotMate], tool)), {
+        under: [cameraMate, camera, mask, centerNote],
+        over: [otherPivot, pivot, otherPivotMate],
+    })
+    // A selected camera joint keeps the camera chain up beside the tool's pivots.
+    assert.deepEqual(lifted(entities, [camera], raisedChains([camera], tool)), {
+        under: [mask, otherPivotMate, otherPivot, centerNote],
+        over: [cameraMate, pivot, camera],
+    })
+    // Under All, the tool's covers the selection's of its type.
+    assert.equal(
+        raisedChains([otherPivot], toolChainOf('stagePivotEvent', undefined, group)).get(
+            'stagePivotEventJoint',
+        ),
+        'all',
+    )
+})
+
+test("the time scale tool raises the current group's time scales, or every group's under All", () => {
+    const own = { type: 'timeScale', beat: 2, groupId: group } as Entity
+    const other = { type: 'timeScale', beat: 4, groupId: otherGroup } as Entity
+    const centerNote = note(5)
+    const entities = [centerNote, own, other]
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('timeScale', stage, group))),
+        {
+            under: [other, centerNote],
+            over: [own],
+        },
+    )
+    assert.deepEqual(
+        lifted(entities, [], raisedChains([], toolChainOf('timeScale', stage, undefined))).over,
+        [other, own],
+    )
 })
 
 test("a selected time scale raises its group's time scales, not another group's", () => {

@@ -31,7 +31,6 @@ import { commands, type CommandName } from '../commands'
 import { contextMenu } from '../contextMenu'
 import { flyoutEscapes } from '../controls'
 import { repeatsWhenHeld } from '../controls/keyboard'
-import { secondarySwitchBack } from '../controls/mouse'
 import { isDragging } from '../controls/gestures/recognizers/drag'
 import { isCoarsePointer } from '../workspace'
 import type { ToolModalPane } from '../toolModals'
@@ -46,6 +45,7 @@ import {
     toolbarGroups,
     toolbarPadding,
 } from './layout'
+import { secondarySwitchBack } from '../tools/state'
 import { commandState, isCommandPressed } from './pressed'
 
 const props = defineProps<{ pane: ToolModalPane; available?: CommandName[] }>()

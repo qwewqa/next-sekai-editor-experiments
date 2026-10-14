@@ -6,7 +6,7 @@ import type { SlideNoteInfo } from '../state/entities/slides/semantics'
 import { getNoteVisualType, type NoteVisualType } from '../state/entities/slides/visualType'
 import { beatToTime } from '../state/integrals/bpms'
 import { clamp } from '../utils/math'
-import { isInRaisedChain, raisedOf } from './canvas/ordering'
+import { isInRaisedChain, raisedOf, type ToolChain } from './canvas/ordering'
 import type { ComposedLayout } from './composed'
 
 // The hit model, the ground truth for picking; drawing follows drawn shapes (hitModelConsistency.spec).
@@ -222,6 +222,7 @@ export const orderHits = <T extends Entity>(
     margin: number,
     source: State,
     composed: ComposedLayout | undefined,
+    tool?: ToolChain,
 ) => {
     const distancesTo = (shapeOf: (entity: T) => Shape | undefined) =>
         new Map(
@@ -236,7 +237,7 @@ export const orderHits = <T extends Entity>(
     const primary = distancesTo((entity) => primaryShapeOf(entity, source, composed, margin))
     const index = new Map(hits.map((entity, i) => [entity, i]))
     const distance = (entity: T) => drawn.get(entity) ?? Number.POSITIVE_INFINITY
-    const { selected, chains } = raisedOf(source)
+    const { selected, chains } = raisedOf(source, tool)
     // Callers pass only visible hits, which draw full.
     const rank = (entity: T) =>
         primary.get(entity) !== 0

@@ -4,6 +4,7 @@ import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import type { EventJointEntityType } from '../../state/entities/events/joints'
 import { entityScopeVisibility, type ScopeLookup } from '../scopeRules'
+import type { ToolName } from '../tools'
 import type { EventPart } from './events'
 
 const layers = {
@@ -86,9 +87,33 @@ type ChainKey = StageId | GroupId | undefined
 
 /**
  * Chain types with a selected joint, and their keys: an event's stage (camera's is undefined)
- * or a time scale's group.
+ * or a time scale's group. A tool working on every stage or group raises all of its type.
  */
-export type RaisedChains = ReadonlyMap<ChainType, ReadonlySet<ChainKey>>
+export type RaisedChains = ReadonlyMap<ChainType, ReadonlySet<ChainKey> | 'all'>
+
+/** The chains a tool raises: its type, and one key or every key. */
+export type ToolChain = readonly [ChainType, ChainKey | 'all']
+
+const toolChainTypes: Partial<Record<ToolName, ChainType>> = {
+    cameraEvent: 'cameraEventJoint',
+    stageMaskEvent: 'stageMaskEventJoint',
+    stagePivotEvent: 'stagePivotEventJoint',
+    stageStyleEvent: 'stageStyleEventJoint',
+    stageTransformEvent: 'stageTransformEventJoint',
+    timeScale: 'timeScale',
+}
+
+/** The chains a tool works on: the current stage's or group's, every one's under All; camera's one. */
+export const toolChainOf = (
+    tool: ToolName,
+    stageId: StageId | undefined,
+    groupId: GroupId | undefined,
+): ToolChain | undefined => {
+    const type = toolChainTypes[tool]
+    if (!type) return
+    if (type === 'cameraEventJoint') return [type, undefined]
+    return [type, (type === 'timeScale' ? groupId : stageId) ?? 'all']
+}
 
 // The chain an entity is in; a connection is in its min's.
 const chainOf = (entity: Entity): [ChainType, ChainKey] | undefined => {
@@ -115,37 +140,47 @@ const chainOf = (entity: Entity): [ChainType, ChainKey] | undefined => {
     }
 }
 
-export const raisedChains = (selected: Iterable<Entity>): RaisedChains => {
-    const chains = new Map<ChainType, Set<ChainKey>>()
+/** The chains of the selected joints, and the tool's. */
+export const raisedChains = (selected: Iterable<Entity>, tool?: ToolChain): RaisedChains => {
+    const chains = new Map<ChainType, Set<ChainKey> | 'all'>()
+    const raise = (type: ChainType, key: ChainKey | 'all') => {
+        const keys = chains.get(type)
+        if (keys === 'all') return
+        chains.set(type, key === 'all' ? 'all' : (keys ?? new Set()).add(key))
+    }
     for (const entity of selected) {
         const chain = chainOf(entity)
-        if (!chain) continue
-        const [type, key] = chain
-        chains.set(type, (chains.get(type) ?? new Set()).add(key))
+        if (chain) raise(...chain)
     }
+    if (tool) raise(...tool)
     return chains
 }
 
 export type Raised = { selected: ReadonlySet<Entity>; chains: RaisedChains }
 
-// Keyed on the selection array, which a committed state never mutates.
-const bySelection = new WeakMap<readonly Entity[], Raised>()
+// Keyed on the selection array, which a committed state never mutates, for the latest tool.
+const bySelection = new WeakMap<readonly Entity[], { tool?: ToolChain; raised: Raised }>()
 
-/** A state's selection as a set, with its raised chains. */
-export const raisedOf = ({ selectedEntities }: State): Raised => {
-    let raised = bySelection.get(selectedEntities)
-    if (!raised) {
-        raised = { selected: new Set(selectedEntities), chains: raisedChains(selectedEntities) }
-        bySelection.set(selectedEntities, raised)
+/** A state's selection as a set, with its raised chains and the tool's. */
+export const raisedOf = ({ selectedEntities }: State, tool?: ToolChain): Raised => {
+    const cached = bySelection.get(selectedEntities)
+    if (cached && cached.tool?.[0] === tool?.[0] && cached.tool?.[1] === tool?.[1])
+        return cached.raised
+    const raised = {
+        selected: new Set(selectedEntities),
+        chains: raisedChains(selectedEntities, tool),
     }
+    bySelection.set(selectedEntities, { tool, raised })
     return raised
 }
 
-/** Whether an event joint, connection or time scale is in a chain with a selected one. */
+/** Whether an event joint, connection or time scale is in a raised chain. */
 export const isInRaisedChain = (chains: RaisedChains, entity: Entity) => {
     if (!chains.size) return false
     const chain = chainOf(entity)
-    return !!chain && !!chains.get(chain[0])?.has(chain[1])
+    if (!chain) return false
+    const keys = chains.get(chain[0])
+    return keys === 'all' || !!keys?.has(chain[1])
 }
 
 type DrawKey = { tier: number; isFull: boolean; layer: number; beat: number }

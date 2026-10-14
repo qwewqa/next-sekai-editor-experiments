@@ -20,7 +20,7 @@ const show = (page: Page, build: Build, width = 16) =>
             const { show, fixtures, settings, view, appImport } = window.editorTest
             const base = fixtures.interaction.slides[0]![0]!
             const events = fixtures.events
-            const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0 }
+            const pivot = { ...events.stagePivotEvents[0]!, pivotLane: 0, stageId: 1 as never }
             const camera = { ...events.cameraEvents[0]!, cameraLeft: -6, cameraSize: 12 }
             const timeScale = {
                 ...events.timeScales[0]!,
@@ -203,4 +203,98 @@ test('a marker area reaches 10 pixels past its hitbox, at any lane width', async
     await show(page, 'pivots', 100)
     await select(page, ['stagePivotEventJoint:8'])
     expect((await hits(page, 0.6, 4))[0]).toBe('stagePivotEventJoint:4')
+})
+
+/** Switches to a tool, with a current stage and group, or All for undefined. */
+const useTool = (
+    page: Page,
+    tool: string,
+    { stageId, groupId }: { stageId?: number; groupId?: number } = {},
+) =>
+    page.evaluate(
+        async ({ tool, stageId, groupId }) => {
+            const { view, appImport, nextTick } = window.editorTest
+            const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+                '/src/editor/tools/index.ts',
+            )
+            switchToolTo(tool as never)
+            view.stageId = stageId as never
+            view.groupId = groupId as never
+            await nextTick()
+        },
+        { tool, stageId, groupId },
+    )
+
+test('an event tool lifts its type in the current stage, or every stage under All', async ({
+    page,
+}) => {
+    await show(page, 'pivots')
+    // Off the pivot's marker, within its area, over the note.
+    expect((await hits(page, 0.25, 4))[0]).toBe('note:4')
+    await useTool(page, 'stagePivotEvent', { stageId: 1 })
+    expect((await hits(page, 0.25, 4))[0]).toBe('stagePivotEventJoint:4')
+    // Another stage current: this one dims, so nothing here lifts or takes a press.
+    await useTool(page, 'stagePivotEvent', { stageId: 2 })
+    expect(await hits(page, 0.25, 4)).toEqual([])
+    await useTool(page, 'stagePivotEvent')
+    expect((await hits(page, 0.25, 4))[0]).toBe('stagePivotEventJoint:4')
+    // Another event type, or a tool that doesn't lift, leaves pivots down.
+    await useTool(page, 'stageMaskEvent', { stageId: 1 })
+    expect((await hits(page, 0.25, 4))[0]).toBe('note:4')
+    for (const tool of ['select', 'note', 'brush']) {
+        await useTool(page, tool, { stageId: 1 })
+        expect((await hits(page, 0.25, 4))[0]).toBe('note:4')
+    }
+})
+
+test("a right press keeps the tool's lift while it switches to Select", async ({ page }) => {
+    await show(page, 'pivots')
+    await useTool(page, 'stagePivotEvent', { stageId: 1 })
+    const point = await page.evaluate(() => window.editorTest.point(0.25, 4))
+    await page.mouse.move(point.x, point.y)
+    await page.mouse.down({ button: 'right' })
+    expect(
+        await page.evaluate(
+            async () =>
+                (
+                    await window.editorTest.appImport<
+                        typeof import('../../src/editor/tools/state')
+                    >('/src/editor/tools/state.ts')
+                ).toolName.value,
+        ),
+    ).toBe('select')
+    expect((await hits(page, 0.25, 4))[0]).toBe('stagePivotEventJoint:4')
+    await page.mouse.up({ button: 'right' })
+    await page.keyboard.press('Escape')
+})
+
+test("a selection's lifted chain stays up beside the tool's, of the same type or another", async ({
+    page,
+}) => {
+    await show(page, 'pivots')
+    // The mask tool lifts masks; a selected pivot lifts its own chain beside them.
+    await useTool(page, 'stageMaskEvent')
+    await select(page, ['stagePivotEventJoint:8'])
+    expect((await hits(page, 0.25, 4))[0]).toBe('stagePivotEventJoint:4')
+    // The pivot tool too, and a tool that doesn't lift keeps the selection's.
+    for (const tool of ['stagePivotEvent', 'note']) {
+        await useTool(page, tool, { stageId: 1 })
+        expect((await hits(page, 0.25, 4))[0]).toBe('stagePivotEventJoint:4')
+    }
+    await select(page, [])
+    expect((await hits(page, 0.25, 4))[0]).toBe('note:4')
+})
+
+test("the time scale tool lifts the current group's time scales, or every group's under All", async ({
+    page,
+}) => {
+    await show(page, 'timeScales')
+    expect((await hits(page, 0.25, 4))[0]).toBe('note:4')
+    await useTool(page, 'timeScale', { groupId: 1 })
+    expect((await hits(page, 0.25, 4))[0]).toBe('timeScale:4')
+    // Another group current: this one dims, so nothing here lifts or takes a press.
+    await useTool(page, 'timeScale', { groupId: 2 })
+    expect(await hits(page, 0.25, 4)).toEqual([])
+    await useTool(page, 'timeScale')
+    expect((await hits(page, 0.25, 4))[0]).toBe('timeScale:4')
 })

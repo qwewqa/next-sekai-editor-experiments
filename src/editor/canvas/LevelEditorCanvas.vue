@@ -73,6 +73,7 @@ import { chartBackground } from './nameColors'
 import { createLabelSprites } from './labelSprites'
 import { createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
+import { raisedToolChain } from '../raisedTool'
 import { orderEntities, raisedChains, toDrawSteps, type DrawStep } from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
 import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
@@ -161,7 +162,7 @@ const visibility = () => ({
     showOtherObjects: settings.showOtherObjects,
 })
 // Built per selection; ordering and the extension passes share it.
-const chains = computed(() => raisedChains(shownSelected.value))
+const chains = computed(() => raisedChains(shownSelected.value, raisedToolChain.value))
 const orderedEntities = computed(() =>
     orderEntities(
         shownEntities.value.entities,
