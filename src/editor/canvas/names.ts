@@ -147,6 +147,31 @@ const drawSplitName = (
 const ellipsis = '…'
 const graphemes = new Intl.Segmenter()
 
+// Segmentation only depends on normalized text, not font, zoom or pane bounds.
+const nameParts = new Map<string, readonly string[]>()
+const maxNameParts = 128
+const maxNamePartUnits = 16_384
+const maxCachedNameLength = 1_024
+let namePartUnits = 0
+
+const segmentName = (text: string): readonly string[] => {
+    const normalized = normalizeSvgText(text)
+    const cached = nameParts.get(normalized)
+    if (cached) return cached
+    const parts = [...graphemes.segment(normalized)].map(({ segment }) => segment)
+    if (normalized.length > maxCachedNameLength) return parts
+    // Oldest entries go first; bound both array count and retained text.
+    for (const [old] of nameParts) {
+        if (nameParts.size < maxNameParts && namePartUnits + normalized.length <= maxNamePartUnits)
+            break
+        nameParts.delete(old)
+        namePartUnits -= old.length
+    }
+    nameParts.set(normalized, parts)
+    namePartUnits += normalized.length
+    return parts
+}
+
 /** Cuts a name at the pane's side with an ellipsis; none when even that has no room. */
 const fitName = <T extends PlacedName>(context: EditorDrawContext, name: T): T | undefined => {
     const box = nameBox(name, measureCachedText(context, name.text, name.size))
@@ -156,7 +181,7 @@ const fitName = <T extends PlacedName>(context: EditorDrawContext, name: T): T |
     const keepStart = box.r > r
     const from = Math.max(box.l, l)
     const room = (keepStart ? r : box.r) - from
-    const parts = [...graphemes.segment(normalizeSvgText(name.text))].map(({ segment }) => segment)
+    const parts = segmentName(name.text)
     const cut = (count: number) =>
         keepStart
             ? parts.slice(0, count).join('') + ellipsis

@@ -6,7 +6,7 @@ import {
     contrast,
     nameColorOn,
 } from '../../src/editor/canvas/nameColors'
-import { createNameLayer, placeNames, type NameFill } from '../../src/editor/canvas/names'
+import { createNameLayer, drawName, placeNames, type NameFill } from '../../src/editor/canvas/names'
 import { createNoteRenderer } from '../../src/editor/canvas/notes'
 import { clearTextWidths } from '../../src/editor/canvas/text'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
@@ -390,4 +390,95 @@ test('a name that would run past the pane edge is cut with an ellipsis at that e
         assert.deepEqual(frame('Long group name', 49.95, 'start', nameContrast), [])
         assert.deepEqual(frame('Short', 0, 'center', nameContrast), ['Short'])
     }
+})
+
+const clippedName = (
+    text: string,
+    room = 1,
+    side: 'left' | 'right' = 'left',
+    scale = 10,
+    fontFamily = 'sans-serif',
+) => {
+    const { context, texts } = recordingContext(false)
+    context.bounds = { l: -room, r: room, t: -1, b: 1, w: room * 2, h: 2 }
+    context.scale = scale
+    context.fontFamily = fontFamily
+    drawName(context, { type: 'note' } as Entity, false, text, 0, 0, '#0aa', 0.4, side)
+    return texts.map(({ text }) => text)
+}
+
+test('clipped names preserve whole Unicode graphemes on either edge', () => {
+    clearTextWidths()
+    for (const [grapheme, room] of [
+        ['e\u0301', 0.7],
+        ['👩🏽‍💻', 1.7],
+        ['👨‍👩‍👧‍👦', 2.5],
+        ['🇺🇸', 1.1],
+        ['✈️', 0.7],
+        ['漢', 0.5],
+    ] as const) {
+        for (const scale of [10, 25]) {
+            assert.deepEqual(clippedName(`${grapheme}ABCDEFG`, room, 'left', scale), [
+                `${grapheme}…`,
+            ])
+            assert.deepEqual(clippedName(`ABCDEFG${grapheme}`, room, 'right', scale), [
+                `…${grapheme}`,
+            ])
+        }
+    }
+    assert.deepEqual(clippedName(' \t👩🏽‍💻\nABCDEFG\r ', 1.7), ['👩🏽‍💻…'])
+    assert.deepEqual(clippedName('   ', 1), [])
+    assert.deepEqual(clippedName('No ellipsis fits', 0.1), [])
+})
+
+const countNameSegmentation = (t: TestContext) => {
+    const counts = new Map<string, number>()
+    const original = Intl.Segmenter.prototype.segment
+    t.mock.method(
+        Intl.Segmenter.prototype,
+        'segment',
+        function (this: Intl.Segmenter, text: string) {
+            counts.set(text, (counts.get(text) ?? 0) + 1)
+            return original.call(this, text)
+        },
+    )
+    return counts
+}
+
+test('clipped names reuse normalized graphemes across fonts, zoom and pane changes', (t) => {
+    const counts = countNameSegmentation(t)
+    const normalized = 'Segmentation cache 🧪 sample'
+    clippedName(` \t${normalized}\r\n `)
+    clippedName(normalized, 2, 'right', 25, 'serif')
+    clearTextWidths()
+    clippedName(normalized, 0.7, 'left', 40, 'monospace')
+    assert.equal(counts.get(normalized), 1)
+    const nonbreaking = normalized.replace(' ', '\u00a0')
+    clippedName(nonbreaking)
+    assert.equal(counts.get(nonbreaking), 1)
+    // Long raw whitespace does not change the normalized cache key.
+    clippedName(' '.repeat(2048) + normalized)
+    assert.equal(counts.get(normalized), 1)
+})
+
+test('clipped-name segmentation bounds retained entries and text, and bypasses long names', (t) => {
+    const counts = countNameSegmentation(t)
+    const entry = (index: number) => `Entry capacity check ${index}`
+    for (let index = 0; index < 129; index++) clippedName(entry(index))
+    clippedName(entry(128))
+    assert.equal(counts.get(entry(128)), 1)
+    clippedName(entry(0))
+    assert.equal(counts.get(entry(0)), 2)
+
+    const units = (index: number) => `Unit capacity ${index}:` + 'x'.repeat(1000)
+    for (let index = 0; index < 17; index++) clippedName(units(index))
+    clippedName(units(16))
+    assert.equal(counts.get(units(16)), 1)
+    clippedName(units(0))
+    assert.equal(counts.get(units(0)), 2)
+
+    const oversized = 'Oversized segmentation ' + '👩🏽‍💻'.repeat(160)
+    const first = clippedName(oversized, 2)
+    assert.deepEqual(clippedName(oversized, 2), first)
+    assert.equal(counts.get(oversized), 2)
 })
