@@ -186,3 +186,24 @@ test('a huge BPM still draws a chart frame quickly', async ({ page }) => {
     // The median, with room for load: about 70 ms quiet, while the freeze took seconds a frame.
     expect(elapsed.sort((a, b) => a - b)[1]).toBeLessThan(500)
 })
+
+test('opening Settings batches layout across its fields', async ({ page }) => {
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    const session = await page.context().newCDPSession(page)
+    await session.send('Performance.enable')
+    const layouts = async () => {
+        const { metrics } = await session.send('Performance.getMetrics')
+        return metrics.find(({ name }) => name === 'LayoutCount')?.value ?? 0
+    }
+    const before = await layouts()
+    await page.keyboard.press(',')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await settle(page)
+    const count = await dialog.locator('.form-field').count()
+    expect(count).toBeGreaterThan(100)
+    // Guard the source of the stall, independent of machine speed: previously
+    // fitting each row forced hundreds of layouts in one open operation.
+    expect((await layouts()) - before).toBeLessThan(count / 2)
+    await session.detach()
+})
