@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 
 import { resource } from './previewResourceFixture'
 
@@ -404,6 +404,190 @@ test.describe('preview transport', () => {
                 page.getByRole('button', { name: 'Play Preview', exact: true }),
             ).toBeVisible()
         }
+    })
+
+    /** The image's centre and width. */
+    const image = async (page: Page) => {
+        const box = (await page.locator('.preview-viewport').boundingBox())!
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width }
+    }
+    const controls = (page: Page) =>
+        page.getByRole('group', { name: 'Preview Playback Controls', exact: true })
+
+    test('a drag across the image seeks a second per image width, both ways', async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        // Past the slop, seeking starts from here.
+        await page.mouse.move(x + 10, y)
+        expect(await cursor(page)).toBe(3)
+        await page.mouse.move(x + 10 + width / 2, y, { steps: 8 })
+        expect(await cursor(page)).toBeCloseTo(3.5, 3)
+        await page.mouse.move(x + 10 - width / 4, y, { steps: 8 })
+        expect(await cursor(page)).toBeCloseTo(2.75, 3)
+        // Back through the start a pixel at a time, it only moves forward.
+        const seen: number[] = []
+        for (let px = -20; px <= 20; px++) {
+            await page.mouse.move(x + 10 + px, y)
+            seen.push(await cursor(page))
+        }
+        for (let i = 1; i < seen.length; i++) expect(seen[i]!).toBeGreaterThan(seen[i - 1]!)
+        await page.mouse.up()
+        // The release doesn't also hide the controls.
+        await expect(controls(page)).toBeVisible()
+        expect(await page.evaluate(() => window.editorTest.view.lane)).toBe(0)
+    })
+
+    test('a tap, a short move or a vertical drag seeks nothing', async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y } = await image(page)
+        // Within the slop, still a click, which hides the controls as before.
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 6, y - 4, { steps: 3 })
+        await page.mouse.up()
+        expect(await cursor(page)).toBe(3)
+        await expect(controls(page)).toBeHidden()
+        // Mostly vertical past the slop, it never seeks, even turning sideways later.
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 4, y - 30, { steps: 4 })
+        await page.mouse.move(x + 60, y - 30, { steps: 4 })
+        await page.mouse.up()
+        expect(await cursor(page)).toBe(3)
+    })
+
+    test('a press released outside before it seeks leaves nothing armed', async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const root = (await page.locator('.preview-transport-root').boundingBox())!
+        const y = root.y + root.height / 3
+        await page.mouse.move(root.x + root.width - 3, y)
+        await page.mouse.down()
+        await page.mouse.move(root.x + root.width + 4, y)
+        await page.mouse.up()
+        // Back over the preview with no button held.
+        await page.mouse.move(root.x + root.width / 2, y, { steps: 8 })
+        expect(await cursor(page)).toBe(3)
+    })
+
+    test('the wheel during a seek drag leaves the drag seeking', async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 10, y)
+        await page.mouse.move(x + 10 + width / 4, y, { steps: 4 })
+        expect(await wheel(page, { deltaY: 100 })).toEqual({ prevented: true, bubbled: false })
+        await page.clock.runFor(200)
+        await page.mouse.move(x + 10 + width / 2, y, { steps: 4 })
+        expect(await cursor(page)).toBeCloseTo(3.5, 3)
+        await page.mouse.up()
+    })
+
+    test('after a seek drag, Enter on the toggle still hides the controls', async ({ page }) => {
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 10 + width / 4, y, { steps: 4 })
+        await page.mouse.up()
+        await expect(controls(page)).toBeVisible()
+        await page.locator('.preview-transport-toggle').focus()
+        await page.keyboard.press('Enter')
+        await expect(controls(page)).toBeHidden()
+    })
+
+    test('a move with no button held ends a press, as after a release outside the window', async ({
+        page,
+    }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y } = await image(page)
+        const toggle = page.locator('.preview-transport-toggle')
+        const pointerId = await pressPointer(page, toggle)
+        // The release went where the page couldn't see it.
+        await toggle.evaluate(
+            (element, { pointerId, x, y }) =>
+                element.dispatchEvent(
+                    new PointerEvent('pointermove', {
+                        pointerId,
+                        isPrimary: true,
+                        pointerType: 'mouse',
+                        buttons: 0,
+                        clientX: x + 40,
+                        clientY: y,
+                        bubbles: true,
+                    }),
+                ),
+            { pointerId, x, y },
+        )
+        await page.mouse.move(x + 80, y, { steps: 4 })
+        expect(await cursor(page)).toBe(3)
+        await page.mouse.up()
+    })
+
+    test('a step key during a seek drag leaves the drag seeking', async ({ page }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 10, y)
+        await page.mouse.move(x + 10 + width / 4, y, { steps: 4 })
+        await page.getByRole('button', { name: 'Forward 10 ms', exact: true }).focus()
+        await page.keyboard.press('Enter')
+        await page.mouse.move(x + 10 + width / 2, y, { steps: 4 })
+        expect(await cursor(page)).toBeCloseTo(3.5, 3)
+        await page.mouse.up()
+    })
+
+    test('after a seek drag, Space plays rather than pressing the hidden toggle', async ({
+        page,
+    }) => {
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 10 + width / 4, y, { steps: 4 })
+        await page.mouse.up()
+        expect(
+            await page.evaluate(() => document.activeElement?.matches('.preview-transport-toggle')),
+        ).toBe(false)
+        await page.keyboard.press('Space')
+        await expect(page.getByRole('button', { name: 'Pause Preview', exact: true })).toBeVisible()
+        await expect(controls(page)).toBeVisible()
+    })
+
+    test('a step held during a press that has not seeked takes over, and the press never seeks', async ({
+        page,
+    }) => {
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y, width } = await image(page)
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.getByRole('button', { name: 'Forward 10 ms', exact: true }).focus()
+        await page.keyboard.down('Space')
+        await page.mouse.move(x + width / 2, y, { steps: 4 })
+        await page.keyboard.up('Space')
+        await page.mouse.up()
+        expect(await cursor(page)).toBeCloseTo(3.01, 6)
+        // A later drag seeks as usual.
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 10, y)
+        await page.mouse.move(x + 10 + width / 2, y, { steps: 4 })
+        await page.mouse.up()
+        expect(await cursor(page)).toBeCloseTo(3.51, 3)
+    })
+
+    test('a touch drag seeks too', async ({ page }) => {
+        const touch = await touchInput(page)
+        await page.evaluate(() => (window.editorTest.view.cursorTime = 3))
+        const { x, y, width } = await image(page)
+        await touch('touchStart', [[x, y]])
+        await touch('touchMove', [[x - 10, y]])
+        for (let step = 1; step <= 8; step++)
+            await touch('touchMove', [[x - 10 - (width / 2) * (step / 8), y]])
+        await touch('touchEnd', [])
+        expect(await cursor(page)).toBeCloseTo(2.5, 3)
+        await expect(controls(page)).toBeVisible()
     })
 
     test('wheel seeks both ways with normalized units without leaking into editor or settings', async ({

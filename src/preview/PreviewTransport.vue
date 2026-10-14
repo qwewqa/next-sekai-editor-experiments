@@ -34,6 +34,11 @@ const formattedTime = computed(() => formatTime(Math.round(view.cursorTime * 100
 
 const {
     activeStep,
+    isSeekDragging,
+    onSurfacePointerDown,
+    onSurfacePointerMove,
+    onSurfaceCaptureLost,
+    takeDragClick,
     onWheel,
     onPointerDown,
     onPointerUp,
@@ -43,14 +48,14 @@ const {
     onStepBlur,
     onStepClick,
     cancel,
-} = useTransportInput(visible)
+} = useTransportInput(visible, () => props.layout.canvas.width)
 
 const blurPointerButton = (event: MouseEvent) => {
     if (event.detail) (event.currentTarget as HTMLButtonElement).blur()
 }
 
 const toggleVisibility = (event: MouseEvent) => {
-    if (persistent.value) return
+    if (takeDragClick(event) || persistent.value) return
     cancel()
     visible.value = !visible.value
     blurPointerButton(event)
@@ -126,15 +131,18 @@ const stripStyle = computed(() => ({
 
 <template>
     <div
-        class="preview-transport-root pointer-events-auto absolute inset-0 z-10"
-        :class="{ 'is-coarse': isCoarsePointer }"
+        class="preview-transport-root pointer-events-auto absolute inset-0 z-10 touch-pan-y"
+        :class="{ 'is-coarse': isCoarsePointer, 'cursor-ew-resize': isSeekDragging }"
         @wheel="onWheel"
+        @pointerdown="onSurfacePointerDown"
+        @pointermove="onSurfacePointerMove"
+        @lostpointercapture.self="onSurfaceCaptureLost"
     >
         <button
             v-if="!persistent"
             ref="toggle"
             type="button"
-            class="preview-transport-toggle pointer-events-auto absolute inset-0 h-full w-full touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+            class="preview-transport-toggle pointer-events-auto absolute inset-0 h-full w-full touch-pan-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
             :aria-label="visible ? i18n.preview.transport.hide : i18n.preview.transport.show"
             :title="visible ? i18n.preview.transport.hide : i18n.preview.transport.show"
             :aria-expanded="visible"

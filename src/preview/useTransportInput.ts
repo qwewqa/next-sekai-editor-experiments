@@ -10,7 +10,10 @@ import { view } from '../editor/view'
 import { isPlaying } from '../player'
 import { time } from '../time'
 
-export const useTransportInput = (visible: Ref<boolean>) => {
+// A drag across the image seeks a second per image width, past a slop that keeps taps taps.
+const dragSlop = 8
+
+export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => number) => {
     const activeStep = ref<number>()
 
     type Hold = {
@@ -73,6 +76,8 @@ export const useTransportInput = (visible: Ref<boolean>) => {
                   : 1)
         event.preventDefault()
         event.stopPropagation()
+        // A seek drag holds the scrub until it ends.
+        if (isSeekDragging.value) return
         finishHold(false)
         if (!isWheelScrubbing) {
             beginPreviewScrub('locked')
@@ -90,8 +95,92 @@ export const useTransportInput = (visible: Ref<boolean>) => {
         }, 120)
     }
 
+    type Drag = { pointerId: number; x: number; y: number; cursor: number; target: HTMLElement }
+    let drag: Drag | undefined
+    const isSeekDragging = ref(false)
+    // A drag's release may also click the toggle under it, just after.
+    let dragged = false
+
+    const finishDrag = (audition: boolean) => {
+        const current = drag
+        if (!current) return
+        drag = undefined
+        window.removeEventListener('pointerup', onDragRelease, true)
+        window.removeEventListener('pointercancel', onDragRelease, true)
+        if (current.target.hasPointerCapture(current.pointerId))
+            current.target.releasePointerCapture(current.pointerId)
+        if (!isSeekDragging.value) return
+        isSeekDragging.value = false
+        endPreviewScrub(audition && isAppActive.value)
+        // The press focused what it landed on; shortcuts return to the editor, as after a click.
+        const focused = document.activeElement
+        if (focused instanceof HTMLElement && current.target.contains(focused)) focused.blur()
+        dragged = true
+        setTimeout(() => (dragged = false))
+    }
+
+    // On the window, as a release outside comes before capture would bring it here.
+    const onDragRelease = (event: PointerEvent) => {
+        if (drag?.pointerId === event.pointerId) finishDrag(event.type === 'pointerup')
+    }
+
+    const onSurfacePointerDown = (event: PointerEvent) => {
+        if (event.button !== 0 || !event.isPrimary || drag || hold || !isAppActive.value) return
+        drag = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            cursor: view.cursorTime,
+            target: event.currentTarget as HTMLElement,
+        }
+        window.addEventListener('pointerup', onDragRelease, true)
+        window.addEventListener('pointercancel', onDragRelease, true)
+    }
+
+    const onSurfacePointerMove = (event: PointerEvent) => {
+        if (drag?.pointerId !== event.pointerId) return
+        // Released where no release reaches the page, as outside the window.
+        if (!event.buttons) {
+            finishDrag(false)
+            return
+        }
+        const dx = event.clientX - drag.x
+        if (!isSeekDragging.value) {
+            const dy = event.clientY - drag.y
+            if (Math.hypot(dx, dy) <= dragSlop) return
+            // Its way past the slop decides: a mostly vertical press never seeks, nor
+            // one while a step is held.
+            if (Math.abs(dx) < Math.abs(dy) || hold) {
+                finishDrag(false)
+                return
+            }
+            finishWheel(false)
+            beginPreviewScrub('locked')
+            // From where it starts, so seeking begins at zero and runs straight both ways.
+            drag.cursor = view.cursorTime
+            drag.x = event.clientX
+            drag.target.setPointerCapture(event.pointerId)
+            isSeekDragging.value = true
+        }
+        const width = imageWidth()
+        if (width > 0) scrubPreviewTo(drag.cursor + (event.clientX - drag.x) / width)
+    }
+
+    const onSurfaceCaptureLost = (event: PointerEvent) => {
+        if (drag?.pointerId === event.pointerId) finishDrag(false)
+    }
+
+    /** Whether a pointer click comes from a seek drag's release, which then takes it. */
+    const takeDragClick = (event: MouseEvent) => {
+        const was = dragged && event.detail > 0
+        dragged = false
+        return was
+    }
+
     const startHold = (current: Hold) => {
-        if (hold || !isAppActive.value) return false
+        if (hold || isSeekDragging.value || !isAppActive.value) return false
+        // A press that hasn't begun seeking gives way.
+        finishDrag(false)
         finishWheel(false)
         stepPreviewTime(current.milliseconds)
         hold = current
@@ -166,6 +255,7 @@ export const useTransportInput = (visible: Ref<boolean>) => {
         [visible, isPlaying, interruptsDrags],
         ([shown, playing, interrupted], [wasShown]) => {
             if (!shown || playing || interrupted) finishHold(false)
+            if (playing || interrupted) finishDrag(false)
             // Seeking also works with the controls hidden. Only a transition to
             // hidden, playback, or an interruption cancels an active wheel gesture.
             if ((wasShown && !shown) || playing || interrupted) finishWheel(false)
@@ -176,9 +266,15 @@ export const useTransportInput = (visible: Ref<boolean>) => {
     onUnmounted(() => {
         finishHold(false)
         finishWheel(false)
+        finishDrag(false)
     })
     return {
         activeStep,
+        isSeekDragging,
+        onSurfacePointerDown,
+        onSurfacePointerMove,
+        onSurfaceCaptureLost,
+        takeDragClick,
         onWheel,
         onPointerDown,
         onPointerUp,
@@ -190,6 +286,7 @@ export const useTransportInput = (visible: Ref<boolean>) => {
         cancel: () => {
             finishHold(false)
             finishWheel(false)
+            finishDrag(false)
         },
     }
 }
