@@ -896,7 +896,7 @@ test('a same-beat pair rounds the value in each label', () => {
     )
 })
 
-test('time-scale labels turn inward only where outward would leave the view', () => {
+test('time-scale labels turn inward only inside the stage, where outward would leave the view', () => {
     const timeScale = (beat: number, editorLane: number, value: number): TimeScaleObject => ({
         groupId: 2 as GroupId,
         beat,
@@ -922,16 +922,30 @@ test('time-scale labels turn inward only where outward would leave the view', ()
     assert.deepEqual(
         canvas.labels.map(({ text, x, align }) => [text, Math.round(x * 100) / 100, align]),
         [
-            // Of a same-beat pair, only the label without room outside turns inward.
+            // At or past the stage's edge, labels stay outward even without room.
             ['1x', -8.59, 'end'],
             ['B', -7.8, 'start'],
-            // A label turned inward takes its group name along, after its text.
-            ['0.25x', -7.41, 'start'],
-            ['B', -5.71, 'start'],
+            ['0.25x', -8.59, 'end'],
+            ['B', -7.8, 'start'],
             ['2x', -6.59, 'end'],
             ['B', -5.8, 'start'],
-            ['4x', 8.91, 'end'],
-            ['B', 8.11, 'end'],
+            ['4x', 10.09, 'start'],
+            ['B', 9.3, 'end'],
+        ],
+    )
+    // Inside it, a label without room outside turns inward, its group name after its text.
+    const inner = makeContext({
+        groups: new Map([[2 as GroupId, { name: 'B' }]]),
+        timeScales: [timeScale(5, 5.5, 4)],
+    })
+    inner.context.bounds = { ...inner.context.bounds, r: 6.5 }
+    for (const entities of inner.context.state.store.grid.timeScale.values())
+        for (const entity of entities) drawEvent(inner.context, entity, true)
+    assert.deepEqual(
+        inner.canvas.labels.map(({ text, x, align }) => [text, Math.round(x * 100) / 100, align]),
+        [
+            ['4x', 4.91, 'end'],
+            ['B', 4.11, 'end'],
         ],
     )
 })
@@ -1010,11 +1024,15 @@ test('edge time scale labels take the place of the time and beat labels they rea
     for (const shown of ['00:03', '00:04', '9', '11']) assert.ok(texts.includes(shown), shown)
 })
 
-test('labels that turn inward or sit mid-stage leave the columns alone', () => {
-    // No room outside: the edge labels turn inward, away from the columns.
-    const turned = gridLabelsBeside([edgeTimeScale(4, -6), edgeTimeScale(6, 6)], { l: -7, r: 7 })
+test('edge labels stay outward over the columns; inner ones turned inward leave them alone', () => {
+    // No room outside: the edge labels still take the columns, not the notes.
+    const edge = gridLabelsBeside([edgeTimeScale(4, -6), edgeTimeScale(6, 6)], { l: -7, r: 7 })
+    assert.deepEqual(edge.edges, { left: [-20], right: [-30] })
+    assert.ok(!edge.texts.includes('00:02') && !edge.texts.includes('7'))
+    // Inside the stage, a label without room outside turns inward, away from the columns.
+    const turned = gridLabelsBeside([edgeTimeScale(4, 5.5)], { l: -7, r: 6.5 })
     assert.deepEqual(turned.edges, { left: [], right: [] })
-    assert.ok(turned.texts.includes('00:02') && turned.texts.includes('7'))
+    assert.ok(turned.texts.includes('5'))
     // Mid-stage, a label stays clear of the columns.
     const mid = gridLabelsBeside([edgeTimeScale(4, 0)])
     assert.deepEqual(mid.edges, { left: [], right: [] })

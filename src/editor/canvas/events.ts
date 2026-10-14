@@ -145,13 +145,17 @@ const EASE_GLYPH = { width: 0.3, height: 0.34, gap: 0.06, stroke: 0.05 }
 // From the marker to the ease glyph.
 const LABEL_OFFSET = 0.23
 
-/** Labels point outward from the stage, and inward where outward would leave the view. */
+/**
+ * Labels point outward from the stage, and inward where outward would leave the view.
+ * At or past the stage's edge they stay outward, as cut off beats covering notes.
+ */
 const timeScaleLabelDirection = (
     x: number,
     width: number,
     { l, r }: Pick<CanvasBounds, 'l' | 'r'>,
 ): 1 | -1 => {
     const outward = x > 0 ? 1 : -1
+    if (Math.abs(x) >= 6) return outward
     const fits = (direction: 1 | -1) => (direction > 0 ? x + width <= r : x - width >= l)
     return fits(outward) || !fits(-outward as 1 | -1) ? outward : (-outward as 1 | -1)
 }
