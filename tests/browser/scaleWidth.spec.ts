@@ -553,10 +553,8 @@ test('the separate transform group remains reachable on a short portrait phone',
         .filter({ hasText: 'Scale Width' })
         .locator('..')
     const bounds = await menu.boundingBox()
-    // The menu stays below the top panel dock, which holds the Preview tab.
-    const preview = await page.locator('[data-workspace-dock="top"]').boundingBox()
+    // The menu may rise over the top panel dock, which holds the Preview tab, but stays in the window.
     expect(bounds).not.toBeNull()
-    expect(preview).not.toBeNull()
-    expect(bounds!.y).toBeGreaterThanOrEqual(preview!.y + preview!.height)
+    expect(bounds!.y).toBeGreaterThanOrEqual(8)
     await menu.screenshot({ path: 'test-results/scale-width-mobile-toolbar.png' })
 })

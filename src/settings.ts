@@ -260,6 +260,8 @@ const settingsProperties = {
 
     deselectSwitchesToSelect: Type.Boolean({ default: true }),
 
+    toolbarQuickSwitch: Type.Boolean({ default: false }),
+
     toolbar: Type.Codec(
         Type.Array(
             Type.Codec(Type.Array(Type.String()))

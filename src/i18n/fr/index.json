@@ -737,6 +737,7 @@
     },
     "toolbar": {
       "title": "Barre d’outils",
+      "quickSwitch": "Changement rapide",
       "add": "Ajouter un outil",
       "modal": {
         "title": "Sélectionner l’outil"

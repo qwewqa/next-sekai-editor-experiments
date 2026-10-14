@@ -737,6 +737,7 @@
     },
     "toolbar": {
       "title": "工具栏",
+      "quickSwitch": "快速切换",
       "add": "添加工具",
       "modal": {
         "title": "添加工具"

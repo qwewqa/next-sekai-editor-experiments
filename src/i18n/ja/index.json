@@ -737,6 +737,7 @@
     },
     "toolbar": {
       "title": "ツールバー",
+      "quickSwitch": "クイックスイッチ",
       "add": "ツールを追加",
       "modal": {
         "title": "ツールを選択"

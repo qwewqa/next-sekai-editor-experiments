@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
+import ToggleField from '../../../modals/form/ToggleField.vue'
 import { settings } from '../../../settings'
 import LevelEditorToolbarTool from '../../toolbar/LevelEditorToolbarTool.vue'
 import SettingsSection from '../SettingsSection.vue'
@@ -44,5 +45,10 @@ const onAddGroup = async () => {
             </div>
             <SettingsToolbarAddButton @click="onAddGroup" />
         </div>
+
+        <ToggleField
+            v-model="settings.toolbarQuickSwitch"
+            :label="i18n.settings.toolbar.quickSwitch"
+        />
     </SettingsSection>
 </template>

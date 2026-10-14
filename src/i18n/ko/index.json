@@ -737,6 +737,7 @@
     },
     "toolbar": {
       "title": "도구 모음",
+      "quickSwitch": "빠른 전환",
       "add": "도구 추가",
       "modal": {
         "title": "도구 선택"

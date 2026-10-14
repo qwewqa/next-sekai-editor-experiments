@@ -737,6 +737,7 @@
     },
     "toolbar": {
       "title": "Araç Çubuğu",
+      "quickSwitch": "Hızlı Geçiş",
       "add": "Araç Ekle",
       "modal": {
         "title": "Araç Seç"

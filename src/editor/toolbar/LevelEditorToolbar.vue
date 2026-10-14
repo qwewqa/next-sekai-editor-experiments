@@ -28,6 +28,7 @@ import {
 import { modals } from '../../modals'
 import { settings } from '../../settings'
 import { commands, type CommandName } from '../commands'
+import { contextMenu } from '../contextMenu'
 import { flyoutEscapes } from '../controls'
 import { repeatsWhenHeld } from '../controls/keyboard'
 import { secondarySwitchBack } from '../controls/mouse'
@@ -218,9 +219,80 @@ const onOverMain = (event: PointerEvent, index: number) => {
     activeIndex.value = index
 }
 
+// Quick switch: a press on a face opens its flyout, after a moment or on movement so a tap
+// doesn't flash it; the release picks the face or row under it, and anywhere else cancels.
+const quickDelay = 150
+const quickSlop = 6
+let quick: { id: number; index: number; x: number; y: number; timer?: number } | undefined
+// The flyout row a quick switch press is over.
+const quickOver = ref<number>()
+
+const openQuick = () => {
+    if (!quick) return
+    clearTimeout(quick.timer)
+    quick.timer = undefined
+    if ((toolbar.value[quick.index]?.length ?? 0) > 1) activeIndex.value = quick.index
+}
+
+const endQuick = () => {
+    clearTimeout(quick?.timer)
+    quick = undefined
+    quickOver.value = undefined
+}
+
+// The face or row of the pressed group under a point, if any.
+const quickTargetAt = (x: number, y: number) => {
+    const group = quick && groups.value[quick.index]
+    const button = document.elementFromPoint(x, y)?.closest('button')
+    if (!quick || !group || !button || !group.contains(button)) return
+    if (button.parentElement === group) return { face: true } as const
+    const row = [...(openFlyout()?.children ?? [])].indexOf(button)
+    return row === -1 ? undefined : { row }
+}
+
+const onPressMain = (event: PointerEvent, index: number) => {
+    if (!settings.toolbarQuickSwitch || quick || event.button !== 0) return
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    quick = { id: event.pointerId, index, x: event.clientX, y: event.clientY }
+    // A hovered flyout is already open; any other closes until this one shows.
+    if (activeIndex.value !== index) {
+        activeIndex.value = -1
+        quick.timer = window.setTimeout(openQuick, quickDelay)
+    }
+}
+
+const onMoveQuick = (event: PointerEvent) => {
+    if (event.pointerId !== quick?.id) return
+    if (quick.timer && Math.hypot(event.clientX - quick.x, event.clientY - quick.y) > quickSlop)
+        openQuick()
+    quickOver.value = quickTargetAt(event.clientX, event.clientY)?.row
+}
+
+const onReleaseQuick = (event: PointerEvent) => {
+    if (event.pointerId !== quick?.id) return
+    const { index } = quick
+    const target = quickTargetAt(event.clientX, event.clientY)
+    endQuick()
+    ;(event.currentTarget as HTMLElement).blur()
+    const name = target?.face ? activeNames.value[index] : toolbar.value[index]?.[target?.row ?? -1]
+    activeIndex.value = -1
+    if (!name) return
+    if (target?.face) void commands[name].execute()
+    else pick(index, name)
+}
+
+const onCancelQuick = (event: PointerEvent) => {
+    if (event.pointerId !== quick?.id) return
+    endQuick()
+    activeIndex.value = -1
+}
+onBeforeUnmount(endQuick)
+
 const onClickMain = (event: MouseEvent, index: number, name: CommandName) => {
     // Pointer clicks return shortcuts to the editor, so Space cannot click the tool again.
     blurPointerClick(event)
+    // A quick switch release has acted already.
+    if (settings.toolbarQuickSwitch && event.detail > 0) return
     if (activeIndex.value === -1 && toolbar.value[index] && toolbar.value[index].length > 1) {
         activeIndex.value = index
         return
@@ -235,6 +307,11 @@ const onClickSub = (event: MouseEvent, index: number, name: CommandName) => {
     blurPointerClick(event)
     // The flyout closes under a keyboard choice, so focus returns to its tool first.
     if (event.detail === 0) groups.value[index]?.querySelector('button')?.focus()
+    pick(index, name)
+}
+
+// Runs a group's member, which takes the face as a flyout choice does.
+const pick = (index: number, name: CommandName) => {
     const done = commands[name].execute()
 
     activeIndex.value = -1
@@ -327,8 +404,8 @@ onBeforeUnmount(() => {
 })
 
 // A flyout rises from its tool's top edge, centered on the tool and kept 8px
-// inside the pane, so it stays attached to the tool that opened it and is never
-// clipped at either edge.
+// inside the window, so it stays attached to the tool that opened it and is never
+// clipped at either edge. In the top layer, it rises over docks above the pane.
 const flyoutMargin = 8
 const groups = ref<HTMLElement[]>([])
 // Found by id: switching groups mounts one flyout and unmounts another in either order.
@@ -339,21 +416,27 @@ let placedWidth = 0
 const place = () => {
     const group = groups.value[activeIndex.value]
     const element = openFlyout()
-    if (!root.value || !group || !element) return
-    const pane = root.value.getBoundingClientRect()
+    if (!group || !element) return
+    if (!element.matches(':popover-open')) element.showPopover()
+    const { clientWidth, clientHeight } = document.documentElement
     const tool = group.getBoundingClientRect()
     const width = element.getBoundingClientRect().width
     placedWidth = width
-    const center = tool.left + tool.width / 2 - pane.left
+    const center = tool.left + tool.width / 2
     placement.value = {
         left: Math.max(
             flyoutMargin,
-            Math.min(center - width / 2, pane.width - flyoutMargin - width),
+            Math.min(center - width / 2, clientWidth - flyoutMargin - width),
         ),
-        bottom: pane.bottom - tool.top,
-        maxHeight: Math.max(0, tool.top - pane.top - flyoutMargin),
+        bottom: clientHeight - tool.top,
+        maxHeight: Math.max(0, tool.top - flyoutMargin),
     }
 }
+
+// The top layer shows over dialogs and the context menu, so either opening closes the flyout.
+watch([() => modals.length, contextMenu], ([count, menu], [before]) => {
+    if (count > before || menu) activeIndex.value = -1
+})
 
 // A flyout opens with its checked value centred, without moving focus; later, only a clipped one moves.
 const revealChecked = (ifClipped = false) => {
@@ -456,10 +539,16 @@ onBeforeUnmount(() => {
                 <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned. -->
                 <LevelEditorToolbarTool
                     class="size-[--tool-size] justify-center before:absolute before:size-[--tool-size]"
+                    :class="{ 'toolbar-quick-switch': settings.toolbarQuickSwitch }"
                     :name="activeName"
                     :state="stateOf(activeName, i)"
                     v-bind="flyoutAttributes(i)"
-                    @pointermove="onOverMain($event, i)"
+                    @pointerdown="onPressMain($event, i)"
+                    @pointermove="(onOverMain($event, i), onMoveQuick($event))"
+                    @pointerup="onReleaseQuick"
+                    @pointercancel="onCancelQuick"
+                    @lostpointercapture="onCancelQuick"
+                    @contextmenu="settings.toolbarQuickSwitch && $event.preventDefault()"
                     @click="onClickMain($event, i, activeName)"
                     @keydown="onKeydownRepeat($event, activeName, (toolbar[i]?.length ?? 0) > 1)"
                 />
@@ -468,7 +557,8 @@ onBeforeUnmount(() => {
                     v-if="activeIndex === i"
                     :id="flyoutId"
                     v-scroll-edges
-                    class="absolute w-max overflow-y-auto"
+                    popover="manual"
+                    class="fixed inset-auto m-0 w-max overflow-y-auto border-0 bg-transparent p-0 text-inherit"
                     :class="{ invisible: !placement }"
                     :style="
                         placement && {
@@ -483,6 +573,9 @@ onBeforeUnmount(() => {
                         v-for="(name, j) in toolbar[i]"
                         :key="j"
                         class="relative mb-1 w-full before:absolute before:-inset-y-0.5 before:inset-x-0 last:before:-bottom-1"
+                        :class="{
+                            '!bg-accent !fill-on-accent !text-on-accent': quickOver === j,
+                        }"
                         :name
                         :state="stateOf(name, i)"
                         :check-column="hasValues(i)"
@@ -503,3 +596,12 @@ onBeforeUnmount(() => {
         @click="activeIndex = -1"
     />
 </template>
+
+<style scoped>
+/* A quick switch press stays with the toolbar: no scrolling, zooming or long-press callout. */
+.toolbar-quick-switch {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+</style>

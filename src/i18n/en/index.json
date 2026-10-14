@@ -737,6 +737,7 @@
         },
         "toolbar": {
             "title": "Toolbar",
+            "quickSwitch": "Quick Switch",
             "add": "Add Tool",
             "modal": {
                 "title": "Select Tool"

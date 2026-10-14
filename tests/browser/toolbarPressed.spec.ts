@@ -1302,7 +1302,8 @@ test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
     test('a value flyout opens with its checked row in view', async ({ page }) => {
-        // The preview, as by default, leaves the flyout too little room for every row.
+        // A short window leaves the flyout too little room for every row, even over the preview.
+        await page.setViewportSize({ width: 390, height: 520 })
         await page.evaluate(() => {
             const { settings } = window.editorTest
             settings.locale = 'fr'
