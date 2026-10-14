@@ -91,9 +91,11 @@ watch(
     },
     { immediate: true },
 )
+// At once, as a pick that replaces the pane unmounts this toolbar before a later flush.
 watch(activeNames, (names) => shownByLayout.set(keyOf(toolbar.value), [...names]), {
     deep: true,
     immediate: true,
+    flush: 'sync',
 })
 
 // Values move a face only in a group whose states are all of one value family.

@@ -982,6 +982,21 @@ test('a tool picked over a temporary face leaves no face to return to', async ({
     await expectFace('Select')
 })
 
+for (const sideBySide of ['allow', 'disallow'] as const)
+    test(`the Elevation Editor picked from a flyout stays the face once it closes (${sideBySide === 'allow' ? 'side by side' : 'full screen'})`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1920, height: 1080 })
+        await page.evaluate((value) => {
+            window.editorTest.settings.elevationEditorSideBySide = value
+        }, sideBySide)
+        await pickAt(page, 4, 'Elevation Editor')
+        await expect(page.locator('.elevation-canvas')).toBeVisible()
+        await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
+        await expect(page.locator('.elevation-editor')).toHaveCount(0)
+        await expect.poll(async () => (await faces(page))[4]).toBe('Elevation Editor')
+    })
+
 test('a member moved out of its group while its dialog is open leaves the face', async ({
     page,
 }) => {
