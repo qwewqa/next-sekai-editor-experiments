@@ -34,11 +34,10 @@ export const visibleSelectedEntities = computedArray(() => {
             : undefined
 
     return culledEntities.value.filter((entity) => {
+        if (!selected.has(entity) || entityScopeVisibility(entity, scope) === 'hidden') return false
         const hitbox = composed?.hitbox(entity) ?? entity.hitbox
         return (
-            selected.has(entity) &&
             hitbox &&
-            entityScopeVisibility(entity, scope) !== 'hidden' &&
             isHitboxInView(
                 hitbox,
                 beatToTime(integrals, hitbox.beat) * unitsPerSecond,

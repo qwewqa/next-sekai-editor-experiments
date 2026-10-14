@@ -467,10 +467,17 @@ export const select: Tool = {
                     ? [...new Set([...active.entities, ...entities])]
                     : entities
 
-                replaceState({
-                    ...state.value,
-                    selectedEntities: targets,
-                })
+                // Moving the rectangle within the same selection only changes its overlay.
+                const selected = state.value.selectedEntities
+                if (
+                    selected.length !== targets.length ||
+                    targets.some((entity, index) => selected[index] !== entity)
+                ) {
+                    replaceState({
+                        ...state.value,
+                        selectedEntities: targets,
+                    })
+                }
                 view.selection = selection
                 view.entities = {
                     hovered: [],

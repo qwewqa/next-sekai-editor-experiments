@@ -32,29 +32,21 @@ export const cullEntities = <T extends EntityType>(
     minKey: number,
     maxKey: number,
     source: Store = store.value,
+) => cullGrids<EntityOfType<T>>([source.grid[type]], minKey, maxKey)
+
+export const cullAllEntities = (minKey: number, maxKey: number, source: Store = store.value) =>
+    cullGrids<Entity>(Object.values(source.grid), minKey, maxKey)
+
+const cullGrids = <T extends Entity>(
+    grids: Iterable<Map<number, Set<T>>>,
+    minKey: number,
+    maxKey: number,
 ) => {
     if (!Number.isFinite(maxKey)) maxKey = minKey
 
-    const culled = new Set<EntityOfType<T>>()
+    const culled = new Set<T>()
 
-    for (let i = minKey; i <= maxKey; i++) {
-        const entities = source.grid[type].get(i)
-        if (!entities) continue
-
-        for (const entity of entities) {
-            culled.add(entity)
-        }
-    }
-
-    return culled
-}
-
-export const cullAllEntities = (minKey: number, maxKey: number, source: Store = store.value) => {
-    if (!Number.isFinite(maxKey)) maxKey = minKey
-
-    const culled = new Set<Entity>()
-
-    for (const map of Object.values(source.grid)) {
+    for (const map of grids) {
         for (let i = minKey; i <= maxKey; i++) {
             const entities = map.get(i)
             if (!entities) continue
@@ -67,6 +59,34 @@ export const cullAllEntities = (minKey: number, maxKey: number, source: Store = 
 
     return culled
 }
+
+// Connections are drawn across many beat buckets, but never have a hitbox.
+// Keep the classification exhaustive when a new entity type is introduced.
+const hitboxTypes: Record<EntityType, boolean> = {
+    bpm: true,
+    timeScale: true,
+    cameraEventJoint: true,
+    cameraEventConnection: false,
+    stageMaskEventJoint: true,
+    stageMaskEventConnection: false,
+    stagePivotEventJoint: true,
+    stagePivotEventConnection: false,
+    stageStyleEventJoint: true,
+    stageStyleEventConnection: false,
+    stageTransformEventJoint: true,
+    stageTransformEventConnection: false,
+    note: true,
+    connector: false,
+}
+
+const cullHitboxEntities = (minKey: number, maxKey: number, source: Store) =>
+    cullGrids<Entity>(
+        Object.entries(source.grid)
+            .filter(([type]) => hitboxTypes[type as EntityType])
+            .map(([, grid]) => grid),
+        minKey,
+        maxKey,
+    )
 
 export const hitEntities = <T extends EntityType>(
     type: T,
@@ -100,7 +120,7 @@ export const hitAllEntities = (
         laneMax,
         timeMin,
         timeMax,
-        (minKey, maxKey) => cullAllEntities(minKey, maxKey, source.store),
+        (minKey, maxKey) => cullHitboxEntities(minKey, maxKey, source.store),
         minimumNoteWidth,
         source,
     )
