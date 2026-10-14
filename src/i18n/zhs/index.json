@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "触控",
-      "quickScrollZone": "快速滚动区域（%）",
+      "quickScrollWidth": "快速滚动区域宽度（px）",
+      "showQuickScroll": {
+        "title": "显示快速滚动区域",
+        "on": "开",
+        "off": "关",
+        "touch": "仅触摸屏"
+      },
       "scrollInertia": "滚动惯性",
       "longPressContextMenu": "长按打开右键菜单"
     },

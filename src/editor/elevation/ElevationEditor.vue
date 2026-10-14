@@ -15,6 +15,7 @@ import { pushState, replaceState, state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
 import { i18n } from '../../i18n'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
+import QuickScrollZone from '../QuickScrollZone.vue'
 import {
     hitOffscreenIndicator,
     selectOffscreenNotes,
@@ -1952,6 +1953,7 @@ onUnmounted(() => {
                 :aria-label="i18n.elevation.canvas"
                 @contextrestored="restoreContext"
             />
+            <QuickScrollZone :pane-width="elevationBounds.w" />
             <OffscreenNoteIndicators
                 :groups="offscreenGroups"
                 :hovered="hoveredOffscreenGroup"

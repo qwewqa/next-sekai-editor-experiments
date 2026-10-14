@@ -313,7 +313,7 @@ test.describe('touch', () => {
 
     test('Escape cancels a touch drag, and the finger lifts without effect', async ({ page }) => {
         await page.evaluate(() => {
-            window.editorTest.settings.touchQuickScrollZone = 0
+            window.editorTest.settings.touchQuickScrollWidth = 0
         })
         await command(page, 'select')
         await select(page, [7])

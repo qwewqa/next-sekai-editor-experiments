@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "Dokunma",
-      "quickScrollZone": "Hızlı Kaydırma Alanı (%)",
+      "quickScrollWidth": "Hızlı Kaydırma Alanı Genişliği (px)",
+      "showQuickScroll": {
+        "title": "Hızlı Kaydırma Alanını Göster",
+        "on": "Açık",
+        "off": "Kapalı",
+        "touch": "Yalnızca Dokunmatik Ekranlar"
+      },
       "scrollInertia": "Kaydırma Ataleti",
       "longPressContextMenu": "Bağlam Menüsü İçin Uzun Bas"
     },

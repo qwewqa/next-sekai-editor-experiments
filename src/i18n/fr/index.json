@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "Tactile",
-      "quickScrollZone": "Zone de défilement rapide (%)",
+      "quickScrollWidth": "Largeur de la zone de défilement rapide (px)",
+      "showQuickScroll": {
+        "title": "Afficher la zone de défilement rapide",
+        "on": "Activé",
+        "off": "Désactivé",
+        "touch": "Écrans tactiles uniquement"
+      },
       "scrollInertia": "Inertie de défilement",
       "longPressContextMenu": "Appui long pour le menu contextuel"
     },

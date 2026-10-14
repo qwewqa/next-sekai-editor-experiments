@@ -5,6 +5,7 @@ import { time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
 import { editorNavigation, getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
+import { quickScrollWidth } from '../../../quickScroll'
 import { tool, type Tool } from '../../../tools'
 import {
     scrollViewXBy,
@@ -38,7 +39,6 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
     const toolPoint = (id: number, x: number, y: number) => hold?.(id, x, y) ?? { x, y }
     const updates: {
         t: number
-        dx: number
         dy: number
     }[] = []
     let active:
@@ -55,7 +55,6 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
           }
         | {
               type: 'scroll'
-              sx: number
               sy: number
               id: number
           }
@@ -134,8 +133,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
 
             const bounds = getControlBounds(view)
             // Where the press landed decides, not where it was recognized.
-            const p = (sx - bounds.x) / bounds.w
-            if (!quickScroll || p < 1 - settings.touchQuickScrollZone / 100) {
+            if (!quickScroll || sx - bounds.x <= bounds.w - quickScrollWidth(bounds.w)) {
                 // Tools hold one drag; another input's drag leaves this press inert.
                 if (isDragging.value) return true
                 const startState = state.value
@@ -177,7 +175,6 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
             } else {
                 active = {
                     type: 'scroll',
-                    sx,
                     sy,
                     id,
                 }
@@ -210,18 +207,13 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                     void completed.dragEnd?.(x, y, p.modifiers)
                 }
             } else {
-                const dx = p.x - active.sx
+                // A quick scroll is vertical only.
                 const dy = p.y - active.sy
-
-                scrollViewXBy(-dx)
                 scrollViewYBy(dy)
-
                 updates.push({
                     t: time.value.now,
-                    dx,
                     dy,
                 })
-                active.sx = p.x
                 active.sy = p.y
             }
         },
@@ -251,14 +243,6 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 if (view.input === 'touch') view.touchMarker = cancelled.marker
             }
             if (!cancelled && active?.type === 'scroll' && settings.touchScrollInertia) {
-                const dx = updates
-                    .filter(({ t }) => time.value.now - t <= 0.1)
-                    .reduce((sum, { dx }) => sum + dx, 0)
-                view.scrollingX = {
-                    type: 'inertia',
-                    value: -dx / 0.1,
-                }
-
                 const dy = updates
                     .filter(({ t }) => time.value.now - t <= 0.1)
                     .reduce((sum, { dy }) => sum + dy, 0)

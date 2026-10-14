@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "タッチ操作",
-      "quickScrollZone": "クイックスクロールゾーン (%)",
+      "quickScrollWidth": "クイックスクロールゾーンの幅 (px)",
+      "showQuickScroll": {
+        "title": "クイックスクロールゾーンを表示",
+        "on": "オン",
+        "off": "オフ",
+        "touch": "タッチスクリーンのみ"
+      },
       "scrollInertia": "スクロールの慣性",
       "longPressContextMenu": "長押しでコンテキストメニュー"
     },

@@ -40,6 +40,7 @@ import { hoveredEntities, isViewRecentlyActive, view, viewBox } from '../view'
 import LevelEditorHoverMarkers from '../LevelEditorHoverMarkers.vue'
 import LevelEditorRangeMarkers from '../LevelEditorRangeMarkers.vue'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
+import QuickScrollZone from '../QuickScrollZone.vue'
 import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndicators'
 import {
     groupOffscreenNotes,
@@ -795,6 +796,8 @@ onUnmounted(() => {
             class="editor-overlay pointer-events-none absolute size-full"
             @contextrestored="restoreContext"
         />
+        <!-- Over the drawn chart, under the labels and badges. -->
+        <QuickScrollZone :pane-width="view.w" />
         <!-- The time and beat labels sit above everything drawn, under the badges. -->
         <LevelEditorRangeMarkers />
         <LevelEditorHoverMarkers />

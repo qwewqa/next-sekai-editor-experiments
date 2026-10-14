@@ -642,7 +642,7 @@ for (const [device, viewport] of [
             // Keep every gesture clear of the quick scroll zone at the right edge.
             await page.evaluate(() => {
                 window.editorTest.settings.width = 24
-                window.editorTest.settings.touchQuickScrollZone = 0
+                window.editorTest.settings.touchQuickScrollWidth = 0
             })
             await settle(page)
         })

@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "터치",
-      "quickScrollZone": "빠른 스크롤 영역 (%)",
+      "quickScrollWidth": "빠른 스크롤 영역 너비 (px)",
+      "showQuickScroll": {
+        "title": "빠른 스크롤 영역 표시",
+        "on": "켜짐",
+        "off": "꺼짐",
+        "touch": "터치스크린에서만"
+      },
       "scrollInertia": "스크롤 관성",
       "longPressContextMenu": "길게 눌러 컨텍스트 메뉴 열기"
     },

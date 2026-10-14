@@ -323,7 +323,7 @@ test('a box select clears a note marker and keeps a cursor marker', async ({ pag
 
 test('Escape during a drag brings back the marker from before it', async ({ page }) => {
     await page.evaluate(() => {
-        window.editorTest.settings.touchQuickScrollZone = 0
+        window.editorTest.settings.touchQuickScrollWidth = 0
     })
     await tap(page, 0, 4)
     const marked = await shownAt(page, { kind: 'cursor', beat: 4 }, 2)

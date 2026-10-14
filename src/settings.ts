@@ -396,7 +396,12 @@ const settingsProperties = {
         default: !matchMedia('(prefers-reduced-motion: reduce)').matches,
     }),
 
-    touchQuickScrollZone: number(25, 0, 50),
+    touchQuickScrollWidth: number(32, 0, 200),
+
+    touchQuickScrollShow: Type.Union(
+        [Type.Literal('on'), Type.Literal('off'), Type.Literal('touch')],
+        { default: 'touch' },
+    ),
 
     touchScrollInertia: Type.Boolean({ default: true }),
 
@@ -696,6 +701,13 @@ export const settings = Object.defineProperties(
     ),
 ) as {
     [K in keyof typeof settingsProperties]: Type.StaticDecode<(typeof settingsProperties)[K]>
+}
+
+// The former zone width, a percentage of the pane.
+try {
+    storageRemove('touchQuickScrollZone')
+} catch {
+    // Storage is unavailable.
 }
 
 let resetting = false

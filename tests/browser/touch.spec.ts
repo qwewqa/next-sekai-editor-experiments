@@ -410,11 +410,11 @@ test('a touch drag held past the pane edge pans as fast as a mouse drag', async 
 test('a quick scroll that leaves the pane follows the finger the whole way', async ({ page }) => {
     await showNotes(page)
     await page.evaluate(() => {
-        window.editorTest.settings.touchQuickScrollZone = 25
+        window.editorTest.settings.touchQuickScrollWidth = 200
         window.editorTest.view.time = 30
     })
     const pane = await paneBounds(page)
-    const from = { x: pane.x + pane.w * 0.9, y: pane.y + 100 }
+    const from = { x: pane.x + pane.w - 20, y: pane.y + 100 }
     const to = { x: from.x, y: pane.y - 60 }
     const before = await page.evaluate(() => window.editorTest.view.time)
     await press(page, 'touch', from, to, false)
@@ -429,10 +429,10 @@ test.describe('quick scroll zone edge', () => {
     const setup = async (page: Page) => {
         const edge = await page.evaluate(async () => {
             const { fixtures, show, view, settings, nextTick } = window.editorTest
-            settings.touchQuickScrollZone = 25
+            settings.touchQuickScrollWidth = 200
             settings.dragToPanX = false
             settings.dragToPanY = false
-            const x = view.x + view.w * 0.75
+            const x = view.x + view.w - 200
             const lane = view.lane + ((x - view.x) / view.w - 0.5) * settings.width
             const template = fixtures.interaction.slides.flat()[0]!
             show(
@@ -453,7 +453,7 @@ test.describe('quick scroll zone edge', () => {
                 1.1,
             )
             await nextTick()
-            return view.x + view.w * 0.75
+            return view.x + view.w - 200
         })
         await page.keyboard.press('a')
         const { y } = await point(page, 0, 2)

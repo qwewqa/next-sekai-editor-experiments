@@ -744,7 +744,13 @@
     },
     "touch": {
       "title": "觸碰",
-      "quickScrollZone": "快速捲動區（%）",
+      "quickScrollWidth": "快速捲動區寬度（px）",
+      "showQuickScroll": {
+        "title": "顯示快速捲動區",
+        "on": "開啟",
+        "off": "關閉",
+        "touch": "僅觸控螢幕"
+      },
       "scrollInertia": "滾動慣性",
       "longPressContextMenu": "長按開啟右鍵選單"
     },

@@ -728,7 +728,7 @@ test.describe('on a phone', () => {
             const { settings } = window.editorTest
             settings.dragToPanY = true
             // The drag starts near the right edge, where a quick scroll would take it.
-            settings.touchQuickScrollZone = 0
+            settings.touchQuickScrollWidth = 0
         })
         const touch = (type: string, x: number, y: number) =>
             page.evaluate(

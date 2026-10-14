@@ -744,7 +744,13 @@
         },
         "touch": {
             "title": "Touch",
-            "quickScrollZone": "Quick Scroll Zone (%)",
+            "quickScrollWidth": "Quick Scroll Zone Width (px)",
+            "showQuickScroll": {
+                "title": "Show Quick Scroll Zone",
+                "on": "On",
+                "off": "Off",
+                "touch": "Touch Screens Only"
+            },
             "scrollInertia": "Scroll Inertia",
             "longPressContextMenu": "Long Press for Context Menu"
         },
