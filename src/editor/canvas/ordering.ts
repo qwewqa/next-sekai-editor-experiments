@@ -243,24 +243,42 @@ const drawKeyOf = (step: DrawStep): DrawKey => ({
 export const toDrawSteps = (ordered: ReturnType<typeof orderEntities>) => {
     const bpmLabels: DrawStep[] = []
     const timeScaleLabels: DrawStep[] = []
-    const steps = ordered
-        .flatMap((step): DrawStep[] => {
-            const { type } = step.entity
-            if (type === 'bpm') {
-                bpmLabels.push({ ...step, part: 'label' })
-                return [{ ...step, part: 'line' }]
-            }
-            if (type !== 'timeScale') return [step]
+    const objects: DrawStep[] = []
+    const markers: { step: DrawStep; key: DrawKey }[] = []
+    for (const step of ordered) {
+        const { type } = step.entity
+        if (type === 'bpm') {
+            bpmLabels.push({ ...step, part: 'label' })
+            objects.push({ ...step, part: 'line' })
+        } else if (type === 'timeScale') {
             timeScaleLabels.push({ ...step, part: 'label' })
-            return [
-                { ...step, part: 'line' },
-                { ...step, part: 'marker' },
-            ]
-        })
-        // Markers move to their layer; the rest keep their order.
-        .map((step) => ({ step, key: drawKeyOf(step) }))
-        .sort((a, b) => compareDrawKeys(a.key, b.key))
-        .map(({ step }) => step)
+            objects.push({ ...step, part: 'line' })
+            const marker: DrawStep = { ...step, part: 'marker' }
+            markers.push({ step: marker, key: drawKeyOf(marker) })
+        } else objects.push(step)
+    }
+    // Only time scale markers change layer. Objects and markers each retain
+    // their sorted order, so merge them without sorting the entire view again.
+    const steps = markers.length ? [] : objects
+    if (markers.length) {
+        let index = 0
+        for (const object of objects) {
+            if (index < markers.length) {
+                const key = drawKeyOf(object)
+                while (index < markers.length) {
+                    const marker = markers[index]
+                    if (!marker || compareDrawKeys(marker.key, key) >= 0) break
+                    steps.push(marker.step)
+                    index++
+                }
+            }
+            steps.push(object)
+        }
+        for (; index < markers.length; index++) {
+            const marker = markers[index]
+            if (marker) steps.push(marker.step)
+        }
+    }
     const raisedAt = steps.findIndex(({ highlighted, raised }) => highlighted || raised)
     return {
         objects: steps,

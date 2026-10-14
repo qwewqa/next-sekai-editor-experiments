@@ -8,6 +8,7 @@ import {
     raisedChains,
     toDrawSteps,
     toolChainOf,
+    type DrawStep,
     type EntityVisibility,
 } from '../../src/editor/canvas/ordering'
 import { createFrameScheduler, prepareSurface } from '../../src/editor/canvas/surface'
@@ -792,6 +793,125 @@ test('time scale labels paint above a selected BPM label on the same beat', () =
             [timeScale, 'label'],
         ],
     )
+})
+
+test('merging time scale markers matches the former full sort across scopes, ties and raised chains', () => {
+    // Keep the former expansion/full-sort algorithm as an independent oracle.
+    const eventLayers = {
+        timeScale: 0,
+        bpm: 1,
+        cameraEventConnection: 10,
+        cameraEventJoint: 11,
+        stageMaskEventConnection: 12,
+        stageMaskEventJoint: 13,
+        stagePivotEventConnection: 14,
+        stagePivotEventJoint: 15,
+        stageStyleEventConnection: 16,
+        stageStyleEventJoint: 17,
+        stageTransformEventConnection: 18,
+        stageTransformEventJoint: 19,
+        note: 30,
+    }
+    const connectorLayers = ['under', 'bottom', 'top', 'over'] as const
+    const connectorTypes = ['active', 'damage', 'guide'] as const
+    const layer = ({ entity, part }: DrawStep) =>
+        part === 'marker'
+            ? 19.5
+            : entity.type === 'connector'
+              ? (entity.head.connectorLayer === 'over'
+                    ? 40
+                    : 20 + 3 * connectorLayers.indexOf(entity.head.connectorLayer)) +
+                connectorTypes.indexOf(entity.head.connectorType)
+              : eventLayers[entity.type]
+    const tier = (step: DrawStep) => (step.highlighted ? 2 : step.raised ? 1 : 0)
+    const reference = (ordered: ReturnType<typeof orderEntities>) => {
+        const bpms: DrawStep[] = []
+        const timeScales: DrawStep[] = []
+        const objects = ordered
+            .flatMap((step): DrawStep[] => {
+                if (step.entity.type === 'bpm') {
+                    bpms.push({ ...step, part: 'label' })
+                    return [{ ...step, part: 'line' }]
+                }
+                if (step.entity.type !== 'timeScale') return [step]
+                timeScales.push({ ...step, part: 'label' })
+                return [
+                    { ...step, part: 'line' },
+                    { ...step, part: 'marker' },
+                ]
+            })
+            .sort(
+                (a, b) =>
+                    tier(a) - tier(b) ||
+                    +(a.opacity === 1) - +(b.opacity === 1) ||
+                    layer(a) - layer(b) ||
+                    b.entity.beat - a.entity.beat,
+            )
+        const raisedAt = objects.findIndex(({ highlighted, raised }) => highlighted || raised)
+        return {
+            objects,
+            raisedAt: raisedAt < 0 ? objects.length : raisedAt,
+            labels: [...bpms, ...timeScales],
+        }
+    }
+    let seed = 0x42791
+    const random = (max: number) => {
+        seed ^= seed << 13
+        seed ^= seed >>> 17
+        seed ^= seed << 5
+        return (seed >>> 0) % max
+    }
+    assert.deepEqual(toDrawSteps([]), reference([]))
+    for (let trial = 0; trial < 200; trial++) {
+        const entities: Entity[] = []
+        for (let index = 0; index < 128; index++) {
+            const type = entityTypes[random(entityTypes.length)]!
+            const beat = random(8) / 2 // Many deliberate same-beat ties.
+            const fields = {
+                beat,
+                stageId: random(2) ? stage : otherStage,
+                groupId: random(2) ? group : otherGroup,
+            }
+            if (type === 'connector') {
+                entities.push(
+                    connector(
+                        connectorLayers[random(connectorLayers.length)]!,
+                        connectorTypes[random(connectorTypes.length)]!,
+                        note(beat, fields),
+                        note(beat + 1, fields),
+                    ),
+                )
+            } else if (type.endsWith('Connection')) {
+                // As in eventChain above, ordering only needs the joints' type,
+                // beat and scope fields, not their editable event properties.
+                const joint = { ...fields, type: type.replace('Connection', 'Joint') } as Entity
+                entities.push({
+                    ...fields,
+                    type,
+                    min: joint,
+                    max: { ...joint, beat: beat + 1 },
+                } as Entity)
+            } else entities.push({ ...fields, type } as Entity)
+        }
+        const selected = new Set(entities.filter(() => random(4) === 0))
+        const visibilities = Object.fromEntries(
+            entityTypes.map((type) => [type, random(4) !== 0]),
+        ) as Record<EntityType, boolean>
+        const ordered = orderEntities(
+            entities,
+            selected,
+            visibility({
+                groupId: random(2) ? group : undefined,
+                stageId: random(2) ? stage : undefined,
+                showOtherObjects: random(2) === 0,
+                showOtherGroups: random(2) === 0,
+                showOtherStages: random(2) === 0,
+                visibilities,
+            }),
+            raisedChains(selected, ['timeScale', random(2) ? 'all' : group]),
+        )
+        assert.deepEqual(toDrawSteps(ordered), reference(ordered), `trial ${trial}`)
+    }
 })
 
 test('raised and selected objects start at raisedAt, time scale markers in their layer', () => {

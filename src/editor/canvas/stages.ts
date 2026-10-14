@@ -8,10 +8,30 @@ import type { EditorDrawContext } from './types'
 
 type StagePoint = StageProps & { left: number; right: number; size: number; time: number }
 
-const borderWidth = (style: Transition<number>, scale: number) => {
-    const width = (value: number) => (value === 2 ? 0 : value === 1 ? 1 : value === 3 ? 2 : 3)
-    return Math.max(0, lerp(width(style.start), width(style.end), style.progress)) / scale
-}
+const borderSize = (value: number) => (value === 2 ? 0 : value === 1 ? 1 : value === 3 ? 2 : 3)
+const borderWidth = (style: Transition<number>, scale: number) =>
+    Math.max(0, lerp(borderSize(style.start), borderSize(style.end), style.progress)) / scale
+
+const sameDivider = (a: StagePoint['division']['start'], b: StagePoint['division']['start']) =>
+    a.size === b.size && a.parity === b.parity
+
+// Only fields the stage canvas paints. Constant transition endpoints ignore
+// progress: an unchanged divider or border does not need a new slice at each sample.
+const sameDivision = (a: StagePoint['division'], b: StagePoint['division']) =>
+    sameDivider(a.start, b.start) &&
+    sameDivider(a.end, b.end) &&
+    (a.progress === b.progress || (sameDivider(a.start, a.end) && sameDivider(b.start, b.end)))
+
+const samePaint = (a: StagePoint, b: StagePoint) =>
+    a.left === b.left &&
+    a.right === b.right &&
+    a.pivotLane + a.xLaneTranslate === b.pivotLane + b.xLaneTranslate &&
+    a.laneAlpha === b.laneAlpha &&
+    a.fullWidth === b.fullWidth &&
+    a.divisionLineAlpha === b.divisionLineAlpha &&
+    sameDivision(a.division, b.division) &&
+    borderWidth(a.leftBorderStyle, 1) === borderWidth(b.leftBorderStyle, 1) &&
+    borderWidth(a.rightBorderStyle, 1) === borderWidth(b.rightBorderStyle, 1)
 
 const drawSlice = (
     context: EditorDrawContext,
@@ -24,6 +44,23 @@ const drawSlice = (
     const { ctx, ups, scale, bounds } = context
     const alpha = clamp((a.laneAlpha * (1 - a.fullWidth) + b.laneAlpha * (1 - b.fullWidth)) / 2)
     if (alpha <= 0) return
+    // A slice is straight between its sampled endpoints. For offscreen shapes,
+    // allow the actual border widths (eases can overshoot) and device-pixel
+    // antialiasing, including collapsed stages and fractional DPRs.
+    const left = Math.min(a.left, a.right, b.left, b.right)
+    const right = Math.max(a.left, a.right, b.left, b.right)
+    if (right < bounds.l || left > bounds.r) {
+        const padding =
+            Math.max(
+                borderWidth(a.leftBorderStyle, scale),
+                borderWidth(b.leftBorderStyle, scale),
+                borderWidth(a.rightBorderStyle, scale),
+                borderWidth(b.rightBorderStyle, scale),
+            ) /
+                2 +
+            2 / (context.pixelRatio * scale)
+        if (right < bounds.l - padding || left > bounds.r + padding) return
+    }
     // A collapsed stage keeps only its borders, as in the engine.
     if (a.size <= 0 && b.size <= 0) {
         drawBorders(context, a, b, opacity * alpha)
@@ -169,8 +206,18 @@ export const drawComposedStages = (
             )
             for (let index = 1; index < points.length; index++) {
                 const previous = points[index - 1]
-                const current = points[index]
+                let current = points[index]
                 if (!previous || !current) continue
+                // Preserve sampling and every jump, but paint a stationary run
+                // once instead of repeating a fill, clip and strokes every 8px.
+                if (samePaint(previous, current)) {
+                    while (index + 1 < points.length) {
+                        const next = points[index + 1]
+                        if (!next || !samePaint(current, next)) break
+                        current = next
+                        index++
+                    }
+                }
                 drawSlice(
                     context,
                     previous,

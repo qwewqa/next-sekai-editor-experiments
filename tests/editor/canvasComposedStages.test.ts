@@ -106,6 +106,7 @@ const fixture = (source = chart()) => {
         state,
         composed: createComposedLayout(state),
         scale: 40,
+        pixelRatio: 1,
         ups: -2,
         bounds: { l: -7, r: 7, t: -8, b: 0, w: 14, h: 8 },
     } as unknown as EditorDrawContext
@@ -139,6 +140,122 @@ test('composed stage masks respect lifetime, curves, borders and stage scope', (
     context.composed = undefined
     drawComposedStages(context, { min: 0, max: 8 }, fullScope)
     assert.equal(fills.length, 0)
+})
+
+test('stationary stage stretches paint once even when identical event endpoints advance progress', () => {
+    const source = chart()
+    source.stageMaskEvents = source.stageMaskEvents.map((event) => ({ ...event, maskLeft: -2 }))
+    source.stageStyleEvents = [1, 3].map((beat) => ({ ...source.stageStyleEvents[0]!, beat }))
+    source.stagePivotEvents = [1, 3].map((beat) => ({ ...source.stagePivotEvents[0]!, beat }))
+    const { context, fills, strokes } = fixture(source)
+    drawComposedStages(context, { min: 0, max: 4 }, fullScope, 4)
+    assert.equal(fills.length, 1)
+    assert.deepEqual(fills[0]!.points, [
+        [-2, -1],
+        [-2, -3],
+        [2, -3],
+        [2, -1],
+    ])
+    assert.equal(strokes.length, 3)
+    assert.ok(strokes.every(({ points }) => points[0]![1] === -1 && points[1]![1] === -3))
+})
+
+test('stationary masks retain slices when painted opacity, borders or divisions change', () => {
+    const changes = [
+        { laneAlpha: 0.2 },
+        { isFullWidth: true },
+        { divisionLineAlpha: 0.2 },
+        { leftBorderStyle: 'light' as const },
+        { rightBorderStyle: 'medium' as const },
+    ]
+    for (const change of changes) {
+        const source = chart()
+        source.stageMaskEvents = source.stageMaskEvents.map((event) => ({ ...event, maskLeft: -2 }))
+        source.stageStyleEvents = [1, 3].map((beat, index) => ({
+            ...source.stageStyleEvents[0]!,
+            beat,
+            ...(index ? change : {}),
+        }))
+        const { context, fills } = fixture(source)
+        drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+        assert.ok(fills.length >= 16, JSON.stringify(change))
+    }
+    const source = chart()
+    source.stageMaskEvents = source.stageMaskEvents.map((event) => ({ ...event, maskLeft: -2 }))
+    source.stagePivotEvents = [1, 3].map((beat, index) => ({
+        ...source.stagePivotEvents[0]!,
+        beat,
+        divisionSize: index ? 3 : 2,
+    }))
+    const { context, fills } = fixture(source)
+    drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+    assert.ok(fills.length >= 16)
+})
+
+test('horizontal culling retains crossing slices and borders just outside the pane at fractional DPR', () => {
+    for (const pixelRatio of [0.5, 1, 1.25, 2]) {
+        for (const left of [-20, 20]) {
+            const source = chart()
+            source.stageMaskEvents = source.stageMaskEvents.map((event) => ({
+                ...event,
+                maskLeft: left,
+                maskSize: 1,
+            }))
+            const { context, fills, strokes } = fixture(source)
+            context.pixelRatio = pixelRatio
+            drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+            assert.equal(fills.length, 0)
+            assert.equal(strokes.length, 0)
+        }
+        const source = chart()
+        source.stageStyleEvents[0]!.leftBorderStyle = 'default'
+        source.stageStyleEvents[0]!.rightBorderStyle = 'default'
+        for (const left of [-7 - 1 / 40, 7 + 1 / 40]) {
+            source.stageMaskEvents = source.stageMaskEvents.map((event) => ({
+                ...event,
+                maskLeft: left,
+                maskSize: 0,
+            }))
+            const { context, fills, strokes } = fixture(source)
+            context.pixelRatio = pixelRatio
+            drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+            assert.equal(fills.length, 0)
+            assert.equal(strokes.length, 2)
+        }
+    }
+    const source = chart()
+    source.stageMaskEvents = source.stageMaskEvents.map((event, index) => ({
+        ...event,
+        maskLeft: index ? 20 : -20,
+        maskSize: 2,
+    }))
+    const { context, fills } = fixture(source)
+    drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+    assert.ok(fills.length > 0)
+    assert.ok(fills.some(({ points }) => points[0]![0]! < 0 && points[1]![0]! >= 0))
+})
+
+test('horizontal culling includes border width overshoot outside the pane at high DPR', () => {
+    const source = chart()
+    source.stageMaskEvents = source.stageMaskEvents.map((event) => ({
+        ...event,
+        maskLeft: 7 + 2 / 40,
+        maskSize: 0,
+    }))
+    source.stageStyleEvents = [1, 3].map((beat, index) => ({
+        ...source.stageStyleEvents[0]!,
+        beat,
+        leftBorderStyle: index ? 'default' : 'disabled',
+        eventEase: 'outElastic',
+    }))
+    const { context, fills, strokes } = fixture(source)
+    context.pixelRatio = 8
+    drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+    assert.equal(fills.length, 0)
+    // The nominal border is 3px wide; its elastic overshoot exceeds 4px and
+    // reaches the pane from 2px outside it. A fixed 3px culling width loses it.
+    assert.ok(strokes.length > 0)
+    assert.ok(strokes.every(({ points }) => points.every(([x]) => x === 7 + 2 / 40)))
 })
 
 test('composed sampling follows real time across BPMs and never bridges an event jump', () => {

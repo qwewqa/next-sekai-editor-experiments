@@ -119,6 +119,100 @@ test('the composed preference leaves non-dynamic chart pixels unchanged', async 
     expect((await canvas.screenshot()).equals(basic)).toBe(true)
 })
 
+test('a stationary composed stage has no horizontal slice seams at fractional DPR', async ({
+    page,
+}) => {
+    const rows = await page.evaluate(async () => {
+        const { appImport, fixtures } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const { drawComposedStages } = await appImport<
+            typeof import('../../src/editor/canvas/stages')
+        >('/src/editor/canvas/stages.ts')
+        const { fullScope, createScopeLookup } = await appImport<
+            typeof import('../../src/editor/scopeRules')
+        >('/src/editor/scopeRules.ts')
+        const source = fixtures.events
+        const mask = source.stageMaskEvents[0]!
+        const state = createState(
+            {
+                ...source,
+                isDynamicStages: true,
+                bpms: [{ beat: 0, bpm: 120 }],
+                stages: new Map([
+                    [
+                        mask.stageId,
+                        {
+                            ...source.stages.get(mask.stageId)!,
+                            isFromStart: false,
+                            isUntilEnd: false,
+                        },
+                    ],
+                ]),
+                stageMaskEvents: [0.25, 15.37].map((beat) => ({
+                    ...mask,
+                    beat,
+                    maskLeft: -2,
+                    maskSize: 4,
+                })),
+                stagePivotEvents: [
+                    { ...source.stagePivotEvents[0]!, beat: 0.25, pivotLane: 0, divisionSize: 2 },
+                ],
+                stageStyleEvents: [{ ...source.stageStyleEvents[0]!, beat: 0.25, laneAlpha: 1 }],
+                stageTransformEvents: [],
+            },
+            0,
+        )
+        const composed = createComposedLayout(state)
+        const rows: { ratio: number; dimmed: boolean; alphas: number[] }[] = []
+        for (const ratio of [0.5, 1, 1.25, 2]) {
+            for (const dimmed of [false, true]) {
+                const canvas = document.createElement('canvas')
+                canvas.width = 560 * ratio
+                canvas.height = 960 * ratio
+                const ctx = canvas.getContext('2d')!
+                ctx.setTransform(40 * ratio, 0, 0, 40 * ratio, 280 * ratio, 960 * ratio)
+                const context = {
+                    ctx,
+                    state,
+                    composed,
+                    scale: 40,
+                    ups: -3,
+                    pixelRatio: ratio,
+                    bounds: { l: -7, r: 7, t: -24, b: 0, w: 14, h: 24 },
+                } as import('../../src/editor/canvas/types').EditorDrawContext
+                drawComposedStages(
+                    context,
+                    { min: 0, max: 16 },
+                    dimmed
+                        ? createScopeLookup({
+                              stageId: (mask.stageId + 1) as typeof mask.stageId,
+                              showOtherStages: true,
+                          })
+                        : fullScope,
+                    4,
+                )
+                // Halfway between dividers, clear of the stage's lifetime endpoints.
+                const pixels = ctx.getImageData(
+                    Math.floor(285 * ratio),
+                    Math.ceil(50 * ratio),
+                    1,
+                    Math.floor(880 * ratio),
+                ).data
+                const alphas = new Set<number>()
+                for (let offset = 3; offset < pixels.length; offset += 4)
+                    alphas.add(pixels[offset]!)
+                rows.push({ ratio, dimmed, alphas: [...alphas] })
+            }
+        }
+        return rows
+    })
+    for (const { ratio, dimmed, alphas } of rows)
+        expect(alphas, `DPR ${ratio}, dimmed ${dimmed}`).toEqual([dimmed ? 10 : 41])
+})
+
 test('odd division parity aligns one-lane guides with odd and even note edges', async ({
     page,
 }, testInfo) => {
