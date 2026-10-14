@@ -1,11 +1,104 @@
 import { expect, test } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { resource } from './previewResourceFixture'
 
 test.beforeEach(async ({ page }) => {
+    await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
+    await page.route('**/resource/particle.scp*', (route) =>
+        route.fulfill({ body: resource('particles') }),
+    )
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
+})
+
+test('opening elevation during a previewed move preserves committed ghosts and undo', async ({
+    page,
+}) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    const result = await page.evaluate(async () => {
+        const { history, fixtures, show, settings, view, appImport, nextTick } = window.editorTest
+        const [charts, edits, transactions, notes, elevation, scene] = await Promise.all([
+            appImport<typeof import('../../src/preview/engine/chart')>(
+                '/src/preview/engine/chart.ts',
+            ),
+            appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts'),
+            appImport<typeof import('../../src/state/transaction')>('/src/state/transaction.ts'),
+            appImport<typeof import('../../src/state/operations/note')>(
+                '/src/state/operations/note.ts',
+            ),
+            appImport<typeof import('../../src/editor/elevation/state')>(
+                '/src/editor/elevation/state.ts',
+            ),
+            appImport<typeof import('../../src/editor/elevation/scene')>(
+                '/src/editor/elevation/scene.ts',
+            ),
+        ])
+        const base = fixtures.interaction.slides[0]![0]!
+        show({ ...fixtures.interaction, slides: [[{ ...base, beat: 3, elevation: 1 }]] }, 1.5)
+        view.layout = 'basic'
+        view.cursorTime = 1.5
+        settings.showPreview = true
+        settings.elevationEditorSideBySide = 'allow'
+        const settle = async () => {
+            await nextTick()
+            await new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            )
+        }
+        await settle()
+        const source = history.state.value
+        const entity = source.store.slides.note.values().next().value![0]!
+        const before = charts.getPreviewChart(source, settings.previewNoteSpeed)
+        const transaction = transactions.createTransaction(source)
+        const draft = transaction.commit(
+            notes.editSelectedNote(transaction, entity, { elevation: 2 }),
+        )
+        edits.setPreviewEdit(source, () => draft, undefined, { isDrag: true })
+        const preview = charts.getPreviewChart(draft, settings.previewNoteSpeed)
+        elevation.openElevationEditor(3)
+        await settle()
+        const during = {
+            sourceUnchanged: history.state.value === source,
+            shown: scene.elevationNotes.value.map((note) => note.elevation),
+            committed: scene.committedElevationLayout.value.rows.map((row) => row.elevation),
+            ghosts: scene.elevationDragRows.value?.ghosts.map((row) => row.elevation),
+            shared: charts.getPreviewChart(draft, settings.previewNoteSpeed) === preview,
+            original: before.notes[0]!.elevation,
+        }
+        edits.clearPreviewEdit()
+        history.pushState(() => 'Move note', draft)
+        await settle()
+        const committed = scene.elevationNotes.value.map((note) => note.elevation)
+        history.undoState()
+        await settle()
+        return {
+            during,
+            committed,
+            restored: scene.elevationNotes.value.map((note) => note.elevation),
+            original: before.notes[0]!.elevation,
+            originalSourceRestored: history.state.value === source,
+        }
+    })
+    expect(result).toEqual({
+        during: {
+            sourceUnchanged: true,
+            shown: [2],
+            committed: [1],
+            ghosts: [2],
+            shared: true,
+            original: 1,
+        },
+        committed: [2],
+        restored: [1],
+        original: 1,
+        originalSourceRestored: true,
+    })
+    await expect(page.locator('.preview canvas').first()).toBeVisible()
+    await expect(page.locator('canvas.elevation-canvas')).toBeVisible()
+    expect(errors).toEqual([])
 })
 
 for (const name of ['select', 'note', 'slide'] as const) {

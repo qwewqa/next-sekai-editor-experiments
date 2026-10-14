@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import type { StageId } from '../../chart/stages'
 import { state } from '../../history'
 import { getPreviewState, previewEdit } from '../../preview/edit'
-import { attachEasedFrac, createPreviewChartBuilder } from '../../preview/engine/chart'
+import { attachEasedFrac, buildPreviewChart, getPreviewChart } from '../../preview/engine/chart'
 import type { PreviewChart, PreviewNote } from '../../preview/engine/model'
 import { getStageProps } from '../../preview/engine/stage'
 import { settings } from '../../settings'
@@ -23,7 +23,6 @@ import { layoutElevationNotes, type ElevationNote, type ElevationRow } from './l
 import { elevationBeat } from './state'
 import { elevationBounds, elevationViewport } from './viewport'
 
-const buildChart = createPreviewChartBuilder()
 export const elevationState = computed(() => getPreviewState(state.value, previewEdit.value))
 type CompiledChart = {
     chart: PreviewChart
@@ -42,8 +41,13 @@ const indexChart = (chart: PreviewChart): CompiledChart => {
     return { chart, bySource }
 }
 const compiledChart = computed((previous?: CompiledChart) => {
-    const chart = buildChart(elevationState.value, settings.previewNoteSpeed)
-    return previous?.chart === chart ? previous : indexChart(chart)
+    const chart = getPreviewChart(elevationState.value, settings.previewNoteSpeed)
+    if (previous?.chart === chart) return previous
+    // Stage/camera edits can keep the compiled notes and their ordering intact.
+    // Their new chart still supplies updated stage properties at this beat.
+    return previous?.chart.notes === chart.notes
+        ? { chart, bySource: previous.bySource }
+        : indexChart(chart)
 })
 const gridNotes = computed(() => elevationState.value.store.grid.note)
 // Selection-only states keep the layout, so rows aren't rebuilt for them.
@@ -96,11 +100,19 @@ const notesOf = (
     bpms: State['bpms'],
     composed: ReturnType<typeof getComposedLayout>,
 ) => {
-    const props = chart.stages.map((stage) =>
-        getStageProps(stage, beatToTime(bpms, elevationBeat.value)),
-    )
-    const elevationOf = (note: PreviewNote) =>
-        (note.elevation ?? 0) + (props[note.stageIndex]?.elevation ?? 0)
+    const time = beatToTime(bpms, elevationBeat.value)
+    // Most stages have no notes at this beat. Attachments also request their
+    // endpoints' stages, even when those endpoints are off-beat or filtered.
+    const stageElevations = new Map<number, number>()
+    const elevationOf = (note: PreviewNote) => {
+        let stageElevation = stageElevations.get(note.stageIndex)
+        if (stageElevation === undefined) {
+            const stage = chart.stages[note.stageIndex]
+            stageElevation = stage ? getStageProps(stage, time).elevation : 0
+            stageElevations.set(note.stageIndex, stageElevation)
+        }
+        return (note.elevation ?? 0) + stageElevation
+    }
     const notes: ElevationNote[] = []
     const scope = scopeLookup.value
     const candidates = getNotesAtBeat(grid, elevationBeat.value).sort(
@@ -173,7 +185,7 @@ const committedNotes = computed(() => {
     const compiled =
         last && hasSameChartData(last.state, committed) && last.noteSpeed === noteSpeed
             ? last.compiled
-            : indexChart(createPreviewChartBuilder()(committed, noteSpeed))
+            : indexChart(buildPreviewChart(committed, noteSpeed))
     return notesOf(
         compiled,
         committed.store.grid.note,

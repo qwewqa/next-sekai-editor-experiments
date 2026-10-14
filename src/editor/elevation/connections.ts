@@ -65,7 +65,9 @@ export const getElevationConnections = (
     bpms?: BpmIntegral[],
     infos?: StoreSlides['info'],
 ): ElevationConnection[] => {
-    if (!enabled) return []
+    // A ribbon needs both distinct endpoints at this beat. In particular, do
+    // not walk a long slide's connectors just to display one of its notes.
+    if (!enabled || rows.length < 2) return []
     const byNote = new Map(rows.map((row) => [row.note, row]))
     const result: ElevationConnection[] = []
     for (const slide of connectors) {

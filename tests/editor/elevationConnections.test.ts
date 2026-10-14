@@ -65,6 +65,24 @@ test('same-beat elevation connections preserve head-to-tail order independently 
     assert.equal(result[0]?.connector, connection)
 })
 
+test('a lone note skips its slide connector traversal until both endpoints are shown', () => {
+    const head = note(),
+        tail = note()
+    const connector = connect(head, tail)
+    let scans = 0
+    const slides = {
+        *[Symbol.iterator]() {
+            scans++
+            yield [connector]
+        },
+    }
+    assert.deepEqual(getElevationConnections([], slides), [])
+    assert.deepEqual(getElevationConnections([row(head)], slides), [])
+    assert.equal(scans, 0)
+    assert.equal(getElevationConnections([row(head), row(tail)], slides)[0]?.connector, connector)
+    assert.equal(scans, 1)
+})
+
 test('attached notes do not invent connector boundaries and separator slices remain distinct', () => {
     const head = note(),
         attached = note({ isAttached: true }),

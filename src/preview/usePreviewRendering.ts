@@ -10,7 +10,7 @@ import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
 import { getPreviewState, previewEdit } from './edit'
-import { createPreviewChartBuilder } from './engine/chart'
+import { getPreviewChart } from './engine/chart'
 import type { PreviewChart } from './engine/model'
 import { renderPreviewFrame } from './engine/render'
 import { createPreviewRenderer, type PreviewRenderer } from './gl'
@@ -46,7 +46,6 @@ export const usePreviewRendering = (
         }
         return next
     })
-    const buildChart = createPreviewChartBuilder()
     // Capture changes cheaply, then resolve only the latest request when a visible
     // frame actually draws. Numeric input and pointer events may arrive repeatedly
     // before RAF; discarded requests never build a transaction or compile a chart.
@@ -55,7 +54,7 @@ export const usePreviewRendering = (
         const edit = previewEdit.value
         const speed = settings.previewNoteSpeed
         let chart: PreviewChart | undefined
-        return () => (chart ??= buildChart(getPreviewState(current, edit), speed))
+        return () => (chart ??= getPreviewChart(getPreviewState(current, edit), speed))
     })
 
     const renderer = shallowRef<PreviewRenderer>()

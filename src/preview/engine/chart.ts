@@ -4,6 +4,7 @@ import type { FlickDirection as ChartFlickDirection, ConnectorLayer } from '../.
 import { guideColor } from '../../chart/noteStyle'
 import type { StageId } from '../../chart/stages'
 import { easeValues, type Ease } from '../../ease'
+import { onResetState } from '../../history/resetHooks'
 import type { State } from '../../state'
 import type { EntityOfType, EntityType } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -129,6 +130,10 @@ export const createPreviewChartBuilder = () => {
     }>()
     const cachedCameras = createDependencyCache<CameraChange[]>()
     const cachedSlides = createDependencyCache<WeakMap<SlideInfo, CompiledSlide>>()
+    const cachedNoteData =
+        createDependencyCache<
+            Pick<PreviewChart, 'notes' | 'connectors' | 'slides' | 'chains' | 'simLines'>
+        >()
     const cachedChart = createDependencyCache<PreviewChart>()
     const build = (state: State, noteSpeed: number): PreviewChart => {
         const bpms = state.bpms
@@ -300,246 +305,272 @@ export const createPreviewChartBuilder = () => {
                     : [],
         )
 
-        const notes: PreviewNote[] = []
-        const connectors: PreviewConnector[] = []
-        const slides: PreviewSlide[] = []
-        const chains: PreviewNoteChain[] = []
-        const simLines: PreviewSimLine[] = []
-
-        const partitionedAllowSimLines = new Map<StageId | undefined, Map<number, PreviewNote[]>>()
-        const getAllowSimLines = (stageId: StageId) => {
-            const stage = state.stages.get(stageId)
-            const id =
-                isDynamicStages && stage?.generateSimLines === 'isolated' ? stageId : undefined
-            let allowSimLines = partitionedAllowSimLines.get(id)
-            if (!allowSimLines) {
-                allowSimLines = new Map()
-                partitionedAllowSimLines.set(id, allowSimLines)
-            }
-            return allowSimLines
-        }
-
         const slideCache = cachedSlides(
             [state.bpms, groupIndexes, groups, stageIndexes],
             () => new WeakMap<SlideInfo, CompiledSlide>(),
         )
-        for (const infos of state.store.slides.info.values()) {
-            let compiled = slideCache.get(infos)
-            if (!compiled) {
+        // Camera, stage-event and note-speed edits leave the note graph alone.
+        // Retain its aggregate arrays as well as the per-slide graphs, so those
+        // edits do not sort the whole chart or rebuild its visibility indexes.
+        const { notes, connectors, slides, chains, simLines } = cachedNoteData(
+            [state.store.slides.info, slideCache, state.stages, isDynamicStages],
+            () => {
                 const notes: PreviewNote[] = []
                 const connectors: PreviewConnector[] = []
                 const slides: PreviewSlide[] = []
-                const simCandidates: SimCandidate[] = []
-                const previewNotes = new Map<NoteEntity, PreviewNote>()
-                const getPreviewNote = (note: NoteEntity) => {
-                    const previewNote = previewNotes.get(note)
-                    if (!previewNote) throw new Error('Unexpected missing preview note')
+                const chains: PreviewNoteChain[] = []
+                const simLines: PreviewSimLine[] = []
 
-                    return previewNote
-                }
-
-                const slideConnectors = new Map<PreviewNote, PreviewConnector[]>()
-
-                for (const [i, info] of infos.entries()) {
-                    const note = info.note
-
-                    const isFirst = i === 0
-                    const isLast = i === infos.length - 1
-                    const role = getNoteRole(info)
-                    const isFlick = note.flickDirection !== 'none'
-
-                    const groupIndex = groupIndexes.get(note.groupId) ?? 0
-                    const previewNote: PreviewNote = {
-                        source: note,
-                        beat: note.beat,
-                        kind: noteKinds[role][isFlick ? 1 : 0],
-                        elevation: note.elevation,
-                        style: note.noteStyle,
-                        isCritical: note.isCritical,
-                        isFake: note.isFake,
-                        targetTime: toTime(note.beat),
-                        lane: note.left + note.size / 2,
-                        size: note.size / 2,
-                        direction: flickDirections[note.flickDirection],
-                        groupIndex,
-                        stageIndex: stageIndexes.get(note.stageId) ?? -1,
-                        isAttached: !isFirst && !isLast && note.isAttached,
-                        connectorEase: easeType(note.connectorEase),
-                        targetScaledTime: 0,
+                const partitionedAllowSimLines = new Map<
+                    StageId | undefined,
+                    Map<number, PreviewNote[]>
+                >()
+                const getAllowSimLines = (stageId: StageId) => {
+                    const stage = state.stages.get(stageId)
+                    const id =
+                        isDynamicStages && stage?.generateSimLines === 'isolated'
+                            ? stageId
+                            : undefined
+                    let allowSimLines = partitionedAllowSimLines.get(id)
+                    if (!allowSimLines) {
+                        allowSimLines = new Map()
+                        partitionedAllowSimLines.set(id, allowSimLines)
                     }
-                    previewNotes.set(note, previewNote)
-                    notes.push(previewNote)
-
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    const group = groups[groupIndex]!
-                    previewNote.targetScaledTime = scaledTimeAt(group, previewNote.targetTime)
-
-                    if (allowsSimLine(role)) {
-                        simCandidates.push({
-                            stageId: note.stageId,
-                            tick: Math.round(note.beat * beatToTicks),
-                            note: previewNote,
-                        })
-                    }
+                    return allowSimLines
                 }
 
-                for (const info of infos) {
-                    const previewNote = getPreviewNote(info.note)
-                    if (!previewNote.isAttached) continue
+                for (const infos of state.store.slides.info.values()) {
+                    let compiled = slideCache.get(infos)
+                    if (!compiled) {
+                        const notes: PreviewNote[] = []
+                        const connectors: PreviewConnector[] = []
+                        const slides: PreviewSlide[] = []
+                        const simCandidates: SimCandidate[] = []
+                        const previewNotes = new Map<NoteEntity, PreviewNote>()
+                        const getPreviewNote = (note: NoteEntity) => {
+                            const previewNote = previewNotes.get(note)
+                            if (!previewNote) throw new Error('Unexpected missing preview note')
 
-                    previewNote.attachHead = getPreviewNote(info.attachHead)
-                    previewNote.attachTail = getPreviewNote(info.attachTail)
-                    previewNote.size = Math.max(
-                        0,
-                        lerp(
-                            previewNote.attachHead.size,
-                            previewNote.attachTail.size,
-                            attachEasedFrac(previewNote),
-                        ),
-                    )
-                }
+                            return previewNote
+                        }
 
-                const first = infos[0]
-                const sourceConnectors = new Map(
-                    (first ? (state.store.slides.connector.get(first.note.slideId) ?? []) : []).map(
-                        (connector) => [connector.head, connector],
-                    ),
-                )
-                let head: NoteEntity | undefined
-                for (const [i, info] of infos.entries()) {
-                    const note = info.note
-                    const isFirst = i === 0
-                    const isLast = i === infos.length - 1
+                        const slideConnectors = new Map<PreviewNote, PreviewConnector[]>()
 
-                    if (isFirst || isLast || !note.isAttached || note.isConnectorSeparator) {
-                        if (head) {
-                            const segmentHead = info.segmentHead
+                        for (const [i, info] of infos.entries()) {
+                            const note = info.note
 
-                            let kind: ConnectorKindValue
-                            if (segmentHead.connectorType === 'active') {
-                                kind = segmentHead.connectorIsFake
-                                    ? segmentHead.connectorActiveIsCritical
-                                        ? ConnectorKind.activeFakeCritical
-                                        : ConnectorKind.activeFakeNormal
-                                    : segmentHead.connectorActiveIsCritical
-                                      ? ConnectorKind.activeCritical
-                                      : ConnectorKind.activeNormal
-                            } else if (segmentHead.connectorType === 'damage') {
-                                kind = segmentHead.connectorIsFake
-                                    ? ConnectorKind.fakeDamage
-                                    : ConnectorKind.damage
-                            } else {
-                                kind = guideKinds[guideColor(segmentHead.connectorStyle)]
+                            const isFirst = i === 0
+                            const isLast = i === infos.length - 1
+                            const role = getNoteRole(info)
+                            const isFlick = note.flickDirection !== 'none'
+
+                            const groupIndex = groupIndexes.get(note.groupId) ?? 0
+                            const previewNote: PreviewNote = {
+                                source: note,
+                                beat: note.beat,
+                                kind: noteKinds[role][isFlick ? 1 : 0],
+                                elevation: note.elevation,
+                                style: note.noteStyle,
+                                isCritical: note.isCritical,
+                                isFake: note.isFake,
+                                targetTime: toTime(note.beat),
+                                lane: note.left + note.size / 2,
+                                size: note.size / 2,
+                                direction: flickDirections[note.flickDirection],
+                                groupIndex,
+                                stageIndex: stageIndexes.get(note.stageId) ?? -1,
+                                isAttached: !isFirst && !isLast && note.isAttached,
+                                connectorEase: easeType(note.connectorEase),
+                                targetScaledTime: 0,
                             }
+                            previewNotes.set(note, previewNote)
+                            notes.push(previewNote)
 
-                            const activeHead =
-                                segmentHead.connectorType === 'damage'
-                                    ? info.damageHead
-                                    : info.activeHead
-                            const activeTail =
-                                segmentHead.connectorType === 'damage'
-                                    ? info.damageTail
-                                    : info.activeTail
+                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                            const group = groups[groupIndex]!
+                            previewNote.targetScaledTime = scaledTimeAt(
+                                group,
+                                previewNote.targetTime,
+                            )
 
-                            const headNote = getPreviewNote(head)
-                            const connector: PreviewConnector = {
-                                source: sourceConnectors.get(head),
-                                style: segmentHead.connectorStyle,
-                                kind,
-                                ease: headNote.isAttached
-                                    ? (headNote.attachHead?.connectorEase ?? headNote.connectorEase)
-                                    : headNote.connectorEase,
-                                head: headNote,
-                                tail: getPreviewNote(note),
-                                segmentHead: getPreviewNote(info.segmentHead),
-                                segmentTail: getPreviewNote(info.segmentTail),
-                                activeHead: activeHead && getPreviewNote(activeHead),
-                                activeTail: activeTail && getPreviewNote(activeTail),
-                                segmentHeadAlpha: info.segmentHead.connectorGuideAlpha,
-                                segmentTailAlpha: info.segmentTail.connectorGuideAlpha,
-                                layer: connectorLayers[segmentHead.connectorLayer],
-                                throughJudgeLine: segmentHead.connectorIsPassThrough,
-                                fullScreen: segmentHead.connectorPresentation === 'fullscreen',
-                            }
-                            connectors.push(connector)
-
-                            if (
-                                connector.activeHead &&
-                                (isActiveConnectorKind(kind) ||
-                                    kind === ConnectorKind.damage ||
-                                    kind === ConnectorKind.fakeDamage)
-                            ) {
-                                const list = slideConnectors.get(connector.activeHead)
-                                if (list) {
-                                    list.push(connector)
-                                } else {
-                                    slideConnectors.set(connector.activeHead, [connector])
-                                }
+                            if (allowsSimLine(role)) {
+                                simCandidates.push({
+                                    stageId: note.stageId,
+                                    tick: Math.round(note.beat * beatToTicks),
+                                    note: previewNote,
+                                })
                             }
                         }
 
-                        head = note
+                        for (const info of infos) {
+                            const previewNote = getPreviewNote(info.note)
+                            if (!previewNote.isAttached) continue
+
+                            previewNote.attachHead = getPreviewNote(info.attachHead)
+                            previewNote.attachTail = getPreviewNote(info.attachTail)
+                            previewNote.size = Math.max(
+                                0,
+                                lerp(
+                                    previewNote.attachHead.size,
+                                    previewNote.attachTail.size,
+                                    attachEasedFrac(previewNote),
+                                ),
+                            )
+                        }
+
+                        const first = infos[0]
+                        const sourceConnectors = new Map(
+                            (first
+                                ? (state.store.slides.connector.get(first.note.slideId) ?? [])
+                                : []
+                            ).map((connector) => [connector.head, connector]),
+                        )
+                        let head: NoteEntity | undefined
+                        for (const [i, info] of infos.entries()) {
+                            const note = info.note
+                            const isFirst = i === 0
+                            const isLast = i === infos.length - 1
+
+                            if (
+                                isFirst ||
+                                isLast ||
+                                !note.isAttached ||
+                                note.isConnectorSeparator
+                            ) {
+                                if (head) {
+                                    const segmentHead = info.segmentHead
+
+                                    let kind: ConnectorKindValue
+                                    if (segmentHead.connectorType === 'active') {
+                                        kind = segmentHead.connectorIsFake
+                                            ? segmentHead.connectorActiveIsCritical
+                                                ? ConnectorKind.activeFakeCritical
+                                                : ConnectorKind.activeFakeNormal
+                                            : segmentHead.connectorActiveIsCritical
+                                              ? ConnectorKind.activeCritical
+                                              : ConnectorKind.activeNormal
+                                    } else if (segmentHead.connectorType === 'damage') {
+                                        kind = segmentHead.connectorIsFake
+                                            ? ConnectorKind.fakeDamage
+                                            : ConnectorKind.damage
+                                    } else {
+                                        kind = guideKinds[guideColor(segmentHead.connectorStyle)]
+                                    }
+
+                                    const activeHead =
+                                        segmentHead.connectorType === 'damage'
+                                            ? info.damageHead
+                                            : info.activeHead
+                                    const activeTail =
+                                        segmentHead.connectorType === 'damage'
+                                            ? info.damageTail
+                                            : info.activeTail
+
+                                    const headNote = getPreviewNote(head)
+                                    const connector: PreviewConnector = {
+                                        source: sourceConnectors.get(head),
+                                        style: segmentHead.connectorStyle,
+                                        kind,
+                                        ease: headNote.isAttached
+                                            ? (headNote.attachHead?.connectorEase ??
+                                              headNote.connectorEase)
+                                            : headNote.connectorEase,
+                                        head: headNote,
+                                        tail: getPreviewNote(note),
+                                        segmentHead: getPreviewNote(info.segmentHead),
+                                        segmentTail: getPreviewNote(info.segmentTail),
+                                        activeHead: activeHead && getPreviewNote(activeHead),
+                                        activeTail: activeTail && getPreviewNote(activeTail),
+                                        segmentHeadAlpha: info.segmentHead.connectorGuideAlpha,
+                                        segmentTailAlpha: info.segmentTail.connectorGuideAlpha,
+                                        layer: connectorLayers[segmentHead.connectorLayer],
+                                        throughJudgeLine: segmentHead.connectorIsPassThrough,
+                                        fullScreen:
+                                            segmentHead.connectorPresentation === 'fullscreen',
+                                    }
+                                    connectors.push(connector)
+
+                                    if (
+                                        connector.activeHead &&
+                                        (isActiveConnectorKind(kind) ||
+                                            kind === ConnectorKind.damage ||
+                                            kind === ConnectorKind.fakeDamage)
+                                    ) {
+                                        const list = slideConnectors.get(connector.activeHead)
+                                        if (list) {
+                                            list.push(connector)
+                                        } else {
+                                            slideConnectors.set(connector.activeHead, [connector])
+                                        }
+                                    }
+                                }
+
+                                head = note
+                            }
+                        }
+
+                        for (const [activeHead, activeConnectors] of slideConnectors) {
+                            activeConnectors.sort((a, b) => a.head.targetTime - b.head.targetTime)
+
+                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                            const activeTail = activeConnectors[0]!.activeTail
+                            if (!activeTail) continue
+
+                            slides.push({
+                                activeHead,
+                                activeTail,
+                                notes,
+                                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                                kind: activeConnectors[0]!.kind,
+                                connectors: activeConnectors,
+                            })
+                        }
+
+                        compiled = {
+                            notes,
+                            connectors,
+                            slides,
+                            simCandidates,
+                            chain: { infos, notes, bpms },
+                        }
+                        slideCache.set(infos, compiled)
+                    }
+                    // Avoid spread arguments: a single long slide may exceed the argument
+                    // limit, and unchanged slides share their already compiled objects.
+                    for (const note of compiled.notes) notes.push(note)
+                    for (const connector of compiled.connectors) connectors.push(connector)
+                    for (const slide of compiled.slides) slides.push(slide)
+                    chains.push(compiled.chain)
+                    for (const { stageId, tick, note } of compiled.simCandidates) {
+                        const allowSimLines = getAllowSimLines(stageId)
+                        const tickNotes = allowSimLines.get(tick)
+                        if (tickNotes) tickNotes.push(note)
+                        else allowSimLines.set(tick, [note])
                     }
                 }
 
-                for (const [activeHead, activeConnectors] of slideConnectors) {
-                    activeConnectors.sort((a, b) => a.head.targetTime - b.head.targetTime)
+                for (const allowSimLines of partitionedAllowSimLines.values()) {
+                    for (const tickNotes of allowSimLines.values()) {
+                        if (tickNotes.length < 2) continue
 
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    const activeTail = activeConnectors[0]!.activeTail
-                    if (!activeTail) continue
+                        tickNotes.sort((a, b) => a.lane - b.lane)
 
-                    slides.push({
-                        activeHead,
-                        activeTail,
-                        notes,
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                        kind: activeConnectors[0]!.kind,
-                        connectors: activeConnectors,
-                    })
-                }
-
-                compiled = {
-                    notes,
-                    connectors,
-                    slides,
-                    simCandidates,
-                    chain: { infos, notes, bpms },
-                }
-                slideCache.set(infos, compiled)
-            }
-            // Avoid spread arguments: a single long slide may exceed the argument
-            // limit, and unchanged slides share their already compiled objects.
-            for (const note of compiled.notes) notes.push(note)
-            for (const connector of compiled.connectors) connectors.push(connector)
-            for (const slide of compiled.slides) slides.push(slide)
-            chains.push(compiled.chain)
-            for (const { stageId, tick, note } of compiled.simCandidates) {
-                const allowSimLines = getAllowSimLines(stageId)
-                const tickNotes = allowSimLines.get(tick)
-                if (tickNotes) tickNotes.push(note)
-                else allowSimLines.set(tick, [note])
-            }
-        }
-
-        for (const allowSimLines of partitionedAllowSimLines.values()) {
-            for (const tickNotes of allowSimLines.values()) {
-                if (tickNotes.length < 2) continue
-
-                tickNotes.sort((a, b) => a.lane - b.lane)
-
-                let prev: PreviewNote | undefined
-                for (const note of tickNotes) {
-                    if (prev) {
-                        simLines.push({ left: prev, right: note })
+                        let prev: PreviewNote | undefined
+                        for (const note of tickNotes) {
+                            if (prev) {
+                                simLines.push({ left: prev, right: note })
+                            }
+                            prev = note
+                        }
                     }
-                    prev = note
                 }
-            }
-        }
 
-        notes.sort((a, b) => a.targetTime - b.targetTime)
-        connectors.sort((a, b) => a.head.targetTime - b.head.targetTime)
+                notes.sort((a, b) => a.targetTime - b.targetTime)
+                connectors.sort((a, b) => a.head.targetTime - b.head.targetTime)
+
+                return { notes, connectors, slides, chains, simLines }
+            },
+        )
 
         return {
             isDynamicStages,
@@ -563,6 +594,19 @@ export const createPreviewChartBuilder = () => {
 
 export const buildPreviewChart = (state: State, noteSpeed: number) =>
     createPreviewChartBuilder()(state, noteSpeed)
+
+// The preview and elevation editor request the same immutable draft and speed.
+// Share their current graph without retaining a chart for every history state.
+// Independent committed drag backgrounds still use buildPreviewChart above.
+let buildSharedPreviewChart = createPreviewChartBuilder()
+export const getPreviewChart = (state: State, noteSpeed: number) =>
+    buildSharedPreviewChart(state, noteSpeed)
+
+// Hidden panels are unmounted and may not request the new document's graph.
+// Release the previous document even when neither consumer is currently open.
+onResetState(() => {
+    buildSharedPreviewChart = createPreviewChartBuilder()
+})
 
 export const attachFrac = previewAttachmentFrac
 

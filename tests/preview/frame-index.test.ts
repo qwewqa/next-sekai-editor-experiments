@@ -342,6 +342,51 @@ test('visibility candidates include attachment endpoints, long connectors and th
     assert.equal(queryTimeIndex(index.effects, 51, 51).length, 0)
 })
 
+test('shared note arrays only reuse indexes when every indexed input is unchanged', () => {
+    const first = note(1)
+    const second = note(3)
+    const source = chart({ notes: [first, second] })
+    const original = getFrameIndex(source)
+    assert.equal(getFrameIndex({ ...source, cameras: [], stages: [] }), original)
+
+    const held = slide([5])
+    const changedSlides = getFrameIndex({ ...source, slides: [held] })
+    assert.notEqual(changedSlides, original)
+    assert.equal(queryTimeIndex(changedSlides.slides, 2, 2)[0]?.item, held)
+    assert.equal(queryTimeIndex(original.slides, 2, 2).length, 0)
+
+    const changedConnectors = getFrameIndex({ ...source, connectors: held.connectors })
+    assert.equal(queryGroupTimeIndex(changedConnectors.connectors, 2, [3]).length, 1)
+    assert.equal(queryGroupTimeIndex(original.connectors, 2, [3]).length, 0)
+
+    const line = { left: first, right: second }
+    const changedLines = getFrameIndex({ ...source, simLines: [line] })
+    assert.equal(queryGroupTimeIndex(changedLines.simLines, 0, [2])[0]?.item, line)
+    assert.equal(queryGroupTimeIndex(original.simLines, 0, [2]).length, 0)
+
+    const changedGroups = getFrameIndex({
+        ...source,
+        groups: [
+            createTimescaleGroup(
+                [
+                    {
+                        time: 0,
+                        timescale: 0.25,
+                        skipSeconds: 0,
+                        ease: 1,
+                        transitionStyle: 0,
+                        hideNotes: false,
+                    },
+                ],
+                0,
+            ),
+        ],
+    })
+    assert.deepEqual(changedGroups.minimumTimescales, [0.25])
+    assert.deepEqual(original.minimumTimescales, [1])
+    assert.equal(getFrameIndex(source), original)
+})
+
 test('lookahead includes slow speeds and stage offsets and falls back for nonmonotonic distances', () => {
     const change: TimescaleChange = {
         time: 0,
@@ -473,6 +518,12 @@ test('group queries include every attachment and connector endpoint without dupl
         queryGroupTimeIndex(index.notes, 0, [1, 1, Infinity]).length,
         0,
         'Attached progress depends on its endpoints, not its own group',
+    )
+    const repeated = getFrameIndex(chart({ notes: [attached, attached] }))
+    assert.deepEqual(
+        queryGroupTimeIndex(repeated.notes, 0, [100, 100, 1]).map(({ index }) => index),
+        [0, 1],
+        'Distinct source entries survive even when they reference the same note',
     )
 })
 

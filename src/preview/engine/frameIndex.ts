@@ -32,13 +32,16 @@ const createGroupTimeIndex = <T>(
     const partitions = new Map<number, IndexedItem<T>[]>()
     items.forEach((item, index) => {
         const entry = { item, index }
-        for (const group of new Set(groups(item))) {
+        for (const group of groups(item)) {
             let partition = partitions.get(group)
             if (!partition) {
                 partition = []
                 partitions.set(group, partition)
             }
-            partition.push(entry)
+            // All of this item's endpoint groups are processed together. A
+            // repeated group already has this entry last, so no per-item Set
+            // is needed when rebuilding the indexes after an edit.
+            if (partition[partition.length - 1] !== entry) partition.push(entry)
         }
     })
     return new Map(
@@ -127,14 +130,44 @@ const createFrameIndex = (chart: PreviewChart) => {
     }
 }
 
+type CachedFrameIndex = {
+    groups: PreviewChart['groups']
+    connectors: PreviewChart['connectors']
+    simLines: PreviewChart['simLines']
+    slides: PreviewChart['slides']
+    index: ReturnType<typeof createFrameIndex>
+}
+
+// Stage and camera edits retain the note arrays. Their transforms affect the
+// per-frame query bounds, not these chart-time intervals. Weak keys allow old
+// note graphs and drag snapshots to be collected rather than retaining history.
+const sharedIndexes = new WeakMap<PreviewChart['notes'], CachedFrameIndex>()
 const indexes = new WeakMap<PreviewChart, ReturnType<typeof createFrameIndex>>()
 
 export const getFrameIndex = (chart: PreviewChart) => {
-    let index = indexes.get(chart)
-    if (!index) {
-        index = createFrameIndex(chart)
-        indexes.set(chart, index)
+    const retained = indexes.get(chart)
+    if (retained) return retained
+
+    const cached = sharedIndexes.get(chart.notes)
+    if (
+        cached?.groups === chart.groups &&
+        cached.connectors === chart.connectors &&
+        cached.simLines === chart.simLines &&
+        cached.slides === chart.slides
+    ) {
+        indexes.set(chart, cached.index)
+        return cached.index
     }
+
+    const index = createFrameIndex(chart)
+    sharedIndexes.set(chart.notes, {
+        groups: chart.groups,
+        connectors: chart.connectors,
+        simLines: chart.simLines,
+        slides: chart.slides,
+        index,
+    })
+    indexes.set(chart, index)
     return index
 }
 

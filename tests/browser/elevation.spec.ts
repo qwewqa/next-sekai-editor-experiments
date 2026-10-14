@@ -1036,6 +1036,87 @@ test('attached notes display inherited stage plus note elevation and remain read
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
+test('seeking samples off-beat attachment endpoints on filtered stages at the displayed beat', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        const transform = fixtures.events.stageTransformEvents[0]!
+        const stageId = 3 as typeof base.stageId
+        const stages = new Map(fixtures.interaction.stages)
+        stages.set(stageId, { ...stages.get(base.stageId)!, name: 'Attached notes' })
+        show(
+            {
+                ...fixtures.interaction,
+                isDynamicStages: true,
+                stages,
+                stageTransformEvents: [
+                    {
+                        ...transform,
+                        stageId: base.stageId,
+                        beat: 0,
+                        elevation: 2,
+                        eventEase: 'linear',
+                    },
+                    { ...transform, stageId: base.stageId, beat: 8, elevation: 10 },
+                    {
+                        ...transform,
+                        stageId: 2 as typeof stageId,
+                        beat: 0,
+                        elevation: -2,
+                        eventEase: 'linear',
+                    },
+                    { ...transform, stageId: 2 as typeof stageId, beat: 8, elevation: 6 },
+                    { ...transform, stageId, beat: 0, elevation: 100 },
+                ],
+                slides: [
+                    [
+                        { ...base, beat: 4, elevation: 1 },
+                        ...[5, 6, 7].map((beat) => ({ ...base, stageId, beat, isAttached: true })),
+                        { ...base, stageId: 2 as typeof stageId, beat: 8, elevation: 3 },
+                    ],
+                    [{ ...base, stageId, beat: 6, elevation: 2 }],
+                ],
+            },
+            3,
+        )
+        view.stageId = stageId
+        view.cursorTime = 3
+    })
+    await open(page)
+    for (const beat of [6, 5, 7, 6]) {
+        await page.evaluate((beat) => (window.editorTest.view.cursorTime = beat / 2), beat)
+        const displayed = await rows(page)
+        expect(displayed.find((row) => row.attached)?.elevation).toBe(5 + beat / 2)
+        expect(displayed.filter((row) => !row.attached).map((row) => row.elevation)).toEqual(
+            beat === 6 ? [102] : [],
+        )
+    }
+    const keptNotes = await page.evaluate(async () => {
+        const { appImport, history, store } = window.editorTest
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        const transform = [...store.getAllEntities()].find(
+            (entity) => entity.type === 'stageTransformEventJoint' && entity.stageId === 3,
+        )!
+        history.replaceState({ ...history.state.value, selectedEntities: [transform] })
+        const notes = history.state.value.store.slides.note
+        editSelectedEditableEntities({ elevation: 104 })
+        return history.state.value.store.slides.note === notes
+    })
+    expect(keptNotes).toBe(true)
+    expect((await rows(page)).map((row) => row.elevation)).toEqual([8, 106])
+    await page.evaluate(() => window.editorTest.history.undoState())
+    expect((await rows(page)).map((row) => row.elevation)).toEqual([8, 102])
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.replaceState({ ...history.state.value, isDynamicStages: false })
+    })
+    expect((await rows(page)).map((row) => row.elevation)).toEqual([2, 2])
+})
+
 test('a note on a stage step shows the held pivot and elevation, as Play does', async ({
     page,
 }) => {

@@ -4,7 +4,13 @@ import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
-import { buildPreviewChart, createPreviewChartBuilder } from '../../src/preview/engine/chart'
+import { notifyResetState } from '../../src/history/resetHooks'
+import {
+    buildPreviewChart,
+    createPreviewChartBuilder,
+    getPreviewChart,
+} from '../../src/preview/engine/chart'
+import { getFrameIndex } from '../../src/preview/engine/frameIndex'
 import type { Quad } from '../../src/preview/engine/math'
 import type { PreviewChart } from '../../src/preview/engine/model'
 import { renderPreviewFrame } from '../../src/preview/engine/render'
@@ -251,6 +257,52 @@ test('chart cache ignores selection, audio, filename and wrapper-only history ch
     )
 })
 
+test('shared consumers retain one draft graph while independent committed backgrounds preserve history', () => {
+    const source = createState(chart(), 0)
+    const first = getPreviewChart(source, speed)
+    const snapshot = structuredClone(first)
+    const entity = source.store.slides.info.values().next().value![0]!.note
+    const transaction = createTransaction(source)
+    const draft = transaction.commit(editSelectedNote(transaction, entity, { left: 2 }))
+    const preview = getPreviewChart(draft, speed)
+    const elevation = getPreviewChart({ ...draft, selectedEntities: [] }, speed)
+    assert.equal(elevation, preview)
+    assert.notEqual(preview.notes[0], first.notes[0])
+
+    // Opening elevation during an active drag needs the unedited ghost background.
+    const background = buildPreviewChart(source, speed)
+    assert.deepEqual(background, first)
+    assert.equal(getPreviewChart(draft, speed), preview)
+    assert.deepEqual(first, snapshot)
+
+    // Both consumers can hold an old frame while the current request changes.
+    const alternateSpeed = getPreviewChart(draft, 8)
+    equalToFreshBuild(alternateSpeed, draft, 8)
+    equalToFreshBuild(preview, draft)
+    equalToFreshBuild(getPreviewChart(source, speed), source)
+    assert.deepEqual(first, snapshot)
+})
+
+test('a chart reset releases the shared builder without mutating retained frames', () => {
+    const source = createState(chart(), 0)
+    const first = getPreviewChart(source, speed)
+    const firstIndex = getFrameIndex(first)
+    const snapshot = structuredClone(first)
+    notifyResetState()
+
+    // Reusing even the exact State rebuilds: no old document graph is retained
+    // by the shared builder while its panels are unmounted after a reset.
+    const next = getPreviewChart(source, speed)
+    assert.notEqual(next, first)
+    assert.notEqual(next.notes, first.notes)
+    assert.notEqual(next.notes[0], first.notes[0])
+    assert.notEqual(getFrameIndex(next), firstIndex)
+    assert.deepEqual(next, first)
+    assert.deepEqual(first, snapshot)
+    assert.equal(getFrameIndex(first), firstIndex)
+    assert.equal(getPreviewChart(source, speed), next)
+})
+
 test('editing one slide reuses other graphs without mutating the previously compiled chart', () => {
     const raw = chart()
     const source = createState(raw, 0)
@@ -299,6 +351,7 @@ test('stage event edits rebuild stage geometry while retaining every note and co
     const source = createState(raw, 0)
     const build = createPreviewChartBuilder()
     const first = build(source, speed)
+    const firstIndex = getFrameIndex(first)
     raw.stagePivotEvents[0]!.pivotLane = -3
     const replacement = createState(raw, 0)
     const edited: State = {
@@ -321,7 +374,77 @@ test('stage event edits rebuild stage geometry while retaining every note and co
         assert.equal(next.connectors[index], value)
     }
     assert.equal(next.groups, first.groups)
+    assert.equal(next.notes, first.notes)
+    assert.equal(next.connectors, first.connectors)
+    assert.equal(next.slides, first.slides)
+    assert.equal(next.chains, first.chains)
+    assert.equal(next.simLines, first.simLines)
+    assert.equal(getFrameIndex(next), firstIndex)
     equalToFreshBuild(next, edited)
+})
+
+test('camera edits retain note arrays and indexes while fresh camera geometry reaches the frame', () => {
+    const source = createState(chart(), 0)
+    const build = createPreviewChartBuilder()
+    const first = build(source, speed)
+    const firstIndex = getFrameIndex(first)
+    const replacement = chart()
+    replacement.cameraEvents.push({
+        beat: 0,
+        cameraLeft: -3,
+        cameraSize: 8,
+        cameraZoom: 1.5,
+        cameraZoomTargetLane: 0,
+        cameraZoomTargetY: 0,
+        cameraZoomVerticalAlign: 'default',
+        cameraRotation: 12,
+        cameraStageTilt: 0.6,
+        eventEase: 'linear',
+    })
+    const cameraGrid = createState(replacement, 0).store.grid.cameraEventJoint
+    const edited: State = {
+        ...source,
+        store: {
+            ...source.store,
+            grid: { ...source.store.grid, cameraEventJoint: cameraGrid },
+        },
+    }
+    const next = build(edited, speed)
+    assert.equal(next.notes, first.notes)
+    assert.equal(next.simLines, first.simLines)
+    assert.equal(getFrameIndex(next), firstIndex)
+    assert.notEqual(next.cameras, first.cameras)
+    equalToFreshBuild(next, edited)
+
+    const skin = resolveSkin(() => ({ u0: 0, v0: 0, u1: 1, v1: 1 }))
+    const capture = (compiled: PreviewChart) => {
+        const draws: Parameters<PreviewRenderer['draw']>[] = []
+        const renderer: PreviewRenderer = {
+            maxViewportSize: { width: 1600, height: 900 },
+            setTexture() {},
+            begin() {},
+            draw: (...args) => draws.push(args),
+            flush() {},
+            dispose() {},
+            isContextLost: () => false,
+        }
+        const background = renderPreviewFrame(
+            renderer,
+            skin,
+            compiled,
+            1.8,
+            1600,
+            900,
+            1600,
+            900,
+            speed,
+            false,
+        )
+        return { draws, background }
+    }
+    assert.notDeepEqual(capture(next), capture(first))
+    assert.deepEqual(capture(next), capture(buildPreviewChart(edited, speed)))
+    assert.deepEqual(capture(build(source, speed)), capture(first))
 })
 
 test('BPM edits invalidate note timing, timescales and stage event timing', () => {
@@ -424,5 +547,10 @@ test('note speed changes update beat-based stage offsets while reusing note grap
     for (const [index, value] of first.notes.entries()) assert.equal(next.notes[index], value)
     assert.equal(next.slides[0], first.slides[0])
     assert.equal(next.groups, first.groups)
+    assert.equal(next.notes, first.notes)
+    assert.equal(next.connectors, first.connectors)
+    assert.equal(next.chains, first.chains)
+    assert.equal(next.simLines, first.simLines)
+    assert.equal(getFrameIndex(next), getFrameIndex(first))
     equalToFreshBuild(next, source, 8)
 })
