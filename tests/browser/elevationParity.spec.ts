@@ -323,7 +323,7 @@ for (const sideBySide of [false, true])
         await page.evaluate((sideBySide) => {
             window.editorTest.settings.elevationEditorSideBySide = sideBySide ? 'allow' : 'disallow'
         }, sideBySide)
-        await page.keyboard.press('a')
+        await page.keyboard.press('q')
         await open(page)
         expect(await toolName(page)).toBe('select')
         const toolbars = page.locator('[data-editor-toolbar]')
@@ -363,7 +363,7 @@ for (const sideBySide of [false, true])
     })
 
 test('a tool picked in the Elevation Editor stays once it closes', async ({ page }) => {
-    await page.keyboard.press('a')
+    await page.keyboard.press('q')
     await open(page)
     expect(await toolName(page)).toBe('select')
     await page.keyboard.press('b')
@@ -375,6 +375,22 @@ test('a tool picked in the Elevation Editor stays once it closes', async ({ page
         .locator('[data-editor-toolbar] > div > div > button')
         .and(page.getByTitle('Brush', { exact: true }))
     await expect(brush).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('the Elevation Editor opens on the current tool if it has it, else on Select', async ({
+    page,
+}) => {
+    for (const [key, tool] of [
+        ['b', 'brush'],
+        ['g', 'eraser'],
+        ['q', 'select'],
+    ] as const) {
+        await page.keyboard.press(key)
+        await open(page)
+        expect(await toolName(page)).toBe(tool)
+        await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
+        await expect(page.locator('.elevation-editor')).toHaveCount(0)
+    }
 })
 
 test('opening the Elevation Editor during a right press ends the press on Select', async ({

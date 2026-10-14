@@ -221,7 +221,7 @@ test.describe('phone elevation scale', () => {
 test('elevation mode replaces the chart and opens on Select, which closing keeps', async ({
     page,
 }) => {
-    await page.keyboard.press('a')
+    await page.keyboard.press('q')
     await open(page)
     await expect(page.locator('canvas.editor-chart')).toHaveCount(0)
     await expect(page.locator('.preview')).toHaveCount(0)
@@ -442,7 +442,7 @@ test('Escape side by side deselects on the Select the editor opened on, which cl
     await page.evaluate(() => {
         window.editorTest.settings.elevationEditorSideBySide = 'allow'
     })
-    await page.keyboard.press('a')
+    await page.keyboard.press('q')
     await open(page)
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     const tool = () =>

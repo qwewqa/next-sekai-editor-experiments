@@ -39,8 +39,9 @@ export const openElevationEditor = (beat?: number) => {
     isElevationEditorOpen.value = true
     view.cursorTime = beatToTime(bpms.value, displayedBeat)
     elevationBeat.value = displayedBeat
-    // It opens on Select; already open, it only changes beat.
-    if (!wasOpen) switchToolTo('select')
+    // It keeps a tool it has, else opens on Select; already open, it only changes beat.
+    if (!wasOpen)
+        switchToolTo(elevationToolNames.includes(toolName.value) ? toolName.value : 'select')
 }
 
 export const closeElevationEditor = () => {
