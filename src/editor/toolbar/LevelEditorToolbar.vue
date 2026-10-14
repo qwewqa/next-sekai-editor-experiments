@@ -288,6 +288,11 @@ const onCancelQuick = (event: PointerEvent) => {
 }
 onBeforeUnmount(endQuick)
 
+// A tap's click comes after its release has acted, and would land on a dialog it opened, closing it.
+const onTouchEndQuick = (event: TouchEvent) => {
+    if (settings.toolbarQuickSwitch && event.cancelable) event.preventDefault()
+}
+
 const onClickMain = (event: MouseEvent, index: number, name: CommandName) => {
     // Pointer clicks return shortcuts to the editor, so Space cannot click the tool again.
     blurPointerClick(event)
@@ -548,6 +553,7 @@ onBeforeUnmount(() => {
                     @pointerup="onReleaseQuick"
                     @pointercancel="onCancelQuick"
                     @lostpointercapture="onCancelQuick"
+                    @touchend="onTouchEndQuick"
                     @contextmenu="settings.toolbarQuickSwitch && $event.preventDefault()"
                     @click="onClickMain($event, i, activeName)"
                     @keydown="onKeydownRepeat($event, activeName, (toolbar[i]?.length ?? 0) > 1)"

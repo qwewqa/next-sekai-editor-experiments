@@ -133,6 +133,24 @@ test.describe('touch', () => {
         expect(await isOpen(page)).toBe(0)
     })
 
+    test('a tap that opens a dialog leaves it open', async ({ page }) => {
+        const touch = await touchInput(page)
+        await page.evaluate(() => {
+            window.editorTest.settings.toolbar = [['settings'], ['help', 'utilities']]
+        })
+        for (const index of [0, 1]) {
+            const at = await centre(page, face(page, index))
+            await touch('touchStart', [[at.x, at.y]])
+            await touch('touchEnd', [])
+            const dialog = page.locator('dialog[open]')
+            await expect(dialog).toHaveCount(1)
+            await page.waitForTimeout(300)
+            await expect(dialog).toHaveCount(1)
+            await page.keyboard.press('Escape')
+            await expect(dialog).toHaveCount(0)
+        }
+    })
+
     test('off, a tap only opens the flyout', async ({ page }) => {
         await page.evaluate(() => {
             window.editorTest.settings.toolbarQuickSwitch = false
