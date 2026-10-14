@@ -1,10 +1,14 @@
 import type { State } from '..'
 import { alignComputed } from '../../utils/math'
 import type { Entity } from '../entities'
+import type { SlideInfos } from '../entities/slides/hiddenTicks'
+import { createSlideInfoLookup } from '../entities/slides/lookup'
 import { isNoiseApart } from '../integrals/grid'
 import { isEditableEntity, type EditableEntity, type EditableProperties } from './editable'
 
 export type ScaleAxis = 'beat' | 'elevation' | 'width'
+
+const slideInfoLookup = createSlideInfoLookup()
 
 export const getScaleEntities = (selected: Entity[], axis: ScaleAxis, source?: State) =>
     [...new Set(selected.filter(isEditableEntity))].filter((entity) => {
@@ -14,9 +18,9 @@ export const getScaleEntities = (selected: Entity[], axis: ScaleAxis, source?: S
         if (entity.type !== 'note') return false
         if (!entity.isAttached) return true
         if (axis === 'elevation') {
-            const info = source?.store.slides.info
-                .get(entity.slideId)
-                ?.find((info) => info.note === entity)
+            const infos = source?.store.slides.info.get(entity.slideId)
+            const info =
+                infos && (slideInfoLookup(infos).get(entity) as SlideInfos[number] | undefined)
             if (info?.attachHead.beat === info?.attachTail.beat && info) return true
         }
         const slide = source?.store.slides.note.get(entity.slideId)
@@ -95,9 +99,9 @@ export const getScaleProperties = (
     }
 }
 
-export const getScalePivot = (selected: Entity[], axis: ScaleAxis, source?: State) => {
+const scalePivot = (entities: readonly EditableEntity[], axis: ScaleAxis) => {
     let pivot = Infinity
-    for (const entity of getScaleEntities(selected, axis, source)) {
+    for (const entity of entities) {
         const value = getScaleValue(entity, axis)
         if (!Number.isFinite(value)) return undefined
         pivot = Math.min(pivot, value)
@@ -105,9 +109,12 @@ export const getScalePivot = (selected: Entity[], axis: ScaleAxis, source?: Stat
     return Number.isFinite(pivot) ? pivot : undefined
 }
 
+export const getScalePivot = (selected: Entity[], axis: ScaleAxis, source?: State) =>
+    scalePivot(getScaleEntities(selected, axis, source), axis)
+
 export const canScaleSelection = (selected: Entity[], axis: ScaleAxis, source?: State) => {
     const entities = getScaleEntities(selected, axis, source)
-    const pivot = getScalePivot(entities, axis, source)
+    const pivot = scalePivot(entities, axis)
     return (
         entities.length >= (axis === 'width' ? 1 : 2) &&
         pivot !== undefined &&

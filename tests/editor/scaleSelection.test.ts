@@ -4,6 +4,7 @@ import test from 'node:test'
 import { createState } from '../../src/state'
 import type { EntityOfType, EntityType } from '../../src/state/entities'
 import type { SlideId } from '../../src/state/entities/slides'
+import type { SlideInfos } from '../../src/state/entities/slides/hiddenTicks'
 import { calculateBpms, toBpmIntegral } from '../../src/state/integrals/bpms'
 import {
     cleanBeat,
@@ -508,6 +509,67 @@ test('attached slide interiors are read-only in elevation while endpoints and be
         [4, 2],
     )
     assert.equal(interior.elevation, 9)
+})
+
+test('elevation eligibility indexes each slide once and follows replaced info arrays', () => {
+    const state = emptyState()
+    const slideId = 1 as SlideId
+    const notes = Array.from({ length: 1001 }, (_, elevation) => ({
+        ...source('note', 0, elevation),
+        slideId,
+        isAttached: true,
+    }))
+    const head = notes[0]!
+    const tail = notes.at(-1)!
+    const originals: SlideInfos = notes.map((note) => ({
+        note,
+        attachHead: head,
+        attachTail: tail,
+        segmentHead: head,
+        segmentTail: tail,
+        activeHead: head,
+        activeTail: tail,
+        guideHead: undefined,
+        guideTail: undefined,
+        damageHead: undefined,
+        damageTail: undefined,
+    }))
+    let visits = 0
+    const infos = new Proxy(originals, {
+        get(target, key, receiver) {
+            if (typeof key === 'string' && /^\d+$/.test(key)) visits++
+            return Reflect.get(target, key, receiver)
+        },
+    })
+    state.store.slides.note.set(slideId, notes)
+    state.store.slides.info.set(slideId, infos)
+    // A vertical slide's interior attachments retain their authored elevations.
+    assert.deepEqual(getScaleEntities(notes, 'elevation', state), notes)
+    assert.equal(visits, notes.length)
+    assert.equal(canScaleSelection(notes, 'elevation', state), true)
+    assert.equal(getScaledSelectionValues(notes, 'elevation', 2, state)?.size, notes.length)
+    assert.equal(visits, notes.length)
+
+    const updated = {
+        ...state,
+        store: {
+            ...state.store,
+            slides: {
+                ...state.store.slides,
+                info: new Map([
+                    [
+                        slideId,
+                        originals.map((info) => ({ ...info, attachTail: { ...tail, beat: 1 } })),
+                    ],
+                ]),
+            },
+        },
+    }
+    // With different endpoint beats, interiors derive their elevation again.
+    const reversed = [...notes].reverse()
+    assert.deepEqual(getScaleEntities(reversed, 'elevation', updated), [tail, head])
+    assert.deepEqual(getScaleEntities([...notes, head], 'elevation', state), notes)
+    assert.equal(visits, notes.length)
 })
 
 test('connected grid expansion is bounded while large point-grid positions remain allowed', () => {

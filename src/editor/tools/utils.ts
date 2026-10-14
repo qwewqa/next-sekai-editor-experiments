@@ -19,6 +19,7 @@ import { sceneState, toCommittedEntity } from '../sceneState'
 import { isEntityInScope, scopeLookup } from '../scope'
 import { snappedOffset } from '../snapping'
 import { alignLane, ups, view, viewBox, xToLane, yToTime, type Selection } from '../view'
+import { extendSelectionToSlides } from './slideSelection'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
 
@@ -287,22 +288,7 @@ export const hitAllEntitiesInSelection = (selection: Selection) =>
 
 export const modifyEntities = (entities: Entity[], modifiers: Modifiers) => {
     if (!modifiers.shift) return entities
-
-    const allEntities = new Set(entities)
-
-    for (const entity of entities) {
-        if (entity.type !== 'note') continue
-
-        const notes = store.value.slides.note.get(entity.slideId)
-        if (!notes) continue
-
-        // Slides can span groups and stages; never extend into hidden ones.
-        for (const note of notes) {
-            if (isEntityInScope(note)) allEntities.add(note)
-        }
-    }
-
-    return [...allEntities]
+    return extendSelectionToSlides(entities, store.value.slides.note, isEntityInScope)
 }
 
 export const toSelection = (startLane: number, startTime: number, x: number, y: number) => {

@@ -21,6 +21,7 @@ import {
 import { canDeleteSelection } from './commands/deleteSelection'
 import { closeContextMenu, contextMenu } from './contextMenu'
 import SelectSlideNotesIcon from './contextMenu/SelectSlideNotesIcon.vue'
+import { canSelectSlideNotes } from './contextMenu/selection'
 import { pasteAtContextPosition } from './contextMenuPaste'
 import { canEditSelectionProperties, focusSelectionProperties } from './editSelectionProperties'
 import { openElevationEditor } from './elevation/state'
@@ -65,16 +66,7 @@ const actions = computed(() => {
     // Elevations belong to notes: offer the editor for notes or empty space.
     const canEditElevations =
         point && (selection.some((entity) => entity.type === 'note') || !selection.length)
-    if (
-        selection.some(
-            (entity) =>
-                entity.type === 'note' &&
-                state.value.store.slides.note
-                    .get(entity.slideId)
-                    // Selection never extends into hidden or dimmed groups/stages.
-                    ?.some((note) => !selection.includes(note) && isEntityInScope(note)),
-        )
-    )
+    if (canSelectSlideNotes(selection, state.value.store.slides.note, isEntityInScope))
         groups.push(['selectSlideNotes'])
     const clipboard: ActionName[] = []
     if (canDelete.value) clipboard.push('cut')
