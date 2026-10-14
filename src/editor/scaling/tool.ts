@@ -28,7 +28,7 @@ import { elevationNotes } from '../elevation/scene'
 import { editorNavigation, type EditorNavigation } from '../navigation'
 import { hitAllSceneEntities, hitSceneEntities, sceneBpms, sceneState } from '../sceneState'
 import type { Tool } from '../tools'
-import { isNoteResizeStart, isVisible, offset, orderPointHits } from '../tools/utils'
+import { isNoteResizeStart, isVisible, offset, orderPointHits, POINT_REACH } from '../tools/utils'
 import { view, xToLane, yToTime } from '../view'
 
 let elevationDrag:
@@ -109,18 +109,18 @@ const selectedEntitiesAtPoint = (x: number, y: number, minimumWidth: number) => 
         ? navigation.hitPoint(x, y, minimumWidth).hits
         : axis === 'width'
           ? hitAllSceneEntities(
-                xToLane(x - 10),
-                xToLane(x + 10),
-                yToTime(y + 10),
-                yToTime(y - 10),
+                xToLane(x - POINT_REACH),
+                xToLane(x + POINT_REACH),
+                yToTime(y + POINT_REACH),
+                yToTime(y - POINT_REACH),
                 minimumWidth,
             )
           : hitSceneEntities(
                 'note',
-                xToLane(x - 10),
-                xToLane(x + 10),
-                yToTime(y + 10),
-                yToTime(y - 10),
+                xToLane(x - POINT_REACH),
+                xToLane(x + POINT_REACH),
+                yToTime(y + POINT_REACH),
+                yToTime(y - POINT_REACH),
                 minimumWidth,
             )
     const targets = hits.filter((entity): entity is EditableEntity => {

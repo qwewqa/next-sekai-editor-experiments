@@ -1,7 +1,8 @@
+import type { GroupId } from '../../chart/groups'
 import type { StageId } from '../../chart/stages'
 import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
-import type { EventJointEntity, EventJointEntityType } from '../../state/entities/events/joints'
+import type { EventJointEntityType } from '../../state/entities/events/joints'
 import { entityScopeVisibility, type ScopeLookup } from '../scopeRules'
 import type { EventPart } from './events'
 
@@ -23,6 +24,9 @@ const layers = {
 
     stageTransformEventConnection: 18,
     stageTransformEventJoint: 19,
+
+    // A time scale's marker; its line is under everything.
+    timeScaleMarker: 19.5,
 
     connector: {
         under: {
@@ -77,42 +81,47 @@ export type EntityVisibility = {
     showOtherObjects: boolean
 }
 
-/** Event joint types with a selected joint, and their stages; camera's stage is undefined. */
-export type RaisedChains = ReadonlyMap<EventJointEntityType, ReadonlySet<StageId | undefined>>
+type ChainType = EventJointEntityType | 'timeScale'
+type ChainKey = StageId | GroupId | undefined
 
-// The joint whose chain an entity is in; a connection is in its min's.
-const chainJoint = (entity: Entity): EventJointEntity | undefined => {
+/**
+ * Chain types with a selected joint, and their keys: an event's stage (camera's is undefined)
+ * or a time scale's group.
+ */
+export type RaisedChains = ReadonlyMap<ChainType, ReadonlySet<ChainKey>>
+
+// The chain an entity is in; a connection is in its min's.
+const chainOf = (entity: Entity): [ChainType, ChainKey] | undefined => {
     switch (entity.type) {
         case 'cameraEventJoint':
+            return [entity.type, undefined]
         case 'stageMaskEventJoint':
         case 'stagePivotEventJoint':
         case 'stageStyleEventJoint':
         case 'stageTransformEventJoint':
-            return entity
+            return [entity.type, entity.stageId]
+        case 'timeScale':
+            return [entity.type, entity.groupId]
         case 'cameraEventConnection':
         case 'stageMaskEventConnection':
         case 'stagePivotEventConnection':
         case 'stageStyleEventConnection':
         case 'stageTransformEventConnection':
-            return entity.min
+            return chainOf(entity.min)
         case 'bpm':
-        case 'timeScale':
         case 'note':
         case 'connector':
             return undefined
     }
 }
 
-const chainStage = (joint: EventJointEntity) =>
-    joint.type === 'cameraEventJoint' ? undefined : joint.stageId
-
 export const raisedChains = (selected: Iterable<Entity>): RaisedChains => {
-    const chains = new Map<EventJointEntityType, Set<StageId | undefined>>()
+    const chains = new Map<ChainType, Set<ChainKey>>()
     for (const entity of selected) {
-        const joint = chainJoint(entity)
-        if (!joint) continue
-        const stages = chains.get(joint.type) ?? new Set()
-        chains.set(joint.type, stages.add(chainStage(joint)))
+        const chain = chainOf(entity)
+        if (!chain) continue
+        const [type, key] = chain
+        chains.set(type, (chains.get(type) ?? new Set()).add(key))
     }
     return chains
 }
@@ -132,12 +141,18 @@ export const raisedOf = ({ selectedEntities }: State): Raised => {
     return raised
 }
 
-/** Whether an event joint or connection is in a chain with a selected joint. */
+/** Whether an event joint, connection or time scale is in a chain with a selected one. */
 export const isInRaisedChain = (chains: RaisedChains, entity: Entity) => {
     if (!chains.size) return false
-    const joint = chainJoint(entity)
-    return !!joint && !!chains.get(joint.type)?.has(chainStage(joint))
+    const chain = chainOf(entity)
+    return !!chain && !!chains.get(chain[0])?.has(chain[1])
 }
+
+type DrawKey = { tier: number; isFull: boolean; layer: number; beat: number }
+
+// Selected above raised above the rest, faded under full, by layer, earlier beats on top.
+const compareDrawKeys = (a: DrawKey, b: DrawKey) =>
+    a.tier - b.tier || +a.isFull - +b.isFull || a.layer - b.layer || b.beat - a.beat
 
 /**
  * Painter order and opacity for the main editor. An entity is drawn unless its
@@ -165,16 +180,11 @@ export const orderEntities = (
                 isFull,
                 tier: isSelected ? 2 : isFull && isInRaisedChain(chains, entity) ? 1 : 0,
                 layer: getLayer(entity),
+                beat: entity.beat,
             }
         })
         .filter((info) => info.isDrawn)
-        .sort(
-            (a, b) =>
-                a.tier - b.tier ||
-                +a.isFull - +b.isFull ||
-                a.layer - b.layer ||
-                b.entity.beat - a.entity.beat,
-        )
+        .sort(compareDrawKeys)
         .map((info) => ({
             entity: info.entity,
             highlighted: info.isSelected,
@@ -184,26 +194,41 @@ export const orderEntities = (
 
 export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: EventPart }
 
+const drawKeyOf = (step: DrawStep): DrawKey => ({
+    tier: step.highlighted ? 2 : step.raised ? 1 : 0,
+    isFull: step.opacity === 1,
+    layer: step.part === 'marker' ? layers.timeScaleMarker : getLayer(step.entity),
+    beat: step.entity.beat,
+})
+
 /**
- * Objects, with time scale markers above slides and notes, the index where the
+ * Objects, with time scale markers above event joints, the index where the
  * raised and selected ones start, and the BPM and time scale labels.
  */
 export const toDrawSteps = (ordered: ReturnType<typeof orderEntities>) => {
-    const markers: DrawStep[] = []
     const bpmLabels: DrawStep[] = []
     const timeScaleLabels: DrawStep[] = []
-    const steps = ordered.map((step): DrawStep => {
-        const { type } = step.entity
-        if (type === 'bpm') bpmLabels.push({ ...step, part: 'label' })
-        else if (type === 'timeScale') {
-            markers.push({ ...step, part: 'marker' })
+    const steps = ordered
+        .flatMap((step): DrawStep[] => {
+            const { type } = step.entity
+            if (type === 'bpm') {
+                bpmLabels.push({ ...step, part: 'label' })
+                return [{ ...step, part: 'line' }]
+            }
+            if (type !== 'timeScale') return [step]
             timeScaleLabels.push({ ...step, part: 'label' })
-        } else return step
-        return { ...step, part: 'line' }
-    })
+            return [
+                { ...step, part: 'line' },
+                { ...step, part: 'marker' },
+            ]
+        })
+        // Markers move to their layer; the rest keep their order.
+        .map((step) => ({ step, key: drawKeyOf(step) }))
+        .sort((a, b) => compareDrawKeys(a.key, b.key))
+        .map(({ step }) => step)
     const raisedAt = steps.findIndex(({ highlighted, raised }) => highlighted || raised)
     return {
-        objects: [...steps, ...markers],
+        objects: steps,
         raisedAt: raisedAt < 0 ? steps.length : raisedAt,
         // Time scale labels paint above every BPM label, as at their markers.
         labels: [...bpmLabels, ...timeScaleLabels],

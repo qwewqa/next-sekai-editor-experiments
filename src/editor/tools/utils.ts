@@ -2,6 +2,7 @@ import type { StageId } from '../../chart/stages'
 import { state } from '../../history'
 import { selectedEntities } from '../../history/selectedEntities'
 import { hitAllEntities, hitEntities, store } from '../../history/store'
+import { settings } from '../../settings'
 import type { State } from '../../state'
 import type { Entity, EntityOfType, EntityType } from '../../state/entities'
 import { editChanges } from '../../state/operations/properties/plan'
@@ -201,9 +202,17 @@ export const selectedHit = <T extends Entity>({ set }: PointHits<T>) =>
 export const pressTarget = <T extends Entity>(hits: PointHits<T>) =>
     selectedHit(hits) ?? hits.hits[0]
 
-// 10 pixels around a point, in lanes and times.
+/** How far, in pixels, a point reaches objects. */
+export const POINT_REACH = 10
+
+// The reach around a point, in lanes and times.
 const pointWindow = (x: number, y: number) =>
-    [xToLane(x - 10), xToLane(x + 10), yToTime(y + 10), yToTime(y - 10)] as const
+    [
+        xToLane(x - POINT_REACH),
+        xToLane(x + POINT_REACH),
+        yToTime(y + POINT_REACH),
+        yToTime(y - POINT_REACH),
+    ] as const
 
 /** Orders point hits as the hit model says. */
 export const orderPointHits = <T extends Entity>(
@@ -212,7 +221,16 @@ export const orderPointHits = <T extends Entity>(
     y: number,
     source: State = state.value,
     composed: ComposedLayout | undefined = getComposedLayout(source),
-) => orderHits(hits, xToLane(x), yToTime(y), ups.value, source, composed)
+) =>
+    orderHits(
+        hits,
+        xToLane(x),
+        yToTime(y),
+        ups.value,
+        (POINT_REACH * settings.width) / view.w,
+        source,
+        composed,
+    )
 
 // A previewed scene is hit where it is shown, as the committed objects it shows.
 const findPointHits = <T extends Entity>(

@@ -204,7 +204,7 @@ test("a pivot's marker in an anchor's reach, past its box, takes the pivot", asy
     expect(await selected(page)).toMatchObject([{ type: 'stagePivotEventJoint', beat: 4 }])
 })
 
-test("on an anchor's box, precedence decides: the anchor over a pivot, a time scale over it", async ({
+test("on an anchor's box, precedence decides: the anchor over a pivot and a time scale", async ({
     page,
 }) => {
     await show(page, 'pivotInAnchor')
@@ -214,9 +214,9 @@ test("on an anchor's box, precedence decides: the anchor over a pivot, a time sc
     await click(page, point)
     expect(await selected(page)).toMatchObject([{ type: 'note', beat: 4, left: -1 }])
     await show(page, 'timeScaleInAnchor')
-    expect(await hits(page, point)).toEqual(['timeScale:4', 'note:4'])
+    expect(await hits(page, point)).toEqual(['note:4', 'timeScale:4'])
     await click(page, point)
-    expect(await selected(page)).toMatchObject([{ type: 'timeScale', beat: 4 }])
+    expect(await selected(page)).toMatchObject([{ type: 'note', beat: 4, left: -1 }])
 })
 
 test("a style marker beside a narrow note's body takes the style", async ({ page }) => {
@@ -251,39 +251,50 @@ test('clicks on a same-beat time-scale jump reach each change in turn', async ({
 })
 
 for (const layout of ['basic', 'composed'] as const) {
-    test(`${layout}: a time-scale marker on a note's edge is grabbed, not the edge`, async ({
+    test(`${layout}: a note's edge under a time-scale marker resizes; once selected, the marker moves`, async ({
         page,
     }) => {
         await show(page, 'edge', layout)
         await useTool(page, 'select')
-        const point = await at(page, -6, 4)
-        expect(await hits(page, point)).toEqual(['timeScale:4', 'note:4'])
+        // Just inside the edge, on the marker.
+        const point = await at(page, -5.95, 4)
+        expect(await hits(page, point)).toEqual(['note:4', 'timeScale:4'])
         await hover(page, point)
-        await expect(editor(page)).toHaveCSS('cursor', 'move')
+        await expect(editor(page)).toHaveCSS('cursor', 'ew-resize')
         const lane = await page.evaluate(
             () => window.editorTest.view.w / window.editorTest.settings.width,
         )
-        await page.mouse.down()
-        await page.mouse.move(point.x + lane, point.y, { steps: 6 })
-        await page.mouse.up()
-        expect(
-            await page.evaluate(() =>
+        const drag = async () => {
+            await hover(page, point)
+            await page.mouse.down()
+            await page.mouse.move(point.x + lane, point.y, { steps: 6 })
+            await page.mouse.up()
+        }
+        const timeScaleLanes = () =>
+            page.evaluate(() =>
                 [...window.editorTest.history.state.value.store.grid.timeScale.values()]
                     .flatMap((entities) => [...entities])
                     .map((entity) => entity.editorLane),
-            ),
-        ).toEqual([-5])
+            )
+        await drag()
+        expect(await timeScaleLanes()).toEqual([-6])
         expect(await page.evaluate(() => window.editorTest.snapshot().notes)).toMatchObject([
-            { beat: 4, left: -6, size: 3 },
+            { beat: 4, left: -5, size: 2 },
         ])
-        // Off the marker, the edge still resizes.
         await page.keyboard.press('Control+z')
         await page.evaluate(() => {
             const { history } = window.editorTest
             history.replaceState({ ...history.state.value, selectedEntities: [] })
         })
-        await hover(page, await at(page, -5.9, 4.1))
-        await expect(editor(page)).toHaveCSS('cursor', 'ew-resize')
+        // A second tap takes the marker; selected, its press wins over the edge.
+        await click(page, point)
+        await click(page, point)
+        expect(await selected(page)).toMatchObject([{ type: 'timeScale', beat: 4 }])
+        await drag()
+        expect(await timeScaleLanes()).toEqual([-5])
+        expect(await page.evaluate(() => window.editorTest.snapshot().notes)).toMatchObject([
+            { beat: 4, left: -6, size: 3 },
+        ])
     })
 }
 

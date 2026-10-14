@@ -458,11 +458,12 @@ test('a joint of a raised chain drawn over a note is hit first, as drawn', async
         hits: [N, expect.any(String), expect.any(String)],
         top: N,
     })
-    // A selected object hit keeps the order, K's own selection too.
-    expect((await order([K])).hits.filter((hit) => hit !== other)).toEqual([N, K])
+    // A selected object hit comes first, as drawn, K's own selection too.
+    expect((await order([K])).hits.filter((hit) => hit !== other)).toEqual([K, N])
     expect((await order([J, N])).hits.filter((hit) => hit !== other)).toEqual([N, K])
+    // A time scale's marker is drawn under notes and raised chains.
     await show(true)
-    expect(await order([J])).toEqual({ hits: [T, K, N, other], top: T })
+    expect(await order([J])).toEqual({ hits: [K, N, T, other], top: K })
 })
 
 // Real levels from the engine's resource cache: SEKAI_LEVELS=<...>/resources/levels.

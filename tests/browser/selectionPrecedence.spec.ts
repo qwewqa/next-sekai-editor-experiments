@@ -73,18 +73,18 @@ for (const layout of ['basic', 'composed'] as const) {
         await page.evaluate((layout) => {
             window.editorTest.view.layout = layout
         }, layout)
-        // The time scale's marker is drawn over everything; of the same-beat notes, blue is on
-        // top; the joint markers at lane 0 are drawn under the notes; camera and mask are in reach.
+        // Of the same-beat notes, blue is on top; the time scale's marker and then the joint markers
+        // at lane 0 are drawn under the notes; camera and mask are in reach.
         const expected = [
-            'timeScale',
             'note:blue',
             'note:red',
+            'timeScale',
             'stageTransformEventJoint',
             'stageStyleEventJoint',
             'stagePivotEventJoint',
             'stageMaskEventJoint',
             'cameraEventJoint',
-            'timeScale',
+            'note:blue',
         ]
         for (const entity of expected) {
             await click(page)
@@ -95,7 +95,7 @@ for (const layout of ['basic', 'composed'] as const) {
 }
 
 for (const layout of ['basic', 'composed'] as const) {
-    test(`${layout} fixed BPM lane cycles the time-scale marker, notes, then BPM`, async ({
+    test(`${layout} fixed BPM lane cycles the BPM label, notes, then the time-scale marker`, async ({
         page,
     }) => {
         await page.evaluate((layout) => {
@@ -124,7 +124,7 @@ for (const layout of ['basic', 'composed'] as const) {
             view.layout = layout
         }, layout)
         const at = await page.evaluate(() => window.editorTest.point(6.5, 4))
-        for (const entity of ['timeScale', 'note:blue', 'note:red', 'bpm', 'timeScale']) {
+        for (const entity of ['bpm', 'note:blue', 'note:red', 'timeScale', 'bpm']) {
             await page.mouse.click(at.x, at.y)
             expect(await selected(page)).toEqual([entity])
         }
@@ -171,9 +171,9 @@ test('hidden and dimmed notes are excluded before the drawn order applies', asyn
         view.groupVisibility = new Map([[2 as NonNullable<typeof view.groupId>, 'hidden']])
     })
     await click(page)
-    expect(await selected(page)).toEqual(['timeScale'])
-    await click(page)
     expect(await selected(page)).toEqual(['note:red'])
+    await click(page)
+    expect(await selected(page)).toEqual(['timeScale'])
     await click(page)
     expect(await selected(page)).toEqual(['stageTransformEventJoint'])
     await page.evaluate(() => {
@@ -183,9 +183,9 @@ test('hidden and dimmed notes are excluded before the drawn order applies', asyn
         history.replaceState({ ...history.state.value, selectedEntities: [] })
     })
     await click(page)
-    expect(await selected(page)).toEqual(['timeScale'])
-    await click(page)
     expect(await selected(page)).toEqual(['note:red'])
+    await click(page)
+    expect(await selected(page)).toEqual(['timeScale'])
     await click(page)
     expect(await selected(page)).toEqual(['stageTransformEventJoint'])
     await page.evaluate(() => {
@@ -234,7 +234,7 @@ test('an already selected event keeps context-menu and drag ownership over notes
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
-test('Eraser removes the top drawn object: the time-scale marker, then the top note', async ({
+test('Eraser removes the top drawn object: the top note, the next, then the time-scale marker', async ({
     page,
 }) => {
     await page.evaluate(async () => {
@@ -243,33 +243,31 @@ test('Eraser removes the top drawn object: the time-scale marker, then the top n
         >('/src/editor/tools/index.ts')
         switchToolTo('eraser')
     })
-    await click(page)
-    expect(
-        await page.evaluate(
-            () =>
-                [...window.editorTest.store.getAllEntities()].filter(
-                    (entity) => entity.type === 'timeScale',
-                ).length,
-        ),
-    ).toBe(0)
-    await click(page)
-    expect(
-        await page.evaluate(() =>
+    const notes = () =>
+        page.evaluate(() =>
             [...window.editorTest.history.state.value.store.slides.note.values()]
                 .flat()
                 .filter((note) => note.beat === 4)
                 .map((note) => note.noteStyle),
-        ),
-    ).toEqual(['red'])
-    expect(
-        await page.evaluate(
-            () =>
+        )
+    const count = (type: string) =>
+        page.evaluate(
+            (type) =>
                 [...window.editorTest.store.getAllEntities()].filter(
-                    (entity) => entity.type === 'stageTransformEventJoint',
+                    (entity) => entity.type === type,
                 ).length,
-        ),
-    ).toBe(1)
+            type,
+        )
+    await click(page)
+    expect(await notes()).toEqual(['red'])
+    await click(page)
+    expect(await notes()).toEqual([])
+    expect(await count('timeScale')).toBe(1)
+    await click(page)
+    expect(await count('timeScale')).toBe(0)
+    expect(await count('stageTransformEventJoint')).toBe(1)
     await page.evaluate(() => {
+        window.editorTest.history.undoState()
         window.editorTest.history.undoState()
         window.editorTest.history.undoState()
     })

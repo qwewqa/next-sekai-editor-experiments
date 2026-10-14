@@ -749,7 +749,7 @@ test('canvas surfaces reuse backing storage while applying DPR, scrolling and no
     }
 })
 
-test('time scale markers draw above slides and notes, labels apart, while lines stay below', () => {
+test('time scale markers draw above event joints and under slides and notes, labels apart, lines at the bottom', () => {
     const timeScale = { type: 'timeScale', beat: 2, groupId: group } as Entity
     const bpm = { type: 'bpm', beat: 3, bpm: 120 } as Entity
     const slide = connector('over', 'active')
@@ -761,9 +761,9 @@ test('time scale markers draw above slides and notes, labels apart, while lines 
     assert.deepEqual(parts(objects), [
         [timeScale, 'line'],
         [bpm, 'line'],
+        [timeScale, 'marker'],
         [centerNote, undefined],
         [slide, undefined],
-        [timeScale, 'marker'],
     ])
     assert.deepEqual(parts(labels), [
         [bpm, 'label'],
@@ -788,7 +788,7 @@ test('time scale labels paint above a selected BPM label on the same beat', () =
     )
 })
 
-test('raised and selected objects start at raisedAt, with time scale markers still last', () => {
+test('raised and selected objects start at raisedAt, time scale markers in their layer', () => {
     const {
         joints: [a, b, c, d],
         connections: [ab, bc, cd],
@@ -815,13 +815,15 @@ test('raised and selected objects start at raisedAt, with time scale markers sti
             [c, undefined],
             [b, undefined],
             [a, undefined],
+            [timeScale, 'marker'],
             [centerNote, undefined],
         ],
-        above: [[timeScale, 'marker']],
+        above: [],
     })
     assert.deepEqual(steps([c!]), {
         below: [
             [timeScale, 'line'],
+            [timeScale, 'marker'],
             [centerNote, undefined],
         ],
         above: [
@@ -832,7 +834,28 @@ test('raised and selected objects start at raisedAt, with time scale markers sti
             [b, undefined],
             [a, undefined],
             [c, undefined],
-            [timeScale, 'marker'],
         ],
     })
+})
+
+test("a selected time scale raises its group's time scales, not another group's", () => {
+    const selected = { type: 'timeScale', beat: 2, groupId: group } as Entity
+    const mate = { type: 'timeScale', beat: 4, groupId: group } as Entity
+    const other = { type: 'timeScale', beat: 4, groupId: otherGroup } as Entity
+    const centerNote = note(5)
+    const { objects, raisedAt } = toDrawSteps(
+        orderEntities([centerNote, selected, mate, other], new Set([selected]), visibility()),
+    )
+    const parts = (steps: typeof objects) => steps.map(({ entity, part }) => [entity, part])
+    assert.deepEqual(parts(objects.slice(0, raisedAt)), [
+        [other, 'line'],
+        [other, 'marker'],
+        [centerNote, undefined],
+    ])
+    assert.deepEqual(parts(objects.slice(raisedAt)), [
+        [mate, 'line'],
+        [mate, 'marker'],
+        [selected, 'line'],
+        [selected, 'marker'],
+    ])
 })

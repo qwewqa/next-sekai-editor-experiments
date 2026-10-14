@@ -3,8 +3,8 @@ import type { Chart } from '../../src/chart'
 import type { Entity } from '../../src/state/entities'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// The hit model is the ground truth for picking and drawing follows it by convention:
-// this flags where an object's drawn pixels and its primary hit shape drift apart.
+// The hit model is the ground truth for picking and drawing follows its drawn shapes:
+// this flags where an object's drawn pixels and its drawn hit shape drift apart.
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
 })
 
-test('each object is drawn where its primary hit shape is, and nowhere else', async ({ page }) => {
+test('each object is drawn where its drawn hit shape is, and nowhere else', async ({ page }) => {
     const drift = await page.evaluate(async () => {
         const { show, fixtures, view, settings, history, appImport } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!
@@ -134,7 +134,7 @@ test('each object is drawn where its primary hit shape is, and nowhere else', as
             ),
         ]
         return entities.flatMap((entity) => {
-            const shape = model.hitShapeOf(entity, state, undefined)!
+            const shape = model.drawnShapeOf(entity, state, undefined)!
             const units = beatToTime(state.bpms, entity.beat) * bounds.ups
             ctx.save()
             ctx.setTransform(1, 0, 0, 1, 0, 0)

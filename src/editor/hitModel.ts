@@ -9,10 +9,10 @@ import { clamp } from '../utils/math'
 import { isInRaisedChain, raisedOf } from './canvas/ordering'
 import type { ComposedLayout } from './composed'
 
-// The hit model, the ground truth for picking; drawing follows it (hitModelConsistency.spec).
-// Within 10 px, hits on a primary shape go first: time scale markers, then joints of raised chains
-// unless a selected object is hit, then by precedence, earlier beat, later in the grid;
-// the rest nearest first, then by type. Flick arrows, names and outlines are decoration.
+// The hit model, the ground truth for picking; drawing follows drawn shapes (hitModelConsistency.spec).
+// Within 10 px, hits rank by their primary area: selected objects, then joints of raised chains,
+// then BPM labels (drawn above all, yet below those), then the rest; then nearest drawn shape,
+// by type, earlier beat, later in the grid. Flick arrows, names and outlines are decoration.
 
 export type Box = { l: number; r: number; t: number; b: number }
 export type Shape = { boxes: Box[]; diamond?: number }
@@ -23,31 +23,27 @@ const slideInfoLookup = createSlideInfoLookup()
 const MARKER = 0.1
 const TIME_SCALE_MARKER = 0.135
 
-const precedence: EntityType[] = [
-    'timeScale',
-    'note',
-    'stageTransformEventJoint',
-    'stageStyleEventJoint',
-    'stagePivotEventJoint',
-    'stageMaskEventJoint',
-    'cameraEventJoint',
-    'bpm',
-]
-
-// Reach order by type, for objects equally near.
+// By type, for objects equally near.
 const typeOrder: EntityType[] = [
     'note',
+    'timeScale',
     'stageTransformEventJoint',
     'stageStyleEventJoint',
     'stagePivotEventJoint',
     'stageMaskEventJoint',
     'cameraEventJoint',
-    'timeScale',
     'bpm',
 ]
 
-const comparePointHitTypes = (a: Entity, b: Entity) =>
-    typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)
+// Markers whose primary area is their whole hit area.
+const areaTypes = new Set<EntityType>([
+    'cameraEventJoint',
+    'stageMaskEventJoint',
+    'stagePivotEventJoint',
+    'stageStyleEventJoint',
+    'stageTransformEventJoint',
+    'timeScale',
+])
 
 /** A note's primary shape, from its left edge and its middle. */
 const noteHitShape = (size: number, type: NoteVisualType): Shape => {
@@ -162,8 +158,8 @@ export const shapeDistance = ({ boxes, diamond }: Shape, x: number, y: number) =
         diamond === undefined ? Number.POSITIVE_INFINITY : diamondDistance(x - diamond, y),
     )
 
-/** An object's primary shape, in lanes across the chart and from its line. */
-export const hitShapeOf = (
+/** An object's drawn shape, in lanes across the chart and from its line. */
+export const drawnShapeOf = (
     entity: Entity,
     source: State,
     composed: ComposedLayout | undefined,
@@ -187,46 +183,76 @@ export const hitShapeOf = (
     }
 }
 
+/** An object's primary shape: a marker's whole hit area, `margin` lanes past its hitbox; else as drawn. */
+export const primaryShapeOf = (
+    entity: Entity,
+    source: State,
+    composed: ComposedLayout | undefined,
+    margin: number,
+): Shape | undefined => {
+    if (!areaTypes.has(entity.type)) return drawnShapeOf(entity, source, composed)
+    const box = composed?.hitbox(entity) ?? entity.hitbox
+    return (
+        box && {
+            boxes: [
+                {
+                    l: box.lane - box.w - margin,
+                    r: box.lane + box.w + margin,
+                    t: -box.h - margin,
+                    b: box.h + margin,
+                },
+            ],
+        }
+    )
+}
+
 /** Hits on their shape first, the rest nearest first, by their shapes' distances. */
 export const compareShapeDistance = (a: number, b: number) =>
     +(b === 0) - +(a === 0) || (a === 0 ? 0 : a - b)
 
 /**
- * Orders the objects a point hits, at a lane and time, as the hit model says.
- * Selection counts only through raised chains; the tools handle the rest, and a tap cycle keeps
- * its own order.
+ * Orders the objects a point hits, at a lane and time, as the hit model says; `margin` is the
+ * reach in lanes. A tap cycle keeps its own order.
  */
 export const orderHits = <T extends Entity>(
     hits: readonly T[],
     lane: number,
     time: number,
     ups: number,
+    margin: number,
     source: State,
     composed: ComposedLayout | undefined,
 ) => {
-    const distances = new Map(
-        hits.map((entity) => {
-            // Lanes down the screen from the object's line; ups runs up it.
-            const y = (time - beatToTime(source.bpms, entity.beat)) * ups
-            const shape = hitShapeOf(entity, source, composed)
-            return [entity, shape ? shapeDistance(shape, lane, y) : Number.POSITIVE_INFINITY]
-        }),
-    )
+    const distancesTo = (shapeOf: (entity: T) => Shape | undefined) =>
+        new Map(
+            hits.map((entity) => {
+                // Lanes down the screen from the object's line; ups runs up it.
+                const y = (time - beatToTime(source.bpms, entity.beat)) * ups
+                const shape = shapeOf(entity)
+                return [entity, shape ? shapeDistance(shape, lane, y) : Number.POSITIVE_INFINITY]
+            }),
+        )
+    const drawn = distancesTo((entity) => drawnShapeOf(entity, source, composed))
+    const primary = distancesTo((entity) => primaryShapeOf(entity, source, composed, margin))
     const index = new Map(hits.map((entity, i) => [entity, i]))
-    const distance = (entity: T) => distances.get(entity) ?? Number.POSITIVE_INFINITY
+    const distance = (entity: T) => drawn.get(entity) ?? Number.POSITIVE_INFINITY
     const { selected, chains } = raisedOf(source)
-    // A selected object hit is drawn above raised chains.
-    const raise = !hits.some((entity) => distance(entity) === 0 && selected.has(entity))
-    // Direct hits rank as drawn: time scale markers on top, then joints of raised chains.
     // Callers pass only visible hits, which draw full.
     const rank = (entity: T) =>
-        entity.type === 'timeScale' ? 0 : raise && isInRaisedChain(chains, entity) ? 1 : 2
+        primary.get(entity) !== 0
+            ? 3
+            : selected.has(entity)
+              ? 0
+              : isInRaisedChain(chains, entity)
+                ? 1
+                : entity.type === 'bpm'
+                  ? 2
+                  : 3
     return [...hits].sort(
         (a, b) =>
+            rank(a) - rank(b) ||
             compareShapeDistance(distance(a), distance(b)) ||
-            (distance(a) === 0
-                ? rank(a) - rank(b) || precedence.indexOf(a.type) - precedence.indexOf(b.type)
-                : comparePointHitTypes(a, b)) ||
+            typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type) ||
             a.beat - b.beat ||
             (index.get(b) ?? 0) - (index.get(a) ?? 0),
     )

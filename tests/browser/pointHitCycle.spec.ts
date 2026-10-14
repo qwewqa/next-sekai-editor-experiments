@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Clicks cycle an overlap top to bottom, once per lap; selection affects it only via raised chains.
+// Clicks cycle an overlap top to bottom, once per lap; selected objects and raised chains go first.
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
