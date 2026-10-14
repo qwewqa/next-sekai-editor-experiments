@@ -646,6 +646,7 @@
         "dark": "Sombre"
       },
       "elevationSideBySide": "Éditeur d’élévation côte à côte",
+      "elevationConnectorArrows": "Flèches des connecteurs dans l’éditeur d’élévation",
       "autoSave": "Sauvegarde automatique",
       "autoSaveDelay": "Délai de la sauvegarde automatique (s)",
       "waveformVisualization": {

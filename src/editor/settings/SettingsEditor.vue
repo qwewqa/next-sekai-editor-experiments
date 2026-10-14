@@ -55,6 +55,11 @@ watch(
             ]"
         />
 
+        <ToggleField
+            v-model="settings.elevationConnectorArrows"
+            :label="i18n.settings.editor.elevationConnectorArrows"
+        />
+
         <ToggleField v-model="settings.autoSave" :label="i18n.settings.editor.autoSave" />
 
         <NumberField

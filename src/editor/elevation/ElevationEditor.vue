@@ -42,6 +42,7 @@ import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
 import type { SlideId } from '../../state/entities/slides'
+import type { Entity } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, isSameTempo } from '../../state/integrals/bpms'
 import { nearGridBeat, snapBeat, stepGridBeat } from '../../state/integrals/grid'
@@ -156,7 +157,13 @@ import {
     fitElevationViewport,
     needsElevationFit,
 } from './viewport'
-import { drawElevationConnections, getElevationConnections } from './connections'
+import {
+    drawElevationArrows,
+    drawElevationConnections,
+    freeElevationArrowLayer,
+    getElevationConnections,
+    type ElevationConnection,
+} from './connections'
 import SelectValue from '../../modals/form/SelectValue.vue'
 import SquareGridIcon from './SquareGridIcon.vue'
 import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
@@ -348,6 +355,7 @@ const restoreContext = () => {
     notes.clear()
     nameSprites.clear()
     freeGhostCanvas()
+    freeElevationArrowLayer()
     // A restored surface has lost its pixels.
     redrawVersion.value++
 }
@@ -1503,6 +1511,9 @@ const connections = computed(() => {
     }
 })
 
+const slidesOf = (entities: Iterable<Entity>) =>
+    new Set([...entities].flatMap((entity) => (entity.type === 'note' ? [entity.slideId] : [])))
+
 watchEffect(() => {
     const element = canvas.value
     const layout = elevationLayout.value
@@ -1573,6 +1584,7 @@ watchEffect(() => {
     // Name contrast is measured against it.
     void chartBackground.value
     const elevationSnap = settings.elevationSnap
+    const arrows = settings.elevationConnectorArrows
     const stageGrid = elevationStageGrid.value
     void redrawVersion.value
     const family = fontFamily.value
@@ -1667,7 +1679,26 @@ watchEffect(() => {
             ctx.lineTo(x, layout.height)
             ctx.stroke()
         }
+        // Shown on slides with a selected note, and fainter on one with a hovered note.
+        const selectedSlides = slidesOf(selected)
+        const hoveredSlides = slidesOf(hover)
+        const isRaised = ({ connector }: ElevationConnection) =>
+            selectedSlides.has(connector.head.slideId)
+        const isHovered = ({ connector }: ElevationConnection) =>
+            hoveredSlides.has(connector.head.slideId)
+        // Raised as event chains are: over unselected notes.
+        const drawArrows = (connections: ElevationConnection[]) => {
+            if (!arrows) return
+            drawElevationArrows(
+                ctx,
+                connections.filter((connection) => !isRaised(connection) && isHovered(connection)),
+                layout.laneScale,
+                0.6,
+            )
+            drawElevationArrows(ctx, connections.filter(isRaised), layout.laneScale)
+        }
         drawElevationConnections(ctx, belowNotes)
+        drawArrows(belowNotes.filter((connection) => !isRaised(connection)))
         const names = createNameLayer()
         const context: EditorDrawContext = {
             ctx,
@@ -1730,6 +1761,10 @@ watchEffect(() => {
             if (!selected.has(row.note)) drawSolid(row)
         }
         drawElevationConnections(ctx, aboveNotes)
+        drawArrows([
+            ...aboveNotes.filter((connection) => !isRaised(connection)),
+            ...solid.filter(isRaised),
+        ])
         // Selected notes stay in front, as on the chart.
         for (const row of visibleRows) {
             if (selected.has(row.note)) drawSolid(row)
@@ -1749,6 +1784,16 @@ watchEffect(() => {
                 ghostCtx.setTransform(ratio, 0, 0, ratio, 0, 0)
                 ghostCtx.lineWidth = 2
                 drawElevationConnections(ghostCtx, ghostConnections)
+                if (arrows) {
+                    const moved = slidesOf(current.selectedEntities)
+                    drawElevationArrows(
+                        ghostCtx,
+                        ghostConnections.filter(({ connector }) =>
+                            moved.has(connector.head.slideId),
+                        ),
+                        layout.laneScale,
+                    )
+                }
                 // Without the name layer, their names are drawn in the layer, as the chart's are.
                 const ghostContext = {
                     ...context,
@@ -1923,6 +1968,7 @@ onUnmounted(() => {
     notes.clear()
     nameSprites.clear()
     freeGhostCanvas()
+    freeElevationArrowLayer()
     panelTools.value = {}
     if (editorNavigation.value === navigation) editorNavigation.value = undefined
     view.scrollingX = undefined

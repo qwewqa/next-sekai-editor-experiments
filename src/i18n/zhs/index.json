@@ -646,6 +646,7 @@
         "dark": "深色"
       },
       "elevationSideBySide": "高度编辑器并排显示",
+      "elevationConnectorArrows": "高度编辑器连接箭头",
       "autoSave": "自动保存",
       "autoSaveDelay": "自动保存延迟（秒）",
       "waveformVisualization": {

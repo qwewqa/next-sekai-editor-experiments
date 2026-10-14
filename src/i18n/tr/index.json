@@ -646,6 +646,7 @@
         "dark": "Koyu"
       },
       "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
+      "elevationConnectorArrows": "Yükseklik Editöründe Bağlayıcı Okları",
       "autoSave": "Otomatik Kaydet",
       "autoSaveDelay": "Otomatik Kaydetme Gecikmesi (sn)",
       "waveformVisualization": {

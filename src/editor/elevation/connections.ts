@@ -341,3 +341,116 @@ export const drawElevationConnections = (
     }
     ctx.restore()
 }
+
+// In lanes, so they scale with the notes.
+const arrowGap = 0.08
+const arrowHeadLength = 0.35
+const arrowHeadHalfWidth = 0.19
+
+/** Head to tail between the endpoint notes' drawn boxes; none when they're too close to show one. */
+export const getElevationArrow = (
+    connection: ElevationConnection,
+    laneScale: number,
+): { from: [number, number]; to: [number, number] } | undefined => {
+    const { head, tail } = connection
+    const dx = tail.x - head.x
+    const dy = tail.y - head.y
+    const length = Math.hypot(dx, dy)
+    if (!length) return
+    // The fraction of the way out of a note's 0.6 lane tall box, as its outline and hit area.
+    const exit = (w: number) =>
+        Math.min(
+            dx ? w / 2 / Math.abs(dx) : Infinity,
+            dy ? (0.3 * laneScale) / Math.abs(dy) : Infinity,
+        )
+    const gap = (arrowGap * laneScale) / length
+    const start = exit(head.w) + gap
+    const end = 1 - exit(tail.w) - gap
+    if ((end - start) * length < (arrowHeadLength + 0.1) * laneScale) return
+    return {
+        from: [head.x + dx * start, head.y + dy * start],
+        to: [head.x + dx * end, head.y + dy * end],
+    }
+}
+
+// Faded arrows' layer, allocated once they're drawn.
+let arrowLayer: HTMLCanvasElement | undefined
+export const freeElevationArrowLayer = () => {
+    if (!arrowLayer) return
+    arrowLayer.width = arrowLayer.height = 1
+    arrowLayer = undefined
+}
+
+export const drawElevationArrows = (
+    target: CanvasRenderingContext2D,
+    connections: ElevationConnection[],
+    laneScale: number,
+    opacity = 1,
+) => {
+    const arrows = connections.flatMap((connection) => {
+        const arrow = getElevationArrow(connection, laneScale)
+        return arrow ? [arrow] : []
+    })
+    if (!arrows.length) return
+    // A faded arrow composites as one layer, so its overlapping strokes and fills don't show.
+    let ctx = target
+    if (opacity < 1) {
+        arrowLayer ??= document.createElement('canvas')
+        const { width, height } = target.canvas
+        if (arrowLayer.width !== width) arrowLayer.width = width
+        if (arrowLayer.height !== height) arrowLayer.height = height
+        const layer = arrowLayer.getContext('2d')
+        if (!layer) return
+        // Cleared as prepareSurface does.
+        layer.setTransform(1, 0, 0, 1, 0, 0)
+        layer.save()
+        layer.globalAlpha = 1
+        layer.globalCompositeOperation = 'copy'
+        layer.fillStyle = 'rgba(0, 0, 0, 0)'
+        layer.fillRect(0, 0, width, height)
+        layer.restore()
+        layer.setTransform(target.getTransform())
+        ctx = layer
+    }
+    const headLength = arrowHeadLength * laneScale
+    const headHalfWidth = arrowHeadHalfWidth * laneScale
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    const path = () => {
+        ctx.beginPath()
+        for (const { from, to } of arrows) {
+            const length = Math.hypot(to[0] - from[0], to[1] - from[1])
+            const ux = (to[0] - from[0]) / length
+            const uy = (to[1] - from[1]) / length
+            const baseX = to[0] - ux * headLength
+            const baseY = to[1] - uy * headLength
+            ctx.moveTo(...from)
+            ctx.lineTo(baseX, baseY)
+            ctx.moveTo(...to)
+            ctx.lineTo(baseX - uy * headHalfWidth, baseY + ux * headHalfWidth)
+            ctx.lineTo(baseX + uy * headHalfWidth, baseY - ux * headHalfWidth)
+            ctx.closePath()
+        }
+    }
+    // A dark halo keeps them clear over light ribbons.
+    path()
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'
+    ctx.lineWidth = 0.15 * laneScale
+    ctx.stroke()
+    ctx.fillStyle = ctx.strokeStyle
+    ctx.fill()
+    path()
+    ctx.strokeStyle = ctx.fillStyle = '#fff'
+    ctx.lineWidth = 0.09 * laneScale
+    ctx.stroke()
+    ctx.fill()
+    ctx.restore()
+    if (ctx === target) return
+    target.save()
+    target.setTransform(1, 0, 0, 1, 0, 0)
+    target.globalAlpha *= opacity
+    target.drawImage(ctx.canvas, 0, 0)
+    target.restore()
+}

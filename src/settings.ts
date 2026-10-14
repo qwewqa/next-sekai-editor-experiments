@@ -220,6 +220,8 @@ const settingsProperties = {
     ),
     // The Elevation Editor's y-zoom locked to its lane zoom.
     elevationSquareGrid: Type.Boolean(),
+    // Arrows from each connector's head to its tail in the Elevation Editor.
+    elevationConnectorArrows: Type.Boolean({ default: true }),
     elevationEditorSideBySide: Type.Union(
         [Type.Literal('auto'), Type.Literal('allow'), Type.Literal('disallow')],
         { default: 'auto' },

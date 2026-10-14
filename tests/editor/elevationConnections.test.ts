@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ease, eases } from '../../src/ease'
 import {
+    drawElevationArrows,
     drawElevationConnections,
+    getElevationArrow,
     getElevationConnections,
     getElevationCurve,
     getElevationRibbon,
@@ -511,4 +513,83 @@ test('same-beat pieces inside distinct-beat attachments ease over their own elev
             { x: 400, y: 0, w: 40, u: 1 },
         ],
     ])
+})
+
+const roundPoint = ([x, y]: [number, number]) => [+x.toFixed(6), +y.toFixed(6)]
+
+test('arrows run head to tail between note bodies, level or not', () => {
+    const head = note(),
+        tail = note()
+    const arrowOf = (a: ElevationRow, b: ElevationRow, laneScale = 20) => {
+        const [connection] = getElevationConnections([a, b], [[connect(head, tail)]])
+        assert.ok(connection)
+        const arrow = getElevationArrow(connection, laneScale)
+        return arrow && { from: roundPoint(arrow.from), to: roundPoint(arrow.to) }
+    }
+    // Level, where no ribbon is drawn, in both directions; 0.08 lanes off the bodies.
+    assert.deepEqual(arrowOf(row(head, 100, 200), row(tail, 200, 200)), {
+        from: [121.6, 200],
+        to: [178.4, 200],
+    })
+    assert.deepEqual(arrowOf(row(head, 200, 200), row(tail, 100, 200)), {
+        from: [178.4, 200],
+        to: [121.6, 200],
+    })
+    // Vertical, leaving through the bodies' 0.6 lane tall tops and bottoms.
+    assert.deepEqual(arrowOf(row(head, 100, 200), row(tail, 100, 100)), {
+        from: [100, 192.4],
+        to: [100, 107.6],
+    })
+    // The gap and body height follow the lane zoom.
+    assert.deepEqual(arrowOf(row(head, 100, 200), row(tail, 100, 100), 40), {
+        from: [100, 184.8],
+        to: [100, 115.2],
+    })
+    // Zero-width anchors still get one.
+    assert.deepEqual(arrowOf({ ...row(head, 100, 200), w: 0 }, { ...row(tail, 160, 200), w: 0 }), {
+        from: [101.6, 200],
+        to: [158.4, 200],
+    })
+})
+
+test('arrows are omitted where the bodies leave no room for one', () => {
+    const head = note(),
+        tail = note()
+    for (const [x, y] of [
+        [100, 200],
+        [130, 200],
+        [100, 190],
+    ]) {
+        const [connection] = getElevationConnections(
+            [row(head, 100, 200), row(tail, x, y)],
+            [[connect(head, tail)]],
+        )
+        assert.ok(connection)
+        assert.equal(getElevationArrow(connection, 20), undefined)
+        const recorded = canvas()
+        drawElevationArrows(recorded.ctx, [connection], 20)
+        assert.equal(recorded.moves.length, 0)
+    }
+})
+
+test('arrow heads point at the tail and scale with the lanes', () => {
+    const head = note(),
+        tail = note()
+    const connections = getElevationConnections(
+        [row(head, 100, 200), row(tail, 200, 200)],
+        [[connect(head, tail)]],
+    )
+    for (const [laneScale, base, half] of [
+        [20, 171.4, 3.8],
+        [40, 162.8, 7.6],
+    ] as const) {
+        const recorded = canvas()
+        drawElevationArrows(recorded.ctx, connections, laneScale)
+        // A halo pass, then the arrow: the head's tip at the tail, then its base.
+        assert.deepEqual(recorded.lines.slice(-3).map(roundPoint), [
+            [base, 200],
+            [base, 200 + half],
+            [base, 200 - half],
+        ])
+    }
 })

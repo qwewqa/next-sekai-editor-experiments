@@ -646,6 +646,7 @@
         "dark": "다크"
       },
       "elevationSideBySide": "높이 편집기 나란히 표시",
+      "elevationConnectorArrows": "높이 편집기 커넥터 화살표",
       "autoSave": "자동 저장",
       "autoSaveDelay": "자동 저장 주기 (초)",
       "waveformVisualization": {

@@ -646,6 +646,7 @@
                 "dark": "Dark"
             },
             "elevationSideBySide": "Elevation Editor Side by Side",
+            "elevationConnectorArrows": "Elevation Editor Connector Arrows",
             "autoSave": "Auto Save",
             "autoSaveDelay": "Auto Save Delay (s)",
             "waveformVisualization": {

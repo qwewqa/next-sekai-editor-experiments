@@ -646,6 +646,7 @@
         "dark": "ダーク"
       },
       "elevationSideBySide": "高さエディターを並べて表示",
+      "elevationConnectorArrows": "高さエディターの接続の矢印",
       "autoSave": "自動保存",
       "autoSaveDelay": "自動保存の間隔 (秒)",
       "waveformVisualization": {
