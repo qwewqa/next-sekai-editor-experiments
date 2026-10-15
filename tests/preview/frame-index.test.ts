@@ -527,6 +527,53 @@ test('group queries include every attachment and connector endpoint without dupl
     )
 })
 
+test('single and multiple group queries preserve scan order across seeks and boundary limits', () => {
+    for (const groupCount of [1, 3]) {
+        const items = Array.from({ length: 200 }, (_, i) => {
+            const item = note(((i * 37) % 101) - 10, { groupIndex: i % groupCount })
+            if (i % 5 === 0) {
+                item.isAttached = true
+                item.attachHead = note(item.targetTime - 12, {
+                    groupIndex: (i + 1) % groupCount,
+                })
+                item.attachTail = note(item.targetTime + 12, {
+                    groupIndex: (i + 2) % groupCount,
+                })
+            }
+            return item
+        })
+        // Equal note references are distinct submissions at their original indices.
+        items.push(items[0]!, items[19]!)
+        const index = getFrameIndex(chart({ notes: items })).notes
+        for (const now of [0, 75, -15, 10, 100]) {
+            for (const latest of [[12], [20, Infinity], [Infinity, 8, 50]]) {
+                for (const leftLimit of [false, true]) {
+                    const expected = items.flatMap((item, position) => {
+                        const endpoints =
+                            item.isAttached && item.attachHead && item.attachTail
+                                ? [item.attachHead, item.attachTail]
+                                : [item]
+                        const start = Math.min(
+                            item.targetTime,
+                            ...endpoints.map((n) => n.targetTime),
+                        )
+                        const live = leftLimit ? item.targetTime >= now : item.targetTime > now
+                        return live && endpoints.some((n) => start <= (latest[n.groupIndex] ?? 30))
+                            ? [position]
+                            : []
+                    })
+                    assert.deepEqual(
+                        queryGroupTimeIndex(index, now, latest, 30, leftLimit).map(
+                            ({ index }) => index,
+                        ),
+                        expected,
+                    )
+                }
+            }
+        }
+    }
+})
+
 test('culled frames match full future traversal with eased speeds, offsets, attachments and effects', () => {
     const notes = Array.from({ length: 200 }, (_, i) =>
         note(i / 2, {

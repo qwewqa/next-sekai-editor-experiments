@@ -73,8 +73,8 @@ for (const direction of [-1, 1]) {
                         const x = head!.x + (tail!.x - head!.x) * q
                         const y = head!.y + (tail!.y - head!.y) * u
                         return [
-                            ...canvas
-                                .getContext('2d')!
+                            ...window.editorRendering
+                                .getDrawContext(canvas)
                                 .getImageData(
                                     Math.round((x * canvas.width) / layout.width),
                                     Math.round((y * canvas.height) / layout.height),
@@ -161,8 +161,8 @@ for (const separator of [false, true]) {
                         rawLeft: rows[1]!.note.left,
                     },
                     pixel: [
-                        ...canvas
-                            .getContext('2d')!
+                        ...window.editorRendering
+                            .getDrawContext(canvas)
                             .getImageData(
                                 Math.round((x * canvas.width) / layout.width),
                                 Math.round((y * canvas.height) / layout.height),
@@ -238,8 +238,8 @@ test('a same-beat piece of a time-based attachment eases over its displayed elev
             const [head, tail] = [...layout.rows].sort((a, b) => a.order - b.order)
             const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
             return [
-                ...canvas
-                    .getContext('2d')!
+                ...window.editorRendering
+                    .getDrawContext(canvas)
                     .getImageData(
                         Math.round((tail!.x * canvas.width) / layout.width),
                         Math.round((((head!.y + tail!.y) / 2) * canvas.height) / layout.height),

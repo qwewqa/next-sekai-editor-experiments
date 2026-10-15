@@ -63,6 +63,17 @@ export const queryGroupTimeIndex = <T>(
     fallbackLatestTarget = Infinity,
     leftLimit = false,
 ) => {
+    // Partition insertion order follows global input order. A single group
+    // cannot duplicate an entry, so the time index already gives the final order.
+    if (index.size === 1)
+        for (const [group, partition] of index)
+            return queryTimeIndex(
+                partition,
+                now,
+                latestTargets[group] ?? fallbackLatestTarget,
+                leftLimit,
+            ).map(({ item }) => item)
+
     const matches = new Set<IndexedItem<T>>()
     for (const [group, partition] of index) {
         for (const { item } of queryTimeIndex(
@@ -70,6 +81,7 @@ export const queryGroupTimeIndex = <T>(
             now,
             latestTargets[group] ?? fallbackLatestTarget,
             leftLimit,
+            false,
         )) {
             matches.add(item)
         }

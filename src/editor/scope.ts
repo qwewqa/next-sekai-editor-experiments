@@ -42,6 +42,19 @@ import { view } from './view'
 export { resolveScopeVisibility }
 export type { ScopeOverride, ScopeVisibility }
 
+// Focusing affects every corresponding name, including selected/hovered objects.
+// Keep this shared by both editor panes; scope ID zero is a real focus too.
+export const showGroupNames = computed(
+    () =>
+        settings.showGroupName &&
+        !(settings.hideGroupNameWhenFocusingGroup && view.groupId !== undefined),
+)
+export const showStageNames = computed(
+    () =>
+        settings.showStageName &&
+        !(settings.hideStageNameWhenFocusingStage && view.stageId !== undefined),
+)
+
 const createScope = <T>(options: {
     ids: () => T[]
     isEnabled: () => boolean

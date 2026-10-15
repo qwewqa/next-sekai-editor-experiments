@@ -1,4 +1,5 @@
 import { inject, type InjectionKey } from 'vue'
+import { createFontContext } from '../../rendering/textRaster'
 import { CHEVRON_CLEARANCE, PLAIN_PADDING } from './leadFit'
 
 /** Fields whose value would truncate beside the label take the row below it. */
@@ -38,7 +39,7 @@ export const measureWord = (label: HTMLElement) => {
  */
 export const valueOverflows = (control: HTMLElement, others: string[] = []) => {
     const style = getComputedStyle(control)
-    const measure = (context ??= document.createElement('canvas').getContext('2d'))
+    const measure = (context ??= createFontContext())
     if (!measure) return false
     measure.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
     const text =

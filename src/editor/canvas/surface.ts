@@ -1,17 +1,12 @@
 import { cancelFrame, isFrameOpen, requestFrame } from '../../frame'
+import { getDrawContext, type RenderSurface, type WebGLDrawContext } from '../../rendering/context'
 import type { CanvasBounds } from './types'
 
-// Explicitly erase the pixels, including on frames with no visible drawing.
-// Chromium's deferred Canvas backend can retain old outlines after clearRect
-// when the next stroke lies offscreen, and after a 'copy' fill once the canvas
-// has been read. This avoids a readback or backing-store reallocation.
-export const clearSurface = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+/** Erases a surface in backing pixels, independently of the scene transform. */
+export const clearSurface = (ctx: WebGLDrawContext, width: number, height: number) => {
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.globalAlpha = 1
-    ctx.globalCompositeOperation = 'destination-out'
-    ctx.fillStyle = '#000'
-    ctx.fillRect(0, 0, width, height)
+    ctx.clearRect(0, 0, width, height)
     ctx.restore()
 }
 
@@ -22,28 +17,23 @@ export const deviceSize = (width: number, height: number, pixelRatio: number) =>
         Math.max(1, Math.round(height * pixelRatio)),
     ] as const
 
-// Changing the backing dimensions clears all Canvas state and allocates a new
+// Changing the backing dimensions clears all drawing state and allocates a new
 // surface. Only do that on a real resize, never on an ordinary scroll or edit.
 export const prepareSurface = (
-    canvas: HTMLCanvasElement,
+    canvas: HTMLCanvasElement | RenderSurface,
     width: number,
     height: number,
     pixelRatio: number,
     bounds: CanvasBounds,
+    acquire?: () => WebGLDrawContext | undefined,
 ) => {
     const [w, h] = deviceSize(width, height, pixelRatio)
     if (canvas.width !== w) canvas.width = w
     if (canvas.height !== h) canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    // 'copy', not clearSurface: destination-out here stalls SwiftShader in playback under a resting mouse; the preview overlay keeps it for its stale outlines.
+    const ctx = acquire ? acquire() : getDrawContext(canvas)
+    if (!ctx?.isReady || ctx.isContextLost()) return
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.save()
-    ctx.globalAlpha = 1
-    ctx.globalCompositeOperation = 'copy'
-    ctx.fillStyle = 'rgba(0, 0, 0, 0)'
-    ctx.fillRect(0, 0, w, h)
-    ctx.restore()
+    ctx.clear()
     const scale = width / bounds.w
     // CSS dimensions and DPR can both be fractional. Use the actual backing
     // dimensions so browser scaling keeps the scene aligned with pointer and

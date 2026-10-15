@@ -13,7 +13,12 @@ import {
 import { renderPreviewFrame } from '../../src/preview/engine/render'
 import { findSlideConnector } from '../../src/preview/engine/slide'
 import { createTimeIndex, queryTimeIndex } from '../../src/preview/engine/timeIndex'
-import { createTimescaleGroup, hideNotesAt, noteDistance } from '../../src/preview/engine/timescale'
+import {
+    createTimescaleGroup,
+    hideNotesAt,
+    noteDistance,
+    type TimescaleChange,
+} from '../../src/preview/engine/timescale'
 import type { PreviewRenderer } from '../../src/preview/gl'
 import { resolveSkin, type PreviewSkin, type Sprite } from '../../src/preview/skin'
 
@@ -295,4 +300,73 @@ test('fullscreen connector left limits exclude activation and retain interior an
     assert.ok(connectorCount(1.5, false) > 0)
     assert.ok(connectorCount(2, true) > 0)
     assert.equal(connectorCount(2, false), 0)
+})
+
+test('shared target times retain each group and frame context across scroll boundaries and seeks', () => {
+    const change = (
+        time: number,
+        timescale: number,
+        transitionStyle: 0 | 1 = 0,
+        skipSeconds = 0,
+    ): TimescaleChange => ({
+        time,
+        timescale,
+        transitionStyle,
+        skipSeconds,
+        ease: 1,
+        hideNotes: false,
+    })
+    const groups = [
+        createTimescaleGroup([], 0),
+        createTimescaleGroup([change(0, 0.5)], 5),
+        createTimescaleGroup([change(0, 2, 1), change(2, 0.2, 1)], 9),
+        createTimescaleGroup([change(0, -1, 1), change(2, 1, 1, -0.5)], 0),
+        createTimescaleGroup([change(0, 0), change(2, 1)], 3),
+        createTimescaleGroup([change(0, 1), change(2, 3, 1, 0.25), change(2, -0.5, 0, -0.75)], 0),
+    ]
+    const notes = groups.flatMap((_, groupIndex) =>
+        [2, 2, 2.75].map((target, index) => ({
+            ...note(target),
+            lane: -5 + groupIndex * 1.5 + index * 0.15,
+            groupIndex,
+        })),
+    )
+    let source = { ...chart(notes), groups }
+    const bodies = (value: PreviewChart, now: number, leftLimit: boolean) =>
+        capture(value, now, leftLimit).filter(([sprite]) => sprite === body)
+    let compared = 0
+    for (const now of [1.5, 2, 1.999999, 2.5, 0.5, 2, 1.5]) {
+        for (const leftLimit of [false, true]) {
+            // Independent frames cannot share target-time progress with another note.
+            const expected = notes.flatMap((item) =>
+                bodies({ ...source, notes: [item] }, now, leftLimit),
+            )
+            const actual = bodies(source, now, leftLimit)
+            compared += actual.length
+            assert.deepEqual(actual, expected, `time ${now}, left limit ${leftLimit}`)
+        }
+        // Group/camera edits can retain the same note graph between frames.
+        source = {
+            ...source,
+            groups: source.groups.map((group, index) =>
+                index === 1 ? createTimescaleGroup([change(0, now % 2 ? 0.25 : 2, 1)], 4) : group,
+            ),
+            isDynamicStages: !source.isDynamicStages,
+            cameras: [
+                {
+                    time: 0,
+                    lane: 0,
+                    size: 6,
+                    zoom: 1 + now * 0.1,
+                    zoomTargetLane: 0,
+                    zoomTargetY: 0,
+                    zoomVerticalAlign: 0,
+                    rotate: now * 0.1,
+                    stageTilt: 1,
+                    ease: 1,
+                },
+            ],
+        }
+    }
+    assert.ok(compared > 20, 'the cases exercise visible notes from multiple groups')
 })

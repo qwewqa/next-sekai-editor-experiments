@@ -694,6 +694,275 @@ test('loading a chart clears the marker', async ({ page }) => {
     await expect.poll(() => markerState(page)).toMatchObject({ marker: undefined, shown: false })
 })
 
+test('focus jumps use a strict two-full-viewport threshold, including near chart time zero', async ({
+    page,
+}) => {
+    await settle(page)
+    const result = await page.evaluate(async () => {
+        const { view, settings, appImport } = window.editorTest
+        const { focusView } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const { times } = await appImport<typeof import('../../src/editor')>('/src/editor/index.ts')
+        const span = view.h / settings.pps
+        const saved = {
+            time: view.time,
+            cursorTime: view.cursorTime,
+            scrollingY: view.scrollingY,
+            h: view.h,
+        }
+        const scrolling = () => structuredClone(view.scrollingY)
+        try {
+            view.time = 0
+            const clippedSpan = times.value.max - times.value.min
+            const cases = [
+                { name: 'near zero', from: 0, delta: 1.5 * span, instant: false },
+                { name: 'exactly two forward', from: 0, delta: 2 * span, instant: false },
+                { name: 'beyond two forward', from: 0, delta: 2.001 * span, instant: true },
+                { name: 'exactly two backward', from: 4 * span, delta: -2 * span, instant: false },
+                {
+                    name: 'beyond two backward',
+                    from: 4 * span,
+                    delta: -2.001 * span,
+                    instant: true,
+                },
+            ].map(({ name, from, delta, instant }) => {
+                view.time = from
+                view.scrollingY = undefined
+                const target = from + delta
+                focusView(target)
+                return {
+                    name,
+                    from,
+                    target,
+                    instant,
+                    time: view.time,
+                    cursor: view.cursorTime,
+                    scrolling: scrolling(),
+                }
+            })
+            // Restore invalid layout inputs before yielding to the editor's frame callbacks.
+            const invalidSpans = [0, NaN].map((height) => {
+                view.h = height
+                view.time = 0
+                view.scrollingY = undefined
+                focusView(3 * span)
+                return { time: view.time, cursor: view.cursorTime, scrolling: scrolling() }
+            })
+            return { span, clippedSpan, cases, invalidSpans }
+        } finally {
+            Object.assign(view, saved)
+        }
+    })
+    expect(result.span).toBeGreaterThan(0)
+    expect(result.clippedSpan).toBe(result.span / 2)
+    for (const value of result.cases) {
+        expect(value.cursor, value.name).toBe(value.target)
+        if (value.instant) {
+            expect(value.time, value.name).toBe(value.target)
+            expect(value.scrolling, value.name).toBeUndefined()
+        } else {
+            expect(value.time, value.name).toBe(value.from)
+            expect(value.scrolling, value.name).toMatchObject({
+                type: 'ease',
+                from: { viewTime: value.from },
+                to: { viewTime: value.target },
+            })
+            if (value.scrolling?.type === 'ease')
+                expect(value.scrolling.to.time - value.scrolling.from.time).toBeCloseTo(0.25, 10)
+        }
+    }
+    for (const value of result.invalidSpans) {
+        expect(value.time).toBe(0)
+        expect(value.cursor).toBe(3 * result.span)
+        expect(value.scrolling).toMatchObject({
+            type: 'ease',
+            from: { viewTime: 0 },
+            to: { viewTime: 3 * result.span },
+        })
+        if (value.scrolling?.type === 'ease')
+            expect(value.scrolling.to.time - value.scrolling.from.time).toBeCloseTo(0.25, 10)
+    }
+})
+
+test('focus preserves an in-view pending scroll, supersedes distant targets, and leaves manual scroll policy intact', async ({
+    page,
+}) => {
+    await settle(page)
+    const result = await page.evaluate(async () => {
+        const { view, settings, appImport } = window.editorTest
+        const { focusView, scrollViewYBy } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const { stepPreviewTime } =
+            await appImport<typeof import('../../src/editor/player')>('/src/editor/player.ts')
+        const span = view.h / settings.pps
+        const saved = { time: view.time, cursorTime: view.cursorTime, scrollingY: view.scrollingY }
+        const playFollow = settings.playFollow
+        const snapshot = () => ({ time: view.time, scrolling: structuredClone(view.scrollingY) })
+        try {
+            view.time = 3 * span
+            view.scrollingY = undefined
+            focusView(4 * span)
+            const pending = view.scrollingY
+            focusView(3 * span)
+            const inView = { ...snapshot(), samePending: view.scrollingY === pending }
+            focusView(7 * span, false)
+            const optedOut = {
+                ...snapshot(),
+                cursor: view.cursorTime,
+                replacedPending: view.scrollingY !== pending,
+            }
+            focusView(7 * span)
+            const distant = snapshot()
+            focusView(8 * span)
+            const nearby = snapshot()
+            focusView(span)
+            const reversed = snapshot()
+            scrollViewYBy(3 * view.h, true)
+            const smoothManual = snapshot()
+            view.scrollingY = undefined
+            scrollViewYBy(3 * view.h)
+            const directManual = snapshot()
+            const inertia = { type: 'inertia' as const, value: 50 }
+            view.scrollingY = inertia
+            focusView(view.time)
+            const inViewInertia = view.scrollingY === inertia
+            focusView(9 * span)
+            const replacedInertia = snapshot()
+            settings.playFollow = false
+            view.time = 3 * span
+            view.cursorTime = 3 * span
+            stepPreviewTime(4 * span * 1000)
+            const transport = { ...snapshot(), cursor: view.cursorTime }
+            return {
+                span,
+                inView,
+                optedOut,
+                distant,
+                nearby,
+                reversed,
+                smoothManual,
+                directManual,
+                inViewInertia,
+                replacedInertia,
+                transport,
+            }
+        } finally {
+            Object.assign(view, saved)
+            settings.playFollow = playFollow
+        }
+    })
+    expect(result.inView.samePending).toBe(true)
+    expect(result.inView.time).toBe(3 * result.span)
+    expect(result.inView.scrolling).toMatchObject({
+        type: 'ease',
+        to: { viewTime: 4 * result.span },
+    })
+    expect(result.optedOut.replacedPending).toBe(true)
+    expect(result.optedOut.time).toBe(3 * result.span)
+    expect(result.optedOut.cursor).toBe(7 * result.span)
+    expect(result.optedOut.scrolling).toMatchObject({
+        type: 'ease',
+        from: { viewTime: 3 * result.span },
+        to: { viewTime: 7 * result.span },
+    })
+    if (result.optedOut.scrolling?.type === 'ease')
+        expect(result.optedOut.scrolling.to.time - result.optedOut.scrolling.from.time).toBeCloseTo(
+            0.25,
+            10,
+        )
+    expect(result.distant).toEqual({ time: 7 * result.span, scrolling: undefined })
+    expect(result.nearby.time).toBe(7 * result.span)
+    expect(result.nearby.scrolling).toMatchObject({
+        type: 'ease',
+        from: { viewTime: 7 * result.span },
+        to: { viewTime: 8 * result.span },
+    })
+    expect(result.reversed).toEqual({ time: result.span, scrolling: undefined })
+    expect(result.smoothManual.time).toBe(result.span)
+    expect(result.smoothManual.scrolling?.type).toBe('ease')
+    if (result.smoothManual.scrolling?.type === 'ease') {
+        expect(result.smoothManual.scrolling.to.viewTime).toBeCloseTo(4 * result.span, 10)
+        expect(
+            result.smoothManual.scrolling.to.time - result.smoothManual.scrolling.from.time,
+        ).toBeCloseTo(0.25, 10)
+    }
+    expect(result.directManual.time).toBeCloseTo(4 * result.span, 10)
+    expect(result.directManual.scrolling).toBeUndefined()
+    expect(result.inViewInertia).toBe(true)
+    expect(result.replacedInertia).toEqual({ time: 9 * result.span, scrolling: undefined })
+    expect(result.transport.time).toBe(3 * result.span)
+    expect(result.transport.cursor).toBeCloseTo(7 * result.span, 10)
+    expect(result.transport.scrolling?.type).toBe('ease')
+    if (result.transport.scrolling?.type === 'ease') {
+        expect(result.transport.scrolling.from.viewTime).toBe(3 * result.span)
+        expect(result.transport.scrolling.to.viewTime).toBe(result.transport.cursor)
+        expect(
+            result.transport.scrolling.to.time - result.transport.scrolling.from.time,
+        ).toBeCloseTo(0.25, 10)
+    }
+})
+
+test('long cursor and entity focus jumps preserve touch markers and separate cursor from audio preview', async ({
+    page,
+}) => {
+    await tap(page, 0, 4)
+    const cursor = await page.evaluate(async () => {
+        const { view, settings, appImport } = window.editorTest
+        const { focusViewAtBeat } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const { audioPreviewRequest } = await appImport<
+            typeof import('../../src/editor/audioPreview')
+        >('/src/editor/audioPreview.ts')
+        const before = audioPreviewRequest.value
+        const beat = 2 * Math.ceil((10 * view.h) / settings.pps + 4)
+        focusViewAtBeat(beat)
+        return {
+            beat,
+            time: view.time,
+            cursor: view.cursorTime,
+            scrolling: view.scrollingY,
+            sameAudio: audioPreviewRequest.value === before,
+        }
+    })
+    expect(cursor.time).toBe(cursor.beat / 2)
+    expect(cursor.cursor).toBe(cursor.time)
+    expect(cursor.scrolling).toBeUndefined()
+    expect(cursor.sameAudio).toBe(true)
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'cursor', beat: cursor.beat }, cursor.time))
+
+    const entity = await page.evaluate(async () => {
+        const { view, appImport } = window.editorTest
+        const { focusEntityAtBeat } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const { audioPreviewRequest, beginAudioPreviewInteraction } = await appImport<
+            typeof import('../../src/editor/audioPreview')
+        >('/src/editor/audioPreview.ts')
+        beginAudioPreviewInteraction()
+        focusEntityAtBeat(8)
+        const request = audioPreviewRequest.value
+        focusEntityAtBeat(8)
+        return {
+            time: view.time,
+            cursor: view.cursorTime,
+            scrolling: view.scrollingY,
+            request,
+            sameRequest: audioPreviewRequest.value === request,
+        }
+    })
+    expect(entity).toEqual({
+        time: 4,
+        cursor: cursor.time,
+        scrolling: undefined,
+        request: { time: 4 },
+        sameRequest: true,
+    })
+    await expect
+        .poll(() => markerState(page))
+        .toEqual(await shownAt(page, { kind: 'entity', beat: 8 }, 4))
+})
+
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 } })
 

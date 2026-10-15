@@ -13,16 +13,12 @@ const open = async (page: Page) => {
 }
 
 const look = (page: Page) =>
-    page.evaluate(async () => {
-        const { chartBackground } = await window.editorTest.appImport<
-            typeof import('../../src/editor/canvas/nameColors')
-        >('/src/editor/canvas/nameColors.ts')
+    page.evaluate(() => {
         const root = getComputedStyle(document.documentElement)
         return {
             theme: document.documentElement.dataset.theme,
             scheme: root.colorScheme,
             chart: getComputedStyle(document.body).backgroundColor,
-            names: chartBackground.value,
         }
     })
 
@@ -32,7 +28,6 @@ test('the setting picks the theme, and System follows the device live', async ({
         theme: 'light',
         scheme: 'light',
         chart: light,
-        names: '#404464',
     })
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
 
@@ -43,7 +38,6 @@ test('the setting picks the theme, and System follows the device live', async ({
             theme: 'dark',
             scheme: 'dark',
             chart: dark,
-            names: '#232539',
         })
 
     await page.evaluate(() => (window.editorTest.settings.theme = 'light'))
@@ -56,7 +50,6 @@ test('the setting picks the theme, and System follows the device live', async ({
         theme: 'dark',
         scheme: 'dark',
         chart: dark,
-        names: '#232539',
     })
 })
 

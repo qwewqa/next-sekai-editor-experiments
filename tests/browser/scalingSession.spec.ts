@@ -218,15 +218,19 @@ test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(() => {
         window.scalingVertices = []
-        const clear = WebGLRenderingContext.prototype.clear
-        WebGLRenderingContext.prototype.clear = function (...args) {
-            window.scalingVertices = []
+        const isPreview = (gl: WebGL2RenderingContext) =>
+            gl.canvas instanceof HTMLCanvasElement &&
+            gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
+        const clear = WebGL2RenderingContext.prototype.clear
+        WebGL2RenderingContext.prototype.clear = function (...args) {
+            if (isPreview(this)) window.scalingVertices = []
             return clear.apply(this, args)
         }
-        const upload = WebGLRenderingContext.prototype.bufferSubData
-        WebGLRenderingContext.prototype.bufferSubData = function (...args) {
-            if (args[2] instanceof Float32Array) window.scalingVertices.push(...args[2])
-            return upload.apply(this, args)
+        const upload = WebGL2RenderingContext.prototype.bufferSubData
+        WebGL2RenderingContext.prototype.bufferSubData = function (...args: unknown[]) {
+            if (isPreview(this) && args[2] instanceof Float32Array)
+                window.scalingVertices.push(...args[2])
+            return Reflect.apply(upload, this, args)
         }
     })
     await page.goto('/')

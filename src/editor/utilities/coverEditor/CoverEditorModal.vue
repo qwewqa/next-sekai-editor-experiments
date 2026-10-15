@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver'
-import { ref, provide } from 'vue'
+import { ref, provide, onUnmounted } from 'vue'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import BaseModal from '../../../modals/BaseModal.vue'
 import FileField from '../../../modals/form/FileField.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import { createBlob } from '../../../utils/canvas'
+import { CoverExporter } from '../../../rendering/coverExport'
 import { timeout } from '../../../utils/promise'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 
@@ -17,6 +17,10 @@ provide(stackLongValuesKey, true)
 const image = ref<HTMLImageElement>()
 
 const size = ref(400)
+const exporter = new CoverExporter()
+onUnmounted(() => {
+    exporter.dispose()
+})
 
 const onSelect = (file: File) => {
     void showModal(LoadingModal, {
@@ -75,30 +79,7 @@ const onGenerate = () => {
 
             if (!image.value) return
 
-            let sx = 0
-            let sy = 0
-            let sw = image.value.width
-            let sh = image.value.height
-            if (sw > sh) {
-                sx = Math.floor((sw - sh) / 2)
-                sw = sh
-            } else if (sh > sw) {
-                sy = Math.floor((sh - sw) / 2)
-                sh = sw
-            }
-
-            const canvas = document.createElement('canvas')
-            canvas.width = size.value
-            canvas.height = size.value
-
-            const ctx = canvas.getContext('2d')
-            if (!ctx) throw new Error('Unexpected missing canvas context')
-
-            ctx.imageSmoothingEnabled = true
-            ctx.imageSmoothingQuality = 'high'
-            ctx.drawImage(image.value, sx, sy, sw, sh, 0, 0, size.value, size.value)
-
-            const blob = await createBlob(canvas)
+            const blob = await exporter.createBlob(image.value, size.value, signal)
             signal.throwIfAborted()
             saveAs(blob, 'cover.png')
         },

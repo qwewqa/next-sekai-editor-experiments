@@ -285,13 +285,23 @@ test('a box selection takes a note its edge cuts, as far as the note is drawn', 
 })
 
 test('a box selection is drawn as the chart draws its own', async ({ page }) => {
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         const calls: unknown[] = []
+        const probe = document.createElement('canvas').getContext('2d')!
+        // Compare parsed colors, independent of the renderer's CSS serialization.
+        const style = (color: string) => ((probe.fillStyle = color), String(probe.fillStyle))
         ;(window as unknown as { boxCalls: unknown[] }).boxCalls = calls
         for (const name of ['fillRect', 'strokeRect'] as const) {
-            const method = CanvasRenderingContext2D.prototype[name]
-            CanvasRenderingContext2D.prototype[name] = function (x, y, w, h) {
-                if (this.canvas.classList.contains('elevation-canvas') && this.getLineDash().length)
+            const method = WebGLDrawContext.prototype[name]
+            WebGLDrawContext.prototype[name] = function (x, y, w, h) {
+                if (
+                    this.canvas instanceof HTMLCanvasElement &&
+                    this.canvas.classList.contains('elevation-canvas') &&
+                    this.getLineDash().length
+                )
                     calls.push({
                         name,
                         w,
@@ -299,7 +309,9 @@ test('a box selection is drawn as the chart draws its own', async ({ page }) => 
                         lineWidth: this.lineWidth,
                         dash: this.getLineDash(),
                         alpha: this.globalAlpha,
-                        style: name === 'fillRect' ? this.fillStyle : this.strokeStyle,
+                        style: style(
+                            String(name === 'fillRect' ? this.fillStyle : this.strokeStyle),
+                        ),
                     })
                 return method.call(this, x, y, w, h)
             }
@@ -343,12 +355,19 @@ test('a box selection is drawn as the chart draws its own', async ({ page }) => 
 })
 
 test('a note outline is the chart hitbox with a 0.1 lane margin', async ({ page }) => {
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         const calls: number[][] = []
         ;(window as unknown as { outlines: number[][] }).outlines = calls
-        const method = CanvasRenderingContext2D.prototype.strokeRect
-        CanvasRenderingContext2D.prototype.strokeRect = function (x, y, w, h) {
-            if (this.canvas.classList.contains('elevation-canvas') && this.getLineDash().length)
+        const method = WebGLDrawContext.prototype.strokeRect
+        WebGLDrawContext.prototype.strokeRect = function (x, y, w, h) {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas') &&
+                this.getLineDash().length
+            )
                 calls.push([x, y, w, h, this.lineWidth])
             return method.call(this, x, y, w, h)
         }
@@ -373,18 +392,25 @@ test('a note outline is the chart hitbox with a 0.1 lane margin', async ({ page 
 
 // Records the Elevation Editor's grid strokes and number label fonts, per frame.
 const recordGrid = (page: Page) =>
-    page.evaluate(() => {
+    page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         const lines: { style: string; width: number; vertical: boolean; x: number; y: number }[] =
             []
         const fonts: string[] = []
         Object.assign(window, { gridLines: lines, labelFonts: fonts })
-        const prototype = CanvasRenderingContext2D.prototype
-        const { moveTo, lineTo, stroke, fillText, clearRect } = prototype
+        const prototype = WebGLDrawContext.prototype
+        const { moveTo, lineTo, stroke, fillText, clear } = prototype
         let start = [0, 0]
         let vertical = false
-        prototype.clearRect = function (...args) {
-            if (this.canvas.classList.contains('elevation-canvas')) lines.length = fonts.length = 0
-            return clearRect.apply(this, args)
+        prototype.clear = function () {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas')
+            )
+                lines.length = fonts.length = 0
+            return clear.call(this)
         }
         prototype.moveTo = function (x, y) {
             start = [x, y]
@@ -395,8 +421,12 @@ const recordGrid = (page: Page) =>
             return lineTo.call(this, x, y)
         }
         // The editor strokes its own paths.
-        prototype.stroke = function (this: CanvasRenderingContext2D) {
-            if (this.canvas.classList.contains('elevation-canvas') && !this.getLineDash().length)
+        prototype.stroke = function () {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas') &&
+                !this.getLineDash().length
+            )
                 lines.push({
                     style: String(this.strokeStyle),
                     width: this.lineWidth,
@@ -407,7 +437,11 @@ const recordGrid = (page: Page) =>
             return (stroke as () => void).call(this)
         }
         prototype.fillText = function (text, x, y, maxWidth) {
-            if (this.canvas.classList.contains('elevation-canvas') && /^-?\d+$/.test(text))
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas') &&
+                /^-?\d+$/.test(text)
+            )
                 fonts.push(this.font)
             return fillText.call(this, text, x, y, maxWidth)
         }
@@ -430,11 +464,11 @@ const drawnGrid = (page: Page) =>
         for (const line of gridLines) {
             if (line.vertical) {
                 const lane = laneLeft + line.x / laneScale
-                lanes[`${Math.round(lane * 1000) / 1000}`] = line.style
+                lanes[`${Math.round(lane * 1000) / 1000}`] = style(line.style)
                 continue
             }
             const elevation = elevationCenter + (height / 2 - line.y) / elevationScale
-            elevations[`${Math.round(elevation * 1000) / 1000}`] = line.style
+            elevations[`${Math.round(elevation * 1000) / 1000}`] = style(line.style)
         }
         return {
             lanes,

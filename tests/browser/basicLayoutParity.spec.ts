@@ -65,10 +65,15 @@ const checkpoint = async (page: Page) => {
                 recentlyActive: isViewRecentlyActive.value,
                 canUndo: history.canUndo.value,
             }
-            const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
-            const overlayPixels = overlay
-                .getContext('2d')!
-                .getImageData(0, 0, overlay.width, overlay.height)
+            // The optional historical server predates the GPU renderer.
+            const chartContext = window.editorRendering
+                ? window.editorRendering.getDrawContext(canvas)
+                : canvas.getContext('2d')!
+            const overlayContext = window.editorRendering
+                ? window.editorRendering.getDrawContext(overlay)
+                : overlay.getContext('2d')!
+            const pixels = chartContext.getImageData(0, 0, canvas.width, canvas.height)
+            const overlayPixels = overlayContext.getImageData(0, 0, overlay.width, overlay.height)
             const images = { chart: canvas.toDataURL(), overlay: overlay.toDataURL() }
             const dimensions = { width: canvas.width, height: canvas.height }
             const [digest, overlayDigest] = await Promise.all([
@@ -117,7 +122,7 @@ const exercise = async (
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     try {
-        await page.addInitScript(installCanvasCounters)
+        await page.addInitScript(installCanvasCounters, url === baselineUrl)
         // Frequent readbacks can make Chromium switch rasterizers mid-scenario.
         // Fix the backend for exact pixel parity; the ordinary browser suite
         // continues to exercise the application's default accelerated canvases.
@@ -129,11 +134,10 @@ const exercise = async (
                     type: string,
                     options?: CanvasRenderingContext2DSettings,
                 ) {
-                    return getContext.call(
-                        this,
+                    return Reflect.apply(getContext, this, [
                         type,
                         type === '2d' ? { ...options, willReadFrequently: true } : options,
-                    )
+                    ])
                 },
             })
         })

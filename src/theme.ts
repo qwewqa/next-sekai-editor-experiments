@@ -1,5 +1,4 @@
 import { computed, shallowRef, watch } from 'vue'
-import { setChartBackground } from './editor/canvas/nameColors'
 import { settings } from './settings'
 
 // index.html applies the same choice before the app loads.
@@ -17,14 +16,6 @@ const theme = computed(() =>
 const root = document.documentElement
 let frame = 0
 
-const readChartBackground = () => {
-    const channels = getComputedStyle(root).getPropertyValue('--color-bg').trim()
-    if (!channels) return false
-    const hex = channels.split(/\s+/).map((v) => Number(v).toString(16).padStart(2, '0'))
-    setChartBackground(`#${hex.join('')}`)
-    return true
-}
-
 const stop = watch(
     theme,
     (value, previous) => {
@@ -39,9 +30,6 @@ const stop = watch(
             })
         }
         root.dataset.theme = value
-        // WebKit can run this before the stylesheet applies; read again once the page loads.
-        if (!readChartBackground())
-            window.addEventListener('load', readChartBackground, { once: true })
     },
     { immediate: true, flush: 'sync' },
 )
@@ -50,7 +38,6 @@ if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         stop()
         cancelAnimationFrame(frame)
-        window.removeEventListener('load', readChartBackground)
         root.removeAttribute('data-theme-switching')
         query.removeEventListener('change', updatePrefersDark)
     })

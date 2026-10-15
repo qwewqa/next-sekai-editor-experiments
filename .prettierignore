@@ -15,5 +15,8 @@
 !.github/
 !.github/workflows/*.yml
 
+# Preserve the vendored tessellator's upstream source and license header.
+src/rendering/vendor/libtess.js
+
 src/i18n/*/index.json
 !src/i18n/en/index.json

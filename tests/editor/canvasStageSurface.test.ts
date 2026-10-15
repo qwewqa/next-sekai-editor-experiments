@@ -6,23 +6,35 @@ import type { EditorDrawContext } from '../../src/editor/canvas/types'
 import { fullScope } from '../../src/editor/scopeRules'
 
 test('stage cache is lazy, bounded and releases lost or unused backing stores', (t) => {
-    const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
     const allocated: ReturnType<typeof canvas>[] = []
-    const canvas = () => {
+    const resourceOwner = {}
+    const canvas = (width = 0, height = 0) => {
         const item = {
-            width: 0,
-            height: 0,
+            width,
+            height,
             lost: false,
             clears: 0,
             blits: 0,
             ctx: {
                 globalAlpha: 1,
+                isReady: true,
                 save() {},
                 restore() {},
                 setTransform() {},
-                fillRect() {
+                resourceOwner,
+                maxSurfaceSize: 4096,
+                createStageSurface(width: number, height: number): unknown {
+                    const surface = canvas(width, height)
+                    allocated.push(surface)
+                    return surface
+                },
+                clear() {
                     item.clears++
                 },
+                clearRect() {
+                    item.clears++
+                },
+                flush() {},
                 drawImage() {
                     item.blits++
                 },
@@ -33,23 +45,12 @@ test('stage cache is lazy, bounded and releases lost or unused backing stores', 
             getContext() {
                 return item.ctx
             },
+            dispose() {
+                item.width = item.height = 0
+            },
         }
         return item
     }
-    Object.defineProperty(globalThis, 'document', {
-        configurable: true,
-        value: {
-            createElement: () => {
-                const item = canvas()
-                allocated.push(item)
-                return item
-            },
-        },
-    })
-    t.after(() => {
-        if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
-        else Reflect.deleteProperty(globalThis, 'document')
-    })
     const target = canvas()
     const context = {
         ctx: target.ctx,
@@ -60,6 +61,7 @@ test('stage cache is lazy, bounded and releases lost or unused backing stores', 
         state: { bpms: [] },
     } as unknown as EditorDrawContext
     const surface = createStageSurface()
+    t.after(() => surface.clear())
     const draw = (width = 200, height = 100) =>
         surface.draw(context, width, height, { min: 0, max: 8 }, fullScope, 1)
     draw()
@@ -94,9 +96,8 @@ test('stage cache is lazy, bounded and releases lost or unused backing stores', 
     assert.deepEqual([allocated[2]!.width, allocated[2]!.height], [0, 0])
     draw()
     assert.equal(allocated.length, 4)
-    Reflect.deleteProperty(allocated[3]!.ctx, 'isContextLost')
     draw()
-    assert.equal(allocated.length, 4, 'older Canvas APIs still reuse the valid surface')
+    assert.equal(allocated.length, 4, 'a healthy WebGL surface is reused')
     context.composed = undefined
     draw()
     assert.deepEqual([allocated[3]!.width, allocated[3]!.height], [0, 0])
@@ -106,35 +107,50 @@ test('stage cache is lazy, bounded and releases lost or unused backing stores', 
 test('a motion window is released after an exact last moving frame', (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] })
     let now = 0
+    let renderMs = 0
+    let releaseAt = 0
+    const schedule = setTimeout
+    t.mock.method(globalThis, 'setTimeout', (callback: () => void, delay?: number) => {
+        releaseAt = now + (delay ?? 0)
+        return schedule(callback, delay)
+    })
     t.mock.method(performance, 'now', () => now)
     const allocated: { width: number; height: number }[] = []
-    const canvas = () => {
+    const resourceOwner = {}
+    const canvas = (width = 0, height = 0) => {
         const ctx = {
             globalAlpha: 1,
+            isReady: true,
             save() {},
             restore() {},
             setTransform() {},
-            fillRect() {},
-            drawImage() {},
+            resourceOwner,
+            maxSurfaceSize: 4096,
+            createStageSurface(width: number, height: number): unknown {
+                const surface = canvas(width, height)
+                allocated.push(surface)
+                return surface
+            },
+            clear() {},
+            clearRect() {},
+            flush() {},
+            drawImage() {
+                // A GPU surface's queued stage render finishes when it is blitted.
+                now += renderMs
+            },
             isContextLost: () => false,
         }
-        return { width: 0, height: 0, getContext: () => ctx, ctx }
-    }
-    const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
-    Object.defineProperty(globalThis, 'document', {
-        configurable: true,
-        value: {
-            createElement: () => {
-                const item = canvas()
-                allocated.push(item)
-                return item
+        const surface = {
+            width,
+            height,
+            getContext: () => ctx,
+            ctx,
+            dispose() {
+                surface.width = surface.height = 0
             },
-        },
-    })
-    t.after(() => {
-        if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
-        else Reflect.deleteProperty(globalThis, 'document')
-    })
+        }
+        return surface
+    }
     const context = {
         ctx: canvas().ctx,
         pixelRatio: 1,
@@ -145,6 +161,7 @@ test('a motion window is released after an exact last moving frame', (t) => {
         composed: { stages: new Map([[1 as StageId, { startBeat: 20, endBeat: 24 }]]) },
     } as unknown as EditorDrawContext
     const surface = createStageSurface()
+    t.after(() => surface.clear())
     const draw = (time: number, t: number) => {
         now = time
         context.bounds = { ...context.bounds, t, b: t + 4 }
@@ -191,4 +208,31 @@ test('a motion window is released after an exact last moving frame', (t) => {
     assert.deepEqual([slow.width, slow.height], [0, 0])
     assert.equal(draw(6080, 3.75), false)
     assert.equal(allocated.length, count + 1)
+
+    // Cold complex stages can exceed the motion gap. That rendering time must
+    // not turn every successive input frame into an isolated exact redraw.
+    surface.clear()
+    renderMs = 250
+    assert.equal(draw(8000, -4), false)
+    assert.equal(draw(now + 16, -4.01), false, 'the first move still draws exactly')
+    assert.equal(draw(now + 16, -4.02), true, 'slow consecutive frames warm the window')
+    assert.equal(draw(now + 16, -4.03), true, 'the next slow frame reuses shifted pixels')
+    assert.equal(draw(now + 101, -4.04), false, 'an actual idle gap still draws exactly')
+    assert.equal(draw(now + 16, -4.04), false, 'a settled view draws exactly')
+    renderMs = 3000
+    assert.equal(draw(now + 16, -4.05), false)
+    assert.equal(draw(now + 16, -4.06), true)
+    assert.equal(releaseAt, now + 2500, 'window expiry starts after even a 3-second render')
+    surface.clear()
+    renderMs = 0
+    const slowFrame = (top: number) => {
+        const shifted = draw(now + 16, top)
+        now += 250 // The rest of the chart, after stages.draw, can also be slow.
+        surface.finishFrame()
+        return shifted
+    }
+    assert.equal(slowFrame(-4), false)
+    assert.equal(slowFrame(-4.01), false)
+    assert.equal(slowFrame(-4.02), true, 'slow remaining chart work is not an idle gap')
+    assert.equal(draw(now + 101, -4.03), false, 'real idle time after the full frame stays exact')
 })

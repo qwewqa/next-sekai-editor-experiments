@@ -13,6 +13,7 @@ import {
 import { easeEditParts, easeFunctionOf, easeTypeOf, eases, type Ease } from '../../../ease'
 import { i18n } from '../../../i18n'
 import type { FieldUsage } from '../../../modals/form/fieldUsage'
+import { createFontContext } from '../../../rendering/textRaster'
 import { settings } from '../../../settings'
 import type { Entity } from '../../../state/entities'
 import { interpolateRaw } from '../../../utils/interpolate'
@@ -157,7 +158,7 @@ const readRoom = () => {
 const measure = () => {
     if (!title.value) return
     if (!room) readRoom()
-    context ??= document.createElement('canvas').getContext('2d')
+    context ??= createFontContext()
     if (!context || !room) return
     const { width: available, fontSize, fontFamily, rem } = room
     const width = (text: string, weight: string) => {

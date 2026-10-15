@@ -161,6 +161,9 @@ test.describe('phone elevation scale', () => {
     test('signed and multi-digit numbers align with the grid', async ({ page }, testInfo) => {
         await open(page)
         const labels = await page.evaluate(async () => {
+            const { WebGLDrawContext } = await window.editorTest.appImport<
+                typeof import('../../src/rendering/context')
+            >('/src/rendering/context.ts')
             const labels = new Map<
                 string,
                 {
@@ -171,8 +174,8 @@ test.describe('phone elevation scale', () => {
                     grid: number
                 }
             >()
-            const fillText = CanvasRenderingContext2D.prototype.fillText
-            CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
+            const fillText = WebGLDrawContext.prototype.fillText
+            WebGLDrawContext.prototype.fillText = function (text, x, y, maxWidth) {
                 if (
                     this.canvas instanceof HTMLCanvasElement &&
                     this.canvas.classList.contains('elevation-canvas') &&
@@ -200,7 +203,7 @@ test.describe('phone elevation scale', () => {
             await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             )
-            CanvasRenderingContext2D.prototype.fillText = fillText
+            WebGLDrawContext.prototype.fillText = fillText
             return [...labels.entries()]
         })
         expect(labels.map(([text]) => text)).toEqual(expect.arrayContaining(['-1', '0', '10']))
@@ -258,7 +261,9 @@ test('the elevation grid lines follow the elevation snap', async ({ page }) => {
                 const y = Math.round(
                     window.elevationTest.scene.elevationLayout.value.yAt(elevation) * ratio,
                 )
-                const data = canvas.getContext('2d')!.getImageData(0, y, canvas.width, 1).data
+                const data = window.editorRendering
+                    .getDrawContext(canvas)
+                    .getImageData(0, y, canvas.width, 1).data
                 let sum = 0
                 for (let i = 0; i < data.length; i += 4)
                     sum += data[i]! + data[i + 1]! + data[i + 2]!
@@ -707,12 +712,12 @@ test('a restored canvas context redraws the scene', async ({ page }) => {
     await open(page)
     const redrawn = await page.locator('.elevation-canvas').evaluate(async (element) => {
         const canvas = element as HTMLCanvasElement
-        const ctx = canvas.getContext('2d')!
+        const ctx = window.editorRendering.getDrawContext(canvas)
         let clears = 0
-        const clearRect = ctx.clearRect.bind(ctx)
-        ctx.clearRect = (...args: Parameters<typeof ctx.clearRect>) => {
+        const clear = ctx.clear.bind(ctx)
+        ctx.clear = () => {
             clears++
-            clearRect(...args)
+            clear()
         }
         const frames = () =>
             new Promise<void>((resolve) =>
@@ -720,7 +725,7 @@ test('a restored canvas context redraws the scene', async ({ page }) => {
             )
         await frames()
         const before = clears
-        canvas.dispatchEvent(new Event('contextrestored'))
+        canvas.dispatchEvent(new Event('webglcontextrestored'))
         await frames()
         return { before, after: clears }
     })
@@ -965,8 +970,8 @@ for (const connectorLayer of ['top', 'over'] as const) {
                     const x = (head!.x + tail!.x) / 2 + (head!.w + tail!.w) / 8
                     const y = (head!.y + tail!.y) / 2
                     return [
-                        ...canvas
-                            .getContext('2d')!
+                        ...window.editorRendering
+                            .getDrawContext(canvas)
                             .getImageData(
                                 Math.round((x * canvas.width) / layout.width),
                                 Math.round((y * canvas.height) / layout.height),
@@ -1948,8 +1953,10 @@ test('selection highlighting updates without rebuilding elevation notes or their
         page.evaluate(() => {
             const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
             const data = canvas
-                ?.getContext('2d')
-                ?.getImageData(0, 0, canvas.width, canvas.height).data
+                ? window.editorRendering
+                      .getDrawContext(canvas)
+                      .getImageData(0, 0, canvas.width, canvas.height).data
+                : undefined
             return data?.filter((value, index) => index % 4 === 3 && value > 0).length ?? 0
         })
     await expect.poll(outlinePixels).toBeGreaterThan(0)
@@ -2195,11 +2202,18 @@ test('a zero-width note is outlined as wide as its placeholder', async ({ page }
     })
     await open(page)
     const result = await page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         const { history, store } = window.editorTest
         const widths: number[] = []
-        const strokeRect = CanvasRenderingContext2D.prototype.strokeRect
-        CanvasRenderingContext2D.prototype.strokeRect = function (x, y, w, h) {
-            if (this.canvas.classList.contains('elevation-canvas') && this.getLineDash().length)
+        const strokeRect = WebGLDrawContext.prototype.strokeRect
+        WebGLDrawContext.prototype.strokeRect = function (x, y, w, h) {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas') &&
+                this.getLineDash().length
+            )
                 widths.push(w)
             return strokeRect.call(this, x, y, w, h)
         }
@@ -2211,7 +2225,7 @@ test('a zero-width note is outlined as wide as its placeholder', async ({ page }
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
-        CanvasRenderingContext2D.prototype.strokeRect = strokeRect
+        WebGLDrawContext.prototype.strokeRect = strokeRect
         return { widths, laneScale: window.elevationTest.scene.elevationLayout.value.laneScale }
     })
     // The 0.1-lane margin around an empty hitbox, as on the main canvas.
@@ -2272,7 +2286,7 @@ test('header controls take keys as dock controls do', async ({ page }) => {
     await expect(page.locator('.elevation-editor')).toHaveCount(0)
 })
 
-test('names draw after every row, overlapping, with selected rows on top', async ({
+test('names draw after every row, with selected rows last and overlapping highlights preserved', async ({
     page,
 }, testInfo) => {
     await page.evaluate(() => {
@@ -2284,7 +2298,7 @@ test('names draw after every row, overlapping, with selected rows on top', async
                 isDynamicStages: true,
                 slides: [
                     [{ ...base, beat: 6, left: 0, elevation: 2, stageId: 1 as never }],
-                    [{ ...base, beat: 6, left: 1, elevation: 2, stageId: 2 as never }],
+                    [{ ...base, beat: 6, left: 6, elevation: 2, stageId: 2 as never }],
                 ],
             },
             3,
@@ -2293,14 +2307,17 @@ test('names draw after every row, overlapping, with selected rows on top', async
     })
     await open(page)
     // Bodies and names drawn on the elevation canvas in the next frames, in order.
-    const draws = (selectIndex?: number) =>
+    const draws = (selectIndex?: number | number[]) =>
         page.evaluate(async (selectIndex) => {
+            const { WebGLDrawContext } = await window.editorTest.appImport<
+                typeof import('../../src/rendering/context')
+            >('/src/rendering/context.ts')
             const { history, view } = window.editorTest
             // Unselected names show while the view is in use.
             view.lastActive = Number.POSITIVE_INFINITY
             const drawn: string[] = []
-            const prototype = CanvasRenderingContext2D.prototype
-            const { drawImage, fill, fillText } = prototype
+            const prototype = WebGLDrawContext.prototype
+            const { drawImage, drawNameSprite, drawEditorLabel, fill, fillText } = prototype
             const record = (canvas: unknown, entry: string) => {
                 if (
                     canvas instanceof HTMLCanvasElement &&
@@ -2314,6 +2331,15 @@ test('names draw after every row, overlapping, with selected rows on top', async
                 record(this.canvas, label === 'Center' || label === 'Side stage' ? label : 'body')
                 return (drawImage as (...args: unknown[]) => void).apply(this, args)
             }
+            prototype.drawNameSprite = function (source, ...args) {
+                const label = window.editorLabels.get(source)?.text
+                if (label === 'Center' || label === 'Side stage') record(this.canvas, label)
+                return drawNameSprite.call(this, source, ...args)
+            }
+            prototype.drawEditorLabel = function (text, ...args) {
+                if (text === 'Center' || text === 'Side stage') record(this.canvas, text)
+                return drawEditorLabel.call(this, text, ...args)
+            }
             prototype.fill = function (...args: unknown[]) {
                 record(this.canvas, 'body')
                 return (fill as (...args: unknown[]) => void).apply(this, args)
@@ -2325,13 +2351,18 @@ test('names draw after every row, overlapping, with selected rows on top', async
             const rows = window.elevationTest.scene.elevationLayout.value.rows
             history.replaceState({
                 ...history.state.value,
-                selectedEntities: selectIndex === undefined ? [] : [rows[selectIndex]!.note],
+                selectedEntities: (selectIndex === undefined
+                    ? []
+                    : Array.isArray(selectIndex)
+                      ? selectIndex
+                      : [selectIndex]
+                ).map((index) => rows[index]!.note),
             })
             await window.editorTest.nextTick()
             await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             )
-            Object.assign(prototype, { drawImage, fill, fillText })
+            Object.assign(prototype, { drawImage, drawNameSprite, drawEditorLabel, fill, fillText })
             return drawn
         }, selectIndex)
     // Names in the order they first draw, checked to follow every body.
@@ -2345,7 +2376,8 @@ test('names draw after every row, overlapping, with selected rows on top', async
         path: testInfo.outputPath('elevation-names.png'),
         style: '.notification { visibility: hidden }',
     })
-    // Both overlapping names, after both bodies.
+    // Ordinary names have separate anchors so decluttering does not hide either.
+    // Both still must draw after every body.
     expect(names(plain)).toEqual(['Center', 'Side stage'])
     // A selected row's name draws last, on top.
     const stageNames = await page.evaluate(() =>
@@ -2359,7 +2391,7 @@ test('names draw after every row, overlapping, with selected rows on top', async
         style: '.notification { visibility: hidden }',
     })
     expect(names(selected)).toEqual(['Side stage', 'Center'])
-    // So with Name Contrast, split over their own bodies.
+    // The same painter order holds for whole-name contrast outlines.
     await page.evaluate(() => (window.editorTest.settings.nameContrast = true))
     const contrast = await draws(stageNames.indexOf('Center'))
     await page.locator('.elevation-canvas').screenshot({
@@ -2367,6 +2399,37 @@ test('names draw after every row, overlapping, with selected rows on top', async
         style: '.notification { visibility: hidden }',
     })
     expect(names(contrast)).toEqual(['Side stage', 'Center'])
+
+    // Ordinary overlapping names are intentionally decluttered. Move the side
+    // note back onto the original overlapping fixture and test that policy.
+    await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        const side = window.elevationTest.scene.elevationLayout.value.rows.find(
+            (row) => history.state.value.stages.get(row.note.stageId)?.name === 'Side stage',
+        )!
+        history.replaceState({ ...history.state.value, selectedEntities: [side.note] })
+        editSelectedEditableEntities({ left: 1 })
+    })
+    await settle(page)
+    // The side label was accepted while editing; stable decluttering keeps it
+    // when it becomes ordinary, until a highlighted overlapping name takes priority.
+    expect(names(await draws())).toEqual(['Side stage'])
+    expect(names(await draws(stageNames.indexOf('Center')))).toEqual(['Center'])
+    // Selected names remain visible even when they overlap each other.
+    expect(names(await draws([0, 1]))).toEqual(['Center', 'Side stage'])
+    // Hovering the side note's exclusive right edge keeps its name visible as
+    // the selected Center row is raised and painted last, despite the overlap.
+    const sidePoint = await point(page, stageNames.indexOf('Side stage'), 'right')
+    await page.mouse.move(sidePoint.x, sidePoint.y)
+    await settle(page)
+    expect(names(await draws(stageNames.indexOf('Center')))).toEqual(['Side stage', 'Center'])
+    await page.locator('.elevation-canvas').screenshot({
+        path: testInfo.outputPath('elevation-names-overlapping-highlighted.png'),
+        style: '.notification { visibility: hidden }',
+    })
 })
 
 test('Ctrl+Z in the Beat field showing its committed beat undoes the last edit', async ({

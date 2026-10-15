@@ -1,14 +1,44 @@
+import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
+
+const lyonInventoryBytes = readFileSync(
+    new URL('../public/third-party/lyon/sources.json', import.meta.url),
+)
+const lyonInventory = JSON.parse(lyonInventoryBytes)
+const lyonManifest = JSON.parse(
+    readFileSync(new URL('../native/lyon/artifact.json', import.meta.url), 'utf8'),
+)
+const lyonArtifact = lyonManifest.artifact
+const lyonNoticeHashes = new Map(
+    lyonInventory.map(({ file, sha256 }) => ['third-party/lyon/' + file, sha256]),
+)
+for (const file of ['sources.json', 'README.txt']) {
+    const entry = lyonManifest.sources.find(
+        (entry) => entry.file === 'public/third-party/lyon/' + file,
+    )
+    if (!entry) throw new Error('Missing pinned Lyon notice metadata: ' + file)
+    lyonNoticeHashes.set('third-party/lyon/' + file, entry.sha256)
+}
+if (sha256(lyonInventoryBytes) !== lyonNoticeHashes.get('third-party/lyon/sources.json'))
+    throw new Error('Lyon notice inventory differs from its pinned artifact')
+export const lyonNoticeFiles = [...lyonNoticeHashes.keys()]
 
 export const staticFiles = ['favicon.ico', 'thumbnail.png']
 export const noticeFiles = [
+    ...lyonNoticeFiles,
     'LICENSE.txt',
     'THIRD_PARTY_NOTICES.txt',
     'notices/LGPL-3.0.txt',
     'notices/GPL-3.0.txt',
     'notices/Font-Awesome.txt',
+    'notices/libtess.txt',
+    'notices/pixi-colord.txt',
 ]
 
 export function sha256(bytes) {
@@ -31,7 +61,27 @@ async function regularFile(path) {
 }
 
 async function dependencyNotices(root) {
+    const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
     const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'))
+    if (
+        project.dependencies?.['pixi.js'] !== '8.22.0' ||
+        lock.packages['']?.dependencies?.['pixi.js'] !== '8.22.0' ||
+        lock.packages['node_modules/pixi.js']?.version !== '8.22.0'
+    )
+        throw new Error('Release requires the audited, exactly pinned PixiJS 8.22.0 installation')
+    if (project.dependencies?.['canvaskit-wasm'] || lock.packages['node_modules/canvaskit-wasm'])
+        throw new Error('Remove the obsolete CanvasKit dependency before producing a Pixi release')
+    // Staging verifies the installed outputs without repairing or mutating them.
+    // A skipped or stale postinstall must fail before the patched-code notice is published.
+    await execFileAsync(
+        process.execPath,
+        [
+            join(root, 'scripts/patch-pixi-default-batcher.mjs'),
+            '--check',
+            join(root, 'node_modules/pixi.js'),
+        ],
+        { cwd: root },
+    )
     const lamejs = JSON.parse(await readFile(join(root, 'deployment/lamejs-source.json'), 'utf8'))
     if (lock.packages[`node_modules/${lamejs.package}`]?.version !== lamejs.version) {
         throw new Error('Update LameJS source attribution for the locked dependency version')
@@ -41,7 +91,8 @@ async function dependencyNotices(root) {
         '============================',
         '',
         'This list includes production dependencies and their build helpers.',
-        'Versions and original license text are taken from the locked installation.',
+        'Versions are taken from the locked installation. Original license text is preserved',
+        'from installed files or the explicitly pinned upstream notice identified below.',
         '',
         'LameJS: @breezystack/lamejs is used without source modifications.',
         'It is compiled as a separate dynamically imported JavaScript chunk.',
@@ -54,6 +105,13 @@ async function dependencyNotices(root) {
         'The published package LICENSE excerpt is also preserved below.',
         '',
         'Font Awesome icon attribution: notices/Font-Awesome.txt',
+        'Lyon 1.0.22/Rust kernel: full notices and source revisions in third-party/lyon/sources.json.',
+        'Vendored libtess.js: notices/libtess.txt (SGI Free Software License B).',
+        'libtess.js source: https://github.com/brendankenny/libtess.js',
+        '',
+        'PixiJS 8.22.0 includes one checked source patch:',
+        '- Resolve the initial default batcher through the registered batcher extension.',
+        'The original PixiJS MIT license and copyright are preserved below.',
     ]
     for (const [location, locked] of Object.entries(lock.packages).sort(([a], [b]) =>
         a.localeCompare(b),
@@ -68,7 +126,22 @@ async function dependencyNotices(root) {
         const licenses = (await readdir(directory))
             .filter((file) => /^(licen[sc]e|copying)(\.|$)/i.test(file))
             .sort()
-        if (!licenses.length) throw new Error(`Missing dependency license: ${pkg.name}`)
+        const licenseTexts = await Promise.all(
+            licenses.map(async (file) =>
+                (await regularFile(join(directory, file))).toString('utf8').trim(),
+            ),
+        )
+        if (!licenseTexts.length) {
+            // This published package omits LICENSE.md. Preserve the complete text
+            // from its published gitHead; other missing licenses still fail closed.
+            if (pkg.name !== '@pixi/colord' || pkg.version !== '2.9.6')
+                throw new Error(`Missing dependency license: ${pkg.name}`)
+            licenseTexts.push(
+                (await regularFile(join(root, 'deployment/notices/pixi-colord.txt')))
+                    .toString('utf8')
+                    .trim(),
+            )
+        }
         sections.push(
             '',
             `${pkg.name} ${pkg.version}`,
@@ -76,8 +149,7 @@ async function dependencyNotices(root) {
         )
         const repository = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url
         if (repository) sections.push(`Source: ${repository}`)
-        for (const file of licenses)
-            sections.push('', (await regularFile(join(directory, file))).toString('utf8').trim())
+        for (const text of licenseTexts) sections.push('', text)
     }
     return sections.join('\n') + '\n'
 }
@@ -91,6 +163,11 @@ export async function stageReleasePublic(root, destination) {
     await mkdir(join(destination, 'notices'), { recursive: true })
     for (const file of noticeFiles.filter((file) => file.startsWith('notices/'))) {
         await writeFile(join(destination, file), await regularFile(join(root, 'deployment', file)))
+    }
+    for (const file of lyonNoticeFiles) {
+        const target = containedPath(destination, file)
+        await mkdir(resolve(target, '..'), { recursive: true })
+        await writeFile(target, await regularFile(containedPath(join(root, 'public'), file)))
     }
     await writeFile(join(destination, 'THIRD_PARTY_NOTICES.txt'), await dependencyNotices(root))
 }
@@ -132,6 +209,7 @@ function validateFileNames(files, assets) {
     for (const file of files) {
         if (
             !exact.has(file) &&
+            !/^assets\/lyon-[\w-]{8,}\.wasm$/.test(file) &&
             !/^assets\/[\w.-]+-[\w-]{8,}\.(?:js|css|png|mp3|svg|woff2?)$/.test(file)
         ) {
             throw new Error(`Unexpected release file: ${file}`)
@@ -148,12 +226,31 @@ function validateFileNames(files, assets) {
         throw new Error('Release contains no stylesheet')
 }
 
+async function checkLyonRelease(directory, files) {
+    const modules = files.filter((file) => /^assets\/lyon-[\w-]{8,}\.wasm$/.test(file))
+    if (modules.length !== 1) throw new Error('Release requires exactly one Lyon kernel')
+    if (sha256(await regularFile(join(directory, modules[0]))) !== lyonArtifact.sha256)
+        throw new Error('Lyon release binary differs from its pinned artifact')
+    for (const file of lyonNoticeFiles) {
+        if (
+            sha256(await regularFile(containedPath(directory, file))) !== lyonNoticeHashes.get(file)
+        )
+            throw new Error('Lyon release notice differs from its pinned inventory: ' + file)
+    }
+}
+
 export async function writeReleaseManifest(directory, metadata, assets) {
     const files = (await listFiles(directory)).filter((file) => file !== 'release-manifest.json')
     validateFileNames(files, assets)
+    await checkLyonRelease(directory, files)
     const hashes = {}
     for (const file of files) hashes[file] = sha256(await regularFile(join(directory, file)))
-    const manifest = { schemaVersion: 1, ...metadata, previewAssets: assets, files: hashes }
+    const manifest = {
+        schemaVersion: 1,
+        ...metadata,
+        previewAssets: assets,
+        files: hashes,
+    }
     await writeFile(
         join(directory, 'release-manifest.json'),
         JSON.stringify(manifest, null, 2) + '\n',
@@ -179,6 +276,7 @@ export async function checkRelease(directory, expected = {}) {
     }
     const files = await listFiles(directory)
     validateFileNames(files, assets)
+    await checkLyonRelease(directory, files)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==

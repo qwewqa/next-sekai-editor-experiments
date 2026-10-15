@@ -660,7 +660,7 @@ test.describe('phone', () => {
 })
 
 test('badges keep clear of the range labels and the elevation axis', async ({ page }) => {
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
         const { fixtures, show, history } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!
         show(
@@ -682,17 +682,28 @@ test('badges keep clear of the range labels and the elevation axis', async ({ pa
             .flat()
             .filter((note) => note.beat === 12 && note.left === 0)
         history.replaceState({ ...history.state.value, selectedEntities: [target!] })
-        const fillText = CanvasRenderingContext2D.prototype.fillText
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const fillText = WebGLDrawContext.prototype.fillText
         const axis: number[] = []
         Object.assign(window, { axisLabelXs: axis })
         // Keeps the labels of the latest elevation frame.
-        const clearRect = CanvasRenderingContext2D.prototype.clearRect
-        CanvasRenderingContext2D.prototype.clearRect = function (...args) {
-            if (this.canvas.classList.contains('elevation-canvas')) axis.length = 0
-            return clearRect.apply(this, args)
+        const clear = WebGLDrawContext.prototype.clear
+        WebGLDrawContext.prototype.clear = function () {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas')
+            )
+                axis.length = 0
+            return clear.call(this)
         }
-        CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
-            if (this.canvas.classList.contains('elevation-canvas') && /^-?\d+$/.test(text))
+        WebGLDrawContext.prototype.fillText = function (text, x, y, maxWidth) {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.classList.contains('elevation-canvas') &&
+                /^-?\d+$/.test(text)
+            )
                 axis.push(x)
             return fillText.call(this, text, x, y, maxWidth)
         }

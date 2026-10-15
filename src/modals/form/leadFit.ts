@@ -1,4 +1,5 @@
 import { onBeforeUnmount, onMounted, onUpdated, ref, type Ref } from 'vue'
+import { createFontContext } from '../../rendering/textRaster'
 
 // Room a select gives its value, as BaseField's styles set it (px).
 const LEAD_PADDING = 30
@@ -27,7 +28,7 @@ export const useLeadFit = (wrapper: Ref<HTMLElement | null>) => {
         lead.style.display = hidden
         if (narrow) return (leadless.value = false)
         const style = getComputedStyle(select)
-        context ??= document.createElement('canvas').getContext('2d')
+        context ??= createFontContext()
         if (!context) return
         context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
         const need = context.measureText(select.selectedOptions[0]?.textContent.trim() ?? '').width

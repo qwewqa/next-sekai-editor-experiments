@@ -1,5 +1,6 @@
 import type { ConnectorLayer, ConnectorType } from '../../chart/note'
 import { ease, isStepEase, sampleEase } from '../../ease'
+import type { RenderSurface, WebGLDrawContext } from '../../rendering/context'
 import { sameBeatAttachmentFraction } from '../../state/entities/slides/attachment'
 import type { ConnectorEntity } from '../../state/entities/slides/connector'
 import type { NoteEntity } from '../../state/entities/slides/note'
@@ -217,7 +218,7 @@ export const getElevationCurve = (connection: ElevationConnection): RibbonPoint[
 }
 
 const drawElevationCurve = (
-    ctx: CanvasRenderingContext2D,
+    ctx: WebGLDrawContext,
     connection: ElevationConnection,
     sections: RibbonPoint[][],
 ) => {
@@ -271,7 +272,7 @@ const drawElevationCurve = (
     }
 }
 
-const setFillStyle = (ctx: CanvasRenderingContext2D, connection: ElevationConnection) => {
+const setFillStyle = (ctx: WebGLDrawContext, connection: ElevationConnection) => {
     const { alpha, tailAlpha = alpha, color, head, tail } = connection
     if (alpha === tailAlpha || head.y === tail.y) {
         ctx.globalAlpha = (alpha + tailAlpha) / 2
@@ -288,7 +289,7 @@ const setFillStyle = (ctx: CanvasRenderingContext2D, connection: ElevationConnec
 }
 
 export const drawElevationConnections = (
-    ctx: CanvasRenderingContext2D,
+    ctx: WebGLDrawContext,
     connections: ElevationConnection[],
 ) => {
     ctx.save()
@@ -376,15 +377,16 @@ export const getElevationArrow = (
 }
 
 // Faded arrows' layer, allocated once they're drawn.
-let arrowLayer: HTMLCanvasElement | undefined
+let arrowLayer: RenderSurface | undefined
+let arrowTarget: WebGLDrawContext | undefined
 export const freeElevationArrowLayer = () => {
-    if (!arrowLayer) return
-    arrowLayer.width = arrowLayer.height = 1
+    arrowLayer?.dispose()
     arrowLayer = undefined
+    arrowTarget = undefined
 }
 
 export const drawElevationArrows = (
-    target: CanvasRenderingContext2D,
+    target: WebGLDrawContext,
     connections: ElevationConnection[],
     laneScale: number,
     opacity = 1,
@@ -396,21 +398,19 @@ export const drawElevationArrows = (
     if (!arrows.length) return
     // A faded arrow composites as one layer, so its overlapping strokes and fills don't show.
     let ctx = target
+    let compositeLayer: RenderSurface | undefined
     if (opacity < 1) {
-        arrowLayer ??= document.createElement('canvas')
         const { width, height } = target.canvas
+        // GPU layers belong to their destination's context. A restored or replaced
+        // pane must never reuse a surface allocated by the old context.
+        if (arrowTarget !== target) freeElevationArrowLayer()
+        arrowTarget = target
+        arrowLayer ??= target.createSurface(width, height)
+        compositeLayer = arrowLayer
         if (arrowLayer.width !== width) arrowLayer.width = width
         if (arrowLayer.height !== height) arrowLayer.height = height
-        const layer = arrowLayer.getContext('2d')
-        if (!layer) return
-        // Cleared as prepareSurface does.
-        layer.setTransform(1, 0, 0, 1, 0, 0)
-        layer.save()
-        layer.globalAlpha = 1
-        layer.globalCompositeOperation = 'copy'
-        layer.fillStyle = 'rgba(0, 0, 0, 0)'
-        layer.fillRect(0, 0, width, height)
-        layer.restore()
+        const layer = arrowLayer.getContext()
+        layer.clear()
         layer.setTransform(target.getTransform())
         ctx = layer
     }
@@ -449,10 +449,10 @@ export const drawElevationArrows = (
     ctx.stroke()
     ctx.fill()
     ctx.restore()
-    if (ctx === target) return
+    if (!compositeLayer) return
     target.save()
     target.setTransform(1, 0, 0, 1, 0, 0)
     target.globalAlpha *= opacity
-    target.drawImage(ctx.canvas, 0, 0)
+    target.drawImage(compositeLayer, 0, 0)
     target.restore()
 }

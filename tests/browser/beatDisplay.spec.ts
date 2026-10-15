@@ -169,9 +169,11 @@ test('right ruler defaults to measures, hides the first beat and offers all thre
             },
             3,
         )
-        const ctx = document.createElement('canvas').getContext('2d')!
+        const { getDrawContext } = await import('/src/rendering/context.ts')
+        const ctx = getDrawContext(document.createElement('canvas'))
+        await ctx.ready
         const text: string[] = []
-        ctx.fillText = (label) => {
+        ctx.drawGridLabel = (label) => {
             if (!label.includes(':')) text.push(label)
         }
         const context = {
@@ -213,33 +215,28 @@ test('right ruler defaults to measures, hides the first beat and offers all thre
 test('elevation beat input converts positions once and rejects values below displayed beat one', async ({
     page,
 }) => {
+    const elevationBeat = () =>
+        page.evaluate(async () => {
+            const { elevationBeat } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/state')
+            >('/src/editor/elevation/state.ts')
+            return elevationBeat.value
+        })
     await page.keyboard.press('t')
     const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
     await beat.fill('1')
     await beat.press('Tab')
-    expect(
-        await page.evaluate(
-            async () => (await import('/src/editor/elevation/state.ts')).elevationBeat.value,
-        ),
-    ).toBe(0)
+    expect(await elevationBeat()).toBe(0)
     await expect(page.getByRole('button', { name: 'Previous Beat', exact: true })).toBeDisabled()
     await beat.fill('0')
     await beat.press('Tab')
     await expect(beat).toHaveValue('1')
     await beat.fill('1.25')
     await beat.press('Tab')
-    expect(
-        await page.evaluate(
-            async () => (await import('/src/editor/elevation/state.ts')).elevationBeat.value,
-        ),
-    ).toBe(0.25)
+    expect(await elevationBeat()).toBe(0.25)
     await beat.fill('1.125')
     await beat.press('Tab')
-    expect(
-        await page.evaluate(
-            async () => (await import('/src/editor/elevation/state.ts')).elevationBeat.value,
-        ),
-    ).toBe(0.125)
+    expect(await elevationBeat()).toBe(0.125)
 })
 
 test('measure modes emphasize off-grid boundaries and keep phone labels visible', async ({
@@ -258,7 +255,9 @@ test('measure modes emphasize off-grid boundaries and keep phone labels visible'
             },
             3,
         )
-        const ctx = document.createElement('canvas').getContext('2d')!
+        const { getDrawContext } = await import('/src/rendering/context.ts')
+        const ctx = getDrawContext(document.createElement('canvas'))
+        await ctx.ready
         let positions: number[] = []
         const results: { mode: string; width: number; alpha: number; positions: number[] }[] = []
         ctx.beginPath = () => {
@@ -342,14 +341,30 @@ test('a faint BPM label under Show Other Objects still replaces its beat label',
         settings.showOtherObjects = true
         view.visibilities = { ...view.visibilities, bpm: false }
         const drawn: string[] = []
-        const fillText = CanvasRenderingContext2D.prototype.fillText
-        CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const record = (ctx: InstanceType<typeof WebGLDrawContext>, text: string) => {
             if (
-                this.canvas instanceof HTMLCanvasElement &&
-                this.canvas.classList.contains('editor-chart')
+                ctx.canvas instanceof HTMLCanvasElement &&
+                ctx.canvas.classList.contains('editor-chart')
             )
                 drawn.push(text)
-            return fillText.call(this, text, ...args)
+        }
+        const drawEditorLabel = WebGLDrawContext.prototype.drawEditorLabel
+        WebGLDrawContext.prototype.drawEditorLabel = function (text, ...args) {
+            record(this, text)
+            return drawEditorLabel.call(this, text, ...args)
+        }
+        const drawGridLabel = WebGLDrawContext.prototype.drawGridLabel
+        WebGLDrawContext.prototype.drawGridLabel = function (text, ...args) {
+            record(this, text)
+            return drawGridLabel.call(this, text, ...args)
+        }
+        const drawPreparedEditorLabel = WebGLDrawContext.prototype.drawPreparedEditorLabel
+        WebGLDrawContext.prototype.drawPreparedEditorLabel = function (label, ...args) {
+            record(this, label.text)
+            return drawPreparedEditorLabel.call(this, label, ...args)
         }
         show(
             {
@@ -364,7 +379,9 @@ test('a faint BPM label under Show Other Objects still replaces its beat label',
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
-        CanvasRenderingContext2D.prototype.fillText = fillText
+        WebGLDrawContext.prototype.drawEditorLabel = drawEditorLabel
+        WebGLDrawContext.prototype.drawGridLabel = drawGridLabel
+        WebGLDrawContext.prototype.drawPreparedEditorLabel = drawPreparedEditorLabel
         return drawn
     })
     // The BPM change at beat 2 is drawn, faint, where measure 2.1 would be.

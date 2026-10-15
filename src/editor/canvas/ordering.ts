@@ -116,7 +116,7 @@ export const toolChainOf = (
 }
 
 // The chain an entity is in; a connection is in its min's.
-const chainOf = (entity: Entity): [ChainType, ChainKey] | undefined => {
+export const chainOf = (entity: Entity): [ChainType, ChainKey] | undefined => {
     switch (entity.type) {
         case 'cameraEventJoint':
             return [entity.type, undefined]
@@ -186,7 +186,7 @@ export const isInRaisedChain = (chains: RaisedChains, entity: Entity) => {
 type DrawKey = { tier: number; isFull: boolean; layer: number; beat: number }
 
 // Selected above raised above the rest, faded under full, by layer, earlier beats on top.
-const compareDrawKeys = (a: DrawKey, b: DrawKey) =>
+export const compareDrawKeys = (a: DrawKey, b: DrawKey) =>
     a.tier - b.tier || +a.isFull - +b.isFull || a.layer - b.layer || b.beat - a.beat
 
 /**
@@ -229,7 +229,7 @@ export const orderEntities = (
 
 export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: EventPart }
 
-const drawKeyOf = (step: DrawStep): DrawKey => ({
+export const drawKeyOf = (step: DrawStep): DrawKey => ({
     tier: step.highlighted ? 2 : step.raised ? 1 : 0,
     isFull: step.opacity === 1,
     layer: step.part === 'marker' ? layers.timeScaleMarker : getLayer(step.entity),

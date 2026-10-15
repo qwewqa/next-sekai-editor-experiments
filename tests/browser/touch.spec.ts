@@ -181,7 +181,9 @@ const hoverState = (page: Page) =>
                 (span) => getComputedStyle(span).visibility === 'visible',
             )
         const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-overlay')!
-        const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
+        const pixels = window.editorRendering
+            .getDrawContext(canvas)
+            .getImageData(0, 0, canvas.width, canvas.height).data
         let drawn = false
         for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) drawn = true
         const { left, right } = edgeLabelBoxes.value

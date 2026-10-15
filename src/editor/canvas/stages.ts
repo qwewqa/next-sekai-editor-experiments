@@ -1,9 +1,17 @@
 import type { StageProps, Transition } from '../../preview/engine/stage'
+import { StageTriangles } from '../../rendering/stageMesh'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { clamp, lerp } from '../../utils/math'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { sampleComposed } from './composedSampling'
+import {
+    clipButtStrokeToStage,
+    dividerQuadsAreDisjoint,
+    triangulateButtStroke,
+    triangulateStageQuad,
+    type StageQuad,
+} from './stageGeometry'
 import type { EditorDrawContext } from './types'
 
 type StagePoint = StageProps & { left: number; right: number; size: number; time: number }
@@ -40,6 +48,7 @@ const drawSlice = (
     opacity: number,
     laneDivision: number,
     gridOffset: number,
+    triangles?: StageTriangles,
 ) => {
     const { ctx, ups, scale, bounds } = context
     const alpha = clamp((a.laneAlpha * (1 - a.fullWidth) + b.laneAlpha * (1 - b.fullWidth)) / 2)
@@ -61,24 +70,81 @@ const drawSlice = (
             2 / (context.pixelRatio * scale)
         if (right < bounds.l - padding || left > bounds.r + padding) return
     }
-    // A collapsed stage keeps only its borders, as in the engine.
-    if (a.size <= 0 && b.size <= 0) {
-        drawBorders(context, a, b, opacity * alpha)
-        return
-    }
     const yA = a.time * ups
     const yB = b.time * ups
-    ctx.save()
-    ctx.beginPath()
-    ctx.moveTo(a.left, yA)
-    ctx.lineTo(b.left, yB)
-    ctx.lineTo(b.right, yB)
-    ctx.lineTo(a.right, yA)
-    ctx.closePath()
-    ctx.globalAlpha = opacity * alpha * 0.16
-    ctx.fillStyle = '#83b6d0'
-    ctx.fill()
-    ctx.clip()
+    if (triangles) {
+        const padding =
+            Math.max(
+                borderWidth(a.leftBorderStyle, scale),
+                borderWidth(b.leftBorderStyle, scale),
+                borderWidth(a.rightBorderStyle, scale),
+                borderWidth(b.rightBorderStyle, scale),
+            ) / 2
+        if (
+            !triangles.supportsBounds(
+                left - padding,
+                Math.min(yA, yB) - padding,
+                right + padding,
+                Math.max(yA, yB) + padding,
+            )
+        ) {
+            ctx.drawStageTriangles(triangles.vertices)
+            triangles.vertices.length = 0
+            drawSlice(context, a, b, opacity, laneDivision, gridOffset)
+            return
+        }
+    }
+    const quad: StageQuad = [a.left, yA, b.left, yB, b.right, yB, a.right, yA]
+    const start = triangles?.vertices.length ?? 0
+    let supported = true
+    const append = (points: Float64Array | undefined, color: number, paintAlpha: number) => {
+        if (!points) supported = false
+        else triangles?.append(points, color, paintAlpha)
+    }
+    const finish = () => {
+        if (triangles) {
+            for (const side of ['left', 'right'] as const) {
+                const style = side === 'left' ? 'leftBorderStyle' : 'rightBorderStyle'
+                const width = (borderWidth(a[style], scale) + borderWidth(b[style], scale)) / 2
+                if (width <= 0) continue
+                append(
+                    triangulateButtStroke(a[side], yA, b[side], yB, width),
+                    0xb4d6e8,
+                    opacity * alpha * 0.65,
+                )
+            }
+            if (!supported) {
+                // An unusual crossing or overlapping divider set keeps the native
+                // coverage-union path. Submit preceding slices before this fallback.
+                triangles.vertices.length = start
+                ctx.drawStageTriangles(triangles.vertices)
+                triangles.vertices.length = 0
+                drawSlice(context, a, b, opacity, laneDivision, gridOffset)
+            } else if (triangles.vertices.length >= 6 * 65536) {
+                ctx.drawStageTriangles(triangles.vertices)
+                triangles.vertices.length = 0
+            }
+        } else drawBorders(context, a, b, opacity * alpha)
+    }
+    // A collapsed stage keeps only its borders, as in the engine.
+    if (a.size <= 0 && b.size <= 0) {
+        finish()
+        return
+    }
+    if (triangles) append(triangulateStageQuad(quad), 0x83b6d0, opacity * alpha * 0.16)
+    else {
+        ctx.save()
+        ctx.beginPath()
+        ctx.moveTo(a.left, yA)
+        ctx.lineTo(b.left, yB)
+        ctx.lineTo(b.right, yB)
+        ctx.lineTo(a.right, yA)
+        ctx.closePath()
+        ctx.globalAlpha = opacity * alpha * 0.16
+        ctx.fillStyle = '#83b6d0'
+        ctx.fill()
+        ctx.clip()
+    }
 
     // Divider sets crossfade when their spacing or parity changes. The mask clips
     // each slanted line, including a divider entering or leaving a moving edge.
@@ -98,8 +164,10 @@ const drawSlice = (
               { ...division.start, alpha: clamp(1 - progress) },
               { ...division.end, alpha: clamp(progress) },
           ]
-    ctx.strokeStyle = '#b4d6e8'
-    ctx.lineWidth = 1 / scale
+    if (!triangles) {
+        ctx.strokeStyle = '#b4d6e8'
+        ctx.lineWidth = 1 / scale
+    }
     const drawLines = (spacing: number, parity: number, lineAlpha: number) => {
         if (lineAlpha <= 0) return
         const pivotA = a.pivotLane + a.xLaneTranslate + parity
@@ -116,14 +184,36 @@ const drawSlice = (
                 (Math.min(b.right, bounds.r) - pivotB) / spacing,
             ),
         )
-        ctx.globalAlpha = opacity * alpha * lineAlpha
-        ctx.beginPath()
+        if (triangles) {
+            if (
+                !Number.isSafeInteger(min) ||
+                !Number.isSafeInteger(max) ||
+                (max > min &&
+                    !dividerQuadsAreDisjoint(pivotB - pivotA, yB - yA, spacing, 1 / scale))
+            ) {
+                supported = false
+                return
+            }
+        } else {
+            ctx.globalAlpha = opacity * alpha * lineAlpha
+            ctx.beginPath()
+        }
         for (let count = 0; count <= max - min && count < 2048; count++) {
             const index = min + count
-            ctx.moveTo(pivotA + index * spacing, yA)
-            ctx.lineTo(pivotB + index * spacing, yB)
+            const xA = pivotA + index * spacing
+            const xB = pivotB + index * spacing
+            if (triangles)
+                append(
+                    clipButtStrokeToStage(xA, yA, xB, yB, 1 / scale, quad),
+                    0xb4d6e8,
+                    opacity * alpha * lineAlpha,
+                )
+            else {
+                ctx.moveTo(xA, yA)
+                ctx.lineTo(xB, yB)
+            }
         }
-        ctx.stroke()
+        if (!triangles) ctx.stroke()
     }
     // Authoring subdivisions follow the dominant division's parity. Each strip
     // is split at parity switches, so a constant midpoint phase avoids inventing
@@ -143,8 +233,8 @@ const drawSlice = (
             clamp((a.divisionLineAlpha + b.divisionLineAlpha) / 2) * set.alpha * 0.4,
         )
     }
-    ctx.restore()
-    drawBorders(context, a, b, opacity * alpha)
+    if (!triangles) ctx.restore()
+    finish()
 }
 
 const drawBorders = (context: EditorDrawContext, a: StagePoint, b: StagePoint, alpha: number) => {
@@ -174,6 +264,24 @@ export const drawComposedStages = (
 ) => {
     const { composed } = context
     if (!composed) return
+    // These sampled stage segments use straight butt strokes. Other inherited
+    // stroke/compositing modes retain the ordinary renderer's semantics.
+    let triangles: StageTriangles | undefined
+    if (
+        context.ctx.lineCap === 'butt' &&
+        context.ctx.globalCompositeOperation === 'source-over' &&
+        !context.ctx.getLineDash().length
+    ) {
+        const transform = context.ctx.getTransform()
+        triangles = new StageTriangles([
+            transform.a,
+            transform.b,
+            transform.c,
+            transform.d,
+            transform.e,
+            transform.f,
+        ])
+    }
     for (const [id, data] of composed.stages) {
         const visibility = scope.stage(id)
         if (visibility === 'hidden') continue
@@ -225,8 +333,10 @@ export const drawComposedStages = (
                     visibility === 'dimmed' ? 0.25 : 1,
                     laneDivision,
                     gridOffset,
+                    triangles,
                 )
             }
         }
     }
+    if (triangles) context.ctx.drawStageTriangles(triangles.vertices)
 }

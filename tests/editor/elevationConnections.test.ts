@@ -11,6 +11,7 @@ import {
 } from '../../src/editor/elevation/connections'
 import type { ElevationRow } from '../../src/editor/elevation/layout'
 import { connectorColors } from '../../src/editor/utils/connectorColors'
+import type { WebGLDrawContext } from '../../src/rendering/context'
 import { toConnectorEntity } from '../../src/state/entities/slides/connector'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
 import { calculateBpms } from '../../src/state/integrals/bpms'
@@ -161,7 +162,7 @@ const canvas = () => {
             gradients.push(gradient)
             return gradient
         },
-    } as unknown as CanvasRenderingContext2D
+    } as unknown as WebGLDrawContext
     return {
         ctx,
         moves,

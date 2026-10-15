@@ -28,8 +28,8 @@ const sample = (page: Page) =>
         const from = head!.x + sign * (head!.w / 2 + 0.08 * s)
         const to = tail!.x - sign * (tail!.w / 2 + 0.08 * s)
         const pixel = (x: number, y: number) => [
-            ...canvas
-                .getContext('2d')!
+            ...window.editorRendering
+                .getDrawContext(canvas)
                 .getImageData(
                     Math.round((x * canvas.width) / layout.width),
                     Math.round((y * canvas.height) / layout.height),

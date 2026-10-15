@@ -170,7 +170,11 @@ test('the drawn lines and labels are the snap targets', async ({ page }) => {
                 '/src/state/integrals/grid.ts',
             )
             const { settings } = window.editorTest
-            const ctx = document.createElement('canvas').getContext('2d')!
+            const { getDrawContext } = await appImport<
+                typeof import('../../src/rendering/context')
+            >('/src/rendering/context.ts')
+            const ctx = getDrawContext(document.createElement('canvas'))
+            await ctx.ready
             let positions: number[] = []
             const strokes: { alpha: number; width: number; beats: number[] }[] = []
             ctx.beginPath = () => {
@@ -271,7 +275,11 @@ test('a dense tempo ramp keeps drawing thinned lines and clear labels', async ({
         const { drawnGrid } = await appImport<typeof import('../../src/editor/sceneState')>(
             '/src/editor/sceneState.ts',
         )
-        const ctx = document.createElement('canvas').getContext('2d')!
+        const { getDrawContext } = await appImport<typeof import('../../src/rendering/context')>(
+            '/src/rendering/context.ts',
+        )
+        const ctx = getDrawContext(document.createElement('canvas'))
+        await ctx.ready
         let positions: number[] = []
         const strokes: { width: number; ys: number[] }[] = []
         ctx.beginPath = () => {

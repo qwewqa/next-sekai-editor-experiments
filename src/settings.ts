@@ -250,9 +250,13 @@ const settingsProperties = {
 
     showGroupName: Type.Boolean({ default: true }),
 
+    hideGroupNameWhenFocusingGroup: Type.Boolean({ default: true }),
+
     showOtherGroups: Type.Boolean({ default: true }),
 
     showStageName: Type.Boolean({ default: true }),
+
+    hideStageNameWhenFocusingStage: Type.Boolean({ default: true }),
 
     showOtherStages: Type.Boolean({ default: true }),
 

@@ -10,6 +10,6 @@ import './theme'
 
 installSelectLists()
 
-const app = createApp(App)
-
-app.mount('#app')
+const root = document.querySelector<HTMLDivElement>('#app')
+if (!root) throw new Error('Missing editor root element')
+createApp(App).mount(root)

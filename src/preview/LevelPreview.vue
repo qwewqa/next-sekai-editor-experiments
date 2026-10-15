@@ -56,6 +56,7 @@ const isErrorDetailOpen = ref(false)
 
             <canvas
                 ref="selection"
+                :key="`selection:${loadVersion}`"
                 class="preview-selection pointer-events-none absolute inset-0 h-full w-full"
                 aria-hidden="true"
             />

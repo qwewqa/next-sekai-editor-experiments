@@ -39,12 +39,13 @@ const wav = (duration: number) => {
     return data
 }
 
-// Pause the second tile at a real asynchronous browser boundary. The first
-// tile already owns a blob URL, so cancellation must clean up partial results.
+// Pause the second tile at the PNG encoder's real task yield. The first tile
+// already owns a blob URL, so cancellation must clean up partial results.
 const trackWaveformTiles = (heldTile = 2) => {
-    const toBlob = HTMLCanvasElement.prototype.toBlob
+    const postMessage = MessagePort.prototype.postMessage
     const createUrl = URL.createObjectURL
     const revokeUrl = URL.revokeObjectURL
+    let holdNextYield = false
     const gate: Window['bgmImportGate'] = (window.bgmImportGate = {
         held: false,
         encoded: 0,
@@ -52,28 +53,26 @@ const trackWaveformTiles = (heldTile = 2) => {
         revoked: [] as string[],
         release: () => {},
     })
-    HTMLCanvasElement.prototype.toBlob = function (callback, type, quality) {
-        const hold = ++gate.encoded === heldTile
-        toBlob.call(
-            this,
-            (blob) => {
-                if (hold) {
-                    gate.held = true
-                    gate.release = () => {
-                        gate.held = false
-                        callback(blob)
-                    }
-                } else {
-                    callback(blob)
-                }
-            },
-            type,
-            quality,
-        )
-    }
+    MessagePort.prototype.postMessage = function (this: MessagePort, ...args: unknown[]) {
+        if (holdNextYield) {
+            holdNextYield = false
+            gate.held = true
+            gate.release = () => {
+                if (!gate.held) return
+                gate.held = false
+                Reflect.apply(postMessage, this, args)
+            }
+            return
+        }
+        return Reflect.apply(postMessage, this, args)
+    } as typeof postMessage
     URL.createObjectURL = (blob) => {
         const url = createUrl.call(URL, blob)
-        gate.created.push(url)
+        if (blob instanceof Blob && blob.type === 'image/png') {
+            gate.encoded++
+            gate.created.push(url)
+            holdNextYield = heldTile > 1 && gate.encoded === heldTile - 1
+        }
         return url
     }
     URL.revokeObjectURL = (url) => {
@@ -193,11 +192,11 @@ test('FFT tiles retain opposite-phase stereo without smearing attacks into silen
         const sampleRate = 48000
         const spectra: number[][] = []
         for (const numberOfChannels of [1, 2]) {
-            const buffer = new AudioBuffer({
+            const buffer = new OfflineAudioContext(numberOfChannels, 1, sampleRate).createBuffer(
                 numberOfChannels,
-                length: sampleRate / 10,
+                sampleRate / 10,
                 sampleRate,
-            })
+            )
             for (let channel = 0; channel < numberOfChannels; channel++) {
                 const samples = buffer.getChannelData(channel)
                 for (let i = 960; i < 1920; i++) {
@@ -263,11 +262,11 @@ for (const sampleRate of [44100, 48000]) {
                 },
                 { duration: 10, frames: [10 * sampleRate - 1] },
             ]) {
-                const buffer = new AudioBuffer({
-                    numberOfChannels: 1,
-                    length: Math.round(duration * sampleRate),
+                const buffer = new OfflineAudioContext(1, 1, sampleRate).createBuffer(
+                    1,
+                    Math.round(duration * sampleRate),
                     sampleRate,
-                })
+                )
                 for (const frame of frames) buffer.getChannelData(0)[frame] = 1
                 const waveform = (await createWaveform(buffer, 'fft'))!
                 const attackRows: number[] = []
@@ -325,25 +324,22 @@ for (const sampleRate of [44100, 48000]) {
     })
 }
 
-test('FFT import revokes completed tiles when encoding a later tile fails', async ({ page }) => {
+test('FFT import revokes completed tiles when publishing a later PNG URL fails', async ({
+    page,
+}) => {
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     const result = await page.evaluate(async () => {
         const { createWaveform, cleanupWaveform } = await import('/src/waveform.ts')
-        const toBlob = HTMLCanvasElement.prototype.toBlob
+        const { getWaveformTilePixels } = await import('/src/waveform/tiles.ts')
         const createUrl = URL.createObjectURL
         const revokeUrl = URL.revokeObjectURL
         const created: string[] = []
         const revoked: string[] = []
         let encoded = 0
-        HTMLCanvasElement.prototype.toBlob = function (callback, type, quality) {
-            if (++encoded === 2) {
-                callback(null)
-            } else {
-                toBlob.call(this, callback, type, quality)
-            }
-        }
         URL.createObjectURL = (blob) => {
+            if (blob instanceof Blob && blob.type === 'image/png' && ++encoded === 2)
+                throw new Error('PNG URL publication failed')
             const url = createUrl.call(URL, blob)
             created.push(url)
             return url
@@ -354,21 +350,28 @@ test('FFT import revokes completed tiles when encoding a later tile fails', asyn
         }
         let failure = ''
         try {
-            await createWaveform(new AudioBuffer({ length: 480001, sampleRate: 48000 }), 'fft')
+            const buffer = new OfflineAudioContext(1, 1, 48000).createBuffer(1, 480001, 48000)
+            await createWaveform(buffer, 'fft')
         } catch (error) {
             failure = String(error)
         } finally {
             cleanupWaveform()
-            HTMLCanvasElement.prototype.toBlob = toBlob
             URL.createObjectURL = createUrl
             URL.revokeObjectURL = revokeUrl
         }
-        return { failure, encoded, created, revoked }
+        return {
+            failure,
+            encoded,
+            created,
+            revoked,
+            retainedPixels: created.filter((url) => getWaveformTilePixels(url)),
+        }
     })
-    expect(result.failure).toContain('Unexpected missing blob')
+    expect(result.failure).toContain('PNG URL publication failed')
     expect(result.encoded).toBe(2)
     expect(result.created).toHaveLength(1)
     expect(result.revoked).toEqual(result.created)
+    expect(result.retainedPixels).toEqual([])
 })
 
 test('cancelled BGM import cannot overwrite a replacement or leak partial FFT tiles', async ({
@@ -448,39 +451,49 @@ test('resetting the chart during BGM import leaves no late waveform URLs', async
     })
     await expect(dialogs).toHaveCount(0)
     await expect.poll(() => page.evaluate(() => window.bgmImportGate.revoked.length)).toBe(1)
-    const result = await page.evaluate(() => ({
-        created: window.bgmImportGate.created,
-        revoked: window.bgmImportGate.revoked,
-        filename: window.editorTest.history.state.value.bgm.filename,
-        hasBuffer: !!window.editorTest.history.state.value.bgm.buffer,
-        hasWaveform: !!window.editorTest.history.state.value.bgm.waveform,
-        canUndo: window.editorTest.history.canUndo.value,
-    }))
+    const result = await page.evaluate(async () => {
+        const { getWaveformTilePixels } =
+            await window.editorTest.appImport<typeof import('../../src/waveform/tiles')>(
+                '/src/waveform/tiles.ts',
+            )
+        return {
+            created: window.bgmImportGate.created,
+            revoked: window.bgmImportGate.revoked,
+            filename: window.editorTest.history.state.value.bgm.filename,
+            hasBuffer: !!window.editorTest.history.state.value.bgm.buffer,
+            hasWaveform: !!window.editorTest.history.state.value.bgm.waveform,
+            canUndo: window.editorTest.history.canUndo.value,
+            retainedPixels: window.bgmImportGate.created.filter((url) =>
+                getWaveformTilePixels(url),
+            ),
+        }
+    })
     expect(result.created).toHaveLength(1)
     expect(result.revoked).toEqual(result.created)
+    expect(result.retainedPixels).toEqual([])
     expect(result.filename).toBeUndefined()
     expect(result.hasBuffer).toBe(false)
     expect(result.hasWaveform).toBe(false)
     expect(result.canUndo).toBe(false)
 })
 
-test('aborting FFT work at its first yield prevents tile encoding', async ({ page }) => {
+test('aborting FFT work at its first yield prevents PNG URL publication', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     const result = await page.evaluate(async () => {
         const { createWaveform } = await import('/src/waveform.ts')
         const controller = new AbortController()
-        const toBlob = HTMLCanvasElement.prototype.toBlob
-        let encoded = 0
-        HTMLCanvasElement.prototype.toBlob = function (...args) {
-            encoded++
-            toBlob.apply(this, args)
+        const createUrl = URL.createObjectURL
+        let published = 0
+        URL.createObjectURL = (blob) => {
+            if (blob instanceof Blob && blob.type === 'image/png') published++
+            return createUrl.call(URL, blob)
         }
         let failure = ''
         try {
             // The async function runs synchronously until FFT's first yield.
             const pending = createWaveform(
-                new AudioBuffer({ length: 48000 * 60, sampleRate: 48000 }),
+                new OfflineAudioContext(1, 1, 48000).createBuffer(1, 48000 * 60, 48000),
                 'fft',
                 controller.signal,
             )
@@ -489,11 +502,11 @@ test('aborting FFT work at its first yield prevents tile encoding', async ({ pag
         } catch (error) {
             failure = error instanceof DOMException ? error.name : String(error)
         } finally {
-            HTMLCanvasElement.prototype.toBlob = toBlob
+            URL.createObjectURL = createUrl
         }
-        return { failure, encoded }
+        return { failure, published }
     })
-    expect(result).toEqual({ failure: 'AbortError', encoded: 0 })
+    expect(result).toEqual({ failure: 'AbortError', published: 0 })
 })
 
 test('closing completed BGM drafts releases only URLs that were never committed', async ({

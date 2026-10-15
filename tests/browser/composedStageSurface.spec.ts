@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test'
+import type { RenderSurface } from '../../src/rendering/context'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 declare global {
     interface Window {
         stageSurfaceTest: {
-            strokes: number
+            draws: number
             blits: number
-            surface?: HTMLCanvasElement
+            surface?: RenderSurface
         }
     }
 }
@@ -21,25 +22,32 @@ const settle = async (page: import('@playwright/test').Page) =>
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
-    await page.addInitScript(() => {
-        window.stageSurfaceTest = { strokes: 0, blits: 0 }
-        const surfaces = new WeakSet<HTMLCanvasElement>()
-        const stroke = CanvasRenderingContext2D.prototype.stroke
-        CanvasRenderingContext2D.prototype.stroke = function (path?: Path2D) {
-            if (!this.canvas.isConnected && this.strokeStyle === '#b4d6e8') {
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(async () => {
+        window.stageSurfaceTest = { draws: 0, blits: 0 }
+        const surfaces = new WeakSet<RenderSurface>()
+        const { RenderSurface, WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const clear = WebGLDrawContext.prototype.clear
+        WebGLDrawContext.prototype.clear = function () {
+            if (this.canvas instanceof RenderSurface && this.canvas.stageCache) {
                 surfaces.add(this.canvas)
-                window.stageSurfaceTest.strokes++
+                window.stageSurfaceTest.draws++
             }
-            return Reflect.apply(stroke, this, path ? [path] : [])
+            return clear.call(this)
         }
-        const drawImage = CanvasRenderingContext2D.prototype.drawImage
-        CanvasRenderingContext2D.prototype.drawImage = function (
-            source: CanvasImageSource,
+        const drawImage = WebGLDrawContext.prototype.drawImage
+        WebGLDrawContext.prototype.drawImage = function (
+            source: Parameters<typeof drawImage>[0],
             ...args: number[]
         ) {
             if (
+                this.canvas instanceof HTMLCanvasElement &&
                 this.canvas.classList.contains('editor-chart') &&
-                source instanceof HTMLCanvasElement &&
+                source instanceof RenderSurface &&
                 surfaces.has(source)
             ) {
                 window.stageSurfaceTest.blits++
@@ -48,9 +56,6 @@ test.beforeEach(async ({ page }) => {
             return Reflect.apply(drawImage, this, [source, ...args])
         }
     })
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.evaluate(installEditorFixture)
     await page.evaluate(async () => {
         const { fixtures, show, view, settings, appImport } = window.editorTest
         const { clearNotification } = await appImport<
@@ -84,12 +89,12 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
 }) => {
     const counters = () =>
         page.evaluate(() => ({
-            strokes: window.stageSurfaceTest.strokes,
+            draws: window.stageSurfaceTest.draws,
             blits: window.stageSurfaceTest.blits,
             frames: window.editorFrames.chart,
         }))
     const baseline = await counters()
-    expect(baseline.strokes).toBeGreaterThan(0)
+    expect(baseline.draws).toBeGreaterThan(0)
     const canvas = page.locator('canvas.editor-chart')
     const original = await canvas.screenshot()
     const probes = await page.evaluate(async () => {
@@ -139,14 +144,14 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
     const selected = await counters()
     expect(selected.frames).toBeGreaterThan(baseline.frames)
     expect(selected.blits).toBeGreaterThan(baseline.blits)
-    expect(selected.strokes).toBe(baseline.strokes)
+    expect(selected.draws).toBe(baseline.draws)
     await page.evaluate(() => {
         const { history, view } = window.editorTest
         history.replaceState({ ...history.state.value, selectedEntities: [] })
         view.cursorTime = 4
     })
     await settle(page)
-    expect((await counters()).strokes).toBe(baseline.strokes)
+    expect((await counters()).draws).toBe(baseline.draws)
     await page.evaluate(() => {
         window.editorTest.view.cursorTime = 100
     })
@@ -173,7 +178,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
             history.replaceState(tx.commit([]))
         }, delta)
         await settle(page)
-        expect((await counters()).strokes).toBe(baseline.strokes)
+        expect((await counters()).draws).toBe(baseline.draws)
     }
 
     await page.evaluate(async () => {
@@ -202,7 +207,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
     })
     await settle(page)
     const preview = await counters()
-    expect(preview.strokes).toBeGreaterThan(selected.strokes)
+    expect(preview.draws).toBeGreaterThan(selected.draws)
     expect(await sample(await canvas.screenshot())).not.toEqual(originalSamples)
     await page.evaluate(async () => {
         const { clearPreviewEdit } =
@@ -228,7 +233,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
         }, change)
         await settle(page)
         if (change !== 'hidden')
-            expect((await counters()).strokes, change).toBeGreaterThan(before.strokes)
+            expect((await counters()).draws, change).toBeGreaterThan(before.draws)
         expect((await counters()).blits, change).toBeGreaterThan(before.blits)
         expect((await canvas.screenshot()).equals(pixels), change).toBe(false)
     }
@@ -244,9 +249,9 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
-        return [canvas.width, canvas.height]
+        return canvas.getContext().isContextLost()
     })
-    expect(released).toEqual([0, 0])
+    expect(released).toBe(true)
 })
 
 test('other stages draw on a new store and release the old one', async ({ page }) => {
@@ -272,29 +277,15 @@ test('other stages draw on a new store and release the old one', async ({ page }
         await nextTick()
         await frame()
         const current = window.stageSurfaceTest.surface!
-        return { released: [old.width, old.height], replaced: current !== old }
+        return { released: old.getContext().isContextLost(), replaced: current !== old }
     })
-    expect(result).toEqual({ released: [0, 0], replaced: true })
+    expect(result).toEqual({ released: true, replaced: true })
 })
 
-test('cached stage bitmap matches direct rendering across fractional DPR, viewport and style changes', async ({
+test('cached stage pixels match an uncached surface across fractional DPR, viewport and style changes', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
-        // Fix the raster backend for exact byte comparisons. Chromium may
-        // promote a reused drawImage source to GPU rendering; both backends
-        // agree on geometry but have different edge antialiasing.
-        const getContext = HTMLCanvasElement.prototype.getContext
-        HTMLCanvasElement.prototype.getContext = function (
-            this: HTMLCanvasElement,
-            type: string,
-            options?: object,
-        ) {
-            return Reflect.apply(getContext, this, [
-                type,
-                type === '2d' ? { ...options, willReadFrequently: true } : options,
-            ])
-        } as typeof getContext
         const { appImport, history, fixtures } = window.editorTest
         const { createStageSurface } = await appImport<
             typeof import('../../src/editor/canvas/stageSurface')
@@ -328,6 +319,15 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
             alpha: number
             first: number[]
         }[] = []
+        const direct = document.createElement('canvas')
+        const cached = document.createElement('canvas')
+        await Promise.all(
+            [direct, cached].map((canvas) => window.editorRendering.getDrawContext(canvas).ready),
+        )
+        // Compare caching with a newly drawn ordinary child target. The browser's
+        // default framebuffer can use a different MSAA sample phase; including it
+        // on only one side would measure that raster difference instead of reuse.
+        const reference = window.editorRendering.getDrawContext(direct).createSurface(1, 1)
         for (const variant of [
             'initial',
             'repeat',
@@ -341,10 +341,8 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
             'restore',
             'clear',
         ]) {
-            // Fresh targets avoid the backend's known copy-clear-after-readback
-            // behavior. The actual cached source remains reused across variants.
-            const direct = document.createElement('canvas')
-            const cached = document.createElement('canvas')
+            // Both targets retain their WebGL owner while their surfaces resize.
+            // The stage bitmap stays attached to the cached target's GPU context.
             if (variant === 'pan') bounds = { ...bounds, l: -9.75, r: 10.25 }
             if (variant === 'DPR') pixelRatio = 1.75
             if (variant === 'resize') {
@@ -367,6 +365,7 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
             }
             if (variant === 'restore') scope = fullScope
             if (variant === 'clear') surface.clear()
+            const directTarget = prepareSurface(direct, width, height, pixelRatio, bounds)!
             const context = {
                 state,
                 composed,
@@ -374,9 +373,14 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
                 pixelRatio,
                 scale: width / bounds.w,
                 ups: -2,
-                ctx: prepareSurface(direct, width, height, pixelRatio, bounds)!,
+                ctx: prepareSurface(reference, width, height, pixelRatio, bounds)!,
             } as import('../../src/editor/canvas/types').EditorDrawContext
             drawComposedStages(context, { min: 0, max: 12 }, scope, laneDivision)
+            directTarget.save()
+            directTarget.setTransform(1, 0, 0, 1, 0, 0)
+            directTarget.globalAlpha = 1
+            directTarget.drawImage(reference, 0, 0)
+            directTarget.restore()
             surface.draw(
                 { ...context, ctx: prepareSurface(cached, width, height, pixelRatio, bounds)! },
                 width,
@@ -385,8 +389,12 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
                 scope,
                 laneDivision,
             )
-            const a = direct.getContext('2d')!.getImageData(0, 0, direct.width, direct.height).data
-            const b = cached.getContext('2d')!.getImageData(0, 0, cached.width, cached.height).data
+            const a = window.editorRendering
+                .getDrawContext(direct)
+                .getImageData(0, 0, direct.width, direct.height).data
+            const b = window.editorRendering
+                .getDrawContext(cached)
+                .getImageData(0, 0, cached.width, cached.height).data
             let count = 0,
                 max = 0,
                 alpha = 0
@@ -403,7 +411,9 @@ test('cached stage bitmap matches direct rendering across fractional DPR, viewpo
             if (count) errors.push({ variant, count, max, alpha, first })
         }
         surface.clear()
-        HTMLCanvasElement.prototype.getContext = getContext
+        reference.dispose()
+        window.editorRendering.disposeDrawContext(direct)
+        window.editorRendering.disposeDrawContext(cached)
         return errors
     })
     expect(result).toEqual([])

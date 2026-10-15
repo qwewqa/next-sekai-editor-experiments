@@ -1,0 +1,44 @@
+{
+  "abi": 1,
+  "compiler": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: x86_64-pc-windows-msvc\nrelease: 1.96.0\nLLVM version: 22.1.2",
+  "link": {
+    "initialMemory": 2097152,
+    "maximumMemory": 67108864,
+    "stack": 65536
+  },
+  "sources": [
+    {
+      "file": "native/lyon/src/lib.rs",
+      "sha256": "3160e9a1ac59317d96db1d09d838f8d67da8363bbf3705dcef21a972aa142d5d"
+    },
+    {
+      "file": "native/lyon/Cargo.toml",
+      "sha256": "9a330d9458ee809f53e7f4aad8a5351de1be21893aaf05d1ec5c53eec5b06b85"
+    },
+    {
+      "file": "native/lyon/Cargo.lock",
+      "sha256": "e9eda00c180254564870fa387c6c69d9deaeae09cb77248e620c00714adb9676"
+    },
+    {
+      "file": "native/lyon/rust-toolchain.toml",
+      "sha256": "23794dfc365530e7749b589631e09db35dfbcc58e79b21b4185622406587fe84"
+    },
+    {
+      "file": "scripts/build-lyon.mjs",
+      "sha256": "5a38564c08f4b00a3002bc89251dcf3c157d06901fa9696992b85a07d2f9b84f"
+    },
+    {
+      "file": "public/third-party/lyon/sources.json",
+      "sha256": "88ce19437869dfc24b9d338a382db83a02d05bffbc86dcd461325618309c9bcc"
+    },
+    {
+      "file": "public/third-party/lyon/README.txt",
+      "sha256": "323c9d324ae7c4120b0f5c82e523b3e7bd768c4a088eaeecaa58499feac10511"
+    }
+  ],
+  "artifact": {
+    "file": "src/rendering/vendor/lyon.wasm",
+    "sha256": "cea2baafe51fe04619a893300d4bafbbd4c5e736ea91d6e9b4551f7585835d80",
+    "bytes": 116725
+  }
+}

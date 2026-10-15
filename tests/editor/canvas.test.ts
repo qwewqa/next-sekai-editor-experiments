@@ -14,6 +14,7 @@ import {
 import { createFrameScheduler, prepareSurface } from '../../src/editor/canvas/surface'
 import { createScopeLookup, type ScopeInputs } from '../../src/editor/scopeRules'
 import { isClockFrame, openFrame } from '../../src/frame'
+import type { RenderSurface } from '../../src/rendering/context'
 import type { Entity, EntityType } from '../../src/state/entities'
 import type { ConnectorEntity } from '../../src/state/entities/slides/connector'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
@@ -668,16 +669,16 @@ test('canvas surfaces reuse backing storage while applying DPR, scrolling and no
             assert.ok(saved, 'surface clearing must balance save and restore')
             Object.assign(ctx, saved)
         },
-        fillRect: (...args: number[]) => {
+        isContextLost: () => false,
+        isReady: true,
+        clear: () => {
             assert.deepEqual(
                 transform,
                 [1, 0, 0, 1, 0, 0],
                 'clearing uses backing-pixel coordinates',
             )
-            assert.equal(ctx.globalAlpha, 1)
-            assert.equal(ctx.globalCompositeOperation, 'copy')
-            assert.equal(ctx.fillStyle, 'rgba(0, 0, 0, 0)')
-            clears.push(args)
+            // WebGL clears do not borrow paint state or retain stale pixels.
+            clears.push([0, 0, width, height])
         },
         lineWidth: 0,
     }
@@ -702,11 +703,11 @@ test('canvas surfaces reuse backing storage while applying DPR, scrolling and no
             height = value
             dimensions.push([width, height])
         },
-        getContext: (kind: string) => {
-            assert.equal(kind, '2d')
-            return ctx
+        getContext: () => ctx,
+        dispose() {
+            width = height = 0
         },
-    } as unknown as HTMLCanvasElement
+    } as unknown as RenderSurface
     const bounds = { l: -6, r: 6, t: -20, b: -14, w: 12, h: 6 }
     assert.equal(prepareSurface(canvas, 600, 300, 2, bounds), ctx)
     assert.deepEqual([width, height], [1200, 600])

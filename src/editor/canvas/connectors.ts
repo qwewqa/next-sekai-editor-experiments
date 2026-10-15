@@ -1,22 +1,14 @@
-import {
-    ease,
-    easeMode,
-    easeOvershoot,
-    isNoneEase,
-    isStepEase,
-    sampleEase,
-    type Ease,
-} from '../../ease'
+import { ease, easeMode, isNoneEase, isStepEase, sampleEase, type Ease } from '../../ease'
+import type { DrawGradient } from '../../rendering/context'
+import { DrawPath } from '../../rendering/path'
 import type { ConnectorEntity } from '../../state/entities/slides/connector'
 import type { SlideInfos } from '../../state/entities/slides/hiddenTicks'
 import { beatToTime, timeToBeat, type BpmIntegral } from '../../state/integrals/bpms'
-import { clamp, lerp, remap, safeUnlerp, safeUnlerpClamped } from '../../utils/math'
+import { clamp, lerp, safeUnlerp, safeUnlerpClamped } from '../../utils/math'
 import { isConnectorVisible } from '../entities/visibility'
 import { connectorColors } from '../utils/connectorColors'
 import { guideElevationFraction } from '../utils/guideAlpha'
 import { sampleComposed, type ComposedSample } from './composedSampling'
-import { blendOverChart } from './nameColors'
-import { markFill } from './names'
 import type { EditorDrawContext } from './types'
 
 type Edge = { time: number; left: number; size: number }
@@ -43,37 +35,52 @@ type ConnectorGraphic = {
     /** Composed geometry depends only on the entity, tempo and stages. */
     stages?: ComposedLayout['stages']
     geometry?: ComposedGeometry
+    infos?: SlideInfos
     bpms: BpmIntegral[]
     ups: number
-    path: Path2D
-    edges?: Path2D
+    path: DrawPath
+    edges?: DrawPath
     edgeColor?: string
     maxEdgeWidth: number
-    fakeMarker?: Path2D
+    fakeMarker?: DrawPath
     color: string
     headAlpha: number
     tailAlpha: number
     headColor: string
     tailColor: string
-    gradient?: CanvasGradient
+    gradient?: DrawGradient
     yHead: number
     yTail: number
-    /** Bounds of the drawn body, for names over it. */
-    box: { l: number; r: number; t: number; b: number }
+}
+
+// A fixed power of two keeps the reference lane/time metric close to common
+// editor scales while making the normalization independent of the first PPS.
+const BODY_REFERENCE_UPS = 8
+type ConnectorBody = {
+    bpms: BpmIntegral[]
+    stages?: ComposedLayout['stages']
+    infos?: SlideInfos
+    originTime: number
+    path: DrawPath
+    yHead: number
+    yTail: number
+    gradient?: DrawGradient
+    headColor?: string
+    tailColor?: string
 }
 
 const rgba = (color: string, alpha: number) =>
     `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, ${clamp(alpha)})`
 
 const appendEase = (
-    path: Path2D,
+    path: DrawPath,
     attachHead: Edge,
     attachTail: Edge,
     tHead: number,
     tTail: number,
     connectorEase: 'inQuad' | 'outQuad',
     ups: number,
-    edges: Path2D | undefined,
+    edges: DrawPath | undefined,
 ) => {
     const pHead = safeUnlerp(attachHead.time, attachTail.time, tHead, 0)
     const pTail = safeUnlerp(attachHead.time, attachTail.time, tTail, 1)
@@ -104,14 +111,14 @@ const appendEase = (
 }
 
 const appendCurve = (
-    path: Path2D,
+    path: DrawPath,
     attachHead: Edge,
     attachTail: Edge,
     tHead: number,
     tTail: number,
     connectorEase: Ease,
     ups: number,
-    edges: Path2D | undefined,
+    edges: DrawPath | undefined,
 ) => {
     const span = Math.max(
         Math.abs(attachTail.left - attachHead.left),
@@ -154,11 +161,11 @@ const appendCurve = (
 }
 
 const appendConstant = (
-    path: Path2D,
+    path: DrawPath,
     { left, size }: Omit<Edge, 'time'>,
     yHead: number,
     yTail: number,
-    edges: Path2D | undefined,
+    edges: DrawPath | undefined,
     regions?: Region[],
 ) => {
     regions?.push({ yHead, yTail, at: () => ({ left, size }), straight: true })
@@ -171,14 +178,14 @@ const appendConstant = (
 
 // Steps hold their interior value; in-out steps jump at the attachment midpoint.
 const appendStep = (
-    path: Path2D,
+    path: DrawPath,
     attachHead: Edge,
     attachTail: Edge,
     tHead: number,
     tTail: number,
     connectorEase: Ease,
     ups: number,
-    edges: Path2D | undefined,
+    edges: DrawPath | undefined,
     regions?: Region[],
 ) => {
     const at = (q: number) => ({
@@ -198,14 +205,14 @@ const appendStep = (
 
 // Like the engine, ease each piece between its own ends; steps hold one value per piece.
 const appendAttachedPiece = (
-    path: Path2D,
+    path: DrawPath,
     attachHead: Edge,
     attachTail: Edge,
     tHead: number,
     tTail: number,
     connectorEase: Ease,
     ups: number,
-    edges: Path2D | undefined,
+    edges: DrawPath | undefined,
     regions?: Region[],
 ) => {
     const fHead = safeUnlerp(attachHead.time, attachTail.time, tHead, 0.5)
@@ -302,7 +309,7 @@ const CURVE_TOLERANCE = 0.01
 const CROSS_SAMPLES = 32
 
 // An X across a stretch of the body, following its edges.
-const appendCross = (marker: Path2D, { yHead, yTail, at, straight }: Region) => {
+const appendCross = (marker: DrawPath, { yHead, yTail, at, straight }: Region) => {
     const samples = straight ? 1 : CROSS_SAMPLES
     const points = Array.from({ length: samples + 1 }, (_, index) => {
         const u = index / samples
@@ -371,6 +378,7 @@ const createGraphic = (
     composed?: ComposedLayout,
     infos?: SlideInfos,
     geometry = composed && sampleConnector(entity, bpms, composed),
+    bodyOnly = false,
 ): ConnectorGraphic => {
     const { attachHead, attachTail, head, tail, segmentHead, segmentTail } = entity
     const tAttachHead = beatToTime(bpms, attachHead.beat)
@@ -379,17 +387,23 @@ const createGraphic = (
     const tTail = beatToTime(bpms, tail.beat)
     const yHead = tHead * ups
     const yTail = tTail * ups
-    const path = new Path2D()
+    const path = new DrawPath()
     const colors = connectorColors(segmentHead)
-    const edges = colors.edge ? new Path2D() : undefined
-    const first = { time: tAttachHead, left: attachHead.left, size: attachHead.size }
-    const last = { time: tAttachTail, left: attachTail.left, size: attachTail.size }
+    const edges = !bodyOnly && colors.edge ? new DrawPath() : undefined
+    const first = {
+        time: tAttachHead,
+        left: attachHead.left,
+        size: attachHead.size,
+    }
+    const last = {
+        time: tAttachTail,
+        left: attachTail.left,
+        size: attachTail.size,
+    }
 
     const regions: Region[] = []
-    const composedPoints: { left: number; size: number }[] = []
     if (geometry) {
         for (const [strip, points] of geometry.strips.entries()) {
-            composedPoints.push(...points)
             for (const [index, { left, time }] of points.entries()) {
                 if (index) {
                     path.lineTo(left, time * ups)
@@ -540,36 +554,18 @@ const createGraphic = (
         headAlpha = tailAlpha = 0.8
     }
 
-    let fakeMarker: Path2D | undefined
-    if (isFake(entity)) {
-        fakeMarker = new Path2D()
+    let fakeMarker: DrawPath | undefined
+    if (!bodyOnly && isFake(entity)) {
+        fakeMarker = new DrawPath()
         for (const region of regions) appendCross(fakeMarker, region)
-    }
-
-    // Overshooting eases may swing past both ends.
-    const margin =
-        easeOvershoot(attachHead.connectorEase) *
-        Math.max(
-            Math.abs(last.left - first.left),
-            Math.abs(last.left + last.size - first.left - first.size),
-        )
-    const box = {
-        l: composedPoints.length
-            ? composedPoints.reduce((min, { left }) => Math.min(min, left), Infinity)
-            : Math.min(first.left, last.left) - margin,
-        r: composedPoints.length
-            ? composedPoints.reduce((max, { left, size }) => Math.max(max, left + size), -Infinity)
-            : Math.max(first.left + first.size, last.left + last.size) + margin,
-        t: Math.min(yHead, yTail),
-        b: Math.max(yHead, yTail),
     }
 
     return {
         stages: composed?.stages,
         geometry,
+        infos,
         bpms,
         ups,
-        box,
         path,
         edges,
         edgeColor: colors.edge,
@@ -585,11 +581,67 @@ const createGraphic = (
     }
 }
 
+/** Only connector body commands are normalized; current stroke paths stay untouched. */
+const createBody = (
+    entity: ConnectorEntity,
+    bpms: BpmIntegral[],
+    composed: ComposedLayout | undefined,
+    infos: SlideInfos | undefined,
+    geometry: ComposedGeometry | undefined,
+): ConnectorBody | undefined => {
+    const originTime = beatToTime(bpms, entity.head.beat)
+    const origin = originTime * BODY_REFERENCE_UPS
+    if (!Number.isFinite(origin)) return
+    const graphic = createGraphic(entity, bpms, BODY_REFERENCE_UPS, composed, infos, geometry, true)
+    const path = new DrawPath()
+    for (const command of graphic.path.commands) {
+        switch (command[0]) {
+            case 'moveTo':
+            case 'lineTo': {
+                const y = command[2] - origin
+                if (!Number.isFinite(y)) return
+                path[command[0]](command[1], y)
+                break
+            }
+            case 'quadraticCurveTo': {
+                const cy = command[2] - origin
+                const y = command[4] - origin
+                if (![cy, y].every(Number.isFinite)) return
+                path.quadraticCurveTo(command[1], cy, command[3], y)
+                break
+            }
+            case 'rect': {
+                const y = command[2] - origin
+                if (!Number.isFinite(y)) return
+                path.rect(command[1], y, command[3], command[4])
+                break
+            }
+            case 'closePath':
+                path.closePath()
+                break
+            case 'roundRect':
+            case 'bezierCurveTo':
+            case 'ellipse':
+            case 'arcTo':
+            case 'svg':
+            case 'addPath':
+            case 'transform':
+                // Keep this a feature contract, not a second generic path transformer.
+                return
+        }
+    }
+    const yHead = graphic.yHead - origin
+    const yTail = graphic.yTail - origin
+    if (![yHead, yTail].every(Number.isFinite)) return
+    return { bpms, stages: composed?.stages, infos, originTime, path, yHead, yTail }
+}
+
 export const createConnectorRenderer = () => {
     // Entity keys are immutable and weak: deleted charts and old undo states do
     // not leave native paths permanently retained by the renderer. Each entity
     // keeps only its most recent zoom/BPM geometry.
     let graphics = new WeakMap<ConnectorEntity, ConnectorGraphic>()
+    let bodies = new WeakMap<ConnectorEntity, ConnectorBody>()
 
     return {
         draw(
@@ -604,16 +656,23 @@ export const createConnectorRenderer = () => {
             let graphic = graphics.get(entity)
             // Keyed on stages, not the layout: drag previews keep untouched slides' paths.
             const stages = context.composed?.stages
-            if (graphic?.bpms !== state.bpms || graphic.ups !== ups || graphic.stages !== stages) {
+            const infos =
+                entity.segmentHead.connectorType === 'guide' &&
+                entity.segmentHead.beat === entity.segmentTail.beat
+                    ? state.store.slides.info.get(entity.head.slideId)
+                    : undefined
+            if (
+                graphic?.bpms !== state.bpms ||
+                graphic.ups !== ups ||
+                graphic.stages !== stages ||
+                graphic.infos !== infos
+            ) {
                 graphic = createGraphic(
                     entity,
                     state.bpms,
                     ups,
                     context.composed,
-                    entity.segmentHead.connectorType === 'guide' &&
-                        entity.segmentHead.beat === entity.segmentTail.beat
-                        ? state.store.slides.info.get(entity.head.slideId)
-                        : undefined,
+                    infos,
                     // Zoom only rescales the sampled geometry.
                     graphic?.bpms === state.bpms && graphic.stages === stages
                         ? graphic.geometry
@@ -623,54 +682,76 @@ export const createConnectorRenderer = () => {
             }
 
             ctx.save()
+            let body = bodies.get(entity)
+            if (body?.bpms !== state.bpms || body.stages !== stages || body.infos !== infos) {
+                body = createBody(entity, state.bpms, context.composed, infos, graphic.geometry)
+                if (body) bodies.set(entity, body)
+                else bodies.delete(entity)
+            }
+            // Large absolute coordinates can round a positive time span to the
+            // same current Y. Preserve the established collapsed-body behavior.
+            if (graphic.yHead === graphic.yTail) body = undefined
             if (graphic.headAlpha === graphic.tailAlpha) {
                 ctx.globalAlpha = opacity * clamp(graphic.headAlpha)
                 ctx.fillStyle = graphic.color
             } else {
                 // Like the path, gradient coordinates follow the drawing
                 // transform, so panning can reuse the native gradient object.
-                if (!graphic.gradient) {
-                    graphic.gradient = ctx.createLinearGradient(0, graphic.yHead, 0, graphic.yTail)
-                    graphic.gradient.addColorStop(0, graphic.headColor)
-                    graphic.gradient.addColorStop(1, graphic.tailColor)
+                const gradientOwner = body ?? graphic
+                if (
+                    !gradientOwner.gradient ||
+                    (body &&
+                        (body.headColor !== graphic.headColor ||
+                            body.tailColor !== graphic.tailColor))
+                ) {
+                    gradientOwner.gradient = ctx.createLinearGradient(
+                        0,
+                        gradientOwner.yHead,
+                        0,
+                        gradientOwner.yTail,
+                    )
+                    gradientOwner.gradient.addColorStop(0, graphic.headColor)
+                    gradientOwner.gradient.addColorStop(1, graphic.tailColor)
+                    if (body) {
+                        body.headColor = graphic.headColor
+                        body.tailColor = graphic.tailColor
+                    }
                 }
                 ctx.globalAlpha = opacity
-                ctx.fillStyle = graphic.gradient
+                ctx.fillStyle = gradientOwner.gradient
             }
-            ctx.fill(graphic.path)
-            if (context.names && context.nameContrast) {
-                const { box, path, color, headAlpha, tailAlpha, yHead, yTail } = graphic
-                markFill(context, {
-                    box,
-                    shapes: () => [path],
-                    colorsAt: (y) => [
-                        blendOverChart(
-                            color,
-                            opacity *
-                                clamp(
-                                    // Guides fade along their length, as their gradient does.
-                                    headAlpha === tailAlpha
-                                        ? headAlpha
-                                        : remap(yHead, yTail, headAlpha, tailAlpha, y),
-                                ),
-                        ),
-                    ],
-                })
+            if (
+                !body ||
+                !ctx.fillConnectorBody(body.path, ups / BODY_REFERENCE_UPS, body.originTime * ups)
+            ) {
+                // Declined transforms use current-UPS gradient coordinates too.
+                if (body && graphic.headAlpha !== graphic.tailAlpha) {
+                    if (!graphic.gradient) {
+                        graphic.gradient = ctx.createLinearGradient(
+                            0,
+                            graphic.yHead,
+                            0,
+                            graphic.yTail,
+                        )
+                        graphic.gradient.addColorStop(0, graphic.headColor)
+                        graphic.gradient.addColorStop(1, graphic.tailColor)
+                    }
+                    ctx.fillStyle = graphic.gradient
+                }
+                ctx.fill(graphic.path)
             }
-
             // Only the two sides are outlined: segment boundaries and compound
             // easing midpoints must not acquire horizontal seams. Cap the width
             // for narrow connectors so their selected color remains visible.
             if (graphic.edges && graphic.edgeColor && graphic.maxEdgeWidth > 0) {
                 ctx.save()
-                // Strokes straddle their paths. Keep the shading inside the
-                // connector, including the head/tail cuts of slanted curves.
-                ctx.clip(graphic.path)
                 ctx.strokeStyle = graphic.edgeColor
                 ctx.lineWidth = Math.min(3 / scale, graphic.maxEdgeWidth)
                 ctx.lineCap = 'butt'
                 ctx.setLineDash([])
-                ctx.stroke(graphic.edges)
+                // Preserve the head/tail cuts while caching the intersection;
+                // ordinary frames need no separate stencil-mask pass.
+                ctx.strokeClipped(graphic.edges, graphic.path)
                 ctx.restore()
             }
 
@@ -679,12 +760,13 @@ export const createConnectorRenderer = () => {
                 ctx.strokeStyle = '#f44'
                 ctx.lineWidth = 2 / scale
                 ctx.setLineDash([])
-                ctx.stroke(graphic.fakeMarker)
+                ctx.strokeFakeMarker(graphic.fakeMarker)
             }
             ctx.restore()
         },
         clear() {
             graphics = new WeakMap()
+            bodies = new WeakMap()
         },
     }
 }

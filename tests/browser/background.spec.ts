@@ -185,6 +185,16 @@ test('loading an initially unfocused tab schedules no frames until focus', async
     })
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(async () => {
+        // Reload creates a new rendering class and discards the fixture's GPU
+        // observers. Install counters without activating or seeding the editor.
+        const url = performance
+            .getEntriesByType('resource')
+            .find((entry) => new URL(entry.name).pathname === '/src/rendering/context.ts')!.name
+        window.installEditorRendering!(
+            (await import(url)) as typeof import('../../src/rendering/context'),
+        )
+    })
     await page.waitForTimeout(200)
     expect(
         await page.evaluate(() => ({

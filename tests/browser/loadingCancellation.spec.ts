@@ -278,6 +278,120 @@ test('cancelling cover generation while PNG encoding finishes prevents the downl
     expect(await page.evaluate(() => window.loadingReview.downloadUrls)).toEqual([])
 })
 
+for (const portrait of [false, true]) {
+    test(`cover export preserves centered ${portrait ? 'portrait' : 'landscape'} cropping and transparency`, async ({
+        page,
+    }) => {
+        await openUtility(page, 'coverEditor')
+        const colors = ['red', 'lime', 'blue', 'white', 'black', 'yellow', 'cyan']
+        const strips = colors
+            .map(
+                (color, index) =>
+                    `<rect x="${portrait ? 0 : index}" y="${portrait ? index : 0}" width="${portrait ? 4 : 1}" height="${portrait ? 1 : 4}" fill="${color}" opacity="${index === 3 ? 0.5 : 1}"/>`,
+            )
+            .join('')
+        await chooseFile(
+            page,
+            'cover.svg',
+            'image/svg+xml',
+            Buffer.from(
+                `<svg xmlns="http://www.w3.org/2000/svg" width="${portrait ? 4 : 7}" height="${portrait ? 7 : 4}">${strips}</svg>`,
+            ),
+        )
+        await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
+        await page.getByRole('spinbutton', { name: 'Size' }).fill('4')
+        await page.keyboard.press('Tab')
+        const downloading = page.waitForEvent('download')
+        await page.getByRole('button', { name: 'Generate', exact: true }).click()
+        expect((await downloading).suggestedFilename()).toBe('cover.png')
+        await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(2)
+        const result = await page.evaluate(async (portrait) => {
+            const response = await fetch(window.loadingReview.downloadUrls[0]!)
+            const blob = await response.blob()
+            const bitmap = await createImageBitmap(blob)
+            const canvas = document.createElement('canvas')
+            canvas.width = bitmap.width
+            canvas.height = bitmap.height
+            // Independent native decoder checks the actual downloaded PNG.
+            const ctx = canvas.getContext('2d')!
+            ctx.drawImage(bitmap, 0, 0)
+            const data = ctx.getImageData(0, 0, bitmap.width, bitmap.height).data
+            const pixels = Array.from({ length: 4 }, (_, index) => {
+                const start = (portrait ? index * 4 : index) * 4
+                return [...data.slice(start, start + 4)]
+            })
+            bitmap.close()
+            return { width: canvas.width, height: canvas.height, type: blob.type, pixels }
+        }, portrait)
+        expect(result).toEqual({
+            width: 4,
+            height: 4,
+            type: 'image/png',
+            pixels: [
+                [0, 255, 0, 255],
+                [0, 0, 255, 255],
+                [255, 255, 255, 128],
+                [0, 0, 0, 255],
+            ],
+        })
+    })
+}
+
+test('cover export accepts source images larger than the GPU texture limit', async ({ page }) => {
+    await openUtility(page, 'coverEditor')
+    await chooseFile(
+        page,
+        'large-cover.svg',
+        'image/svg+xml',
+        Buffer.from(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="1000"><rect width="1000" height="1000" fill="red"/><rect x="1000" width="1000" height="1000" fill="lime"/><rect x="2000" width="1000" height="1000" fill="blue"/></svg>',
+        ),
+    )
+    await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
+    await page.getByRole('spinbutton', { name: 'Size' }).fill('8')
+    await page.keyboard.press('Tab')
+    await page.evaluate(() => {
+        // Simulate a smaller device limit without allocating a huge fixture.
+        for (const prototype of [
+            WebGLRenderingContext.prototype,
+            WebGL2RenderingContext.prototype,
+        ]) {
+            const getParameter = prototype.getParameter
+            prototype.getParameter = function (parameter) {
+                return parameter === this.MAX_TEXTURE_SIZE
+                    ? 512
+                    : getParameter.call(this, parameter)
+            }
+        }
+    })
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    expect((await downloading).suggestedFilename()).toBe('cover.png')
+    await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(2)
+    const result = await page.evaluate(async () => {
+        const bitmap = await createImageBitmap(
+            await (await fetch(window.loadingReview.downloadUrls[0]!)).blob(),
+        )
+        const canvas = document.createElement('canvas')
+        canvas.width = bitmap.width
+        canvas.height = bitmap.height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(bitmap, 0, 0)
+        const data = ctx.getImageData(0, 0, bitmap.width, bitmap.height).data
+        bitmap.close()
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            pixels: [...data],
+        }
+    })
+    expect(result).toEqual({
+        width: 8,
+        height: 8,
+        pixels: Array.from({ length: 64 }, () => [0, 255, 0, 255]).flat(),
+    })
+})
+
 test('cancelling preview generation during encoder loading prevents the download', async ({
     page,
 }) => {

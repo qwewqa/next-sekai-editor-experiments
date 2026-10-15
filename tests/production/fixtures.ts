@@ -73,40 +73,122 @@ export const instrumentRendering = () => {
         fftTiles: 0,
         fftDraws: 0,
     }
-    const clear = WebGLRenderingContext.prototype.clear
-    WebGLRenderingContext.prototype.clear = function (...args) {
-        window.productionSmoke.preview++
-        return clear.apply(this, args)
+    type GL = WebGLRenderingContext | WebGL2RenderingContext
+    let pngPublished = false
+    const kind = ({ canvas }: GL) => {
+        if (!(canvas instanceof HTMLCanvasElement)) return
+        if (canvas.classList.contains('editor-chart')) return 'chart'
+        if (canvas.classList.contains('editor-overlay')) return 'overlay'
+        if (canvas.matches('.preview-viewport > canvas:not(.preview-selection)')) return 'preview'
     }
-    const upload = WebGLRenderingContext.prototype.texImage2D
-    WebGLRenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-        if (args.some((arg) => arg instanceof ImageBitmap)) window.productionSmoke.uploads++
-        return Reflect.apply(upload, this, args)
-    }
-    const fill = CanvasRenderingContext2D.prototype.fillRect
-    CanvasRenderingContext2D.prototype.fillRect = function (...args) {
-        if (this.globalCompositeOperation === 'copy' && this.canvas instanceof HTMLCanvasElement) {
-            if (this.canvas.classList.contains('editor-chart')) window.productionSmoke.chart++
-            if (this.canvas.classList.contains('editor-overlay')) window.productionSmoke.overlay++
+    const textures = new WeakMap<
+        GL,
+        { unit: number; bindings: Map<number, WebGLTexture | null>; waveform: Set<WebGLTexture> }
+    >()
+    const state = (gl: GL) => {
+        let value = textures.get(gl)
+        if (!value) {
+            value = { unit: gl.TEXTURE0, bindings: new Map(), waveform: new Set() }
+            textures.set(gl, value)
         }
-        return fill.apply(this, args)
+        return value
     }
-    const put = CanvasRenderingContext2D.prototype.putImageData
-    CanvasRenderingContext2D.prototype.putImageData = function (...args: unknown[]) {
-        if (this.canvas.width === 128 && this.canvas.height === 2000)
-            window.productionSmoke.fftTiles++
-        return Reflect.apply(put, this, args)
-    }
-    const draw = CanvasRenderingContext2D.prototype.drawImage
-    CanvasRenderingContext2D.prototype.drawImage = function (...args: unknown[]) {
+    const textureSize = (args: unknown[], sub: boolean) => {
+        if (args.length >= 9) return [Number(args[sub ? 4 : 3]), Number(args[sub ? 5 : 4])]
+        const source = args[sub ? 6 : 5]
+        if (source instanceof HTMLImageElement) return [source.naturalWidth, source.naturalHeight]
         if (
-            this.canvas instanceof HTMLCanvasElement &&
-            this.canvas.classList.contains('editor-chart') &&
-            args[0] instanceof HTMLImageElement &&
-            args[0].naturalWidth === 128 &&
-            args[0].naturalHeight === 2000
+            source instanceof HTMLCanvasElement ||
+            source instanceof ImageBitmap ||
+            source instanceof ImageData
         )
-            window.productionSmoke.fftDraws++
-        return Reflect.apply(draw, this, args)
+            return [source.width, source.height]
+        return []
+    }
+    const upload = (gl: GL, args: unknown[], sub: boolean) => {
+        const target = kind(gl)
+        if (target === 'preview' && args.some((arg) => arg instanceof ImageBitmap))
+            window.productionSmoke.uploads++
+        if (target !== 'chart' || !pngPublished) return
+        const [width, height] = textureSize(args, sub)
+        // FFT tiles keep their 128 columns at every max-reduction level. Only
+        // count actual chart draws using that uploaded texture, not allocations.
+        if (width !== 128 || !height || height > 2000) return
+        const current = state(gl)
+        const texture = current.bindings.get(current.unit)
+        if (texture) current.waveform.add(texture)
+    }
+    for (const prototype of [
+        WebGLRenderingContext.prototype,
+        ...(typeof WebGL2RenderingContext === 'undefined'
+            ? []
+            : [WebGL2RenderingContext.prototype]),
+    ]) {
+        const wrap = (name: string, observe: (gl: GL, args: unknown[]) => void) => {
+            // Some browsers inherit shared methods; wrapping only their owner
+            // avoids counting a WebGL2 call twice.
+            if (!Object.hasOwn(prototype, name)) return
+            const methods = prototype as unknown as Record<string, (...args: unknown[]) => unknown>
+            const original = methods[name]!
+            methods[name] = function (this: GL, ...args: unknown[]) {
+                observe(this, args)
+                return Reflect.apply(original, this, args)
+            }
+        }
+        wrap('clear', (gl, args) => {
+            if (!(Number(args[0]) & gl.COLOR_BUFFER_BIT)) return
+            const target = kind(gl)
+            if (target) window.productionSmoke[target]++
+        })
+        wrap('activeTexture', (gl, args) => (state(gl).unit = Number(args[0])))
+        wrap('bindTexture', (gl, args) => {
+            if (args[0] === gl.TEXTURE_2D)
+                state(gl).bindings.set(state(gl).unit, args[1] as WebGLTexture | null)
+        })
+        wrap('deleteTexture', (gl, args) => state(gl).waveform.delete(args[0] as WebGLTexture))
+        wrap('texImage2D', (gl, args) => upload(gl, args, false))
+        wrap('texSubImage2D', (gl, args) => upload(gl, args, true))
+        for (const name of [
+            'drawArrays',
+            'drawElements',
+            'drawArraysInstanced',
+            'drawElementsInstanced',
+        ])
+            wrap(name, (gl) => {
+                const target = kind(gl)
+                // A renderer can erase with a blended draw rather than gl.clear.
+                // Observe all chart/overlay GPU work so an unnecessary redraw
+                // cannot hide behind that implementation detail.
+                if (target === 'chart' || target === 'overlay') window.productionSmoke[target]++
+                if (target !== 'chart') return
+                const current = state(gl)
+                if (
+                    [...current.bindings.values()].some(
+                        (texture) => texture && current.waveform.has(texture),
+                    )
+                )
+                    window.productionSmoke.fftDraws++
+            })
+    }
+    const createUrl = URL.createObjectURL
+    URL.createObjectURL = (blob) => {
+        const url = createUrl.call(URL, blob)
+        if (blob instanceof Blob && blob.type === 'image/png') {
+            // Waveform samples are encoded directly as PNG, without a canvas.
+            // Decode the actual published blob to validate its dimensions;
+            // observe uploads immediately so that this async decode cannot
+            // miss the first chart frame using the retained raw pixels.
+            pngPublished = true
+            void createImageBitmap(blob)
+                .then((bitmap) => {
+                    if (bitmap.width === 128 && bitmap.height === 2000)
+                        window.productionSmoke.fftTiles++
+                    bitmap.close()
+                })
+                .catch(() => {
+                    // An invalid PNG deliberately leaves fftTiles unchanged.
+                })
+        }
+        return url
     }
 }

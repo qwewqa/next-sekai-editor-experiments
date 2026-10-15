@@ -391,12 +391,21 @@ export const renderPreviewFrame = (
             : identityStageScreenTransform
     }
 
+    // Notes, ribbons and simultaneous lines repeatedly ask for the same endpoint
+    // progress. Within this frame it depends only on its group and target time;
+    // share the potentially expensive scroll-transition integration across them.
+    const progressByGroup: (Map<number, number> | undefined)[] = []
     const basicProgress = (note: PreviewNote) => {
+        const cache = (progressByGroup[note.groupIndex] ??= new Map<number, number>())
+        const retained = cache.get(note.targetTime)
+        if (retained !== undefined) return retained
         const group = chart.groups[note.groupIndex]
         const distance = group
             ? noteDistance(group, now, note.targetTime, leftLimit)
             : note.targetTime - now
-        return 1 - distance / groupPreempt(note)
+        const progress = 1 - distance / groupPreempt(note)
+        cache.set(note.targetTime, progress)
+        return progress
     }
 
     const noteProgress = (note: PreviewNote): number => {

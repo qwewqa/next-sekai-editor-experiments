@@ -87,11 +87,14 @@ test('the snap field shows its value on hover and is named by what it sets', asy
 
 // Records where the Elevation Editor draws its empty beat note.
 const recordEmptyNote = (page: Page) =>
-    page.evaluate(() => {
+    page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         const texts: { text: string; y: number }[] = []
         ;(window as unknown as { emptyTexts: typeof texts }).emptyTexts = texts
-        const fillText = CanvasRenderingContext2D.prototype.fillText
-        CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+        const fillText = WebGLDrawContext.prototype.fillText
+        WebGLDrawContext.prototype.fillText = function (text, x, y, ...rest) {
             if (
                 this.canvas instanceof HTMLCanvasElement &&
                 this.canvas.matches('.elevation-canvas')
@@ -665,21 +668,43 @@ test('names and anchor outlines show while the view is in use or the note is hig
     // Names drawn on the canvas in a redraw.
     const draws = () =>
         page.evaluate(async () => {
+            const { WebGLDrawContext } = await window.editorTest.appImport<
+                typeof import('../../src/rendering/context')
+            >('/src/rendering/context.ts')
             const { history } = window.editorTest
             const names: string[] = []
             let count = 0
-            const prototype = CanvasRenderingContext2D.prototype
-            const { drawImage } = prototype
+            const prototype = WebGLDrawContext.prototype
+            const { drawImage, drawNameSprite, drawEditorLabel } = prototype
             prototype.drawImage = function (...args: unknown[]) {
                 if (
                     this.canvas instanceof HTMLCanvasElement &&
                     this.canvas.matches('.elevation-canvas')
                 ) {
                     count++
-                    const label = window.editorLabels.get(args[0] as HTMLCanvasElement)?.text
-                    if (label) names.push(label)
                 }
                 return (drawImage as (...args: unknown[]) => void).apply(this, args)
+            }
+            prototype.drawNameSprite = function (source, ...args) {
+                if (
+                    this.canvas instanceof HTMLCanvasElement &&
+                    this.canvas.matches('.elevation-canvas')
+                ) {
+                    count++
+                    const label = window.editorLabels.get(source)?.text
+                    if (label) names.push(label)
+                }
+                return drawNameSprite.call(this, source, ...args)
+            }
+            prototype.drawEditorLabel = function (text, ...args) {
+                if (
+                    this.canvas instanceof HTMLCanvasElement &&
+                    this.canvas.matches('.elevation-canvas')
+                ) {
+                    count++
+                    names.push(text)
+                }
+                return drawEditorLabel.call(this, text, ...args)
             }
             // An equal selection redraws it.
             history.replaceState({
@@ -690,7 +715,7 @@ test('names and anchor outlines show while the view is in use or the note is hig
             await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             )
-            prototype.drawImage = drawImage
+            Object.assign(prototype, { drawImage, drawNameSprite, drawEditorLabel })
             return { names: [...new Set(names)], count }
         })
     // The brightest pixel over the anchor, which only its outline reaches.
@@ -702,8 +727,8 @@ test('names and anchor outlines show while the view is in use or the note is hig
             const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
             const ratio = canvas.width / canvas.clientWidth
             const half = laneScale * 0.25
-            const data = canvas
-                .getContext('2d')!
+            const data = window.editorRendering
+                .getDrawContext(canvas)
                 .getImageData(
                     Math.round((row.x - row.w / 2 + 4) * ratio),
                     Math.round((row.y - half) * ratio),

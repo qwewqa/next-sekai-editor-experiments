@@ -1,4 +1,5 @@
-import type { EditorDrawContext } from './types'
+import { createFontContext } from '../../rendering/textRaster'
+import type { EditorDrawContext, EditorMeasureContext } from './types'
 
 // SVG's default white-space handling collapses these characters, but preserves
 // nonbreaking and other Unicode spaces. Canvas only replaces ASCII whitespace.
@@ -24,7 +25,7 @@ export const FIGURE_MIDDLE = 0.35
 
 // Figures stand taller than the x-height, so number labels centre on their ink.
 export const measureFigureMiddle = (fontFamily: string) => {
-    const ctx = document.createElement('canvas').getContext('2d')
+    const ctx = createFontContext()
     if (!ctx) return FIGURE_MIDDLE
     ctx.font = `1000px ${fontFamily}`
     const { actualBoundingBoxAscent, actualBoundingBoxDescent } = ctx.measureText('0123456789')
@@ -34,7 +35,7 @@ export const measureFigureMiddle = (fontFamily: string) => {
 
 /** A label's width in scene units, as drawText draws it. */
 export const measureText = (
-    { ctx, scale, fontFamily }: EditorDrawContext,
+    { ctx, scale, fontFamily }: Pick<EditorMeasureContext, 'ctx' | 'scale' | 'fontFamily'>,
     text: string,
     size = 0.4,
 ) => {
@@ -47,10 +48,18 @@ export const measureText = (
 }
 
 // Labels are measured on every frame; keep widths for each canvas's font and zoom.
-const widths = new Map<string, Map<number, Map<string, number>>>()
+const createWidthBucket = () => ({
+    bySize: new Map<number, Map<string, number>>(),
+    order: new Set<{ size: number; text: string }>(),
+    textUnits: 0,
+})
+const widths = new Map<string, ReturnType<typeof createWidthBucket>>()
 const maxWidthKeys = 4
+// Shared across sizes so arbitrary names and size arguments cannot retain unbounded keys.
+const maxWidthEntries = 8192
+const maxWidthTextUnits = 256 * 1024
 // The widths last measured in; a NaN zoom matches none.
-const unset = () => ({ fontFamily: '', scale: NaN, bySize: new Map<number, Map<string, number>>() })
+const unset = () => ({ fontFamily: '', scale: NaN, bucket: createWidthBucket() })
 let last = unset()
 
 /** Forgets measured widths, as a loaded font changes them. */
@@ -65,22 +74,40 @@ export const measureCachedText = (context: EditorDrawContext, text: string, size
     if (last.fontFamily !== fontFamily || last.scale !== scale) {
         const key = `${fontFamily}|${scale}`
         // Most recently used last; old zooms go first.
-        const bySize = widths.get(key) ?? new Map<number, Map<string, number>>()
+        const bucket = widths.get(key) ?? createWidthBucket()
         widths.delete(key)
-        widths.set(key, bySize)
+        widths.set(key, bucket)
         for (const old of widths.keys()) {
             if (widths.size <= maxWidthKeys) break
             widths.delete(old)
         }
-        last = { fontFamily, scale, bySize }
+        last = { fontFamily, scale, bucket }
     }
-    let byText = last.bySize.get(size)
-    if (!byText) last.bySize.set(size, (byText = new Map<string, number>()))
-    let width = byText.get(text)
-    if (width === undefined) {
-        width = measureText(context, text, size)
-        byText.set(text, width)
+    const { bucket } = last
+    const cached = bucket.bySize.get(size)?.get(text)
+    if (cached !== undefined) return cached
+
+    const width = measureText(context, text, size)
+    if (text.length > maxWidthTextUnits) return width
+
+    // Insertion-order eviction keeps frequent cache hits free of bookkeeping.
+    while (
+        bucket.order.size >= maxWidthEntries ||
+        bucket.textUnits + text.length > maxWidthTextUnits
+    ) {
+        const oldest = bucket.order.values().next().value
+        if (!oldest) break
+        bucket.order.delete(oldest)
+        bucket.textUnits -= oldest.text.length
+        const oldSize = bucket.bySize.get(oldest.size)
+        oldSize?.delete(oldest.text)
+        if (!oldSize?.size) bucket.bySize.delete(oldest.size)
     }
+    let byText = bucket.bySize.get(size)
+    if (!byText) bucket.bySize.set(size, (byText = new Map<string, number>()))
+    byText.set(text, width)
+    bucket.order.add({ size, text })
+    bucket.textUnits += text.length
     return width
 }
 
@@ -97,17 +124,45 @@ export const drawText = (
 ) => {
     const normalized = normalizeSvgText(text)
     if (!normalized) return
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.scale(1 / scale, 1 / scale)
     // Shape at the displayed CSS size, avoiding subpixel font-size quantization
     // and kerning heuristics on a 0.4px font subsequently magnified by the CTM.
-    const fontSize = size * scale
-    ctx.font = `${fontSize}px ${fontFamily}`
-    ctx.fontKerning = 'normal'
-    ctx.textBaseline = 'alphabetic'
-    ctx.textAlign = align
-    ctx.fillStyle = color
-    ctx.fillText(normalized, 0, fontSize * middle)
-    ctx.restore()
+    ctx.drawEditorLabel(normalized, x, y, color, fontFamily, scale, size, align, middle)
+}
+
+/** Numeric event labels share the grid's stable physical-pixel baseline policy. */
+export const drawEventText = (
+    { ctx, scale, fontFamily, figureMiddle }: EditorDrawContext,
+    text: string,
+    x: number,
+    y: number,
+    color: string,
+    size: number,
+    align: CanvasTextAlign,
+) => {
+    const normalized = normalizeSvgText(text)
+    if (normalized)
+        ctx.drawEditorLabel(
+            normalized,
+            x,
+            y,
+            color,
+            fontFamily,
+            scale,
+            size,
+            align,
+            figureMiddle,
+            true,
+        )
+}
+
+/** Grid text uses stable device-pixel anchors; its scene coordinates remain exact. */
+export const drawGridText = (
+    { ctx, scale, fontFamily, figureMiddle }: EditorDrawContext,
+    text: string,
+    x: number,
+    y: number,
+    align: 'start' | 'end',
+) => {
+    const normalized = normalizeSvgText(text)
+    if (normalized) ctx.drawGridLabel(normalized, x, y, fontFamily, scale, align, figureMiddle)
 }

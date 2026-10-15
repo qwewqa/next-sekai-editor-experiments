@@ -29,21 +29,28 @@ test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(() => {
         window.hitboxTest = { frames: 0, vertices: 0, uploads: 0 }
-        const clear = WebGLRenderingContext.prototype.clear
-        WebGLRenderingContext.prototype.clear = function (...args) {
-            window.hitboxTest.frames++
-            window.hitboxTest.vertices = 0
+        const isPreview = (gl: WebGL2RenderingContext) =>
+            gl.canvas instanceof HTMLCanvasElement &&
+            gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
+        const clear = WebGL2RenderingContext.prototype.clear
+        WebGL2RenderingContext.prototype.clear = function (...args) {
+            if (isPreview(this)) {
+                window.hitboxTest.frames++
+                window.hitboxTest.vertices = 0
+            }
             return clear.apply(this, args)
         }
-        const bufferSubData = WebGLRenderingContext.prototype.bufferSubData
-        WebGLRenderingContext.prototype.bufferSubData = function (...args) {
+        const bufferSubData = WebGL2RenderingContext.prototype.bufferSubData
+        WebGL2RenderingContext.prototype.bufferSubData = function (...args: unknown[]) {
             const data = args[2]
-            if (data instanceof Float32Array) window.hitboxTest.vertices += data.length
-            return bufferSubData.apply(this, args)
+            if (isPreview(this) && data instanceof Float32Array)
+                window.hitboxTest.vertices += data.length
+            return Reflect.apply(bufferSubData, this, args)
         }
-        const upload = WebGLRenderingContext.prototype.texImage2D
-        WebGLRenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-            if (args.some((arg) => arg instanceof ImageBitmap)) window.hitboxTest.uploads++
+        const upload = WebGL2RenderingContext.prototype.texImage2D
+        WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
+            if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap))
+                window.hitboxTest.uploads++
             return Reflect.apply(upload, this, args)
         }
     })

@@ -15,8 +15,8 @@ import type { Range } from '../../utils/range'
 import { formatBeatPosition, type BeatDisplay } from '../beatDisplay'
 import type { LabelBox } from '../edgeLabels'
 import { timeScaleLabel, type EventPart } from './events'
-import { drawText, measureText } from './text'
-import type { EdgeLabelYs, EditorDrawContext } from './types'
+import { drawGridText, measureText } from './text'
+import type { EdgeLabelYs, EditorDrawContext, EditorMeasureContext } from './types'
 
 // Half the beat or time (0.4) and BPM or time scale (0.5) label sizes.
 const LABEL_CLEARANCE = 0.45
@@ -110,7 +110,7 @@ export const gridLabels = (
 
 /** The ys of the time and beat labels under the given boxes, in pane pixels. */
 export const coveredLabelYs = (
-    context: EditorDrawContext,
+    context: EditorMeasureContext,
     beats: Range<number>,
     times: Range<number>,
     beatDisplay: BeatDisplay,
@@ -264,11 +264,11 @@ export const drawGridLabels = (
     const beatYs = [...bpmYs, ...edgeLabelYs.right]
     for (const { text, y } of labels.right) {
         if (isNearLabel(beatYs, y)) continue
-        drawText(context, text, 6.1, y, '#fff', 0.4, 'start', context.figureMiddle)
+        drawGridText(context, text, 6.1, y, 'start')
     }
     for (const { text, y } of labels.left) {
         if (isNearLabel(edgeLabelYs.left, y)) continue
-        drawText(context, text, -6.1, y, '#fff', 0.4, 'end', context.figureMiddle)
+        drawGridText(context, text, -6.1, y, 'end')
     }
     ctx.restore()
 }

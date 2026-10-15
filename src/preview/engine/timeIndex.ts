@@ -43,6 +43,7 @@ export const queryTimeIndex = <T>(
     now: number,
     latestStart: number,
     leftLimit = false,
+    preserveInputOrder = true,
 ) => {
     const matches: Entry<T>[] = []
     const visit = (node: number, left: number, right: number) => {
@@ -64,5 +65,7 @@ export const queryTimeIndex = <T>(
         visit(node * 2 + 1, middle, right)
     }
     visit(1, 0, index.offset)
-    return matches.sort((a, b) => a.index - b.index)
+    // Group unions restore global input order themselves, so sorting each
+    // partition first would repeat the same work without changing the result.
+    return preserveInputOrder ? matches.sort((a, b) => a.index - b.index) : matches
 }

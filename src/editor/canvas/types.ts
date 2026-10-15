@@ -1,4 +1,5 @@
 import type { GroupId } from '../../chart/groups'
+import type { WebGLDrawContext } from '../../rendering/context'
 import type { State } from '../../state'
 import type { StoreSlides } from '../../state/store/slides'
 import type { createComposedLayout } from '../composed'
@@ -17,10 +18,15 @@ export type CanvasBounds = {
 /** Where time scale labels reach the time column (left) and beat column (right). */
 export type EdgeLabelYs = { left: number[]; right: number[] }
 
+/** Browser font metrics are independent of the surface used to draw the scene. */
+export type EditorMeasureContext = Omit<EditorDrawContext, 'ctx'> & {
+    ctx: Pick<WebGLDrawContext, 'save' | 'restore' | 'font' | 'fontKerning' | 'measureText'>
+}
+
 // Drawing functions use editor scene coordinates. The caller installs the
 // viewport transform; scale converts scene units to CSS pixels.
 export type EditorDrawContext = {
-    ctx: CanvasRenderingContext2D
+    ctx: WebGLDrawContext
     scale: number
     pixelRatio: number
     bounds: CanvasBounds
@@ -33,7 +39,7 @@ export type EditorDrawContext = {
     defaultGroupId: GroupId | undefined
     showStageName: boolean
     showGroupName: boolean
-    /** Whether names take a contrasting colour over their note body and slide connectors. */
+    /** Adds a narrow black outline to whole names for contrast over chart artwork. */
     nameContrast: boolean
     recentlyActive: boolean
     fontFamily: string

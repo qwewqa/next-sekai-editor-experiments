@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { ParticleData, SkinData } from '@sonolus/core'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { noteStyles } from '../../src/chart/noteStyle'
@@ -52,6 +53,7 @@ test('release assets, preview, chart editing and FFT audio work in the productio
     expect(manifestResponse.ok()).toBe(true)
     const manifest = (await manifestResponse.json()) as {
         previewAssets: { file: string; source: string }[]
+        files: Record<string, string>
     }
     const hasParticles = manifest.previewAssets.some(
         (asset) => asset.file === 'resource/particle.scp',
@@ -78,6 +80,43 @@ test('release assets, preview, chart editing and FFT audio work in the productio
     page.on('request', (request) => requests.push(request.url()))
     await page.addInitScript(instrumentRendering)
     await page.goto('/')
+
+    await test.step('start the bundled Pixi renderer and distribute its dependency notices', async () => {
+        const artifact = JSON.parse(
+            await readFile(new URL('../../native/lyon/artifact.json', import.meta.url), 'utf8'),
+        ) as { artifact: { sha256: string; bytes: number } }
+        const wasmAssets = Object.keys(manifest.files).filter((path) => path.endsWith('.wasm'))
+        expect(wasmAssets).toHaveLength(1)
+        const wasmAsset = wasmAssets[0]!
+        expect(wasmAsset).toMatch(/^assets\/lyon-[\w-]{8,}\.wasm$/)
+        expect(manifest.files[wasmAsset]).toBe(artifact.artifact.sha256)
+        const wasmResponse = await page.request.get('/' + wasmAsset)
+        expect(wasmResponse.ok()).toBe(true)
+        const wasmBytes = await wasmResponse.body()
+        expect(wasmBytes.length).toBe(artifact.artifact.bytes)
+        expect(createHash('sha256').update(wasmBytes).digest('hex')).toBe(artifact.artifact.sha256)
+        await expect.poll(async () => (await frames(page)).chart).toBeGreaterThan(0)
+        // Native acceleration starts asynchronously and must request only the pinned kernel.
+        await expect
+            .poll(() =>
+                requests
+                    .filter((url) => new URL(url).pathname.endsWith('.wasm'))
+                    .map((url) => new URL(url).href),
+            )
+            .toEqual([new URL('/' + wasmAsset, page.url()).href])
+        const notices = await page.request.get('/THIRD_PARTY_NOTICES.txt')
+        expect(notices.ok()).toBe(true)
+        const noticeText = await notices.text()
+        expect(noticeText).toContain('pixi.js 8.22.0')
+        expect(noticeText).toContain('PixiJS 8.22.0 includes one checked source patch:')
+        expect(noticeText).not.toContain('canvaskit-wasm')
+        expect(manifest.files['notices/libtess.txt']).toMatch(/^[a-f0-9]{64}$/)
+        const tessellator = await page.request.get('/notices/libtess.txt')
+        expect(tessellator.ok()).toBe(true)
+        const tessellatorText = await tessellator.text()
+        expect(tessellatorText).toContain('SGI FREE SOFTWARE LICENSE B')
+        expect(tessellatorText).toContain('Copyright 2015, Google Inc.')
+    })
 
     await test.step('published packages contain the supported color resources', async () => {
         // Custom and older skins may intentionally rely on the color fallbacks.
@@ -326,6 +365,13 @@ test('release assets, preview, chart editing and FFT audio work in the productio
         await expect.poll(async () => (await frames(page)).preview).toBeGreaterThan(paused.preview)
     })
 
+    // The entire editing/preview workflow must not introduce another kernel request.
+    expect(requests.filter((url) => new URL(url).pathname.endsWith('.wasm'))).toEqual([
+        new URL(
+            '/' + Object.keys(manifest.files).find((path) => path.endsWith('.wasm'))!,
+            page.url(),
+        ).href,
+    ])
     expect(errors, 'browser, console and asset errors').toEqual([])
     expect(requests.some((url) => new URL(url).pathname.startsWith('/src/'))).toBe(false)
     expect(requests.some((url) => new URL(url).pathname === '/resource/skin.scp')).toBe(true)

@@ -1,18 +1,20 @@
 import { expect, test, type Page } from '@playwright/test'
+import { writeFileSync } from 'node:fs'
+import type { RenderSurface } from '../../src/rendering/context'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 declare global {
     interface Window {
         stageTest: {
-            strokes: number
+            draws: number
             shifted: number
             windows: number
             resizes: number
             // The chart's last stage copy: shifted from the motion window, or the exact surface.
             last?: 'shift' | 'exact'
-            strokesAtShift: number
+            drawsAtShift: number
             shiftedAt: number
-            motionWindow?: HTMLCanvasElement
+            motionWindow?: RenderSurface
             releasedAt?: number
         }
         moving: boolean
@@ -20,64 +22,64 @@ declare global {
 }
 
 // Counts stage draws and copies, so tests wait on state rather than on time.
-const installStageCounters = () => {
+const installStageCounters = async () => {
+    const { RenderSurface, WebGLDrawContext } = await window.editorTest.appImport<
+        typeof import('../../src/rendering/context')
+    >('/src/rendering/context.ts')
     const counts: Window['stageTest'] = {
-        strokes: 0,
+        draws: 0,
         shifted: 0,
         windows: 0,
         resizes: 0,
-        strokesAtShift: 0,
+        drawsAtShift: 0,
         shiftedAt: 0,
     }
     window.stageTest = counts
     const chart = () => document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
-    const stroke = CanvasRenderingContext2D.prototype.stroke
-    CanvasRenderingContext2D.prototype.stroke = function (path?: Path2D) {
-        if (!this.canvas.isConnected && this.strokeStyle === '#b4d6e8') counts.strokes++
-        return Reflect.apply(stroke, this, path ? [path] : [])
-    }
-    const fillRect = CanvasRenderingContext2D.prototype.fillRect
-    CanvasRenderingContext2D.prototype.fillRect = function (...args: number[]) {
+    const clear = WebGLDrawContext.prototype.clear
+    WebGLDrawContext.prototype.clear = function () {
+        if (this.canvas instanceof RenderSurface && this.canvas.stageCache) counts.draws++
         const target = chart()
         if (
             target &&
-            !this.canvas.isConnected &&
-            this.globalCompositeOperation === 'copy' &&
-            args[2]! * args[3]! > target.width * target.height
+            this.canvas instanceof RenderSurface &&
+            this.canvas.width * this.canvas.height > target.width * target.height
         ) {
             counts.windows++
             counts.motionWindow = this.canvas
         }
-        return Reflect.apply(fillRect, this, args)
+        return clear.call(this)
     }
     for (const name of ['width', 'height'] as const) {
-        const property = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, name)!
-        Object.defineProperty(HTMLCanvasElement.prototype, name, {
+        const property = Object.getOwnPropertyDescriptor(RenderSurface.prototype, name)!
+        Object.defineProperty(RenderSurface.prototype, name, {
             ...property,
-            set(this: HTMLCanvasElement, value: number) {
+            set(this: RenderSurface, value: number) {
                 const target = chart()
-                if (target && !this.isConnected && value > target[name]) counts.resizes++
-                if (this === counts.motionWindow && value === 0)
-                    counts.releasedAt ??= performance.now()
+                if (target && value > target[name]) counts.resizes++
                 property.set!.call(this, value)
             },
         })
     }
+    const dispose = RenderSurface.prototype.dispose
+    RenderSurface.prototype.dispose = function () {
+        if (this === counts.motionWindow) counts.releasedAt ??= performance.now()
+        return dispose.call(this)
+    }
     // Shifted copies take a source rectangle; exact ones copy the same-sized surface whole.
-    const drawImage = CanvasRenderingContext2D.prototype.drawImage
-    CanvasRenderingContext2D.prototype.drawImage = function (...args: unknown[]) {
+    const drawImage = WebGLDrawContext.prototype.drawImage
+    WebGLDrawContext.prototype.drawImage = function (...args: unknown[]) {
         const target = this.canvas
         const [source] = args
-        if (target.classList.contains('editor-chart')) {
-            if (args.length === 9) {
+        if (target instanceof HTMLCanvasElement && target.classList.contains('editor-chart')) {
+            if (args.length === 9 && source === counts.motionWindow) {
                 counts.shifted++
                 counts.last = 'shift'
-                counts.strokesAtShift = counts.strokes
+                counts.drawsAtShift = counts.draws
                 counts.shiftedAt = performance.now()
             } else if (
                 args.length === 3 &&
-                source instanceof HTMLCanvasElement &&
-                !source.isConnected &&
+                source instanceof RenderSurface &&
                 source.width === target.width &&
                 source.height === target.height
             )
@@ -92,10 +94,10 @@ const SPACED_MS = 200
 
 const counters = (page: Page) =>
     page.evaluate(() => {
-        const { strokes, shifted, windows, resizes, last, strokesAtShift, shiftedAt, releasedAt } =
+        const { draws, shifted, windows, resizes, last, drawsAtShift, shiftedAt, releasedAt } =
             window.stageTest
         return {
-            ...{ strokes, shifted, windows, resizes, last, strokesAtShift, shiftedAt, releasedAt },
+            ...{ draws, shifted, windows, resizes, last, drawsAtShift, shiftedAt, releasedAt },
             frames: window.editorFrames.chart,
         }
     })
@@ -183,22 +185,22 @@ const seed = (page: Page, time: number) =>
 const chartShot = (page: Page) => page.locator('canvas.editor-chart').screenshot()
 
 // The chart once the pointer has left and the stages are drawn exactly again.
-const stillShot = async (page: Page) => {
+const stillShot = async (page: Page, capture = chartShot) => {
     await page.mouse.move(8, 300)
     await stillStages(page)
     await frames(page, 4)
-    return chartShot(page)
+    return capture(page)
 }
 
 // The same view drawn from a new chart, so with new stage stores and caches.
-const freshShot = async (page: Page) => {
+const freshShot = async (page: Page, capture = chartShot) => {
     const place = await page.evaluate(() => {
         const { view } = window.editorTest
         return { time: view.time, lane: view.lane, cursorTime: view.cursorTime }
     })
     await seed(page, place.time)
     await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
-    return stillShot(page)
+    return stillShot(page, capture)
 }
 
 // Areas of the toolbar and notifications over the chart, which can be mid-transition.
@@ -220,10 +222,10 @@ const coveredAreas = (page: Page) =>
     })
 
 // The settled frame matches a fresh chart; a few pixels allow for rasteriser rounding.
-const expectFresh = async (page: Page, settled: Buffer) => {
+const expectFresh = async (page: Page, settled: Buffer, capture = chartShot) => {
     // Left out as they were for the settled shot and are for the fresh one.
     const covered = await coveredAreas(page)
-    const fresh = await freshShot(page)
+    const fresh = await freshShot(page, capture)
     covered.push(...(await coveredAreas(page)))
     const difference = await page.evaluate(
         async ({ a, b, covered }) => {
@@ -276,10 +278,10 @@ for (const dpr of [1, 1.25, 1.5]) {
             page,
         }) => {
             await page.addInitScript(installCanvasCounters)
-            await page.addInitScript(installStageCounters)
             await page.goto('/')
             await expect(page.locator('canvas.editor-chart')).toBeVisible()
             await page.evaluate(installEditorFixture)
+            await page.evaluate(installStageCounters)
             await seed(page, 5)
             await frames(page, 3)
 
@@ -288,13 +290,13 @@ for (const dpr of [1, 1.25, 1.5]) {
             await page.evaluate(() => (window.editorTest.view.time += 0.0137))
             await frames(page, 3)
             const first = await counters(page)
-            const perDraw = first.strokes - before.strokes
+            const perDraw = first.draws - before.draws
             expect(perDraw).toBeGreaterThan(0)
             await page.waitForTimeout(SPACED_MS)
             await page.evaluate(() => (window.editorTest.view.time += 0.0137))
             await frames(page, 3)
             const step = await counters(page)
-            expect(step.strokes - first.strokes).toBe(perDraw)
+            expect(step.draws - first.draws).toBe(perDraw)
             expect(step.shifted).toBe(before.shifted)
 
             // Clock-driven motion, as in eased scrolling, moves on every tick: frames shift one drawn window.
@@ -304,11 +306,11 @@ for (const dpr of [1, 1.25, 1.5]) {
             await frames(page, 4)
             const after = await counters(page)
             expect(after.last).toBe('exact')
-            expect(after.strokes).toBeGreaterThan(after.strokesAtShift)
+            expect(after.draws).toBeGreaterThan(after.drawsAtShift)
             const moved = after.frames - step.frames
             expect(after.shifted - step.shifted).toBeGreaterThan(moved / 2)
             // Far fewer exact redraws than frames, including the still frame's.
-            expect(after.strokes - step.strokes).toBeLessThan((perDraw * moved) / 2)
+            expect(after.draws - step.draws).toBeLessThan((perDraw * moved) / 2)
             await expectFresh(page, await stillShot(page))
 
             // Stages hidden, shown again and then scrolled out of view leave nothing on the reused stores.
@@ -347,6 +349,88 @@ const pixels = async (page: Page) => {
     return Buffer.from(url.split(',')[1]!, 'base64')
 }
 
+// This fixed theme fixture has the same tiny atlas-edge rounding when comparing
+// two fresh charts. Bound both its size and total displayed error; do not permit
+// a broad per-channel tolerance or changes to flat interiors.
+const displayedThemeDifference = (page: Page, a: Buffer, b: Buffer) =>
+    page.evaluate(
+        async ([a, b]) => {
+            const load = async (png: string) =>
+                createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob())
+            const [first, second] = await Promise.all([load(a), load(b)])
+            if (first.width !== second.width || first.height !== second.height)
+                return {
+                    max: Infinity,
+                    changed: Infinity,
+                    integrated: Infinity,
+                    interior: Infinity,
+                }
+            const read = (image: ImageBitmap, background?: string) => {
+                const context = new OffscreenCanvas(image.width, image.height).getContext('2d')!
+                if (background) {
+                    context.fillStyle = background
+                    context.fillRect(0, 0, image.width, image.height)
+                }
+                context.drawImage(image, 0, 0)
+                return context.getImageData(0, 0, image.width, image.height).data
+            }
+            const left = [read(first), read(first, '#000'), read(first, '#fff')]
+            const right = [read(second), read(second, '#000'), read(second, '#fff')]
+            let max = 0,
+                changed = 0,
+                integrated = 0,
+                interior = 0
+            const edge = (images: Uint8ClampedArray[], x: number, y: number, index: number) => {
+                for (let dy = -1; dy <= 1; dy++)
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (
+                            x + dx < 0 ||
+                            x + dx >= first.width ||
+                            y + dy < 0 ||
+                            y + dy >= first.height
+                        )
+                            continue
+                        const neighbor = ((y + dy) * first.width + x + dx) * 4
+                        if (Math.abs(images[0]![neighbor + 3]! - images[0]![index + 3]!) > 3)
+                            return true
+                        for (const image of images.slice(1))
+                            for (let c = 0; c < 3; c++)
+                                if (Math.abs(image[neighbor + c]! - image[index + c]!) > 3)
+                                    return true
+                    }
+                return false
+            }
+            for (let y = 0; y < first.height; y++)
+                for (let x = 0; x < first.width; x++) {
+                    const index = (y * first.width + x) * 4
+                    const alpha = Math.abs(left[0]![index + 3]! - right[0]![index + 3]!)
+                    let delta = alpha,
+                        total = alpha
+                    for (const background of [1, 2]) {
+                        let sum = alpha
+                        for (let c = 0; c < 3; c++) {
+                            const difference = Math.abs(
+                                left[background]![index + c]! - right[background]![index + c]!,
+                            )
+                            delta = Math.max(delta, difference)
+                            sum += difference
+                        }
+                        total = Math.max(total, sum)
+                    }
+                    max = Math.max(max, delta)
+                    integrated += total / 255
+                    if (delta > 1) {
+                        changed++
+                        if (!edge(left, x, y, index) || !edge(right, x, y, index)) interior++
+                    }
+                }
+            first.close()
+            second.close()
+            return { max, changed, integrated, interior }
+        },
+        [a.toString('base64'), b.toString('base64')] as const,
+    )
+
 // Applies `change` while clock-driven scrolling keeps shifting stage pixels.
 const scrollWhile = async (page: Page, change: () => Promise<unknown>) => {
     const moving = moveOnTicks(page, -0.05)
@@ -375,10 +459,10 @@ test.describe('window sizing', () => {
         page,
     }) => {
         await page.addInitScript(installCanvasCounters)
-        await page.addInitScript(installStageCounters)
         await page.goto('/')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await page.evaluate(installEditorFixture)
+        await page.evaluate(installStageCounters)
         await seed(page, 5)
         await frames(page, 4)
         const move = async (step: number, count: number) => {
@@ -400,16 +484,20 @@ test.describe('window sizing', () => {
 
     test('the window is released a few seconds after the view comes to rest', async ({ page }) => {
         await page.addInitScript(installCanvasCounters)
-        await page.addInitScript(installStageCounters)
         await page.goto('/')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await page.evaluate(installEditorFixture)
+        await page.evaluate(installStageCounters)
         await seed(page, 5)
         await frames(page, 4)
         const size = () =>
             page.evaluate(() => {
                 const canvas = window.stageTest.motionWindow
-                return canvas ? canvas.width * canvas.height : undefined
+                return canvas
+                    ? canvas.getContext().isContextLost()
+                        ? 0
+                        : canvas.width * canvas.height
+                    : undefined
             })
         await moveOnTicks(page, 0.01, 20)
         const moved = await counters(page)
@@ -427,17 +515,17 @@ test.describe('changes during motion', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.addInitScript(installCanvasCounters)
-        await page.addInitScript(installStageCounters)
         await page.goto('/')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await page.evaluate(installEditorFixture)
+        await page.evaluate(installStageCounters)
         await seed(page, 5)
         await frames(page, 4)
     })
 
     test('a theme switch mid-scroll settles on a fresh frame in the new theme', async ({
         page,
-    }) => {
+    }, testInfo) => {
         // Selected names drawn against the chart background follow the theme.
         const seedNames = (time: number) =>
             page.evaluate(async (time) => {
@@ -485,7 +573,23 @@ test.describe('changes during motion', () => {
         })
         await seedNames(place.time)
         await page.evaluate((place) => Object.assign(window.editorTest.view, place), place)
-        expect(settled.equals(await pixels(page))).toBe(true)
+        const fresh = await pixels(page)
+        const difference = await displayedThemeDifference(page, settled, fresh)
+        if (
+            difference.max > 3 ||
+            difference.changed > 16 ||
+            difference.integrated > 2 ||
+            difference.interior
+        ) {
+            writeFileSync(testInfo.outputPath('settled-theme.png'), settled)
+            writeFileSync(testInfo.outputPath('fresh-theme.png'), fresh)
+            await testInfo.attach('settled-theme.png', { body: settled, contentType: 'image/png' })
+            await testInfo.attach('fresh-theme.png', { body: fresh, contentType: 'image/png' })
+        }
+        expect(difference.max).toBeLessThanOrEqual(3)
+        expect(difference.changed).toBeLessThanOrEqual(16)
+        expect(difference.integrated).toBeLessThanOrEqual(2)
+        expect(difference.interior).toBe(0)
         await page.evaluate(() => {
             window.editorTest.settings.theme = 'dark'
         })
@@ -493,6 +597,11 @@ test.describe('changes during motion', () => {
     })
 
     test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {
+        // Chromium's CDP override changes DPR without notifying resolution media
+        // queries when the viewport size stays fixed. Exercise the original
+        // resize plus DPR transition regardless of the suite's initial viewport.
+        await page.setViewportSize({ width: 1440, height: 1000 })
+        await frames(page, 4)
         const cdp = await page.context().newCDPSession(page)
         await scrollWhile(page, () =>
             cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -502,8 +611,33 @@ test.describe('changes during motion', () => {
                 mobile: false,
             }),
         )
-        expect(await page.evaluate(() => devicePixelRatio)).toBe(1.5)
-        await expectFresh(page, await stillShot(page))
+        const resolution = () =>
+            page.evaluate(() => {
+                const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!
+                const bounds = canvas.getBoundingClientRect()
+                return {
+                    viewport: [innerWidth, innerHeight],
+                    dpr: devicePixelRatio,
+                    actual: [canvas.width, canvas.height],
+                    expected: [
+                        Math.round(bounds.width * devicePixelRatio),
+                        Math.round(bounds.height * devicePixelRatio),
+                    ],
+                }
+            })
+        await expect
+            .poll(async () => {
+                const value = await resolution()
+                return value.actual.every((size, index) => size === value.expected[index])
+            })
+            .toBe(true)
+        const before = await resolution()
+        expect(before.viewport).toEqual([1600, 1000])
+        expect(before.dpr).toBe(1.5)
+        // Locator screenshots restore Playwright's configured viewport/DPR after
+        // a CDP override. Read the actual canvas so both frames keep the new DPR.
+        await expectFresh(page, await pixels(page), pixels)
+        expect(await resolution()).toEqual(before)
     })
 
     test('hiding the app during playback leaves no shifted stage pixels', async ({ page }) => {

@@ -18,21 +18,24 @@ const frames = (page: Page) => page.evaluate(() => window.elevationHoverFrames)
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
-    await page.addInitScript(() => {
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(async () => {
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
         window.elevationHoverFrames = 0
-        const clear = CanvasRenderingContext2D.prototype.clearRect
-        CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+        const clear = WebGLDrawContext.prototype.clear
+        WebGLDrawContext.prototype.clear = function () {
             if (
                 this.canvas instanceof HTMLCanvasElement &&
                 this.canvas.classList.contains('elevation-canvas')
             )
                 window.elevationHoverFrames++
-            return clear.apply(this, args)
+            return clear.call(this)
         }
     })
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.evaluate(installEditorFixture)
     await page.evaluate(async () => {
         const { fixtures, show, settings, appImport } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!

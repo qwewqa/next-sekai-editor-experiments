@@ -13,6 +13,7 @@ import {
     type ComponentPublicInstance,
 } from 'vue'
 import { i18n } from '../../i18n'
+import { createFontContext } from '../../rendering/textRaster'
 import { blurPointerClick } from '../../utils/blurPointerClick'
 import BaseField from './BaseField.vue'
 import { useEmptyLabel, useUnsetChoice } from './emptyLabel'
@@ -92,7 +93,7 @@ let context: CanvasRenderingContext2D | null | undefined
 const measure = () => {
     const element = control()
     if (!element) return
-    context ??= document.createElement('canvas').getContext('2d')
+    context ??= createFontContext()
     const text = context
     if (!text) return
     const style = getComputedStyle(element)

@@ -12,12 +12,17 @@ const quad: Quad = {
     br: { x: 2, y: -1 },
 }
 
-const createFixture = () => {
+const createFixture = (
+    failure?: 'compile' | 'link' | 'buffer' | 'texture',
+    deleted: string[] = [],
+) => {
     const allocations: number[] = []
     const uploads: { data: Float32Array; buffer: ArrayBufferLike }[] = []
     const draws: { first: number; count: number; additive: boolean }[] = []
     let additive = false
     let clears = 0
+    let textureCount = 0
+    let currentProgram: unknown
     const noop = () => {}
     const gl = {
         MAX_VIEWPORT_DIMS: 0x0d3a,
@@ -30,22 +35,42 @@ const createFixture = () => {
         createShader: () => ({}),
         shaderSource: noop,
         compileShader: noop,
+        getShaderParameter: () => failure !== 'compile',
+        getShaderInfoLog: () => 'fixture compile error',
+        deleteShader: () => deleted.push('shader'),
         createProgram: () => ({}),
         attachShader: noop,
         linkProgram: noop,
-        useProgram: noop,
+        getProgramParameter: () => failure !== 'link',
+        getProgramInfoLog: () => 'fixture link error',
+        detachShader: noop,
+        deleteProgram: (program: unknown) => {
+            assert.notEqual(
+                program,
+                currentProgram,
+                'unbind a deleted program so WebGL releases it',
+            )
+            deleted.push('program')
+        },
+        useProgram: (program: unknown) => {
+            currentProgram = program
+        },
         getAttribLocation: () => 0,
         getUniformLocation: () => ({}),
         uniform1i: noop,
         uniform1f: noop,
-        createBuffer: () => ({}),
+        createBuffer: () => (failure === 'buffer' ? null : {}),
+        deleteBuffer: () => deleted.push('buffer'),
         bindBuffer: noop,
         enableVertexAttribArray: noop,
         vertexAttribPointer: noop,
         enable: noop,
         blendFunc: noop,
         clearColor: noop,
-        createTexture: () => ({}),
+        createTexture: () => (failure === 'texture' && textureCount++ === 1 ? null : {}),
+        deleteTexture: () => deleted.push('texture'),
+        getExtension: () => null,
+        isContextLost: () => false,
         activeTexture: noop,
         bindTexture: noop,
         texParameteri: noop,
@@ -76,11 +101,83 @@ const createFixture = () => {
             draws.push({ first, count, additive })
         },
     }
-    const canvas = { width: 0, height: 0, getContext: () => gl }
+    const canvas = {
+        width: 0,
+        height: 0,
+        getContext: (kind: string) => {
+            assert.equal(kind, 'webgl2')
+            return gl
+        },
+    }
     const renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement)
     renderer.setTexture(0, {} as ImageBitmap, true)
-    return { renderer, canvas, allocations, uploads, draws, clears: () => clears }
+    return { renderer, canvas, allocations, uploads, draws, deleted, clears: () => clears }
 }
+
+test('preview requires WebGL2 and only retries its antialias option', () => {
+    for (const antialias of [true, false]) {
+        const requests: { kind: string; antialias: boolean }[] = []
+        const canvas = {
+            getContext: (kind: string, options: WebGLContextAttributes) => {
+                requests.push({ kind, antialias: !!options.antialias })
+                // A legacy context is available, but is outside the renderer contract.
+                return kind === 'webgl' ? {} : null
+            },
+        }
+        assert.throws(
+            () => createPreviewRenderer(canvas as unknown as HTMLCanvasElement, antialias),
+            /WebGL2 is unavailable or disabled in this browser/,
+        )
+        assert.deepEqual(
+            requests,
+            (antialias ? [true, false] : [false]).map((value) => ({
+                kind: 'webgl2',
+                antialias: value,
+            })),
+        )
+    }
+})
+
+test('renderer explicitly releases resources once even without context-loss support', () => {
+    const { renderer, deleted, clears, canvas } = createFixture()
+    assert.deepEqual(deleted, ['shader', 'shader'])
+    renderer.begin(1280, 720)
+    renderer.draw(sprite, quad, [0], 1)
+    renderer.flush()
+    renderer.dispose()
+    renderer.dispose()
+    assert.deepEqual(deleted.sort(), [
+        'buffer',
+        'program',
+        'shader',
+        'shader',
+        'texture',
+        'texture',
+    ])
+    assert.equal(renderer.isContextLost(), true)
+    renderer.begin(320, 200)
+    renderer.draw(sprite, quad, [0], 1)
+    renderer.flush()
+    assert.equal(canvas.width, 1280)
+    assert.equal(clears(), 1)
+})
+
+test('failed shader compilation, linking and allocation release partially created resources', () => {
+    for (const [failure, expected, message] of [
+        ['compile', ['program', 'shader'], 'fixture compile error'],
+        ['link', ['program', 'shader', 'shader'], 'fixture link error'],
+        ['buffer', ['program', 'shader', 'shader'], 'Failed to create preview vertex buffer'],
+        [
+            'texture',
+            ['buffer', 'program', 'shader', 'shader', 'texture'],
+            'Failed to create preview texture',
+        ],
+    ] as const) {
+        const deleted: string[] = []
+        assert.throws(() => createFixture(failure, deleted), new RegExp(message))
+        assert.deepEqual(deleted.sort(), [...expected].sort())
+    }
+})
 
 test('renderer preserves perspective UVs, transforms, texture selection and vertex snapshots', () => {
     const { renderer, uploads } = createFixture()

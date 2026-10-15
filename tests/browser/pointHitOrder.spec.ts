@@ -506,9 +506,25 @@ test('level 15003: a press on slide tails at pps 400 resizes the tail', async ({
                             notes.some((note) => !note.isAttached && note.beat === beat),
                     )!
                     const tail = notes.find((note) => note.beat === beat)!
+                    const { groupScope } =
+                        await appImport<typeof import('../../src/editor/scope')>(
+                            '/src/editor/scope.ts',
+                        )
+                    // Keep the real chart visible while editing this slide's group;
+                    // decorative notes in other groups overlap its tail.
+                    settings.showOtherGroups = true
+                    groupScope.focus(tail.groupId)
                     view.time = beatToTime(history.state.value.bpms, tail.beat)
                     view.lane = tail.left + tail.size / 2
-                    return { id, beat: tail.beat, left: tail.left, size: tail.size }
+                    return {
+                        id,
+                        beat: tail.beat,
+                        left: tail.left,
+                        size: tail.size,
+                        notes: [...notes]
+                            .sort((a, b) => a.beat - b.beat)
+                            .map((note) => [note.beat, note.left, note.size, note.isAttached]),
+                    }
                 },
                 { beat, layout },
             )
@@ -519,6 +535,18 @@ test('level 15003: a press on slide tails at pps 400 resizes the tail', async ({
             )
             await page.mouse.move(edge.x - 2, edge.y)
             await page.mouse.move(edge.x, edge.y)
+            await expect
+                .poll(() =>
+                    page.evaluate(({ id, beat }) => {
+                        const { history, view } = window.editorTest
+                        const target = history.state.value.store.slides.note
+                            .get(id)!
+                            .find((note) => note.beat === beat)!
+                        return view.entities.hovered[0] === target
+                    }, tail),
+                )
+                .toBe(true)
+            await expect(editor(page)).toHaveCSS('cursor', 'ew-resize')
             await page.mouse.down()
             await page.mouse.move(edge.x + lane * 0.7, edge.y, { steps: 6 })
             await page.mouse.up()
@@ -537,6 +565,17 @@ test('level 15003: a press on slide tails at pps 400 resizes the tail', async ({
             ])
             expect(notes.filter((note) => note[3]).length).toBe(7)
             await page.keyboard.press('Control+z')
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        (id) =>
+                            [...window.editorTest.history.state.value.store.slides.note.get(id)!]
+                                .sort((a, b) => a.beat - b.beat)
+                                .map((note) => [note.beat, note.left, note.size, note.isAttached]),
+                        tail.id,
+                    ),
+                )
+                .toEqual(tail.notes)
         }
     }
 })

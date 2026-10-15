@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
 import { state } from '../../history'
@@ -8,6 +8,14 @@ import { cullAllEntities } from '../../history/store'
 import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
+import {
+    disposeDrawContext,
+    type RenderSurface,
+    type WebGLDrawContext,
+} from '../../rendering/context'
+import { createFontContext } from '../../rendering/textRaster'
+import RenderingError from '../../rendering/RenderingError.vue'
+import { useEditorRenderer } from '../../rendering/useEditorRenderer'
 import { hasSameChartData } from '../../state/data'
 import type { Entity } from '../../state/entities'
 import type { ConnectorEntity } from '../../state/entities/slides/connector'
@@ -30,7 +38,7 @@ import {
     toSceneEntity,
 } from '../sceneState'
 import { isPreviewScrubbing } from '../player'
-import { scopeLookup } from '../scope'
+import { scopeLookup, showGroupNames, showStageNames } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
 import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
@@ -60,6 +68,7 @@ import {
 import { shownMarkerTime } from '../hoverMarker'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
+import { EventAnnotations } from './eventAnnotations'
 import {
     bpmLabelYs,
     coveredLabelYs,
@@ -69,7 +78,6 @@ import {
     isNearLabel,
     timeScaleEdgeLabelYs,
 } from './grid'
-import { chartBackground } from './nameColors'
 import { createLabelSprites } from './labelSprites'
 import { createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
@@ -81,12 +89,17 @@ import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
 import { createComposedLayout } from '../composed'
 import { createStageSurface, SUSTAINED_MS } from './stageSurface'
+import { VectorRanges } from './vectorRanges'
+import { SectionPlanner, selectSections, type SectionPlan } from './sections'
 
 const container = useTemplateRef('container')
 const { cursor, cursorListeners } = useCanvasCursor(() => undefined)
 const controlListeners = { ...controlsForNavigation(() => undefined), ...cursorListeners }
 const chartCanvas = useTemplateRef<HTMLCanvasElement>('chart')
 const overlayCanvas = useTemplateRef<HTMLCanvasElement>('overlay')
+const editorRenderer = useEditorRenderer()
+const graphicsError = editorRenderer.error
+const rendererVersion = ref(0)
 const pixelRatio = ref(devicePixelRatio || 1)
 const fontFamily = ref('sans-serif')
 const fontMiddle = ref(0.25)
@@ -102,13 +115,27 @@ const notes = createNoteRenderer()
 const nameSprites = createLabelSprites()
 const connectors = createConnectorRenderer()
 const stages = createStageSurface()
+const vectors = new VectorRanges()
+const annotations = new EventAnnotations()
+const sectionPlanner = new SectionPlanner()
 const composed = computed(() =>
     view.layout === 'composed' && sceneState.value.isDynamicStages
         ? createComposedLayout(sceneState.value)
         : undefined,
 )
 const waveform = createWaveformRenderer(() => waveformVersion.value++)
-let creatingCanvas: HTMLCanvasElement | undefined
+let creatingCanvas: RenderSurface | undefined
+
+// Capture the old element before Vue clears template refs during teardown.
+for (const element of [chartCanvas, overlayCanvas]) {
+    watch(element, (canvas, previous, onCleanup) => {
+        if (canvas)
+            onCleanup(() => {
+                editorRenderer.forget(canvas)
+                disposeDrawContext(canvas)
+            })
+    })
+}
 
 // The beats in the pane and `padding` px past it.
 const beatRange = (padding: number) => {
@@ -171,7 +198,25 @@ const orderedEntities = computed(() =>
         chains.value,
     ),
 )
-const drawSteps = computed(() => toDrawSteps(orderedEntities.value))
+// Previewed entities retain the existing store-order substitution path. Outside
+// previews, source ordering and complete sections do not depend on the camera.
+const sectionPlan = computed<SectionPlan | undefined>((previous) => {
+    if (previewSlides.value || isScenePreview.value) return previous
+    return sectionPlanner.build(
+        sceneState.value.store,
+        shownSelected.value,
+        visibility(),
+        chains.value,
+    )
+})
+const sectionFrame = computed(() => {
+    if (previewSlides.value || isScenePreview.value) return
+    const plan = sectionPlan.value
+    if (!plan) return
+    const { min, max } = artRange.value
+    return selectSections(plan, min, max, keys.value.min, keys.value.max)
+})
+const drawSteps = computed(() => sectionFrame.value ?? toDrawSteps(orderedEntities.value))
 // Hovered objects are committed ones; a previewed scene draws their counterparts.
 const sceneHovered = computed(() =>
     sceneCounterparts.value
@@ -286,11 +331,10 @@ const contextInputs = computed(() => ({
     state: sceneState.value,
     composed: composed.value,
     defaultGroupId: defaultGroupId.value,
-    showStageName: settings.showStageName,
-    showGroupName: settings.showGroupName,
+    showStageName: showStageNames.value,
+    showGroupName: showGroupNames.value,
     nameContrast: settings.nameContrast,
     // Name contrast is measured against it.
-    chartBackground: chartBackground.value,
     recentlyActive: isViewRecentlyActive.value,
     fontFamily: fontFamily.value,
     fontMiddle: fontMiddle.value,
@@ -316,7 +360,7 @@ const sameYs = (a: number[], b: number[]) =>
 
 // Grid labels under the time and beat labels over the chart are left out. Equal
 // results keep the same object, so they redraw the chart only when they change.
-const measureContext = document.createElement('canvas').getContext('2d')
+const measureContext = createFontContext()
 const coveredYs = computed<EdgeLabelYs>((previous) => {
     if (!measureContext) return { left: [], right: [] }
     const ys = coveredLabelYs(
@@ -469,7 +513,7 @@ const timeLineEnds = (
     return left < right ? { left, right } : undefined
 }
 
-const traceTimeLine = (ctx: CanvasRenderingContext2D, ends: LineSpan | undefined, y: number) => {
+const traceTimeLine = (ctx: WebGLDrawContext, ends: LineSpan | undefined, y: number) => {
     if (!ends) return
     ctx.moveTo(ends.left, y)
     ctx.lineTo(ends.right, y)
@@ -484,7 +528,7 @@ let hoverDashes = 0
 
 // Stretches the dash pattern slightly so the line starts and ends on a whole dash.
 const strokeDashedTimeLine = (
-    ctx: CanvasRenderingContext2D,
+    ctx: WebGLDrawContext,
     ends: LineSpan | undefined,
     y: number,
     scale: number,
@@ -523,6 +567,8 @@ watchEffect(
         const inputs = contextInputs.value
         if (!canvas || !inputs.width || !inputs.height) return
         const { objects, raisedAt, labels: entityLabels } = drawSteps.value
+        const sections = sectionFrame.value
+        const allSections = sections && sectionPlan.value?.sections
         const raised = chains.value
         const hovered = inputs.recentlyActive ? undefined : hoveredSet.value
         const preview = previewSlides.value
@@ -556,6 +602,7 @@ watchEffect(
                 inputs.height,
                 inputs.pixelRatio,
                 inputs.bounds,
+                () => editorRenderer.getContext(canvas),
             )
             if (!ctx) return
             const base = { ...inputs, ctx, nameSprites }
@@ -567,14 +614,46 @@ watchEffect(
             }
             const context = { ...base, names: createNameLayer() }
             const previewContext = preview && { ...context, state: preview.state }
-            waveform.draw(context, currentWaveform, offset, currentTimes)
-            if (
-                stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
-            ) {
-                // Not the next frame: stepped input and slow frames would alternate exact redraws.
-                clearTimeout(stageSettleTimer)
-                stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
+            // Slide previews substitute notes/connectors; event labels stay committed.
+            annotations.beginFrame(context, entityLabels)
+            vectors.beginFrame(context, [inputs.redrawVersion])
+            if (allSections) vectors.prepareSections(allSections, sections.sections)
+            else vectors.prepare(objects, raisedAt, preview?.entities)
+            // Populate mutable atlas pages before this frame queues any readers.
+            // A cold jump then presents the chart once, rather than flushing it
+            // whenever another previously unseen note needs an atlas slot.
+            const readySections = allSections
+                ? notes.prepareSections(context, allSections, sections.sections, hovered)
+                : undefined
+            const prepareNote = ({ entity, highlighted, opacity }: DrawStep) => {
+                if (entity.type !== 'note') return
+                notes.prepare(
+                    previewContext && preview.entities.has(entity) ? previewContext : context,
+                    entity,
+                    highlighted || !!hovered?.has(entity),
+                    opacity,
+                )
             }
+            if (sections && readySections) {
+                for (const section of sections.sections) {
+                    if (readySections.has(section)) continue
+                    for (const step of sections.visibleBySection.get(section) ?? [])
+                        prepareNote(step)
+                }
+            } else {
+                for (const step of objects) prepareNote(step)
+                notes.prepareRuns(context, objects, raisedAt, preview?.entities)
+            }
+            waveform.draw(context, currentWaveform, offset, currentTimes)
+            const shiftedStages = stages.draw(
+                context,
+                inputs.width,
+                inputs.height,
+                currentBeats,
+                scope,
+                laneDivision,
+            )
+            clearTimeout(stageSettleTimer)
             drawGridLines(context, currentBeats, division, laneDivision, beatDisplay, grid)
             ctx.save()
             ctx.strokeStyle = '#fff'
@@ -583,25 +662,52 @@ watchEffect(
             ctx.stroke()
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects, raised)
-            const drawEach = (steps: DrawStep[], from = 0, to = steps.length) => {
-                for (let index = from; index < to; index++) {
-                    const step = steps[index]
-                    if (!step) continue
-                    const { entity, highlighted, opacity, part } = step
-                    drawEntity(
-                        previewContext && preview.entities.has(entity) ? previewContext : context,
-                        entity,
-                        highlighted || !!hovered?.has(entity),
-                        opacity,
-                        part,
-                    )
+            const drawStep = (target: EditorDrawContext, step: DrawStep) => {
+                const { entity, highlighted, opacity, part } = step
+                drawEntity(
+                    previewContext && preview.entities.has(entity) ? previewContext : target,
+                    entity,
+                    highlighted || !!hovered?.has(entity),
+                    opacity,
+                    part,
+                )
+            }
+            const drawNotes = (from: number, to: number, pass: string) => {
+                notes.drawRun(context, objects, from, to, pass, hovered, drawStep)
+            }
+            const drawSections = (pass: 'normal' | 'raised') => {
+                if (!sections) return
+                const bodies = { ...context, showStageName: false, showGroupName: false }
+                for (const section of sections.sections) {
+                    if (section.pass !== pass) continue
+                    const visible = sections.visibleBySection.get(section) ?? []
+                    if (section.steps[0]?.entity.type === 'note') {
+                        if (!notes.drawSection(context, section))
+                            for (const step of visible) drawStep(bodies, step)
+                        // Keep name requests at the original painter-order point.
+                        notes.drawVisibleNames(context, visible, hovered)
+                    } else if (section.live) {
+                        for (const step of visible) drawStep(context, step)
+                    } else vectors.drawSection(context, section, hovered, drawStep, sections.owners)
                 }
             }
-            drawEach(objects, 0, raisedAt)
+            if (sections) drawSections('normal')
+            else vectors.draw(context, objects, 0, raisedAt, 'normal', hovered, drawStep, drawNotes)
             // Raised chains' extensions rise with their lines.
             if (raised.size)
                 drawEventInfinities(context, visibilities, scope, showOtherObjects, raised, true)
-            drawEach(objects, raisedAt)
+            if (sections) drawSections('raised')
+            else
+                vectors.draw(
+                    context,
+                    objects,
+                    raisedAt,
+                    objects.length,
+                    'raised',
+                    hovered,
+                    drawStep,
+                    drawNotes,
+                )
             // Text goes above every object.
             drawGridLabels(
                 context,
@@ -612,8 +718,22 @@ watchEffect(
                 edgeLabelYs,
                 currentLabels,
             )
-            drawEach(entityLabels)
+            for (const step of entityLabels) {
+                const highlighted = step.highlighted || !!hovered?.has(step.entity)
+                if (!annotations.draw(context, step.entity, highlighted, step.opacity))
+                    drawStep(context, step)
+            }
             placeNames(context, context.names)
+            ctx.flush()
+            notes.endFrame()
+            vectors.endFrame()
+            annotations.endFrame()
+            stages.finishFrame()
+            if (shiftedStages) {
+                // Idle time begins after the whole chart is submitted. Slow object
+                // drawing must not consume the pause before an exact settled redraw.
+                stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
+            }
         })
     },
     { flush: 'post' },
@@ -658,12 +778,17 @@ watchEffect(
                 inputs.height,
                 inputs.pixelRatio,
                 inputs.bounds,
+                () => editorRenderer.getContext(canvas),
             )
             if (!ctx) return
             if (creating.length) {
                 // Composite the entire preview once, retaining SVG group opacity at
                 // overlapping notes and connectors. Allocate only during gestures.
-                creatingCanvas ??= document.createElement('canvas')
+                if (creatingCanvas?.getContext().isContextLost()) {
+                    creatingCanvas.dispose()
+                    creatingCanvas = undefined
+                }
+                creatingCanvas ??= ctx.createSurface(canvas.width, canvas.height)
                 const creatingContext = prepareSurface(
                     creatingCanvas,
                     inputs.width,
@@ -691,7 +816,7 @@ watchEffect(
                     ctx.restore()
                 }
             } else if (creatingCanvas) {
-                creatingCanvas.width = creatingCanvas.height = 1
+                creatingCanvas.dispose()
                 creatingCanvas = undefined
             }
 
@@ -725,6 +850,7 @@ watchEffect(
             if (hover !== undefined)
                 strokeDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
             ctx.restore()
+            ctx.flush()
         })
     },
     { flush: 'post' },
@@ -748,12 +874,25 @@ const updateFont = () => {
     redrawVersion.value++
 }
 const restoreContext = () => {
+    // renderingready follows Pixi's native-map reset. The raw restore event can
+    // reach Vue first, while retained geometry still holds old GL handles.
+    vectors.clear()
+    annotations.clear()
     notes.clear()
     nameSprites.clear()
     connectors.clear()
     stages.clear()
     // A restored surface has lost its pixels even if chart time is paused.
     redrawVersion.value++
+}
+const retryRenderer = () => {
+    // Fresh elements get fresh GL contexts; losing a context does not make the
+    // same canvas available for another allocation.
+    creatingCanvas?.dispose()
+    creatingCanvas = undefined
+    waveform.clear()
+    restoreContext()
+    rendererVersion.value++
 }
 
 onMounted(() => {
@@ -763,6 +902,8 @@ onMounted(() => {
     document.fonts.addEventListener('loadingdone', updateFont)
 })
 onUnmounted(() => {
+    vectors.clear()
+    annotations.clear()
     clearTimeout(stageSettleTimer)
     chartFrame.cancel()
     overlayFrame.cancel()
@@ -771,7 +912,7 @@ onUnmounted(() => {
     connectors.clear()
     stages.clear()
     waveform.clear()
-    if (creatingCanvas) creatingCanvas.width = creatingCanvas.height = 1
+    creatingCanvas?.dispose()
     window.removeEventListener('resize', updatePixelRatio)
     pixelRatioQuery?.removeEventListener('change', updatePixelRatio)
     document.fonts.removeEventListener('loadingdone', updateFont)
@@ -789,13 +930,15 @@ onUnmounted(() => {
     >
         <canvas
             ref="chart"
+            :key="`chart:${rendererVersion}`"
             class="editor-chart pointer-events-none absolute size-full"
-            @contextrestored="restoreContext"
+            @renderingready="restoreContext"
         />
         <canvas
             ref="overlay"
+            :key="`overlay:${rendererVersion}`"
             class="editor-overlay pointer-events-none absolute size-full"
-            @contextrestored="restoreContext"
+            @renderingready="restoreContext"
         />
         <!-- Over the drawn chart, under the labels and badges. -->
         <QuickScrollZone :pane-width="view.w" />
@@ -807,5 +950,6 @@ onUnmounted(() => {
             :hovered="hoveredOffscreenGroup"
             :anchor="offscreenAnchor"
         />
+        <RenderingError v-if="graphicsError" :message="graphicsError" @reload="retryRenderer" />
     </div>
 </template>

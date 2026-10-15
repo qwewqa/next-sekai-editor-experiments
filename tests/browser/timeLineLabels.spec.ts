@@ -54,8 +54,8 @@ const lineRow = (page: Page, line: Line, at?: number) =>
             const time = at ?? (line === 'hover' ? view.hoverTime : view.cursorTime)
             const y = 0.5 * view.h - (time - view.time) * settings.pps
             const ratio = canvas.width / canvas.clientWidth
-            const data = canvas
-                .getContext('2d')!
+            const data = window.editorRendering
+                .getDrawContext(canvas)
                 .getImageData(0, Math.floor(y * ratio), canvas.width, 1).data
             const alphas = Array.from({ length: canvas.width }, (_, x) => data[x * 4 + 3]!)
             const colors = Array.from({ length: canvas.width }, (_, x) =>
@@ -427,12 +427,16 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
 
 // Cursor line ends in lanes per chart frame (opaque white lines); `nearWheel`: only near a wheel.
 const recordCursorEnds = (page: Page, nearWheel = false) =>
-    page.evaluate((nearWheel) => {
+    page.evaluate(async (nearWheel) => {
         const ends: string[] = []
         ;(window as unknown as { cursorEnds: string[] }).cursorEnds = ends
         let wheeled = -Infinity
         addEventListener('wheel', () => (wheeled = performance.now()), { capture: true })
-        const proto = CanvasRenderingContext2D.prototype
+        const { WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const proto = WebGLDrawContext.prototype
+        const colorProbe = document.createElement('canvas').getContext('2d')!
         const { moveTo, lineTo } = proto
         let from: [number, number] | undefined
         proto.moveTo = function (x, y) {
@@ -440,10 +444,12 @@ const recordCursorEnds = (page: Page, nearWheel = false) =>
             return moveTo.call(this, x, y)
         }
         proto.lineTo = function (x, y) {
+            colorProbe.fillStyle = String(this.strokeStyle)
             if (
+                this.canvas instanceof HTMLCanvasElement &&
                 this.canvas.classList.contains('editor-chart') &&
                 this.globalAlpha === 1 &&
-                this.strokeStyle === '#ffffff' &&
+                colorProbe.fillStyle === '#ffffff' &&
                 from?.[1] === y &&
                 from[0] < 0 &&
                 x > 0 &&
@@ -546,8 +552,8 @@ const lineMiddle = (page: Page, line: Line, near = 0) =>
             const ratio = canvas.width / canvas.clientWidth
             const width = Math.round(20 * ratio)
             const strip = () => {
-                const data = canvas
-                    .getContext('2d')!
+                const data = window.editorRendering
+                    .getDrawContext(canvas)
                     .getImageData(Math.round(canvas.width / 2), 0, width, canvas.height).data
                 return Array.from({ length: canvas.height }, (_, y) => {
                     let sum = 0

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef, watch } from 'vue'
+import { createFontContext } from '../../rendering/textRaster'
 
 const props = defineProps<{
     text: string
@@ -16,7 +17,7 @@ const element = useTemplateRef<HTMLElement>('element')
 // Measured in the element's own font, so hidden icons fit before they show.
 let context: CanvasRenderingContext2D | null | undefined
 const measure = (element: HTMLElement, size: number) => {
-    context ??= document.createElement('canvas').getContext('2d')
+    context ??= createFontContext()
     if (!context) return 0
     const { fontFamily, fontWeight } = getComputedStyle(element)
     context.font = `${fontWeight} ${size}px ${fontFamily}`

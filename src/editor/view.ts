@@ -415,10 +415,10 @@ export const focusViewAtBeat = (beat: number) => {
     markTouch('cursor', beat)
 }
 
-export const focusView = (t: number) => {
+export const focusView = (t: number, allowDirectJump = true) => {
     view.cursorTime = t
 
-    panView(t)
+    panView(t, allowDirectJump)
 }
 
 export const focusEntityAtBeat = (beat: number) => {
@@ -428,10 +428,26 @@ export const focusEntityAtBeat = (beat: number) => {
     markTouch('entity', beat)
 }
 
-const panView = (t: number) => {
+const panView = (t: number, allowDirectJump = true) => {
     updateViewLastActive()
 
     if (t >= times.value.min && t <= times.value.max) return
+
+    // Long focus jumps skip unseen intermediate scenes; nearby navigation keeps
+    // its ease. Use the full viewport, including its area before chart time zero.
+    const viewportSpan = view.h / settings.pps
+    if (
+        allowDirectJump &&
+        Number.isFinite(t) &&
+        Number.isFinite(view.time) &&
+        Number.isFinite(viewportSpan) &&
+        viewportSpan > 0 &&
+        Math.abs(t - view.time) > 2 * viewportSpan
+    ) {
+        view.scrollingY = undefined
+        view.time = t
+        return
+    }
 
     view.scrollingY = {
         type: 'ease',

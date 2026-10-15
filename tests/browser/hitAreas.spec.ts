@@ -79,7 +79,8 @@ const switches = async (a: Locator, b: Locator, beyond = 0) => {
             ? [ra.left + ra.width / 2, rb.left + rb.width / 2]
             : [ra.top + ra.height / 2, rb.top + rb.height / 2]
         const middle = across ? (ra.right + rb.left) / 2 : (ra.bottom + rb.top) / 2
-        const lines = [lo + 1, (lo + hi) / 2, hi - 1]
+        // Rounding up at a fractional edge would make the 1px probe hit the next row.
+        const lines = [lo + 1, (lo + hi) / 2, Math.floor(hi - 1)]
         // The farthest whole pixels whose 1px probe box stays within the reach.
         if (beyond) lines.push(Math.ceil(lo - beyond), Math.floor(hi + beyond - 1))
         return lines.map((along) => {

@@ -38,6 +38,10 @@ import {
     trackTypedText,
 } from '../../modals/form/resync'
 import { clearPreviewEdit, previewEdit, setPreviewEdit } from '../../preview/edit'
+import { disposeDrawContext, type RenderSurface } from '../../rendering/context'
+import { createFontContext } from '../../rendering/textRaster'
+import RenderingError from '../../rendering/RenderingError.vue'
+import { useEditorRenderer } from '../../rendering/useEditorRenderer'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
@@ -65,7 +69,6 @@ import {
 import { createNoteRenderer } from '../canvas/notes'
 import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
 import { isScenePreview, toCommittedEntity, toSceneEntity } from '../sceneState'
-import { chartBackground } from '../canvas/nameColors'
 import { createFrameScheduler, prepareSurface } from '../canvas/surface'
 import type { EditorDrawContext } from '../canvas/types'
 import { getComposedLayout } from '../composedView'
@@ -107,7 +110,7 @@ import { deselect } from '../commands/deselect'
 import { fromDisplayedBeat, shortDisplayedBeat } from '../beatDisplay'
 import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import { isNoteResizeStart, modifyEntities, offset, resize, resizeShift } from '../tools/utils'
-import { scopeLookup } from '../scope'
+import { scopeLookup, showGroupNames, showStageNames } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { dockKeysAttribute, isInWorkspaceDock } from '../workspace'
 import {
@@ -330,6 +333,9 @@ const updatePixelRatio = () => {
     pixelRatioQuery.addEventListener('change', updatePixelRatio)
 }
 const redrawVersion = ref(0)
+const editorRenderer = useEditorRenderer()
+const graphicsError = editorRenderer.error
+const rendererVersion = ref(0)
 // The editor's font, as the chart's.
 const fontFamily = ref('sans-serif')
 const fontMiddle = ref(0.25)
@@ -345,13 +351,14 @@ const updateFont = () => {
     redrawVersion.value++
 }
 // Ghosts' layer, allocated only while there are ghosts.
-let ghostCanvas: HTMLCanvasElement | undefined
+let ghostCanvas: RenderSurface | undefined
 const freeGhostCanvas = () => {
-    if (!ghostCanvas) return
-    ghostCanvas.width = ghostCanvas.height = 1
+    ghostCanvas?.dispose()
     ghostCanvas = undefined
 }
 const restoreContext = () => {
+    // Only renderingready may discard targets after a native context restore;
+    // Pixi must invalidate their old GL handles before domain caches release them.
     notes.clear()
     nameSprites.clear()
     freeGhostCanvas()
@@ -359,6 +366,22 @@ const restoreContext = () => {
     // A restored surface has lost its pixels.
     redrawVersion.value++
 }
+const retryRenderer = () => {
+    restoreContext()
+    rendererVersion.value++
+}
+watch(canvas, (element, _previous, onCleanup) => {
+    if (!element) return
+    onCleanup(() => {
+        editorRenderer.forget(element)
+        frame.cancel()
+        notes.clear()
+        nameSprites.clear()
+        freeGhostCanvas()
+        freeElevationArrowLayer()
+        disposeDrawContext(element)
+    })
+})
 const hovered = ref<NoteEntity>()
 // A 12px text baseline below the notice at the top, keeping a one-line notice's room (16px above,
 // 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
@@ -421,7 +444,7 @@ const axisLabelLeftOf = (groups: OffscreenNoteGroup[]) => {
 let labelMeasure: CanvasRenderingContext2D | null | undefined
 // An axis label's width.
 const measureLabel = (label: number, family: string) => {
-    labelMeasure ??= document.createElement('canvas').getContext('2d')
+    labelMeasure ??= createFontContext()
     if (!labelMeasure) return 0
     labelMeasure.font = `12px ${family}`
     return labelMeasure.measureText(`${label}`).width
@@ -1576,13 +1599,12 @@ watchEffect(() => {
     const rect = elevationSelection.value
     const ratio = pixelRatio.value
     const labels = i18n.value.elevation
-    const showGroupName = settings.showGroupName
-    const showStageName = settings.showStageName
+    const showGroupName = showGroupNames.value
+    const showStageName = showStageNames.value
     const nameContrast = settings.nameContrast
     // As on the chart, names and anchor outlines show while the view is in use, and on highlighted notes.
     const recentlyActive = isViewRecentlyActive.value
     // Name contrast is measured against it.
-    void chartBackground.value
     const elevationSnap = settings.elevationSnap
     const arrows = settings.elevationConnectorArrows
     const stageGrid = elevationStageGrid.value
@@ -1608,10 +1630,11 @@ watchEffect(() => {
         const h = Math.max(1, Math.round(layout.height * ratio))
         if (element.width !== w) element.width = w
         if (element.height !== h) element.height = h
-        const ctx = element.getContext('2d')
+        const ctx = editorRenderer.getContext(element)
         if (!ctx) return
+        if (!ctx.isReady || ctx.isContextLost()) return
+        ctx.clear()
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-        ctx.clearRect(0, 0, layout.width, layout.height)
         ctx.font = `12px ${family}`
         ctx.lineWidth = 2
         const min = layout.elevationCenter - layout.height / 2 / layout.elevationScale
@@ -1771,7 +1794,7 @@ watchEffect(() => {
         }
         // As the chart's: ghosts composite as one layer at half opacity, so overlaps don't darken.
         if (ghosts.length || ghostConnections.length) {
-            ghostCanvas ??= document.createElement('canvas')
+            ghostCanvas ??= ctx.createSurface(w, h)
             const ghostCtx = prepareSurface(ghostCanvas, layout.width, layout.height, ratio, {
                 l: 0,
                 r: layout.width,
@@ -1860,6 +1883,7 @@ watchEffect(() => {
             ctx.fillStyle = '#ffffff80'
             ctx.fillText(labels.empty, 48, underNotice ? belowNotice(element, emptyY) : emptyY)
         }
+        ctx.flush()
     })
 })
 onMounted(() => {
@@ -1995,9 +2019,10 @@ onUnmounted(() => {
         >
             <canvas
                 ref="canvas"
+                :key="rendererVersion"
                 class="elevation-canvas pointer-events-none absolute size-full"
                 :aria-label="i18n.elevation.canvas"
-                @contextrestored="restoreContext"
+                @renderingready="restoreContext"
             />
             <QuickScrollZone :pane-width="elevationBounds.w" />
             <OffscreenNoteIndicators
@@ -2005,6 +2030,7 @@ onUnmounted(() => {
                 :hovered="hoveredOffscreenGroup"
                 :anchor="offscreenAnchor"
             />
+            <RenderingError v-if="graphicsError" :message="graphicsError" @reload="retryRenderer" />
         </div>
         <!-- Beside the main editor, notifications show in its pane instead. -->
         <LevelEditorNotification

@@ -20,6 +20,7 @@ import {
 import { i18n } from '../../../i18n'
 import { modals, showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
+import { createFontContext } from '../../../rendering/textRaster'
 import { interpolateRaw } from '../../../utils/interpolate'
 import CopyIcon from '../../commands/copy/CopyIcon.vue'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
@@ -688,7 +689,7 @@ const measureBar = () => {
     const round = element?.querySelector<HTMLElement>('.manager-bulk-move')
     const done = count?.parentElement
     if (!element || !count || !round || !done) return
-    barContext ??= document.createElement('canvas').getContext('2d')
+    barContext ??= createFontContext()
     if (!barContext) return
     const style = getComputedStyle(count)
     barContext.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`

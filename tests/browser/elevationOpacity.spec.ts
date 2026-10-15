@@ -73,8 +73,8 @@ const middlePixel = (page: Page) =>
         const row = layout.rows.find((row) => row.note.elevation === 2)!
         const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
         return [
-            ...canvas
-                .getContext('2d')!
+            ...window.editorRendering
+                .getDrawContext(canvas)
                 .getImageData(
                     Math.round(((row.x + 0.35 * layout.laneScale) * canvas.width) / layout.width),
                     Math.round((row.y * canvas.height) / layout.height),
@@ -201,8 +201,8 @@ test('creation ghost stays in front of over connectors at its normal translucenc
                 if (note.type !== 'note') throw new Error('Missing note ghost')
                 const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
                 return [
-                    ...canvas
-                        .getContext('2d')!
+                    ...window.editorRendering
+                        .getDrawContext(canvas)
                         .getImageData(
                             Math.round(
                                 (layout.xAt(note.left + note.size / 2 + 0.15) * canvas.width) /

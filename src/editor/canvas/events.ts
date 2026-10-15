@@ -1,6 +1,9 @@
 import type { StageId } from '../../chart/stages'
 import { isNoneEase } from '../../ease'
 import { easeGlyphPoints } from '../../easeGlyph'
+import type { WebGLDrawContext } from '../../rendering/context'
+import { prepareEventStroke, type PreparedEventStroke } from '../../rendering/eventStrokeMesh'
+import { DrawPath } from '../../rendering/path'
 import type { Entity, EntityType } from '../../state/entities'
 import { BPM_LABEL } from '../../state/entities/bpm'
 import type { EventConnectionEntity } from '../../state/entities/events/connections'
@@ -11,11 +14,11 @@ import { beatToTime } from '../../state/integrals/bpms'
 import type { StoreGrid } from '../../state/store/grid'
 import { formatBpm, formatTimeScale } from '../../utils/format'
 import type { Range } from '../../utils/range'
-import { getPathD, getRangePathDs } from '../entities/events/path'
+import { createEventPath, createRangeEventPaths } from '../entities/events/path'
 import type { ScopeLookup } from '../scopeRules'
 import { drawName, stageNameColor } from './names'
 import { isInRaisedChain, type RaisedChains } from './ordering'
-import { drawText, measureCachedText } from './text'
+import { drawEventText, measureCachedText } from './text'
 import type { CanvasBounds, EditorDrawContext } from './types'
 
 type DrawnEventEntity = Exclude<Entity, { type: 'note' | 'connector' }>
@@ -24,8 +27,10 @@ const connectionPaths = new WeakMap<
     EventConnectionEntity,
     {
         bpms: EditorDrawContext['state']['bpms']
-        ups: number
-        paths: Path2D[]
+        ups?: number
+        paths?: DrawPath[]
+        deviceScale?: number
+        prepared?: (PreparedEventStroke | undefined)[]
     }
 >()
 
@@ -67,42 +72,38 @@ const eventColor = (entity: EventJointEntity) => {
     }
 }
 
-const line = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) => {
-    ctx.beginPath()
-    ctx.moveTo(x1, y1)
-    ctx.lineTo(x2, y2)
-    ctx.stroke()
+const line = (ctx: WebGLDrawContext, x1: number, y1: number, x2: number, y2: number) => {
+    ctx.strokeLine(x1, y1, x2, y2)
 }
 
-const marker = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-    ctx.beginPath()
-    ctx.arc(x, y, 0.1, 0, 2 * Math.PI)
-    ctx.fill()
-    ctx.stroke()
+const marker = (ctx: WebGLDrawContext, x: number, y: number) => {
+    ctx.fillCircle(x, y, 0.1)
+    ctx.strokeCircle(x, y, 0.1)
 }
 
 const DIAMOND_RADIUS = 0.135
 
 /** Circles change the time scale and diamonds the scroll; hollow ones hide notes. */
 const timeScaleMarker = (
-    ctx: CanvasRenderingContext2D,
+    ctx: WebGLDrawContext,
     x: number,
     y: number,
     isScroll: boolean,
     hideNotes: boolean,
 ) => {
-    ctx.beginPath()
-    if (isScroll) {
-        ctx.moveTo(x, y - DIAMOND_RADIUS)
-        ctx.lineTo(x + DIAMOND_RADIUS, y)
-        ctx.lineTo(x, y + DIAMOND_RADIUS)
-        ctx.lineTo(x - DIAMOND_RADIUS, y)
-        ctx.closePath()
-    } else {
-        ctx.arc(x, y, 0.1, 0, 2 * Math.PI)
-    }
     ctx.fillStyle = '#ff0'
     ctx.strokeStyle = hideNotes ? '#ff0' : '#fff'
+    if (!isScroll) {
+        if (!hideNotes) ctx.fillCircle(x, y, 0.1)
+        ctx.strokeCircle(x, y, 0.1)
+        return
+    }
+    ctx.beginPath()
+    ctx.moveTo(x, y - DIAMOND_RADIUS)
+    ctx.lineTo(x + DIAMOND_RADIUS, y)
+    ctx.lineTo(x, y + DIAMOND_RADIUS)
+    ctx.lineTo(x - DIAMOND_RADIUS, y)
+    ctx.closePath()
     if (!hideNotes) ctx.fill()
     ctx.stroke()
 }
@@ -149,7 +150,7 @@ const LABEL_OFFSET = 0.23
  * Labels point outward from the stage, and inward where outward would leave the view.
  * At or past the stage's edge they stay outward, as cut off beats covering notes.
  */
-const timeScaleLabelDirection = (
+export const timeScaleLabelDirection = (
     x: number,
     width: number,
     { l, r }: Pick<CanvasBounds, 'l' | 'r'>,
@@ -173,7 +174,9 @@ export const timeScaleLabel = (context: EditorDrawContext, entity: TimeScaleEnti
     return {
         text,
         textWidth,
+        width,
         direction,
+        x: near,
         min: Math.min(near, far),
         max: Math.max(near, far),
     }
@@ -182,10 +185,65 @@ export const timeScaleLabel = (context: EditorDrawContext, entity: TimeScaleEnti
 // Held steps and segments without a value transition have a quieter indicator.
 const INSTANT_ALPHA = 0.7
 
+// Glyphs share geometry across entities and positions. The supported ease enum
+// bounds this cache to 68 directed curves and one constant indicator.
+const easeGlyphPaths = new Map<string, DrawPath>()
+
+const easeGlyphPath = (
+    ease: TimeScaleEntity['timeScaleEase'],
+    constant: boolean,
+    decreasing: boolean,
+) => {
+    const key = constant ? 'constant' : `${decreasing ? '-' : ''}${ease}`
+    let path = easeGlyphPaths.get(key)
+    if (path) return path
+
+    path = new DrawPath()
+    const { width, height, stroke } = EASE_GLYPH
+    if (constant) {
+        for (const offset of [-height / 4, height / 4]) {
+            path.moveTo(stroke, offset)
+            path.lineTo(width - stroke, offset)
+        }
+    } else {
+        for (const [index, [px, py]] of easeGlyphPoints(ease, decreasing).entries()) {
+            const x = px * width
+            const y = py * height - height / 2
+            if (index) path.lineTo(x, y)
+            else path.moveTo(x, y)
+        }
+    }
+    easeGlyphPaths.set(key, path)
+    return path
+}
+
 /**
  * Draws a time scale's ease toward the next change, mirrored when the value
  * decreases, or an equals sign when no value transition follows. Returns its width.
  */
+export const timeScaleEaseGlyph = (
+    context: EditorDrawContext,
+    entity: TimeScaleEntity,
+    x: number,
+    y: number,
+    direction: 1 | -1,
+) => {
+    const { scale } = context
+    const next = nextTimeScale(context, entity)
+    const isConstant = next === null || next?.timeScale === entity.timeScale
+    const decreasing = !!next && next.timeScale < entity.timeScale
+    const { width, gap, stroke } = EASE_GLYPH
+    const left = direction > 0 ? x : x - width
+    return {
+        path: easeGlyphPath(entity.timeScaleEase, isConstant, decreasing),
+        x: left,
+        y,
+        width: width + gap,
+        lineWidth: Math.max(stroke, 1 / scale),
+        opacity: isNoneEase(entity.timeScaleEase) || isConstant ? INSTANT_ALPHA : 1,
+    }
+}
+
 const drawEaseGlyph = (
     context: EditorDrawContext,
     entity: TimeScaleEntity,
@@ -194,74 +252,111 @@ const drawEaseGlyph = (
     direction: 1 | -1,
     color: string,
 ) => {
-    const { ctx, scale } = context
-    const next = nextTimeScale(context, entity)
-    const isConstant = next === null || next?.timeScale === entity.timeScale
-    const { width, height, gap, stroke } = EASE_GLYPH
-    const left = direction > 0 ? x : x - width
-    const top = y - height / 2
+    const { ctx } = context
+    const glyph = timeScaleEaseGlyph(context, entity, x, y, direction)
     ctx.save()
-    if (isNoneEase(entity.timeScaleEase) || isConstant) ctx.globalAlpha *= INSTANT_ALPHA
+    ctx.globalAlpha *= glyph.opacity
     ctx.strokeStyle = color
-    ctx.lineWidth = Math.max(stroke, 1 / scale)
+    ctx.lineWidth = glyph.lineWidth
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.beginPath()
-    if (isConstant) {
-        for (const offset of [-height / 4, height / 4]) {
-            ctx.moveTo(left + stroke, y + offset)
-            ctx.lineTo(left + width - stroke, y + offset)
-        }
-    } else {
-        for (const [index, [px, py]] of easeGlyphPoints(
-            entity.timeScaleEase,
-            !!next && next.timeScale < entity.timeScale,
-        ).entries()) {
-            if (index) ctx.lineTo(left + px * width, top + py * height)
-            else ctx.moveTo(left + px * width, top + py * height)
-        }
-    }
-    ctx.stroke()
+    ctx.translate(glyph.x, glyph.y)
+    ctx.stroke(glyph.path)
     ctx.restore()
-    return width + gap
+    return glyph.width
+}
+
+/** Group names remain live requests in the final name layer, after all objects. */
+export const drawTimeScaleGroupName = (
+    context: EditorDrawContext,
+    entity: TimeScaleEntity,
+    highlighted: boolean,
+    textX: number,
+    y: number,
+    textWidth: number,
+    direction: 1 | -1,
+    opacity = 1,
+) => {
+    if (
+        !context.showGroupName ||
+        entity.groupId === context.defaultGroupId ||
+        (!highlighted && !context.recentlyActive)
+    )
+        return
+    const { ctx, state } = context
+    const x = entity.editorLane
+    // Opposite the label, unless it turned inward for want of room there.
+    const side = direction === (x > 0 ? 1 : -1) ? -direction : direction
+    ctx.save()
+    try {
+        ctx.globalAlpha *= opacity
+        drawName(
+            context,
+            entity,
+            highlighted,
+            state.groups.get(entity.groupId)?.name ?? '',
+            side === direction ? textX + (textWidth + 0.2) * direction : x + 0.2 * side,
+            y,
+            '#0aa',
+            0.4,
+            side > 0 ? 'start' : 'end',
+        )
+    } finally {
+        ctx.restore()
+    }
 }
 
 const drawConnection = (context: EditorDrawContext, entity: EventConnectionEntity) => {
     const { ctx, state, ups } = context
     let cached = connectionPaths.get(entity)
-    if (cached?.bpms !== state.bpms || cached.ups !== ups) {
-        const minXs = jointXs(entity.min)
-        const maxXs = jointXs(entity.max)
-        const yMin = beatToTime(state.bpms, entity.min.beat) * ups
-        const yMax = beatToTime(state.bpms, entity.max.beat) * ups
-        const minWidth = rangeMinWidth(entity.min)
-        cached = {
-            bpms: state.bpms,
-            ups,
-            paths:
-                minWidth === undefined
-                    ? minXs.map(
-                          (x, index) =>
-                              new Path2D(
-                                  getPathD(x, maxXs[index] ?? x, yMin, yMax, entity.min.eventEase),
-                              ),
-                      )
-                    : getRangePathDs(
-                          minXs as [number, number],
-                          maxXs as [number, number],
-                          yMin,
-                          yMax,
-                          entity.min.eventEase,
-                          minWidth,
-                      ).map((d) => new Path2D(d)),
-        }
+    if (cached?.bpms !== state.bpms) {
+        cached = { bpms: state.bpms }
         connectionPaths.set(entity, cached)
     }
-
+    const makePaths = (scale: number) => {
+        const minXs = jointXs(entity.min)
+        const maxXs = jointXs(entity.max)
+        const yMin = beatToTime(state.bpms, entity.min.beat) * scale
+        const yMax = beatToTime(state.bpms, entity.max.beat) * scale
+        const minWidth = rangeMinWidth(entity.min)
+        return minWidth === undefined
+            ? minXs.map((x, index) =>
+                  createEventPath(x, maxXs[index] ?? x, yMin, yMax, entity.min.eventEase),
+              )
+            : createRangeEventPaths(
+                  minXs as [number, number],
+                  maxXs as [number, number],
+                  yMin,
+                  yMax,
+                  entity.min.eventEase,
+                  minWidth,
+              )
+    }
     ctx.strokeStyle = eventColor(entity.min)
     ctx.globalAlpha *= 0.5
     // Keep separate strokes: coincident left/right edges intentionally overlap.
-    for (const path of cached.paths) ctx.stroke(path)
+    if (ctx.isCapturingEventStrokes) {
+        const deviceScale = Math.abs(ctx.getTransform().a)
+        if (!cached.prepared || cached.deviceScale !== deviceScale) {
+            cached.prepared = makePaths(1).map((path) => prepareEventStroke(path, deviceScale))
+            cached.deviceScale = deviceScale
+        }
+        for (const [index, prepared] of cached.prepared.entries()) {
+            if (ctx.strokeEventPath(prepared, ups)) continue
+            if (cached.ups !== ups || !cached.paths) {
+                cached.paths = makePaths(ups)
+                cached.ups = ups
+            }
+            const path = cached.paths[index]
+            if (path) ctx.stroke(path)
+        }
+    } else {
+        if (cached.ups !== ups || !cached.paths) {
+            cached.paths = makePaths(ups)
+            cached.ups = ups
+        }
+        for (const path of cached.paths) ctx.stroke(path)
+    }
 }
 
 /** A BPM's or time scale's line, marker or label, for drawing them in separate layers. */
@@ -300,7 +395,7 @@ export const drawEvent = (
                 ctx.globalAlpha *= 2
             }
             if (part === undefined || part === 'label')
-                drawText(
+                drawEventText(
                     context,
                     formatBpm(entity.bpm),
                     BPM_LABEL.lane,
@@ -308,7 +403,6 @@ export const drawEvent = (
                     '#f0f',
                     BPM_LABEL.size,
                     'start',
-                    context.figureMiddle,
                 )
             break
         }
@@ -335,35 +429,8 @@ export const drawEvent = (
             const labelX = x + LABEL_OFFSET * direction
             const glyphWidth = drawEaseGlyph(context, entity, labelX, y, direction, '#ff0')
             const textX = labelX + glyphWidth * direction
-            drawText(
-                context,
-                text,
-                textX,
-                y,
-                '#ff0',
-                0.5,
-                direction > 0 ? 'start' : 'end',
-                context.figureMiddle,
-            )
-            if (
-                context.showGroupName &&
-                entity.groupId !== context.defaultGroupId &&
-                (highlighted || context.recentlyActive)
-            ) {
-                // Opposite the label, unless it turned inward for want of room there.
-                const side = direction === (x > 0 ? 1 : -1) ? -direction : direction
-                drawName(
-                    context,
-                    entity,
-                    highlighted,
-                    state.groups.get(entity.groupId)?.name ?? '',
-                    side === direction ? textX + (textWidth + 0.2) * direction : x + 0.2 * side,
-                    y,
-                    '#0aa',
-                    0.4,
-                    side > 0 ? 'start' : 'end',
-                )
-            }
+            drawEventText(context, text, textX, y, '#ff0', 0.5, direction > 0 ? 'start' : 'end')
+            drawTimeScaleGroupName(context, entity, highlighted, textX, y, textWidth, direction)
             break
         }
         case 'cameraEventJoint':
@@ -382,9 +449,7 @@ export const drawEvent = (
             if (entity.type === 'cameraEventJoint') {
                 const target =
                     entity.cameraLeft + entity.cameraSize / 2 + entity.cameraZoomTargetLane
-                ctx.beginPath()
-                ctx.arc(target, y, 0.1, 0, 2 * Math.PI)
-                ctx.fill()
+                ctx.fillCircle(target, y, 0.1)
             }
             ctx.globalAlpha *= 2
             ctx.strokeStyle = '#fff'

@@ -86,6 +86,7 @@ test('each object is drawn where its drawn hit shape is, and nowhere else', asyn
         const bounds = viewMod.viewBox.value
         const scale = view.w / bounds.w
         const canvas = document.createElement('canvas')
+        await window.editorRendering.getDrawContext(canvas).ready
         const ctx = surface.prepareSurface(canvas, view.w, view.h, 1, bounds)!
         const renderer = notesMod.createNoteRenderer()
         const sprites = labelSprites.createLabelSprites()

@@ -272,7 +272,9 @@ test('chart reset clears old selection pixels after ghost, connector and event s
     expect((await snapshot(page)).selected).toEqual([])
     const opaquePixels = await page.evaluate(() => {
         const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-overlay')!
-        const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
+        const pixels = window.editorRendering
+            .getDrawContext(canvas)
+            .getImageData(0, 0, canvas.width, canvas.height).data
         let count = 0
         for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) count++
         return count

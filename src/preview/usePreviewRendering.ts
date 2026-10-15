@@ -6,6 +6,8 @@ import { dockSizeDrafts, panelWeightsDraft } from '../editor/workspace'
 import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
 import { isPlaying } from '../player'
+import { disposeDrawContext } from '../rendering/context'
+import { useEditorRenderer } from '../rendering/useEditorRenderer'
 import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
@@ -85,7 +87,12 @@ export const usePreviewRendering = (
             // Opt in to restoration; all resources from the old context are invalid.
             event.preventDefault()
             contextLost = true
+            const lostRenderer = renderer.value
             renderer.value = undefined
+            // Release pooled CPU geometry too: restoration may be deferred indefinitely
+            // on a backgrounded or memory-constrained device.
+            lostRenderer?.dispose()
+            uploadedRenderer = undefined
         }
         const onContextRestored = () => {
             contextLost = false
@@ -145,6 +152,27 @@ export const usePreviewRendering = (
         () => panelWeightsDraft.value !== undefined || Object.keys(dockSizeDrafts.value).length > 0,
     )
     let sizedOverlay: HTMLCanvasElement | undefined
+    let renderedOverlay: HTMLCanvasElement | undefined
+    let drawnOverlay: HTMLCanvasElement | undefined
+    const overlayVersion = shallowRef(0)
+    const selectionRenderer = useEditorRenderer(setGraphicsError)
+    if (selectionCanvas) {
+        watch(selectionCanvas, (overlay, _previous, onCleanup) => {
+            if (!overlay) return
+            const restoreOverlay = () => {
+                drawnOverlay = overlay
+                overlayVersion.value++
+            }
+            overlay.addEventListener('renderingready', restoreOverlay)
+            onCleanup(() => {
+                selectionRenderer.forget(overlay)
+                overlay.removeEventListener('renderingready', restoreOverlay)
+                if (drawnOverlay === overlay) drawnOverlay = undefined
+                if (renderedOverlay === overlay) renderedOverlay = undefined
+                disposeDrawContext(overlay)
+            })
+        })
+    }
 
     const getRenderSize = (requestedScale: number) => {
         if (!renderer.value) return
@@ -203,6 +231,7 @@ export const usePreviewRendering = (
                 ),
             )
             const overlay = selectionCanvas?.value
+            void overlayVersion.value
             const leftLimit = !isPlaying.value
             // Only redraws: the overlay never changes the compiled chart.
             const showHitboxes = settings.previewShowHitboxes
@@ -217,27 +246,18 @@ export const usePreviewRendering = (
                 particle.value?.particle,
             ] as const
             renderFrame = () => {
-                const ctx = overlay?.getContext('2d')
-                if (overlay && ctx) {
+                if (overlay) {
                     const ratio = pixelRatio.value
                     if (!resizing || overlay !== sizedOverlay) {
                         sizedOverlay = overlay
-                        if (overlay.width !== Math.round(canvasWidth.value * ratio))
-                            overlay.width = Math.round(canvasWidth.value * ratio)
-                        if (overlay.height !== Math.round(canvasHeight.value * ratio))
-                            overlay.height = Math.round(canvasHeight.value * ratio)
+                        const width = Math.round(canvasWidth.value * ratio)
+                        const height = Math.round(canvasHeight.value * ratio)
+                        if (overlay.width !== width || overlay.height !== height) {
+                            if (overlay.width !== width) overlay.width = width
+                            if (overlay.height !== height) overlay.height = height
+                            if (renderedOverlay === overlay) drawnOverlay = overlay
+                        }
                     }
-                    // Map CSS pixels onto the actual backing store, which keeps its
-                    // size during a resize drag.
-                    ctx.setTransform(
-                        overlay.width / canvasWidth.value,
-                        0,
-                        0,
-                        overlay.height / canvasHeight.value,
-                        0,
-                        0,
-                    )
-                    clearSurface(ctx, overlay.width, overlay.height)
                 }
                 const outline = createSelectionOutline()
                 const quad = renderPreviewFrame(
@@ -251,21 +271,43 @@ export const usePreviewRendering = (
                     leftLimit,
                     showHitboxes,
                 )
-                if (ctx) {
-                    const scale = args[4] / 2
-                    ctx.beginPath()
-                    for (const { a, b } of outline.edges()) {
-                        ctx.moveTo(args[3] / 2 + a.x * scale, args[4] / 2 - a.y * scale)
-                        ctx.lineTo(args[3] / 2 + b.x * scale, args[4] / 2 - b.y * scale)
+                const edges = outline.edges()
+                // Once empty, the overlay stays transparent. Avoid creating or
+                // switching a second GL context on every unselected playback frame.
+                if (overlay && (edges.length || drawnOverlay === overlay)) {
+                    const ctx = selectionRenderer.getContext(overlay)
+                    renderedOverlay = overlay
+                    if (ctx && !ctx.isContextLost()) {
+                        // Map CSS pixels onto the actual backing store, which keeps
+                        // its size during a resize drag.
+                        ctx.setTransform(
+                            overlay.width / canvasWidth.value,
+                            0,
+                            0,
+                            overlay.height / canvasHeight.value,
+                            0,
+                            0,
+                        )
+                        clearSurface(ctx, overlay.width, overlay.height)
+                        if (edges.length) {
+                            const scale = args[4] / 2
+                            ctx.beginPath()
+                            for (const { a, b } of edges) {
+                                ctx.moveTo(args[3] / 2 + a.x * scale, args[4] / 2 - a.y * scale)
+                                ctx.lineTo(args[3] / 2 + b.x * scale, args[4] / 2 - b.y * scale)
+                            }
+                            ctx.lineJoin = 'round'
+                            ctx.lineCap = 'round'
+                            ctx.strokeStyle = '#06151d'
+                            ctx.lineWidth = 5
+                            ctx.stroke()
+                            ctx.strokeStyle = '#67e8f9'
+                            ctx.lineWidth = 2
+                            ctx.stroke()
+                        }
+                        ctx.flush()
+                        drawnOverlay = edges.length ? overlay : undefined
                     }
-                    ctx.lineJoin = 'round'
-                    ctx.lineCap = 'round'
-                    ctx.strokeStyle = '#06151d'
-                    ctx.lineWidth = 5
-                    ctx.stroke()
-                    ctx.strokeStyle = '#67e8f9'
-                    ctx.lineWidth = 2
-                    ctx.stroke()
                 }
                 if (!backgroundElement) return
                 // Map the complete image into the engine's screen-space quad in

@@ -16,22 +16,31 @@ test.beforeEach(async ({ page }) => {
     pageErrors.set(page, errors)
     page.on('pageerror', (error) => errors.push(error.message))
     await page.addInitScript(installCanvasCounters)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
     // Texts the chart and the ghosts (composited onto the overlay) draw, in pane pixels, by frame.
-    await page.addInitScript(() => {
+    await page.evaluate(async () => {
         window.drawnTexts = { chart: [], overlay: [] }
-        const fillText = CanvasRenderingContext2D.prototype.fillText
-        CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...args) {
-            const canvas = this.canvas
+        const { RenderSurface, WebGLDrawContext } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const record = (
+            ctx: InstanceType<typeof WebGLDrawContext>,
+            text: string,
+            x: number,
+            y: number,
+        ) => {
+            const canvas = ctx.canvas
             const chart = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
-            const kind = !(canvas instanceof HTMLCanvasElement)
-                ? undefined
-                : canvas === chart
-                  ? 'chart'
-                  : !canvas.isConnected && canvas.width === chart?.width
-                    ? 'overlay'
-                    : undefined
+            const kind =
+                canvas === chart
+                    ? 'chart'
+                    : canvas instanceof RenderSurface && canvas.width === chart?.width
+                      ? 'overlay'
+                      : undefined
             if (kind) {
-                const m = this.getTransform()
+                const m = ctx.getTransform()
                 window.drawnTexts[kind].push({
                     text,
                     x: (m.a * x + m.c * y + m.e) / devicePixelRatio,
@@ -39,12 +48,54 @@ test.beforeEach(async ({ page }) => {
                     frame: window.editorFrames[kind],
                 })
             }
-            return fillText.call(this, text, x, y, ...args)
+        }
+        // Annotation and grid paths bypass fillText. Keep alphabetic-baseline pane
+        // coordinates so the existing alignment and exclusion assertions hold.
+        const drawEditorLabel = WebGLDrawContext.prototype.drawEditorLabel
+        WebGLDrawContext.prototype.drawEditorLabel = function (
+            text,
+            x,
+            y,
+            color,
+            fontFamily,
+            scale,
+            size,
+            align,
+            middle,
+        ) {
+            record(this, text, x, y + size * middle)
+            return drawEditorLabel.call(
+                this,
+                text,
+                x,
+                y,
+                color,
+                fontFamily,
+                scale,
+                size,
+                align,
+                middle,
+            )
+        }
+        const drawPreparedEditorLabel = WebGLDrawContext.prototype.drawPreparedEditorLabel
+        WebGLDrawContext.prototype.drawPreparedEditorLabel = function (label, x, y, opacity) {
+            record(this, label.text, x, y + label.baseline * label.inverseScale)
+            return drawPreparedEditorLabel.call(this, label, x, y, opacity)
+        }
+        const drawGridLabel = WebGLDrawContext.prototype.drawGridLabel
+        WebGLDrawContext.prototype.drawGridLabel = function (
+            text,
+            x,
+            y,
+            fontFamily,
+            scale,
+            align,
+            middle,
+        ) {
+            record(this, text, x, y + 0.4 * middle)
+            return drawGridLabel.call(this, text, x, y, fontFamily, scale, align, middle)
         }
     })
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.evaluate(installEditorFixture)
 })
 
 test.afterEach(({ page }) => {

@@ -508,6 +508,9 @@ for (const colorScheme of ['light', 'dark'] as const)
     test(`chart panes keep their dark background (${colorScheme})`, async ({ page }) => {
         // The canvases draw white grids, labels and selection boxes for it.
         await page.emulateMedia({ forcedColors: 'active', colorScheme })
+        // Emulation updates the media query before its change event applies
+        // the live System theme. Keep the color assertions exact after it runs.
+        await expect(page.locator('html')).toHaveAttribute('data-theme', colorScheme)
         const backdrop = (selector: string) =>
             page
                 .locator(selector)

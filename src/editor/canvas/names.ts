@@ -1,20 +1,8 @@
+import type { WebGLDrawContext } from '../../rendering/context'
 import type { Entity } from '../../state/entities'
-import { nameColorOn } from './nameColors'
+import { NameLayout, type NamePlacement } from './nameLayout'
 import { drawText, measureCachedText, normalizeSvgText } from './text'
 import type { EditorDrawContext } from './types'
-
-type Box = { l: number; r: number; t: number; b: number }
-
-/** A filled area a name can lie over: its own note's body, or a slide connector. */
-export type NameFill = {
-    /** The note whose names alone it affects; none for connectors. */
-    owner?: Entity
-    box: Box
-    /** Its outline as shapes that may overlap, all wound the same way. */
-    shapes: () => Path2D[]
-    /** The opaque colours it shows at a height. */
-    colorsAt: (y: number) => string[]
-}
 
 type NameRequest = {
     owner: Entity
@@ -33,13 +21,13 @@ type PlacedName = Omit<NameRequest, 'owner' | 'highlighted' | 'alpha'>
 /** A frame's stage and group names, drawn after every object. */
 export type NameLayer = {
     names: NameRequest[]
-    /** Fills in drawing order. */
-    fills: NameFill[]
 }
 
-export const createNameLayer = (): NameLayer => ({ names: [], fills: [] })
+export const createNameLayer = (): NameLayer => ({ names: [] })
 
-const overlaps = (a: Box, b: Box) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b
+// Context ownership keeps independent chart/elevation panes from influencing
+// one another. The layout retains only names visible in its most recent frame.
+const layouts = new WeakMap<WebGLDrawContext, NameLayout>()
 
 const nameBox = (name: PlacedName, width: number) => {
     const l =
@@ -51,28 +39,7 @@ const nameBox = (name: PlacedName, width: number) => {
     return { l, r: l + width, t: name.y - name.size / 2, b: name.y + name.size / 2 }
 }
 
-// Clip to everything around the box but the shapes, one at a time so overlaps stay out.
-const clipOut = (ctx: CanvasRenderingContext2D, shapes: Path2D[], box: Box) => {
-    for (const shape of shapes) {
-        const outside = new Path2D()
-        outside.rect(box.l - 1, box.t - 1, box.r - box.l + 2, box.b - box.t + 2)
-        outside.addPath(shape)
-        ctx.clip(outside, 'evenodd')
-    }
-}
-
-// Like-wound shapes clip in as one nonzero union.
-const union = (shapes: Path2D[]) => {
-    const [only] = shapes
-    if (only && shapes.length === 1) return only
-    const path = new Path2D()
-    for (const shape of shapes) path.addPath(shape)
-    return path
-}
-
-type NamePen = ReturnType<typeof namePen>
-
-// Sprites draw in device pixels; clips and names without one keep the scene transform.
+// Whole-name sprites preserve browser shaping and apply opacity once to fill and outline.
 const namePen = (context: EditorDrawContext) => {
     const { ctx, nameSprites } = context
     const scene = nameSprites && ctx.getTransform()
@@ -84,63 +51,33 @@ const namePen = (context: EditorDrawContext) => {
         end() {
             ctx.restore()
         },
-        clip(clip: () => void) {
-            if (scene) ctx.setTransform(scene)
-            clip()
-            if (scene) ctx.setTransform(1, 0, 0, 1, 0, 0)
-        },
         text(name: PlacedName, color: string) {
             const { text, x, y, size, align } = name
             if (!scene) {
                 drawText(context, text, x, y, color, size, align)
                 return
             }
-            if (nameSprites.draw(context, scene, text, x, y, color, size, align)) return
+            if (
+                nameSprites.draw(
+                    context,
+                    scene,
+                    text,
+                    x,
+                    y,
+                    color,
+                    size,
+                    align,
+                    context.fontMiddle,
+                    context.nameContrast,
+                )
+            )
+                return
             // Too large for a sprite.
             ctx.save()
             ctx.setTransform(scene)
             drawText(context, text, x, y, color, size, align)
             ctx.restore()
         },
-    }
-}
-
-/** Draws a name in its colour, and in a darker or lighter one over each fill it would not read on. */
-const drawSplitName = (
-    context: EditorDrawContext,
-    pen: NamePen,
-    name: PlacedName,
-    box: Box,
-    fills: NameFill[],
-) => {
-    const over = (box.r > box.l ? fills : [])
-        .filter((fill) => overlaps(fill.box, box))
-        .map((fill) => ({
-            fill,
-            color: nameColorOn(name.color, fill.colorsAt(name.y), !fill.owner),
-        }))
-    if (over.every(({ color }) => color === name.color)) {
-        pen.text(name, name.color)
-        return
-    }
-    const { ctx } = context
-    const shapes = over.map(({ fill }) => fill.shapes())
-    ctx.save()
-    pen.clip(() => {
-        clipOut(ctx, shapes.flat(), box)
-    })
-    pen.text(name, name.color)
-    ctx.restore()
-    // Later fills cover earlier ones.
-    for (const [index, { color }] of over.entries()) {
-        ctx.save()
-        pen.clip(() => {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            ctx.clip(union(shapes[index]!))
-            clipOut(ctx, shapes.slice(index + 1).flat(), box)
-        })
-        pen.text(name, color)
-        ctx.restore()
     }
 }
 
@@ -200,12 +137,7 @@ const fitName = <T extends PlacedName>(context: EditorDrawContext, name: T): T |
         : { ...name, text: cut(low), x: box.r, align: 'right' }
 }
 
-/** Records a fill names may lie over, when the frame places names. */
-export const markFill = (context: EditorDrawContext, fill: NameFill) => {
-    context.names?.fills.push(fill)
-}
-
-// Stage names lighten only where contrast redraws them over fills.
+// The contrast option pairs a brighter stage colour with a narrow black outline.
 export const stageNameColor = (context: EditorDrawContext) =>
     context.nameContrast ? '#f6f' : '#a0a'
 
@@ -220,22 +152,13 @@ export const drawName = (
     color: string,
     size = 0.4,
     align: CanvasTextAlign = 'center',
-    body: NameFill[] = [],
 ) => {
     if (!context.names) {
         const name = fitName(context, { text, x, y, color, size, align })
         if (!name) return
         const pen = namePen(context)
         pen.begin()
-        if (!body.length) pen.text(name, color)
-        else
-            drawSplitName(
-                context,
-                pen,
-                name,
-                nameBox(name, measureCachedText(context, name.text, size)),
-                body,
-            )
+        pen.text(name, color)
         pen.end()
         return
     }
@@ -244,28 +167,39 @@ export const drawName = (
 }
 
 /** Draws the queued names, selected and hovered ones last so they lie on top. */
-export const placeNames = (context: EditorDrawContext, { names, fills }: NameLayer) => {
+export const placeNames = (context: EditorDrawContext, { names }: NameLayer) => {
     const { ctx } = context
-    const pen = namePen(context)
-    pen.begin()
-    for (const queued of [
-        ...names.filter(({ highlighted }) => !highlighted),
-        ...names.filter(({ highlighted }) => highlighted),
-    ]) {
+    const placed: (NamePlacement & { name: NameRequest })[] = []
+    for (const queued of names) {
+        if (queued.alpha === 0) continue
         const name = fitName(context, queued)
         if (!name) continue
-        ctx.globalAlpha = name.alpha
-        if (!context.nameContrast) {
-            pen.text(name, name.color)
-            continue
-        }
-        drawSplitName(
-            context,
-            pen,
+        const box = nameBox(name, measureCachedText(context, name.text, name.size))
+        if (box.b <= context.bounds.t || box.t >= context.bounds.b || box.r <= box.l) continue
+        // Include the visible half-CSS-pixel outline in collision placement.
+        const pad = context.nameContrast ? 0.5 / context.scale : 0
+        placed.push({
+            owner: queued.owner,
+            // Callers queue at most one stage and one group name per owner.
+            // Colour/alignment distinguish the roles; fitting must not change identity.
+            key: `${queued.color}:${queued.align}:${queued.text}`,
+            highlighted: queued.highlighted,
+            box: { l: box.l - pad, r: box.r + pad, t: box.t - pad, b: box.b + pad },
             name,
-            nameBox(name, measureCachedText(context, name.text, name.size)),
-            fills.filter(({ owner }) => !owner || owner === name.owner),
-        )
+        })
+    }
+    let layout = layouts.get(ctx)
+    if (!layout) layouts.set(ctx, (layout = new NameLayout()))
+    const visible = layout.place(placed)
+    const pen = namePen(context)
+    pen.begin()
+    for (const highlighted of [false, true]) {
+        for (const placedName of placed) {
+            if (placedName.highlighted !== highlighted || !visible.has(placedName)) continue
+            const { name } = placedName
+            ctx.globalAlpha = name.alpha
+            pen.text(name, name.color)
+        }
     }
     pen.end()
 }

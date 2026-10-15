@@ -29,7 +29,7 @@ npm run test:compatibility
 
 This builds and tests the production UI in Firefox, WebKit, and mobile WebKit,
 including import/export, touch context menus, scaling, elevation layouts in both
-orientations, canvas fallback rendering, preview texture decoding/rendering, and
+orientations, WebGL editor rendering, preview texture decoding/rendering, and
 internal copy/paste when browser clipboard permissions are denied.
 The suite also checks audio scheduling and waveform rendering.
 
@@ -43,3 +43,8 @@ audio tests are skipped there, and production UI tests stub audio initialization
 Linux CI runs those audio tests without the stub. Real iOS Safari still needs device
 checks for audio activation, clipboard permissions, file pickers/downloads, browser
 chrome resizing, and safe areas.
+
+## Renderer maintenance
+
+See [renderer ownership and upgrades](docs/rendering.md) for GPU resource ownership,
+text policies, the pinned Pixi patches, and the verified Rust/Lyon geometry kernel.

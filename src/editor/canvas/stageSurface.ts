@@ -1,13 +1,15 @@
 import { isClockFrame } from '../../frame'
+import type { RenderSurface, WebGLDrawContext } from '../../rendering/context'
 import { timeToBeat } from '../../state/integrals/bpms'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { drawComposedStages } from './stages'
-import { clearSurface, deviceSize, prepareSurface } from './surface'
+import { deviceSize, prepareSurface } from './surface'
 import type { EditorDrawContext } from './types'
 
-// Each retained store (the exact view and the moving window) holds at most 32 MiB
-// of RGBA pixels, so up to twice that beside the chart while it moves. Larger screens draw directly.
+// Each retained store is capped at eight million resolved pixels (32 MiB RGBA).
+// AA scratch tiles are capped at one million physical pixels and released after
+// each render. Larger screens draw directly.
 const MAX_PIXELS = 8 * 1024 * 1024
 // The moving window is released once the view has held still this long.
 const RELEASE_MS = 2500
@@ -20,8 +22,8 @@ const MIN_FRAMES = 4
 export const SUSTAINED_MS = 100
 
 type Motion = {
-    canvas: HTMLCanvasElement
-    ctx: CanvasRenderingContext2D
+    canvas: RenderSurface
+    ctx: WebGLDrawContext
     key: readonly unknown[]
     // Device-pixel translation and size the window was drawn with.
     e: number
@@ -39,8 +41,8 @@ const sameKey = (a: readonly unknown[] | undefined, b: readonly unknown[]) =>
  * pixels; the first still frame draws the stages exactly again.
  */
 export const createStageSurface = () => {
-    let canvas: HTMLCanvasElement | undefined
-    let surfaceContext: CanvasRenderingContext2D | undefined
+    let canvas: RenderSurface | undefined
+    let surfaceContext: WebGLDrawContext | undefined
     let previous: readonly unknown[] | undefined
     let motion: Motion | undefined
     let stageSet: unknown
@@ -52,7 +54,7 @@ export const createStageSurface = () => {
     const clearMotion = () => {
         clearTimeout(release)
         release = undefined
-        if (motion) motion.canvas.width = motion.canvas.height = 0
+        motion?.canvas.dispose()
         motion = undefined
     }
     // Keeps the window until the view has held still a while.
@@ -61,13 +63,28 @@ export const createStageSurface = () => {
         release = setTimeout(clearMotion, RELEASE_MS)
     }
     const clear = () => {
-        if (canvas) canvas.width = canvas.height = 0
+        canvas?.dispose()
         canvas = undefined
         surfaceContext = undefined
         previous = undefined
         clearMotion()
         last = undefined
         stageSet = undefined
+    }
+    const finishFrame = () => {
+        // A cold stage render can take longer than the motion gap. Compare the
+        // next frame with its completion, so drawing time is not mistaken for
+        // an idle pause that prevents the moving window from ever warming up.
+        if (last) {
+            last.time = performance.now()
+            // Expiry also measures idle time. A very slow initial window draw
+            // must not consume its lifetime before its pixels can be reused.
+            if (last.moving && motion) holdMotion()
+        }
+    }
+    const finish = (shifted: boolean) => {
+        finishFrame()
+        return shifted
     }
 
     // Draws a window around the view, extended along the motion, at the chart's device scale.
@@ -94,17 +111,23 @@ export const createStageSurface = () => {
         let reach = 1
         const margin = (delta: number, size: number, forward: boolean) =>
             delta === 0 ? 0 : Math.ceil(reach * size * (delta > 0 === forward ? AHEAD : BEHIND))
-        const area = () =>
-            (w + margin(dx, w, false) + margin(dx, w, true)) *
-            (h + margin(dy, h, false) + margin(dy, h, true))
-        while (area() > MAX_PIXELS && reach > 1 / 16) reach /= 2
+        const fits = () => {
+            const width = w + margin(dx, w, false) + margin(dx, w, true)
+            const height = h + margin(dy, h, false) + margin(dy, h, true)
+            return (
+                width * height <= MAX_PIXELS &&
+                width <= context.ctx.maxSurfaceSize &&
+                height <= context.ctx.maxSurfaceSize
+            )
+        }
+        while (!fits() && reach > 1 / 16) reach /= 2
         const left = margin(dx, w, false)
         const right = margin(dx, w, true)
         const top = margin(dy, h, false)
         const bottom = margin(dy, h, true)
         const W = w + left + right
         const H = h + top + bottom
-        if (W * H > MAX_PIXELS) {
+        if (!fits()) {
             clearMotion()
             return false
         }
@@ -117,23 +140,16 @@ export const createStageSurface = () => {
             return false
         }
         // The canvas only grows, so speed and direction changes reuse it.
-        const target = motion?.canvas ?? document.createElement('canvas')
+        const target = motion?.canvas ?? context.ctx.createStageSurface(W, H)
         motion = undefined
         if (target.width < W || target.height < H) {
             const grown = Math.max(target.width, W) * Math.max(target.height, H) <= MAX_PIXELS
             target.width = grown ? Math.max(target.width, W) : W
             target.height = grown ? Math.max(target.height, H) : H
         }
-        const ctx = target.getContext('2d')
-        if (!ctx) return false
+        const ctx = target.getContext()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.save()
-        ctx.globalAlpha = 1
-        ctx.globalCompositeOperation = 'copy'
-        ctx.fillStyle = 'rgba(0, 0, 0, 0)'
-        ctx.fillRect(0, 0, W, H)
-        ctx.restore()
-        clearSurface(ctx, W, H)
+        ctx.clear()
         const e = -bounds.l * sx + left
         const f = -bounds.t * sy + top
         ctx.setTransform(sx, 0, 0, sy, e, f)
@@ -194,11 +210,8 @@ export const createStageSurface = () => {
                 clear()
                 return false
             }
-            // Older Canvas implementations do not expose context-loss queries.
-            /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-            if (surfaceContext?.isContextLost?.() || motion?.ctx.isContextLost?.()) clear()
-            /* eslint-enable @typescript-eslint/no-unnecessary-condition */
-            // New stages reallocate the stores: a 'copy' clear can keep old pixels once a canvas has been read.
+            if (surfaceContext?.isContextLost() || motion?.ctx.isContextLost()) clear()
+            // Changed stage sets release retained geometry and pixels.
             if (composed.stages !== stageSet) {
                 clear()
                 stageSet = composed.stages
@@ -208,6 +221,8 @@ export const createStageSurface = () => {
             if (
                 !Number.isFinite(pixels) ||
                 pixels > MAX_PIXELS ||
+                w > context.ctx.maxSurfaceSize ||
+                h > context.ctx.maxSurfaceSize ||
                 width <= 0 ||
                 height <= 0 ||
                 pixelRatio <= 0
@@ -243,23 +258,21 @@ export const createStageSurface = () => {
             if (moved && motion) holdMotion()
             // A single step redraws exactly; sustained motion reuses a larger window.
             if (!sameKey(previous, key) && moved && wasMoving) {
-                if (blitMotion(context, viewKey, width, height)) return true
+                if (blitMotion(context, viewKey, width, height)) return finish(true)
                 if (
                     drawMotion(context, viewKey, width, height, dx, dy, scope, laneDivision) &&
                     blitMotion(context, viewKey, width, height)
                 )
-                    return true
+                    return finish(true)
             }
             if (!sameKey(previous, key)) {
-                canvas ??= document.createElement('canvas')
+                canvas ??= context.ctx.createStageSurface(w, h)
                 const ctx = prepareSurface(canvas, width, height, pixelRatio, bounds)
                 if (!ctx) {
                     clear()
                     drawComposedStages(context, beats, scope, laneDivision)
                     return false
                 }
-                // Read stores can keep old pixels through the 'copy' fill, as the overlay does.
-                clearSurface(ctx, w, h)
                 drawComposedStages({ ...context, ctx }, beats, scope, laneDivision)
                 surfaceContext = ctx
                 previous = key
@@ -272,8 +285,10 @@ export const createStageSurface = () => {
             context.ctx.globalAlpha = 1
             context.ctx.drawImage(canvas, 0, 0)
             context.ctx.restore()
-            return false
+            return finish(false)
         },
+        // The chart calls this after its remaining objects and labels are submitted.
+        finishFrame,
         clear,
     }
 }

@@ -1,51 +1,66 @@
+import type { WebGLDrawContext } from '../../rendering/context'
 import type { Range } from '../../utils/range'
 import { waveformDuration, type Waveform } from '../../waveform'
+import {
+    createWaveformTileImage,
+    getWaveformTilePixels,
+    reduceWaveformTilePixels,
+    type WaveformTilePixels,
+} from '../../waveform/tiles'
 import type { EditorDrawContext } from './types'
 
 const MAX_TILE_BYTES = 16 * 1024 * 1024
 const MAX_TILES = 32
 
+type Reduction = {
+    pixels: WaveformTilePixels
+    image?: ImageData
+}
+
 type Tile = {
-    image: HTMLImageElement
-    reductions: HTMLCanvasElement[]
+    image?: HTMLImageElement
+    pixels?: WaveformTilePixels
+    raster?: ImageData
+    reductions: Reduction[]
     bytes: number
 }
 
-// Waveform tiles contain white pixels with amplitude encoded in alpha. Taking
-// the strongest of each adjacent row pair keeps narrow attacks visible when
-// zooming out. Browser bilinear reduction can entirely skip individual rows,
-// and Firefox does not support imageSmoothingQuality to change that behavior.
-const reduceTile = (image: HTMLImageElement | HTMLCanvasElement) => {
-    const width = image instanceof HTMLCanvasElement ? image.width : image.naturalWidth
-    const height = image instanceof HTMLCanvasElement ? image.height : image.naturalHeight
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) throw new Error('Unexpected missing canvas context')
-    ctx.drawImage(image, 0, 0)
-    const source = ctx.getImageData(0, 0, width, height).data
-    const target = ctx.createImageData(width, Math.ceil(height / 2))
-    target.data.fill(255)
-    for (let y = 0; y < target.height; y++) {
-        for (let x = 0; x < width; x++) {
-            const first = (y * 2 * width + x) * 4 + 3
-            target.data[(y * width + x) * 4 + 3] = Math.max(
-                source[first] ?? 0,
-                source[first + width * 4] ?? 0,
-            )
-        }
+// URL-only waveforms can still come from callers outside the BGM importer.
+// Decode their alpha once on a temporary GPU surface; subsequent zoom levels
+// use the same CPU reductions as imported audio, with no further readbacks.
+const readTilePixels = (ctx: WebGLDrawContext, image: HTMLImageElement): WaveformTilePixels => {
+    const width = image.naturalWidth
+    const height = image.naturalHeight
+    const surface = ctx.createSurface(width, height)
+    try {
+        const target = surface.getContext()
+        target.drawImage(image, 0, 0)
+        const source = target.getImageData(0, 0, width, height).data
+        const alpha = new Uint8Array(width * height)
+        for (let i = 0; i < alpha.length; i++) alpha[i] = source[i * 4 + 3] ?? 0
+        return { width, height, alpha }
+    } finally {
+        surface.dispose()
     }
-    canvas.height = target.height
-    ctx.putImageData(target, 0, 0)
-    return canvas
 }
 
 export const createWaveformRenderer = (invalidate: () => void) => {
     let source: Waveform | undefined
     const images = new Map<string, Tile>()
     const visible = new Set<string>()
+    const contexts = new Set<WebGLDrawContext>()
     let bytes = 0
+
+    const release = (entry: Tile) => {
+        if (entry.image) entry.image.onload = null
+        for (const ctx of contexts) {
+            if (entry.image) ctx.releaseImage(entry.image)
+            if (entry.raster) ctx.releaseImage(entry.raster)
+            for (const reduction of entry.reductions) {
+                if (reduction.image) ctx.releaseImage(reduction.image)
+            }
+        }
+    }
 
     const prune = () => {
         for (const [href, entry] of images) {
@@ -53,18 +68,24 @@ export const createWaveformRenderer = (invalidate: () => void) => {
             // Never evict part of the current frame's working set: doing so can
             // trigger a decode/redraw loop when many tiles are visible together.
             if (visible.has(href)) continue
-            entry.image.onload = null
+            release(entry)
             images.delete(href)
             bytes -= entry.bytes
         }
     }
 
     const clear = () => {
-        for (const { image } of images.values()) image.onload = null
+        for (const entry of images.values()) release(entry)
         images.clear()
         visible.clear()
+        contexts.clear()
         bytes = 0
         source = undefined
+    }
+
+    const addBytes = (entry: Tile, count: number) => {
+        entry.bytes += count
+        bytes += count
     }
 
     return {
@@ -81,6 +102,7 @@ export const createWaveformRenderer = (invalidate: () => void) => {
             }
             visible.clear()
             if (!waveform) return
+            contexts.add(ctx)
 
             const min = Math.max(0, Math.floor((times.min + offset) / waveformDuration))
             const max = Math.min(
@@ -91,9 +113,9 @@ export const createWaveformRenderer = (invalidate: () => void) => {
                 const href = waveform.images[index]
                 if (href) visible.add(href)
             }
-            // prepareSurface rounds the backing dimensions. Its actual scale
-            // can be slightly below scale * DPR, so use the installed transform
-            // to avoid dropping isolated rows at a reduction threshold.
+            // Use the actual backing-pixel transform, whose native precision is
+            // preserved by the context. Rounding here would change which peak
+            // reduction is chosen at exact zoom boundaries in some browsers.
             const tilePixels = waveformDuration * Math.abs(ups * ctx.getTransform().d)
             ctx.save()
             ctx.globalAlpha = 0.25
@@ -104,52 +126,74 @@ export const createWaveformRenderer = (invalidate: () => void) => {
                 if (!href) continue
                 let entry = images.get(href)
                 if (!entry) {
-                    const image = new Image()
-                    const created: Tile = { image, reductions: [], bytes: 0 }
+                    const pixels = getWaveformTilePixels(href)
+                    const created: Tile = { pixels, reductions: [], bytes: 0 }
                     entry = created
                     images.set(href, entry)
-                    image.onload = () => {
-                        if (images.get(href) !== created) return
-                        bytes -= created.bytes
-                        created.reductions.length = 0
-                        created.bytes = image.naturalWidth * image.naturalHeight * 4
-                        bytes += created.bytes
-                        // Retained tiles can finish loading after a scroll. Only
-                        // the latest visible range needs another chart draw.
-                        if (visible.has(href)) invalidate()
-                        prune()
+                    if (!pixels) {
+                        const image = (created.image = new Image())
+                        image.onload = () => {
+                            if (images.get(href) !== created) return
+                            addBytes(created, image.naturalWidth * image.naturalHeight * 4)
+                            // Retained tiles can finish loading after a scroll. Only
+                            // the latest visible range needs another chart draw.
+                            if (visible.has(href)) invalidate()
+                            prune()
+                        }
+                        image.src = href
                     }
-                    image.src = href
                 }
                 // Keep recently used tiles within both decoded-pixel and count
                 // limits; pending images have no known decoded dimensions yet.
                 images.delete(href)
                 images.set(href, entry)
                 const { image } = entry
-                if (!image.complete || !image.naturalWidth) continue
-                let rendered: HTMLImageElement | HTMLCanvasElement = image
-                let height = image.naturalHeight
+                if (image && (!image.complete || !image.naturalWidth)) continue
+                let height = entry.pixels?.height ?? image?.naturalHeight ?? 0
+                let reduction: Reduction | undefined
                 if (waveform.style.imageRendering === 'pixelated') {
-                    for (let level = 0; height > Math.max(1, tilePixels); level++) {
-                        let reduced = entry.reductions[level]
-                        if (!reduced) {
-                            reduced = reduceTile(rendered)
-                            entry.reductions.push(reduced)
-                            const addedBytes = reduced.width * reduced.height * 4
-                            entry.bytes += addedBytes
-                            bytes += addedBytes
+                    if (height > Math.max(1, tilePixels) && !entry.pixels && image) {
+                        entry.pixels = readTilePixels(ctx, image)
+                        addBytes(entry, entry.pixels.alpha.byteLength)
+                    }
+                    let pixels = entry.pixels
+                    for (let level = 0; pixels && height > Math.max(1, tilePixels); level++) {
+                        reduction = entry.reductions[level]
+                        if (!reduction) {
+                            reduction = { pixels: reduceWaveformTilePixels(pixels) }
+                            entry.reductions.push(reduction)
+                            addBytes(entry, reduction.pixels.alpha.byteLength)
                         }
-                        rendered = reduced
-                        height = reduced.height
+                        pixels = reduction.pixels
+                        height = pixels.height
                     }
                     ctx.imageSmoothingEnabled = false
                 } else {
                     ctx.imageSmoothingEnabled = true
                 }
-                ctx.drawImage(rendered, 0, -index - 1, 1, 1)
+                let rendered: HTMLImageElement | ImageData | undefined
+                if (reduction) {
+                    if (!reduction.image) {
+                        reduction.image = createWaveformTileImage(reduction.pixels)
+                        addBytes(entry, reduction.image.data.byteLength)
+                    }
+                    rendered = reduction.image
+                } else if (image) {
+                    rendered = image
+                } else if (entry.pixels) {
+                    if (!entry.raster) {
+                        entry.raster = createWaveformTileImage(entry.pixels)
+                        addBytes(entry, entry.raster.data.byteLength)
+                    }
+                    rendered = entry.raster
+                }
+                if (!rendered) continue
+                const drawMethod =
+                    waveform.style.imageRendering === 'pixelated' ? 'drawWaveform' : 'drawImage'
+                ctx[drawMethod](rendered, 0, -index - 1, 1, 1)
                 ctx.save()
                 ctx.scale(-1, 1)
-                ctx.drawImage(rendered, 0, -index - 1, 1, 1)
+                ctx[drawMethod](rendered, 0, -index - 1, 1, 1)
                 ctx.restore()
             }
             ctx.restore()

@@ -10,8 +10,12 @@ type BriefEntity = { type: string; beat: number; left?: number; size?: number }
 declare global {
     interface Window {
         editorFrames: { chart: number; overlay: number }
-        /** The text and colour each detached canvas was drawn with, such as a name's sprite. */
-        editorLabels: WeakMap<HTMLCanvasElement, { text: string; color: string }>
+        /** The text and colour each detached render surface shows, such as a name sprite. */
+        editorLabels: WeakMap<object, { text: string; color: string }>
+        /** The real GPU drawing API, available to semantic rendering probes. */
+        editorRenderingReady: Promise<typeof import('../../src/rendering/context')>
+        editorRendering: typeof import('../../src/rendering/context')
+        installEditorRendering?: (rendering: typeof import('../../src/rendering/context')) => void
         editorTest: {
             history: typeof import('../../src/history')
             store: typeof import('../../src/history/store')
@@ -34,45 +38,72 @@ declare global {
     }
 }
 
-// Count actual on-screen clears without adding any application test hooks or
-// readbacks, which can change Chromium's deferred Canvas rendering behavior.
-export const installCanvasCounters = () => {
+// Observe the renderer's drawing calls without adding application test hooks or
+// readbacks. Native 2D remains available for independent SVG/reference rasters.
+export const installCanvasCounters = (legacyCanvas = false) => {
     // The Vite app loads more modules than the browser's default 250-entry
     // resource timing buffer. Retain their URLs for fixtures that must import
     // the same reactive module instances, including any HMR timestamps.
     performance.setResourceTimingBufferSize(5000)
     window.editorFrames = { chart: 0, overlay: 0 }
-    const count = (ctx: CanvasRenderingContext2D) => {
+    const count = (ctx: { canvas: object }) => {
         if (!(ctx.canvas instanceof HTMLCanvasElement)) return
         if (ctx.canvas.classList.contains('editor-chart')) window.editorFrames.chart++
         if (ctx.canvas.classList.contains('editor-overlay')) window.editorFrames.overlay++
     }
-    const clearRect = CanvasRenderingContext2D.prototype.clearRect
-    CanvasRenderingContext2D.prototype.clearRect = function (...args) {
-        count(this)
-        return clearRect.apply(this, args)
-    }
-    const fillRect = CanvasRenderingContext2D.prototype.fillRect
-    CanvasRenderingContext2D.prototype.fillRect = function (...args) {
-        if (this.globalCompositeOperation === 'copy') count(this)
-        return fillRect.apply(this, args)
-    }
     // Names are drawn once onto sprites and copied from there; remember what each shows.
     window.editorLabels = new WeakMap()
-    const fillText = CanvasRenderingContext2D.prototype.fillText
-    CanvasRenderingContext2D.prototype.fillText = function (...args) {
-        if (this.canvas instanceof HTMLCanvasElement && !this.canvas.isConnected)
-            window.editorLabels.set(this.canvas, { text: args[0], color: String(this.fillStyle) })
-        return fillText.apply(this, args)
+    const observe = (prototype: typeof CanvasRenderingContext2D.prototype, nativeClears = true) => {
+        if (nativeClears) {
+            const clearRect = prototype.clearRect
+            prototype.clearRect = function (...args) {
+                count(this)
+                return clearRect.apply(this, args)
+            }
+            const fillRect = prototype.fillRect
+            prototype.fillRect = function (...args) {
+                if (this.globalCompositeOperation === 'copy') count(this)
+                return fillRect.apply(this, args)
+            }
+        }
+        const fillText = prototype.fillText
+        prototype.fillText = function (...args) {
+            if (!(this.canvas instanceof HTMLCanvasElement) || !this.canvas.isConnected)
+                window.editorLabels.set(this.canvas, {
+                    text: args[0],
+                    color: String(this.fillStyle),
+                })
+            return fillText.apply(this, args)
+        }
     }
+    observe(CanvasRenderingContext2D.prototype)
     for (const setting of ['showPreview', 'showSidebar', 'autoSave']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
+    }
+    // Only the explicitly configured historical parity server uses this path.
+    // A missing GPU module in the current app must fail rather than silently
+    // make its rendering assertions exercise a different implementation.
+    if (legacyCanvas) return
+    const observed = new WeakSet<object>()
+    window.installEditorRendering = (rendering) => {
+        const prototype = rendering.WebGLDrawContext.prototype
+        if (!observed.has(prototype)) {
+            observed.add(prototype)
+            observe(prototype as unknown as CanvasRenderingContext2D, false)
+            const clear = prototype.clear
+            prototype.clear = function () {
+                count(this)
+                return clear.call(this)
+            }
+        }
+        window.editorRendering = rendering
+        window.editorRenderingReady = Promise.resolve(rendering)
     }
 }
 
 // This function is evaluated inside the page. Seed charts through the existing
 // model API; subsequent edit tests use real mouse and keyboard events.
-export const installEditorFixture = async () => {
+export const installEditorFixture = async (waitForRendering: boolean | void = true) => {
     const moduleUrls = new Map(
         performance
             .getEntriesByType('resource')
@@ -90,6 +121,16 @@ export const installEditorFixture = async () => {
         return pathname
     }
     const appImport = <T>(pathname: string): Promise<T> => import(resolve(pathname))
+    if (window.installEditorRendering) {
+        // Use the exact module instance the app loaded, including a Vite HMR
+        // timestamp. Importing during addInitScript could create a second class
+        // whose probes and context registry never see the displayed surfaces.
+        window.installEditorRendering(
+            await appImport<typeof import('../../src/rendering/context')>(
+                '/src/rendering/context.ts',
+            ),
+        )
+    }
     const history = await appImport<typeof import('../../src/history')>('/src/history/index.ts')
     const store = await appImport<typeof import('../../src/history/store')>('/src/history/store.ts')
     const { settings } = await appImport<typeof import('../../src/settings')>('/src/settings.ts')
@@ -378,6 +419,19 @@ export const installEditorFixture = async () => {
     view.division = 4
     view.snapping = 'absolute'
     await nextTick()
+    // Failure/retry tests deliberately seed a chart while its renderer cannot
+    // initialize. Their UI assertions own that boundary; ordinary fixtures wait.
+    if (waitForRendering && window.editorRendering) {
+        // Module loading does not finish the renderer's asynchronous init.
+        // Await the actual displayed contexts before tests create child surfaces.
+        await Promise.all(
+            [
+                ...document.querySelectorAll<HTMLCanvasElement>(
+                    'canvas.editor-chart, canvas.editor-overlay',
+                ),
+            ].map((canvas) => window.editorRendering.getDrawContext(canvas).ready),
+        )
+    }
 }
 
 export const useTool = (page: Page, name: string) =>

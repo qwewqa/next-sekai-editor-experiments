@@ -1,62 +1,58 @@
 import assert from 'node:assert/strict'
 import test, { type TestContext } from 'node:test'
-import {
-    blendOverChart,
-    chartBackground,
-    contrast,
-    nameColorOn,
-} from '../../src/editor/canvas/nameColors'
-import { createNameLayer, drawName, placeNames, type NameFill } from '../../src/editor/canvas/names'
+import { createNameLayer, drawName, placeNames } from '../../src/editor/canvas/names'
 import { createNoteRenderer } from '../../src/editor/canvas/notes'
 import { clearTextWidths } from '../../src/editor/canvas/text'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
+import type { WebGLDrawContext } from '../../src/rendering/context'
+import { DrawPath } from '../../src/rendering/path'
 import type { Entity } from '../../src/state/entities'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
+import { recordEditorLabel } from './recordedLabel'
+import { pathName } from './recordedPath'
 
-// Paths name themselves, or the paths added to them; a clip-out path names the path it carves.
-class TestPath {
-    static count = 0
-    id = `p${TestPath.count++}`
-    added: TestPath[] = []
-    rect() {}
-    roundRect() {}
-    moveTo() {}
-    lineTo() {}
-    closePath() {}
-    addPath(path: TestPath) {
-        this.added.push(path)
-    }
-    get name() {
-        return this.added.length ? this.added.map(({ id }) => id).join('+') : this.id
-    }
-}
-
-const installGlobal = (t: TestContext, name: string, value: unknown) => {
-    const original = Object.getOwnPropertyDescriptor(globalThis, name)
-    Object.defineProperty(globalThis, name, { configurable: true, value })
-    t.after(() => {
-        if (original) Object.defineProperty(globalThis, name, original)
-        else Reflect.deleteProperty(globalThis, name)
-    })
-}
-
-// Records each fillText with its colour and the clips in force.
+// Records each complete label with its original colour, opacity and inherited clips.
 const recordingContext = (nameContrast = true) => {
-    const texts: { text: string; color: string; clips: string[] }[] = []
-    const stack: string[][] = []
+    const texts: { text: string; color: string; clips: string[]; alpha: number }[] = []
+    const stack: { clips: string[]; alpha: unknown }[] = []
     let clips: string[] = []
-    const target: Record<string, unknown> = { globalAlpha: 1, font: '10px sans-serif' }
+    const target: Record<string, unknown> = {
+        globalAlpha: 1,
+        font: '10px sans-serif',
+        resourceOwner: {},
+        isContextLost: () => false,
+    }
     const ctx = new Proxy(target, {
         get(target, property) {
             if (property in target) return Reflect.get(target, property)
             switch (property) {
+                case 'drawEditorLabel':
+                    return recordEditorLabel
+                case 'createSurface':
+                    return (width: number, height: number) => {
+                        const surface = {
+                            width,
+                            height,
+                            getContext: () => ctx,
+                            dispose() {
+                                surface.width = surface.height = 0
+                            },
+                        }
+                        return surface
+                    }
                 case 'save':
-                    return () => stack.push([...clips])
+                    return () => stack.push({ clips: [...clips], alpha: target.globalAlpha })
                 case 'restore':
-                    return () => (clips = stack.pop() ?? [])
+                    return () => {
+                        const saved = stack.pop()
+                        clips = saved?.clips ?? []
+                        if (saved) target.globalAlpha = saved.alpha
+                    }
                 case 'clip':
-                    return (path: TestPath, rule?: string) =>
-                        clips.push(`${rule === 'evenodd' ? 'out' : 'in'}:${path.name}`)
+                    return (path?: DrawPath, rule?: string) => {
+                        if (path)
+                            clips.push(`${rule === 'evenodd' ? 'out' : 'in'}:${pathName(path)}`)
+                    }
                 // Every glyph is 0.5 em wide.
                 case 'measureText':
                     return (text: string) => ({
@@ -64,12 +60,17 @@ const recordingContext = (nameContrast = true) => {
                     })
                 case 'fillText':
                     return (text: string) =>
-                        texts.push({ text, color: target.fillStyle as string, clips: [...clips] })
+                        texts.push({
+                            text,
+                            color: target.fillStyle as string,
+                            clips: [...clips],
+                            alpha: Number(target.globalAlpha),
+                        })
                 default:
                     return () => {}
             }
         },
-    }) as unknown as CanvasRenderingContext2D
+    }) as unknown as WebGLDrawContext
     const context = {
         ctx,
         scale: 10,
@@ -82,92 +83,30 @@ const recordingContext = (nameContrast = true) => {
     return { context, texts }
 }
 
-const fill = (owner: Entity | undefined, l: number, r: number, b: number, color: string) => {
-    const path = new TestPath()
-    const fill: NameFill = {
-        owner,
-        box: { l, r, t: -1, b },
-        shapes: () => [path as unknown as Path2D],
-        colorsAt: () => [color],
-    }
-    return { fill, id: path.id }
-}
-
-test('names keep their colour on the chart background and darken on light note bodies', () => {
-    assert.equal(nameColorOn('#f6f', [chartBackground.value]), '#f6f')
-    assert.equal(nameColorOn('#0aa', [chartBackground.value]), '#0aa')
-    // The dark pair on a light note body, darker steps where it falls short.
-    assert.equal(nameColorOn('#f6f', ['#dafdf1']), '#a0a')
-    assert.equal(nameColorOn('#0aa', ['#dafdf1']), '#077')
-    assert.equal(nameColorOn('#f6f', ['#aabfff']), '#808')
-    assert.equal(nameColorOn('#f6f', ['#999999']), '#404')
-    for (const fill of ['#dafdf1', '#aabfff', '#999999', '#fed983']) {
-        for (const color of ['#f6f', '#0aa'])
-            assert.ok(contrast(nameColorOn(color, [fill]), fill) >= 4.5, `${color} on ${fill}`)
-    }
-    // Dark bodies keep the name's own colour.
-    assert.equal(nameColorOn('#f6f', ['#a50acc']), '#f6f')
-    assert.equal(nameColorOn('#0aa', ['#555555']), '#0aa')
-    assert.equal(nameColorOn('#f6f', ['#222222']), '#f6f')
-})
-
-test('over connectors, names darken at most two steps and keep their hue', () => {
-    const steps = { '#f6f': ['#f6f', '#a0a', '#808'], '#0aa': ['#0aa', '#077', '#055'] }
-    // The first step reading as well as on the background...
-    const active = blendOverChart('#7fffd3', 0.8)
-    assert.equal(nameColorOn('#f6f', [active], true), '#808')
-    assert.equal(nameColorOn('#0aa', [active], true), '#055')
-    const critical = blendOverChart('#fbffdc', 0.8)
-    assert.equal(nameColorOn('#f6f', [critical], true), '#a0a')
-    // ...or the best of them, never darker or lighter.
-    const guide = blendOverChart('#73d69d', 0.5)
-    assert.equal(nameColorOn('#f6f', [guide], true), '#808')
-    const damage = blendOverChart('#c764c7', 0.8)
-    assert.equal(nameColorOn('#f6f', [damage], true), '#808')
-    const black = blendOverChart('#000000', 0.5)
-    assert.equal(nameColorOn('#f6f', [black], true), '#f6f')
-    for (const fill of [active, critical, guide, damage, black, '#ffffff', '#6970bf']) {
-        for (const [color, allowed] of Object.entries(steps))
-            assert.ok(allowed.includes(nameColorOn(color, [fill], true)), `${color} on ${fill}`)
-    }
-})
-
-test('a name splits only over its own note body and slide connectors, later fills on top', (t) => {
-    installGlobal(t, 'Path2D', TestPath)
+test('whole names retain their role colours, inherited clips and opacity, with highlighted names last', () => {
     const { context, texts } = recordingContext()
-    const a = { type: 'note' } as Entity
-    const b = { type: 'note' } as Entity
-    const joint = { type: 'stagePivotEventJoint' } as Entity
-    const connector = fill(undefined, -10, 10, 6, blendOverChart('#7fffd3', 0.8))
-    const own = fill(a, -1, 1, 1, '#dafdf1')
-    const other = fill(b, -1, 1, 1, '#dafdf1')
+    const clip = new DrawPath()
+    clip.rect(-40, -40, 80, 80)
+    context.ctx.clip(clip)
+    context.ctx.globalAlpha = 0.8
     const layer = createNameLayer()
-    layer.fills.push(connector.fill, own.fill, other.fill)
-    const name = { highlighted: false, size: 0.4, align: 'center' as const, alpha: 1, x: 0 }
+    const name = { size: 0.4, align: 'center' as const, x: 0, owner: {} as Entity }
     layer.names.push(
-        { ...name, owner: a, text: 'Stage', y: 0, color: '#f6f' },
-        // Over the connector only, then on the plain background.
-        { ...name, owner: joint, text: 'Group', y: 5, color: '#0aa' },
-        { ...name, owner: joint, text: 'Far', y: 20, color: '#f6f' },
+        { ...name, highlighted: false, text: 'Group', y: 0, color: '#0aa', alpha: 0.35 },
+        { ...name, highlighted: true, text: 'Stage', y: 10, color: '#f6f', alpha: 0.6 },
+        { ...name, highlighted: false, text: 'Far', y: 5, color: '#f6f', alpha: 1 },
     )
     placeNames(context, layer)
     assert.deepEqual(texts, [
-        // Outside both fills in its own colour, never carving out another note's body.
-        { text: 'Stage', color: '#f6f', clips: [`out:${connector.id}`, `out:${own.id}`] },
-        { text: 'Stage', color: '#808', clips: [`in:${connector.id}`, `out:${own.id}`] },
-        { text: 'Stage', color: '#a0a', clips: [`in:${own.id}`] },
-        { text: 'Group', color: '#0aa', clips: [`out:${connector.id}`] },
-        { text: 'Group', color: '#055', clips: [`in:${connector.id}`] },
-        { text: 'Far', color: '#f6f', clips: [] },
+        { text: 'Group', color: '#0aa', clips: [`in:${pathName(clip)}`], alpha: 0.35 },
+        { text: 'Far', color: '#f6f', clips: [`in:${pathName(clip)}`], alpha: 1 },
+        { text: 'Stage', color: '#f6f', clips: [`in:${pathName(clip)}`], alpha: 0.6 },
     ])
+    assert.equal(context.ctx.globalAlpha, 0.8)
 })
 
 const noteScene = (t: TestContext, nameContrast = true) => {
-    installGlobal(t, 'Path2D', TestPath)
     const { context, texts } = recordingContext(nameContrast)
-    installGlobal(t, 'document', {
-        createElement: () => ({ width: 0, height: 0, getContext: () => context.ctx }),
-    })
     Object.assign(context, {
         ups: -2,
         recentlyActive: false,
@@ -196,79 +135,70 @@ const noteScene = (t: TestContext, nameContrast = true) => {
             stageId: 2,
             ...properties,
         }) as NoteEntity
-    return { context, texts, note, renderer: createNoteRenderer() }
+    const renderer = createNoteRenderer()
+    t.after(() => renderer.clear())
+    return { context, texts, note, renderer }
 }
 
-test('a note gives its names one fill for its whole body, in the colours under them', (t) => {
+test('different note bodies queue one complete name with the note opacity', (t) => {
     const { context, note, renderer } = noteScene(t)
-    const fills = (entity: NoteEntity, highlighted = true, opacity = 1) => {
+    for (const noteType of ['default', 'trace', 'damage', 'anchor'] as const) {
         const names = createNameLayer()
-        renderer.draw({ ...context, names }, entity, highlighted, opacity)
-        return names.fills.map(({ owner, box, colorsAt }) => ({
-            own: owner === entity,
-            box: Object.values(box).map((v) => Math.round(v * 100) / 100),
-            colors: colorsAt(0),
-        }))
+        const entity = note({ noteType })
+        renderer.draw({ ...context, names }, entity, true, 0.5)
+        assert.equal(names.names.length, 1, noteType)
+        assert.equal(names.names[0]?.owner, entity)
+        assert.equal(names.names[0]?.text, 'Side stage')
+        assert.equal(names.names[0]?.color, '#f6f')
+        assert.equal(names.names[0]?.alpha, 0.5)
+        assert.equal(names.names[0]?.highlighted, true)
     }
-    // A single note's inner body, across its whole outline.
-    assert.deepEqual(fills(note({})), [{ own: true, box: [1, 3, -0.3, 0.3], colors: ['#e6edff'] }])
-    // A trace's box and diamond, and a dimmed note's colours as seen.
-    assert.deepEqual(fills(note({ noteType: 'trace' })), [
-        { own: true, box: [1, 3, -0.3, 0.15], colors: ['#5fefc2', '#abfbe3'] },
-    ])
-    assert.deepEqual(fills(note({ noteType: 'damage', size: 0 }), true, 0.5), [
-        { own: true, box: [0.9, 1.1, -0.15, 0.15], colors: [blendOverChart('#a50acc', 0.5)] },
-    ])
-    // Anchors have no body, and notes without names add nothing.
-    assert.deepEqual(fills(note({ noteType: 'anchor' })), [])
-    assert.deepEqual(fills(note({}), false), [])
+    const inactive = createNameLayer()
+    renderer.draw({ ...context, names: inactive }, note({}), false, 1)
+    assert.deepEqual(inactive.names, [])
 })
 
-test('a name over a trace darkens over both its box and its diamond', (t) => {
-    const { context, texts, note, renderer } = noteScene(t)
-    const names = createNameLayer()
-    renderer.draw({ ...context, names }, note({ noteType: 'trace' }), true, 1)
-    const [box, diamond] = (names.fills[0]?.shapes() ?? []) as unknown as TestPath[]
-    assert.ok(box && diamond)
-    placeNames(context, names)
-    assert.deepEqual(texts, [
-        { text: 'Side stage', color: '#f6f', clips: [`out:${box.id}`, `out:${diamond.id}`] },
-        { text: 'Side stage', color: '#808', clips: [`in:${box.id}+${diamond.id}`] },
-    ])
-})
+for (const enabled of [false, true]) {
+    test(`stage names use their role colour without body-dependent repainting (contrast ${enabled})`, (t) => {
+        const { context, texts, note, renderer } = noteScene(t, enabled)
+        const names = createNameLayer()
+        renderer.draw({ ...context, names }, note({ noteType: 'trace' }), true, 0.5)
+        placeNames(context, names)
+        // Paste ghosts and other immediate names follow the same colour rule.
+        renderer.draw(context, note({ noteType: 'damage', beat: 4 }), true, 1)
+        assert.deepEqual(texts, [
+            { text: 'Side stage', color: enabled ? '#f6f' : '#a0a', clips: [], alpha: 0.5 },
+            { text: 'Side stage', color: enabled ? '#f6f' : '#a0a', clips: [], alpha: 1 },
+        ])
+    })
+}
 
-test('without name contrast, names draw once in their own colours', (t) => {
-    const { context, texts, note, renderer } = noteScene(t, false)
-    // Notes mark no fills, whether names are collected or drawn at once.
-    const names = createNameLayer()
-    renderer.draw({ ...context, names }, note({}), true, 1)
-    assert.deepEqual(names.fills, [])
-    placeNames(context, names)
-    renderer.draw(context, note({ noteType: 'trace', beat: 4 }), true, 1)
-    // Fills already collected are ignored.
+test('fully transparent names do not suppress visible names at the same position', () => {
+    const { context, texts } = recordingContext(false)
     const layer = createNameLayer()
-    const owner = { type: 'note' } as Entity
-    layer.fills.push(
-        fill(undefined, -10, 10, 6, blendOverChart('#7fffd3', 0.8)).fill,
-        fill(owner, -1, 1, 1, '#dafdf1').fill,
-    )
-    layer.names.push({
-        owner,
-        highlighted: false,
-        text: 'Group',
+    const name = {
         x: 0,
         y: 0,
-        color: '#0aa',
         size: 0.4,
-        align: 'center',
-        alpha: 1,
-    })
+        align: 'center' as const,
+        color: '#f6f',
+    }
+    layer.names.push(
+        {
+            ...name,
+            owner: {} as Entity,
+            text: 'Transparent ordinary',
+            alpha: 0,
+            highlighted: false,
+        },
+        { ...name, owner: {} as Entity, text: 'Transparent selected', alpha: 0, highlighted: true },
+        { ...name, owner: {} as Entity, text: 'Visible', alpha: 1, highlighted: false },
+    )
     placeNames(context, layer)
-    assert.deepEqual(texts, [
-        { text: 'Side stage', color: '#a0a', clips: [] },
-        { text: 'Side stage', color: '#a0a', clips: [] },
-        { text: 'Group', color: '#0aa', clips: [] },
-    ])
+    assert.deepEqual(
+        texts.map(({ text }) => text),
+        ['Visible'],
+    )
 })
 
 test('names are measured once per font and zoom, and again after a font loads', () => {

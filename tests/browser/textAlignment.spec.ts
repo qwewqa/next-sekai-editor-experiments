@@ -83,7 +83,7 @@ const cases: TextCase[] = [
 ]
 
 for (const pixelRatio of [1, 1.25, 2]) {
-    test(`Canvas text matches SVG alignment at pixel ratio ${pixelRatio}`, async ({ page }) => {
+    test(`WebGL text matches SVG alignment at pixel ratio ${pixelRatio}`, async ({ page }) => {
         await page.goto('/')
         await page.evaluate(() => document.fonts.ready)
         const results = await page.evaluate(
@@ -92,6 +92,8 @@ for (const pixelRatio of [1, 1.25, 2]) {
                 const { drawText, measureFigureMiddle, measureTextMiddle } = (await import(
                     modulePath
                 )) as typeof import('../../src/editor/canvas/text')
+                const { disposeDrawContext, getDrawContext } =
+                    await import('/src/rendering/context.ts')
                 const width = 512
                 const height = 160
                 const results = []
@@ -104,7 +106,8 @@ for (const pixelRatio of [1, 1.25, 2]) {
                     canvas.width = width * pixelRatio
                     canvas.height = height * pixelRatio
                     parent.append(canvas)
-                    const ctx = canvas.getContext('2d')!
+                    const ctx = getDrawContext(canvas)
+                    if ('ready' in ctx) await ctx.ready
                     ctx.setTransform(item.scale * pixelRatio, 0, 0, item.scale * pixelRatio, 0, 0)
                     const context = {
                         ctx,
@@ -168,7 +171,7 @@ for (const pixelRatio of [1, 1.25, 2]) {
                     const referenceContext = reference.getContext('2d')!
                     referenceContext.drawImage(image, 0, 0)
                     URL.revokeObjectURL(url)
-                    const measureInk = (target: CanvasRenderingContext2D) => {
+                    const measureInk = (target: Pick<CanvasRenderingContext2D, 'getImageData'>) => {
                         const pixels = target.getImageData(0, 0, canvas.width, canvas.height).data
                         let left = canvas.width
                         let right = -1
@@ -199,6 +202,7 @@ for (const pixelRatio of [1, 1.25, 2]) {
                         actual: measureInk(ctx),
                         reference: measureInk(referenceContext),
                     })
+                    disposeDrawContext(canvas)
                     parent.remove()
                 }
                 return results
@@ -247,7 +251,9 @@ test('a split name draws each pixel once where a trace box and its diamond overl
         const canvas = document.createElement('canvas')
         canvas.width = 200
         canvas.height = 100
-        const ctx = canvas.getContext('2d')!
+        const { disposeDrawContext, getDrawContext } = await import('/src/rendering/context.ts')
+        const ctx = getDrawContext(canvas)
+        if ('ready' in ctx) await ctx.ready
         ctx.setTransform(40, 0, 0, 40, 0, 0)
         const context = {
             ctx,
@@ -292,8 +298,9 @@ test('a split name draws each pixel once where a trace box and its diamond overl
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.restore()
-        ctx.fillText = function () {
+        ctx.drawEditorLabel = function (_text, _x, _y, color) {
             this.save()
+            this.fillStyle = color
             this.setTransform(1, 0, 0, 1, 0, 0)
             this.fillRect(0, 0, canvas.width, canvas.height)
             this.restore()
@@ -301,7 +308,9 @@ test('a split name draws each pixel once where a trace box and its diamond overl
         placeNames(context, names)
         const pixel = (x: number, y: number) => [...ctx.getImageData(x * 40, y * 40, 1, 1).data]
         // The diamond's middle, and the box well clear of the diamond.
-        return [pixel(2, 1.3), pixel(1.4, 1.3)]
+        const result = [pixel(2, 1.3), pixel(1.4, 1.3)] as const
+        disposeDrawContext(canvas)
+        return result
     })
     expect(box[3]).toBeGreaterThan(100)
     expect(box[3]).toBeLessThan(160)

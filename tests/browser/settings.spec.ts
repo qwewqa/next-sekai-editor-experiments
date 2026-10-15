@@ -624,10 +624,12 @@ test('a punctuation shortcut reads larger and bold, as in the toolbar', async ({
 test('Name Contrast follows the Show Other rows rather than splitting them', async ({ page }) => {
     const labels = await page.getByRole('dialog').locator('.form-field-text').allTextContents()
     const start = labels.indexOf('Show Group Name')
-    expect(labels.slice(start, start + 7)).toEqual([
+    expect(labels.slice(start, start + 9)).toEqual([
         'Show Group Name',
+        'Hide group names when focusing a group',
         'Show Other Groups',
         'Show Stage Name',
+        'Hide stage names when focusing a stage',
         'Show Other Stages',
         'Show Other Objects',
         'Name Contrast',
@@ -635,36 +637,63 @@ test('Name Contrast follows the Show Other rows rather than splitting them', asy
     ])
 })
 
-test('Name Contrast is off by default, persists and recolours names', async ({ page }) => {
+test('Name Contrast is off by default, persists and outlines whole names in their role colours', async ({
+    page,
+}) => {
     const key = 'sonolus-next-sekai-editor.nameContrast'
     const toggle = page
         .getByRole('dialog')
         .locator('label')
         .filter({ has: page.getByText('Name Contrast', { exact: true }) })
         .getByRole('switch')
-    // Colours of each stage and group name drawn on the chart in the next frames.
-    const nameColors = () =>
+    // Inspect the actual complete name sprites drawn on the chart, including black halo pixels.
+    const nameAppearance = () =>
         page.evaluate(async () => {
             const { show, fixtures, history } = window.editorTest
-            const drawn: Record<string, string[]> = {}
-            const record = (canvas: unknown, text: string | undefined, color: string) => {
+            const drawn: Record<string, { color: string; halo: boolean }[]> = {}
+            const record = (
+                canvas: unknown,
+                text: string | undefined,
+                color: string,
+                halo: boolean,
+            ) => {
                 if (
                     canvas instanceof HTMLCanvasElement &&
                     canvas.classList.contains('editor-chart') &&
                     (text === 'Center' || text === 'Other group')
                 )
-                    (drawn[text] ??= []).push(color)
+                    (drawn[text] ??= []).push({ color, halo })
             }
-            const { drawImage, fillText } = CanvasRenderingContext2D.prototype
-            CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
-                record(this.canvas, text, String(this.fillStyle))
-                return fillText.call(this, text, ...args)
+            const { WebGLDrawContext } = await window.editorTest.appImport<
+                typeof import('../../src/rendering/context')
+            >('/src/rendering/context.ts')
+            const { drawNameSprite, drawEditorLabel } = WebGLDrawContext.prototype
+            WebGLDrawContext.prototype.drawEditorLabel = function (text, x, y, color, ...args) {
+                record(this.canvas, text, color, false)
+                return drawEditorLabel.call(this, text, x, y, color, ...args)
             }
             // Names draw from their sprites.
-            CanvasRenderingContext2D.prototype.drawImage = function (...args: unknown[]) {
-                const label = window.editorLabels.get(args[0] as HTMLCanvasElement)
-                if (label) record(this.canvas, label.text, label.color)
-                return (drawImage as (...args: unknown[]) => void).apply(this, args)
+            WebGLDrawContext.prototype.drawNameSprite = function (source, x, y) {
+                const label = window.editorLabels.get(source)
+                if (label && source instanceof HTMLCanvasElement) {
+                    const pixels = source
+                        .getContext('2d')!
+                        .getImageData(0, 0, source.width, source.height).data
+                    let halo = false
+                    for (let index = 0; index < pixels.length; index += 4) {
+                        if (
+                            pixels[index + 3] &&
+                            !pixels[index] &&
+                            !pixels[index + 1] &&
+                            !pixels[index + 2]
+                        ) {
+                            halo = true
+                            break
+                        }
+                    }
+                    record(this.canvas, label.text, label.color, halo)
+                }
+                return drawNameSprite.call(this, source, x, y)
             }
             show(fixtures.connectors, 8)
             history.replaceState({
@@ -674,23 +703,37 @@ test('Name Contrast is off by default, persists and recolours names', async ({ p
             await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             )
-            Object.assign(CanvasRenderingContext2D.prototype, { drawImage, fillText })
+            Object.assign(WebGLDrawContext.prototype, { drawNameSprite, drawEditorLabel })
             return Object.fromEntries(
-                Object.entries(drawn).map(([text, colors]) => [text, [...new Set(colors)]]),
+                Object.entries(drawn).map(([text, appearances]) => [
+                    text,
+                    appearances.filter(
+                        (appearance, index) =>
+                            appearances.findIndex(
+                                (other) =>
+                                    other.color === appearance.color &&
+                                    other.halo === appearance.halo,
+                            ) === index,
+                    ),
+                ]),
             )
         })
 
     await expect(toggle).toHaveValue('Disabled')
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
     // Off, names keep their plain colours over note bodies and connectors.
-    expect(await nameColors()).toEqual({ Center: ['#aa00aa'], 'Other group': ['#00aaaa'] })
+    expect(await nameAppearance()).toEqual({
+        Center: [{ color: '#aa00aa', halo: false }],
+        'Other group': [{ color: '#00aaaa', halo: false }],
+    })
 
     await toggle.click()
     await expect(toggle).toHaveValue('Enabled')
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe('true')
-    const on = await nameColors()
-    expect(on.Center).toEqual(expect.arrayContaining(['#ff66ff', '#aa00aa']))
-    expect(on['Other group']).toEqual(expect.arrayContaining(['#00aaaa', '#005555']))
+    expect(await nameAppearance()).toEqual({
+        Center: [{ color: '#ff66ff', halo: true }],
+        'Other group': [{ color: '#00aaaa', halo: true }],
+    })
 
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -701,7 +744,10 @@ test('Name Contrast is off by default, persists and recolours names', async ({ p
     await toggle.click()
     await expect(toggle).toHaveValue('Disabled')
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
-    expect(await nameColors()).toEqual({ Center: ['#aa00aa'], 'Other group': ['#00aaaa'] })
+    expect(await nameAppearance()).toEqual({
+        Center: [{ color: '#aa00aa', halo: false }],
+        'Other group': [{ color: '#00aaaa', halo: false }],
+    })
 })
 
 test('with storage full, a changed setting still applies without an error', async ({ page }) => {

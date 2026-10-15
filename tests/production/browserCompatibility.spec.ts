@@ -142,12 +142,26 @@ test('elevation controls and menus fit portrait and landscape viewports', async 
     await page.screenshot({ path: testInfo.outputPath('compatibility-landscape.png') })
 })
 
-test('note rendering works when roundRect is unavailable', async ({ page }) => {
+test('WebGL2 note rendering works without native Canvas2D shape drawing', async ({ page }) => {
     await page.addInitScript(() => {
         Object.defineProperty(CanvasRenderingContext2D.prototype, 'roundRect', {
             configurable: true,
             value: undefined,
         })
+        const getContext = HTMLCanvasElement.prototype.getContext
+        HTMLCanvasElement.prototype.getContext = function (
+            this: HTMLCanvasElement,
+            ...args: [string, ...unknown[]]
+        ) {
+            if (
+                args[0] === '2d' &&
+                this.matches(
+                    '.editor-chart, .editor-overlay, .elevation-canvas, .preview-selection',
+                )
+            )
+                throw new Error('A displayed editor surface requested native Canvas2D')
+            return Reflect.apply(getContext, this, args)
+        } as typeof getContext
     })
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -158,18 +172,44 @@ test('note rendering works when roundRect is unavailable', async ({ page }) => {
     ).setFiles({ name: 'fallback.usc', mimeType: 'application/json', buffer: chart })
     await expect(page.locator('.notification')).toHaveText('Imported USC chart')
     await expect
-        .poll(() =>
-            page.locator('canvas.editor-chart').evaluate((canvas: HTMLCanvasElement) => {
-                const ctx = canvas.getContext('2d')!
-                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+        .poll(async () => {
+            // Read the actual composited output; the native reference canvas
+            // below only decodes a browser screenshot and never renders notes.
+            const screenshot = await page.locator('canvas.editor-chart').screenshot()
+            return page.evaluate(async (png) => {
+                const image = new Image()
+                image.src = `data:image/png;base64,${png}`
+                await image.decode()
+                const reference = document.createElement('canvas')
+                reference.width = image.naturalWidth
+                reference.height = image.naturalHeight
+                const ctx = reference.getContext('2d')!
+                ctx.drawImage(image, 0, 0)
+                const data = ctx.getImageData(0, 0, reference.width, reference.height).data
                 let colored = 0
                 for (let i = 0; i < data.length; i += 4)
                     if (data[i + 3]! > 0 && data[i + 1]! - data[i]! > 10 && data[i + 2]! > 180)
                         colored++
                 return colored
-            }),
-        )
+            }, screenshot.toString('base64'))
+        })
         .toBeGreaterThan(10)
+    await page.keyboard.press('f')
+    const bounds = await page.locator('canvas.editor-chart').boundingBox()
+    if (!bounds) throw new Error('Missing editor canvas')
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 30)
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    const versions = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLCanvasElement>('.editor-chart, .elevation-canvas')].map(
+            (canvas) => {
+                const gl = canvas.getContext('webgl2')
+                return gl?.getParameter(gl.VERSION) as string | undefined
+            },
+        ),
+    )
+    expect(versions).toHaveLength(2)
+    for (const version of versions) expect(version).toMatch(/^WebGL 2\.0/)
 })
 
 test('lane limit commands clamp note placement in the production editor', async ({

@@ -22,8 +22,8 @@ export default defineConfig({
         screenshot: 'only-on-failure',
         launchOptions: {
             executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-            // Exercise Chromium's deferred GPU Canvas backend consistently,
-            // including the stale-overlay regression, without a hardware GPU.
+            // Exercise WebGL consistently, including the stale-overlay regression,
+            // without requiring a hardware GPU.
             args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
         },
     },

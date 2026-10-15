@@ -45,6 +45,10 @@ const fixture = (t: TestContext) => {
         drawImage(image: TestImage) {
             drawn.push(image)
         },
+        drawWaveform(image: TestImage) {
+            drawn.push(image)
+        },
+        releaseImage() {},
     }
     const renderer = createWaveformRenderer(() => invalidations++)
     const waveform: Waveform = {

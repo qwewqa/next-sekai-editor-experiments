@@ -36,15 +36,15 @@ export type PreviewRenderer = {
     dispose: () => void
 }
 
-const VERTEX_SHADER = `
-attribute vec2 a_position;
-attribute vec3 a_uvw;
-attribute float a_texture;
-attribute vec4 a_color;
+const VERTEX_SHADER = `#version 300 es
+in vec2 a_position;
+in vec3 a_uvw;
+in float a_texture;
+in vec4 a_color;
 uniform float u_aspect;
-varying vec3 v_uvw;
-varying float v_texture;
-varying vec4 v_color;
+out vec3 v_uvw;
+out float v_texture;
+out vec4 v_color;
 void main() {
     gl_Position = vec4(a_position.x / u_aspect, a_position.y, 0.0, 1.0);
     v_uvw = a_uvw;
@@ -53,17 +53,18 @@ void main() {
 }
 `
 
-const FRAGMENT_SHADER = `
+const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 uniform sampler2D u_texture0;
 uniform sampler2D u_texture1;
-varying vec3 v_uvw;
-varying float v_texture;
-varying vec4 v_color;
+in vec3 v_uvw;
+in float v_texture;
+in vec4 v_color;
+out vec4 outColor;
 void main() {
     vec2 uv = v_uvw.xy / v_uvw.z;
-    vec4 color = mix(texture2D(u_texture0, uv), texture2D(u_texture1, uv), v_texture);
-    gl_FragColor = vec4(color.rgb * v_color.rgb * v_color.a, color.a * v_color.a);
+    vec4 color = mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
+    outColor = vec4(color.rgb * v_color.rgb * v_color.a, color.a * v_color.a);
 }
 `
 
@@ -139,62 +140,114 @@ export const createPreviewRenderer = (
     antialias = true,
 ): PreviewRenderer => {
     const getContext = (antialias: boolean) =>
-        canvas.getContext('webgl', { alpha: true, antialias, premultipliedAlpha: true })
+        canvas.getContext('webgl2', { alpha: true, antialias, premultipliedAlpha: true })
     const gl = getContext(antialias) ?? (antialias ? getContext(false) : null)
-    if (!gl) throw new Error('WebGL is unavailable or disabled in this browser')
+    if (!gl) throw new Error('WebGL2 is unavailable or disabled in this browser')
 
-    const maxViewportDimensions = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
-
-    const compile = (type: number, source: string) => {
-        const shader = gl.createShader(type)
-        if (!shader) throw new Error('Failed to create shader')
-
-        gl.shaderSource(shader, source)
-        gl.compileShader(shader)
-        return shader
+    const shaders: WebGLShader[] = []
+    const textures: WebGLTexture[] = []
+    let program: WebGLProgram | null = null
+    let buffer: WebGLBuffer | null = null
+    let disposed = false
+    const deleteResources = () => {
+        if (disposed) return
+        disposed = true
+        for (const texture of textures) gl.deleteTexture(texture)
+        textures.length = 0
+        if (buffer) {
+            gl.deleteBuffer(buffer)
+            buffer = null
+        }
+        if (program) {
+            gl.useProgram(null)
+            gl.deleteProgram(program)
+            program = null
+        }
+        for (const shader of shaders) gl.deleteShader(shader)
+        shaders.length = 0
+        // Explicit deletion also releases resources on implementations without this
+        // optional extension; losing the context additionally frees its browser slot.
+        gl.getExtension('WEBGL_lose_context')?.loseContext()
     }
 
-    const program = gl.createProgram()
-
-    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER))
-    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER))
-    gl.linkProgram(program)
-    gl.useProgram(program)
-
-    const positionLocation = gl.getAttribLocation(program, 'a_position')
-    const uvwLocation = gl.getAttribLocation(program, 'a_uvw')
-    const textureLocation = gl.getAttribLocation(program, 'a_texture')
-    const colorLocation = gl.getAttribLocation(program, 'a_color')
-    const aspectLocation = gl.getUniformLocation(program, 'u_aspect')
-
-    gl.uniform1i(gl.getUniformLocation(program, 'u_texture0'), 0)
-    gl.uniform1i(gl.getUniformLocation(program, 'u_texture1'), 1)
-
-    const buffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-
-    const stride = FLOATS_PER_VERTEX * 4
-    gl.enableVertexAttribArray(positionLocation)
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, stride, 0)
-    gl.enableVertexAttribArray(uvwLocation)
-    gl.vertexAttribPointer(uvwLocation, 3, gl.FLOAT, false, stride, 8)
-    gl.enableVertexAttribArray(textureLocation)
-    gl.vertexAttribPointer(textureLocation, 1, gl.FLOAT, false, stride, 20)
-    gl.enableVertexAttribArray(colorLocation)
-    gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, stride, 24)
-
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-    gl.clearColor(0, 0, 0, 0)
-
-    const textures = [gl.createTexture(), gl.createTexture()]
+    const maxViewportDimensions = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
     const hasTextures = [false, false]
+    let aspectLocation: WebGLUniformLocation | null
 
-    for (const [i, texture] of textures.entries()) {
-        gl.activeTexture(gl.TEXTURE0 + i)
-        gl.bindTexture(gl.TEXTURE_2D, texture)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    try {
+        const compile = (type: number, source: string) => {
+            const shader = gl.createShader(type)
+            if (!shader) throw new Error('Failed to create shader')
+            shaders.push(shader)
+
+            gl.shaderSource(shader, source)
+            gl.compileShader(shader)
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+                throw new Error(
+                    `Failed to compile preview shader: ${gl.getShaderInfoLog(shader) ?? ''}`,
+                )
+            return shader
+        }
+
+        program = gl.createProgram()
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
+        if (!program) throw new Error('Failed to create preview shader program')
+
+        gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER))
+        gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER))
+        gl.linkProgram(program)
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+            throw new Error(
+                `Failed to link preview shader program: ${gl.getProgramInfoLog(program) ?? ''}`,
+            )
+        for (const shader of shaders) {
+            gl.detachShader(program, shader)
+            gl.deleteShader(shader)
+        }
+        shaders.length = 0
+        gl.useProgram(program)
+
+        const positionLocation = gl.getAttribLocation(program, 'a_position')
+        const uvwLocation = gl.getAttribLocation(program, 'a_uvw')
+        const textureLocation = gl.getAttribLocation(program, 'a_texture')
+        const colorLocation = gl.getAttribLocation(program, 'a_color')
+        aspectLocation = gl.getUniformLocation(program, 'u_aspect')
+
+        gl.uniform1i(gl.getUniformLocation(program, 'u_texture0'), 0)
+        gl.uniform1i(gl.getUniformLocation(program, 'u_texture1'), 1)
+
+        buffer = gl.createBuffer()
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
+        if (!buffer) throw new Error('Failed to create preview vertex buffer')
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+
+        const stride = FLOATS_PER_VERTEX * 4
+        gl.enableVertexAttribArray(positionLocation)
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, stride, 0)
+        gl.enableVertexAttribArray(uvwLocation)
+        gl.vertexAttribPointer(uvwLocation, 3, gl.FLOAT, false, stride, 8)
+        gl.enableVertexAttribArray(textureLocation)
+        gl.vertexAttribPointer(textureLocation, 1, gl.FLOAT, false, stride, 20)
+        gl.enableVertexAttribArray(colorLocation)
+        gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, stride, 24)
+
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+        gl.clearColor(0, 0, 0, 0)
+
+        for (let i = 0; i < 2; i++) {
+            const texture = gl.createTexture()
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
+            if (!texture) throw new Error('Failed to create preview texture')
+            textures.push(texture)
+            gl.activeTexture(gl.TEXTURE0 + i)
+            gl.bindTexture(gl.TEXTURE_2D, texture)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        }
+    } catch (error) {
+        deleteResources()
+        throw error
     }
 
     const entries: Entry[] = []
@@ -214,6 +267,7 @@ export const createPreviewRenderer = (
         },
 
         setTexture(index, bitmap, interpolation) {
+            if (disposed) return
             gl.activeTexture(gl.TEXTURE0 + index)
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             gl.bindTexture(gl.TEXTURE_2D, textures[index]!)
@@ -228,6 +282,7 @@ export const createPreviewRenderer = (
         },
 
         begin(width, height, aspectRatio = width / height) {
+            if (disposed) return
             if (canvas.width !== width) canvas.width = width
             if (canvas.height !== height) canvas.height = height
 
@@ -238,6 +293,7 @@ export const createPreviewRenderer = (
         },
 
         draw(sprite, quad, z, a, tint, blend = BlendMode.normal) {
+            if (disposed) return
             if (!sprite) return
             if (a <= 0) return
             if (!hasTextures[sprite.texture ?? 0]) return
@@ -303,6 +359,7 @@ export const createPreviewRenderer = (
         },
 
         flush() {
+            if (disposed) return
             gl.clear(gl.COLOR_BUFFER_BIT)
 
             if (!entries.length) return
@@ -361,10 +418,13 @@ export const createPreviewRenderer = (
             }
         },
 
-        isContextLost: () => gl.isContextLost(),
+        isContextLost: () => disposed || gl.isContextLost(),
 
         dispose: () => {
-            gl.getExtension('WEBGL_lose_context')?.loseContext()
+            deleteResources()
+            entries.length = 0
+            entryPool.length = 0
+            packedData = new Float32Array(0)
         },
     }
 }

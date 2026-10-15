@@ -113,11 +113,21 @@ watch(
         <ToggleField v-model="settings.showGroupName" :label="i18n.settings.editor.showGroupName" />
 
         <ToggleField
+            v-model="settings.hideGroupNameWhenFocusingGroup"
+            :label="i18n.settings.editor.hideGroupNameWhenFocusingGroup"
+        />
+
+        <ToggleField
             v-model="settings.showOtherGroups"
             :label="i18n.settings.editor.showOtherGroups"
         />
 
         <ToggleField v-model="settings.showStageName" :label="i18n.settings.editor.showStageName" />
+
+        <ToggleField
+            v-model="settings.hideStageNameWhenFocusingStage"
+            :label="i18n.settings.editor.hideStageNameWhenFocusingStage"
+        />
 
         <ToggleField
             v-model="settings.showOtherStages"

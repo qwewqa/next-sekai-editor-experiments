@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import test, { type TestContext } from 'node:test'
 import { createLabelSprites } from '../../src/editor/canvas/labelSprites'
-import { blendOverChart } from '../../src/editor/canvas/nameColors'
-import { createNameLayer, drawName, placeNames, type NameFill } from '../../src/editor/canvas/names'
+import { createNameLayer, drawName, placeNames } from '../../src/editor/canvas/names'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
+import type { WebGLDrawContext } from '../../src/rendering/context'
+import { DrawPath } from '../../src/rendering/path'
 import type { Entity } from '../../src/state/entities'
+import { recordEditorLabel } from './recordedLabel'
+import { pathName } from './recordedPath'
 
 type Matrix = { a: number; b: number; c: number; d: number; e: number; f: number }
 const identity: Matrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
@@ -19,11 +22,15 @@ class RecordingContext {
     textBaseline = 'alphabetic'
     textAlign = 'start'
     fillStyle = '#000'
+    strokeStyle = '#000'
+    lineWidth = 1
+    lineJoin = 'miter'
     globalAlpha = 1
     transform = identity
     clips: string[] = []
     stack: { transform: Matrix; clips: string[]; alpha: number }[] = []
     calls: Call[] = []
+    drawEditorLabel = recordEditorLabel
     constructor(readonly canvas: TestCanvas) {}
     record(op: string, ...args: unknown[]) {
         const { transform, clips, globalAlpha: alpha } = this
@@ -62,8 +69,8 @@ class RecordingContext {
         const { a, b, c, d, e, f } = this.transform
         this.transform = { a: a * x, b, c, d: d * y, e, f }
     }
-    clip(path: { name: string }, rule?: string) {
-        this.clips.push(`${rule === 'evenodd' ? 'out' : 'in'}:${path.name}`)
+    clip(path: DrawPath, rule?: string) {
+        this.clips.push(`${rule === 'evenodd' ? 'out' : 'in'}:${pathName(path)}`)
     }
     measureText(text: string) {
         const size = parseFloat(this.font)
@@ -81,8 +88,24 @@ class RecordingContext {
     fillText(text: string, x: number, y: number) {
         this.record('fillText', text, x, y, this.fillStyle, this.font, this.textAlign)
     }
-    drawImage(image: TestCanvas, x: number, y: number) {
-        this.record('drawImage', image, x, y)
+    strokeText(text: string, x: number, y: number) {
+        this.record(
+            'strokeText',
+            text,
+            x,
+            y,
+            this.strokeStyle,
+            this.font,
+            this.textAlign,
+            this.lineWidth,
+            this.lineJoin,
+        )
+    }
+    drawNameSprite(image: TestCanvas, x: number, y: number) {
+        this.record('drawNameSprite', image, x, y)
+    }
+    releaseImage(image: TestCanvas) {
+        this.record('releaseImage', image, image.width, image.height)
     }
 }
 
@@ -93,17 +116,6 @@ class TestCanvas {
     context = new RecordingContext(this)
     getContext() {
         return this.context
-    }
-}
-
-class TestPath {
-    static count = 0
-    name = `p${TestPath.count++}`
-    added: TestPath[] = []
-    rect() {}
-    addPath(path: TestPath) {
-        this.added.push(path)
-        this.name = this.added.map(({ name }) => name).join('+')
     }
 }
 
@@ -119,7 +131,6 @@ const installGlobal = (t: TestContext, name: string, value: unknown) => {
 // A pane of 10 CSS px per lane at the given device pixel ratio, its origin off the pixel grid.
 const scene = (t: TestContext, pixelRatio = 1, lang = 'en') => {
     const created: TestCanvas[] = []
-    installGlobal(t, 'Path2D', TestPath)
     installGlobal(t, 'document', {
         documentElement: { lang },
         createElement: () => {
@@ -134,7 +145,7 @@ const scene = (t: TestContext, pixelRatio = 1, lang = 'en') => {
     ctx.setTransform(scale * pixelRatio, 0, 0, scale * pixelRatio, 0.3, 0.6)
     const sprites = createLabelSprites()
     const context = {
-        ctx: ctx as unknown as CanvasRenderingContext2D,
+        ctx: ctx as unknown as WebGLDrawContext,
         scale,
         pixelRatio,
         bounds: { l: -50, r: 50, t: -50, b: 50, w: 100, h: 100 },
@@ -172,7 +183,7 @@ test('a name is rasterised once, then copied to the device pixel nearest its anc
         sprites.beginFrame(frame)
         placeNames(context, queue(context, [['Stage', 1.23, 2.34]]))
     }
-    const draws = ctx.calls.filter(({ op }) => op === 'drawImage')
+    const draws = ctx.calls.filter(({ op }) => op === 'drawNameSprite')
     assert.equal(draws.length, 2)
     // One sprite, plus the canvas that measures them.
     assert.equal(created.length, 2)
@@ -196,7 +207,7 @@ test('names look the same at the device scale: sprites are drawn as drawText sha
     const { context, ctx, sprites, sprite } = scene(t, 1.25)
     sprites.beginFrame(1)
     placeNames(context, queue(context, [['Stage', 0, 0]]))
-    const [draw] = ctx.calls.filter(({ op }) => op === 'drawImage')
+    const [draw] = ctx.calls.filter(({ op }) => op === 'drawNameSprite')
     const [text] = sprite(draw?.args[0]).context.calls
     // A 4 px font, rasterised at 1.25 device pixels per CSS pixel.
     assert.equal(text?.args[4], '4px sans-serif')
@@ -249,7 +260,7 @@ test('while the scale changes every frame, as in a pinch zoom, new names draw as
         placeNames(at, queue(at, [[text, 0, 0]]))
         placeNames(at, queue(at, [[text, 0, 2]]))
         const op = (name: string) => ctx.calls.filter((call) => call.op === name).length
-        return { sprites: op('drawImage'), text: op('fillText') }
+        return { sprites: op('drawNameSprite'), text: op('fillText') }
     }
     // The first frame rasterises at once.
     assert.deepEqual(draw(10), { sprites: 2, text: 0 })
@@ -272,7 +283,7 @@ test('while the scale changes every frame, as in a pinch zoom, new names draw as
 })
 
 test('clearing releases every sprite', (t) => {
-    const { context, sprites, created } = scene(t)
+    const { context, ctx, sprites, created } = scene(t)
     sprites.beginFrame(1)
     placeNames(
         context,
@@ -283,6 +294,14 @@ test('clearing releases every sprite', (t) => {
     )
     sprites.clear()
     assert.ok(created.slice(1).every(({ width, height }) => !width && !height))
+    const releases = ctx.calls.filter(({ op }) => op === 'releaseImage')
+    assert.deepEqual(
+        releases.map(({ args }) => args[0]),
+        created.slice(1),
+    )
+    assert.ok(releases.every(({ args }) => Number(args[1]) > 0 && Number(args[2]) > 0))
+    sprites.clear()
+    assert.equal(ctx.calls.filter(({ op }) => op === 'releaseImage').length, 2)
     sprites.beginFrame(2)
     placeNames(context, queue(context, [['Stage', 0, 0]]))
     assert.equal(created.length, 5)
@@ -292,16 +311,17 @@ test('the cache keeps the frame drawing its names, and draws past its bounds as 
     const { context, ctx, sprites, created } = scene(t)
     const names = Array.from({ length: 1100 }, (_, index) => `${index}` as const)
     sprites.beginFrame(1)
-    placeNames(
+    // Selected names stay visible even when overlapping; exercise the cache,
+    // independently of ordinary-name decluttering.
+    const crowded = queue(
         context,
-        queue(
-            context,
-            names.map((text) => [text, 0, 0]),
-        ),
+        names.map((text) => [text, 0, 0]),
     )
+    for (const name of crowded.names) name.highlighted = true
+    placeNames(context, crowded)
     // 1024 sprites, the rest as text.
     assert.equal(created.length, 1025)
-    assert.equal(ctx.calls.filter(({ op }) => op === 'drawImage').length, 1024)
+    assert.equal(ctx.calls.filter(({ op }) => op === 'drawNameSprite').length, 1024)
     const texts = ctx.calls.filter(({ op }) => op === 'fillText')
     assert.equal(texts.length, 76)
     // Drawn as drawText does, under the pane's transform.
@@ -310,49 +330,150 @@ test('the cache keeps the frame drawing its names, and draws past its bounds as 
     // A later frame replaces the least recently used.
     ctx.calls = []
     sprites.beginFrame(2)
-    placeNames(
-        context,
-        queue(context, [
-            ['new', 0, 0],
-            ['5', 0, 0],
-        ]),
-    )
+    const replacement = queue(context, [
+        ['new', 0, 0],
+        ['5', 0, 0],
+    ])
+    for (const name of replacement.names) name.highlighted = true
+    placeNames(context, replacement)
     assert.equal(created.length, 1026)
     assert.equal(created[1]!.width, 0)
-    assert.equal(ctx.calls.filter(({ op }) => op === 'drawImage').length, 2)
+    assert.equal(ctx.calls.filter(({ op }) => op === 'drawNameSprite').length, 2)
+    const releases = ctx.calls.filter(({ op }) => op === 'releaseImage')
+    assert.equal(releases.length, 1)
+    assert.equal(releases[0]?.args[0], created[1])
+    assert.ok(Number(releases[0]?.args[1]) > 0 && Number(releases[0]?.args[2]) > 0)
 })
 
-test('a split name clips in the scene and draws each colour from its sprite', (t) => {
-    const { context, ctx, sprites, sprite } = scene(t)
-    const path = new TestPath()
-    const fill: NameFill = {
-        box: { l: -10, r: 10, t: -1, b: 6 },
-        shapes: () => [path as unknown as Path2D],
-        colorsAt: () => [blendOverChart('#7fffd3', 0.8)],
-    }
-    const layer = queue(context, [['Stage', 0, 0]])
-    layer.fills.push(fill)
+test('shared sprites release images from both pane contexts, once per context', (t) => {
+    const { context, ctx, sprites, created } = scene(t)
+    const overlay = new TestCanvas().context
+    overlay.transform = ctx.transform
+    const overlayContext = { ...context, ctx: overlay as unknown as WebGLDrawContext }
     sprites.beginFrame(1)
-    placeNames({ ...context, nameContrast: true }, layer)
-    const draws = ctx.calls.filter(({ op }) => op === 'drawImage')
-    assert.deepEqual(
-        draws.map(({ args, clips, transform }) => ({
-            color: sprite(args[0]).context.calls[0]?.args[3],
-            clips,
-            transform,
-        })),
-        [
-            { color: '#f6f', clips: [`out:${path.name}`], transform: identity },
-            { color: '#808', clips: [`in:${path.name}`], transform: identity },
-        ],
-    )
+    for (const at of [context, overlayContext, context, overlayContext])
+        placeNames(at, queue(at, [['Stage', 0, 0]]))
+    assert.equal(created.length, 2)
+    sprites.clear()
+    for (const target of [ctx, overlay]) {
+        const releases = target.calls.filter(({ op }) => op === 'releaseImage')
+        assert.equal(releases.length, 1)
+        assert.equal(releases[0]?.args[0], created[1])
+        assert.ok(Number(releases[0]?.args[1]) > 0 && Number(releases[0]?.args[2]) > 0)
+    }
+})
+
+test('replacement consumers release old image ownership without invalidating the sprite', (t) => {
+    const { context, ctx, sprites, created } = scene(t)
+    const targets = [ctx, ...Array.from({ length: 4 }, () => new TestCanvas().context)]
+    sprites.beginFrame(1)
+    for (const [index, target] of targets.entries()) {
+        target.transform = ctx.transform
+        const at = { ...context, ctx: target as unknown as WebGLDrawContext }
+        placeNames(at, queue(at, [['Stage', 0, 0]]))
+        assert.equal(created.length, 2, 'replacement consumers reuse the same native sprite')
+        assert.ok(created[1]!.width > 0 && created[1]!.height > 0)
+        for (const [previousIndex, previous] of targets.entries()) {
+            const releases = previous.calls.filter(({ op }) => op === 'releaseImage')
+            assert.equal(releases.length, previousIndex < index - 1 ? 1 : 0)
+        }
+    }
+    sprites.clear()
+    for (const target of targets) {
+        const releases = target.calls.filter(({ op }) => op === 'releaseImage')
+        assert.equal(releases.length, 1)
+        assert.equal(releases[0]?.args[0], created[1])
+        assert.ok(Number(releases[0]?.args[1]) > 0 && Number(releases[0]?.args[2]) > 0)
+    }
+})
+
+for (const pixelRatio of [1, 1.25, 2]) {
+    test(`contrast outlines the whole shaped name by half a CSS pixel, with opacity applied once (DPR ${pixelRatio})`, (t) => {
+        const { context, ctx, sprites, sprite } = scene(t, pixelRatio)
+        const path = new DrawPath()
+        path.rect(-10, -1, 20, 7)
+        ctx.clip(path)
+        ctx.globalAlpha = 0.7
+        const layer = queue(context, [
+            ['Stage', 0, 0],
+            ['Group', 0, 2, '#0aa'],
+        ])
+        layer.names[0]!.alpha = 0.4
+        layer.names[1]!.alpha = 0.6
+        sprites.beginFrame(1)
+        placeNames({ ...context, nameContrast: true }, layer)
+        const draws = ctx.calls.filter(({ op }) => op === 'drawNameSprite')
+        assert.equal(draws.length, 2, 'one composite per complete name')
+        for (const [index, draw] of draws.entries()) {
+            const [stroke, fill] = sprite(draw.args[0]).context.calls
+            const text = index ? 'Group' : 'Stage'
+            assert.equal(stroke?.op, 'strokeText')
+            assert.deepEqual(stroke?.args, [
+                text,
+                0,
+                1,
+                '#000',
+                '4px sans-serif',
+                'center',
+                1,
+                'round',
+            ])
+            assert.equal(fill?.op, 'fillText')
+            assert.deepEqual(fill?.args, [
+                text,
+                0,
+                1,
+                index ? '#0aa' : '#f6f',
+                '4px sans-serif',
+                'center',
+            ])
+            assert.equal(stroke?.transform.a, pixelRatio)
+            assert.equal(stroke?.transform.d, pixelRatio)
+            assert.equal(stroke?.alpha, 1)
+            assert.equal(fill?.alpha, 1)
+            assert.equal(draw.alpha, index ? 0.6 : 0.4)
+            assert.deepEqual(draw.clips, [`in:${pathName(path)}`])
+            assert.deepEqual(draw.transform, identity)
+        }
+        assert.equal(ctx.globalAlpha, 0.7)
+        assert.deepEqual(ctx.transform, {
+            a: 10 * pixelRatio,
+            b: 0,
+            c: 0,
+            d: 10 * pixelRatio,
+            e: 0.3,
+            f: 0.6,
+        })
+        assert.deepEqual(ctx.clips, [`in:${pathName(path)}`])
+    })
+}
+
+test('toggling contrast selects distinct cached sprites without changing the requested colour', (t) => {
+    const { context, ctx, sprites, created, sprite } = scene(t)
+    for (const [index, nameContrast] of [false, true, false, true].entries()) {
+        sprites.beginFrame(index + 1)
+        placeNames({ ...context, nameContrast }, queue(context, [['Group', 0, 0, '#0aa']]))
+    }
+    const draws = ctx.calls.filter(({ op }) => op === 'drawNameSprite')
+    assert.equal(created.length, 3, 'one measurer plus the plain and outlined sprites')
+    assert.equal(draws.length, 4)
+    assert.notEqual(draws[0]?.args[0], draws[1]?.args[0])
+    assert.equal(draws[0]?.args[0], draws[2]?.args[0])
+    assert.equal(draws[1]?.args[0], draws[3]?.args[0])
+    for (const [index, draw] of draws.slice(0, 2).entries()) {
+        const calls = sprite(draw.args[0]).context.calls
+        assert.equal(calls.filter(({ op }) => op === 'strokeText').length, index)
+        const fills = calls.filter(({ op }) => op === 'fillText')
+        assert.equal(fills.length, 1)
+        assert.equal(fills[0]?.args[3], '#0aa')
+    }
 })
 
 test('a name drawn at once, as on a paste ghost, also comes from its sprite', (t) => {
     const { context, ctx, sprites } = scene(t)
     sprites.beginFrame(1)
     drawName(context, owner, true, 'Stage', 1.23, 2.34, '#f6f')
-    const draws = ctx.calls.filter(({ op }) => op === 'drawImage')
+    const draws = ctx.calls.filter(({ op }) => op === 'drawNameSprite')
     assert.equal(draws.length, 1)
     assert.deepEqual(draws[0]?.args.slice(1), [13 - 7, 24 - 4])
     assert.deepEqual(ctx.transform, { a: 10, b: 0, c: 0, d: 10, e: 0.3, f: 0.6 })

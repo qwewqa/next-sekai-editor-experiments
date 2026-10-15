@@ -48,7 +48,8 @@ const transport = createTransport({
     },
     now: () => time.value.now,
     focus: (time) => {
-        focusView(time)
+        // Transport seeks and returns keep their existing animation.
+        focusView(time, false)
     },
     activate: () => {
         updateViewLastActive()

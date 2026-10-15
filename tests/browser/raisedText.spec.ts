@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import type { WebGLDrawContext } from '../../src/rendering/context'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Text goes above every object: BPM, time scale and grid labels draw after an 'over' slide
@@ -8,57 +9,158 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 declare global {
     interface Window {
         canvasOps: Record<'chart' | 'elevation', string[]>
+        vectorOps: Record<
+            'chart' | 'elevation',
+            { captured: number; replayed: number; unknown: number }
+        >
     }
 }
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
-    // What the chart and Elevation Editor draw, in order: Path2D fills (slide bodies), plain
-    // fills (connections), images (notes), name sprites, single-segment lines (with their colour
-    // and y) and texts.
-    await page.addInitScript(() => {
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    // Observe submission order, including warm retained groups. Recording only the drawing
+    // calls inside captureVectors would omit their later replays and count cold captures twice.
+    await page.evaluate(async () => {
+        const { WebGLDrawContext, RenderSurface } = await window.editorTest.appImport<
+            typeof import('../../src/rendering/context')
+        >('/src/rendering/context.ts')
+        const { DrawPath } =
+            await window.editorTest.appImport<typeof import('../../src/rendering/path')>(
+                '/src/rendering/path.ts',
+            )
+        const colorProbe = document.createElement('canvas').getContext('2d')!
         window.canvasOps = { chart: [], elevation: [] }
-        const opsOf = (ctx: CanvasRenderingContext2D) => {
+        window.vectorOps = {
+            chart: { captured: 0, replayed: 0, unknown: 0 },
+            elevation: { captured: 0, replayed: 0, unknown: 0 },
+        }
+        const canvasOf = (ctx: WebGLDrawContext) => {
             const { classList } = ctx.canvas as HTMLCanvasElement
             if (!classList) return
-            if (classList.contains('editor-chart')) return window.canvasOps.chart
-            if (classList.contains('elevation-canvas')) return window.canvasOps.elevation
+            if (classList.contains('editor-chart')) return 'chart'
+            if (classList.contains('elevation-canvas')) return 'elevation'
         }
-        const points = new WeakMap<CanvasRenderingContext2D, number[]>()
-        const proto = CanvasRenderingContext2D.prototype
+        const capturing = new WeakMap<WebGLDrawContext, string[]>()
+        const opsOf = (ctx: WebGLDrawContext) => {
+            const canvas = canvasOf(ctx)
+            return capturing.get(ctx) ?? (canvas && window.canvasOps[canvas])
+        }
+        const points = new WeakMap<WebGLDrawContext, number[]>()
+        const proto = WebGLDrawContext.prototype
+        type Vectors = NonNullable<ReturnType<WebGLDrawContext['captureVectors']>>
+        const capturedOps = new WeakMap<Vectors, string[]>()
+        const capture = proto.captureVectors
+        proto.captureVectors = function (draw, origin) {
+            if (!opsOf(this)) return capture.call(this, draw, origin)
+            const previous = capturing.get(this)
+            const ops: string[] = []
+            capturing.set(this, ops)
+            try {
+                const range = capture.call(this, draw, origin)
+                if (range) {
+                    capturedOps.set(range, ops)
+                    const canvas = canvasOf(this)
+                    if (canvas) window.vectorOps[canvas].captured++
+                }
+                return range
+            } finally {
+                if (previous) capturing.set(this, previous)
+                else capturing.delete(this)
+            }
+        }
+        const replay = proto.drawVectors
+        proto.drawVectors = function (range) {
+            const drawn = replay.call(this, range)
+            const ops = opsOf(this)
+            if (drawn && ops) {
+                const recorded = capturedOps.get(range)
+                if (recorded) ops.push(...recorded)
+                const canvas = canvasOf(this)
+                if (canvas && !capturing.has(this)) {
+                    window.vectorOps[canvas].replayed++
+                    if (!recorded) window.vectorOps[canvas].unknown++
+                }
+            }
+            return drawn
+        }
+        const clear = proto.clear
+        proto.clear = function () {
+            const canvas = canvasOf(this)
+            if (canvas) {
+                window.canvasOps[canvas] = []
+                window.vectorOps[canvas] = { captured: 0, replayed: 0, unknown: 0 }
+            }
+            return clear.call(this)
+        }
+        const recordingCall = new WeakSet<WebGLDrawContext>()
         const wrap = <
             K extends
-                'beginPath' | 'moveTo' | 'lineTo' | 'fill' | 'stroke' | 'drawImage' | 'fillText',
+                | 'beginPath'
+                | 'moveTo'
+                | 'lineTo'
+                | 'fill'
+                | 'fillCircle'
+                | 'stroke'
+                | 'strokeLine'
+                | 'drawImage'
+                | 'drawNameSprite'
+                | 'fillText'
+                | 'drawEditorLabel'
+                | 'drawGridLabel'
+                | 'drawPreparedEditorLabel',
         >(
             name: K,
-            record: (ctx: CanvasRenderingContext2D, args: unknown[], ops: string[]) => void,
+            record: (ctx: WebGLDrawContext, args: unknown[], ops: string[]) => void,
         ) => {
             const original = proto[name] as (...args: unknown[]) => unknown
-            ;(proto[name] as unknown) = function (
-                this: CanvasRenderingContext2D,
-                ...args: unknown[]
-            ) {
+            ;(proto[name] as unknown) = function (this: WebGLDrawContext, ...args: unknown[]) {
                 const ops = opsOf(this)
-                if (ops) record(this, args, ops)
-                return original.apply(this, args)
+                if (!ops || recordingCall.has(this)) return original.apply(this, args)
+                record(this, args, ops)
+                // A public text operation may upload its raster through drawImage. That
+                // nested image is the same text, not a later note or connection.
+                recordingCall.add(this)
+                try {
+                    return original.apply(this, args)
+                } finally {
+                    recordingCall.delete(this)
+                }
             }
         }
         wrap('beginPath', (ctx) => points.set(ctx, []))
         wrap('moveTo', (ctx, args) => points.get(ctx)?.push(args[1] as number))
         wrap('lineTo', (ctx, args) => points.get(ctx)?.push(args[1] as number))
-        wrap('fill', (_, args, ops) => ops.push(args[0] instanceof Path2D ? 'slide' : 'fill'))
+        wrap('fill', (_, args, ops) => ops.push(args[0] instanceof DrawPath ? 'slide' : 'fill'))
+        wrap('fillCircle', (_, __, ops) => ops.push('fill'))
         wrap('stroke', (ctx, args, ops) => {
             const ys = points.get(ctx)
             if (args.length || ys?.length !== 2 || ys[0] !== ys[1]) return
-            ops.push(`line:${String(ctx.strokeStyle)}:${ys[0]}`)
+            colorProbe.fillStyle = String(ctx.strokeStyle)
+            ops.push(`line:${colorProbe.fillStyle}:${ys[0]}`)
         })
-        // Name sprites blit at their own size; notes are scaled.
-        wrap('drawImage', (_, args, ops) => ops.push(args.length === 3 ? 'name' : 'image'))
+        wrap('strokeLine', (ctx, args, ops) => {
+            if (args[1] !== args[3]) return
+            colorProbe.fillStyle = String(ctx.strokeStyle)
+            ops.push(`line:${colorProbe.fillStyle}:${String(args[1])}`)
+        })
+        wrap('drawImage', (_, args, ops) => {
+            // The composed stage surface is a background, not an editor object. Notes use
+            // ordinary atlas surfaces; they must still draw after the cursor.
+            if (args[0] instanceof RenderSurface && args[0].stageCache) return
+            ops.push('image')
+        })
+        wrap('drawNameSprite', (_, __, ops) => ops.push('name'))
         wrap('fillText', (_, args, ops) => ops.push(`text:${String(args[0])}`))
+        wrap('drawEditorLabel', (_, args, ops) => ops.push(`text:${String(args[0])}`))
+        wrap('drawGridLabel', (_, args, ops) => ops.push(`text:${String(args[0])}`))
+        wrap('drawPreparedEditorLabel', (_, args, ops) => {
+            const label = args[0] as Parameters<WebGLDrawContext['drawPreparedEditorLabel']>[0]
+            ops.push(`text:${label.text}`)
+        })
     })
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.evaluate(installEditorFixture)
 })
 
 // One redrawn frame's ops: nudging the cursor redraws the chart, new visibilities the Elevation Editor.
@@ -66,13 +168,18 @@ const frameOps = (page: Page, canvas: 'chart' | 'elevation') =>
     page.evaluate(async (canvas) => {
         const { view } = window.editorTest
         window.canvasOps[canvas] = []
+        window.vectorOps[canvas] = { captured: 0, replayed: 0, unknown: 0 }
         if (canvas === 'chart') view.cursorTime = view.cursorTime === 3 ? 3.25 : 3
         else view.visibilities = { ...view.visibilities }
         await window.editorTest.nextTick()
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
-        return { ops: window.canvasOps[canvas], cursorTime: view.cursorTime }
+        return {
+            ops: window.canvasOps[canvas],
+            vectors: window.vectorOps[canvas],
+            cursorTime: view.cursorTime,
+        }
     }, canvas)
 
 const texts = (ops: string[]) =>
@@ -110,7 +217,7 @@ for (const layout of ['basic', 'composed'] as const) {
         }, layout)
         await expect
             .poll(async () => {
-                const { ops, cursorTime } = await frameOps(page, 'chart')
+                const { ops, vectors, cursorTime } = await frameOps(page, 'chart')
                 const lastSlide = ops.lastIndexOf('slide')
                 const lines = ops.flatMap((op, index) => {
                     const [kind, color, y] = op.split(':')
@@ -133,6 +240,8 @@ for (const layout of ['basic', 'composed'] as const) {
                         op.startsWith('line:#ffff00:'),
                 )
                 return {
+                    retained:
+                        vectors.captured === 0 && vectors.replayed > 0 && vectors.unknown === 0,
                     slides: lastSlide >= 0,
                     labels: ['90', '2x', '00:02'].filter((text) =>
                         drawn.some((label) => label.text === text),
@@ -142,7 +251,13 @@ for (const layout of ['basic', 'composed'] as const) {
                     cursorFirst: !!cursor && firstObject >= 0 && cursor.index < firstObject,
                 }
             })
-            .toEqual({ slides: true, labels: ['90', '2x', '00:02'], below: [], cursorFirst: true })
+            .toEqual({
+                retained: true,
+                slides: true,
+                labels: ['90', '2x', '00:02'],
+                below: [],
+                cursorFirst: true,
+            })
     })
 }
 

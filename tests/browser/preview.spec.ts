@@ -53,46 +53,64 @@ test.beforeEach(async ({ page }, testInfo) => {
             errors: [],
         }
         window.addEventListener('error', (event) => window.previewTest.errors.push(event.message))
-        const upload = WebGLRenderingContext.prototype.texImage2D
-        WebGLRenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-            if (args.some((arg) => arg instanceof ImageBitmap)) window.previewTest.uploads++
+        const isPreview = (gl: WebGL2RenderingContext) =>
+            gl.canvas instanceof HTMLCanvasElement &&
+            gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
+        const upload = WebGL2RenderingContext.prototype.texImage2D
+        WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
+            if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap))
+                window.previewTest.uploads++
             return Reflect.apply(upload, this, args)
         }
         const uniformNames = new WeakMap<WebGLUniformLocation, string>()
-        const getUniformLocation = WebGLRenderingContext.prototype.getUniformLocation
-        WebGLRenderingContext.prototype.getUniformLocation = function (program, name) {
+        const getUniformLocation = WebGL2RenderingContext.prototype.getUniformLocation
+        WebGL2RenderingContext.prototype.getUniformLocation = function (program, name) {
             const location = getUniformLocation.call(this, program, name)
             if (location) uniformNames.set(location, name)
             return location
         }
-        const uniform1f = WebGLRenderingContext.prototype.uniform1f
-        WebGLRenderingContext.prototype.uniform1f = function (location, value) {
-            if (location && uniformNames.get(location) === 'u_aspect') {
+        const uniform1f = WebGL2RenderingContext.prototype.uniform1f
+        WebGL2RenderingContext.prototype.uniform1f = function (location, value) {
+            if (isPreview(this) && location && uniformNames.get(location) === 'u_aspect') {
                 window.previewTest.aspect = value
             }
             return uniform1f.call(this, location, value)
         }
-        const clear = WebGLRenderingContext.prototype.clear
-        WebGLRenderingContext.prototype.clear = function (...args) {
-            window.previewTest.frames++
-            window.previewTest.vertices = []
+        const clear = WebGL2RenderingContext.prototype.clear
+        WebGL2RenderingContext.prototype.clear = function (...args) {
+            if (isPreview(this)) {
+                window.previewTest.frames++
+                window.previewTest.vertices = []
+            }
             return clear.apply(this, args)
         }
-        const bufferSubData = WebGLRenderingContext.prototype.bufferSubData
-        WebGLRenderingContext.prototype.bufferSubData = function (...args) {
+        const bufferSubData = WebGL2RenderingContext.prototype.bufferSubData
+        WebGL2RenderingContext.prototype.bufferSubData = function (...args: unknown[]) {
             const data = args[2]
-            if (data instanceof Float32Array) window.previewTest.vertices.push(...data)
-            return bufferSubData.apply(this, args)
+            if (isPreview(this) && data instanceof Float32Array)
+                window.previewTest.vertices.push(...data)
+            return Reflect.apply(bufferSubData, this, args)
         }
         const decode = window.createImageBitmap
+        const atlases = new WeakSet<ImageBitmap>()
         window.createImageBitmap = async (...args: unknown[]) => {
             const bitmap = (await Reflect.apply(decode, window, args)) as ImageBitmap
-            window.previewTest.bitmaps++
+            // Preview atlases request these decode semantics explicitly. Other
+            // editor features may decode images too (for example large covers).
+            const options = args[1] as ImageBitmapOptions | undefined
+            if (
+                args[0] instanceof Blob &&
+                options?.premultiplyAlpha === 'premultiply' &&
+                options.colorSpaceConversion === 'none'
+            ) {
+                atlases.add(bitmap)
+                window.previewTest.bitmaps++
+            }
             return bitmap
         }
         const close = ImageBitmap.prototype.close
         ImageBitmap.prototype.close = function () {
-            window.previewTest.closes++
+            if (atlases.has(this)) window.previewTest.closes++
             return close.call(this)
         }
     })
@@ -131,9 +149,12 @@ test('unavailable WebGL reports a graphics error and reload can recover', async 
         const original = HTMLCanvasElement.prototype.getContext
         HTMLCanvasElement.prototype.getContext = function (
             this: HTMLCanvasElement,
-            ...args: Parameters<typeof original>
+            ...args: [string, ...unknown[]]
         ) {
-            return args[0] === 'webgl' ? null : Reflect.apply(original, this, args)
+            return args[0] === 'webgl2' &&
+                this.matches('.preview-viewport > canvas:not(.preview-selection)')
+                ? null
+                : Reflect.apply(original, this, args)
         } as typeof original
         window.previewTest.restore = () => {
             HTMLCanvasElement.prototype.getContext = original
@@ -145,7 +166,7 @@ test('unavailable WebGL reports a graphics error and reload can recover', async 
     await expect(preview.getByText('The preview skin could not be loaded.')).toHaveCount(0)
     await preview.getByText('Error Details').click()
     await expect(
-        preview.getByText('WebGL is unavailable or disabled in this browser'),
+        preview.getByText('WebGL2 is unavailable or disabled in this browser'),
     ).toBeVisible()
     await page.evaluate(() => window.previewTest.restore!())
     // A graphics failure retries only the canvas; the decoded skin is reused.
@@ -170,9 +191,12 @@ test('preview falls back when antialiasing prevents graphics initialization', as
         window.previewTest.contextRequests = []
         HTMLCanvasElement.prototype.getContext = function (
             this: HTMLCanvasElement,
-            ...args: Parameters<typeof original>
+            ...args: [string, ...unknown[]]
         ) {
-            if (args[0] === 'webgl') {
+            if (
+                args[0] === 'webgl2' &&
+                this.matches('.preview-viewport > canvas:not(.preview-selection)')
+            ) {
                 const antialias = !!(args[1] as WebGLContextAttributes)?.antialias
                 window.previewTest.contextRequests!.push(antialias)
                 if (antialias) return null
@@ -192,14 +216,18 @@ test('texture upload failures stay recoverable without uncaught errors', async (
     await page.evaluate(async () => {
         window.editorTest.settings.showPreview = false
         await window.editorTest.nextTick()
-        const original = WebGLRenderingContext.prototype.texImage2D
-        WebGLRenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-            if (args.some((arg) => arg instanceof ImageBitmap))
+        const original = WebGL2RenderingContext.prototype.texImage2D
+        WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.matches('.preview-viewport > canvas:not(.preview-selection)') &&
+                args.some((arg) => arg instanceof ImageBitmap)
+            )
                 throw new Error('Texture upload failed')
             return Reflect.apply(original, this, args)
         }
         window.previewTest.restore = () => {
-            WebGLRenderingContext.prototype.texImage2D = original
+            WebGL2RenderingContext.prototype.texImage2D = original
         }
         window.editorTest.settings.showPreview = true
     })
@@ -1317,7 +1345,7 @@ test('preview restores lost contexts and reuses decoded atlases for every new co
 
     const prevented = await page.evaluate(async () => {
         const canvas = document.querySelector<HTMLCanvasElement>('.preview canvas')!
-        const gl = canvas.getContext('webgl')!
+        const gl = canvas.getContext('webgl2')!
         const lost = new Promise<boolean>((resolve) => {
             canvas.addEventListener(
                 'webglcontextlost',

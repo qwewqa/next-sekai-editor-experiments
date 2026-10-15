@@ -116,7 +116,19 @@ const canvasColors = (page: Page) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
         const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!
-        const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
+        // A restored page deliberately has no fixture: installing one would
+        // replace the recovered chart whose initial pixels this probe checks.
+        const pathname = '/src/rendering/context.ts'
+        const moduleUrl = performance
+            .getEntriesByType('resource')
+            .reverse()
+            .find((entry) => new URL(entry.name).pathname === pathname)?.name
+        const rendering =
+            window.editorRendering ??
+            ((await import(moduleUrl ?? pathname)) as typeof import('../../src/rendering/context'))
+        const pixels = rendering
+            .getDrawContext(canvas)
+            .getImageData(0, 0, canvas.width, canvas.height).data
         // Count saturated blue notes and purple connectors on the actual editor surface.
         let blue = 0
         let purple = 0

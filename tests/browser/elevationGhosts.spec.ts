@@ -168,9 +168,8 @@ const devicePoint = (page: Page, pane: Pane, point: { x: number; y: number }) =>
 const pixel = (page: Page, pane: Pane, point: { x: number; y: number }) =>
     page.evaluate(
         ({ selector, point }) => [
-            ...document
-                .querySelector<HTMLCanvasElement>(selector)!
-                .getContext('2d')!
+            ...window.editorRendering
+                .getDrawContext(document.querySelector<HTMLCanvasElement>(selector)!)
                 .getImageData(point.x, point.y, 1, 1).data,
         ],
         { selector: selectors[pane], point },
@@ -182,7 +181,9 @@ const clearPoint = async (page: Page, pane: Pane, point: { x: number; y: number 
     return page.evaluate(
         ({ selector, device }) => {
             const canvas = document.querySelector<HTMLCanvasElement>(selector)!
-            const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
+            const data = window.editorRendering
+                .getDrawContext(canvas)
+                .getImageData(0, 0, canvas.width, canvas.height)
             // Nearest first, clear of grid lines.
             for (let d = 0; d < 12; d++)
                 for (let dx = -d; dx <= d; dx++)
@@ -201,8 +202,8 @@ const shoot = (page: Page, pane: Pane, name: string) =>
     page.evaluate(
         ({ selector, name }) => {
             const canvas = document.querySelector<HTMLCanvasElement>(selector)!
-            window.ghostShots[name] = canvas
-                .getContext('2d')!
+            window.ghostShots[name] = window.editorRendering
+                .getDrawContext(canvas)
                 .getImageData(0, 0, canvas.width, canvas.height)
         },
         { selector: selectors[pane], name },
@@ -213,7 +214,9 @@ const differences = (page: Page, pane: Pane, name: string) =>
     page.evaluate(
         ({ selector, name }) => {
             const canvas = document.querySelector<HTMLCanvasElement>(selector)!
-            const now = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
+            const now = window.editorRendering
+                .getDrawContext(canvas)
+                .getImageData(0, 0, canvas.width, canvas.height)
             const shot = window.ghostShots[name]!
             if (shot.width !== now.width || shot.height !== now.height) return -1
             let count = 0
@@ -1070,7 +1073,9 @@ test('a ghost name composites with its note at half opacity', async ({ page }) =
     const read = () =>
         page.evaluate(({ x0, y0, w, h }) => {
             const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
-            return [...canvas.getContext('2d')!.getImageData(x0, y0, w, h).data]
+            return [
+                ...window.editorRendering.getDrawContext(canvas).getImageData(x0, y0, w, h).data,
+            ]
         }, area)
     const named = await read()
     await page.evaluate(() => {
@@ -1138,7 +1143,9 @@ test('ghost notes are highlighted: a ghost anchor shows while the view rests', a
     const read = () =>
         page.evaluate(({ x0, y0, w, h }) => {
             const canvas = document.querySelector<HTMLCanvasElement>('.elevation-canvas')!
-            return [...canvas.getContext('2d')!.getImageData(x0, y0, w, h).data]
+            return [
+                ...window.editorRendering.getDrawContext(canvas).getImageData(x0, y0, w, h).data,
+            ]
         }, area)
     // Without recent use, only a highlighted anchor draws.
     await page.evaluate(() => {

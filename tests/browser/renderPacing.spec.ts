@@ -23,19 +23,20 @@ test.beforeEach(async ({ page }) => {
     )
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(() => {
-        // Every preview frame clears its selection overlay first.
-        const fillRect = CanvasRenderingContext2D.prototype.fillRect
-        CanvasRenderingContext2D.prototype.fillRect = function (...args) {
+        localStorage.setItem('sonolus-next-sekai-editor.previewPosition', '"left"')
+        // Every preview frame clears the main WebGL target once. Empty
+        // selection overlays deliberately skip rendering and are not a clock.
+        const clear = WebGL2RenderingContext.prototype.clear
+        WebGL2RenderingContext.prototype.clear = function (...args) {
             if (
                 this.canvas instanceof HTMLCanvasElement &&
-                this.canvas.classList.contains('preview-selection') &&
-                this.globalCompositeOperation === 'destination-out' &&
+                this.canvas.matches('.preview-viewport > canvas:not(.preview-selection)') &&
+                args[0] & this.COLOR_BUFFER_BIT &&
                 window.pacing
             )
                 window.pacing.preview++
-            return fillRect.apply(this, args)
+            return clear.apply(this, args)
         }
-        localStorage.setItem('sonolus-next-sekai-editor.previewPosition', '"left"')
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

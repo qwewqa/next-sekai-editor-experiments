@@ -6,7 +6,11 @@ const outlinePixels = (page: Page) =>
     page.evaluate(() => {
         const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
         if (!canvas) return 0
-        const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data
+        // Empty selection intentionally needs no GPU surface. Reading it must
+        // not allocate one merely to find that no outline was drawn.
+        const data = window.editorRendering
+            .peekDrawContext(canvas)
+            ?.getImageData(0, 0, canvas.width, canvas.height).data
         return data ? data.filter((value, index) => index % 4 === 3 && value > 0).length : 0
     })
 

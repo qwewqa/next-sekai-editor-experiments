@@ -234,7 +234,8 @@ test('composed: a tick an add re-attaches across stages is ghosted where it land
                 const box = canvas.getBoundingClientRect()
                 const px = Math.round(((x - box.x) * canvas.width) / box.width)
                 const py = Math.round(((y - box.y) * canvas.height) / box.height)
-                return canvas.getContext('2d')!.getImageData(px, py, 1, 1).data[3]!
+                return window.editorRendering.getDrawContext(canvas).getImageData(px, py, 1, 1)
+                    .data[3]!
             }, at)
         })
         .toBeGreaterThan(120)

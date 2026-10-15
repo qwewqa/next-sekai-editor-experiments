@@ -1,0 +1,205 @@
+[
+  {
+    "package": "arrayvec-0.7.8",
+    "revision": "0cb664cf505844348538230479b0040b44f3faf1",
+    "file": "arrayvec-0.7.8/LICENSE-APACHE",
+    "source": "https://crates.io/api/v1/crates/arrayvec/0.7.8/download",
+    "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+  },
+  {
+    "package": "arrayvec-0.7.8",
+    "revision": "0cb664cf505844348538230479b0040b44f3faf1",
+    "file": "arrayvec-0.7.8/LICENSE-MIT",
+    "source": "https://crates.io/api/v1/crates/arrayvec/0.7.8/download",
+    "sha256": "4da95ec4ecb65b738d470b7d762894ad9c97da93e6cbfb18b570fc2c96f4b871"
+  },
+  {
+    "package": "autocfg-1.5.1",
+    "revision": "2799b09c24e6632f8e653c5cd8fc303e85a906ba",
+    "file": "autocfg-1.5.1/LICENSE-APACHE",
+    "source": "https://crates.io/api/v1/crates/autocfg/1.5.1/download",
+    "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+  },
+  {
+    "package": "autocfg-1.5.1",
+    "revision": "2799b09c24e6632f8e653c5cd8fc303e85a906ba",
+    "file": "autocfg-1.5.1/LICENSE-MIT",
+    "source": "https://crates.io/api/v1/crates/autocfg/1.5.1/download",
+    "sha256": "27995d58ad5c1145c1a8cd86244ce844886958a35eb2b78c6b772748669999ac"
+  },
+  {
+    "package": "euclid-0.22.14",
+    "revision": "60f2bd96deec0c0683eeddd737e0dc070a25e9af",
+    "file": "euclid-0.22.14/LICENSE-APACHE",
+    "source": "https://crates.io/api/v1/crates/euclid/0.22.14/download",
+    "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+  },
+  {
+    "package": "euclid-0.22.14",
+    "revision": "60f2bd96deec0c0683eeddd737e0dc070a25e9af",
+    "file": "euclid-0.22.14/LICENSE-MIT",
+    "source": "https://crates.io/api/v1/crates/euclid/0.22.14/download",
+    "sha256": "62065228e42caebca7e7d7db1204cbb867033de5982ca4009928915e4095f3a3"
+  },
+  {
+    "package": "float_next_after-1.0.0",
+    "revision": "6f555d52667acda6237f88588a3d1f4e8a840c7e",
+    "file": "float_next_after-1.0.0/LICENSE",
+    "source": "https://crates.io/api/v1/crates/float_next_after/1.0.0/download",
+    "sha256": "0604d5817110dacc5c7d9b7de6b58b962794603d4823c357157bd5dec4198bc5"
+  },
+  {
+    "package": "libm-0.2.16",
+    "revision": "dfd2203a4d6110820ad7bb65cafe1bf331a03a3d",
+    "file": "libm-0.2.16/LICENSE.txt",
+    "source": "https://crates.io/api/v1/crates/libm/0.2.16/download",
+    "sha256": "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7"
+  },
+  {
+    "package": "lyon_geom-1.0.19",
+    "revision": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "file": "lyon_geom-1.0.19/LICENSE-APACHE",
+    "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "package": "lyon_geom-1.0.19",
+    "revision": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "file": "lyon_geom-1.0.19/LICENSE-MIT",
+    "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "package": "lyon_path-1.0.19",
+    "revision": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "file": "lyon_path-1.0.19/LICENSE-APACHE",
+    "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "package": "lyon_path-1.0.19",
+    "revision": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "file": "lyon_path-1.0.19/LICENSE-MIT",
+    "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "package": "lyon_tessellation-1.0.22",
+    "revision": "b456b143215a1942a617c4672776b68b9a30feee",
+    "file": "lyon_tessellation-1.0.22/LICENSE-APACHE",
+    "source": "https://raw.githubusercontent.com/nical/lyon/b456b143215a1942a617c4672776b68b9a30feee/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "package": "lyon_tessellation-1.0.22",
+    "revision": "b456b143215a1942a617c4672776b68b9a30feee",
+    "file": "lyon_tessellation-1.0.22/LICENSE-MIT",
+    "source": "https://raw.githubusercontent.com/nical/lyon/b456b143215a1942a617c4672776b68b9a30feee/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "package": "num-traits-0.2.19",
+    "revision": "7ec3d41d39b28190ec1d42db38021107b3951f3a",
+    "file": "num-traits-0.2.19/LICENSE-APACHE",
+    "source": "https://crates.io/api/v1/crates/num-traits/0.2.19/download",
+    "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+  },
+  {
+    "package": "num-traits-0.2.19",
+    "revision": "7ec3d41d39b28190ec1d42db38021107b3951f3a",
+    "file": "num-traits-0.2.19/LICENSE-MIT",
+    "source": "https://crates.io/api/v1/crates/num-traits/0.2.19/download",
+    "sha256": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official rust-std toolchain distribution; complete upstream library notice retained",
+    "file": "rust-1.96.0/COPYRIGHT-library.html",
+    "sha256": "78c163fcec50e64bfd85fedb850c273595602fafa2b41f30f75d4e410b80ee83"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/Apache-2.0.txt",
+    "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/BSD-2-Clause.txt",
+    "sha256": "f32fb3b417a194167cfad068223fc975ba96c5960513a10f66a3c28720aec1df"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/CC-BY-SA-4.0.txt",
+    "sha256": "23ee78c8bae49cf08ea2f0c84945c66b987ebe4520881fb51b3dad4fb43d07c2"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/GCC-exception-3.1.txt",
+    "sha256": "a3966c9410ef94a1efbfa9ec04e9c1994026a70623fbf0885ce36737bfba3b54"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/GPL-2.0-only.txt",
+    "sha256": "54b212ba1f97f6948fa5486239ab505dd820b02e50cbfd296b4062c8609a70af"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/GPL-3.0-or-later.txt",
+    "sha256": "05315fce6c35f79b8a35454828995fa26336f235895ac64557abc028f4ffcea2"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/ISC.txt",
+    "sha256": "0ff61769b238634e042ab759dddfd104a8e69d091e3600ae3410e401a6164381"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/LLVM-exception.txt",
+    "sha256": "e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/MIT.txt",
+    "sha256": "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/NCSA.txt",
+    "sha256": "39cb0234065c92b9e6cee3830cbb52b1aa289aa8fe9ba2e66730fec5cf05c630"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/OFL-1.1.txt",
+    "sha256": "8eea8287e5876b539670cadb82e99f9a7afddec6f6730811be1daf25d2e9bcfd"
+  },
+  {
+    "package": "Rust standard library 1.96.0",
+    "revision": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+    "source": "Official Rust 1.96.0 toolchain distribution",
+    "file": "rust-1.96.0/licenses/Unicode-3.0.txt",
+    "sha256": "f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443"
+  }
+]

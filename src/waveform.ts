@@ -1,7 +1,12 @@
 import type { CSSProperties } from 'vue'
-import { createBlob } from './utils/canvas'
 import { timeout } from './utils/promise'
 import { createSpectrumSampler, FFT_BINS, FFT_ROWS_PER_SECOND } from './waveform/fft'
+import { createWaveformTileBlob } from './waveform/png'
+import {
+    createWaveformTilePixels,
+    releaseWaveformTilePixels,
+    retainWaveformTilePixels,
+} from './waveform/tiles'
 
 export type Waveform = {
     images: string[]
@@ -33,35 +38,23 @@ export const createWaveform = async (
 
     const images: string[] = []
 
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = waveformDuration * pps
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Unexpected missing canvas context')
-
-    const imageData = ctx.createImageData(w, canvas.height)
-    imageData.data.fill(255)
-
-    const count = Math.ceil(h / canvas.height)
+    const tileHeight = waveformDuration * pps
+    const count = Math.ceil(h / tileHeight)
     try {
         for (let i = 0; i < count; i++) {
             checkCancelled()
-            for (let y = 0; y < canvas.height; y++) {
-                const source = (i * canvas.height + y) * w
-                const target = (canvas.height - 1 - y) * w * 4 + 3
-                for (let x = 0; x < w; x++) {
-                    imageData.data[target + x * 4] = pixels[source + x] ?? 0
-                }
-            }
-            ctx.putImageData(imageData, 0, 0)
-
-            const blob = await createBlob(canvas)
+            const tile = createWaveformTilePixels(pixels, w, tileHeight, i)
+            const blob = await createWaveformTileBlob(tile, checkCancelled)
             checkCancelled()
-            images.push(URL.createObjectURL(blob))
+            const url = URL.createObjectURL(blob)
+            images.push(url)
+            retainWaveformTilePixels(url, tile)
         }
     } catch (error) {
-        for (const url of images) URL.revokeObjectURL(url)
+        for (const url of images) {
+            URL.revokeObjectURL(url)
+            releaseWaveformTilePixels(url)
+        }
         throw error
     }
 
@@ -77,7 +70,10 @@ export const createWaveform = async (
 // waveforms remain available to undo history until the chart is reset.
 export const releaseWaveform = (waveform: Waveform | undefined) => {
     for (const url of waveform?.images ?? []) {
-        if (createdUrls.delete(url)) URL.revokeObjectURL(url)
+        if (createdUrls.delete(url)) {
+            URL.revokeObjectURL(url)
+            releaseWaveformTilePixels(url)
+        }
     }
 }
 
@@ -85,6 +81,7 @@ export const cleanupWaveform = () => {
     generation++
     for (const url of createdUrls) {
         URL.revokeObjectURL(url)
+        releaseWaveformTilePixels(url)
     }
 
     createdUrls.clear()
