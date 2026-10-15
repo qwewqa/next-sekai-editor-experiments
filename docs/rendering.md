@@ -6,6 +6,8 @@ The editor couples directly to pinned Pixi WebGL2 resources, ordered batches and
 
 The small Rust/Lyon fill kernel accelerates supported contour unions through one bulk numeric call. It does not own WebGL, replace browser font shaping or duplicate the editor's curve flattening. Its precision guards and unchanged JavaScript fallback are part of the rendering contract. See [`native/lyon/README.md`](../native/lyon/README.md) for the pinned toolchain, binary/source verification, memory/failure model and dependency notices. Ordinary JavaScript builds use the checked-in verified binary and need no Rust installation. Initialization never delays the first editor draw; existing cached JavaScript geometry remains valid when acceleration becomes available.
 
+Very wide hovered notes can produce thousands of dash pieces in one rectangular outline. For certified separated rectangle dashes, straight middle pieces use direct triangles; corner pieces and the first/last pieces still share the existing union, preserving single-coverage alpha at the closed seam. Unsupported stroke styles or geometry keep the general union. Keep the wide-rectangle and seam-overlap regressions when changing this path: a short chart-drawing callback does not exclude a stall in the separate hover overlay.
+
 The existing preview keeps its direct WebGL2 renderer and GLSL ES 3.00 shaders. Its workload already fits that renderer; forcing it through the editor's retained scene machinery would add a separate migration without an established benefit. Both renderers still share the editor's explicit ownership and restore requirements where they use common surfaces.
 
 ## Ownership and draw boundaries

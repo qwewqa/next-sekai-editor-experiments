@@ -552,6 +552,35 @@ export function tessellateStroke(
     const outlines: Contour[] = []
     const half = options.width / 2
     if (!(half > 0)) return new Float64Array()
+    const command = path.commands.length === 1 ? path.commands[0] : undefined
+    const rectangle = command?.[0] === 'rect' ? command : undefined
+    const magnitude = rectangle
+        ? Math.max(
+              1,
+              Math.abs(rectangle[1]),
+              Math.abs(rectangle[2]),
+              Math.abs(rectangle[1] + rectangle[3]),
+              Math.abs(rectangle[2] + rectangle[4]),
+          )
+        : Infinity
+    // Separated rectangle dashes need no global union. Keep the closing seam
+    // and every corner in that union: even offset zero can end exactly on a
+    // dash boundary, leaving overlapping first/last bodies unmerged by dashed().
+    const separateDashes =
+        rectangle &&
+        rectangle.slice(1).every(Number.isFinite) &&
+        Number.isFinite(options.width) &&
+        magnitude * Number.EPSILON * 32 < options.width &&
+        options.cap === 'butt' &&
+        options.join === 'miter' &&
+        options.dash.length === 2 &&
+        options.dash.every((value) => Number.isFinite(value) && value > 0) &&
+        indexed(options.dash, 1) >= 2 * options.width &&
+        Math.abs(rectangle[3]) > 2 * options.width &&
+        Math.abs(rectangle[4]) > 2 * options.width &&
+        Number.isFinite(options.dashOffset)
+    const independent: number[] = []
+    let separateBody = false
     const polygon = (points: Point[]) => {
         if (points.length < 3) return
         let area = 0
@@ -561,6 +590,11 @@ export function tessellateStroke(
             area += cross(a[0], a[1], b[0], b[1])
         }
         if (area < 0) points.reverse()
+        if (separateBody) {
+            independent.push(...indexed(points, 0), ...indexed(points, 1), ...indexed(points, 2))
+            independent.push(...indexed(points, 0), ...indexed(points, 2), ...indexed(points, 3))
+            return
+        }
         outlines.push({ points: points as Points, closed: true })
     }
     const arc = (center: Point, start: number, sweep: number, omitCenter = false) => {
@@ -585,10 +619,22 @@ export function tessellateStroke(
             ])
     }
     for (const source of flatten(path.commands, tolerance)) {
-        for (const contour of options.dash.length
+        const contours = options.dash.length
             ? dashed(source, options.dash, options.dashOffset)
-            : [source]) {
+            : [source]
+        for (let index = 0; index < contours.length; index++) {
+            const contour = indexed(contours, index)
             const points = contour.points
+            separateBody = !!(
+                separateDashes &&
+                source.closed &&
+                source.points.length === 4 &&
+                index > 0 &&
+                index < contours.length - 1 &&
+                !contour.closed &&
+                points.length === 2 &&
+                (points[0][0] === indexed(points, 1)[0] || points[0][1] === indexed(points, 1)[1])
+            )
             if (points.length < 2) {
                 if (points.length && contour.tangent) {
                     if (options.cap === 'round') arc(points[0], 0, tau)
@@ -653,5 +699,10 @@ export function tessellateStroke(
             }
         }
     }
-    return triangulate(outlines, 'nonzero', resolution)
+    const union = triangulate(outlines, 'nonzero', resolution)
+    if (!independent.length) return union
+    const result = new Float64Array(independent.length + union.length)
+    result.set(independent)
+    result.set(union, independent.length)
+    return result
 }
