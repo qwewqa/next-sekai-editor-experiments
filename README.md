@@ -1,6 +1,6 @@
 # Sonolus Next SEKAI Editor
 
-[Editor](https://next-sekai-editor-test.qwewqa.xyz/)
+[Editor](https://nse.qwewqa.dev/)
 
 Use the Node.js version in `.node-version`.
 

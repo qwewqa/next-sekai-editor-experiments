@@ -7,9 +7,7 @@ import { noteStyles } from '../../src/chart/noteStyle'
 import { parseGzippedJson, parseScp } from '../../src/preview/scp'
 import { chart, instrumentRendering, stereoWav } from './fixtures'
 
-const siteUrl = new URL(
-    process.env.PRODUCTION_SITE_URL ?? 'https://next-sekai-editor-test.qwewqa.xyz/',
-).href
+const siteUrl = new URL(process.env.PRODUCTION_SITE_URL ?? 'https://nse.qwewqa.dev/').href
 
 const frames = (page: Page) =>
     page.evaluate(() => ({
