@@ -300,7 +300,14 @@ test('release assets, preview, chart editing and FFT audio work in the productio
         // Return to its start through real input before using chart coordinates.
         await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2)
         await page.mouse.wheel(0, 10000)
-        await page.waitForTimeout(350) // Allow the editor's 250 ms scroll easing to finish.
+        // Wait until the scroll easing stops redrawing; slow runners lag behind its 250 ms.
+        await expect
+            .poll(async () => {
+                const before = (await frames(page)).chart
+                await page.waitForTimeout(250)
+                return (await frames(page)).chart - before
+            })
+            .toBe(0)
         // Default 1000 pixels/s and imported BPM 60 put beat 1/4 above time zero.
         await page.keyboard.press('f')
         await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2 - 250)
