@@ -496,8 +496,10 @@ const drawEntity = (
     highlighted: boolean,
     opacity = 1,
     part?: DrawStep['part'],
+    drawNames = true,
 ) => {
-    if (entity.type === 'note') notes.draw(context, entity, highlighted, opacity)
+    if (entity.type === 'note')
+        notes.draw(context, entity, highlighted, opacity, undefined, drawNames)
     else if (entity.type === 'connector') connectors.draw(context, entity, highlighted, opacity)
     else drawEvent(context, entity, highlighted, opacity, part)
 }
@@ -540,11 +542,12 @@ const strokeDashedTimeLine = (
         hoverDashes = Math.max(1, Math.round(count))
     // Fits the dashes and the gaps between them exactly.
     const stretch = length / (hoverDashes * (DASH + GAP) - GAP)
+    ctx.save()
     ctx.setLineDash([(DASH * stretch) / scale, (GAP * stretch) / scale])
-    ctx.beginPath()
-    ctx.moveTo(ends.left, y)
-    ctx.lineTo(ends.right, y)
-    ctx.stroke()
+    // Keep the dashed geometry independent of scrolling and hover position.
+    ctx.translate(ends.left, y)
+    ctx.strokeLine(0, 0, ends.right - ends.left, 0)
+    ctx.restore()
 }
 
 // Equal ends keep their object, so hovering redraws the chart only when the cursor line changes.
@@ -662,7 +665,7 @@ watchEffect(
             ctx.stroke()
             ctx.restore()
             drawEventInfinities(context, visibilities, scope, showOtherObjects, raised)
-            const drawStep = (target: EditorDrawContext, step: DrawStep) => {
+            const drawStep = (target: EditorDrawContext, step: DrawStep, drawNames = true) => {
                 const { entity, highlighted, opacity, part } = step
                 drawEntity(
                     previewContext && preview.entities.has(entity) ? previewContext : target,
@@ -670,6 +673,7 @@ watchEffect(
                     highlighted || !!hovered?.has(entity),
                     opacity,
                     part,
+                    drawNames,
                 )
             }
             const drawNotes = (from: number, to: number, pass: string) => {
@@ -677,13 +681,13 @@ watchEffect(
             }
             const drawSections = (pass: 'normal' | 'raised') => {
                 if (!sections) return
-                const bodies = { ...context, showStageName: false, showGroupName: false }
                 for (const section of sections.sections) {
                     if (section.pass !== pass) continue
                     const visible = sections.visibleBySection.get(section) ?? []
                     if (section.steps[0]?.entity.type === 'note') {
                         if (!notes.drawSection(context, section))
-                            for (const step of visible) drawStep(bodies, step)
+                            // Keep the preparation context so both bodies and names reuse it.
+                            for (const step of visible) drawStep(context, step, false)
                         // Keep name requests at the original painter-order point.
                         notes.drawVisibleNames(context, visible, hovered)
                     } else if (section.live) {

@@ -915,6 +915,7 @@ export const createNoteRenderer = () => {
             highlighted: boolean,
             opacity = 1,
             position?: NotePosition,
+            drawNames = true,
         ) {
             const { ctx, state, scale, recentlyActive } = context
             if (opacity <= 0 || scale <= 0 || context.pixelRatio <= 0) return
@@ -1007,7 +1008,7 @@ export const createNoteRenderer = () => {
                 }
             }
 
-            drawNoteNames(context, entity, highlighted, x, y)
+            if (drawNames) drawNoteNames(context, entity, highlighted, x, y)
             ctx.restore()
         },
         clear() {

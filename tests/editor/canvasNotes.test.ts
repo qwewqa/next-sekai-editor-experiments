@@ -636,6 +636,50 @@ test('prepared composed notes reuse projected appearance once and explicit posit
     assert.equal(entity.left, -1)
 })
 
+test('fallback bodies and their separate names share preparation, including rejected artwork', (t) => {
+    for (const size of [2, 160]) {
+        const { context, renderer, images } = artworkFixture(t)
+        context.names = { names: [] }
+        context.showGroupName = true
+        context.recentlyActive = true
+        const entity = artworkNote({ beat: 2, size, groupId: 2 as never })
+        context.state.groups = new Map([[entity.groupId, { name: 'Other group' } as never]])
+        let projections = 0
+        let spriteChecks = 0
+        context.composed = {
+            notePosition() {
+                projections++
+                return { left: 7, size }
+            },
+        } as unknown as NonNullable<EditorDrawContext['composed']>
+        Object.defineProperty(context.ctx, 'maxSurfaceSize', {
+            get() {
+                spriteChecks++
+                return 4096
+            },
+        })
+        renderer.beginFrame(1)
+        renderer.prepare(context, entity, false)
+        const preparedChecks = spriteChecks
+        assert.ok(preparedChecks > 0)
+        renderer.draw(context, entity, false, 1, undefined, false)
+        assert.equal(context.names.names.length, 0, 'the body pass does not enqueue names')
+        assert.equal(images(), size === 2 ? 1 : 0, 'oversized artwork still draws directly')
+        assert.equal(
+            spriteChecks,
+            preparedChecks,
+            'a prepared atlas rejection is not retried in the body pass',
+        )
+        renderer.drawVisibleNames(context, [bodyStep(entity)])
+        assert.equal(projections, 1, 'body and name passes reuse the same projected appearance')
+        assert.deepEqual(
+            context.names.names.map(({ text, owner, x, alpha }) => [text, owner, x, alpha]),
+            [['Other group', entity, 7 + size / 2, 1]],
+        )
+        assert.ok(Math.abs(context.names.names[0]!.y + 2) < 1e-12)
+    }
+})
+
 test('prepared notes reject stale frame, highlight, owner and context appearances', (t) => {
     const staged = artworkFixture(t)
     const ghost = artworkFixture(t)

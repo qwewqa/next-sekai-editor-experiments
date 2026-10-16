@@ -393,6 +393,42 @@ test('Basic zoomed out: the hover line ends at the lanes, clear of its labels', 
     expect(Math.max(...lit) - Math.min(...lit)).toBeGreaterThan(width / 4)
 })
 
+test('fractional scrolling reuses hover dashes and keeps their screen positions', async ({
+    page,
+}) => {
+    await setup(page, 'basic', 24)
+    await useTool(page, 'select')
+    await hoverAt(page, 10.5)
+    const first = await lineRow(page, 'hover')
+    const before = await page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-overlay')!
+        const context = window.editorRendering.getDrawContext(canvas) as unknown as {
+            paths: { stats: { native: number; fallback: number } }
+        }
+        return context.paths.stats.native + context.paths.stats.fallback
+    })
+    for (let i = 0; i < 12; i++) {
+        await page.evaluate(() => (window.editorTest.view.time += 0.00125))
+        const next = await lineRow(page, 'hover')
+        const start = litRange(first)
+        const current = litRange(next)
+        expect(Math.abs(current.min - start.min)).toBeLessThanOrEqual(1 / next.ratio)
+        expect(Math.abs(current.max - start.max)).toBeLessThanOrEqual(1 / next.ratio)
+        // The line stays under the still pointer; its dash and gap coverage must stay put.
+        expect(next.alphas.map((alpha) => alpha >= 64)).toEqual(
+            first.alphas.map((alpha) => alpha >= 64),
+        )
+    }
+    const after = await page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-overlay')!
+        const context = window.editorRendering.getDrawContext(canvas) as unknown as {
+            paths: { stats: { native: number; fallback: number } }
+        }
+        return context.paths.stats.native + context.paths.stats.fallback
+    })
+    expect(after).toBe(before)
+})
+
 test('hovering across a cursor line that ends clear of the labels redraws only the overlay', async ({
     page,
 }) => {
@@ -689,14 +725,14 @@ for (const deviceScaleFactor of [1, 1.25, 1.5, 2]) {
                     )
                     for (const middle of await figureMiddles(page)) offsets.push(middle - line)
                 }
-                // Within half a pixel, as text lands on whole ones, and centred on average; device
-                // pixels that aren't whole pixels add up to half of one.
-                const uneven = Number.isInteger(deviceScaleFactor) ? 0 : 0.5 / deviceScaleFactor
+                // Hinted, thresholded digit pixels can differ from the font-outline centre by
+                // one physical pixel. Allow a small line-antialiasing margin, but keep the mean
+                // below a pixel across phases. These bounds apply at every browser/DPR.
                 const mean = offsets.reduce((a, b) => a + b) / offsets.length
-                expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(0.51 + uneven)
-                // At 1.25x the ink's device pixel phase can be off by half of one in the mean too.
-                const skew = deviceScaleFactor === 1.25 ? uneven : uneven / 2
-                expect(Math.abs(mean)).toBeLessThanOrEqual(0.2 + skew)
+                expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(
+                    1.02 / deviceScaleFactor,
+                )
+                expect(Math.abs(mean)).toBeLessThanOrEqual(0.75 / deviceScaleFactor)
             })
         })
     }

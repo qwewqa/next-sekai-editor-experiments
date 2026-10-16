@@ -12,7 +12,9 @@ let frame = 0
 const update = (timestamp: number) => {
     frame = 0
     if (!isAppActive.value) return
-    const now = performance.now() / 1000
+    // Motion follows the frame timeline, not varying callback queue delay.
+    // The first frame after activation may predate its wall-time reset.
+    const now = Math.max(time.value.now, timestamp / 1000)
 
     // Draws invalidated by this tick render in this frame, after Vue's flush.
     const close = openFrame(timestamp)
@@ -34,7 +36,7 @@ const stop = watch(
 
         // Playback catches up to real time, while gestures and inertia must not
         // integrate the entire time spent away as one enormous animation frame.
-        time.value = { now: performance.now() / 1000, delta: 0 }
+        time.value = { now: Math.max(time.value.now, performance.now() / 1000), delta: 0 }
         frame = requestAnimationFrame(update)
     },
     { immediate: true, flush: 'sync' },
