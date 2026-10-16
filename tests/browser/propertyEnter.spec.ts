@@ -236,7 +236,8 @@ test('Enter retains native dropdown selection and multiline newline behavior', a
         textarea.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') confirmOnEnter(event)
         })
-        document.body.append(textarea)
+        // Inside a dock, so typing never reaches editor shortcuts.
+        document.querySelector('.properties-panel')!.append(textarea)
         textarea.focus()
     })
     const multiline = page.getByRole('textbox', { name: 'Multiline regression field' })

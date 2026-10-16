@@ -2070,12 +2070,13 @@ for (const width of [1600, 375, 320]) {
                 (key) => window.editorTest.history.state.value[key].size,
                 collection,
             )
-            // The manager command opens its workspace panel beside the elevation editor.
+            // The manager command opens its dialog on the matching tab.
             await editor.getByRole('button', { name, exact: true }).first().click()
-            const panel = page.locator(`#workspace-panel-${collection}`)
-            await expect(panel).toBeVisible()
-            await park()
-            await panel.locator('.manager-add').click()
+            const dialog = page.getByRole('dialog')
+            await expect(dialog.getByRole('tab', { selected: true })).toHaveText(
+                collection === 'groups' ? 'Groups' : 'Stages',
+            )
+            await dialog.locator('.manager-add').click()
             await expect
                 .poll(() =>
                     page.evaluate(
@@ -2084,28 +2085,12 @@ for (const width of [1600, 375, 320]) {
                     ),
                 )
                 .toBe(before + 1)
+            await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+            await expect(dialog).toHaveCount(0)
             await expect(editor).toBeVisible()
-            const beat = page.getByRole('spinbutton', { name: 'Beat', exact: true })
-            await expect(beat).toHaveValue('7')
-            // The open panel must not cover the elevation beat control.
-            expect(
-                await beat.evaluate((element) => {
-                    const bounds = element.getBoundingClientRect()
-                    return element.contains(
-                        document.elementFromPoint(
-                            bounds.x + bounds.width / 2,
-                            bounds.y + bounds.height / 2,
-                        ),
-                    )
-                }),
-            ).toBe(true)
-            await park()
-            await page.evaluate((key) => {
-                const { settings } = window.editorTest
-                if (key === 'groups') settings.showGroups = false
-                else settings.showStages = false
-            }, collection)
-            await expect(panel).toHaveCount(0)
+            await expect(page.getByRole('spinbutton', { name: 'Beat', exact: true })).toHaveValue(
+                '7',
+            )
             await park()
         }
         for (const name of ['Open', 'Play', '1/4']) {

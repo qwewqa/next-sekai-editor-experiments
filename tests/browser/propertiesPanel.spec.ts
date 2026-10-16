@@ -57,9 +57,8 @@ test.describe('roomy panel', () => {
         // A pointer click leaves keyboard shortcuts with the editor.
         await expect(page.locator('[data-workspace-dock] :focus')).toHaveCount(0)
         await page.keyboard.press('e')
-        await expect
-            .poll(() => page.evaluate(() => window.editorTest.settings.showGroups))
-            .toBe(true)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await page.keyboard.press('Escape')
         expect(await settingsOf(page)).toEqual({ section: 'selection', collapsed: ['selection'] })
 
         await page.reload()
@@ -81,8 +80,7 @@ test.describe('roomy panel', () => {
         const lane = page.getByLabel('Lane', { exact: true })
         await lane.focus()
         await page.keyboard.press('e')
-        await page.keyboard.press('Escape')
-        expect(await page.evaluate(() => window.editorTest.settings.showGroups)).toBe(false)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
     })
 
     test('selection fields lead with position fields and end with elevation', async ({ page }) => {

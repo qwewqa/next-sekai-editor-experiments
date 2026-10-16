@@ -1,8 +1,6 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
-import { showModal } from '../../../modals'
-import { isPanelEnabled, showPanel } from '../../workspace'
-import ManageGroupsModal from './manageGroups/ManageGroupsModal.vue'
+import { showManagerModal } from '../../workspace/manager/modal'
 import ManageGroupsIcon from './ManageGroupsIcon.vue'
 
 export const manageGroups: Command = {
@@ -12,8 +10,6 @@ export const manageGroups: Command = {
     },
 
     execute() {
-        // A disabled panel keeps the manager reachable as a dialog.
-        if (isPanelEnabled('groups')) showPanel('groups')
-        else void showModal(ManageGroupsModal, {})
+        showManagerModal('groups')
     },
 }

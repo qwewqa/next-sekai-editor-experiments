@@ -1,8 +1,6 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
-import { showModal } from '../../../modals'
-import { isPanelEnabled, showPanel } from '../../workspace'
-import ManageStagesModal from './manageStages/ManageStagesModal.vue'
+import { showManagerModal } from '../../workspace/manager/modal'
 import ManageStagesIcon from './ManageStagesIcon.vue'
 
 export const manageStages: Command = {
@@ -12,10 +10,8 @@ export const manageStages: Command = {
     },
 
     execute() {
-        // Both presentations explain disabled dynamic stages and offer to
-        // enable them, so opening the manager never changes the level. A
-        // disabled panel keeps the manager reachable as a dialog.
-        if (isPanelEnabled('stages')) showPanel('stages')
-        else void showModal(ManageStagesModal, {})
+        // The Stages tab explains disabled dynamic stages and offers to enable
+        // them, so opening the manager never changes the level.
+        showManagerModal('stages')
     },
 }

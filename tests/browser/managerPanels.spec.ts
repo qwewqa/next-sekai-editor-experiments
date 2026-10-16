@@ -1407,7 +1407,7 @@ test('a right press on another row in the dialog moves the menu there, as in a d
     await nameButton(dialog, 'Default').click({ button: 'right' })
     await expect(menu).toHaveAttribute('aria-label', 'More Actions for Default')
     // Elsewhere in the dialog it only closes the menu.
-    await dialog.locator('[data-modal-title]').click({ button: 'right' })
+    await dialog.getByRole('tab', { name: 'Groups' }).click({ button: 'right' })
     await expect(menu).toHaveCount(0)
     await expect(dialog).toBeVisible()
 })

@@ -9,6 +9,8 @@ export type Modal = {
     resolve: (result?: never) => void
     presentation?: 'tool'
     pane?: 'main' | 'elevation'
+    /** A fixed-height dialog filling most of the screen. */
+    size?: 'large'
 }
 
 export const modals = shallowReactive<Modal[]>([])
@@ -39,7 +41,7 @@ type ModalResult<T extends Component> = ComponentInstance<T>['$emit'] extends (
 export const showModal = <T extends Component>(
     component: T,
     props: ModalProps<T>,
-    options?: Pick<Modal, 'presentation' | 'pane'>,
+    options?: Pick<Modal, 'presentation' | 'pane' | 'size'>,
 ) =>
     new Promise<ModalResult<T> | undefined>((resolve) => {
         modals.push({

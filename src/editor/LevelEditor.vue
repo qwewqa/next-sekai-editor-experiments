@@ -23,10 +23,8 @@ import { hasToolModal } from './toolModals'
 import { switchToolTo, tool, toolName, type ToolName } from './tools'
 import { brushProperties } from './tools/brush'
 import { view } from './view'
-import { manageGroups } from './commands/manageGroups'
-import { manageStages } from './commands/manageStages'
-import type { Command } from './commands'
 import { workspaceLayout } from './workspace'
+import { showManager, type ManagerTab } from './workspace/manager/modal'
 import ResizeHandle from './workspace/ResizeHandle.vue'
 
 useFocusControl()
@@ -160,8 +158,9 @@ watch([stages, isDynamicStages, () => brushProperties.value.stageId], () => {
     brushProperties.value.stageId = undefined
 })
 
-const onStatusChip = (event: MouseEvent, command: Command) => {
-    void command.execute()
+// Chips show the panels; the manage commands open the dialog.
+const onStatusChip = (event: MouseEvent, tab: ManagerTab) => {
+    showManager(tab)
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
@@ -287,7 +286,7 @@ const stageCount = computed(() =>
                 type="button"
                 class="status-chip relative flex min-w-0 max-w-[40%] px-1"
                 :title="i18n.commands.manageGroups.title"
-                @click="onStatusChip($event, manageGroups)"
+                @click="onStatusChip($event, 'groups')"
             >
                 <span class="flex min-w-0">
                     <span v-for="(part, i) in group" :key="i" :class="partClass(part)">{{
@@ -308,7 +307,7 @@ const stageCount = computed(() =>
                 type="button"
                 class="status-chip relative flex min-w-0 max-w-[40%] px-1"
                 :title="i18n.commands.manageStages.title"
-                @click="onStatusChip($event, manageStages)"
+                @click="onStatusChip($event, 'stages')"
             >
                 <span class="flex min-w-0">
                     <span v-for="(part, i) in stage" :key="i" :class="partClass(part)">{{

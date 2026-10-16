@@ -2804,7 +2804,12 @@ test.describe('preview panel lifecycle', () => {
         await expect(controls).toBeVisible()
         expect(await page.evaluate(() => window.editorTest.settings.previewControls)).toBe('auto')
         // Opening Groups below shrinks the panel so the form no longer fits inside.
-        await page.keyboard.press('e')
+        await page.evaluate(async () => {
+            const { showPanel } = await window.editorTest.appImport<
+                typeof import('../../src/editor/workspace')
+            >('/src/editor/workspace/index.ts')
+            showPanel('groups')
+        })
         await expect(
             page.locator('[data-workspace-dock="left"]').getByText('All Groups', { exact: true }),
         ).toBeVisible()

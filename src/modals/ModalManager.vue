@@ -1,11 +1,60 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { closeModal, modals, type Modal } from '.'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
 
+// Large dialogs fit the visual viewport, which an on-screen keyboard shrinks.
+const hasLarge = computed(() => regularModals.value.some((modal) => modal.size === 'large'))
+const visible = shallowRef<Record<string, string>>()
+const measureVisible = () => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const top = viewport.offsetTop
+    const bottom = document.documentElement.clientHeight - top - viewport.height
+    visible.value = {
+        '--modal-top': `${top}px`,
+        '--modal-bottom': `${Math.max(0, bottom)}px`,
+        '--modal-room': `${viewport.height}px`,
+    }
+}
+watch(
+    hasLarge,
+    (large, _, onCleanup) => {
+        const viewport = window.visualViewport
+        if (!large || !viewport) return
+        measureVisible()
+        viewport.addEventListener('resize', measureVisible)
+        viewport.addEventListener('scroll', measureVisible)
+        onCleanup(() => {
+            viewport.removeEventListener('resize', measureVisible)
+            viewport.removeEventListener('scroll', measureVisible)
+        })
+    },
+    { immediate: true },
+)
+
+// A backdrop press while the content is busy, e.g. selecting rows, keeps it open.
+let keepOpen = false
+const onBackdropDown = (event: PointerEvent) => {
+    const dialog = event.currentTarget as HTMLElement
+    keepOpen = event.target === dialog && !!dialog.querySelector('[data-modal-busy]')
+}
+
+// Escape ends the busy task first, wherever focus is.
+const onCancel = (event: Event) => {
+    const busy = (event.currentTarget as HTMLElement).querySelector('[data-modal-busy]')
+    if (!busy) return
+    event.preventDefault()
+    busy.dispatchEvent(new Event('modalcancel'))
+}
+
 const onClick = (event: MouseEvent, modal: Modal) => {
     if (event.target !== event.currentTarget) return
+    if (keepOpen) {
+        keepOpen = false
+        return
+    }
 
     closeModal(modal)
 }
@@ -68,10 +117,35 @@ const vOpen = {
         :key="modal.id"
         v-open
         tabindex="-1"
-        class="flex max-h-[calc(100%-1rem)] w-[calc(100%-1rem)] max-w-2xl flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
+        class="flex w-[calc(100%-1rem)] flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
+        :class="
+            modal.size === 'large'
+                ? 'modal-large max-h-none max-w-[40rem]'
+                : 'max-h-[calc(100%-1rem)] max-w-2xl'
+        "
+        :style="modal.size === 'large' ? visible : undefined"
+        :data-size="modal.size"
+        @pointerdown="onBackdropDown"
         @click="onClick($event, modal)"
+        @cancel="onCancel"
         @close="closeModal(modal)"
     >
         <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
     </dialog>
 </template>
+
+<style scoped>
+/* A fixed height, so changing content never resizes it; full height on phones. */
+.modal-large {
+    --modal-height: calc(var(--modal-room, var(--viewport-height)) - 1rem);
+    top: var(--modal-top, 0px);
+    bottom: var(--modal-bottom, 0px);
+    height: var(--modal-height);
+}
+
+@media (min-width: 640px) {
+    .modal-large {
+        height: min(var(--modal-height), 48rem);
+    }
+}
+</style>

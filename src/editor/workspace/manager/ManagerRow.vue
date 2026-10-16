@@ -35,6 +35,8 @@ const props = defineProps<{
     nameTitle: string
     /** Whether this row is the authoring target, or a collapsed folder holding it. */
     current: boolean
+    /** The name takes a dialog's first focus. */
+    autofocusName?: boolean
     shown: boolean
     /** Dims the name, as for hidden entries; band rows keep full-strength text. */
     muted: boolean
@@ -421,6 +423,7 @@ const onRenameBlur = (event: FocusEvent) => {
             class="manager-name"
             :disabled
             :aria-current="current && !folder ? 'true' : undefined"
+            :data-autofocus="autofocusName ? '' : undefined"
             :aria-pressed="
                 selecting && !folder && !heading ? (checked ? 'true' : 'false') : undefined
             "

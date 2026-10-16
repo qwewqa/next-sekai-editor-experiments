@@ -1510,7 +1510,12 @@ test.describe('drawer', () => {
         const bar = toolbar(page)
         await hoverFirstFlyout(page, bar)
         // Opened with the mouse still, the drawer leaves the flyout open under it.
-        await page.keyboard.press('e')
+        await page.evaluate(async () => {
+            const { showPanel } = await window.editorTest.appImport<
+                typeof import('../../src/editor/workspace')
+            >('/src/editor/workspace/index.ts')
+            showPanel('groups')
+        })
         const drawer = page.locator('[data-workspace-dock="left"] .workspace-dock-body')
         await expect(drawer).toBeVisible()
         await expect(bar.locator('[aria-expanded="true"]')).toHaveCount(1)

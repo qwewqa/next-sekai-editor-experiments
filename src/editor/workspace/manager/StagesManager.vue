@@ -10,6 +10,11 @@ import { stageManager } from './stages'
 
 defineProps<{
     scrollKey?: string
+    autofocusTarget?: boolean
+}>()
+
+defineEmits<{
+    selectObjects: []
 }>()
 
 const root = useTemplateRef<HTMLDivElement>('root')
@@ -33,6 +38,8 @@ const onEnable = async (event: MouseEvent) => {
             class="min-h-0 flex-1"
             :model="stageManager"
             :scroll-key
+            :autofocus-target
+            @select-objects="$emit('selectObjects')"
         />
         <div v-else class="manager-disabled relative flex min-h-0 flex-1 flex-col text-fg">
             <!-- The band stays so the panel keeps its shape, muted while unavailable. -->
@@ -61,6 +68,7 @@ const onEnable = async (event: MouseEvent) => {
                     type="button"
                     class="manager-enable flex min-h-9 max-w-full items-center rounded-full bg-button px-4 py-1.5 text-center shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent [@media(pointer:coarse)]:min-h-11"
                     :title="i18n.workspace.stages.enable"
+                    :data-autofocus="autofocusTarget ? '' : undefined"
                     @click="onEnable"
                 >
                     <!-- Long translations wrap inside the pill rather than truncate. -->

@@ -27,7 +27,6 @@ import SelectIcon from '../../commands/select/SelectIcon.vue'
 import ResetIcon from '../../commands/reset/ResetIcon.vue'
 import CloseIcon from '../CloseIcon.vue'
 import OverlayScrollbar from '../OverlayScrollbar.vue'
-import { workspaceSize } from '..'
 import { hasScrollMemory, useScrollMemory } from '../useScrollMemory'
 import { isFolderExpanded, setFolderExpanded, type EntryPlace } from './folders'
 import AddIcon from './icons/AddIcon.vue'
@@ -59,6 +58,13 @@ const props = defineProps<{
     model: ManagerModel<T>
     /** Remembers the list's scroll position across remounts under this key. */
     scrollKey?: string
+    /** A dialog opened by keyboard starts on the target's row. */
+    autofocusTarget?: boolean
+}>()
+
+const emit = defineEmits<{
+    /** Selected the chart objects of entries. */
+    selectObjects: []
 }>()
 
 const root = useTemplateRef<HTMLDivElement>('root')
@@ -323,10 +329,6 @@ const observer = new ResizeObserver((entries) => {
         // which must not decide whether Add floats.
         else listHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height
     }
-    if (dialog.value?.open && listHeight.value > 0) {
-        const chrome = dialog.value.getBoundingClientRect().height - listHeight.value
-        if (chrome > 0) dialogChrome.value = chrome
-    }
     onListScroll()
     if (revealOnMeasure && listHeight.value > 0) {
         revealOnMeasure = false
@@ -354,18 +356,10 @@ watch(list, (element, previous) => {
 })
 // The Add item follows the rows; it floats in reach at the bottom of long
 // lists, unless the list is too short to show it beside at least two rows.
-// In a dialog the list's height follows Add's place, so the dialog's room decides.
-const dialog = shallowRef<HTMLDialogElement | null>(null)
-const dialogChrome = shallowRef(160)
-// Dialogs are at most 1rem shorter than the viewport.
-const dialogRoom = computed(() => workspaceSize.value.height - 16 - dialogChrome.value)
-const stickyAdd = computed(
-    () => (dialog.value ? dialogRoom.value : listHeight.value) >= (isCoarse.value ? 176 : 156),
-)
+const stickyAdd = computed(() => listHeight.value >= (isCoarse.value ? 176 : 156))
 watch(root, (element, previous) => {
     if (previous) observer.unobserve(previous)
     if (element) observer.observe(element)
-    dialog.value = element?.closest('dialog') ?? null
 })
 onUnmounted(() => {
     observer.disconnect()
@@ -1644,6 +1638,7 @@ const runBulk = async (action: string, keyboard: boolean, from?: RowKey) => {
             return
         case 'select':
             selectOwned(props.model.owner, new Set(selectedIds.value))
+            emit('selectObjects')
             return
         case 'duplicate': {
             // The copies become the selection, ready to move together; a
@@ -1715,6 +1710,7 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
                     ? key.id
                     : new Set(folderItems.value.get(key.id)?.members ?? []),
             )
+            emit('selectObjects')
             return
         case 'moveSelection':
             if (key.type === 'entry') await moveSelectionTo(props.model.owner, key.id)
@@ -1823,6 +1819,7 @@ const entryProps = (id: T, name: string) => ({
             ? label(i18n.value.workspace.manager.target, entryTitle(id, name))
             : entryTitle(id, name),
     current: focused.value === id,
+    autofocusName: props.autofocusTarget && focused.value === id,
     shown: scope.value.isShown(id),
     eyeDisabled: !scope.value.canSetShown(id),
     muted: !scope.value.isShown(id),
@@ -1938,7 +1935,9 @@ const folderEyeLabel = (item: FolderItem) =>
         ref="root"
         class="manager-list flex min-h-0 flex-col text-fg"
         :class="{ 'manager-list-selecting': selecting }"
+        :data-modal-busy="selecting || renaming ? '' : undefined"
         @keydown="onKeydown"
+        @modalcancel="stopSelecting"
     >
         <div
             class="manager-band relative z-10 shrink-0 bg-header px-1.5 py-1 [@media(pointer:coarse)]:py-0.5"
@@ -1951,6 +1950,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 :name="strings.all"
                 :name-title="strings.all"
                 :current="focused === undefined"
+                :autofocus-name="autofocusTarget && focused === undefined"
                 :shown="scope.shownCount.value > 0"
                 :partial="scope.shownCount.value > 0 && !allShown"
                 :grip-space="hasGrip"

@@ -649,15 +649,13 @@ test('Select Multiple shows it is on, as the toolbar tool in use', async ({ page
     await page.locator('.panel-tab', { hasText: 'Groups' }).click()
     await expectOn(page.locator('#workspace-panel-groups'))
 
-    // The dialog Manage Groups opens when the panel is off.
+    // The Manage Groups dialog.
     await page.evaluate(async () => {
         const { appImport } = window.editorTest
-        const { showModal } =
-            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
-        const { default: modal } = await appImport<
-            typeof import('../../src/editor/commands/manageGroups/manageGroups/ManageGroupsModal.vue')
-        >('/src/editor/commands/manageGroups/manageGroups/ManageGroupsModal.vue')
-        void showModal(modal, {})
+        const { showManagerModal } = await appImport<
+            typeof import('../../src/editor/workspace/manager/modal')
+        >('/src/editor/workspace/manager/modal.ts')
+        showManagerModal('groups')
     })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()

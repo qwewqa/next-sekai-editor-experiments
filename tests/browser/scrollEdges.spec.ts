@@ -37,8 +37,15 @@ test('scrollable dialog bodies fade only toward hidden content', async ({ page }
 
 test('content that fits shows no fade', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 })
-    await page.evaluate(() => (window.editorTest.settings.groupsPosition = 'disabled'))
-    await page.keyboard.press('e')
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { showModal } =
+            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+        const { default: modal } = await appImport<typeof import('../../src/modals/InfoModal.vue')>(
+            '/src/modals/InfoModal.vue',
+        )
+        void showModal(modal, { title: () => 'Info', message: () => 'Short.' })
+    })
     const body = page.getByRole('dialog').locator('.scroll-edges')
     await expect(body).toBeVisible()
     expect(await edges(body)).toMatchObject({ before: false, after: false, mask: 'none' })

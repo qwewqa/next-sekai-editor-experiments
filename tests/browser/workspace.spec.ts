@@ -86,13 +86,13 @@ test('panel names hide visible panels and show hidden ones', async ({ page }) =>
     await stages.click({ button: 'middle' })
     await expect(stages).toHaveAttribute('aria-expanded', 'false')
 
-    // An existing manager command opens and activates its panel, expanding a
-    // collapsed dock.
-    await page.keyboard.press('e')
+    // The group chip opens and activates its panel, expanding a collapsed dock.
+    const chip = page.locator('.status-chip').first()
+    await chip.click()
     await expect(groups).toHaveAttribute('aria-selected', 'true')
     await groups.click()
     await expect(groups).toHaveAttribute('aria-selected', 'false')
-    await page.keyboard.press('e')
+    await chip.click()
     await expect(groups).toHaveAttribute('aria-selected', 'true')
 })
 
@@ -330,7 +330,12 @@ test('opening a dock does not pop a toolbar group under a resting pointer', asyn
     const box = (await toolbar.boundingBox())!
     // Rest the pointer on the toolbar row, where buttons will move under it.
     await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height - 104)
-    await page.keyboard.press('e')
+    await page.evaluate(async () => {
+        const { showPanel } = await window.editorTest.appImport<
+            typeof import('../../src/editor/workspace')
+        >('/src/editor/workspace/index.ts')
+        showPanel('groups')
+    })
     await expect(tab(page, 'left', 'Groups')).toHaveAttribute('aria-selected', 'true')
     await settle(page)
     await expect(page.locator('[class~="bg-bg/75"]')).toHaveCount(0)

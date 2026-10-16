@@ -7,6 +7,14 @@ import { modalTitleKey } from './title'
 
 const props = defineProps<{
     title: string
+    /** The body neither pads nor scrolls; its content fills it and scrolls itself. */
+    fill?: boolean
+}>()
+
+const slots = defineSlots<{
+    default(): unknown
+    /** Replaces the visible title, e.g. with tabs; the title still names the dialog. */
+    header?(): unknown
 }>()
 
 // Only the editor's tool-modal host provides a title; its panels use the
@@ -29,10 +37,17 @@ const titleId = useId()
 
 <template>
     <div
-        class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pl-4 pr-1.5 font-bold [@media(pointer:coarse)]:h-[52px]"
-        :class="modalTitle ? 'text-base' : 'text-lg'"
+        class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold [@media(pointer:coarse)]:h-[52px]"
+        :class="[modalTitle ? 'text-base' : 'text-lg', slots.header ? 'pl-1.5' : 'pl-4']"
     >
-        <span :id="titleId" class="min-w-0 truncate" data-modal-title :title>{{ title }}</span>
+        <span
+            :id="titleId"
+            :class="slots.header ? 'sr-only' : 'min-w-0 truncate'"
+            data-modal-title
+            :title="slots.header ? undefined : title"
+            >{{ title }}</span
+        >
+        <slot name="header" />
         <button
             type="button"
             class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
@@ -44,7 +59,10 @@ const titleId = useId()
         </button>
     </div>
 
-    <div v-scroll-edges class="relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+    <div v-if="fill" class="relative flex min-h-0 flex-1 flex-col">
+        <slot />
+    </div>
+    <div v-else v-scroll-edges class="relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
         <slot />
     </div>
 </template>
