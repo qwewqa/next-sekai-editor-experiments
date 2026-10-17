@@ -66,15 +66,19 @@ export const parseLevelDataChart = (
 ): Chart => {
     if (report) reportLevelDataEntities(entities, report)
     activeReport = report
+    reportedValues = new WeakMap()
     try {
         return parseEntities(entities, defaultGuideColors, noteSources)
     } finally {
         activeReport = undefined
+        reportedValues = new WeakMap()
     }
 }
 
 // The parse is synchronous and does not nest, so the helpers can reach its report here.
 let activeReport: LevelDataReport | undefined
+// The fields whose unknown value an entity has already added, since a field can be read twice.
+let reportedValues = new WeakMap<LevelDataEntity, Set<string>>()
 
 const parseEntities = (
     entities: LevelDataEntity[],
@@ -235,7 +239,10 @@ const checked = <T extends Type.TSchema>(
     // The report records the value and the field's default stands in.
     if (!activeReport || !choice) throw new ImportRefusal('unknownValue', name)
 
-    activeReport.addValue(entity.archetype, name, value)
+    const reported = reportedValues.get(entity) ?? new Set<string>()
+    reportedValues.set(entity, reported)
+    if (!reported.has(name)) activeReport.addValue(entity.archetype, name, value)
+    reported.add(name)
     return choice.default as Type.Static<T>
 }
 
