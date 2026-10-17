@@ -26,7 +26,18 @@ export const noteStyleSchema = Type.Union([
     Type.Literal('cyan'),
     Type.Literal('black'),
 ])
-export const noteStyleValueSchema = Type.Integer({ minimum: 0, maximum: 8 })
+// A choice, so a value from a newer editor is reported and replaced rather than refused.
+export const noteStyleValueSchema = Type.Union([
+    Type.Literal(0),
+    Type.Literal(1),
+    Type.Literal(2),
+    Type.Literal(3),
+    Type.Literal(4),
+    Type.Literal(5),
+    Type.Literal(6),
+    Type.Literal(7),
+    Type.Literal(8),
+])
 
 export const noteStyleValue = (style: NoteStyle) => noteStyles.indexOf(style)
 

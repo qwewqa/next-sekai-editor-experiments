@@ -387,8 +387,7 @@ const toNoteObject = (
         stageId,
         beat: getValue(entity, EngineArchetypeDataName.Beat, beatSchema),
         elevation: getOptionalValue(entity, 'elevation', Type.Number()) ?? 0,
-        noteStyle:
-            noteStyles[getOptionalValue(entity, 'style', noteStyleValueSchema) ?? 0] ?? 'default',
+        noteStyle: noteStyles[getOptionalValue(entity, 'style', noteStyleValueSchema) ?? 0],
         connectorStyle:
             defaultGuideColor && getValue(entity, 'segmentKind', segmentKindSchema) === 103
                 ? 'default'

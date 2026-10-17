@@ -1,7 +1,8 @@
 import type { LevelDataEntity } from '@sonolus/core'
 import Type from 'typebox'
-import Value from 'typebox/value'
 import type { Chart } from '../..'
+import { knownChoiceOf } from '../../../levelData/known'
+import { LevelDataReport, reportLevelDataEntities } from '../../../levelData/report'
 import {
     groupFolderArchetype,
     normalizeFolders,
@@ -14,6 +15,7 @@ import type { NoteObject } from '../../note'
 import { ImportRefusal } from '../../refusal'
 import { addDefaultStageToStages, addToStages, type StageId, type StageObject } from '../../stages'
 import { parseBpmsToChart } from './bpm'
+import { check } from './check'
 import { parseCameraEventsToChart } from './events/camera'
 import { parseStageMaskEventsToChart } from './events/stage/mask'
 import { parseStagePivotEventsToChart } from './events/stage/pivot'
@@ -51,10 +53,33 @@ export type ParseCtx = {
     ) => StageId
 }
 
+/**
+ * Parses level data into a chart. With a `report`, what the parser does not read is added to it
+ * and an unknown choice value becomes its field's default; without one, an unknown choice
+ * value refuses the level as before.
+ */
 export const parseLevelDataChart = (
     entities: LevelDataEntity[],
     defaultGuideColors: readonly number[] = [],
     noteSources?: Map<NoteObject, LevelDataEntity>,
+    report?: LevelDataReport,
+): Chart => {
+    if (report) reportLevelDataEntities(entities, report)
+    activeReport = report
+    try {
+        return parseEntities(entities, defaultGuideColors, noteSources)
+    } finally {
+        activeReport = undefined
+    }
+}
+
+// The parse is synchronous and does not nest, so the helpers can reach its report here.
+let activeReport: LevelDataReport | undefined
+
+const parseEntities = (
+    entities: LevelDataEntity[],
+    defaultGuideColors: readonly number[],
+    noteSources: Map<NoteObject, LevelDataEntity> | undefined,
 ): Chart => {
     const chart: Chart = {
         initialLife: 1000,
@@ -176,15 +201,42 @@ export const parseLevelDataChart = (
     return chart
 }
 
+/** One read through a helper, for the test that the declared table and the parser agree. */
+export type ParserRead = {
+    archetype: string
+    name: string
+    kind: 'value' | 'ref'
+    required: boolean
+    schema?: Type.TSchema
+}
+
+let onRead: ((read: ParserRead) => void) | undefined
+
+export const setParserReadHook = (hook: typeof onRead) => {
+    onRead = hook
+}
+
 // A choice the editor doesn't know is unknown; other refused values are invalid.
-const assertValue: <T extends Type.TSchema>(
+const checked = <T extends Type.TSchema>(
+    entity: LevelDataEntity,
     name: string,
     schema: T,
     value: unknown,
-) => asserts value is Type.Static<T> = (name, schema, value) => {
-    if (Value.Check(schema, value)) return
-    const isChoice = Type.IsUnion(schema) && schema.anyOf.every((option) => Type.IsLiteral(option))
-    throw new ImportRefusal(isChoice ? 'unknownValue' : 'invalidValue', name)
+) => {
+    if (check(schema, value)) return value as Type.Static<T>
+
+    // The declared table says which fields are choices, and gives their defaults.
+    const choice = knownChoiceOf(entity.archetype, name)
+    const isChoice =
+        choice !== undefined ||
+        (Type.IsUnion(schema) && schema.anyOf.every((option) => Type.IsLiteral(option)))
+    if (!isChoice) throw new ImportRefusal('invalidValue', name)
+
+    // The report records the value and the field's default stands in.
+    if (!activeReport || !choice) throw new ImportRefusal('unknownValue', name)
+
+    activeReport.addValue(entity.archetype, name, value)
+    return choice.default as Type.Static<T>
 }
 
 export const getValue = <T extends Type.TSchema>(
@@ -192,12 +244,12 @@ export const getValue = <T extends Type.TSchema>(
     name: string,
     schema: T,
 ) => {
+    onRead?.({ archetype: entity.archetype, name, kind: 'value', required: true, schema })
     const data = entity.data.find((data) => data.name === name)
     if (!data) throw new ImportRefusal('dataNotFound', name)
     if (!('value' in data)) throw new ImportRefusal('dataNoValue', name)
 
-    assertValue(name, schema, data.value)
-    return data.value
+    return checked(entity, name, schema, data.value)
 }
 
 export const getOptionalValue = <T extends Type.TSchema>(
@@ -205,15 +257,16 @@ export const getOptionalValue = <T extends Type.TSchema>(
     name: string,
     schema: T,
 ) => {
+    onRead?.({ archetype: entity.archetype, name, kind: 'value', required: false, schema })
     const data = entity.data.find((data) => data.name === name)
     if (!data) return
     if (!('value' in data)) return
 
-    assertValue(name, schema, data.value)
-    return data.value
+    return checked(entity, name, schema, data.value)
 }
 
 export const getRef = (entity: LevelDataEntity, name: string) => {
+    onRead?.({ archetype: entity.archetype, name, kind: 'ref', required: true })
     const data = entity.data.find((data) => data.name === name)
     if (!data) throw new ImportRefusal('dataNotFound', name)
     if (!('ref' in data)) throw new ImportRefusal('dataNoRef', name)
@@ -222,6 +275,7 @@ export const getRef = (entity: LevelDataEntity, name: string) => {
 }
 
 export const getOptionalRef = (entity: LevelDataEntity, name: string) => {
+    onRead?.({ archetype: entity.archetype, name, kind: 'ref', required: false })
     const data = entity.data.find((data) => data.name === name)
     if (!data) return
     if (!('ref' in data)) return

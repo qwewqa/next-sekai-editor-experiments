@@ -1,4 +1,4 @@
-import { i18n } from '../i18n'
+import en from '../i18n/en/index.json'
 import { numberedName, type FolderId } from './folders'
 
 export type Groups = Map<GroupId, GroupObject>
@@ -16,6 +16,13 @@ export type GroupObject = {
 
 let i = 1
 
+// The caller's language, set by `i18n`; the chart code stays loadable without it.
+let defaultName: () => string = () => en.group.default
+
+export const setDefaultGroupName = (get: () => string) => {
+    defaultName = get
+}
+
 export const addToGroups = (
     groups: Groups,
     name?: string,
@@ -28,7 +35,7 @@ export const addToGroups = (
     if (!name?.trim()) name = undefined
     name ??= groups.size
         ? numberedName([...groups.values()].map(({ name }) => name))
-        : i18n.value.group.default
+        : defaultName()
 
     groups.set(id, {
         name,
