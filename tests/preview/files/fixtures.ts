@@ -141,6 +141,18 @@ export const jpegHeader = (width: number, height: number) =>
         0,
     ])
 
+/** A size as the dialog's `formatSize` writes it in English: decimal kB, MB or GB. */
+export const sizeEn = (bytes: number) => {
+    const [unit, scale] =
+        bytes >= 1e9 ? ['gigabyte', 1e9] : bytes >= 1e6 ? ['megabyte', 1e6] : ['kilobyte', 1e3]
+    return new Intl.NumberFormat('en', {
+        style: 'unit',
+        unit,
+        unitDisplay: 'short',
+        maximumFractionDigits: 1,
+    }).format(bytes / scale)
+}
+
 export const gz = (value: unknown) => new Uint8Array(gzipSync(JSON.stringify(value)))
 
 const identity = Object.fromEntries(

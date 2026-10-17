@@ -19,6 +19,7 @@ import {
 import {
     audioZip,
     backgroundData,
+    concat,
     decodeTestAudio,
     effectData,
     gz,
@@ -151,6 +152,8 @@ const particleWith = (groups: unknown[]) =>
     })
 const oneParticle = particleData().effects[0]!.groups[0]!.particles[0]
 
+const ratioTexture = concat(png(64, 64), new Uint8Array(30_000_000))
+
 const broken: [string, AssetType, Uint8Array][] = [
     ['a huge count with no particles', 'particle', particleWith([{ count: 1e15, particles: [] }])],
     [
@@ -171,9 +174,11 @@ const broken: [string, AssetType, Uint8Array][] = [
         'a ratio bomb',
         'skin',
         rawZip(
-            scpEntries('skin', { resources: { texture: new Uint8Array(30_000_000) } }).map(
-                (entry) =>
-                    entry.data.length === 30_000_000 ? { ...entry, method: 8 as const } : entry,
+            // A texture whose header passes, so only the ratio refuses it.
+            scpEntries('skin', { resources: { texture: ratioTexture } }).map((entry) =>
+                entry.data.length === ratioTexture.length
+                    ? { ...entry, method: 8 as const }
+                    : entry,
             ),
         ),
     ],

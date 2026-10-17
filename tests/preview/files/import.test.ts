@@ -26,6 +26,7 @@ import {
     scp,
     scpEntries,
     sha1,
+    sizeEn,
     skinData,
     utf8,
     wav,
@@ -38,7 +39,7 @@ const en = (
     }
 ).commands.previewAssets
 const importMessage = (error: AssetImportError) =>
-    formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value))
+    formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value), sizeEn)
 
 // Rejection at import (Part 2, 2.5.5, 2.11): each way a package can be wrong is refused with a
 // plain message that names the problem.
@@ -651,7 +652,7 @@ test('a file over 2 GiB is refused', async () => {
     const huge = { size: 2 * 1024 ** 3 + 1 } as Blob
     const error = await refuse('skin', huge)
     assert.equal(error.code, 'fileTooLarge')
-    assert.equal(importMessage(error), 'This file is larger than 2 GiB.')
+    assert.equal(importMessage(error), 'This file is larger than 2.1 GB.')
 })
 
 test('a name that appears twice cannot be told apart, so it is refused', async () => {

@@ -483,7 +483,9 @@
       },
       "fallback": {
         "panel": "{0}: {1} kullanılıyor. {2}",
-        "row": "{0} kullanılıyor. {1}"
+        "panelStored": "{0}: \"{1}\" kullanılıyor. {2}",
+        "row": "{0} kullanılıyor. {1}",
+        "rowStored": "\"{0}\" kullanılıyor. {1}"
       },
       "reason": {
         "fileGone": "{0} dosyası artık bu tarayıcıda saklanmıyor.",
@@ -504,7 +506,7 @@
       "alsoFile": "Bu dosyadaki \"{1}\" öğesini ({0}) de kullan",
       "remove": "Kaldır",
       "inUse": "Kullanımda",
-      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine varsayılan kullanılır.",
+      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine Varsayılan kullanılır.",
       "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Yeniden Seç",
       "noneInFile": "Bu dosyada {0} yok.",
@@ -538,7 +540,7 @@
         "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
         "checksum": "Bu dosyadaki {1} ({0}) sağlama toplamıyla eşleşmiyor.",
         "spriteOutside": "Bu dosyadaki veride ({0}) dokunun dışında kalan bir sprite var.",
-        "tooManySprites": "Bu dosyadaki veride ({0}) {1} spriteten fazlası var.",
+        "tooManySprites": "Bu dosyadaki veride ({0}) {1} sprite’tan fazlası var.",
         "tooManyEffects": "Bu dosyadaki veride ({0}) {1} efektten fazlası var.",
         "tooManyParticles": "Bu dosyadaki veride ({0}) {1} parçacıktan fazlası var.",
         "tooManyGroups": "Bu dosyadaki veride ({0}) {1} parçacık grubundan fazlası var.",

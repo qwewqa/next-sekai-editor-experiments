@@ -483,7 +483,9 @@
             },
             "fallback": {
                 "panel": "{0}: using {1}. {2}",
-                "row": "Using {0}. {1}"
+                "panelStored": "{0}: using \"{1}\". {2}",
+                "row": "Using {0}. {1}",
+                "rowStored": "Using \"{0}\". {1}"
             },
             "reason": {
                 "fileGone": "The {0} file is no longer stored in this browser.",
@@ -515,7 +517,7 @@
             },
             "part": {
                 "list": "list",
-                "details": "details",
+                "details": "detail entry",
                 "data": "data",
                 "texture": "texture",
                 "image": "image",

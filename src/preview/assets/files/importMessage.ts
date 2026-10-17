@@ -12,19 +12,13 @@ export type ImportStrings = {
     noun: Record<AssetType, string>
 }
 
-/** A size in the units a limit is written in. */
-const size = (bytes: number, number: (value: number) => string) => {
-    const mebi = 1024 * 1024
-    return bytes >= 1024 * mebi
-        ? `${number(bytes / (1024 * mebi))} GiB`
-        : `${number(bytes / mebi)} MiB`
-}
-
 /** The plain message for a package that is refused, naming the problem. */
 export const formatImportMessage = (
     error: AssetImportError,
     strings: ImportStrings,
     number: (value: number) => string,
+    /** A size in the locale's own decimal units, as the dialog's footer writes one. */
+    size: (bytes: number) => string,
 ): string => {
     const { import: text, part } = strings
     const { code, detail } = error
@@ -40,18 +34,13 @@ export const formatImportMessage = (
         case 'storeFailed':
             return text[code]
         case 'fileTooLarge':
-            return interpolateRaw(text.fileTooLarge, size(limit, number))
+            return interpolateRaw(text.fileTooLarge, size(limit))
         case 'tooManyEntries':
             return interpolateRaw(text.tooManyEntries, number(limit))
         case 'ratio':
             return interpolateRaw(text.ratio, noun, partNoun, String(LIMITS.ratio))
         case 'tooBig':
-            return interpolateRaw(
-                text.tooBig,
-                noun,
-                partNoun,
-                size(limit || LIMITS.package, number),
-            )
+            return interpolateRaw(text.tooBig, noun, partNoun, size(limit || LIMITS.package))
         case 'unreadable':
         case 'missing':
         case 'notImage':
@@ -79,6 +68,6 @@ export const formatImportMessage = (
         case 'effectGroups':
             return interpolateRaw(text[code], noun, detail.name ?? '', number(limit))
         case 'packageTooLarge':
-            return interpolateRaw(text.packageTooLarge, size(limit, number))
+            return interpolateRaw(text.packageTooLarge, size(limit))
     }
 }

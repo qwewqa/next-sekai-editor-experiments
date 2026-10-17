@@ -483,7 +483,9 @@
       },
       "fallback": {
         "panel": "{0} : utilisation de {1}. {2}",
-        "row": "Utilisation de {0}. {1}"
+        "panelStored": "{0} : utilisation de \"{1}\". {2}",
+        "row": "Utilisation de {0}. {1}",
+        "rowStored": "Utilisation de \"{0}\". {1}"
       },
       "reason": {
         "fileGone": "Le fichier {0} n’est plus stocké dans ce navigateur.",
@@ -502,9 +504,9 @@
       "chooseEffect": "Choisir des effets sonores",
       "use": "Utiliser",
       "alsoFile": "Utiliser aussi \"{1}\" ({0}) de ce fichier",
-      "remove": "Retirer",
+      "remove": "Supprimer",
       "inUse": "Utilisé",
-      "removeInUse": "Retirer \"{0}\" ? L’élément par défaut est utilisé à la place.",
+      "removeInUse": "Supprimer \"{0}\" \u0001 L’élément par défaut est utilisé à la place.",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
@@ -514,14 +516,14 @@
         "storing": "Stockage…"
       },
       "part": {
-        "list": "liste",
-        "details": "détails",
-        "data": "données",
-        "texture": "texture",
-        "image": "image",
-        "configuration": "configuration",
-        "audio": "audio",
-        "thumbnail": "miniature"
+        "list": "la liste",
+        "details": "les détails",
+        "data": "les données",
+        "texture": "la texture",
+        "image": "l’image",
+        "configuration": "la configuration",
+        "audio": "l’audio",
+        "thumbnail": "la miniature"
       },
       "import": {
         "damaged": "Ce fichier est endommagé ou n’est pas un paquet Sonolus.",
@@ -530,13 +532,13 @@
         "fileTooLarge": "Ce fichier dépasse {0}.",
         "tooManyEntries": "Ce fichier contient plus de {0} entrées.",
         "badName": "Ce fichier contient un nom d’entrée non autorisé.",
-        "ratio": "Dans ce fichier, {1} ({0}) se décompresse en plus de {2} fois sa taille.",
-        "tooBig": "Dans ce fichier, {1} ({0}) dépasse {2}.",
+        "ratio": "Dans ce fichier, {1} ({0}) : taux de décompression supérieur à {2} pour 1.",
+        "tooBig": "Dans ce fichier, {1} ({0}) : plus de {2}.",
         "unreadable": "Impossible de lire {1} ({0}) dans ce fichier.",
-        "missing": "Dans ce fichier, {1} ({0}) manque.",
-        "notImage": "Dans ce fichier, {1} ({0}) doit être une image PNG ou JPEG.",
+        "missing": "Il manque {1} ({0}) dans ce fichier.",
+        "notImage": "Dans ce fichier, {1} ({0}) : image PNG ou JPEG attendue.",
         "imageSize": "Dans ce fichier, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
-        "checksum": "Dans ce fichier, {1} ({0}) ne correspond pas à sa somme de contrôle.",
+        "checksum": "Dans ce fichier, {1} ({0}) : la somme de contrôle ne correspond pas.",
         "spriteOutside": "Dans ce fichier, les données ({0}) contiennent un sprite hors de la texture.",
         "tooManySprites": "Dans ce fichier, les données ({0}) contiennent plus de {1} sprites.",
         "tooManyEffects": "Dans ce fichier, les données ({0}) contiennent plus de {1} effets.",
