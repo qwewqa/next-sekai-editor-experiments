@@ -219,6 +219,9 @@ const trace = (seed, bright = 0) =>
         0.6,
     )
 
+/** The clips the engine loops while a hold is held. */
+export const loops = ['#HOLD', 'Sekai Critical Hold']
+
 /** The 15 clips in the engine's order, as Float64 samples before levelling. */
 export function renderClips() {
     const clips = {
@@ -256,7 +259,6 @@ export function renderClips() {
         'Sekai Trace': trace(12),
         'Sekai Critical Trace': trace(13, 1),
     }
-    const loops = ['#HOLD', 'Sekai Critical Hold']
     return Object.fromEntries(
         Object.entries(clips).map(([name, samples]) => [
             name,
@@ -265,8 +267,8 @@ export function renderClips() {
     )
 }
 
-// Loudness is measured as K-weighted (ITU-R BS.1770) power over the first 200 ms, zero padded, in LU
-// relative to full scale: short clips and the start of a loop are compared on the same window.
+// Loudness is measured as K-weighted (ITU-R BS.1770) power in LU relative to full scale: over the first
+// 200 ms, zero padded, for one-shot clips, and over the whole loop for the hold loops.
 const window = Math.round(0.2 * sampleRate)
 
 const biquad = (samples, [b0, b1, b2, a1, a2]) => {
@@ -319,12 +321,28 @@ export function loudness(samples) {
     return -0.691 + 10 * Math.log10(sum / window)
 }
 
+/** A loop's whole-length loudness in LUFS, K-weighted and measured on its second play. */
+export function loopLoudness(samples) {
+    const twice = new Float64Array(samples.length * 2)
+    twice.set(samples)
+    twice.set(samples, samples.length)
+    const weighted = biquad(biquad(twice, shelf()), kHighPass())
+    let sum = 0
+    for (let i = samples.length; i < twice.length; i++) sum += weighted[i] * weighted[i]
+    return -0.691 + 10 * Math.log10(sum / samples.length)
+}
+
+/** A clip's loudness as its target is set: loops over their length, the rest over 200 ms. */
+export const measure = (name, samples) =>
+    loops.includes(name) ? loopLoudness(samples) : loudness(samples)
+
 const peakOf = (samples) => samples.reduce((peak, sample) => Math.max(peak, Math.abs(sample)), 0)
 
 /**
- * The loudness each clip is set to (LUFS, as loudness() measures it), from the web's Default clips
- * measured the same way (mono equivalent, from the onset); the Sonolus-only clips sit under the hits.
- * After the owner’s listening pass the flicks sit 1 LU and the hold loops 3 LU under the Default's.
+ * The loudness each clip is set to (LUFS, as measure() measures it), from the web's Default clips
+ * measured the same way (mono equivalent, from the onset; the holds over their whole length); the
+ * Sonolus-only clips sit under the hits. After the owner’s listening pass the flicks sit 1 LU and the
+ * hold loops 3 LU under the Default's.
  */
 export const targets = {
     '#PERFECT': -15.5,
@@ -333,12 +351,12 @@ export const targets = {
     '#PERFECT_ALTERNATIVE': -15.3,
     '#GREAT_ALTERNATIVE': -16.3,
     '#GOOD_ALTERNATIVE': -17.3,
-    '#HOLD': -25.5,
+    '#HOLD': -24.4,
     '#STAGE': -20,
     'Sekai Tick': -18.2,
     'Sekai Critical Tap': -11.7,
     'Sekai Critical Flick': -13.9,
-    'Sekai Critical Hold': -20.5,
+    'Sekai Critical Hold': -22.3,
     'Sekai Critical Tick': -17.9,
     'Sekai Trace': -17.2,
     'Sekai Critical Trace': -11.4,
@@ -356,7 +374,7 @@ const limit = (samples) =>
     })
 
 /** Scales a clip to its target, limiting peaks; a few passes settle the gain the limiter costs. */
-function level(samples, target) {
+function level(samples, target, loudness) {
     let gain = Math.exp(((target - loudness(samples)) / 20) * Math.LN10)
     let out = limit(scale(samples, gain))
     for (let pass = 0; pass < 6; pass++) {
@@ -369,7 +387,8 @@ function level(samples, target) {
 /** The clips by name as Float64 samples at their targets, peaks below peakLevel. */
 export function matchLoudness(clips) {
     const out = {}
-    for (const [name, samples] of Object.entries(clips)) out[name] = level(samples, targets[name])
+    for (const [name, samples] of Object.entries(clips))
+        out[name] = level(samples, targets[name], (part) => measure(name, part))
     return { clips: out }
 }
 
