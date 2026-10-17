@@ -34,7 +34,7 @@ const isPlain = (value: object) => {
     return prototype === Object.prototype || prototype === Array.prototype || prototype === null
 }
 
-/** Freezes what's reachable from value; parts already frozen are shared and skipped. */
+/** Freezes what's reachable from value; parts already published are shared and skipped. */
 const freezeAll = (value: unknown) => {
     const stack = [value]
     while (stack.length) {
@@ -48,8 +48,10 @@ const freezeAll = (value: unknown) => {
             else for (const item of next as Set<unknown>) stack.push(item)
             continue
         }
-        if (!isPlain(next) || Object.isFrozen(next)) continue
-        Object.freeze(next)
+        // An object frozen elsewhere, shallowly, still has its children walked once.
+        if (!isPlain(next) || published.has(next)) continue
+        published.add(next)
+        if (!Object.isFrozen(next)) Object.freeze(next)
         for (const item of Object.values(next)) stack.push(item)
     }
 }

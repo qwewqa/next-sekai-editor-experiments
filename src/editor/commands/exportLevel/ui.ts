@@ -103,7 +103,10 @@ export const exportUi: ExportUi = {
     exported: (name) => {
         notify(interpolate(() => i18n.value.export.exported, name))
     },
-    markExported,
+    // Called, not referenced: history imports this module's importers at load.
+    markExported: (name) => {
+        markExported(name)
+    },
     downloadStarted: (name, size) => {
         notify(
             interpolate(

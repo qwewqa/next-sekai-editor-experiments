@@ -63,6 +63,10 @@ test('ids whose counts don’t match the level give fresh ids, and the state is 
     })
     assert.equal(read.idsKept, false)
     assert.equal(read.state.groups.size, state.groups.size)
+    // Only the groups' ids are fresh: stages and folders keep theirs.
+    assert.notDeepEqual([...read.state.groups.keys()], [...state.groups.keys()])
+    assert.deepEqual([...read.state.stages.keys()], [...state.stages.keys()])
+    assert.deepEqual([...read.state.groupFolders.keys()], [...state.groupFolders.keys()])
     const twice = recover(state, (journal) => {
         journal.header.ids.groups = [5, 5]
     })

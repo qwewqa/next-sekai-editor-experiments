@@ -32,6 +32,9 @@ declare global {
             reports: FlushReport[]
             errors: unknown[]
             journal: { writer: JournalWriter; writes: JournalWrite[] }
+            /** Set by a spec: flushes from now on never reach the worker. */
+            stall?: boolean
+            isDurablyStored: () => boolean
         }
     }
 }
@@ -75,6 +78,11 @@ export const watchLifecycle = () => {
     })
 }
 
+/** Waits while a spec holds flushes, to leave edits only the journal has, as a kill does. */
+const whileStalled = async () => {
+    while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
+}
+
 export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
     const reports: FlushReport[] = []
     const errors: unknown[] = []
@@ -98,10 +106,13 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         },
         syncStrict: () => worker.call('syncStrict'),
         transport: (batch, list, current) =>
-            worker.call('flush', transfer(batch, list), {
-                timeoutMs: flushTimeoutMs(batch),
-                current,
-            }),
+            // A spec holds flushes to leave edits only the journal has, as a kill does.
+            (test ? whileStalled() : Promise.resolve()).then(() =>
+                worker.call('flush', transfer(batch, list), {
+                    timeoutMs: flushTimeoutMs(batch),
+                    current,
+                }),
+            ),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
@@ -203,6 +214,7 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
             reports,
             errors,
             journal: { writer: journalWriter, writes },
+            isDurablyStored,
         }
     void worker.call('countDay').catch(() => undefined)
 }

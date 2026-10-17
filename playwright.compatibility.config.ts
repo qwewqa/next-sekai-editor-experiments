@@ -17,6 +17,8 @@ export default defineConfig({
         'storageCommitOnUnload.spec.ts',
         'storageWorker.spec.ts',
         'storageFlush.spec.ts',
+        // The journal's kill tests (Step 3b): page.close() in Firefox and WebKit.
+        'journalKill.spec.ts',
     ],
     outputDir: 'test-results-compatibility',
     use: {

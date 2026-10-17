@@ -22,7 +22,13 @@ export type JournalWorker = {
 }
 
 export type JournalOutcome =
-    | { sessionId: string; kind: JournalApplyResult['kind']; result: JournalApplyResult }
+    | {
+          sessionId: string
+          kind: JournalApplyResult['kind']
+          result: JournalApplyResult
+          /** Main-thread reading and planning, and the worker's apply, for the timing spec. */
+          ms: { read: number; plan: number; apply: number }
+      }
     | { sessionId: string; kind: 'live' }
     | { sessionId: string; kind: 'later'; why: string }
     | { sessionId: string; kind: 'unreadable'; why: string }
@@ -111,18 +117,25 @@ export const replayJournal = (found: JournalFound, deps: ReplayDeps): Promise<Jo
                 return { sessionId, kind: 'unreadable', why }
             }
             try {
+                const start = performance.now()
                 const reading = readJournal(found.text, sessionId)
                 if (reading.kind === 'later') return { sessionId, kind: 'later', why: reading.why }
                 if (reading.kind === 'unreadable') return await unreadable(reading.why)
                 const content = journalState(reading.journal)
                 if (content.kind === 'later') return { sessionId, kind: 'later', why: content.why }
                 if (content.kind === 'unreadable') return await unreadable(content.why)
-                const result = await deps.worker.applyJournal(
-                    planBatch(reading.journal, content.state, deps),
-                )
+                const parsed = performance.now()
+                const batch = planBatch(reading.journal, content.state, deps)
+                const planned = performance.now()
+                const result = await deps.worker.applyJournal(batch)
                 // Its transaction committed: the key goes, unless it changed meanwhile.
                 if (result.kind !== 'later') deps.store.remove(found)
-                return { sessionId, kind: result.kind, result }
+                const ms = {
+                    read: parsed - start,
+                    plan: planned - parsed,
+                    apply: performance.now() - planned,
+                }
+                return { sessionId, kind: result.kind, result, ms }
             } catch (error) {
                 // Left in place for the next load.
                 return { sessionId, kind: 'failed', error }

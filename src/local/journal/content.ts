@@ -7,7 +7,7 @@ import { parseLevelDataChart } from '../../chart/parse/levelData'
 import type { StageId, Stages } from '../../chart/stages'
 import { validateChart } from '../../chart/validate'
 import { serializeEditorMetadata } from '../../levelData/editorMetadata'
-import { parseLevelData } from '../../levelData/parse'
+import { restoreNullSegmentAlphas } from '../../levelData/parse'
 import { LevelDataReport } from '../../levelData/report'
 import { serializeToLevelData } from '../../levelData/serialize'
 import { createState, type State } from '../../state'
@@ -72,7 +72,34 @@ export const journalContent = (
 
 /** The level data a journal holds: a valid `.nsld` once decoded. */
 export const journalLevelData = (journal: Pick<JournalV1, 'levelDataGz'>): LevelData =>
-    parseLevelData(JSON.parse(new TextDecoder().decode(ungzip(fromBase64(journal.levelDataGz)))))
+    JSON.parse(new TextDecoder().decode(ungzip(fromBase64(journal.levelDataGz)))) as LevelData
+
+/**
+ * The level data's shape, which the parser's own per-field checks rely on. Lighter than the
+ * whole schema, which takes most of replay's time on a large chart: the parser checks each
+ * value it reads, and anything it refuses makes the journal unreadable.
+ */
+const checkShape = (data: LevelData) => {
+    if (
+        typeof data !== 'object' ||
+        typeof data.bgmOffset !== 'number' ||
+        !Array.isArray(data.entities)
+    )
+        throw new Error('Not level data')
+    for (const entity of data.entities as unknown[]) {
+        const { archetype, data: fields, name } = (entity ?? {}) as Record<string, unknown>
+        if (typeof archetype !== 'string' || !Array.isArray(fields))
+            throw new Error('Not an entity')
+        if (name !== undefined && typeof name !== 'string') throw new Error('Not an entity name')
+        for (const field of fields as unknown[]) {
+            const { name: key, value, ref } = (field ?? {}) as Record<string, unknown>
+            if (typeof key !== 'string') throw new Error('Not an entity field')
+            if (!(typeof value === 'number' || value === null || typeof ref === 'string'))
+                throw new Error('Not an entity field value')
+        }
+    }
+    restoreNullSegmentAlphas(data)
+}
 
 /** Ids in creation order: the parser numbers groups, stages and folders as it meets them. */
 const ascending = <K extends number>(map: ReadonlyMap<K, unknown>) =>
@@ -82,23 +109,33 @@ const distinct = (ids: readonly number[]) => new Set(ids).size === ids.length
 
 /**
  * The chart with the journal's ids (§1.6.11.3): the entry the parser made n-th takes the n-th id.
- * Undefined when the counts don't match the parsed level or the ids can't be used: replay then
- * keeps the parser's fresh ids (r11g-format M6).
+ * Groups, stages and folders (both maps, one id space) each keep theirs only when the counts
+ * match the parsed level and the ids can be used; otherwise they keep the parser's fresh ids
+ * (r11g-format M6), as stages do when level data has none.
  */
-export const withJournalIds = (chart: Chart, ids: JournalIds): Chart | undefined => {
+export const withJournalIds = (chart: Chart, ids: JournalIds): { chart: Chart; all: boolean } => {
     const groupFolders = chart.groupFolders ?? (new Map() as Folders)
     const stageFolders = chart.stageFolders ?? (new Map() as Folders)
-    const pairs = [
-        [ascending(chart.groups), ids.groups],
-        [ascending(chart.stages), ids.stages],
-        [ascending(groupFolders), ids.groupFolders],
-        [ascending(stageFolders), ids.stageFolders],
-    ] as const
-    if (pairs.some(([parsed, given]) => parsed.length !== given.length || !distinct(given))) return
-    if (!distinct([...ids.groupFolders, ...ids.stageFolders])) return
-    const [groupMap, stageMap, groupFolderMap, stageFolderMap] = pairs.map(
-        ([parsed, given]) => new Map(parsed.map((id, i) => [id as number, given[i] ?? id])),
-    ) as [Map<number, number>, Map<number, number>, Map<number, number>, Map<number, number>]
+    const usable = (parsed: readonly number[], given: readonly number[]) =>
+        parsed.length === given.length && distinct(given)
+    const mapping = (parsed: readonly number[], given: readonly number[], use: boolean) =>
+        new Map(use ? parsed.map((id, i) => [id, given[i] ?? id]) : [])
+    const parsed = {
+        groups: ascending(chart.groups),
+        stages: ascending(chart.stages),
+        groupFolders: ascending(groupFolders),
+        stageFolders: ascending(stageFolders),
+    }
+    const groupsKept = usable(parsed.groups, ids.groups)
+    const stagesKept = usable(parsed.stages, ids.stages)
+    const foldersKept =
+        usable(parsed.groupFolders, ids.groupFolders) &&
+        usable(parsed.stageFolders, ids.stageFolders) &&
+        distinct([...ids.groupFolders, ...ids.stageFolders])
+    const groupMap = mapping(parsed.groups, ids.groups, groupsKept)
+    const stageMap = mapping(parsed.stages, ids.stages, stagesKept)
+    const groupFolderMap = mapping(parsed.groupFolders, ids.groupFolders, foldersKept)
+    const stageFolderMap = mapping(parsed.stageFolders, ids.stageFolders, foldersKept)
     const group = (id: GroupId) => (groupMap.get(id) ?? id) as GroupId
     const stage = (id: StageId) => (stageMap.get(id) ?? id) as StageId
     const folderIn = (map: Map<number, number>) => (id: FolderId | undefined) =>
@@ -122,7 +159,7 @@ export const withJournalIds = (chart: Chart, ids: JournalIds): Chart | undefined
     )
     const withStage = <T extends { stageId: StageId }>(events: T[]) =>
         events.map((event) => ({ ...event, stageId: stage(event.stageId) }))
-    return {
+    const remapped: Chart = {
         ...chart,
         groups,
         stages,
@@ -145,6 +182,7 @@ export const withJournalIds = (chart: Chart, ids: JournalIds): Chart | undefined
             })),
         ),
     }
+    return { chart: remapped, all: groupsKept && stagesKept && foldersKept }
 }
 
 /** What replay makes of a journal's state. */
@@ -162,6 +200,7 @@ export const journalState = (journal: JournalV1): JournalState => {
     let levelData: LevelData
     try {
         levelData = journalLevelData(journal)
+        checkShape(levelData)
     } catch (error) {
         return { kind: 'unreadable', why: `level data: ${String(error)}` }
     }
@@ -184,11 +223,11 @@ export const journalState = (journal: JournalV1): JournalState => {
         const levelInfo = levelInfoObject(journal.header.levelInfo as RecordValue[])
         const bgm = journal.header.bgm ? bgmObject(journal.header.bgm as RecordValue[]) : undefined
         const kept = withJournalIds(chart, journal.header.ids)
-        const state = createState(kept ?? chart, levelData.bgmOffset, {
+        const state = createState(kept.chart, levelData.bgmOffset, {
             levelInfo,
             ...(bgm ? { bgm } : {}),
         })
-        return { kind: 'state', state, idsKept: kept !== undefined }
+        return { kind: 'state', state, idsKept: kept.all }
     } catch (error) {
         return { kind: 'unreadable', why: `header: ${String(error)}` }
     }
