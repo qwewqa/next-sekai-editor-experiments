@@ -2,7 +2,7 @@ import type { LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import type Type from 'typebox'
+import Type from 'typebox'
 import Value from 'typebox/value'
 import {
     parseLevelDataChart,
@@ -10,6 +10,7 @@ import {
     type ParserRead,
 } from '../../src/chart/parse/levelData'
 import { check } from '../../src/chart/parse/levelData/check'
+import { isNoteEntity, noteArchetypeNames } from '../../src/chart/parse/levelData/slide'
 import { ImportRefusal } from '../../src/chart/refusal'
 import { serializeToLevelDataEntities } from '../../src/levelData/entities/serialize'
 import {
@@ -17,6 +18,8 @@ import {
     ignoredFields,
     knownArchetypes,
     tableLevelVersion,
+    noteArchetypeNames as tableNoteNames,
+    type Ignored,
 } from '../../src/levelData/known'
 import { LEVEL_VERSION } from '../../src/levelData/levelVersion'
 import { parseLevelData } from '../../src/levelData/parse'
@@ -24,7 +27,7 @@ import { LevelDataReport, reportLevelDataEntities } from '../../src/levelData/re
 import { LATEST_REVISION } from '../../src/levelData/revision'
 import { createState } from '../../src/state'
 import { pinned } from './levelDataPin'
-import { entity, fullLevel, minimalLevel, noteData } from './levelDataSynthetic'
+import { entity, fullLevel, minimalLevel, nestedFolder, noteData, ref } from './levelDataSynthetic'
 import { tableAt } from './levelDataTable'
 
 const parse = (entities: LevelDataEntity[]) => {
@@ -364,7 +367,8 @@ test('the parser’s reads agree with the declared table', () => {
         reads.set(key, [...(reads.get(key) ?? []), read])
     })
     try {
-        for (const entities of [fullLevel(), coconut(), generated()]) parse(entities)
+        for (const entities of [[...fullLevel(), nestedFolder()], coconut(), generated()])
+            parse(entities)
     } finally {
         setParserReadHook(undefined)
     }
@@ -464,4 +468,104 @@ test('the editor’s own export of the committed levels reports nothing', () => 
         assert.deepEqual(report.entries, [])
         assert.deepEqual(parse(exported).report.entries, [])
     }
+})
+
+test('a nested folder is reported, and still shown in its top-level folder', () => {
+    for (const archetype of ['EditorGroupFolder', 'EditorStageFolder']) {
+        const entities = [
+            ...minimalLevel(),
+            entity(archetype, { editorName: ref('Top'), editorIndex: 0 }, 'f0'),
+            entity(
+                archetype,
+                { editorName: ref('Inner'), editorIndex: 1, editorFolder: ref('f0') },
+                'f1',
+            ),
+        ]
+        const { chart, report } = parse(entities)
+        assert.deepEqual(report.entries, [
+            { kind: 'field', archetype, field: 'editorFolder', count: 1 },
+        ])
+        assert.ok(chart)
+    }
+})
+
+test('a repeated data entry on a known field is reported', () => {
+    const entities = minimalLevel().map((e) =>
+        e.archetype === '#BPM_CHANGE'
+            ? { ...e, data: [...e.data, { name: 'meter', value: 3 }, { name: 'meter', value: 4 }] }
+            : e,
+    )
+    assert.deepEqual(parse(entities).report.entries, [
+        { kind: 'field', archetype: '#BPM_CHANGE', field: 'meter', count: 1 },
+    ])
+})
+
+test('a ref where a value is expected, or a value where a ref is, is reported', () => {
+    const entities = [
+        ...minimalLevel(),
+        entity('NormalTapNote', { ...noteData(), elevation: ref('x') }),
+    ]
+    assert.deepEqual(parse(entities).report.entries, [
+        { kind: 'field', archetype: 'NormalTapNote', field: 'elevation', count: 1 },
+    ])
+    const swapped = minimalLevel().map((e) =>
+        e.archetype === 'Initialization'
+            ? { ...e, data: [...e.data, { name: 'firstCamera', value: 1 }] }
+            : e,
+    )
+    assert.deepEqual(parse(swapped).report.entries, [
+        { kind: 'field', archetype: 'Initialization', field: 'firstCamera', count: 1 },
+    ])
+})
+
+test('the table’s note archetypes are the parser’s, both ways', () => {
+    assert.deepEqual([...tableNoteNames].sort(), [...noteArchetypeNames].sort())
+    for (const archetype of tableNoteNames)
+        assert.ok(isNoteEntity({ archetype, data: [] }), archetype)
+    for (const archetype of Object.keys(knownArchetypes))
+        assert.equal(isNoteEntity({ archetype, data: [] }), tableNoteNames.includes(archetype))
+})
+
+test('an ignored entry added with a version bump leaves the earlier tables as they were', () => {
+    const archetypes = ignoredArchetypes as Record<string, Ignored>
+    const fields = ignoredFields as Record<string, Record<string, Ignored>>
+    const before = tableLevelVersion()
+    archetypes.GuideSegment = { reason: 'rewritten', note: 'test', since: before + 1 }
+    fields['#BPM_CHANGE'] = { swing: { reason: 'nothing', note: 'test', since: before + 1 } }
+    try {
+        assert.equal(tableLevelVersion(), before + 1)
+        assert.deepEqual(tableAt(before), pinned[before])
+        assert.ok(tableAt(before + 1).ignoredArchetypes.includes('GuideSegment'))
+        // This build predates the entry, so it still reports it.
+        const entities = minimalLevel().map((e) =>
+            e.archetype === '#BPM_CHANGE'
+                ? { ...e, data: [...e.data, { name: 'swing', value: 1 }] }
+                : e,
+        )
+        const report = parse([...entities, entity('GuideSegment', {})]).report
+        assert.deepEqual(report.entries.map((e) => e.kind).sort(), ['archetype', 'field'])
+    } finally {
+        delete archetypes.GuideSegment
+        delete fields['#BPM_CHANGE']
+    }
+})
+
+test('a refined schema is checked as Value.Check does, alone or in a choice', () => {
+    const refined = Type.Refine(Type.Number(), (value) => value !== 3)
+    const choice = Type.Union([
+        Type.Literal(1),
+        Type.Refine(Type.Literal(2), (value) => value !== 2),
+    ])
+    for (const schema of [refined, choice, Type.Union([refined, Type.Literal(5)])])
+        for (const probe of [1, 2, 3, 4, 5, 'a'])
+            assert.equal(check(schema, probe), Value.Check(schema, probe), `${probe}`)
+})
+
+test('every version tag on an ignored entry is a version that exists', () => {
+    const tags = [
+        ...Object.values(ignoredArchetypes),
+        ...Object.values(ignoredFields).flatMap((fields) => Object.values(fields)),
+    ].map(({ since }) => since ?? 1)
+    for (const since of tags)
+        assert.ok(Number.isInteger(since) && since >= 1 && since <= LEVEL_VERSION)
 })

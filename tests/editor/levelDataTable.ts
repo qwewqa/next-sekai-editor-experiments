@@ -35,6 +35,7 @@ const fieldLine = (name: string, field: KnownField, version: number) =>
         field.kind,
         field.required ? 'required' : 'optional',
         ...(field.choice ? [choiceLine(field.choice, version)] : []),
+        ...(field.unconsumed ? ['unconsumed'] : []),
     ].join(' ')
 
 type Group = { names: string[]; fields: string[] }
@@ -65,8 +66,19 @@ export const tableAt = (version: number) => ({
                 ]),
         ),
     ),
-    ignoredArchetypes: Object.keys(ignoredArchetypes),
+    ignoredArchetypes: Object.entries(ignoredArchetypes)
+        .filter(([, ignored]) => (ignored.since ?? 1) <= version)
+        .map(([name]) => name),
     ignoredFields: grouped(
-        new Map(Object.entries(ignoredFields).map(([name, fields]) => [name, Object.keys(fields)])),
+        new Map(
+            Object.entries(ignoredFields)
+                .map(([name, fields]): [string, string[]] => [
+                    name,
+                    Object.entries(fields)
+                        .filter(([, ignored]) => (ignored.since ?? 1) <= version)
+                        .map(([field]) => field),
+                ])
+                .filter(([, fields]) => fields.length),
+        ),
     ),
 })

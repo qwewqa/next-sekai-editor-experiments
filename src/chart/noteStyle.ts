@@ -26,7 +26,7 @@ export const noteStyleSchema = Type.Union([
     Type.Literal('cyan'),
     Type.Literal('black'),
 ])
-// A choice, so a value from a newer editor is reported and replaced rather than refused.
+// A choice, so a value from a newer editor is reported and replaced rather than refused, when the parse has a report.
 export const noteStyleValueSchema = Type.Union([
     Type.Literal(0),
     Type.Literal(1),

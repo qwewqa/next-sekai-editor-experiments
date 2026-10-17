@@ -108,7 +108,7 @@ export const parseSlidesToChart = ({
     }
 }
 
-const noteArchetypeNames = [
+export const noteArchetypeNames = [
     'NormalTapNote',
     'NormalFlickNote',
     'NormalTraceNote',
@@ -183,10 +183,12 @@ type NoteArchetypeName = (typeof noteArchetypeNames)[number]
 
 type NoteEntity = LevelDataEntity & { archetype: NoteArchetypeName }
 
-const isNoteEntity = (entity: LevelDataEntity): entity is NoteEntity =>
+export const isNoteEntity = (entity: LevelDataEntity): entity is NoteEntity =>
     noteArchetypeNames.includes(entity.archetype as never)
 
 const isAttachedSchema = Type.Number()
+
+const elevationSchema = Type.Number()
 
 const laneSchema = Type.Number()
 
@@ -386,7 +388,7 @@ const toNoteObject = (
         groupId,
         stageId,
         beat: getValue(entity, EngineArchetypeDataName.Beat, beatSchema),
-        elevation: getOptionalValue(entity, 'elevation', Type.Number()) ?? 0,
+        elevation: getOptionalValue(entity, 'elevation', elevationSchema) ?? 0,
         noteStyle: noteStyles[getOptionalValue(entity, 'style', noteStyleValueSchema) ?? 0],
         connectorStyle:
             defaultGuideColor && getValue(entity, 'segmentKind', segmentKindSchema) === 103

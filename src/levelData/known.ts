@@ -25,6 +25,8 @@ export type KnownField = {
     /** The condition under which the parser reads it, when there is one. */
     readWhen?: string
     choice?: KnownChoice
+    /** The parser reads it for display only, so the report lists it. */
+    unconsumed?: true
 }
 
 export type KnownArchetype = {
@@ -40,7 +42,7 @@ export type IgnoredReason =
     /** It carries nothing the level needs. */
     | 'nothing'
 
-export type Ignored = { reason: IgnoredReason; note: string }
+export type Ignored = { reason: IgnoredReason; note: string; since?: Since }
 
 const range = (from: number, to: number) =>
     Array.from({ length: to - from + 1 }, (_, i) => from + i)
@@ -237,11 +239,21 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
     // The folders are editor-only; the parser reads them only when they have a name.
     EditorGroupFolder: {
         readWhen: 'the entity has a name',
-        fields: { editorName: ref(), editorIndex: value(), editorFolder: ref() },
+        fields: {
+            editorName: ref(),
+            editorIndex: value(),
+            // Flattened to the top-level folder, which loses the nesting.
+            editorFolder: ref({ unconsumed: true }),
+        },
     },
     EditorStageFolder: {
         readWhen: 'the entity has a name',
-        fields: { editorName: ref(), editorIndex: value(), editorFolder: ref() },
+        fields: {
+            editorName: ref(),
+            editorIndex: value(),
+            // Flattened to the top-level folder, which loses the nesting.
+            editorFolder: ref({ unconsumed: true }),
+        },
     },
     ...Object.fromEntries(noteArchetypeNames.map((name) => [name, { fields: noteFields }])),
 }
@@ -303,6 +315,10 @@ export const knownChoiceOf = (archetype: string, name: string) => {
 export const tableLevelVersion = () =>
     Math.max(
         1,
+        ...Object.values(ignoredArchetypes).map(({ since }) => since ?? 1),
+        ...Object.values(ignoredFields).flatMap((fields) =>
+            Object.values(fields).map(({ since }) => since ?? 1),
+        ),
         ...Object.values(knownArchetypes).flatMap((archetype) => [
             archetype.since ?? 1,
             ...Object.values(archetype.fields).flatMap((field) => [
