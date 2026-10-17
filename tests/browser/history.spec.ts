@@ -10,6 +10,28 @@ import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
 const prefix = 'sonolus-next-sekai-editor.'
 
+/** Waits until the page's startup has opened its session (the startup gate's state). */
+const opened = (page: Page) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const url =
+                        performance
+                            .getEntriesByType('resource')
+                            .map((entry) => entry.name)
+                            .find(
+                                (name) => new URL(name).pathname === '/src/local/startup/state.ts',
+                            ) ?? '/src/local/startup/state.ts'
+                    const { startup } = (await import(
+                        url
+                    )) as typeof import('../../src/local/startup/state')
+                    return startup.value.phase
+                }),
+            { timeout: 20_000 },
+        )
+        .toBe('open')
+
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
         performance.setResourceTimingBufferSize(5000)
@@ -21,6 +43,8 @@ test.beforeEach(async ({ page }) => {
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    // Storing has started: what the tests make is stored or journalled from here on.
+    await opened(page)
     await page.evaluate(installEditorFixture)
 })
 
@@ -54,28 +78,6 @@ const openLevel = (page: Page) =>
             ),
         }
     })
-
-/** Waits until the page's startup has opened its session (the startup gate's state). */
-const opened = (page: Page) =>
-    expect
-        .poll(
-            () =>
-                page.evaluate(async () => {
-                    const url =
-                        performance
-                            .getEntriesByType('resource')
-                            .map((entry) => entry.name)
-                            .find(
-                                (name) => new URL(name).pathname === '/src/local/startup/state.ts',
-                            ) ?? '/src/local/startup/state.ts'
-                    const { startup } = (await import(
-                        url
-                    )) as typeof import('../../src/local/startup/state')
-                    return startup.value.phase
-                }),
-            { timeout: 20_000 },
-        )
-        .toBe('open')
 
 /** A new page in the context, as a new visit. */
 const newVisit = async (page: Page) => {

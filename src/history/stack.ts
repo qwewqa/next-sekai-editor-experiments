@@ -39,11 +39,21 @@ export const canUndo = computed(() => index.value + pendingMove.value > 0)
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const current = computed(() => states[index.value]!)
 
-export const isDirty = computed(() => current.value.isDirty)
+export const isDirty = computed(() => (current.value as Slot | undefined)?.isDirty ?? false)
 
-/** The head is always loaded. */
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const currentState = computed(() => current.value.state!)
+/** The last head seen: what watchers read while a stored stack replaces the slots. */
+let lastHead: State | undefined
+
+/**
+ * The head is always loaded. While `restoreStates` swaps the slots and the index in turn, a
+ * synchronous watcher may look in between; it sees the previous head until the index follows.
+ */
+const currentState = computed(() => {
+    const head = (current.value as Slot | undefined)?.state ?? lastHead
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    lastHead = head!
+    return lastHead
+})
 
 /** The displayed state, which is the peeked one while viewing history. */
 export const state = computed(() => peek.value?.state ?? currentState.value)
@@ -311,18 +321,18 @@ export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: 
     cancelPendingMoves()
     peek.value = undefined
     loadedRestored.length = 0
-    states.splice(
-        0,
-        states.length,
-        ...slots.map(({ snapshot, label, isDirty }) => ({
-            isDirty,
-            name: () => label,
-            ...(snapshot ? { snapshot: snapshot.slice() } : {}),
-        })),
-    )
+    const restored: Slot[] = slots.map(({ snapshot, label, isDirty }) => ({
+        isDirty,
+        name: () => label,
+        ...(snapshot ? { snapshot: snapshot.slice() } : {}),
+    }))
+    // The head is loaded before anything can read it: watchers run as the stack changes.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    restored[at]!.state = publish(head)
+    states.splice(0, states.length, ...restored)
     index.value = at
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    loaded(states[at]!, head)
+    if (restored[at]!.snapshot) evictRestored(restored[at]!)
     prefetch()
 }
 
