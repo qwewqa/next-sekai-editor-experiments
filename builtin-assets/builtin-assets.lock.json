@@ -50,8 +50,8 @@
             "bytes": 44376
         },
         "public/builtin/effect.scp": {
-            "sha256": "3151e64d8842f7099f8afe025a4698bca67043a2de8247de791405cb0ff0dfb4",
-            "bytes": 356959
+            "sha256": "622c024cc496486f09a4f1f8b595f992138a5640b75a7c9adf73e38722101f89",
+            "bytes": 356338
         },
         "public/builtin/particle.scp": {
             "sha256": "e97e58b8f81a36cf01a775b84df7769dd11346b3845c6f40fe4b17e590e306fa",
@@ -131,9 +131,9 @@
                 "bytes": 238
             },
             "audio": {
-                "sha1": "f4274ca7f5e14e2ab6d2b7b16769d30d356d462a",
-                "sha256": "d5b1082c5fa1861704d08ce4fcbb1b4dc99a2028fd210217b8bd03f30018acc4",
-                "bytes": 351900
+                "sha1": "c97f0feaa97d1035490d77d288fd80cc82b32163",
+                "sha256": "68d2aca389e89d6d5f0f8bcb88d1e5d8e203e8cd2ea7ad5235b41b2798833c82",
+                "bytes": 351276
             }
         }
     },

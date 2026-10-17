@@ -164,21 +164,25 @@ const criticalSwish = (seed) =>
     )
 
 /**
- * A seamless one-second loop of soft noise: filtered noise with whole-cycle swells, its end
- * crossfaded into the noise that follows it, so the loop point joins.
+ * A seamless one-second loop of a soft low hum: sine partials on whole hertz, so every one ends
+ * where it began, each with a quieter twin a hertz or two off for a slow beat, and one gentle swell a
+ * second whose low point is the loop's start, so a hold fades in. Partials are [hertz, level, twin].
  */
-const wash = (seed, { centre, damping, air, swell }) => {
-    const extra = Math.round(0.1 * sampleRate)
-    const source = mix(
-        band(noise(1.1, seed), centre, damping),
-        scale(highPass(noise(1.1, seed + 1), 0.15), air),
-    )
+const hum = (partials, swell) => {
     const out = empty(1)
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        const fade = i < extra ? i / extra : 1
-        const value = source[i] * fade + (i < extra ? source[i + out.length] * (1 - fade) : 0)
-        out[i] = value * (1 - swell + swell * Math.sin(tau * 2 * t) * Math.sin(tau * 2 * t))
+        let sum = 0
+        for (const [frequency, amount, twin] of partials) {
+            sum += amount * Math.sin((tau * ((frequency * i) % sampleRate)) / sampleRate)
+            // The twin starts in opposite phase, so the beat too starts at its quietest.
+            if (twin) {
+                const at = ((frequency + twin) * i) % sampleRate
+                sum -= 0.12 * amount * Math.sin((tau * at) / sampleRate)
+            }
+        }
+        const rise = 0.5 - 0.5 * Math.sin(tau * (t + 0.25))
+        out[i] = sum * (1 - swell * (1 - rise))
     }
     return out
 }
@@ -224,12 +228,30 @@ export function renderClips() {
         '#PERFECT_ALTERNATIVE': swish(2),
         '#GREAT_ALTERNATIVE': swish(5, { from: 950, to: 2200, dull: 0.45 }),
         '#GOOD_ALTERNATIVE': swish(6, { from: 800, to: 1800, dull: 0.3 }),
-        '#HOLD': wash(7, { centre: 900, damping: 1.8, air: 0.08, swell: 0.25 }),
+        '#HOLD': hum(
+            [
+                [110, 1, 1],
+                [220, 0.4, 2],
+                [330, 0.12],
+                [440, 0.04],
+            ],
+            0.1,
+        ),
         '#STAGE': thud(8),
         'Sekai Tick': tick(9),
         'Sekai Critical Tap': clap(20),
         'Sekai Critical Flick': criticalSwish(30),
-        'Sekai Critical Hold': wash(10, { centre: 1400, damping: 1.6, air: 0.18, swell: 0.3 }),
+        'Sekai Critical Hold': hum(
+            [
+                [110, 1, 1],
+                [220, 0.55, 2],
+                [330, 0.25, 1],
+                [440, 0.12],
+                [550, 0.05],
+                [660, 0.025],
+            ],
+            0.12,
+        ),
         'Sekai Critical Tick': tick(11, 1),
         'Sekai Trace': trace(12),
         'Sekai Critical Trace': trace(13, 1),
