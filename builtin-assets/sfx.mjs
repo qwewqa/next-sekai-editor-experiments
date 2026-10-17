@@ -39,8 +39,8 @@ const click = (seconds, pitch, seed) => {
     const random = createRandom(seed)
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        const tone = Math.sin(tau * 1320 * pitch * t) + 0.6 * Math.sin(tau * 2640 * pitch * t)
-        out[i] = tone * Math.exp(-t / 0.012)
+        const tone = Math.sin(tau * 1320 * pitch * t) + 0.4 * Math.sin(tau * 2640 * pitch * t)
+        out[i] = tone * Math.exp(-t / 0.012) * Math.min(1, t / 0.001)
         if (t < 0.004) out[i] += (random() * 2 - 1) * (1 - t / 0.004)
     }
     return out
@@ -79,7 +79,7 @@ const pip = (seconds, frequency, level = 1) => {
     const out = empty(seconds)
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        out[i] = level * Math.sin(tau * frequency * t) * Math.exp(-t / (seconds / 4))
+        out[i] = level * Math.sin(tau * frequency * t) * Math.exp(-t / (seconds / 4)) * Math.min(1, t / 0.001)
     }
     return out
 }
@@ -148,16 +148,97 @@ export function renderClips() {
     }
 }
 
-/** Scales to the peak level, then quantises to 16 bits with TPDF dither from the clip's own PRNG. */
+// Loudness is measured as K-weighted (ITU-R BS.1770) power over the first 200 ms, zero padded, in LU
+// relative to full scale: short clips and the start of a loop are compared on the same window.
+const window = Math.round(0.2 * sampleRate)
+
+const biquad = (samples, [b0, b1, b2, a1, a2]) => {
+    const out = new Float64Array(samples.length)
+    let x1 = 0
+    let x2 = 0
+    let y1 = 0
+    let y2 = 0
+    for (let i = 0; i < samples.length; i++) {
+        const x = samples[i]
+        const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+        out[i] = y
+        x2 = x1
+        x1 = x
+        y2 = y1
+        y1 = y
+    }
+    return out
+}
+
+const shelf = () => {
+    const [f0, gain, q] = [1681.974450955533, 3.999843853973347, 0.7071752369554196]
+    const k = Math.tan((Math.PI * f0) / sampleRate)
+    const vh = Math.exp((gain / 20) * Math.LN10)
+    const vb = Math.exp(0.4996667741545416 * Math.log(vh))
+    const a0 = 1 + k / q + k * k
+    return [
+        (vh + (vb * k) / q + k * k) / a0,
+        (2 * (k * k - vh)) / a0,
+        (vh - (vb * k) / q + k * k) / a0,
+        (2 * (k * k - 1)) / a0,
+        (1 - k / q + k * k) / a0,
+    ]
+}
+
+const highPass = () => {
+    const [f0, q] = [38.13547087602444, 0.5003270373238773]
+    const k = Math.tan((Math.PI * f0) / sampleRate)
+    const a0 = 1 + k / q + k * k
+    return [1, -2, 1, (2 * (k * k - 1)) / a0, (1 - k / q + k * k) / a0]
+}
+
+/** The loudness of the first 200 ms in LUFS (K-weighted, zero padded). */
+export function loudness(samples) {
+    const head = new Float64Array(window)
+    head.set(samples.subarray(0, window))
+    const weighted = biquad(biquad(head, shelf()), highPass())
+    let sum = 0
+    for (const value of weighted) sum += value * value
+    return -0.691 + 10 * Math.log10(sum / window)
+}
+
+const peakOf = (samples) => samples.reduce((peak, sample) => Math.max(peak, Math.abs(sample)), 0)
+
+/** LU below the hits: loops sit under them, and ticks and traces come in dense runs. */
+export const offsets = {
+    '#HOLD': -4,
+    'Sekai Critical Hold': -4,
+    'Sekai Tick': -3,
+    'Sekai Critical Tick': -3,
+    'Sekai Trace': -3,
+    'Sekai Critical Trace': -3,
+}
+
+/** The clips by name as Float64 samples scaled to one loudness (less each offset), peak <= peakLevel. */
+export function matchLoudness(clips) {
+    const offset = (name) => offsets[name] ?? 0
+    const measured = Object.entries(clips).map(([name, samples]) => {
+        const lufs = loudness(samples)
+        // The most loudness this clip can reach before its peak passes peakLevel.
+        const reach = lufs + 20 * Math.log10(peakLevel / peakOf(samples))
+        return { name, samples, lufs, limit: reach - offset(name) }
+    })
+    const target = Math.min(...measured.map(({ limit }) => limit))
+    const out = {}
+    for (const { name, samples, lufs } of measured) {
+        const gain = Math.exp(((target + offset(name) - lufs) / 20) * Math.LN10)
+        out[name] = samples.map((sample) => sample * gain)
+    }
+    return { clips: out, target }
+}
+
+/** Quantises to 16 bits with TPDF dither from the clip's own PRNG. */
 export function toPcm16(samples, seed) {
-    let peak = 0
-    for (const sample of samples) peak = Math.max(peak, Math.abs(sample))
-    const gain = peak > 0 ? peakLevel / peak : 0
     const random = createRandom(seed)
     const out = new Int16Array(samples.length)
     for (let i = 0; i < samples.length; i++) {
         const dither = random() + random() - 1
-        const value = Math.round(samples[i] * gain * 32767 + dither)
+        const value = Math.round(samples[i] * 32767 + dither)
         out[i] = Math.max(-32768, Math.min(32767, value))
     }
     return out
@@ -186,7 +267,7 @@ export function encodeWav(pcm) {
 export function renderWavs() {
     const wavs = {}
     let seed = 100
-    for (const [name, samples] of Object.entries(renderClips()))
+    for (const [name, samples] of Object.entries(matchLoudness(renderClips()).clips))
         wavs[name] = encodeWav(toPcm16(samples, seed++))
     return wavs
 }
@@ -216,5 +297,5 @@ export function renderDemoBgm() {
         sum += 0.4 * Math.sin(tau * chords[bar][0] * 0.5 * t) * Math.exp(-step / 0.15)
         out[i] = sum
     }
-    return encodeWav(toPcm16(out, 999))
+    return encodeWav(toPcm16(scale(out, peakLevel / peakOf(out)), 999))
 }

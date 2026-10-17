@@ -137,12 +137,9 @@ export function skinSprites() {
     })
 
     group('Stage, Sekai', () => {
-        add('Sekai Lane Background', solid(stage.navy, 0.85, 4, 64))
-        add(
-            'Sekai Lane Divider',
-            image('lane-divider', { color: stage.stroke, alpha: 0.35 }, { stretch: true }),
-        )
-        add('Sekai Stage Border', solid(stage.stroke, 1, 4, 64))
+        add('Sekai Lane Background', solid(stage.lane, 0.8, 4, 64))
+        add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
+        add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
         for (const name of ['Lane Background', 'Lane Divider', 'Stage Border'])
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
     })
@@ -151,7 +148,7 @@ export function skinSprites() {
         add('Sekai Judgment Background', solid('#ffffff', 0.1))
         for (const color of colorNames) {
             const hue = guideColor(color)
-            add(`Sekai Judgment Background ${color}`, solid(hue, 0.25))
+            add(`Sekai Judgment Background ${color}`, solid(hue, 0.12))
             add(
                 `Sekai Judgment Gradient ${color}`,
                 image('judgment-gradient', { color: hue }, { stretch: true }),
@@ -162,7 +159,7 @@ export function skinSprites() {
                 `Sekai Judgment Edge Left ${color}`,
                 image('judgment-edge-left', { color: hue }, { stretch: true }),
             )
-            add(`Sekai Judgment Center ${color}`, solid(hue, 0.35))
+            add(`Sekai Judgment Center ${color}`, solid(hue, 0.25))
         }
     })
 

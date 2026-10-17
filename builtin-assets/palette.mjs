@@ -36,4 +36,4 @@ export const arrowColors = { normal: '#ec7cb4', critical: '#ffc633' }
 export const damage = { color: '#a50acc', edge: '#d28ae6' }
 
 /** The editor's stage colours (the preview navy, the stage stroke and the accent). */
-export const stage = { navy: '#292b42', stroke: '#b4d6e8', accent: '#77efdc' }
+export const stage = { navy: '#292b42', lane: '#1c1e31', stroke: '#b4d6e8', accent: '#77efdc' }

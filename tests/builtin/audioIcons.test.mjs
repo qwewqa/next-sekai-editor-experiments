@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { iconOutputs } from '../../builtin-assets/build.mjs'
 import { clipFiles } from '../../builtin-assets/manifest.mjs'
-import { createRandom, renderDemoBgm } from '../../builtin-assets/sfx.mjs'
+import { createRandom, loudness, offsets, renderDemoBgm } from '../../builtin-assets/sfx.mjs'
 import { readZip } from '../../builtin-assets/zip.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
@@ -39,8 +39,18 @@ test('every clip peaks at or below -3 dBFS', () => {
     for (const [file, wav] of clips()) {
         const peak = Math.max(...samplesOf(wav).map(Math.abs))
         assert.ok(peak <= limit, `${file} peaks at ${peak}`)
-        assert.ok(peak > limit * 0.9, `${file} is quiet`)
     }
+})
+
+test('the clips are loudness matched, less their offsets', () => {
+    const levels = Object.entries(clipFiles).map(([name, file]) => {
+        const samples = Float64Array.from(samplesOf(clips().get(file)), (sample) => sample / 32768)
+        return { name, level: loudness(samples) - (offsets[name] ?? 0) }
+    })
+    const mean = levels.reduce((sum, { level }) => sum + level, 0) / levels.length
+    for (const { name, level } of levels)
+        assert.ok(Math.abs(level - mean) < 0.3, `${name} is ${(level - mean).toFixed(2)} LU off`)
+    assert.ok(mean > -30 && mean < -18, `the level is ${mean.toFixed(1)} LUFS`)
 })
 
 test('the hold loops are seamless', () => {
