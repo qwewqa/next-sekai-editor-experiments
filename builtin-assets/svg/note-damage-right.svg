@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 96">
+    <g transform="translate(48 0) scale(-1 1)">
+        <path d="M48 24H16A16 16 0 0 0 0 40V56A16 16 0 0 0 16 72H48Z" fill="var(--edge)"/>
+        <path d="M48 27H17A13 13 0 0 0 4 40V56A13 13 0 0 0 17 69H48Z" fill="var(--color)"/>
+    </g>
+</svg>

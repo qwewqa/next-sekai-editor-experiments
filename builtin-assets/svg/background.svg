@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+    <defs>
+        <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="rgb(35 37 57)"/>
+            <stop offset="1" stop-color="rgb(41 43 66)"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="0.5" cy="0.85" r="0.45">
+            <stop offset="0" stop-color="#77efdc" stop-opacity="0.1"/>
+            <stop offset="1" stop-color="#77efdc" stop-opacity="0"/>
+        </radialGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="url(#base)"/>
+    <rect width="1920" height="1080" fill="url(#glow)"/>
+    <g fill="#b4d6e8">
+        <rect x="140" y="130" width="420" height="180" rx="40" fill-opacity="0.04"/>
+        <rect x="1400" y="620" width="360" height="160" rx="36" fill-opacity="0.05"/>
+        <rect x="260" y="700" width="300" height="130" rx="30" fill-opacity="0.04"/>
+        <polygon points="1500,120 1640,290 1500,350 1360,290" fill-opacity="0.06"/>
+        <polygon points="760,740 880,880 760,940 640,880" fill-opacity="0.05"/>
+    </g>
+    <g stroke="#b4d6e8" stroke-opacity="0.08" stroke-width="3">
+        <line x1="960" y1="300" x2="260" y2="1080"/>
+        <line x1="960" y1="300" x2="610" y2="1080"/>
+        <line x1="960" y1="300" x2="960" y2="1080"/>
+        <line x1="960" y1="300" x2="1310" y2="1080"/>
+        <line x1="960" y1="300" x2="1660" y2="1080"/>
+    </g>
+</svg>

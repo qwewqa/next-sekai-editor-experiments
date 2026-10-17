@@ -1,0 +1,149 @@
+version = 1
+SPDX-PackageName = "Next SEKAI Editor"
+SPDX-PackageSupplier = "Next SEKAI Editor contributors"
+
+# Which licence covers which path (Part 2, 2.7.3). Later annotations win over earlier ones.
+# tests/licensing.test.mjs checks that every binary or media file has an annotation of its own.
+
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2025 NonSpicyBurrito and contributors"
+SPDX-License-Identifier = "MIT"
+
+# The Built-in set and the app icon family, wherever their files live: CC0, builtin-assets/LICENSE.txt.
+[[annotations]]
+path = [
+    "builtin-assets/svg/**",
+    "builtin-assets/out/**",
+    "builtin-assets/builtin-assets.lock.json",
+    "builtin-assets/LICENSE.txt",
+    "public/builtin/**",
+    "src-tauri/icons/**",
+    "src-tauri/gen/apple/**/AppIcon.appiconset/**",
+    "src-tauri/gen/android/**/res/mipmap-*/**",
+]
+SPDX-FileCopyrightText = "Next SEKAI Editor contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+# The generators are code.
+[[annotations]]
+path = [
+    "builtin-assets/*.mjs",
+    "scripts/build-builtin-assets.mjs",
+]
+SPDX-FileCopyrightText = "Next SEKAI Editor contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "src/landing/badges/**"
+SPDX-FileCopyrightText = "Apple Inc. and Google LLC"
+SPDX-License-Identifier = "LicenseRef-Store-Badges"
+
+# Inherited from the upstream editor; the origin is unconfirmed, so MIT does not cover them.
+[[annotations]]
+path = [
+    "src/preview/bg.png",
+    "src/assets/se_live_*.mp3",
+    "public/favicon.ico",
+    "public/thumbnail.png",
+]
+SPDX-FileCopyrightText = "Unconfirmed"
+SPDX-License-Identifier = "LicenseRef-Upstream-Unconfirmed"
+
+# Icon artwork from Font Awesome Free, credited in the notices.
+[[annotations]]
+path = [
+    "src/editor/commands/bgm/BgmIcon.vue",
+    "src/editor/commands/brush/BrushIcon.vue",
+    "src/editor/commands/copy/CopyIcon.vue",
+    "src/editor/commands/cut/CutIcon.vue",
+    "src/editor/commands/deselect/DeselectIcon.vue",
+    "src/editor/commands/eraser/EraserIcon.vue",
+    "src/editor/commands/flip/FlipIcon.vue",
+    "src/editor/commands/fullscreen/FullscreenIcon.vue",
+    "src/editor/commands/groups/GroupAllIcon.vue",
+    "src/editor/commands/groups/GroupNextIcon.vue",
+    "src/editor/commands/groups/GroupPrevIcon.vue",
+    "src/editor/commands/help/HelpIcon.vue",
+    "src/editor/commands/jumps/JumpDownIcon.vue",
+    "src/editor/commands/jumps/JumpUpIcon.vue",
+    "src/editor/commands/manageGroups/ManageGroupsIcon.vue",
+    "src/editor/commands/manageStages/ManageStagesIcon.vue",
+    "src/editor/commands/noteSizes/NoteSizeIcon.vue",
+    "src/editor/commands/offset/OffsetIcon.vue",
+    "src/editor/commands/open/OpenIcon.vue",
+    "src/editor/commands/paste/PasteIcon.vue",
+    "src/editor/commands/play/PlayIcon.vue",
+    "src/editor/commands/properties/PropertiesIcon.vue",
+    "src/editor/commands/redo/RedoIcon.vue",
+    "src/editor/commands/reset/ResetIcon.vue",
+    "src/editor/commands/save/SaveIcon.vue",
+    "src/editor/commands/scrolls/ScrollDownIcon.vue",
+    "src/editor/commands/scrolls/ScrollLeftIcon.vue",
+    "src/editor/commands/scrolls/ScrollPageDownIcon.vue",
+    "src/editor/commands/scrolls/ScrollPageUpIcon.vue",
+    "src/editor/commands/scrolls/ScrollRightIcon.vue",
+    "src/editor/commands/scrolls/ScrollUpIcon.vue",
+    "src/editor/commands/select/SelectIcon.vue",
+    "src/editor/commands/settings/SettingsIcon.vue",
+    "src/editor/commands/snapping/SnappingIcon.vue",
+    "src/editor/commands/speeds/SpeedDownIcon.vue",
+    "src/editor/commands/speeds/SpeedUpIcon.vue",
+    "src/editor/commands/stages/StageAllIcon.vue",
+    "src/editor/commands/stages/StageNextIcon.vue",
+    "src/editor/commands/stages/StagePrevIcon.vue",
+    "src/editor/commands/stop/StopIcon.vue",
+    "src/editor/commands/toggleVolume/ToggleVolumeIcon.vue",
+    "src/editor/commands/undo/UndoIcon.vue",
+    "src/editor/commands/utilities/UtilitiesIcon.vue",
+    "src/editor/commands/visibilities/CycleVisibilityIcon.vue",
+    "src/editor/commands/visibilities/VisibilityIcon.vue",
+    "src/editor/commands/zooms/ZoomXInIcon.vue",
+    "src/editor/commands/zooms/ZoomXOutIcon.vue",
+    "src/editor/commands/zooms/ZoomYInIcon.vue",
+    "src/editor/commands/zooms/ZoomYOutIcon.vue",
+    "src/editor/settings/toolbar/SettingsToolbarAddButton.vue",
+    "src/editor/toolbar/LevelEditorToolbarTool.vue",
+    "src/editor/workspace/ChevronIcon.vue",
+    "src/editor/workspace/CloseIcon.vue",
+    "src/editor/workspace/manager/ManagerMenu.vue",
+    "src/editor/workspace/manager/icons/AddIcon.vue",
+    "src/editor/workspace/manager/icons/CheckedIcon.vue",
+    "src/editor/workspace/manager/icons/FolderIcon.vue",
+    "src/editor/workspace/manager/icons/FolderOpenIcon.vue",
+    "src/editor/workspace/manager/icons/FolderPlusIcon.vue",
+    "src/editor/workspace/manager/icons/HiddenIcon.vue",
+    "src/editor/workspace/manager/icons/MixedIcon.vue",
+    "src/editor/workspace/manager/icons/MoreIcon.vue",
+    "src/editor/workspace/manager/icons/MoveDownIcon.vue",
+    "src/editor/workspace/manager/icons/MoveHereIcon.vue",
+    "src/editor/workspace/manager/icons/MoveUpIcon.vue",
+    "src/editor/workspace/manager/icons/PartialIcon.vue",
+    "src/editor/workspace/manager/icons/PropertiesIcon.vue",
+    "src/editor/workspace/manager/icons/RenameIcon.vue",
+    "src/editor/workspace/manager/icons/SelectMultipleIcon.vue",
+    "src/editor/workspace/manager/icons/UncheckedIcon.vue",
+    "src/editor/workspace/manager/icons/VisibleIcon.vue",
+]
+SPDX-FileCopyrightText = "Fonticons, Inc. (https://fontawesome.com)"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+[[annotations]]
+path = "src/rendering/vendor/libtess.js"
+SPDX-FileCopyrightText = "Silicon Graphics, Inc., and Brendan Kenny"
+SPDX-License-Identifier = "SGI-B-2.0"
+
+# The Lyon crates and the Rust standard library, as public/third-party/lyon/sources.json lists them.
+[[annotations]]
+path = [
+    "src/rendering/vendor/lyon.wasm",
+    "public/third-party/**",
+]
+SPDX-FileCopyrightText = "The Lyon authors and the Rust Project developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# Licence texts are licensed as their own authors state.
+[[annotations]]
+path = "deployment/notices/**"
+SPDX-FileCopyrightText = "The authors of each text"
+SPDX-License-Identifier = "LicenseRef-Licence-Texts"

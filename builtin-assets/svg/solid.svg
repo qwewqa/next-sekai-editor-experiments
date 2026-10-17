@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 var(--w) var(--h)">
+    <rect width="var(--w)" height="var(--h)" fill="var(--color)" fill-opacity="var(--alpha)"/>
+</svg>

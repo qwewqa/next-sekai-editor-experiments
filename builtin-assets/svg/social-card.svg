@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+    <defs>
+        <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="rgb(35 37 57)"/>
+            <stop offset="1" stop-color="rgb(41 43 66)"/>
+        </linearGradient>
+        <linearGradient id="halo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#77efdc" stop-opacity="0"/>
+            <stop offset="0.5" stop-color="#77efdc" stop-opacity="0.45"/>
+            <stop offset="1" stop-color="#77efdc" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+    <rect width="1200" height="630" fill="url(#base)"/>
+    <g fill="#b4d6e8">
+        <rect x="70" y="70" width="260" height="110" rx="26" fill-opacity="0.05"/>
+        <rect x="880" y="420" width="240" height="100" rx="24" fill-opacity="0.05"/>
+        <polygon points="990,60 1070,160 990,196 910,160" fill-opacity="0.06"/>
+    </g>
+    <g transform="translate(318.4 33.4) scale(0.55)">
+        <g stroke="#b4d6e8" stroke-opacity="0.3" stroke-width="16" stroke-linecap="round">
+            <line x1="230" y1="1024" x2="440" y2="150"/>
+            <line x1="794" y1="1024" x2="584" y2="150"/>
+        </g>
+        <rect x="80" y="640" width="864" height="120" fill="url(#halo)"/>
+        <rect x="112" y="692" width="800" height="16" fill="#fff"/>
+        <rect x="262" y="628" width="500" height="144" rx="24" fill="#aabfff"/>
+        <rect x="286" y="652" width="452" height="96" rx="16" fill="#e6edff"/>
+        <rect x="304" y="682" width="36" height="36" fill="#8394f6"/>
+        <rect x="684" y="682" width="36" height="36" fill="#8394f6"/>
+        <polygon points="382,535 382,483 512,405 642,483 642,535 512,457" fill="#ec7cb4" stroke="#fff" stroke-width="12" stroke-linejoin="miter"/>
+    </g>
+</svg>

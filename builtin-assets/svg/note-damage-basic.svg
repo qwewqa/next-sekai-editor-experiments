@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 96">
+    <rect x="0" y="24" width="144" height="48" rx="16" fill="var(--edge)"/>
+    <rect x="4" y="27" width="136" height="42" rx="13" fill="var(--color)"/>
+</svg>
