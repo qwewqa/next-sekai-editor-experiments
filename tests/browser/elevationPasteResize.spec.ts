@@ -118,6 +118,20 @@ const openAt = (page: Page, beat: number) =>
         >('/src/editor/elevation/state.ts')
         openElevationEditor(beat)
         await nextTick()
+        // The panes have taken their final size: later points are computed from their boxes.
+        const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+        const boxes = () =>
+            ['.elevation-canvas', 'canvas.editor-chart']
+                .map((selector) => document.querySelector(selector)?.getBoundingClientRect())
+                .map((box) => `${box?.x},${box?.y},${box?.width},${box?.height}`)
+                .join(';')
+        let last = ''
+        for (let same = 0; same < 3;) {
+            await frame()
+            const now = boxes()
+            same = now === last ? same + 1 : 0
+            last = now
+        }
     }, beat)
 
 // A displayed lane and elevation at the Elevation Editor's beat, on either pane.
@@ -189,14 +203,16 @@ const copyAnchoredOnB = async (page: Page) => {
             ),
         })
     })
-    const b = await shown(page, 1)
-    const point = await at(page, 'main', (b.left + b.right) / 2, 0)
-    await page.mouse.move(point.x - 2, point.y)
-    await page.mouse.move(point.x, point.y)
     // The chart has taken the hover before the copy reads it; it previews the tap, which with B
-    // selected goes on to the note after it.
+    // selected goes on to the note after it. The pointer is put on B again until it has.
     await expect
-        .poll(() => page.evaluate(() => window.editorTest.snapshot().hovered.length))
+        .poll(async () => {
+            const b = await shown(page, 1)
+            const point = await at(page, 'main', (b.left + b.right) / 2, 0)
+            await page.mouse.move(point.x - 2, point.y)
+            await page.mouse.move(point.x, point.y)
+            return page.evaluate(() => window.editorTest.snapshot().hovered.length)
+        })
         .toBe(1)
     await page.keyboard.press('c')
     const anchor = await page.evaluate(async () => {
@@ -328,27 +344,22 @@ const configs: Config[] = [
     { layout: 'composed', snapping: 'relative', division: 2 },
 ]
 
+// One test per gesture, so a slow machine spends its time budget on one comparison at a time.
 for (const config of configs) {
-    const name = `${config.layout}, ${config.snapping}, lane division ${config.division}`
-    test(`${name}: Elevation Editor multi-note paste and resize match the chart`, async ({
-        page,
-    }) => {
-        await seed(page, config)
-        await copyAnchoredOnB(page)
-        const main: Record<string, unknown> = {}
-        const elevation: Record<string, unknown> = {}
-        for (const [key, run] of Object.entries(gestures)) {
-            main[key] = await runGesture(page, 'main', run)
-            elevation[key] = await runGesture(page, 'elevation', run)
-        }
-        for (const key of Object.keys(gestures))
-            expect([key, lanes(elevation[key])]).toEqual([key, lanes(main[key])])
-        // The attached tick stays attached.
-        for (const result of Object.values(elevation))
+    for (const [key, run] of Object.entries(gestures)) {
+        const name = `${config.layout}, ${config.snapping}, lane division ${config.division}`
+        test(`${name}: Elevation Editor ${key} matches the chart`, async ({ page }) => {
+            await seed(page, config)
+            await copyAnchoredOnB(page)
+            const main = await runGesture(page, 'main', run)
+            const elevation = await runGesture(page, 'elevation', run)
+            expect([key, lanes(elevation)]).toEqual([key, lanes(main)])
+            // The attached tick stays attached.
             expect(
-                (result as Awaited<ReturnType<typeof notes>>).filter((note) => note.isAttached),
+                (elevation as Awaited<ReturnType<typeof notes>>).filter((note) => note.isAttached),
             ).toHaveLength(1)
-    })
+        })
+    }
 }
 
 for (const layout of ['basic', 'composed'] as const) {

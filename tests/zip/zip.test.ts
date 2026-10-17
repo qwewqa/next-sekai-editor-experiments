@@ -731,3 +731,16 @@ test('a read needs a cap', async () => {
     // @ts-expect-error: maxSize is required.
     assert.equal(text(await reader.read(reader.get('a')!, {})), 'x')
 })
+
+test('the overlap check on a first read takes few slices, however many entries it walks', async () => {
+    const entries = Array.from({ length: 6000 }, (_, i) => ({
+        name: `e${String(i).padStart(5, '0')}`,
+        data: new Uint8Array(0),
+        method: 0 as const,
+    }))
+    const { spy, slices } = spyBlob(rawZip(entries))
+    const reader = await ZipReader.open(spy)
+    slices.length = 0
+    await reader.read(reader.get('e05000')!, cap)
+    assert.ok(slices.length <= 8, `${slices.length} slices`)
+})

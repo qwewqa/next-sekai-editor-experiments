@@ -114,6 +114,11 @@ export default tsEslint.config(
                     selector: "Identifier[name='isTauri']",
                     message: 'isTauri belongs to the native implementation.',
                 },
+                {
+                    selector:
+                        'ImportExpression[source.value=/^@tauri-apps.|(^|.)platform.native(.|$)|(^|.)(library|projects)(.|$)/]',
+                    message: 'Native code is imported only by the native code and its loader.',
+                },
             ],
         },
     },
@@ -133,7 +138,37 @@ export default tsEslint.config(
                 },
                 {
                     selector:
+                        'ImportExpression[source.value=/^@tauri-apps.|(^|.)platform.native(.|$)|(^|.)(library|projects)(.|$)/]',
+                    message: 'Native code is imported only by the native code and its loader.',
+                },
+                {
+                    selector:
                         "MemberExpression[object.name='platform'][property.name=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+                {
+                    selector:
+                        "MemberExpression[object.property.name='platform'][property.name=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+                {
+                    selector:
+                        "MemberExpression[object.name='platform'][property.value=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+                {
+                    selector:
+                        "MemberExpression[object.property.name='platform'][property.value=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+                {
+                    selector:
+                        "VariableDeclarator[init.name='platform'] > ObjectPattern > Property[key.name=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+                {
+                    selector:
+                        "VariableDeclarator[init.property.name='platform'] > ObjectPattern > Property[key.name=/^(kind|os)$/]",
                     message: 'Ask platform.capabilities; kind and os are for src/platform.',
                 },
             ],

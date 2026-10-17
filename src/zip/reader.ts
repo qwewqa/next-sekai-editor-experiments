@@ -142,29 +142,51 @@ export class ZipReader {
         if ((byOffset[after]?.entry.localOffset ?? Infinity) < end) throw overlap()
 
         // An earlier entry reaches at most `MAX_HEADER_SLACK` past its least end, so the walk stops there.
+        const walked: ZipEntry[] = []
         for (let i = after - 1; i >= 0; i--) {
             const { entry: other, reach } = byOffset[i] ?? { entry, reach: 0 }
             if (reach + MAX_HEADER_SLACK <= entry.localOffset) break
-            if (other === entry) continue
-            const total = this.headerSizes.get(other) ?? (await this.headerSize(other))
+            if (other !== entry) walked.push(other)
+        }
+        await this.readHeaderSizes(walked.filter((other) => !this.headerSizes.has(other)))
+        for (const other of walked) {
+            const total = this.headerSizes.get(other) ?? 0
             if (other.localOffset + total + other.compressedSize > entry.localOffset)
                 throw overlap()
         }
     }
 
-    /** The whole size of another entry's local header, read once. */
-    private async headerSize(entry: ZipEntry) {
-        const { localOffset } = entry
-        const fixed = await bytesOf(this.source, localOffset, localOffset + LOCAL_HEADER_SIZE)
-        let total = 0
-        try {
-            total = localHeaderSize(fixed)
-        } catch (error) {
-            // A header that cannot be read is that entry's damage, found when it is read.
-            if (!(error instanceof ZipError)) throw error
-        }
-        this.headerSizes.set(entry, total)
-        return total
+    /**
+     * Reads the whole size of each entry's local header, once. Headers close together come from
+     * one slice; scattered ones are read together.
+     */
+    private async readHeaderSizes(entries: ZipEntry[]) {
+        // Walked from the highest offset down, so the lowest is last.
+        const lowest = entries.at(-1)?.localOffset ?? 0
+        const highest = entries[0]?.localOffset ?? 0
+        const span = highest + LOCAL_HEADER_SIZE - lowest
+        const near =
+            entries.length > 1 && span <= WINDOW_SIZE
+                ? bytesOf(this.source, lowest, lowest + span)
+                : undefined
+        const fixedOf = async (entry: ZipEntry) =>
+            near
+                ? (await near).subarray(
+                      entry.localOffset - lowest,
+                      entry.localOffset - lowest + LOCAL_HEADER_SIZE,
+                  )
+                : bytesOf(this.source, entry.localOffset, entry.localOffset + LOCAL_HEADER_SIZE)
+        const fixeds = await Promise.all(entries.map(fixedOf))
+        entries.forEach((entry, i) => {
+            let total = 0
+            try {
+                total = localHeaderSize(fixeds[i] ?? new Uint8Array(0))
+            } catch (error) {
+                // A header that cannot be read is that entry's damage, found when it is read.
+                if (!(error instanceof ZipError)) throw error
+            }
+            this.headerSizes.set(entry, total)
+        })
     }
 
     /** The entry's uncompressed bytes, with its CRC and declared size verified. */

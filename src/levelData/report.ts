@@ -64,6 +64,11 @@ export class LevelDataReport {
 // Field names per archetype that the parser reads or reads past on purpose, as of this build.
 let allowed: Map<string, Set<string>> | undefined
 
+/** Forgets the memoized field table; for tests that change the ignored tables. */
+export const resetAllowedFieldsForTests = () => {
+    allowed = undefined
+}
+
 const current = (since?: number) => (since ?? 1) <= LEVEL_VERSION
 
 const allowedFields = () =>

@@ -157,7 +157,10 @@ test('Escape, × and an outside press all cancel', async ({ page }) => {
 })
 
 test('a press within 300 ms of opening is ignored, and one after it works', async ({ page }) => {
+    // The clock is stopped once the page is up, so no real time passes between opening and pressing.
+    await page.clock.install()
     await boot(page)
+    await page.clock.pauseAt(new Date(Date.now() + 60_000))
     await page.evaluate(async () => {
         const { showChoice } =
             await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
@@ -168,16 +171,41 @@ test('a press within 300 ms of opening is ignored, and one after it works', asyn
             title: () => 'Guard',
             choices: [{ value: 'go', label: () => 'Go', default: true }],
         }).then((answer) => (Reflect.get(window, 'answers') as unknown[]).push(String(answer)))
-        // Two frames: the dialog is in the page. Then press, as a held Enter that opened it would.
-        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        // The dialog is in the page. Then press, as a held Enter that opened it would.
+        await window.editorTest.nextTick()
         document.querySelector<HTMLElement>('dialog button[data-choice="default"]')?.click()
     })
     await expect(dialog(page)).toBeVisible()
     expect(await answers(page)).toEqual([])
-    await settle(page)
+    await page.clock.runFor(299)
+    await dialog(page).getByRole('button', { name: 'Go' }).click()
+    expect(await answers(page)).toEqual([])
+    await page.clock.runFor(2)
     await dialog(page).getByRole('button', { name: 'Go' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await answers(page)).toEqual(['go'])
+})
+
+test('a dialog never has the close button focused, even for the first frame', async ({ page }) => {
+    await boot(page)
+    const first = await page.evaluate(async () => {
+        const { showChoice } =
+            await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
+                '/src/modals/choice.ts',
+            )
+        void showChoice({
+            title: () => 'First Frame',
+            choices: [{ value: 'go', label: () => 'Go', default: true }],
+        })
+        await window.editorTest.nextTick()
+        // After the dialog is shown, before the timer that focuses its default.
+        const active = document.activeElement
+        return active instanceof HTMLButtonElement
+            ? (active.getAttribute('aria-label') ?? active.textContent)
+            : active?.tagName
+    })
+    expect(first).not.toMatch(/close/i)
+    await expect(dialog(page).getByRole('button', { name: 'Go' })).toBeFocused()
 })
 
 test('a held Enter does not confirm: repeats are ignored', async ({ page }) => {
