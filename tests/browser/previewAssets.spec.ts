@@ -285,7 +285,7 @@ test.describe('Default and Built-in', () => {
             await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeChecked()
         }
         await reset.click()
-        expect((await setting<Record<string, unknown>>(page, 'previewAssets'))['skin']).toEqual({
+        expect((await setting<Record<string, unknown>>(page, 'previewAssets'))?.['skin']).toEqual({
             source: 'default',
         })
         await expect(reset).toBeDisabled()
@@ -532,20 +532,29 @@ test.describe('narrow', () => {
         await page.keyboard.press('Home')
         await expect(selectedTab(page)).toContainText('Skin')
 
-        // The stored line has its own row and the helpers the next, full width.
+        // The stored line has its own row, and the helpers follow it full width, one above the other.
         const line = await dialog(page).locator('[data-stored-line]').boundingBox()
         const buttons = await dialog(page)
             .locator('[data-preview-assets-footer] button')
             .evaluateAll((elements) =>
                 elements.map((element) => {
-                    const { x, y, width } = element.getBoundingClientRect()
-                    return { x, y, width }
+                    const { y, width, height } = element.getBoundingClientRect()
+                    return { y, width, height, label: element.textContent?.trim() }
                 }),
             )
-        expect(buttons).toHaveLength(2)
+        expect(buttons.map((button) => button.label)).toEqual([
+            'Use Built-in for All',
+            'Reset to Default',
+        ])
         expect(buttons[0]!.y).toBeGreaterThan(line!.y + line!.height - 1)
-        expect(buttons[1]!.y).toBeCloseTo(buttons[0]!.y, 0)
-        expect(buttons[0]!.width + buttons[1]!.width).toBeGreaterThan(300)
+        expect(buttons[1]!.y).toBeGreaterThan(buttons[0]!.y + buttons[0]!.height - 1)
+        expect(buttons[0]!.width).toBeGreaterThan(300)
+        expect(buttons[1]!.width).toBeCloseTo(buttons[0]!.width, 0)
+        // Whole labels, not cut short.
+        for (const button of await dialog(page)
+            .locator('[data-preview-assets-footer] button')
+            .all())
+            expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
         const box = await dialog(page).boundingBox()
         expect(box!.x + box!.width).toBeLessThanOrEqual(360)
     })
@@ -553,27 +562,32 @@ test.describe('narrow', () => {
 
 test.describe('looks', () => {
     for (const theme of ['light', 'dark'] as const)
-        test(`every tab in the ${theme} theme`, async ({ page }) => {
-            await start(page, {
-                fail: ['default-skin'],
-                seed: {
-                    previewAssets: {
-                        background: {
-                            ...fileChoice,
-                            title: 'Night Sky',
-                            origin: 'sky.scp',
+        for (const [size, viewport] of [
+            ['wide', { width: 1600, height: 1000 }],
+            ['narrow', { width: 360, height: 740 }],
+        ] as const)
+            test(`every tab, ${size}, in the ${theme} theme`, async ({ page }) => {
+                await page.setViewportSize(viewport)
+                await start(page, {
+                    fail: ['default-skin'],
+                    seed: {
+                        previewAssets: {
+                            background: {
+                                ...fileChoice,
+                                title: 'Night Sky',
+                                origin: 'sky.scp',
+                            },
                         },
                     },
-                },
+                })
+                await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
+                await open(page)
+                for (const name of ['skin', 'particle', 'background', 'effect', 'stored']) {
+                    await tabOf(page, name).click()
+                    await expect(tabOf(page, name)).toHaveAttribute('aria-selected', 'true')
+                    await shot(page, `tab-${name}-${size}-${theme}`)
+                }
             })
-            await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
-            await open(page)
-            for (const name of ['skin', 'particle', 'background', 'effect', 'stored']) {
-                await tabOf(page, name).click()
-                await expect(tabOf(page, name)).toHaveAttribute('aria-selected', 'true')
-                await shot(page, `tab-${name}-${theme}`)
-            }
-        })
 })
 
 test('the toolbar migration adds the command to an unchanged playback group, once', async ({

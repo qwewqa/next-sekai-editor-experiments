@@ -80,7 +80,9 @@ export const createAssetLoader = (options: {
         }
 
         if (hasLastResort && choice.source !== 'builtin') {
-            console.error(`Failed to load the default ${type}:`, failure)
+            // A missing file is an ordinary configuration, as on a fork without the particle.
+            if (reasonOf(failure) !== 'missing')
+                console.error(`Failed to load the default ${type}:`, failure)
             try {
                 const value = await builtinProvider(context)
                 if (isAborted()) return

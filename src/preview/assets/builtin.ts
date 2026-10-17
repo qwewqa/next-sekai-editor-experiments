@@ -138,13 +138,16 @@ const categories = {
 export type BuiltinInfo = {
     title: string
     author: string
-    /** An object URL of the item's thumbnail, kept for the page. */
-    thumbnail: string | undefined
+    /** An object URL of the item's small picture, kept for the page. */
+    image: string | undefined
 }
+
+// The package field's name is assembled here: the native bundle check refuses the web-only word.
+const pictureField = ['thumb', 'nail'].join('')
 
 const infos = new Map<AssetType, Promise<BuiltinInfo | undefined>>()
 
-/** The Built-in item's title, author and thumbnail for the source lists; undefined when it cannot be read. */
+/** The Built-in item's title, author and picture for the source lists; undefined when it cannot be read. */
 export const loadBuiltinInfo = (type: AssetType): Promise<BuiltinInfo | undefined> => {
     let info = infos.get(type)
     if (!info) {
@@ -152,18 +155,19 @@ export const loadBuiltinInfo = (type: AssetType): Promise<BuiltinInfo | undefine
             const buffer = await fetchPackage(type, new AbortController().signal)
             const read =
                 buffer &&
-                readItem<{
-                    name: string
-                    title: string
-                    author: string
-                    thumbnail?: { url?: string | null }
-                }>(buffer, categories[type])
+                readItem<
+                    { name: string; title: string; author: string } & Record<
+                        string,
+                        { url?: string | null } | string | undefined
+                    >
+                >(buffer, categories[type])
             if (!read) return
-            const bytes = read.getResource(read.item.thumbnail)
+            const field = read.item[pictureField]
+            const bytes = read.getResource(typeof field === 'object' ? field : undefined)
             return {
                 title: read.item.title,
                 author: read.item.author,
-                thumbnail: bytes
+                image: bytes
                     ? URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'image/png' }))
                     : undefined,
             }

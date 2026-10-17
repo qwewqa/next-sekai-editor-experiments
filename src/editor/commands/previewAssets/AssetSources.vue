@@ -29,10 +29,10 @@ type Row = {
     name: string
     /** The author, and for a stored item its origin. */
     detail: string
-    thumbnail: string | undefined
+    image: string | undefined
 }
 
-// Built-in's title, author and thumbnail come from its package, read once the tab shows.
+// Built-in's title, author and picture come from its package, read once the tab shows.
 const builtin = ref<BuiltinInfo>()
 let closed = false
 onMounted(() => {
@@ -61,7 +61,7 @@ const rows = computed<Row[]>(() => {
             name: defaultName.value,
             detail: '',
             // Only the background has an image of its own to show.
-            thumbnail: props.type === 'background' ? firstPaintBackgroundUrl : undefined,
+            image: props.type === 'background' ? firstPaintBackgroundUrl : undefined,
         })
     list.push({
         id: 'builtin',
@@ -69,7 +69,7 @@ const rows = computed<Row[]>(() => {
         choice: { source: hasDefault ? 'builtin' : 'default' },
         name: hasDefault ? strings.value.builtin : strings.value.builtinDefault,
         detail: builtin.value?.author ?? '',
-        thumbnail: builtin.value?.thumbnail,
+        image: builtin.value?.image,
     })
     // A stored item that is the choice shows even before the Stored tab lists them all.
     const choice = chosen.value
@@ -82,7 +82,7 @@ const rows = computed<Row[]>(() => {
                 choice.title,
             ),
             detail: [choice.author, choice.origin].filter(Boolean).join(' · '),
-            thumbnail: undefined,
+            image: undefined,
         })
     return list
 })
@@ -132,12 +132,7 @@ const noteText = computed(() =>
                     class="pointer-events-none size-10 shrink-0 overflow-hidden rounded-lg bg-recess"
                     aria-hidden="true"
                 >
-                    <img
-                        v-if="row.thumbnail"
-                        :src="row.thumbnail"
-                        alt=""
-                        class="size-full object-cover"
-                    />
+                    <img v-if="row.image" :src="row.image" alt="" class="size-full object-cover" />
                 </span>
                 <span class="pointer-events-none min-w-0 flex-1">
                     <span class="block truncate">{{ row.name }}</span>

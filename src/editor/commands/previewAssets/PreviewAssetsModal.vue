@@ -152,11 +152,13 @@ const buttonClass =
                 class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-fg/25 p-3"
                 data-preview-assets-footer
             >
-                <p class="min-w-0 max-sm:w-full" data-stored-line>{{ storedText }}</p>
-                <div class="ml-auto flex gap-2 max-sm:ml-0 max-sm:w-full">
+                <p class="min-w-0 max-[440px]:w-full" data-stored-line>{{ storedText }}</p>
+                <div
+                    class="ml-auto flex gap-2 max-[440px]:ml-0 max-[440px]:w-full max-[440px]:flex-col"
+                >
                     <button
                         type="button"
-                        :class="[buttonClass, 'max-sm:flex-1']"
+                        :class="[buttonClass, 'max-[440px]:w-full']"
                         :disabled="allBuiltin"
                         data-use-builtin-all
                         @click="setAll(builtinSource)"
@@ -166,7 +168,7 @@ const buttonClass =
                     <button
                         v-if="hasDefault"
                         type="button"
-                        :class="[buttonClass, 'max-sm:flex-1']"
+                        :class="[buttonClass, 'max-[440px]:w-full']"
                         :disabled="allDefault"
                         data-reset-default
                         @click="setAll('default')"

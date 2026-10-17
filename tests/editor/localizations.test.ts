@@ -237,6 +237,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.note.title.default',
         'commands.note.title.preset',
         // French writes "skin", as in its preview strings.
+        'commands.previewAssets.noun.skin',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
         'commands.slide.title.preset',

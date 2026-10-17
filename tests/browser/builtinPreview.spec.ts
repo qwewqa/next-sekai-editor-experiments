@@ -20,9 +20,9 @@ const sizes = {
 } as const
 // A chart's shots: the far end of the lane first, then the notes coming down to the line.
 const times: Record<string, number[]> = {
-    types: [1.2, 3.2, 5.2],
-    slides: [1.2, 3.2, 5.2],
-    styles: [1.2, 3, 4.5],
+    types: [1.6, 2.95, 4.5],
+    slides: [1.6, 3.6, 7.8],
+    styles: [1.6, 3.2, 5.5],
 }
 
 const settle = (page: Page) =>
@@ -60,6 +60,8 @@ for (const [size, { width, height, scale, dock }] of Object.entries(sizes))
                             s.showPreview = true
                             s.previewControls = 'collapsed'
                             s.previewShowEffects = false
+                            // Only the notes change from one moment to the next.
+                            s.previewShowTime = false
                             s.previewPosition = 'top'
                             s.topDockHeight = dock as number
                         },
