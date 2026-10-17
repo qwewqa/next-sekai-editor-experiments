@@ -69,6 +69,6 @@ watch(canUndo, (can) => {
 
 <template>
     <!-- The page's one polite live region: every notice is read once, however many panes show it.
-    A blocking dialog makes the page inert, so the top dialog carries the region meanwhile. -->
+    A blocking dialog makes the page inert, so the dialogs carry regions meanwhile. -->
     <NoticeRegion v-if="!isBlockingModalOpen" initial />
 </template>

@@ -131,8 +131,8 @@ const vOpen = {
         @cancel="onCancel"
         @close="closeModal(modal)"
     >
-        <!-- The page behind a dialog is inert, so the top dialog announces notices. -->
-        <NoticeRegion v-if="modal === regularModals.at(-1)" />
+        <!-- The page behind a dialog is inert, so each dialog carries a region; only the top one is reachable. -->
+        <NoticeRegion />
         <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
     </dialog>
 </template>
