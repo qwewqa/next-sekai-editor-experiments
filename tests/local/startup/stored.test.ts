@@ -70,8 +70,7 @@ test('missing, removed, deleting and newer sessions are never opened', async () 
     assert.equal((await read(newer.id)).kind, 'deleted')
     await tamper(world, async (tx) => {
         const chain = (await tx.get('chains', newer.chainId)) as Record<string, unknown>
-        const { deleting: _deleting, ...rest } = chain
-        await tx.put('chains', rest)
+        await tx.put('chains', { ...chain, deleting: undefined })
         const session = (await tx.get('sessions', newer.id)) as Record<string, unknown>
         await tx.put('sessions', { ...session, v: 2 })
     })
@@ -83,7 +82,8 @@ test('a session without a stored stack has it rebuilt by replay', async () => {
     const { page, newer } = await twoChains(world)
     await tamper(world, async (tx) => {
         const session = (await tx.get('sessions', newer.id)) as Record<string, unknown>
-        const { stack: _stack, ...rest } = session
+        const rest = { ...session }
+        Reflect.deleteProperty(rest, 'stack')
         await tx.put('sessions', rest)
     })
     const read = await page.tab.run(() => handlersOf(page).readSession(newer.id))
