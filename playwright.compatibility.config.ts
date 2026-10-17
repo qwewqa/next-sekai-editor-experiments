@@ -2,31 +2,43 @@ import { defineConfig, devices } from '@playwright/test'
 import config from './playwright.config'
 
 // Parallel local runs can each choose a free preview server port.
+// CI runs the storage projects (`*-storage`) as a job of their own, beside the others.
 const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? '5211'
 const previewUrl = `http://127.0.0.1:${previewPort}`
 
+const storageSpecs = [
+    'storageHandshake.spec.ts',
+    'storageCommitOnUnload.spec.ts',
+    'storageWorker.spec.ts',
+    'storageFlush.spec.ts',
+]
+
 export default defineConfig({
     ...config,
-    testMatch: [
-        'playerAudio.spec.ts',
-        'waveform.spec.ts',
-        'recordVectors.spec.ts',
-        // The storage core (Part 1 §1.11.3, Step 3a): the handshake, commit on unload, the worker's
-        // restart and the flush, in each engine.
-        'storageHandshake.spec.ts',
-        'storageCommitOnUnload.spec.ts',
-        'storageWorker.spec.ts',
-        'storageFlush.spec.ts',
-    ],
+    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,
         launchOptions: {},
     },
     projects: [
-        // The storage specs boot the editor in two tabs, slower here than in Chromium.
-        { name: 'firefox', timeout: 60_000, use: { browserName: 'firefox' } },
-        { name: 'webkit', timeout: 60_000, use: { browserName: 'webkit' } },
+        { name: 'firefox', use: { browserName: 'firefox' } },
+        { name: 'webkit', use: { browserName: 'webkit' } },
+        // The storage core (Part 1 §1.11.3, Step 3a): the handshake, commit on unload, the worker's
+        // restart and the flush, in each engine. They boot the editor in two tabs, slower here
+        // than in Chromium.
+        {
+            name: 'firefox-storage',
+            testMatch: storageSpecs,
+            timeout: 60_000,
+            use: { browserName: 'firefox' },
+        },
+        {
+            name: 'webkit-storage',
+            testMatch: storageSpecs,
+            timeout: 60_000,
+            use: { browserName: 'webkit' },
+        },
         // Firefox-specific keyboard defaults such as quick find and Backspace.
         {
             name: 'firefox-chrome',

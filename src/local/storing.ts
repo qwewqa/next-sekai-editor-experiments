@@ -3,7 +3,7 @@ import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
 import { appVersion, platform } from '../platform'
-import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
+import { Flusher, flushTimeoutMs, mediaTimeoutMs, type FlushReport } from './flush'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
 import type { StorageWorker } from './worker/client'
@@ -64,6 +64,8 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                 timeoutMs: flushTimeoutMs(batch),
                 current,
             }),
+        storeMedia: (item) =>
+            worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
@@ -118,6 +120,11 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         },
         { replay: true },
     )
+
+    // A newer database opened by Try Again: nothing this tab holds will be stored.
+    worker.onStatus((next) => {
+        if (next.mode === 'readOnly') instance.withoutDatabase()
+    })
 
     worker.onRestart(() => {
         void instance.restarted()

@@ -4,10 +4,11 @@ import { DB_NAME, writeMeta } from '../../../src/local/db'
 import type { FlushResult } from '../../../src/local/flushWrite'
 import { keyText } from '../../../src/local/kv/keys'
 import { MemoryKv } from '../../../src/local/kv/memory'
-import type { Key } from '../../../src/local/kv/types'
+import type { Key, KvFactory, TxMode } from '../../../src/local/kv/types'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
+import type { StorageStatus } from '../../../src/local/worker/core'
 import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
@@ -333,3 +334,168 @@ for (const [name, flags] of [
         })
         assert.ok(result.every(({ points }) => points > 10))
     })
+
+/** A factory whose databases call `onTx` as each transaction begins. */
+const watchTransactions = (
+    factory: KvFactory,
+    onTx: (stores: readonly string[], mode: TxMode) => void,
+): KvFactory => ({
+    open: async (name, version, options) => {
+        const db = await factory.open(name, version, options)
+        const transaction = db.transaction.bind(db)
+        db.transaction = (stores, mode, fn, txOptions) => {
+            onTx(stores, mode)
+            return transaction(stores, mode, fn, txOptions)
+        }
+        return db
+    },
+})
+
+for (const when of ['before', 'during'] as const)
+    test(`a newer tab asking ${when} Try Again’s copy is answered, and storing steps aside`, async () => {
+        for (const seed of CI_SEEDS) {
+            const world = createWorld({ seed })
+            const frozen = world.tab('frozen')
+            const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
+            await frozen.run(() => frozenCore.start())
+
+            // A v2 tab behind the frozen v1 tab, in memory, with a row to move.
+            const tab = world.tab('v2')
+            const newest = world.tab('v3')
+            const newestCore = workerCore(world, newest, { flags: { dbVersion: 3 } })
+            let armed = false
+            let newer: Promise<StorageStatus> | undefined
+            const ask = (moment: typeof when) => {
+                if (!armed || moment !== when) return
+                armed = false
+                newer = newest.run(() => newestCore.start())
+            }
+            const memory = new MemoryKv(world.scheduler)
+            const core = workerCore(world, tab, {
+                flags: { dbVersion: 2 },
+                // The copy reads the memory store whole, then writes the database in one go.
+                memory: () =>
+                    watchTransactions(memory.factory(tab.actor), (stores, mode) => {
+                        if (mode === 'readonly' && stores.length > 1) ask('before')
+                    }),
+                factory: watchTransactions(tab.kv, (stores, mode) => {
+                    if (mode === 'readwrite' && stores.length > 1) ask('during')
+                }),
+            })
+            const opening = tab.run(() => core.start())
+            await world.idle()
+            assert.deepEqual(await opening, { mode: 'memory', reason: 'olderTabs' })
+            await tab.run(() =>
+                core.write(['recovered'], (tx) =>
+                    tx.put('recovered', { id: 'kept', source: 'test' }),
+                ),
+            )
+            frozen.kill()
+            await world.idle()
+            armed = true
+            await tab.run(() => core.tryAgain()).catch(() => undefined)
+            await world.idle()
+            assert.ok(newer, `seed ${seed}`)
+            // The newer tab opened its version, never held back by the move's connection.
+            assert.deepEqual(await newer, { mode: 'stored' }, `seed ${seed}`)
+            assert.equal(world.memory.version(DB_NAME), 3, `seed ${seed}`)
+            assert.notDeepEqual(core.status, { mode: 'stored' }, `seed ${seed}`)
+            if (when === 'during')
+                assert.deepEqual(core.status, { mode: 'stored', reason: 'upgrading' })
+            await world.idle()
+        }
+    })
+
+test('a write held behind Try Again’s move counts the move’s steps as its progress', async () => {
+    const world = createWorld({ seed: 3 })
+    const frozen = world.tab('frozen')
+    const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
+    await frozen.run(() => frozenCore.start())
+    const tab = world.tab('v2')
+    let held: Promise<unknown> | undefined
+    let heldTicks = 0
+    const core = workerCore(world, tab, {
+        flags: { dbVersion: 2 },
+        factory: watchTransactions(tab.kv, (stores, mode) => {
+            if (held || mode !== 'readwrite' || stores.length === 1) return
+            // A flush arriving while the move copies: it waits at the gate.
+            held = core.write(['meta'], (tx) => tx.put('meta', { key: 'late', value: 1 }), {
+                tick: () => heldTicks++,
+            })
+        }),
+    })
+    const opening = tab.run(() => core.start())
+    await world.idle()
+    await opening
+    for (let i = 0; i < 10; i++)
+        await tab.run(() =>
+            core.write(['recovered'], (tx) => tx.put('recovered', { id: `r${i}`, source: 'test' })),
+        )
+    frozen.kill()
+    await world.idle()
+    let ownTicks = 0
+    assert.deepEqual(await tab.run(() => core.tryAgain({ tick: () => ownTicks++ })), {
+        mode: 'stored',
+    })
+    await held
+    // Its own two steps, and one for each row the move copied while it waited.
+    assert.ok(ownTicks >= 10, `${ownTicks}`)
+    assert.ok(heldTicks >= 10, `${heldTicks}`)
+})
+
+test('a batch planned before a restart is planned again even where the new store has the same id', async () => {
+    for (const seed of CI_SEEDS) {
+        const world = createWorld({ seed })
+        // Every in-memory store gets the same dbInstanceId: the memo's mark can't tell them apart.
+        const page = await openSplitPage(world, {
+            flags: { noStorage: true },
+            core: { randomId: () => 'same' },
+        })
+        let state = stateOf(goldenChart())
+        begin(page, state)
+        await page.flusher.flush()
+        state = widen(state)
+        edit(page, state)
+        page.host.worker.kill()
+        const flushing = page.flusher.flush()
+        await settle(world)
+        await flushing
+        assert.equal(page.host.starts, 2)
+        assert.equal(page.flusher.hasPending, false)
+        assert.deepEqual(checkStored(page.host.memory), [], `seed ${seed}`)
+        assert.deepEqual(
+            sessionsIn(page.host.memory),
+            [{ lastSeq: 2, entryCount: 2, seqs: [1, 2] }],
+            `seed ${seed}`,
+        )
+    }
+})
+
+test('where no database will ever answer, a replaced session’s in-memory history is let go', async () => {
+    const world = createWorld({ seed: 8 })
+    const page = await openSplitPage(world, { flags: { noStorage: true } })
+    const released: string[] = []
+    const start = (id: string, state: State) =>
+        page.flusher.begin({
+            id,
+            docId: testId(),
+            origin: 'import',
+            state,
+            label: () => 'Initialize',
+            dirty: false,
+            done: () => released.push(id),
+        })
+    const state = stateOf(goldenChart())
+    start('first', state)
+    await page.flusher.flush()
+    start('second', widen(state))
+    await page.flusher.flush()
+    // The first session's lock went with it; the current one's history is still kept.
+    assert.deepEqual(released, ['first'])
+    page.host.worker.kill()
+    await settle(world)
+    assert.deepEqual(
+        sessionsIn(page.host.memory).map(({ seqs }) => seqs),
+        [[1]],
+    )
+})

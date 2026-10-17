@@ -98,6 +98,7 @@ export const openPage = async (
                 results.push(result)
                 return result
             },
+            storeMedia: (item) => tab.run(() => handlers.storeMedia(item)),
             onFlushed: (report) => reports.push(report),
             onError: (error) => errors.push(error),
             // Flushes run when a test asks, and extract in one go: a timer is outside the scheduler.
@@ -313,6 +314,7 @@ export const openSplitPage = async (
                     results.push(result)
                     return result
                 }, current),
+            storeMedia: (item) => host.call((handlers) => handlers.storeMedia(item)),
             onFlushed: (report) => reports.push(report),
             onError: (error) => errors.push(error),
             runJob: (job) => Promise.resolve(runToEnd(job)),
