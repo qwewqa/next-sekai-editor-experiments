@@ -7,13 +7,6 @@ export type CspViolation = {
     line: number
 }
 
-declare global {
-    interface Window {
-        /** Set by tests, which fail on a violation. */
-        nseCspViolationHook?: (violation: CspViolation) => void
-    }
-}
-
 document.addEventListener(
     'securitypolicyviolation',
     (event) => {
@@ -25,7 +18,9 @@ document.addEventListener(
             line: event.lineNumber,
         }
         console.error('Content Security Policy violation', violation)
-        window.nseCspViolationHook?.(violation)
+        // Tests set this to fail on a violation.
+        const hook = Reflect.get(window, 'nseCspViolationHook') as unknown
+        if (typeof hook === 'function') Reflect.apply(hook, window, [violation])
     },
     true,
 )
