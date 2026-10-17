@@ -35,6 +35,151 @@ export const diamondColors = { green: '#abfbe3', red: '#ffd8f6', yellow: '#fff2c
 export const arrowColors = { normal: '#ec7cb4', critical: '#ffc633' }
 export const damage = { color: '#a50acc', edge: '#d28ae6' }
 
+/**
+ * Colours sampled from the base set (Next SEKAI 01) where ours must match it side by side: the
+ * connectors (at rest and held), the slot glows and the effects. The base's styled pieces follow
+ * its own rule per style hue, so they are listed per style.
+ */
+export const baseColors = {
+    connector: {
+        normal: ['#83ffd4', '#67fff1'],
+        critical: ['#fcffde', '#fff59c'],
+        damage: ['#c773e5', '#e573a1'],
+    },
+    // Slot glows run through hues from the note (light) up the lane: [at the note, middle, top].
+    slotGlow: {
+        Cyan: ['#aad0ff', '#2983ff', '#6c28ff'],
+        Green: ['#20ff92', '#42ffd1', '#11b6ff'],
+        Red: ['#fe8dd1', '#ff59b4', '#ff188f'],
+        Yellow: ['#ffb07c', '#fff273', '#bdff0b'],
+        'Yellow Flick': ['#feb15e', '#ffde4c', '#d9ff27'],
+        'Green Slider Hold': ['#08ff9e', '#02fff7', '#0095ff'],
+        'Yellow Slider Hold': ['#a9ff53', '#5cff2e', '#00ff00'],
+        'Yellow Slider Tap': ['#dbfb43', '#d3ff5e', '#86ff0b'],
+    },
+    // Per style, the slot glows of normal and critical notes.
+    styleGlow: {
+        Neutral: [
+            ['#d4d4d4', '#949494', '#939393'],
+            ['#bdbdbd', '#b9b9b9', '#858585'],
+        ],
+        Red: [
+            ['#ffaacc', '#ff297f', '#ff287e'],
+            ['#ff7cb0', '#ff73ab', '#ff0b6d'],
+        ],
+        Green: [
+            ['#aaffe2', '#29ffb6', '#28ffb6'],
+            ['#7cffd2', '#73ffcf', '#0bffac'],
+        ],
+        Blue: [
+            ['#aaaaff', '#2929ff', '#2828ff'],
+            ['#7c7cff', '#7373ff', '#0b0bff'],
+        ],
+        Yellow: [
+            ['#ffe6aa', '#ffc029', '#ffc028'],
+            ['#ffd87c', '#ffd673', '#ffb70b'],
+        ],
+        Purple: [
+            ['#e8aaff', '#c529ff', '#c528ff'],
+            ['#dc7cff', '#d973ff', '#bd0bff'],
+        ],
+        Cyan: [
+            ['#aaf6ff', '#29e8ff', '#28e8ff'],
+            ['#7cf1ff', '#73f0ff', '#0be5ff'],
+        ],
+        Black: [
+            ['#636363', '#3d3d3d', '#3d3d3d'],
+            ['#484848', '#454545', '#3d3d3d'],
+        ],
+    },
+    // Effects, from captures of each hit: the hue where the effects add light.
+    effect: { tap: '#6266f2', flick: '#e640bc', trace: '#39b2e6' },
+    // Per style: connector at rest and held, critical connector at rest and held, damage
+    // connector, slot glow, critical slot glow, flick arrow.
+    style: {
+        Neutral: [
+            '#c1c1c1',
+            '#b3b3b3',
+            '#eeeeee',
+            '#cdcdcd',
+            '#acacac',
+            '#aeaeae',
+            '#d8d8d8',
+            '#b5b5b5',
+        ],
+        Red: [
+            '#ff83b5',
+            '#ff67a4',
+            '#ffdeeb',
+            '#ff9cc4',
+            '#e573a1',
+            '#ff5d9e',
+            '#ffb2d0',
+            '#ee7eaa',
+        ],
+        Green: [
+            '#83ffd5',
+            '#67ffcb',
+            '#defff4',
+            '#9cffdd',
+            '#73e5bf',
+            '#5dffc7',
+            '#b2ffe4',
+            '#7eeec7',
+        ],
+        Blue: [
+            '#8383ff',
+            '#6767ff',
+            '#dedeff',
+            '#9c9cff',
+            '#7373e5',
+            '#5d5dff',
+            '#b2b2ff',
+            '#7e7eee',
+        ],
+        Yellow: [
+            '#ffdb83',
+            '#ffd267',
+            '#fff5de',
+            '#ffe29c',
+            '#e5c473',
+            '#ffcf5d',
+            '#ffe8b2',
+            '#eecd7e',
+        ],
+        Purple: [
+            '#dd83ff',
+            '#d667ff',
+            '#f6deff',
+            '#e49cff',
+            '#c773e5',
+            '#d35dff',
+            '#eab2ff',
+            '#cf7eee',
+        ],
+        Cyan: [
+            '#83f2ff',
+            '#67efff',
+            '#defcff',
+            '#9cf5ff',
+            '#73dae5',
+            '#5deeff',
+            '#b2f7ff',
+            '#7ee2ee',
+        ],
+        Black: [
+            '#4b4b4b',
+            '#424242',
+            '#acacac',
+            '#585858',
+            '#424242',
+            '#404040',
+            '#6b6b6b',
+            '#484848',
+        ],
+    },
+}
+
 /** The editor's stage colours (the preview navy, the stage stroke and the accent). */
 export const stage = { navy: '#292b42', lane: '#1c1e31', stroke: '#b4d6e8', accent: '#77efdc' }
 

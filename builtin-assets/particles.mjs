@@ -5,7 +5,16 @@
 // one, and effect colours are the note colours made vivid for the dark stage.
 // Weights follow the base set's ordering (work/assets/a1b2-design.md): critical flicks most, then
 // critical taps, flicks, taps and slide ends, traces, slide ticks; no effect where it plays none.
-import { bodyColors, colorNames, damageColor, mix, styleColors, vivid } from './palette.mjs'
+// Flick and trace effects take the base set's hues, sampled from captures (magenta, sky blue).
+import {
+    baseColors,
+    bodyColors,
+    colorNames,
+    damageColor,
+    mix,
+    styleColors,
+    vivid,
+} from './palette.mjs'
 
 const sprite = {
     glow: 0,
@@ -534,22 +543,30 @@ export const kinds = {
 }
 
 const accents = {
-    tap: bodyColors.tap[2],
+    tap: baseColors.effect.tap,
     slide: bodyColors.slide[2],
-    flick: bodyColors.flick[2],
+    flick: baseColors.effect.flick,
     critical: bodyColors.critical[2],
+    trace: baseColors.effect.trace,
     damage: damageColor,
     purple: styleColors('Purple')[2],
 }
 
-/** A style colour's effect colour; black uses its lighter grey so it stays visible. */
-const styleEffectColor = (name) => styleColors(name)[name === 'Black' ? 1 : 2]
+// Colours sampled from the base set are used as they are; the others are made vivid.
+const sampled = new Set([
+    ...Object.values(baseColors.effect),
+    ...Object.values(baseColors.style).map((colors) => colors[5]),
+])
+
+/** A style colour's effect colour: the base set's slot glow colour for that style. */
+const styleEffectColor = (name) => baseColors.style[name][5]
 
 const plainColor = (name) => {
     if (name.includes('Damage')) return accents.damage
     if (name.includes('Critical')) return accents.critical
     if (name.includes('Flick')) return accents.flick
-    if (name.includes('Slide') || name.includes('Trace')) return accents.slide
+    if (name.includes('Trace')) return accents.trace
+    if (name.includes('Slide')) return accents.slide
     return accents.tap
 }
 
@@ -595,7 +612,7 @@ export function particleEffects() {
     const add = (name, kind, color) => {
         if (names.has(name)) throw new Error(`Duplicate particle effect name: ${name}`)
         names.add(name)
-        effects.push({ name, kind, color: vivid(color) })
+        effects.push({ name, kind, color: sampled.has(color) ? color : vivid(color) })
     }
     // The plain name with the plain colour, and then one per style colour.
     const family = (name, kind, { plain = true } = {}) => {
@@ -626,11 +643,11 @@ export function particleEffects() {
     family('Sekai Normal Trace Note Linear', 'traceLinear', { plain: false })
     family('Sekai Critical Trace Note Circular', 'traceTick')
     family('Sekai Critical Trace Note Linear', 'traceLinear')
-    add('Sekai Trace Note Circular', 'traceTick', accents.slide)
-    add('Sekai Trace Note Circular Green', 'traceTick', accents.slide)
+    add('Sekai Trace Note Circular', 'traceTick', accents.trace)
+    add('Sekai Trace Note Circular Green', 'traceTick', accents.trace)
     add('Sekai Trace Note Circular Yellow', 'traceTick', accents.critical)
-    add('Sekai Trace Note Linear', 'traceLinear', accents.slide)
-    add('Sekai Trace Note Linear Green', 'traceLinear', accents.slide)
+    add('Sekai Trace Note Linear', 'traceLinear', accents.trace)
+    add('Sekai Trace Note Linear Green', 'traceLinear', accents.trace)
     add('Sekai Trace Note Linear Yellow', 'traceLinear', accents.critical)
     for (const name of ['Normal', 'Critical']) {
         family(`Sekai ${name} Slide Connector Circular`, 'holdCircular')
