@@ -230,4 +230,25 @@ export const scp = (type: AssetType, options: ScpOptions = {}) => rawZip(scpEntr
 
 export const blobOf = (bytes: Uint8Array) => new Blob([new Uint8Array(bytes)])
 
+/** One package holding several items, as a collection does; entries two items share are kept once. */
+export const scpMulti = (items: [AssetType, ScpOptions?][]) => {
+    const entries = new Map<string, NamedEntry>()
+    for (const [type, options] of items)
+        for (const entry of scpEntries(type, options)) {
+            const before = entries.get(entry.name)
+            if (before && entry.name.endsWith('/list')) {
+                // Two items of a type share one list.
+                const list = JSON.parse(new TextDecoder().decode(before.data)) as {
+                    items: unknown[]
+                }
+                const more = JSON.parse(new TextDecoder().decode(entry.data)) as {
+                    items: unknown[]
+                }
+                list.items.push(...more.items)
+                entries.set(entry.name, { ...entry, data: utf8(JSON.stringify(list)) })
+            } else entries.set(entry.name, entry)
+        }
+    return rawZip([...entries.values()])
+}
+
 export { concat, deflateRawSync, rawZip, utf8 }
