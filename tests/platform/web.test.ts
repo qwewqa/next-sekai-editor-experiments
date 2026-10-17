@@ -23,7 +23,7 @@ test('saving to a handle writes, then closes', async () => {
     assert.deepEqual(events, ['build', 'create', 'write:level', 'close'])
 })
 
-test('level data opens the save picker before building', async () => {
+test('level data builds before opening the save picker', async () => {
     const events: string[] = []
     const handle = recordingHandle(events)
     browser.window.showSaveFilePicker = (options) => {
@@ -38,8 +38,8 @@ test('level data opens the save picker before building', async () => {
         })
         assert.equal(result.status, 'saved')
         assert.deepEqual(events, [
-            'picker:levelData:LevelData',
             'build',
+            'picker:levelData:LevelData',
             'create',
             'write:level',
             'close',
@@ -49,7 +49,7 @@ test('level data opens the save picker before building', async () => {
     }
 })
 
-test('dismissing the save picker cancels without building or downloading', async () => {
+test('dismissing the save picker cancels without downloading', async () => {
     const events: string[] = []
     browser.window.showSaveFilePicker = () =>
         Promise.reject(new DOMException('Dismissed', 'AbortError'))
@@ -60,7 +60,7 @@ test('dismissing the save picker cancels without building or downloading', async
             build: levelData(events),
         })
         assert.deepEqual(result, { status: 'cancelled' })
-        assert.deepEqual(events, [])
+        assert.deepEqual(events, ['build'])
         assert.equal(browser.downloads.length, 0)
     } finally {
         delete browser.window.showSaveFilePicker

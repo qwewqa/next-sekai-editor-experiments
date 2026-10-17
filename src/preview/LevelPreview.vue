@@ -139,8 +139,6 @@ const isErrorDetailOpen = ref(false)
 
 <style scoped>
 .preview-background {
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
+    background: url('./bg.png') center / cover no-repeat;
 }
 </style>

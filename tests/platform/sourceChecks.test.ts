@@ -46,7 +46,7 @@ test('only src/platform/index.ts imports #platform', () => {
 })
 
 test('downloads, pickers and close handling go through the platform', () => {
-    assert.deepEqual(matching(/['"]file-saver['"]/), ['src/platform/web.ts'])
+    assert.deepEqual(matching(/\.download\s*=/), ['src/platform/web.ts'])
     assert.deepEqual(matching(/showSaveFilePicker|showOpenFilePicker/), ['src/platform/web.ts'])
     assert.deepEqual(matching(/['"]beforeunload['"]|['"]pagehide['"]/), ['src/platform/web.ts'])
 })

@@ -5,12 +5,12 @@ export type FakeWindow = EventTarget & {
     showSaveFilePicker?: (options: { id?: string; suggestedName?: string }) => Promise<unknown>
     showOpenFilePicker?: (options: { id?: string }) => Promise<unknown[]>
     open: (...args: unknown[]) => void
-    saveAs: (blob: Blob, name: string) => void
 }
 
 export type FakeDocument = EventTarget & {
     visibilityState: 'visible' | 'hidden'
     createElement: (tag: string) => unknown
+    body: { append: (element: unknown) => void }
 }
 
 export const installFakeBrowser = (storage: Record<string, string> = {}) => {
@@ -22,13 +22,40 @@ export const installFakeBrowser = (storage: Record<string, string> = {}) => {
     win.open = (...args) => {
         opened.push(args)
     }
-    win.saveAs = (blob, name) => {
-        downloads.push({ name, text: blob.text() })
+    // A download is an anchor clicked with a Blob URL.
+    const blobs = new Map<string, Blob>()
+    URL.createObjectURL = (blob) => {
+        const url = `blob:fake/${blobs.size}`
+        blobs.set(url, blob as Blob)
+        return url
     }
+    URL.revokeObjectURL = (url) => {
+        blobs.delete(url)
+    }
+    // The download's release timer must not hold a test process open.
+    const realSetTimeout = globalThis.setTimeout
+    globalThis.setTimeout = ((handler: () => void, delay?: number) => {
+        const timer = realSetTimeout(handler, delay)
+        if ((delay ?? 0) >= 30_000) timer.unref()
+        return timer
+    }) as typeof setTimeout
     const doc = new EventTarget() as FakeDocument
     doc.visibilityState = 'visible'
     let nextInputFile: File | undefined
-    doc.createElement = () => {
+    doc.body = { append: () => undefined }
+    doc.createElement = (tag) => {
+        if (tag === 'a') {
+            const link = {
+                href: '',
+                download: '',
+                rel: '',
+                click: () => {
+                    downloads.push({ name: link.download, text: blobs.get(link.href)!.text() })
+                },
+                remove: () => undefined,
+            }
+            return link
+        }
         const input = {
             type: '',
             files: undefined as File[] | undefined,

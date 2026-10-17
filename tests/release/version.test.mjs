@@ -105,6 +105,15 @@ test('tags that are not vX.Y.Z are ignored', async (t) => {
     assert.match(appVersion({ cwd }).appVersion, /^0\.5\.20\+[0-9a-f]{8}$/)
 })
 
+test('a four-part tag does not send the version back to package.json', async (t) => {
+    const { cwd, git, commit } = await repository(t)
+    commit()
+    git('tag', 'v0.5.20')
+    commit()
+    git('tag', 'v9.9.9.9')
+    assert.match(appVersion({ cwd }).appVersion, /^0\.5\.20\+[0-9a-f]{8}$/)
+})
+
 test('isHighestTag compares by version, not text', () => {
     assert.equal(isHighestTag('v0.5.23', ['v0.5.22', 'v0.5.23']), true)
     assert.equal(isHighestTag('v0.5.22', ['v0.5.22', 'v0.5.23']), false, 'a lower patch')

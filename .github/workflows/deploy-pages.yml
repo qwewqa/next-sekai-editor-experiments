@@ -63,6 +63,7 @@ jobs:
               # only the highest v* tag deploys
               id: highest
               if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'qwewqa/next-sekai-editor-experiments'
+              shell: bash
               run: git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY.git" 'refs/tags/v*' | cut -f2 | node scripts/highest-tag.mjs "$GITHUB_REF_NAME"
             - name: Upload checked site
               if: steps.highest.outputs.deploy == 'true'
