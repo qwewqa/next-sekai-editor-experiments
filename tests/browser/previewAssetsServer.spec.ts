@@ -108,6 +108,9 @@ const field = (page: Page) => chooser(page).locator('[data-server-address]')
 const connectButton = (page: Page) => chooser(page).locator('[data-server-connect]')
 const useButton = (page: Page) => chooser(page).locator('[data-chooser-use]')
 const errorOf = (page: Page) => chooser(page).locator('[data-server-error]')
+// A failed Use shows next to Use.
+const useErrorOf = (page: Page) =>
+    chooser(page).locator('[data-chooser-actions] [data-chooser-error]')
 
 const choose = async (page: Page) => {
     await dialog(page).locator('[data-asset-choose]').click()
@@ -603,7 +606,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, BASE)
         await useButton(page).click()
-        await expect(errorOf(page)).toContainText(
+        await expect(useErrorOf(page)).toContainText(
             'The server’s checksum for this item does not match what it sent.',
         )
         await expect(chooser(page)).toBeVisible()
@@ -623,7 +626,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, BASE)
         await useButton(page).click()
-        await expect(errorOf(page)).toContainText(
+        await expect(useErrorOf(page)).toContainText(
             'This item’s skin texture is 8192 × 8192; the limit is 4096 × 4096.',
         )
         expect(await stored(page)).toHaveLength(0)
