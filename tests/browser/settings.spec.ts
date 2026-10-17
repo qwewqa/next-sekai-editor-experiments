@@ -850,23 +850,39 @@ test('reduced motion stops sliding and turning, and view scrolls jump', async ({
     expect(await page.evaluate(() => window.editorTest.view.time)).toBeGreaterThan(0)
 })
 
-test('Auto Save Delay sits under Auto Save, and Beat Display with the display rows', async ({
+test('the auto save rows are gone, and Beat Display sits with the display rows', async ({
     page,
 }) => {
     const labels = await page.getByRole('dialog').locator('.form-field-text').allTextContents()
     const at = (label: string) => labels.indexOf(label)
-    expect(at('Auto Save Delay (s)')).toBe(at('Auto Save') + 1)
+    // Retired with the auto save (Part 1 §1.8): a new visit continues the most recent session.
+    expect(labels.filter((label) => label.startsWith('Auto Save'))).toEqual([])
+    expect(at('Beat Display')).toBe(at('Elevation Editor Connector Arrows') + 1)
     expect(at('Waveform Visualization')).toBe(at('Beat Display') + 1)
 })
 
+test('the retired auto save settings leave localStorage', async ({ page }) => {
+    await page.evaluate(() => {
+        localStorage.setItem('sonolus-next-sekai-editor.autoSave', 'false')
+        localStorage.setItem('sonolus-next-sekai-editor.autoSaveDelay', '3')
+    })
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    expect(
+        await page.evaluate(() => [
+            localStorage.getItem('sonolus-next-sekai-editor.autoSave'),
+            localStorage.getItem('sonolus-next-sekai-editor.autoSaveDelay'),
+        ]),
+    ).toEqual([null, null])
+})
+
 test('on/off fields are switches named by their row', async ({ page }) => {
-    const autoSave = page
+    const arrows = page
         .getByRole('dialog')
-        .getByRole('switch', { name: 'Auto Save', exact: true })
-    // The fixture turns auto save off.
-    await expect(autoSave).not.toBeChecked()
-    await expect(autoSave).toHaveValue('Disabled')
-    await autoSave.click()
-    await expect(autoSave).toBeChecked()
-    await expect(autoSave).toHaveValue('Enabled')
+        .getByRole('switch', { name: 'Elevation Editor Connector Arrows', exact: true })
+    await expect(arrows).toBeChecked()
+    await expect(arrows).toHaveValue('Enabled')
+    await arrows.click()
+    await expect(arrows).not.toBeChecked()
+    await expect(arrows).toHaveValue('Disabled')
 })

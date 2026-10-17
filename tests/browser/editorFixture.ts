@@ -78,9 +78,11 @@ export const installCanvasCounters = (legacyCanvas = false) => {
         }
     }
     observe(CanvasRenderingContext2D.prototype)
-    for (const setting of ['showPreview', 'showSidebar', 'autoSave']) {
+    for (const setting of ['showPreview', 'showSidebar']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
     }
+    // The fixture hook (Part 1 §1.4.2): every load starts blank and at once, as specs expect.
+    localStorage.setItem('nse.test.startBlank', 'true')
     // The fixture hook: the shown version never depends on the checkout's tags.
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     // Seeded settings make every profile an existing user, who would see "Updated to version" with

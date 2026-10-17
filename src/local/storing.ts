@@ -68,6 +68,18 @@ export let journalWriter: JournalWriter | undefined
 /** This tab's client id for `query()` (§1.6.5), once storing started. */
 export let tabClient: TabClient | undefined
 
+/** The page's own blank start, until a session replaces it. */
+let initialSession: FlushSession | undefined
+
+/**
+ * Whether the tab still shows its own blank start, never edited: only then does startup open a
+ * stored session over it, so nothing made meanwhile is lost to it (§1.4.2).
+ */
+export const untouched = () => {
+    const session = flusher?.session
+    return !!session && session === initialSession && !session.stored && session.pending.length <= 1
+}
+
 let storingWorker: StorageWorker | undefined
 
 /**
@@ -289,8 +301,9 @@ export const startStoring = (
                     sessionId: descriptor.sessionId,
                     start: action.origin === 'import' ? 'stored' : firstReset ? 'blank' : 'new',
                 })
+                const first = firstReset
                 firstReset = false
-                instance.begin({
+                const begun = instance.begin({
                     id: descriptor.sessionId,
                     docId: descriptor.docId,
                     origin: action.origin,
@@ -304,6 +317,7 @@ export const startStoring = (
                     ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
                     done: lock.release,
                 })
+                if (first && action.origin === 'new') initialSession = begun
                 return
             }
             instance.append(

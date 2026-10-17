@@ -126,23 +126,29 @@ test('copy writes None as NONE and In Step as IN_STEP, and pastes each back', as
         .toEqual({ note: ['inStep'], camera: ['none'], mask: ['inStep'], timeScale: ['none'] })
 })
 
-test('auto-save writes None as NONE and In Step as IN_STEP', async ({ page }) => {
+test('the journal writes None as NONE and In Step as IN_STEP', async ({ page }) => {
     await page.evaluate(async () => {
-        const { history, store, settings } = window.editorTest
+        const { history, store } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         editSelectedEditableEntities({ size: 3 })
+        // Hiding the page journals the edit at once (Part 1 §1.6.4 #7).
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+        document.dispatchEvent(new Event('visibilitychange'))
     })
     const saved = async () =>
         page.evaluate(async () => {
-            const { storageGet } = await import('/src/storage.ts')
-            const { parseAutoSave } = await import('/src/history/autoSave/parse.ts')
-            const data = storageGet('autoSave.levelData', undefined)
-            return data ? (parseAutoSave(data).levelData as LevelData) : undefined
+            const { session } = await import('/src/history/session.ts')
+            const text = localStorage.getItem(
+                `sonolus-next-sekai-editor.journal.${session.value.sessionId}`,
+            )
+            if (!text) return
+            const { levelDataGz } = JSON.parse(text) as { levelDataGz: string }
+            const bytes = Uint8Array.from(atob(levelDataGz), (c) => c.charCodeAt(0))
+            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+            return JSON.parse(await new Response(stream).text()) as LevelData
         })
     await expect.poll(async () => (await saved())?.entities.length ?? 0).toBeGreaterThan(0)
     const values = easeValues((await saved())!)

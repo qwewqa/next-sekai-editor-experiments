@@ -604,7 +604,7 @@ for (const [label, chart] of [
         await expect(page.getByRole('dialog')).toHaveCount(0)
         expect((await notes(page)).notes).toBe(imported)
 
-        // Edit so auto save writes a recovery, then restore it.
+        // Edit, then reload: the same session continues, its stored stack with the edit.
         await page.evaluate(async () => {
             const urls = new Map(
                 performance
@@ -613,26 +613,15 @@ for (const [label, chart] of [
             )
             const appImport = <T>(pathname: string): Promise<T> =>
                 import(urls.get(pathname) ?? pathname)
-            const { settings } =
-                await appImport<typeof import('../../src/settings')>('/src/settings.ts')
             const { state, replaceState } =
                 await appImport<typeof import('../../src/history/index')>('/src/history/index.ts')
             const { editSelectedEditableEntities } = await appImport<
                 typeof import('../../src/editor/sidebars/default/index')
             >('/src/editor/sidebars/default/index.ts')
-            settings.autoSaveDelay = 0
-            settings.autoSave = true
             const note = [...state.value.store.slides.note.values()].flat()[0]!
             replaceState({ ...state.value, selectedEntities: [note] })
             editSelectedEditableEntities({ size: note.size + 1 })
         })
-        await expect
-            .poll(() =>
-                page.evaluate(() =>
-                    localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),
-                ),
-            )
-            .not.toBeNull()
         await page.reload()
         await expect.poll(async () => (await notes(page)).notes).toBe(imported)
         await expect(page.getByRole('dialog')).toHaveCount(0)

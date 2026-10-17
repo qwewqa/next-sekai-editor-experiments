@@ -1,9 +1,14 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
-import { gunzipSync, gzipSync } from 'node:zlib'
+import { expect, test, type Page } from '@playwright/test'
+import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
 import { installEditorFixture } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
+
+// History across loads (Part 1 §1.3.8, §1.8, Step 4's spec migration): today's auto save is
+// retired. The old slot migrates into a session, a closed tab's work comes back through its
+// journal and the new visit that continues its session, and a reload keeps the session.
+
+const prefix = 'sonolus-next-sekai-editor.'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -11,103 +16,75 @@ test.beforeEach(async ({ page }) => {
         const prefix = 'sonolus-next-sekai-editor.'
         localStorage.setItem(`${prefix}showPreview`, 'false')
         localStorage.setItem(`${prefix}showSidebar`, 'false')
+        // The storage test hooks (`nseFlushTest`), in every tab of the context.
+        localStorage.setItem('nse.test.storage', '{}')
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
-    await page.evaluate(() => {
-        // Set this once so reloading preserves the app's normal persisted preference.
-        window.editorTest.settings.autoSave = false
-    })
 })
 
-const recovery = (page: Page) =>
+/** The open chart as level data, and the session's source name. */
+const openLevel = (page: Page) =>
     page.evaluate(async () => {
-        const { storageGet } = await import('/src/storage.ts')
-        const { parseAutoSave } = await import('/src/history/autoSave/parse.ts')
-        const data = storageGet('autoSave.levelData', undefined)
-        return data ? parseAutoSave(data) : undefined
-    })
-
-// Fixture generated with the unmodified serializers from de281ff, before the
-// two color fields were unified. It includes every guide color, normal/fake
-// active and damage connectors, camera motion, masks, elevation and time scales.
-for (const format of ['compressed', 'unversioned'] as const) {
-    test(`upgrading a ${format} recovery preserves the old chart and its colors`, async ({
-        page,
-    }) => {
-        const { levelData } = parseAutoSave(legacyColors.autoSave)
-        // Upgrades write default meters (5aef4e8); legacy NONE stays NONE.
-        const upgraded = structuredClone(levelData)
-        for (const entity of upgraded.entities) {
-            if (entity.archetype === '#BPM_CHANGE' && !entity.data.some((d) => d.name === 'meter'))
-                entity.data.push({ name: 'meter', value: 4 })
-        }
-        // And the latest engine revision, after the initial life.
-        upgraded.entities[0]!.data.splice(1, 0, { name: 'revision', value: 2 })
-        expect(upgraded).not.toEqual(levelData)
-        expect(
-            levelData.entities.some((entity) =>
-                entity.data.some(
-                    (d) => d.name === '#TIMESCALE_EASE' && 'value' in d && d.value === 0,
-                ),
+        const find = (pathname: string) =>
+            performance
+                .getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .find((name) => new URL(name).pathname === pathname) ?? pathname
+        const { state } = (await import(
+            find('/src/history/index.ts')
+        )) as typeof import('../../src/history')
+        const { session } = (await import(
+            find('/src/history/session.ts')
+        )) as typeof import('../../src/history/session')
+        const { serializeToLevelData } = (await import(
+            find('/src/levelData/serialize.ts')
+        )) as typeof import('../../src/levelData/serialize')
+        const s = state.value
+        return {
+            filename: session.value.sourceName,
+            data: serializeToLevelData(
+                s.initialLife,
+                s.isDynamicStages,
+                s.bgm.offset,
+                s.store,
+                s.groups,
+                s.stages,
             ),
-        ).toBe(true)
-        await page.evaluate(
-            (save) => {
-                localStorage.setItem(
-                    'sonolus-next-sekai-editor.autoSave.levelData',
-                    JSON.stringify(save),
-                )
-            },
-            format === 'compressed' ? legacyColors.autoSave : levelData,
-        )
-        await page.reload()
-        await expect
-            .poll(() =>
-                page.evaluate(async () => {
-                    const { state } = await import('/src/history/index.ts')
-                    const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
-                    const s = state.value
-                    return serializeToLevelData(
-                        s.initialLife,
-                        s.isDynamicStages,
-                        s.bgm.offset,
-                        s.store,
-                        s.groups,
-                        s.stages,
-                    )
-                }),
-            )
-            .toEqual(upgraded)
-        // It predates engine revisions and has elevation.
-        const warning = page.getByRole('dialog', { name: 'Auto Save' })
-        await expect(warning).toContainText('older engine revision')
-        await warning.getByRole('button', { name: 'OK', exact: true }).click()
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-        expect(
-            await page.evaluate(async () => {
-                const { state } = await import('/src/history/index.ts')
-                return [...state.value.store.slides.note.values()]
-                    .slice(0, 8)
-                    .map(([head]) => head!.connectorStyle)
-            }),
-        ).toEqual(['neutral', 'red', 'green', 'blue', 'yellow', 'purple', 'cyan', 'black'])
+        }
     })
-}
 
-const editNamedChart = (page: Page) =>
-    page.evaluate(async () => {
-        const { history, fixtures, store, settings } = window.editorTest
-        const { editSelectedEditableEntities } =
-            await import('/src/editor/sidebars/default/index.ts')
-        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
-        const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
-        history.replaceState({ ...history.state.value, selectedEntities: [note] })
-        editSelectedEditableEntities({ size: 3 })
-    })
+/** Waits until the page's startup has opened its session (the startup gate's state). */
+const opened = (page: Page) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const url =
+                        performance
+                            .getEntriesByType('resource')
+                            .map((entry) => entry.name)
+                            .find(
+                                (name) => new URL(name).pathname === '/src/local/startup/state.ts',
+                            ) ?? '/src/local/startup/state.ts'
+                    const { startup } = (await import(
+                        url
+                    )) as typeof import('../../src/local/startup/state')
+                    return startup.value.phase
+                }),
+            { timeout: 20_000 },
+        )
+        .toBe('open')
+
+/** A new page in the context, as a new visit. */
+const newVisit = async (page: Page) => {
+    const next = await page.context().newPage()
+    await next.goto('/')
+    await expect(next.locator('canvas.editor-chart')).toBeVisible()
+    await opened(next)
+    return next
+}
 
 const canvasColors = (page: Page) =>
     page.evaluate(async () => {
@@ -141,6 +118,118 @@ const canvasColors = (page: Page) =>
         }
         return { blue, purple }
     })
+
+/** The journal of this tab's open session, as level data, or undefined. */
+const journalLevel = (page: Page) =>
+    page.evaluate(async () => {
+        const { session } =
+            (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+        const text = localStorage.getItem(
+            `sonolus-next-sekai-editor.journal.${session.value.sessionId}`,
+        )
+        if (!text) return
+        const journal = JSON.parse(text) as { levelDataGz: string }
+        const bytes = Uint8Array.from(atob(journal.levelDataGz), (c) => c.charCodeAt(0))
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+        return JSON.parse(await new Response(stream).text()) as {
+            entities: { data: { name: string; value?: number }[] }[]
+        }
+    })
+
+/** Holds flushes, as a kill leaves them: only the journal has the edits after this. */
+const stallFlushes = async (page: Page) => {
+    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = true
+    })
+}
+
+const hidePage = (page: Page) =>
+    page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+        document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+// Fixture generated with the unmodified serializers from de281ff, before the
+// two color fields were unified. It includes every guide color, normal/fake
+// active and damage connectors, camera motion, masks, elevation and time scales.
+for (const format of ['compressed', 'unversioned'] as const) {
+    test(`an old ${format} auto save migrates into the session a new visit continues, its chart and colors kept`, async ({
+        page,
+    }) => {
+        const { levelData } = parseAutoSave(legacyColors.autoSave)
+        // Upgrades write default meters (5aef4e8); legacy NONE stays NONE.
+        const upgraded = structuredClone(levelData)
+        for (const entity of upgraded.entities) {
+            if (entity.archetype === '#BPM_CHANGE' && !entity.data.some((d) => d.name === 'meter'))
+                entity.data.push({ name: 'meter', value: 4 })
+        }
+        // And the latest engine revision, after the initial life.
+        upgraded.entities[0]!.data.splice(1, 0, { name: 'revision', value: 2 })
+        const stored = JSON.stringify(format === 'compressed' ? legacyColors.autoSave : levelData)
+        await page.evaluate(
+            ({ stored, prefix }) => {
+                localStorage.setItem(`${prefix}autoSave.levelData`, stored)
+            },
+            { stored, prefix },
+        )
+        const next = await newVisit(page)
+        await expect.poll(async () => (await openLevel(next)).data).toEqual(upgraded)
+        // No dialog at load: the startup pill says it (§1.4.3).
+        await expect(next.getByRole('dialog')).toHaveCount(0)
+        expect(
+            await next.evaluate(async () => {
+                const { state } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                return [...state.value.store.slides.note.values()]
+                    .slice(0, 8)
+                    .map(([head]) => head!.connectorStyle)
+            }),
+        ).toEqual(['neutral', 'red', 'green', 'blue', 'yellow', 'purple', 'cyan', 'black'])
+        // The old key went, after its value was copied into the legacy recovery slot.
+        expect(
+            await next.evaluate((prefix) => {
+                return {
+                    slot: localStorage.getItem(`${prefix}autoSave.levelData`),
+                    legacy: localStorage.getItem(`${prefix}legacyRecovery`),
+                }
+            }, prefix),
+        ).toEqual({ slot: null, legacy: stored })
+    })
+}
+
+test('an old auto save this build cannot read stays, never loaded', async ({ page }) => {
+    const future = JSON.stringify({
+        version: 1,
+        filename: 'future-chart',
+        levelData: gzipSync(
+            JSON.stringify({
+                bgmOffset: 0,
+                entities: [
+                    { archetype: 'Initialization', data: [] },
+                    { archetype: 'FutureNote', data: [] },
+                ],
+            }),
+        ).toString('base64'),
+    })
+    await page.evaluate(
+        ({ future, prefix }) => {
+            localStorage.setItem(`${prefix}autoSave.levelData`, future)
+        },
+        { future, prefix },
+    )
+    const next = await newVisit(page)
+    await expect(next.getByRole('dialog')).toHaveCount(0)
+    expect(
+        await next.evaluate(
+            (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),
+            prefix,
+        ),
+    ).toBe(future)
+    expect(
+        await next.evaluate((prefix) => localStorage.getItem(`${prefix}legacyRecovery`), prefix),
+    ).toBeNull()
+})
 
 test('the session’s source name survives speculative edits, committed edits, undo and redo', async ({
     page,
@@ -185,185 +274,14 @@ test('the session’s source name survives speculative edits, committed edits, u
     })
 })
 
-test('undo to clean clears recovery, redo recreates it, and a clean reset clears it', async ({
+test('closing before the flush keeps colored notes, connectors and chart metadata: a new visit continues them, and its reload too', async ({
     page,
-}) => {
-    await editNamedChart(page)
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-
-    await page.evaluate(() => window.editorTest.history.undoState())
-    await expect.poll(() => recovery(page)).toBeUndefined()
-    await page.evaluate(() => window.editorTest.history.redoState())
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-
-    await page.evaluate(() => {
-        const { history, fixtures } = window.editorTest
-        history.resetState(false, fixtures.notes, 0, { sourceName: 'replacement-chart' })
-    })
-    await expect.poll(() => recovery(page)).toBeUndefined()
-})
-
-for (const how of ['undoes an edit it never saved', 'undoes a saved edit', 'turns auto save off'])
-    test(`a tab that ${how} leaves another tab's recovery in place`, async ({ page, context }) => {
-        // The other tab loads its chart before this one writes a recovery.
-        const other = await context.newPage()
-        await other.goto('/')
-        await expect(other.locator('canvas.editor-chart')).toBeVisible()
-        await other.evaluate(installEditorFixture)
-        await other.evaluate(
-            (delay) => {
-                const { history, fixtures, settings } = window.editorTest
-                history.resetState(false, fixtures.interaction, 0, { sourceName: 'other-chart' })
-                settings.autoSaveDelay = delay
-                settings.autoSave = true
-            },
-            how === 'undoes an edit it never saved' ? 5 : 0,
-        )
-        await editNamedChart(page)
-        await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-
-        await other.evaluate(async () => {
-            const { history, store } = window.editorTest
-            const { editSelectedEditableEntities } =
-                await import('/src/editor/sidebars/default/index.ts')
-            const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
-            history.replaceState({ ...history.state.value, selectedEntities: [note] })
-            editSelectedEditableEntities({ size: 4 })
-        })
-        if (how !== 'undoes an edit it never saved')
-            await expect.poll(() => recovery(page)).toMatchObject({ filename: 'other-chart' })
-        await other.evaluate((off) => {
-            const { history, settings } = window.editorTest
-            if (off) settings.autoSave = false
-            else history.undoState()
-        }, how === 'turns auto save off')
-        await other.waitForTimeout(200)
-        await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-
-        // This tab's chart comes back in a new tab after it closes.
-        await page.close()
-        const reopened = await context.newPage()
-        await reopened.goto('/')
-        await expect
-            .poll(() =>
-                reopened.evaluate(async () => {
-                    await import('/src/history/index.ts')
-                    const { getAllEntities } = await import('/src/history/store.ts')
-                    return {
-                        filename: (await import('/src/history/session.ts')).session.value
-                            .sourceName,
-                        size: [...getAllEntities()]
-                            .filter((entity) => entity.type === 'note')
-                            .find((entity) => entity.beat === 3)?.size,
-                    }
-                }),
-            )
-            .toEqual({ filename: 'named-chart', size: 3 })
-    })
-
-test("hiding an unchanged tab leaves another tab's newer recovery in place", async ({
-    page,
-    context,
-}) => {
-    await editNamedChart(page)
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-    const other = await context.newPage()
-    await other.goto('/')
-    await expect(other.locator('canvas.editor-chart')).toBeVisible()
-    // Its startup restore of the first tab's recovery would replace the reset below.
-    await expect
-        .poll(() =>
-            other.evaluate(async () => {
-                return (await import('/src/history/session.ts')).session.value.sourceName
-            }),
-        )
-        .toBe('named-chart')
-    await expect(other.getByRole('dialog')).toHaveCount(0)
-    await other.evaluate(installEditorFixture)
-    await other.evaluate(async () => {
-        const { history, fixtures, settings, store } = window.editorTest
-        const { editSelectedEditableEntities } =
-            await import('/src/editor/sidebars/default/index.ts')
-        history.resetState(false, fixtures.interaction, 0, { sourceName: 'other-chart' })
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
-        const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
-        history.replaceState({ ...history.state.value, selectedEntities: [note] })
-        editSelectedEditableEntities({ size: 4 })
-    })
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'other-chart' })
-    // The last edit wins: hiding writes nothing, and this tab's next edit writes its own.
-    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
-    expect(await recovery(page)).toMatchObject({ filename: 'other-chart' })
-    await page.evaluate(() => {
-        const { history } = window.editorTest
-        history.pushState(() => 'edit', { ...history.state.value, initialLife: 990 })
-    })
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-})
-
-test('restored autosave retains its filename and warns before close until reset clean', async ({
-    page,
-}) => {
-    await editNamedChart(page)
-    await expect.poll(() => recovery(page)).toMatchObject({ filename: 'named-chart' })
-    page.on('dialog', (dialog) => void dialog.accept())
-    await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    expect(
-        await page.evaluate(async () => {
-            const { settings } = await import('/src/settings.ts')
-            return settings.autoSave
-        }),
-    ).toBe(true)
-    const snapshot = () =>
-        page.evaluate(async () => {
-            const { isDirty, canUndo } = await import('/src/history/index.ts')
-            const { getAllEntities } = await import('/src/history/store.ts')
-            const event = new Event('beforeunload', { cancelable: true })
-            window.dispatchEvent(event)
-            return {
-                filename: (await import('/src/history/session.ts')).session.value.sourceName,
-                size: [...getAllEntities()]
-                    .filter((entity) => entity.type === 'note')
-                    .find((entity) => entity.beat === 3)?.size,
-                dirty: isDirty.value,
-                canUndo: canUndo.value,
-                protected: event.defaultPrevented,
-            }
-        })
-    await expect.poll(snapshot).toEqual({
-        filename: 'named-chart',
-        size: 3,
-        dirty: true,
-        canUndo: false,
-        protected: true,
-    })
-    await page.evaluate(async () => {
-        const { resetState } = await import('/src/history/index.ts')
-        resetState(false)
-    })
-    expect(await snapshot()).toEqual({
-        filename: undefined,
-        size: undefined,
-        dirty: false,
-        canUndo: false,
-        protected: false,
-    })
-    await expect.poll(() => recovery(page)).toBeUndefined()
-})
-
-test('closing before the autosave delay preserves colored notes, connectors and chart metadata', async ({
-    page,
-    context,
 }) => {
     const expected = await page.evaluate(async () => {
         const { history, fixtures, settings, view } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
         const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
-        settings.autoSaveDelay = 5
-        settings.autoSave = true
         const base = fixtures.interaction.slides[0]![0]!
         history.resetState(
             false,
@@ -405,28 +323,13 @@ test('closing before the autosave delay preserves colored notes, connectors and 
     expect(beforeClose.blue).toBeGreaterThan(100)
     expect(beforeClose.purple).toBeGreaterThan(100)
     page.on('dialog', (dialog) => void dialog.accept())
+    const context = page.context()
     await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
     const reopened = await context.newPage()
     await reopened.goto('/')
+    await opened(reopened)
     await expect
-        .poll(() =>
-            reopened.evaluate(async () => {
-                const { state } = await import('/src/history/index.ts')
-                const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
-                const s = state.value
-                return {
-                    filename: (await import('/src/history/session.ts')).session.value.sourceName,
-                    data: serializeToLevelData(
-                        s.initialLife,
-                        s.isDynamicStages,
-                        s.bgm.offset,
-                        s.store,
-                        s.groups,
-                        s.stages,
-                    ),
-                }
-            }),
-        )
+        .poll(() => openLevel(reopened))
         .toEqual({ filename: 'colored-chart', data: expected })
     expect(
         await reopened.evaluate(async () => {
@@ -445,19 +348,19 @@ test('closing before the autosave delay preserves colored notes, connectors and 
     expect(await canvasColors(reopened)).toEqual(beforeClose)
     reopened.on('dialog', (dialog) => void dialog.accept())
     await reopened.reload()
-    await expect.poll(() => recovery(reopened)).toMatchObject({ filename: 'colored-chart' })
+    await opened(reopened)
+    await expect
+        .poll(() => openLevel(reopened))
+        .toEqual({ filename: 'colored-chart', data: expected })
     await expect.poll(() => canvasColors(reopened)).toEqual(beforeClose)
     await reopened.close()
 })
 
-test('tab recovery preserves default guide color without adding it to exported levels', async ({
+test('a closed tab keeps the default guide color, without adding it to exported levels', async ({
     page,
-    context,
 }) => {
     await page.evaluate(() => {
-        const { history, fixtures, settings } = window.editorTest
-        settings.autoSave = true
-        settings.autoSaveDelay = 5
+        const { history, fixtures } = window.editorTest
         const base = { ...fixtures.interaction.slides[0]![0]!, connectorType: 'guide' as const }
         history.resetState(
             true,
@@ -482,13 +385,16 @@ test('tab recovery preserves default guide color without adding it to exported l
         )
     })
     page.on('dialog', (dialog) => void dialog.accept())
+    const context = page.context()
     await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
     const reopened = await context.newPage()
     await reopened.goto('/')
+    await opened(reopened)
     await expect
         .poll(() =>
             reopened.evaluate(async () => {
-                const { state } = await import('/src/history/index.ts')
+                const { state } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
                 return [...state.value.store.slides.note.values()]
                     .flat()
                     .sort((a, b) => a.beat - b.beat)
@@ -503,19 +409,7 @@ test('tab recovery preserves default guide color without adding it to exported l
             { beat: 5, connectorStyle: 'green' },
             { beat: 6, connectorStyle: 'default' },
         ])
-    const exported = await reopened.evaluate(async () => {
-        const { state } = await import('/src/history/index.ts')
-        const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
-        const s = state.value
-        return serializeToLevelData(
-            s.initialLife,
-            s.isDynamicStages,
-            s.bgm.offset,
-            s.store,
-            s.groups,
-            s.stages,
-        )
-    })
+    const exported = (await openLevel(reopened)).data
     const kinds = exported.entities.flatMap((entity) =>
         entity.data
             .filter(({ name }) => name === 'segmentKind')
@@ -523,70 +417,43 @@ test('tab recovery preserves default guide color without adding it to exported l
     )
     expect(kinds.sort()).toEqual([103, 103, 103, 103, 103, 104])
     expect(exported).not.toHaveProperty('defaultGuideColors')
-    expect((await recovery(reopened))!.defaultGuideColors).toHaveLength(3)
     await reopened.close()
 })
 
-test('a failed recovery write retains the last save, explains the failure and can retry', async ({
+test('hiding the page journals pending color edits at once, without waiting for the flush', async ({
     page,
 }) => {
-    await editNamedChart(page)
-    await expect.poll(() => recovery(page)).toBeDefined()
-    const previous = await recovery(page)
-    await page.evaluate(async () => {
-        const setItem = Storage.prototype.setItem
-        Storage.prototype.setItem = function (key, value) {
-            if (key.endsWith('.autoSave.levelData')) {
-                Storage.prototype.setItem = setItem
-                throw new DOMException('Storage is full', 'QuotaExceededError')
-            }
-            return setItem.call(this, key, value)
-        }
-        const { editSelectedEditableEntities } =
-            await import('/src/editor/sidebars/default/index.ts')
-        editSelectedEditableEntities({ noteStyle: 'blue' })
+    await page.evaluate(() => {
+        const { history, fixtures } = window.editorTest
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
     })
-    await expect(
-        page.getByText('Auto save could not store your latest changes.', { exact: false }),
-    ).toBeVisible()
-    expect(await recovery(page)).toEqual(previous)
-    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
-    await expect.poll(() => recovery(page)).not.toEqual(previous)
-})
-
-test('hiding the page flushes pending color edits without waiting for the timer', async ({
-    page,
-}) => {
-    await editNamedChart(page)
-    await expect.poll(() => recovery(page)).toBeDefined()
+    await stallFlushes(page)
     await page.evaluate(async () => {
-        const { settings } = window.editorTest
-        settings.autoSaveDelay = 5
+        const { history, store } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
+        const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+        history.replaceState({ ...history.state.value, selectedEntities: notes })
         editSelectedEditableEntities({ noteStyle: 'cyan', connectorStyle: 'black' })
-        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
-        document.dispatchEvent(new Event('visibilitychange'))
     })
-    const saved = await recovery(page)
+    expect(await journalLevel(page)).toBeUndefined()
+    await hidePage(page)
+    const saved = await journalLevel(page)
     expect(
-        saved?.levelData.entities.some((entity) =>
-            entity.data.some(
-                (field) => field.name === 'style' && 'value' in field && field.value === 7,
-            ),
+        saved?.entities.some((entity) =>
+            entity.data.some((field) => field.name === 'style' && field.value === 7),
         ),
     ).toBe(true)
 })
 
-test('charts above the former entity limit still create recoverable colored data', async ({
+test('charts above the former entity limit still journal all their colored notes', async ({
     page,
 }) => {
+    await stallFlushes(page)
     await page.evaluate(() => {
-        const { history, settings, fixtures } = window.editorTest
+        const { history, fixtures } = window.editorTest
         const source = fixtures.interaction
         const base = source.slides[0]![0]!
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
         history.resetState(
             true,
             {
@@ -599,22 +466,76 @@ test('charts above the former entity limit still create recoverable colored data
             { sourceName: 'large-colored-chart' },
         )
     })
-    await expect
-        .poll(() =>
-            page.evaluate(async () => {
-                const { storageGet } = await import('/src/storage.ts')
-                const { parseAutoSave } = await import('/src/history/autoSave/parse.ts')
-                const data = storageGet('autoSave.levelData', undefined)
-                if (!data) return 0
-                return parseAutoSave(data).levelData.entities.filter((entity) =>
-                    entity.data.some(
-                        (field) => field.name === 'style' && 'value' in field && field.value === 4,
-                    ),
-                ).length
-            }),
-        )
-        .toBe(10001)
+    await hidePage(page)
+    const saved = await journalLevel(page)
+    expect(
+        saved?.entities.filter((entity) =>
+            entity.data.some((field) => field.name === 'style' && field.value === 4),
+        ).length,
+    ).toBe(10001)
 })
+
+for (const { label, crash } of [
+    { label: 'both tabs close', crash: false },
+    { label: 'the first tab closes and the other crashes', crash: true },
+])
+    test(`work continued in a new tab survives when ${label}`, async ({ page }) => {
+        const lifeOf = (tab: Page) =>
+            tab.evaluate(async () => {
+                const pathname = '/src/history/index.ts'
+                const url =
+                    performance
+                        .getEntriesByType('resource')
+                        .map((entry) => entry.name)
+                        .find((name) => new URL(name).pathname === pathname) ?? pathname
+                const { state } = (await import(url)) as typeof import('../../src/history')
+                return state.value.initialLife
+            })
+        const context = page.context()
+        await page.evaluate(() => {
+            const { history, fixtures } = window.editorTest
+            history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
+            history.pushState(() => 'edit', { ...history.state.value, initialLife: 990 })
+        })
+        page.on('dialog', (dialog) => void dialog.accept())
+        await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
+
+        // A new tab continues it, and the user goes on there.
+        const other = await context.newPage()
+        if (crash)
+            // A crash runs none of its unload or hide handlers.
+            await other.addInitScript(() => {
+                const add = EventTarget.prototype.addEventListener
+                EventTarget.prototype.addEventListener = function (type, ...rest) {
+                    if (['pagehide', 'beforeunload', 'visibilitychange', 'freeze'].includes(type))
+                        return
+                    add.call(this, type, ...rest)
+                }
+            })
+        await other.goto('/')
+        await opened(other)
+        await expect.poll(() => lifeOf(other)).toBe(990)
+        await expect(other.getByRole('dialog')).toHaveCount(0)
+        await other.evaluate(async () => {
+            const pathname = '/src/history/index.ts'
+            const url =
+                performance
+                    .getEntriesByType('resource')
+                    .map((entry) => entry.name)
+                    .find((name) => new URL(name).pathname === pathname) ?? pathname
+            const { pushState, state } = (await import(url)) as typeof import('../../src/history')
+            pushState(() => 'edit', { ...state.value, initialLife: 980 })
+        })
+        // Without handlers, only the flush stores it: about 1 s after the edit.
+        if (crash) await other.waitForTimeout(2500)
+        other.on('dialog', (dialog) => void dialog.accept())
+        await Promise.all([other.waitForEvent('close'), other.close({ runBeforeUnload: !crash })])
+
+        const reopened = await context.newPage()
+        await reopened.goto('/')
+        await opened(reopened)
+        await expect.poll(() => lifeOf(reopened)).toBe(980)
+    })
 
 test('undoing dynamic stages leaves the event tools, whose events it could not save', async ({
     page,
@@ -653,844 +574,6 @@ test('undoing dynamic stages leaves the event tools, whose events it could not s
                 ).length,
         ),
     ).toBe(0)
-})
-
-// A level from a newer build: a time scale ease this build does not know.
-const futureLevel = {
-    bgmOffset: 0,
-    entities: [
-        { archetype: 'Initialization', data: [] },
-        {
-            archetype: '#BPM_CHANGE',
-            data: [
-                { name: '#BEAT', value: 0 },
-                { name: '#BPM', value: 120 },
-            ],
-        },
-        { name: 'g', archetype: '#TIMESCALE_GROUP', data: [] },
-        {
-            archetype: '#TIMESCALE_CHANGE',
-            data: [
-                { name: '#TIMESCALE_GROUP', ref: 'g' },
-                { name: '#BEAT', value: 1 },
-                { name: '#TIMESCALE', value: 2 },
-                { name: '#TIMESCALE_SKIP', value: 0 },
-                { name: '#TIMESCALE_EASE', value: 99 },
-            ],
-        },
-    ],
-}
-
-for (const { label, stored, file } of [
-    {
-        label: 'from a newer version',
-        stored: JSON.stringify({
-            version: 1,
-            filename: 'future-chart',
-            levelData: gzipSync(JSON.stringify(futureLevel)).toString('base64'),
-        }),
-        // The level file it wraps, as Save writes it.
-        file: { name: 'future-chart', gzip: true },
-    },
-    {
-        label: 'stored incompletely',
-        stored: JSON.stringify(futureLevel).slice(0, 120),
-        file: { name: 'Recovery.txt', gzip: false },
-    },
-]) {
-    test(`an unreadable recovery ${label} is set aside, explained and downloadable`, async ({
-        page,
-    }) => {
-        await page.evaluate((stored) => {
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', stored)
-        }, stored)
-        await page.reload()
-        const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText(
-            'could not restore the unsaved chart from your last session',
-        )
-        await expect(dialog).toContainText('New changes will not replace this saved chart')
-        await expect(dialog).not.toContainText('Error')
-        const stores = () =>
-            page.evaluate(() => ({
-                recovery: localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),
-                aside: localStorage.getItem('sonolus-next-sekai-editor.autoSave.unreadable'),
-            }))
-        expect(await stores()).toEqual({ recovery: null, aside: stored })
-
-        // A later edit writes its own recovery and leaves the set-aside one alone.
-        await dialog.getByRole('button', { name: 'OK' }).click()
-        await expect(dialog).toHaveCount(0)
-        await page.evaluate(installEditorFixture)
-        await editNamedChart(page)
-        await expect.poll(async () => (await stores()).recovery).not.toBeNull()
-        expect((await stores()).aside).toBe(stored)
-
-        // Offered again on the next start. Browsers never confirm a download saved,
-        // so downloading keeps the stored copy; only Discard removes it.
-        await page.reload()
-        await expect(dialog).toContainText('still cannot restore')
-        await expect(dialog).toContainText('The editor will try again the next time it starts')
-        const downloading = page.waitForEvent('download')
-        await dialog.getByRole('button', { name: 'Download' }).click()
-        const download = await downloading
-        expect(download.suggestedFilename()).toBe(file.name)
-        const bytes = readFileSync((await download.path())!)
-        if (file.gzip) expect(JSON.parse(gunzipSync(bytes).toString())).toEqual(futureLevel)
-        else expect(bytes.toString()).toBe(stored)
-        await expect(dialog.locator('p[role="status"]')).toHaveText('Download started.')
-        expect((await stores()).aside).toBe(stored)
-        await dialog.getByRole('button', { name: 'OK' }).click()
-        await expect(dialog).toHaveCount(0)
-        expect((await stores()).aside).toBe(stored)
-
-        await page.reload()
-        await dialog.getByRole('button', { name: 'Download' }).click()
-        await dialog.getByRole('button', { name: 'Discard' }).click()
-        await expect(dialog).toHaveCount(0)
-        expect((await stores()).aside).toBeNull()
-    })
-}
-
-const unreadableStores = (page: Page) =>
-    page.evaluate(() => ({
-        recovery: localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),
-        aside: localStorage.getItem('sonolus-next-sekai-editor.autoSave.unreadable'),
-    }))
-
-/** Hides the page, which flushes auto save at once unless it is paused. */
-const hidePage = (page: Page) =>
-    page.evaluate(() => {
-        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
-        document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-test('discarding a set-aside recovery removes it', async ({ page }) => {
-    await page.evaluate(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', '{"damaged')
-    })
-    await page.reload()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('still cannot restore')
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await unreadableStores(page)).toEqual({ recovery: null, aside: null })
-    await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect(dialog).toHaveCount(0)
-})
-
-test('a second unreadable recovery waits behind the set-aside one', async ({ page }) => {
-    const earlier = '{"earlier'
-    const later = '{"later'
-    await page.evaluate(
-        ({ earlier, later }) => {
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', earlier)
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', later)
-        },
-        { earlier, later },
-    )
-    await page.reload()
-    const dialog = page.getByRole('dialog')
-    // The earlier one first, kept.
-    await expect(dialog).toContainText('still cannot restore')
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    // Then the later one, which stays in place without replacing it.
-    await expect(dialog).toContainText('could not restore the unsaved chart from your last session')
-    await expect(dialog).toContainText('An earlier chart is also saved')
-    expect(await unreadableStores(page)).toEqual({ recovery: later, aside: earlier })
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toHaveCount(0)
-
-    // Auto save is paused, so an edit leaves both alone.
-    await page.evaluate(installEditorFixture)
-    await editNamedChart(page)
-    await hidePage(page)
-    await page.waitForTimeout(200)
-    expect(await unreadableStores(page)).toEqual({ recovery: later, aside: earlier })
-
-    // Discarding the earlier one makes room: the later one is set aside.
-    await page.reload()
-    await expect(dialog).toContainText('still cannot restore')
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toContainText('New changes will not replace this saved chart')
-    expect(await unreadableStores(page)).toEqual({ recovery: null, aside: later })
-})
-
-/** A recovery this build opens, as Save writes it: one BPM change, named. */
-const readableRecovery = (filename: string, bpm: number) =>
-    JSON.stringify({
-        version: 1,
-        filename,
-        levelData: gzipSync(
-            JSON.stringify({
-                bgmOffset: 0,
-                entities: [
-                    { archetype: 'Initialization', data: [] },
-                    {
-                        archetype: '#BPM_CHANGE',
-                        data: [
-                            { name: '#BEAT', value: 0 },
-                            { name: '#BPM', value: bpm },
-                        ],
-                    },
-                ],
-            }),
-        ).toString('base64'),
-    })
-
-/** The open chart's name and first tempo. */
-const openChart = (page: Page) =>
-    page.evaluate(async () => {
-        // The live module, without the fixture's chart.
-        const pathname = '/src/history/index.ts'
-        const url =
-            performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((name) => new URL(name).pathname === pathname) ?? pathname
-        const { state } = (await import(url)) as typeof import('../../src/history')
-        const sessionPath = '/src/history/session.ts'
-        const sessionUrl =
-            performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((name) => new URL(name).pathname === sessionPath) ?? sessionPath
-        const { session } = (await import(sessionUrl)) as typeof import('../../src/history/session')
-        return { filename: session.value.sourceName, bpm: Math.round(60 / state.value.bpms[0]!.s) }
-    })
-
-/** Reloads with these recoveries stored and auto save on, after this tab's last save. */
-const reloadWith = async (page: Page, stored: { recovery?: string; aside?: string }) => {
-    await page.evaluate((stored) => {
-        // After the editor's own flush, so it cannot touch them.
-        addEventListener('pagehide', () => {
-            const prefix = 'sonolus-next-sekai-editor.'
-            // A restored recovery stays stored only while auto save is on.
-            localStorage.setItem(`${prefix}autoSave`, 'true')
-            if (stored.recovery)
-                localStorage.setItem(`${prefix}autoSave.levelData`, stored.recovery)
-            if (stored.aside) localStorage.setItem(`${prefix}autoSave.unreadable`, stored.aside)
-        })
-    }, stored)
-    await page.reload()
-}
-
-test('a set-aside recovery this build can open is restored and moved back', async ({ page }) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    await reloadWith(page, { aside: earlier })
-    await expect(
-        page.locator('.notification', {
-            hasText: 'Restored the unsaved chart from an earlier session',
-        }),
-    ).toBeVisible()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-    // Kept as the normal recovery now, so the slot aside is free.
-    expect(await unreadableStores(page)).toEqual({ recovery: earlier, aside: null })
-})
-
-test('a set-aside recovery that now opens asks before replacing the last session', async ({
-    page,
-}) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    const last = readableRecovery('last-chart', 90)
-    await reloadWith(page, { recovery: last, aside: earlier })
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('can now restore an unsaved chart')
-    // Cancel keeps both, the last session open.
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'last-chart', bpm: 90 })
-    expect(await unreadableStores(page)).toEqual({ recovery: last, aside: earlier })
-
-    await page.reload()
-    await dialog.getByRole('button', { name: 'Restore' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-    expect(await unreadableStores(page)).toEqual({ recovery: earlier, aside: null })
-})
-
-test('a set-aside recovery that now opens can be discarded instead', async ({ page }) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    const last = readableRecovery('last-chart', 90)
-    await reloadWith(page, { recovery: last, aside: earlier })
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('can now restore an unsaved chart')
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'last-chart', bpm: 90 })
-    expect(await unreadableStores(page)).toEqual({ recovery: last, aside: null })
-
-    // Never offered again.
-    await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.waitForTimeout(300)
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'last-chart', bpm: 90 })
-})
-
-test('a set-aside recovery that now opens trades places with one that does not', async ({
-    page,
-}) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    const last = JSON.stringify(futureLevel)
-    await reloadWith(page, { recovery: last, aside: earlier })
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('could not restore the unsaved chart from your last session')
-    await expect(dialog).toContainText('New changes will not replace this saved chart')
-    expect(await unreadableStores(page)).toEqual({ recovery: earlier, aside: last })
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    expect(await openChart(page)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-})
-
-test('a set-aside recovery that fails to move back keeps the last session’s recovery with this tab', async ({
-    page,
-}) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    const last = readableRecovery('last-chart', 90)
-    // Storage refuses the move once.
-    await page.addInitScript((earlier) => {
-        const setItem = Storage.prototype.setItem
-        Storage.prototype.setItem = function (key, value) {
-            if (key.endsWith('.autoSave.levelData') && value === earlier) {
-                Storage.prototype.setItem = setItem
-                throw new DOMException('Storage is full', 'QuotaExceededError')
-            }
-            return setItem.call(this, key, value)
-        }
-    }, earlier)
-    await reloadWith(page, { recovery: last, aside: earlier })
-    const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Restore' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(page)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-    expect(await unreadableStores(page)).toEqual({ recovery: last, aside: earlier })
-    // Removed by another tab, it is written back, as this tab's own.
-    await page.evaluate(() => {
-        const key = 'sonolus-next-sekai-editor.autoSave.levelData'
-        localStorage.removeItem(key)
-        dispatchEvent(new StorageEvent('storage', { key, newValue: null }))
-    })
-    await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBeNull()
-    expect(await unreadableStores(page)).toMatchObject({ aside: earlier })
-})
-
-test("a tab that restored an older recovery leaves another tab's newer one in place", async ({
-    page,
-    context,
-}) => {
-    const lifeOf = (tab: Page) =>
-        tab.evaluate(async () => {
-            const pathname = '/src/history/index.ts'
-            const url =
-                performance
-                    .getEntriesByType('resource')
-                    .map((entry) => entry.name)
-                    .find((name) => new URL(name).pathname === pathname) ?? pathname
-            const { state } = (await import(url)) as typeof import('../../src/history')
-            return state.value.initialLife
-        })
-    await page.evaluate(() => {
-        const { history, fixtures, settings } = window.editorTest
-        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
-        history.pushState(() => 'edit', { ...history.state.value, initialLife: 999 })
-    })
-    await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBeNull()
-    const older = (await unreadableStores(page)).recovery
-    await page.evaluate(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', '{"damaged')
-    })
-
-    // The other tab reads the older recovery, then waits on the set-aside one.
-    const other = await context.newPage()
-    await other.goto('/')
-    const dialog = other.getByRole('dialog')
-    await expect(dialog).toContainText('still cannot restore')
-
-    // Meanwhile this tab saves a newer recovery and closes.
-    await page.evaluate(() => {
-        const { history } = window.editorTest
-        history.pushState(() => 'edit', { ...history.state.value, initialLife: 997 })
-    })
-    await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBe(older)
-    const newer = (await unreadableStores(page)).recovery
-    await page.close()
-    expect(page.isClosed()).toBe(true)
-
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toHaveCount(0)
-    await expect.poll(() => lifeOf(other)).toBe(999)
-    // Neither hiding it unchanged nor going clean touches the newer one.
-    await hidePage(other)
-    await other.waitForTimeout(200)
-    expect((await unreadableStores(other)).recovery).toBe(newer)
-    await other.evaluate(async () => {
-        const pathname = '/src/history/index.ts'
-        const url =
-            performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((name) => new URL(name).pathname === pathname) ?? pathname
-        const { resetState } = (await import(url)) as typeof import('../../src/history')
-        resetState(false)
-    })
-    await other.waitForTimeout(200)
-    expect((await unreadableStores(other)).recovery).toBe(newer)
-})
-
-/** Turns auto save on in this tab, which starts with nothing to restore, so it writes freely. */
-const enableAutoSave = (page: Page) =>
-    page.evaluate(() => {
-        const { settings } = window.editorTest
-        settings.autoSaveDelay = 0
-        settings.autoSave = true
-    })
-
-/** Saves a newer recovery from this tab and returns it. */
-const writeNewer = async (page: Page) => {
-    const before = (await unreadableStores(page)).recovery
-    await page.evaluate(() => {
-        const { history, fixtures } = window.editorTest
-        history.resetState(false, fixtures.interaction, 0, { sourceName: 'newer-chart' })
-        history.pushState(() => 'edit', { ...history.state.value, initialLife: 997 })
-    })
-    await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBe(before)
-    return (await unreadableStores(page)).recovery
-}
-
-/** Edits the open chart in place. */
-const editOpenChart = (page: Page) =>
-    page.evaluate(async () => {
-        const pathname = '/src/history/index.ts'
-        const url =
-            performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((name) => new URL(name).pathname === pathname) ?? pathname
-        const { pushState, state } = (await import(url)) as typeof import('../../src/history')
-        pushState(() => 'edit', { ...state.value, initialLife: 990 })
-    })
-
-test("restoring an earlier recovery leaves another tab's newer one in place", async ({
-    page,
-    context,
-}) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    const last = readableRecovery('last-chart', 90)
-    await enableAutoSave(page)
-    await page.evaluate(
-        ({ earlier, last }) => {
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', last)
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', earlier)
-        },
-        { earlier, last },
-    )
-
-    // The other tab restores the last session and asks about the earlier one.
-    const other = await context.newPage()
-    await other.goto('/')
-    const dialog = other.getByRole('dialog')
-    await expect(dialog).toContainText('can now restore an unsaved chart')
-
-    // Meanwhile this tab saves a newer recovery and closes.
-    const newer = await writeNewer(page)
-    await page.close()
-
-    await dialog.getByRole('button', { name: 'Restore' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await openChart(other)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-    // Restored in the editor only: both stay stored, and hiding it unchanged writes nothing.
-    expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: earlier })
-    await hidePage(other)
-    await other.waitForTimeout(200)
-    expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: earlier })
-    // Its next edit writes as usual.
-    await editOpenChart(other)
-    await expect.poll(async () => (await unreadableStores(other)).recovery).not.toBe(newer)
-    expect((await unreadableStores(other)).aside).toBe(earlier)
-})
-
-test("a tab that only restored a recovery leaves another tab's newer one in place", async ({
-    page,
-    context,
-}) => {
-    const setLife = (tab: Page, initialLife: number) =>
-        tab.evaluate(async (initialLife) => {
-            const pathname = '/src/history/index.ts'
-            const url =
-                performance
-                    .getEntriesByType('resource')
-                    .map((entry) => entry.name)
-                    .find((name) => new URL(name).pathname === pathname) ?? pathname
-            const { pushState, state } = (await import(url)) as typeof import('../../src/history')
-            if (initialLife) pushState(() => 'edit', { ...state.value, initialLife })
-            return state.value.initialLife
-        }, initialLife)
-    const slot = async (tab: Page) => (await unreadableStores(tab)).recovery
-    await enableAutoSave(page)
-    await setLife(page, 999)
-    await expect.poll(() => slot(page)).not.toBeNull()
-    await page.close()
-
-    // Both reopen with the last session, as after a crash.
-    const b = await context.newPage()
-    await b.goto('/')
-    await expect.poll(() => setLife(b, 0)).toBe(999)
-    const c = await context.newPage()
-    await c.goto('/')
-    await expect.poll(() => setLife(c, 0)).toBe(999)
-    await expect(c.getByRole('dialog')).toHaveCount(0)
-
-    const before = await slot(b)
-    await setLife(b, 990)
-    await expect.poll(() => slot(b)).not.toBe(before)
-    const newer = await slot(b)
-    await hidePage(c)
-    await c.waitForTimeout(200)
-    expect(await slot(c)).toBe(newer)
-
-    // Nor once it has written its own: the last edit wins.
-    await setLife(c, 980)
-    await expect.poll(() => slot(c)).not.toBe(newer)
-    const own = await slot(c)
-    await setLife(b, 970)
-    await expect.poll(() => slot(b)).not.toBe(own)
-    const last = await slot(b)
-    await hidePage(c)
-    await c.waitForTimeout(200)
-    expect(await slot(c)).toBe(last)
-})
-
-for (const { label, crash } of [
-    { label: 'both tabs close', crash: false },
-    { label: 'the original tab closes and the other crashes', crash: true },
-])
-    test(`work continued in a tab that restored it survives when ${label}`, async ({
-        page,
-        context,
-    }) => {
-        const lifeOf = (tab: Page) =>
-            tab.evaluate(async () => {
-                const pathname = '/src/history/index.ts'
-                const url =
-                    performance
-                        .getEntriesByType('resource')
-                        .map((entry) => entry.name)
-                        .find((name) => new URL(name).pathname === pathname) ?? pathname
-                const { state } = (await import(url)) as typeof import('../../src/history')
-                return state.value.initialLife
-            })
-        const slot = async (tab: Page) => (await unreadableStores(tab)).recovery
-        await enableAutoSave(page)
-        await editOpenChart(page)
-        await expect.poll(() => slot(page)).not.toBeNull()
-        const original = await slot(page)
-
-        // Another tab restores it, and the user continues there.
-        const other = await context.newPage()
-        if (crash)
-            // A crash runs none of its unload or hide handlers.
-            await other.addInitScript(() => {
-                const add = EventTarget.prototype.addEventListener
-                EventTarget.prototype.addEventListener = function (type, ...rest) {
-                    if (['pagehide', 'beforeunload', 'visibilitychange'].includes(type)) return
-                    add.call(this, type, ...rest)
-                }
-            })
-        await other.goto('/')
-        await expect.poll(() => lifeOf(other)).toBe(990)
-        await expect(other.getByRole('dialog')).toHaveCount(0)
-        await other.evaluate(async () => {
-            const pathname = '/src/history/index.ts'
-            const url =
-                performance
-                    .getEntriesByType('resource')
-                    .map((entry) => entry.name)
-                    .find((name) => new URL(name).pathname === pathname) ?? pathname
-            const { pushState, state } = (await import(url)) as typeof import('../../src/history')
-            pushState(() => 'edit', { ...state.value, initialLife: 980 })
-        })
-        await expect.poll(() => slot(other)).not.toBe(original)
-
-        for (const tab of crash ? [page, other] : [other, page]) {
-            tab.on('dialog', (dialog) => void dialog.accept())
-            const closed = tab.waitForEvent('close')
-            if (tab !== other || !crash) await hidePage(tab)
-            await tab.close({ runBeforeUnload: tab !== other || !crash })
-            await closed
-        }
-
-        const reopened = await context.newPage()
-        await reopened.goto('/')
-        await expect.poll(() => lifeOf(reopened)).toBe(980)
-    })
-
-/** Holds the recovery loading dialog open before it parses, until released. */
-const holdLoadingUntilReleased = (page: Page) =>
-    page.addInitScript(() => {
-        const held: TimerHandler[] = []
-        const setTimeout = window.setTimeout
-        window.setTimeout = ((handler: TimerHandler, delay?: number, ...rest: unknown[]) => {
-            if (delay !== 50 || 'releaseLoading' in window)
-                return setTimeout(handler, delay, ...rest)
-            held.push(handler)
-            return 0
-        }) as typeof window.setTimeout
-        Object.defineProperty(window, 'heldLoading', { value: held })
-    })
-
-const releaseLoading = (page: Page) =>
-    page.evaluate(() => {
-        Object.defineProperty(window, 'releaseLoading', { value: true })
-        for (const handler of (window as unknown as { heldLoading: (() => void)[] }).heldLoading)
-            handler()
-    })
-
-for (const { label, recovery } of [
-    { label: 'no recovery', recovery: undefined },
-    { label: 'an unreadable recovery', recovery: JSON.stringify(futureLevel) },
-]) {
-    test(`restoring an earlier recovery over ${label} leaves another tab's newer one in place`, async ({
-        page,
-        context,
-    }) => {
-        const earlier = readableRecovery('earlier-chart', 150)
-        await enableAutoSave(page)
-        await page.evaluate(
-            ({ earlier, recovery }) => {
-                if (recovery)
-                    localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', recovery)
-                localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', earlier)
-            },
-            { earlier, recovery },
-        )
-
-        const other = await context.newPage()
-        await holdLoadingUntilReleased(other)
-        await other.goto('/')
-        await expect(other.getByRole('dialog')).toContainText('Restoring chart')
-
-        // This tab saves a newer recovery while the other one loads.
-        const newer = await writeNewer(page)
-        await releaseLoading(other)
-        await expect.poll(() => openChart(other)).toEqual({ filename: 'earlier-chart', bpm: 150 })
-        await expect(other.getByRole('dialog')).toHaveCount(0)
-        expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: earlier })
-        await hidePage(other)
-        await other.waitForTimeout(200)
-        expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: earlier })
-        await editOpenChart(other)
-        await expect.poll(async () => (await unreadableStores(other)).recovery).not.toBe(newer)
-        expect((await unreadableStores(other)).aside).toBe(earlier)
-    })
-}
-
-test("setting an unreadable recovery aside leaves another tab's newer one in place", async ({
-    page,
-    context,
-}) => {
-    const stored = JSON.stringify(futureLevel)
-    await enableAutoSave(page)
-    await page.evaluate((stored) => {
-        localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', stored)
-    }, stored)
-
-    const other = await context.newPage()
-    await holdLoadingUntilReleased(other)
-    await other.goto('/')
-    await expect(other.getByRole('dialog')).toContainText('Restoring chart')
-
-    // This tab saves a newer recovery while the other one loads, and closes.
-    const newer = await writeNewer(page)
-    await page.close()
-    await releaseLoading(other)
-    const dialog = other.getByRole('dialog')
-    await expect(dialog).toContainText('New changes will not replace this saved chart')
-    // The unreadable one is still kept aside, and the newer one stays.
-    expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: stored })
-})
-
-/** Opens two tabs that both read the stored unreadable recovery, and sets it aside in the first. */
-const openTwoOnUnreadable = async (page: Page, context: BrowserContext) => {
-    const stored = JSON.stringify(futureLevel)
-    await enableAutoSave(page)
-    await page.evaluate((stored) => {
-        localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', stored)
-    }, stored)
-    const [first, second] = [await context.newPage(), await context.newPage()]
-    for (const tab of [first, second]) {
-        await holdLoadingUntilReleased(tab)
-        await tab.goto('/')
-        await expect(tab.getByRole('dialog')).toContainText('Restoring chart')
-    }
-    await releaseLoading(first)
-    const dialog = first.getByRole('dialog')
-    await expect(dialog).toContainText('New changes will not replace this saved chart')
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toHaveCount(0)
-    return { stored, first, second }
-}
-
-test('a tab that read the unreadable recovery another tab set aside saves its own edits', async ({
-    page,
-    context,
-}) => {
-    const { stored, first, second } = await openTwoOnUnreadable(page, context)
-    await first.close()
-    await releaseLoading(second)
-    const dialog = second.getByRole('dialog')
-    // The same one, already aside: nothing waits behind it.
-    await expect(dialog).toContainText('New changes will not replace this saved chart')
-    await expect(dialog).not.toContainText('An earlier chart is also saved')
-    expect(await unreadableStores(second)).toEqual({ recovery: null, aside: stored })
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toHaveCount(0)
-    await editOpenChart(second)
-    await expect.poll(async () => (await unreadableStores(second)).recovery).not.toBeNull()
-    expect((await unreadableStores(second)).aside).toBe(stored)
-})
-
-test("discarding the unreadable recovery another tab set aside leaves that tab's newer one", async ({
-    page,
-    context,
-}) => {
-    const { first, second } = await openTwoOnUnreadable(page, context)
-    await editOpenChart(first)
-    await expect.poll(async () => (await unreadableStores(first)).recovery).not.toBeNull()
-    const newer = (await unreadableStores(first)).recovery
-    await first.close()
-    await releaseLoading(second)
-    const dialog = second.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await unreadableStores(second)).toEqual({ recovery: newer, aside: null })
-})
-
-test("discarding a waiting unreadable recovery leaves another tab's newer one in its place", async ({
-    page,
-    context,
-}) => {
-    const earlier = '{"earlier'
-    const later = '{"later'
-    await enableAutoSave(page)
-    await page.evaluate(
-        ({ earlier, later }) => {
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.unreadable', earlier)
-            localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', later)
-        },
-        { earlier, later },
-    )
-    const other = await context.newPage()
-    await other.goto('/')
-    const dialog = other.getByRole('dialog')
-    await expect(dialog).toContainText('still cannot restore')
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toContainText('An earlier chart is also saved')
-
-    // This tab saves a newer recovery over the waiting one, and closes.
-    const newer = await writeNewer(page)
-    await page.close()
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(await unreadableStores(other)).toEqual({ recovery: newer, aside: earlier })
-})
-
-/** Holds the recovery loading dialog open before it parses, on the first start only. */
-const holdLoading = (page: Page) =>
-    page.addInitScript(() => {
-        if (sessionStorage.getItem('held')) return
-        sessionStorage.setItem('held', 'true')
-        const setTimeout = window.setTimeout
-        window.setTimeout = ((handler: TimerHandler, delay?: number, ...rest: unknown[]) =>
-            setTimeout(handler, delay === 50 ? 60_000 : delay, ...rest)) as typeof window.setTimeout
-    })
-
-test('closing the loading dialog before a recovery opens keeps the recovery', async ({ page }) => {
-    const stored = readableRecovery('kept-chart', 150)
-    await holdLoading(page)
-    await reloadWith(page, { recovery: stored })
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Restoring chart')
-    await dialog.getByRole('button', { name: 'Close' }).click()
-    // Says why auto save is off and when the chart comes back.
-    await expect(dialog).toHaveText(
-        /Auto save is paused in this tab\. The editor will try to restore the unsaved chart from your last session the next time it starts\./,
-    )
-    await dialog.getByRole('button', { name: 'OK' }).click()
-    await expect(dialog).toHaveCount(0)
-
-    // A later change, such as a selection, must not remove it.
-    await page.evaluate(async () => {
-        const pathname = '/src/history/index.ts'
-        const url =
-            performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((name) => new URL(name).pathname === pathname) ?? pathname
-        const { replaceState, state } = (await import(url)) as typeof import('../../src/history')
-        replaceState({ ...state.value, selectedEntities: [] })
-    })
-    await hidePage(page)
-    await page.waitForTimeout(200)
-    expect(await unreadableStores(page)).toEqual({ recovery: stored, aside: null })
-
-    // Offered again on the next start.
-    await page.reload()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect.poll(() => openChart(page)).toEqual({ filename: 'kept-chart', bpm: 150 })
-})
-
-test('closing the loading dialog with only a set-aside recovery keeps auto save on', async ({
-    page,
-}) => {
-    const earlier = readableRecovery('earlier-chart', 150)
-    await holdLoading(page)
-    await reloadWith(page, { aside: earlier })
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Restoring chart')
-    await dialog.getByRole('button', { name: 'Close' }).click()
-    // No notice: auto save cannot touch a set-aside recovery.
-    await expect(dialog).toHaveCount(0)
-
-    await page.evaluate(installEditorFixture)
-    await editNamedChart(page)
-    await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBeNull()
-    expect((await unreadableStores(page)).aside).toBe(earlier)
-})
-
-test('an unreadable recovery that cannot be set aside pauses auto save instead', async ({
-    page,
-}) => {
-    const stored = JSON.stringify(futureLevel)
-    await page.addInitScript(() => {
-        const setItem = Storage.prototype.setItem
-        Storage.prototype.setItem = function (key, value) {
-            if (key.endsWith('autoSave.unreadable'))
-                throw new DOMException('Storage is full', 'QuotaExceededError')
-            setItem.call(this, key, value)
-        }
-    })
-    await page.evaluate((stored) => {
-        localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', stored)
-    }, stored)
-    await page.reload()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Auto save is paused in this tab')
-    await expect(dialog).not.toContainText('An earlier chart is also saved')
-    await dialog.getByRole('button', { name: 'OK' }).click()
-
-    await page.evaluate(installEditorFixture)
-    await editNamedChart(page)
-    await hidePage(page)
-    await page.waitForTimeout(200)
-    expect(
-        await page.evaluate(() =>
-            localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),
-        ),
-    ).toBe(stored)
 })
 
 for (const dialog of ['properties', 'bgm'] as const)

@@ -74,6 +74,8 @@ export type OpenDeps = {
     /** This tab's own journal while storage is unavailable. */
     ownJournal?: JournalFound
     flusher: () => import('../flush').Flusher | undefined
+    /** Whether the tab still shows its own blank start, never edited or replaced. */
+    untouched: () => boolean
     newId?: () => string
     labels: { continued: () => string; recoveredHead: () => string }
     events: (event: LoadEvent) => void
@@ -137,7 +139,8 @@ export const openStored = async (
         return
     }
     const state = await headState(deps.worker, read.head)
-    if (blankRequested) {
+    // Start Blank, or a chart made meanwhile, keeps what's on screen.
+    if (blankRequested || !deps.untouched()) {
         releaseAll()
         return
     }
@@ -394,7 +397,7 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
         if (claim.kind === 'reload') claim.lock.release()
     }
     // The fixture hook, Start Blank and safe mode open blank (§1.4.2).
-    if (startsBlankForTests() || blankRequested || deps.safe) {
+    if (startsBlankForTests() || blankRequested || deps.safe || !deps.untouched()) {
         releaseClaim()
         return false
     }

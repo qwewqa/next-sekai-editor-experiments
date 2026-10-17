@@ -115,7 +115,7 @@ test.afterEach(async ({ page }) => {
     expect(await page.evaluate(() => window.loadingReview.errors)).toEqual([])
 })
 
-for (const command of ['open', 'autosave'] as const) {
+for (const command of ['open'] as const) {
     test(`cancelled ${command} cannot replace edits made after its dialog is dismissed`, async ({
         page,
     }) => {
@@ -133,7 +133,7 @@ for (const command of ['open', 'autosave'] as const) {
         })
         await page.evaluate(holdPreparation)
         await page.evaluate(
-            async ({ command, bytes, data }) => {
+            async ({ command, bytes }) => {
                 if (command === 'open') {
                     const { open } = await import('/src/editor/commands/open/index.ts')
                     const file = new File([new Uint8Array(bytes)], 'incoming.gz', {
@@ -142,23 +142,12 @@ for (const command of ['open', 'autosave'] as const) {
                     window.showOpenFilePicker = async () =>
                         [{ getFile: async () => file }] as [FileSystemFileHandle]
                     void open.execute()
-                } else {
-                    const { serializeAutoSave } = await import('/src/history/autoSave/serialize.ts')
-                    const { storageSet } = await import('/src/storage.ts')
-                    const { useAutoSave } = await import('/src/history/autoSave/index.ts')
-                    storageSet('autoSave.levelData', serializeAutoSave(data, 'incoming'))
-                    useAutoSave()
                 }
             },
-            { command, bytes: [...gzipSync(JSON.stringify(data))], data },
+            { command, bytes: [...gzipSync(JSON.stringify(data))] },
         )
         await expect.poll(() => page.evaluate(() => window.loadingReview.held)).toBe(true)
         await page.keyboard.press('Escape')
-        // A cancelled recovery says auto save is paused.
-        if (command === 'autosave') {
-            await expect(page.getByRole('dialog')).toContainText('Auto save is paused')
-            await page.getByRole('dialog').getByRole('button', { name: 'OK' }).click()
-        }
         await expect(page.getByRole('dialog')).toHaveCount(0)
         await page.evaluate(() => {
             const { history } = window.editorTest

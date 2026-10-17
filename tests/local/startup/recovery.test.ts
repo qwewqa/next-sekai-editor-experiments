@@ -183,7 +183,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), text)
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
     // The migrated session is the one a first load continues.
-    const newest = await world.tab('a').run(() => startup.readNewestSession())
+    const newest = await world.tab('a').run(() => startup.readNewestSession(undefined))
     assert.equal(newest?.session.id, recovery.migrated)
     assert.deepEqual(checkStored(world.memory), [])
 })

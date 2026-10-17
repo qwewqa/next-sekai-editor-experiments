@@ -12,7 +12,7 @@ import { claimTab, openAtStart, type Claim } from './startup/open'
 import { failed, isSafeMode, opened } from './startup/state'
 import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
-import { flusher, startStoring, tabClient, watchLifecycle } from './storing'
+import { flusher, startStoring, tabClient, untouched, watchLifecycle } from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
 import { transfer } from './worker/rpc'
@@ -244,6 +244,7 @@ export const startStorage = async () => {
                     ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
                     ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
                     flusher: () => flusher,
+                    untouched,
                     labels: {
                         continued: () => i18n.value.entry.continued,
                         recoveredHead: () => i18n.value.entry.recovered,

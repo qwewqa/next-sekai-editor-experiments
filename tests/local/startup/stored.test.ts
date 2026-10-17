@@ -96,7 +96,7 @@ test('a session without a stored stack has it rebuilt by replay', async () => {
 test('the most recent session skips chains being deleted and chains this build can’t read', async () => {
     const world = createWorld({ seed: 4 })
     const { page, older, newer } = await twoChains(world)
-    const newest = () => page.tab.run(() => handlersOf(page).readNewestSession())
+    const newest = () => page.tab.run(() => handlersOf(page).readNewestSession(undefined))
     assert.equal((await newest())?.session.id, newer.id)
     await tamper(world, async (tx) => {
         const entry = (await tx.get('entries', [newer.id, 2])) as Record<string, unknown>
