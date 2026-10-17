@@ -128,6 +128,14 @@ export const createContext = (emit: WorkerContext['emit']) => {
             context.core.testPoint(name)
             return true
         },
+        /** Test: a write that passes a test point after its first put, before it commits. */
+        testPutThrough: async ({ key, point }: { key: string; point: string }) => {
+            testOnly()
+            await context.core.write(['meta'], async (tx) => {
+                await tx.put('meta', { key: `test.${key}`, value: key })
+                context.core.testPoint(point)
+            })
+        },
         /** Test: the script this worker runs from, to tell a Blob restart. */
         testLocation: () => {
             testOnly()
