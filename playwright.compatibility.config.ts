@@ -19,7 +19,15 @@ export default defineConfig({
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,
-        launchOptions: {},
+        // Headless Firefox on a CI runner has no GPU: force WebGL on, through Mesa's software rasterizer.
+        launchOptions: {
+            firefoxUserPrefs: {
+                'webgl.disabled': false,
+                'webgl.force-enabled': true,
+                'webgl.enable-webgl2': true,
+                'webgl.out-of-process': false,
+            },
+        },
     },
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
