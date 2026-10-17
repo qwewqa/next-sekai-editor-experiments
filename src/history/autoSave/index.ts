@@ -1,5 +1,5 @@
 import { getCurrentScope, onScopeDispose, watch } from 'vue'
-import { isDirty, resetState, state } from '..'
+import { isDirty, liveState, resetState } from '..'
 import type { Chart } from '../../chart'
 import { parseLevelDataChart } from '../../chart/parse/levelData'
 import { validateChart } from '../../chart/validate'
@@ -57,7 +57,7 @@ export const useAutoSave = () => {
         clearTimeout(id)
         id = undefined
         if (restoring) return
-        const current = state.value
+        const current = liveState.value
         try {
             if (!settings.autoSave || !isDirty.value) {
                 // Only this tab's own recovery goes, never another tab's.
@@ -110,7 +110,7 @@ export const useAutoSave = () => {
     }
 
     const stop = watch(
-        () => [settings.autoSave, isDirty.value, state.value] as const,
+        () => [settings.autoSave, isDirty.value, liveState.value] as const,
         () => {
             clearTimeout(id)
             if (!settings.autoSave || !isDirty.value) flush()
@@ -203,7 +203,7 @@ export const useAutoSave = () => {
 
         if (primary) {
             resetState(true, primary.chart, primary.offset, primary.filename)
-            savedState = state.value
+            savedState = liveState.value
             adopt(data)
             restored = primary
         }
@@ -215,7 +215,7 @@ export const useAutoSave = () => {
             if (choice === 'discard') removeRecovery('earlier', aside)
             if (choice === 'restore') {
                 resetState(true, earlier.chart, earlier.offset, earlier.filename)
-                savedState = state.value
+                savedState = liveState.value
                 restored = earlier
                 notify(() => i18n.value.history.autoSave.unreadable.restored)
                 // Moved back only over what this tab read; another tab's newer one stays, and it stays aside.

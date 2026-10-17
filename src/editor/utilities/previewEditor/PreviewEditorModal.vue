@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, provide, useTemplateRef } from 'vue'
-import { bgm } from '../../../history/bgm'
+import { bgm } from '../../../history/live'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import BaseModal from '../../../modals/BaseModal.vue'

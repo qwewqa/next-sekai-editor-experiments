@@ -172,12 +172,8 @@ test('the live computeds read only liveState', () => {
     assert.doesNotMatch(source, /\bstate\.value\b/)
 })
 
-test(
-    'auto save serializes liveState',
-    { todo: 'src/history/autoSave is routed by the platform package' },
-    () => {
-        const imports = historyImports('src/history/autoSave/index.ts')
-        assert.ok(imports.get('index')?.includes('liveState'))
-        assert.ok(!imports.get('index')?.includes('state'))
-    },
-)
+test('auto save serializes liveState', () => {
+    const imports = historyImports('src/history/autoSave/index.ts')
+    assert.ok(imports.get('index')?.includes('liveState'))
+    assert.ok(!imports.get('index')?.includes('state'))
+})

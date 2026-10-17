@@ -22,6 +22,7 @@ import { notify } from '../../notification'
 import SaveIcon from './SaveIcon.vue'
 
 export const save: Command = {
+    readOnly: true,
     title: () => i18n.value.commands.save.title,
     icon: {
         is: SaveIcon,
