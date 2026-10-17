@@ -1,3 +1,4 @@
+import { settings } from '../../../settings'
 import { assetTypes } from '../choice'
 import type { AssetType, ChoiceProviders } from '../types'
 import { workerStore } from './store'
@@ -10,8 +11,35 @@ import { maxTextureSide } from './textureLimit'
 export const lazyStoredProviders = (): ChoiceProviders => {
     let providers: Promise<ChoiceProviders> | undefined
     const load = () =>
-        (providers ??= import('./provider').then(({ createStoredProviders }) =>
-            createStoredProviders({ store: workerStore, maxTextureSide }),
+        (providers ??= Promise.all([
+            import('./provider'),
+            import('../server/redownload'),
+            import('../server/live'),
+        ]).then(([{ createStoredProviders }, { createRedownload }, { createLiveServerClient }]) =>
+            createStoredProviders({
+                store: workerStore,
+                maxTextureSide,
+                redownload: createRedownload({
+                    client: createLiveServerClient(),
+                    store: workerStore,
+                    maxTextureSide,
+                    replace: (type, oldKey, record) => {
+                        // Only if the choice still names the item that was downloaded again.
+                        const current = settings.previewAssets[type]
+                        if (current.source === 'server' && current.key === oldKey)
+                            settings.previewAssets = {
+                                ...settings.previewAssets,
+                                [type]: {
+                                    ...current,
+                                    key: record.key,
+                                    title: record.title,
+                                    author: record.author,
+                                    origin: record.origin,
+                                },
+                            }
+                    },
+                }),
+            }),
         ))
     return Object.fromEntries(
         assetTypes.map((type: AssetType) => [

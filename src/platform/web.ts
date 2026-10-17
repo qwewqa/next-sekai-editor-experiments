@@ -266,7 +266,8 @@ export const platform: Platform = {
     journal: journalStub,
 
     openExternal,
-    fetchServer: (url, init) => fetch(url, init),
+    fetchServer: (url, init) =>
+        fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer', ...init }),
     diagnostics: () => {
         const { engine, os } = detection()
         return {

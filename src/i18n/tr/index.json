@@ -508,7 +508,9 @@
       "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",
       "progress": {
         "reading": "Dosya okunuyor…",
-        "storing": "Saklanıyor…"
+        "storing": "Saklanıyor…",
+        "connecting": "Bağlanılıyor…",
+        "downloading": "İndiriliyor…"
       },
       "part": {
         "list": "liste",
@@ -541,6 +543,44 @@
         "audioLength": "Bu dosyadaki ses ({0}) toplamda {1} saniyeden uzun.",
         "packageTooLarge": "Bu öğe saklandığında {0} sınırından büyük oluyor.",
         "storeFailed": "Bu öğe saklanamadı."
+      },
+      "chooseHint": "Bir dosyadan veya Sonolus sunucusundan",
+      "fromFile": "Dosyadan",
+      "fromServer": "Sunucudan",
+      "serverAddress": "Sunucu adresi",
+      "connect": "Bağlan",
+      "search": "Ara…",
+      "more": "Daha fazla",
+      "alsoServerItem": "Bu sunucudaki \"{1}\" öğesini ({0}) de kullan",
+      "noneFound": "Öğe bulunamadı",
+      "forServerOwners": "Sunucu sahipleri için",
+      "server": {
+        "blocked": "Bu sunucu web sayfalarından erişime izin vermiyor.",
+        "blockedRoute": "Öğelerinden birini kullanmak için onu .scp dosyası olarak edinin ve Dosyadan seçeneğini seçin.",
+        "blockedOwners": "/sonolus/* ve kaynak dosyalarında Access-Control-Allow-Origin: * gönderin.",
+        "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
+        "auth": "Bu sunucu oturum açmayı gerektiriyor, düzenleyici bunu desteklemiyor.",
+        "insecure": "Bu sunucu http kullanıyor; düzenleyici bunu https sayfasından yükleyemez.",
+        "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
+        "notFound": "Bu sunucuda böyle bir öğe yok.",
+        "invalid": "Bu adres bir Sonolus sunucusu değil.",
+        "status": "Sunucu bir hatayla yanıt verdi ({0}).",
+        "addressEmpty": "Bir sunucu adresi girin.",
+        "addressInvalid": "Bu sunucu adresi geçerli değil.",
+        "addressCredentials": "Sunucu adresi kullanıcı adı veya parola içeremez."
+      },
+      "serverImport": {
+        "tooBig": "Bu öğedeki {1} ({0}), {2} sınırından büyük.",
+        "unreadable": "Bu öğedeki {1} ({0}) okunamadı.",
+        "missing": "Bu öğedeki {1} ({0}) eksik.",
+        "notImage": "Bu öğedeki {1} ({0}) PNG veya JPEG görseli değil.",
+        "imageSize": "Bu öğedeki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
+        "spriteOutside": "Bu öğedeki veride ({0}) dokunun dışında kalan bir sprite var.",
+        "tooManySprites": "Bu öğedeki veride ({0}) {1} spriteten fazlası var.",
+        "tooManyEffects": "Bu öğedeki veride ({0}) {1} efektten fazlası var.",
+        "particleCount": "Bu öğedeki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
+        "noPerfect": "Bu öğedeki ses ({0}) kullanılabilir bir #PERFECT klibi içermiyor.",
+        "audioLength": "Bu öğedeki ses ({0}) toplamda {1} saniyeden uzun."
       }
     }
   },
@@ -697,7 +737,8 @@
         "properties": "Varsayılan Özellikleri değiştirmek için tekrar Sahne Dönüşüm Olayı aracına geçin."
       }
     },
-    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır."
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır.",
+    "builtinServer": "Sunucudan seçeneğini denemek için, yerleşik öğeleri sunan {0} adresine bağlanın."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",

@@ -10,6 +10,7 @@ import {
     storedLoaded,
     workerStore,
 } from '../../../preview/assets/files/store'
+import { displayOrigin } from '../../../preview/assets/serverUrl'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
@@ -94,7 +95,7 @@ const buttonClass =
                     row.meta.title
                 }}</span>
                 <span class="block truncate text-sm opacity-75" data-stored-detail>{{
-                    [label(row.meta.type), row.meta.origin].join(' · ')
+                    [label(row.meta.type), displayOrigin(row.meta.origin)].join(' · ')
                 }}</span>
             </span>
             <span

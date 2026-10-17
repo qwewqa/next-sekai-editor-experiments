@@ -1,0 +1,584 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+import { storedChoice } from '../../../src/preview/assets/files/chooser'
+import type { AssetImportError } from '../../../src/preview/assets/files/errors'
+import { createMemoryStore } from '../../../src/preview/assets/files/store'
+import {
+    createServerChooser,
+    type ServerChooserDeps,
+} from '../../../src/preview/assets/server/chooser'
+import { createServerClient } from '../../../src/preview/assets/server/client'
+import {
+    serverErrorText,
+    serverItemMessage,
+    type ServerStrings,
+} from '../../../src/preview/assets/server/text'
+import type { AssetChoice, AssetType } from '../../../src/preview/assets/types'
+import { scpEntries, utf8, type NamedEntry, type ScpOptions } from '../files/fixtures'
+import { createFakeServer, filesFromEntries, json, type FakeAnswer } from './fakeServer'
+
+const en = (
+    JSON.parse(readFileSync('src/i18n/en/index.json', 'utf8')) as {
+        commands: { previewAssets: ServerStrings }
+    }
+).commands.previewAssets
+const number = (value: number) => new Intl.NumberFormat('en').format(value)
+
+// The chooser's From a Server view (Part 2, 2.5.3, 2.6, 2.11): listing, paging, search, "Also use
+// … from this server", Use.
+
+const merge = (items: [AssetType, ScpOptions?][]) => {
+    const entries = new Map<string, NamedEntry>()
+    for (const [type, options] of items)
+        for (const entry of scpEntries(type, options)) {
+            const before = entries.get(entry.name as string)
+            if (before && (entry.name as string).endsWith('/list')) {
+                const list = JSON.parse(new TextDecoder().decode(before.data)) as {
+                    items: unknown[]
+                }
+                const more = JSON.parse(new TextDecoder().decode(entry.data)) as {
+                    items: unknown[]
+                }
+                list.items.push(...more.items)
+                entries.set(entry.name as string, { ...entry, data: utf8(JSON.stringify(list)) })
+            } else entries.set(entry.name as string, entry)
+        }
+    return [...entries.values()]
+}
+
+const named = (name: string, title: string): ScpOptions => ({ name, title })
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+
+const setup = (
+    items: [AssetType, ScpOptions?][],
+    options: {
+        handler?: (url: URL) => FakeAnswer | undefined
+        online?: () => boolean
+        info?: unknown
+    } = {},
+) => {
+    const server = createFakeServer({
+        files: filesFromEntries(merge(items), options.info),
+        handler: options.handler,
+    })
+    const store = createMemoryStore()
+    const applied: Partial<Record<AssetType, AssetChoice>>[] = []
+    const remembered: string[] = []
+    const closed: boolean[] = []
+    const handedOver: [AssetType, string][] = []
+    const deps = (type: AssetType): ServerChooserDeps => ({
+        client: createServerClient({
+            fetch: server.fetch,
+            language: () => 'en',
+            isOnline: options.online,
+        }),
+        store,
+        maxTextureSide: () => 4096,
+        decodeAudio: async () => ({ duration: 1 }) as AudioBuffer,
+        apply: (choices) => applied.push(choices),
+        describe: (error: AssetImportError) => serverItemMessage(error, en, number),
+        toChoice: storedChoice,
+        recent: () => remembered.slice().reverse(),
+        remember: (address) => remembered.push(address),
+        close: () => closed.push(true),
+        handOver: (other, input) => handedOver.push([other, input]),
+        // `type` only keeps each chooser's deps apart in a test that builds two.
+        now: () => (type === 'skin' ? 1 : 2),
+    })
+    return { server, store, applied, remembered, closed, handedOver, deps }
+}
+
+const collection = () =>
+    [
+        ['skin', named('neon', 'Neon Skin')],
+        ['particle', named('neon', 'Neon Particle')],
+        ['background', named('other', 'Other Background')],
+        ['effect', named('neon', 'Neon Sounds')],
+    ] satisfies [AssetType, ScpOptions][]
+
+test('connecting lists the type’s items, remembers the server and takes its address', async () => {
+    const { server, deps, remembered } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    assert.equal(chooser.mode.value, 'file')
+    chooser.address.value = `${server.base}/`
+    await chooser.connect()
+    assert.equal(chooser.phase.value, 'listed')
+    assert.equal(chooser.title.value, 'Fake Server')
+    assert.equal(chooser.address.value, server.base)
+    assert.deepEqual(
+        chooser.items.value.map((item) => [item.name, item.title, item.author]),
+        [['neon', 'Neon Skin', 'Author']],
+    )
+    // A lone item is preselected.
+    assert.equal(chooser.selected.value, 'neon')
+    assert.deepEqual(remembered, [server.base])
+    assert.equal(chooser.error.value, undefined)
+})
+
+test('the last server connected to prefills an empty field, once', async () => {
+    const { server, deps } = setup(collection())
+    const first = createServerChooser('skin', deps('skin'))
+    first.address.value = server.base
+    await first.connect()
+    const second = createServerChooser('particle', deps('particle'))
+    second.prefill()
+    assert.equal(second.address.value, server.base)
+    second.address.value = 'https://other.test'
+    second.prefill()
+    assert.equal(second.address.value, 'https://other.test')
+})
+
+test('other types are offered only when the server has an item of the same name, and after a row is selected', async () => {
+    const { deps, server } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await settle()
+    // One checkbox per type: the particle and the sound effects; the background has another name.
+    assert.deepEqual(
+        chooser.also.value.map((option) => [option.type, option.title, option.ticked]),
+        [
+            ['particle', 'Neon Particle', false],
+            ['effect', 'Neon Sounds', false],
+        ],
+    )
+})
+
+test('a lookup that fails offers no checkbox', async () => {
+    const { deps, server } = setup(collection(), {
+        handler: (url) =>
+            url.pathname === '/api/sonolus/effects/neon' ? { status: 500 } : undefined,
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await settle()
+    assert.deepEqual(
+        chooser.also.value.map((option) => option.type),
+        ['particle'],
+    )
+})
+
+test('with several items nothing is selected until one is, and the checkboxes follow it', async () => {
+    const { deps, server } = setup([
+        ['skin', named('a', 'First')],
+        ['skin', named('b', 'Second')],
+        ['particle', named('b', 'Second Particle')],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    assert.equal(chooser.items.value.length, 2)
+    assert.equal(chooser.selected.value, undefined)
+    assert.equal(chooser.also.value.length, 0)
+    chooser.select('b')
+    await settle()
+    assert.deepEqual(
+        chooser.also.value.map((option) => option.title),
+        ['Second Particle'],
+    )
+    chooser.select('a')
+    assert.equal(chooser.also.value.length, 0)
+    await settle()
+    assert.equal(chooser.also.value.length, 0)
+})
+
+test('Use downloads the selected item and every ticked one, checks them, stores them and applies them together', async () => {
+    const { deps, server, store, applied, closed } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+
+    assert.equal(applied.length, 1)
+    const choices = applied[0]!
+    assert.deepEqual(Object.keys(choices).sort(), ['particle', 'skin'])
+    assert.equal(choices.skin?.source, 'server')
+    assert.equal(choices.skin?.source === 'server' && choices.skin.origin, server.base)
+    assert.equal(choices.skin?.source === 'server' && choices.skin.title, 'Neon Skin')
+    const stored = await store.list()
+    assert.deepEqual(stored.map((meta) => meta.type).sort(), ['particle', 'skin'])
+    assert.ok(stored.every((meta) => meta.origin === server.base))
+    assert.deepEqual(closed, [true])
+    // The chooser is as new again.
+    assert.equal(chooser.phase.value, 'idle')
+    assert.equal(chooser.items.value.length, 0)
+})
+
+test('the stored package is a standard single-item package the file chooser would have made', async () => {
+    const { deps, server, store } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.use()
+    const [meta] = await store.list()
+    const record = await store.get(meta!.key)
+    assert.equal(record?.name, 'neon')
+    assert.equal(record?.key.length, 64)
+    assert.ok(record!.size > 0 && record!.size === record!.bytes.size)
+})
+
+test('an item whose checksum does not match is refused with the server’s wording, and nothing is stored', async () => {
+    const { deps, server, store, applied } = setup([
+        ['skin', { ...named('neon', 'Neon'), hashes: 'bad' }],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.use()
+    assert.equal(chooser.phase.value, 'listed')
+    assert.deepEqual(applied, [])
+    assert.deepEqual(await store.list(), [])
+    const error = chooser.error.value
+    assert.equal(error?.kind, 'item')
+    assert.equal(
+        error?.kind === 'item' && error.message,
+        'The server’s checksum for this item does not match what it sent.',
+    )
+})
+
+test('an item the checks refuse says so as an item of the server, not of a file', async () => {
+    const { deps, server } = setup([
+        [
+            'skin',
+            { ...named('neon', 'Neon'), resources: { texture: new Uint8Array([1, 2, 3, 4]) } },
+        ],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.use()
+    const error = chooser.error.value
+    assert.equal(
+        error?.kind === 'item' && error.message,
+        'This item’s skin texture is not a PNG or JPEG image.',
+    )
+})
+
+test('a ticked item that fails stores nothing, not even the selected one', async () => {
+    const { deps, server, store, applied } = setup([
+        ['skin', named('neon', 'Neon')],
+        ['particle', { ...named('neon', 'Neon'), hashes: 'bad' }],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+    assert.deepEqual(await store.list(), [])
+    assert.deepEqual(applied, [])
+    assert.equal(chooser.error.value?.kind, 'item')
+})
+
+test('a resource that is missing is the item’s, and one that cannot be fetched is the server’s', async () => {
+    const missing = setup([['skin', named('neon', 'Neon')]], {
+        handler: (url) => (url.pathname.includes('/repository/') ? { status: 404 } : undefined),
+    })
+    const first = createServerChooser('skin', missing.deps('skin'))
+    first.address.value = missing.server.base
+    await first.connect()
+    await first.use()
+    assert.equal(
+        first.error.value?.kind === 'item' && first.error.value.message,
+        'This item’s skin data is missing.',
+    )
+
+    const dropped = setup([['skin', named('neon', 'Neon')]])
+    const second = createServerChooser('skin', dropped.deps('skin'))
+    second.address.value = dropped.server.base
+    await second.connect()
+    dropped.server.state.failing = true
+    await second.use()
+    assert.deepEqual(second.error.value, { kind: 'server', code: 'unreachable', status: undefined })
+    assert.equal(second.phase.value, 'listed')
+})
+
+test('a share link to an item of the type lists it first and selects it', async () => {
+    const { deps, server } = setup([
+        ['skin', named('a', 'First')],
+        ['skin', named('b', 'Second')],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = `${server.base}/skins/b`
+    await chooser.connect()
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['b', 'a'],
+    )
+    assert.equal(chooser.selected.value, 'b')
+    assert.equal(chooser.address.value, server.base)
+    assert.equal(chooser.error.value, undefined)
+})
+
+test('a share link to an item the server lacks says so and still lists', async () => {
+    const { deps, server } = setup([
+        ['skin', named('a', 'First')],
+        ['skin', named('b', 'Second')],
+    ])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = `${server.base}/sonolus/skins/gone`
+    await chooser.connect()
+    assert.equal(chooser.phase.value, 'listed')
+    assert.equal(chooser.items.value.length, 2)
+    assert.equal(chooser.selected.value, undefined)
+    assert.deepEqual(chooser.error.value, { kind: 'server', code: 'notFound', status: 404 })
+})
+
+test('a share link to another type’s item goes to that type’s chooser', async () => {
+    const { deps, server, handedOver } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = `${server.base}/particles/neon`
+    await chooser.connect()
+    assert.deepEqual(handedOver, [['particle', `${server.base}/particles/neon`]])
+    assert.equal(chooser.phase.value, 'idle')
+    assert.equal(server.requests.length, 0)
+
+    // The chooser that takes it switches to the server view and connects.
+    const other = createServerChooser('particle', deps('particle'))
+    await other.connectTo(`${server.base}/particles/neon`)
+    assert.equal(other.mode.value, 'server')
+    assert.equal(other.selected.value, 'neon')
+})
+
+test('paging: More appends the next page and ends with the last', async () => {
+    const pages = ['one', 'two', 'three'].map((name) => ({ name, title: name }))
+    const { deps, server } = setup([], {
+        handler: (url) => {
+            if (url.pathname === '/api/sonolus/info') return { body: json({ title: 'Paged' }) }
+            if (url.pathname !== '/api/sonolus/skins/list') return
+            const page = Number(url.searchParams.get('page'))
+            return { body: json({ pageCount: 3, items: [pages[page]!] }) }
+        },
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['one'],
+    )
+    assert.equal(chooser.hasMore.value, true)
+    await chooser.more()
+    await chooser.more()
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['one', 'two', 'three'],
+    )
+    assert.equal(chooser.hasMore.value, false)
+    await chooser.more()
+    assert.equal(chooser.items.value.length, 3)
+})
+
+test('paging by cursor follows the cursors the server hands out', async () => {
+    const { deps, server } = setup([], {
+        handler: (url) => {
+            if (url.pathname === '/api/sonolus/info') return { body: json({ title: 'Cursors' }) }
+            if (url.pathname !== '/api/sonolus/skins/list') return
+            const cursor = url.searchParams.get('cursor')
+            return cursor === null
+                ? {
+                      body: json({
+                          pageCount: -1,
+                          cursor: 'next',
+                          items: [{ name: 'a', title: 'A' }],
+                      }),
+                  }
+                : { body: json({ pageCount: -1, items: [{ name: 'b', title: 'B' }] }) }
+        },
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    assert.equal(chooser.hasMore.value, true)
+    await chooser.more()
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['a', 'b'],
+    )
+    assert.equal(chooser.hasMore.value, false)
+})
+
+test('a quick search replaces the list, drops a selection it removed, and an empty search lists all again', async () => {
+    const { deps, server } = setup([], {
+        handler: (url) => {
+            if (url.pathname === '/api/sonolus/info') return { body: json({ title: 'Search' }) }
+            if (url.pathname !== '/api/sonolus/skins/list') return
+            const keywords = url.searchParams.get('keywords')
+            const items =
+                keywords === 'night'
+                    ? [{ name: 'night', title: 'Night' }]
+                    : [
+                          { name: 'day', title: 'Day' },
+                          { name: 'dusk', title: 'Dusk' },
+                      ]
+            return { body: json({ pageCount: 1, items }) }
+        },
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    chooser.select('day')
+    await chooser.search('  night ')
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['night'],
+    )
+    const request = new URL(server.requests.at(-1)!.url)
+    assert.equal(request.searchParams.get('type'), 'quick')
+    assert.equal(request.searchParams.get('keywords'), 'night')
+    assert.equal(chooser.selected.value, undefined)
+    await chooser.search('')
+    assert.equal(chooser.items.value.length, 2)
+    assert.equal(new URL(server.requests.at(-1)!.url).searchParams.has('keywords'), false)
+})
+
+test('only the newest search shows', async () => {
+    const releases = new Map<string, () => void>()
+    const { deps, server } = setup([], {
+        handler: (url) =>
+            url.pathname === '/api/sonolus/info' ? { body: json({ title: 'Race' }) } : undefined,
+    })
+    const real = server.fetch
+    const delayed = (url: string, init?: Parameters<typeof real>[1]) => {
+        const keywords = new URL(url).searchParams.get('keywords')
+        if (!keywords) return real(url, init)
+        return new Promise<Response>((resolve) => {
+            releases.set(keywords, () =>
+                resolve(
+                    new Response(
+                        JSON.stringify({
+                            pageCount: 1,
+                            items: [{ name: keywords, title: keywords }],
+                        }),
+                    ),
+                ),
+            )
+            init?.signal?.addEventListener('abort', () =>
+                resolve(new Response('{}', { status: 500 })),
+            )
+        })
+    }
+    const base = deps('skin')
+    const chooser = createServerChooser('skin', {
+        ...base,
+        client: createServerClient({ fetch: delayed, language: () => 'en' }),
+    })
+    chooser.address.value = server.base
+    await chooser.connect()
+    const first = chooser.search('slow')
+    const second = chooser.search('fast')
+    await settle()
+    releases.get('fast')?.()
+    releases.get('slow')?.()
+    await Promise.all([first, second])
+    assert.deepEqual(
+        chooser.items.value.map((item) => item.name),
+        ['fast'],
+    )
+    assert.equal(chooser.loading.value, false)
+})
+
+test('the failures read as 2.5.3 words them', async () => {
+    const say = (error: Parameters<typeof serverErrorText>[0]) => serverErrorText(error, en)
+
+    const blocked = setup(collection())
+    blocked.server.state.failing = true
+    blocked.server.state.reachable = true
+    const first = createServerChooser('skin', blocked.deps('skin'))
+    first.address.value = blocked.server.base
+    await first.connect()
+    assert.equal(first.phase.value, 'idle')
+    assert.deepEqual(say(first.error.value!), {
+        text: 'This server does not allow access from web pages.',
+        route: 'To use one of its items, get it as an .scp file and choose From a File.',
+        owners: 'Send Access-Control-Allow-Origin: * on /sonolus/* and on resource files.',
+    })
+
+    blocked.server.state.reachable = false
+    await first.connect()
+    assert.equal(
+        say(first.error.value!).text,
+        'Could not reach this server. Check the address, or try again later.',
+    )
+
+    const auth = setup(collection(), { handler: () => ({ status: 401 }) })
+    const second = createServerChooser('skin', auth.deps('skin'))
+    second.address.value = auth.server.base
+    await second.connect()
+    assert.equal(
+        say(second.error.value!).text,
+        'This server needs you to sign in, which the editor does not support.',
+    )
+
+    const offline = setup(collection(), { online: () => false })
+    const third = createServerChooser('skin', offline.deps('skin'))
+    third.address.value = offline.server.base
+    await third.connect()
+    assert.equal(say(third.error.value!).text, 'You are offline.')
+    assert.equal(offline.server.requests.length, 0)
+})
+
+test('an http address is refused before anything is fetched, and a bad field says why', async () => {
+    const { deps, server } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = 'http://server.test/api'
+    await chooser.connect()
+    assert.equal(
+        serverErrorText(chooser.error.value!, en).text,
+        'This server uses http, which the editor cannot load from an https page.',
+    )
+    chooser.address.value = ''
+    await chooser.connect()
+    assert.equal(serverErrorText(chooser.error.value!, en).text, 'Enter a server address.')
+    chooser.address.value = 'https://user:pw@server.test'
+    await chooser.connect()
+    assert.equal(
+        serverErrorText(chooser.error.value!, en).text,
+        'A server address cannot contain a user name or password.',
+    )
+    assert.equal(server.requests.length, 0)
+})
+
+test('an address with no Sonolus server behind it says so', async () => {
+    const { deps } = setup([])
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = 'https://server.test/api/elsewhere'
+    await chooser.connect()
+    assert.equal(
+        serverErrorText(chooser.error.value!, en).text,
+        'This address is not a Sonolus server.',
+    )
+})
+
+test('cancelling while connecting leaves nothing behind', async () => {
+    const { deps, server } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    const connecting = chooser.connect()
+    assert.equal(chooser.phase.value, 'connecting')
+    chooser.cancel()
+    await connecting
+    await settle()
+    assert.equal(chooser.phase.value, 'idle')
+    assert.equal(chooser.items.value.length, 0)
+    assert.equal(chooser.error.value, undefined)
+})
+
+test('cancelling during Use stores nothing', async () => {
+    const { deps, server, store, applied } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    const using = chooser.use()
+    assert.equal(chooser.phase.value, 'working')
+    chooser.cancel()
+    await using
+    await settle()
+    assert.deepEqual(await store.list(), [])
+    assert.deepEqual(applied, [])
+    assert.equal(chooser.phase.value, 'idle')
+})

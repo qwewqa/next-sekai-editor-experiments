@@ -508,7 +508,9 @@
       "rights": "您加载的项目仅存储在此浏览器中。请只使用您有权使用的项目。",
       "progress": {
         "reading": "正在读取文件…",
-        "storing": "正在存储…"
+        "storing": "正在存储…",
+        "connecting": "正在连接…",
+        "downloading": "正在下载…"
       },
       "part": {
         "list": "列表",
@@ -541,6 +543,44 @@
         "audioLength": "此文件的{0}音频总长超过 {1} 秒。",
         "packageTooLarge": "此项目存储后超过 {0}。",
         "storeFailed": "无法存储此项目。"
+      },
+      "chooseHint": "从文件或 Sonolus 服务器",
+      "fromFile": "从文件",
+      "fromServer": "从服务器",
+      "serverAddress": "服务器地址",
+      "connect": "连接",
+      "search": "搜索…",
+      "more": "更多",
+      "alsoServerItem": "同时使用此服务器中的{0}“{1}”",
+      "noneFound": "未找到项目",
+      "forServerOwners": "供服务器所有者参考",
+      "server": {
+        "blocked": "此服务器不允许网页访问。",
+        "blockedRoute": "要使用其中的项目，请先获取 .scp 文件，再选择“从文件”。",
+        "blockedOwners": "请在 /sonolus/* 和资源文件上发送 Access-Control-Allow-Origin: *。",
+        "unreachable": "无法连接到此服务器。请检查地址，或稍后再试。",
+        "auth": "此服务器需要登录，编辑器不支持登录。",
+        "insecure": "此服务器使用 http，编辑器无法在 https 页面中加载。",
+        "checksum": "此项目的校验和与服务器发送的内容不符。",
+        "notFound": "此服务器上没有该项目。",
+        "invalid": "此地址不是 Sonolus 服务器。",
+        "status": "服务器返回了错误（{0}）。",
+        "addressEmpty": "请输入服务器地址。",
+        "addressInvalid": "服务器地址无效。",
+        "addressCredentials": "服务器地址不能包含用户名或密码。"
+      },
+      "serverImport": {
+        "tooBig": "此项目的{0}{1}超过 {2}。",
+        "unreadable": "无法读取此项目的{0}{1}。",
+        "missing": "此项目缺少{0}{1}。",
+        "notImage": "此项目的{0}{1}不是 PNG 或 JPEG 图像。",
+        "imageSize": "此项目的{0}{1}为 {2} × {3}，上限为 {4} × {4}。",
+        "spriteOutside": "此项目的{0}数据中有位于纹理之外的精灵。",
+        "tooManySprites": "此项目的{0}数据中的精灵超过 {1} 个。",
+        "tooManyEffects": "此项目的{0}数据中的效果超过 {1} 个。",
+        "particleCount": "此项目的{0}效果“{1}”的粒子超过 {2} 个。",
+        "noPerfect": "此项目的{0}音频中没有可用的 #PERFECT 片段。",
+        "audioLength": "此项目的{0}音频总长超过 {1} 秒。"
       }
     }
   },
@@ -697,7 +737,8 @@
         "properties": "再次切换到舞台变换事件工具即可更改默认属性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知的按钮。"
+    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知的按钮。",
+    "builtinServer": "要试用“从服务器”，请连接到提供内置项的 {0}。"
   },
   "elevation": {
     "edit": "编辑高度",

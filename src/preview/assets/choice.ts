@@ -49,6 +49,13 @@ export const previewAssetsSchema = Type.Object(
 /** What `dismissedAssetNotices` holds at most. */
 export const DISMISSED_NOTICE_LIMIT = 20
 
+/** What `recentServers` holds at most. */
+export const RECENT_SERVER_LIMIT = 5
+
+/** The list with a server put first, once, and no more than the limit. */
+export const withRecentServer = (servers: readonly string[], address: string) =>
+    [address, ...servers.filter((held) => held !== address)].slice(0, RECENT_SERVER_LIMIT)
+
 /** A choice's identity: the source, and the stored package for a file or a server. */
 export const choiceKey = (choice: AssetChoice) =>
     choice.source === 'file' || choice.source === 'server'

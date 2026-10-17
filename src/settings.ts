@@ -9,7 +9,11 @@ import { migrateToolbar } from './editor/toolbar/migrate'
 import { isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
-import { DISMISSED_NOTICE_LIMIT, previewAssetsSchema } from './preview/assets/choice'
+import {
+    DISMISSED_NOTICE_LIMIT,
+    previewAssetsSchema,
+    RECENT_SERVER_LIMIT,
+} from './preview/assets/choice'
 import {
     previewAspectRatios,
     previewNoteSpeed,
@@ -198,6 +202,10 @@ const settingsProperties = {
     // Fallback notices already dismissed, as type, choice and reason; the newest 20.
     dismissedAssetNotices: Type.Codec(Type.Array(Type.String(), { default: [] }))
         .Decode((value) => value.slice(-DISMISSED_NOTICE_LIMIT))
+        .Encode((value) => value),
+    // The servers last connected to in the chooser, newest first; the first is its prefill.
+    recentServers: Type.Codec(Type.Array(Type.String(), { default: [] }))
+        .Decode((value) => value.slice(0, RECENT_SERVER_LIMIT))
         .Encode((value) => value),
     previewAspectRatio: Type.Union([
         Type.Literal(previewAspectRatios[0][1]),

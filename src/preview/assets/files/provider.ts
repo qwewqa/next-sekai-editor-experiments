@@ -12,7 +12,7 @@ import { asImportError } from './errors'
 import { readImageSize } from './image'
 import { checkItem, type CheckedItem, type CheckedParts } from './item'
 import { openSourcePackage } from './package'
-import type { UserAssetStore } from './store'
+import type { UserAssetRecord, UserAssetStore } from './store'
 
 // The loader's provider for a stored choice (Part 2, 2.4.2, 2.5.4): the package comes from the
 // store, is checked again under the same limits (an older build may have stored it under looser
@@ -84,20 +84,37 @@ export type StoredProviderOptions = {
     store: UserAssetStore
     /** The device's texture limit, read when the first skin or particle loads. */
     maxTextureSide: () => number
+    /** Fetches a server item again when its package is no longer stored (Part 2, 2.5.4). */
+    redownload?: (
+        type: AssetType,
+        choice: { key: string; name: string; origin: string },
+        context: LoadContext,
+    ) => Promise<UserAssetRecord>
 }
 
 export const createStoredProviders = ({
     store,
     maxTextureSide,
+    redownload,
 }: StoredProviderOptions): ChoiceProviders => {
     const provider =
         (type: AssetType) =>
-        async (choice: { key: string; name: string }, context: LoadContext): Promise<never> => {
+        async (
+            choice: { source: string; key: string; name: string; origin: string },
+            context: LoadContext,
+        ): Promise<never> => {
             let stored
             try {
                 stored = await store.get(choice.key)
             } catch (error) {
                 throw new AssetError('unavailable', 'The store did not answer', { cause: error })
+            }
+            if (!stored && choice.source === 'server' && redownload) {
+                try {
+                    stored = await redownload(type, choice, context)
+                } catch (error) {
+                    throw toAssetError(error, type)
+                }
             }
             if (!stored) throw new AssetError('missing', `The stored ${type} is gone`)
             if (context.signal.aborted) throw new DOMException('Aborted', 'AbortError')

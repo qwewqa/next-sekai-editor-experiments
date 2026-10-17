@@ -22,7 +22,9 @@ import { loadBuiltinInfo, type BuiltinInfo } from '../../../preview/assets/built
 import { choiceKey } from '../../../preview/assets/choice'
 import { rowText } from '../../../preview/assets/fallbackText'
 import { storedChoice, type AssetChooser } from '../../../preview/assets/files/chooser'
+import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { storedAssets, workerStore } from '../../../preview/assets/files/store'
+import { displayOrigin } from '../../../preview/assets/serverUrl'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
@@ -34,6 +36,7 @@ import { storedThumbnail } from './storedThumbnails'
 const props = defineProps<{
     type: AssetType
     chooser: AssetChooser
+    server: ServerChooser
 }>()
 
 const strings = computed(() => i18n.value.commands.previewAssets)
@@ -78,7 +81,7 @@ const storedRow = (choice: AssetChoice & { source: 'file' | 'server' }, image?: 
         choice.source === 'file' ? strings.value.storedFile : strings.value.storedServer,
         choice.title,
     ),
-    detail: [choice.author, choice.origin].filter(Boolean).join(' · '),
+    detail: [choice.author, displayOrigin(choice.origin)].filter(Boolean).join(' · '),
     image,
 })
 
@@ -124,6 +127,12 @@ const selectedId = computed(() => {
     return choice.source === 'default' && hasDefault ? 'default' : 'builtin'
 })
 
+// A package that left storage is picked again from a file.
+const chooseAgain = () => {
+    props.server.setMode('file')
+    props.chooser.show()
+}
+
 const select = (row: Row) => {
     if (row.id === selectedId.value) return
     settings.previewAssets = { ...settings.previewAssets, [props.type]: row.choice }
@@ -168,7 +177,7 @@ const isLoading = computed(() => {
 </script>
 
 <template>
-    <ChooserView v-if="chooser.open.value" :type="type" :chooser="chooser" />
+    <ChooserView v-if="chooser.open.value" :type="type" :chooser="chooser" :server="server" />
     <div
         v-else
         ref="sources"
@@ -208,7 +217,7 @@ const isLoading = computed(() => {
                         type="button"
                         class="inline-flex h-7 items-center rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
                         data-asset-choose-again
-                        @click="chooser.show()"
+                        @click="chooseAgain"
                     >
                         {{ strings.chooseAgain }}
                     </button>
@@ -226,7 +235,7 @@ const isLoading = computed(() => {
         <p v-if="type === 'effect'" class="px-3 pt-3 text-sm opacity-75" data-effect-hint>
             {{ strings.effectHint }}
         </p>
-        <div class="px-3 pt-3">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-3">
             <button
                 type="button"
                 class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
@@ -235,6 +244,9 @@ const isLoading = computed(() => {
             >
                 {{ strings.choose }}
             </button>
+            <span class="min-w-0 text-sm opacity-75" data-asset-choose-hint>{{
+                strings.chooseHint
+            }}</span>
         </div>
     </div>
 </template>

@@ -4,16 +4,20 @@ import { i18n } from '../../../i18n'
 import type { AssetType } from '../../../preview/assets'
 import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { AssetChooser } from '../../../preview/assets/files/chooser'
+import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { pickFile } from '../../../utils/file'
 import AssetGlyph from './AssetGlyph.vue'
 import AssetRow from './AssetRow.vue'
+import ChooserModeSwitch from './ChooserModeSwitch.vue'
+import ServerBody from './ServerBody.vue'
 
-// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File only until a
-// server can be chosen from, so there is no switch between the two yet.
+// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or From a
+// Server, by the switch under the title. The server's view is ServerBody's.
 const props = defineProps<{
     type: AssetType
     chooser: AssetChooser
+    server: ServerChooser
 }>()
 
 const strings = computed(() => i18n.value.commands.previewAssets)
@@ -31,8 +35,36 @@ const titles = computed(
 )
 
 const { phase, items, selected, also, error, fileName, thumbnails } = props.chooser
-const isBusy = computed(() => phase.value === 'reading' || phase.value === 'working')
+const mode = props.server.mode
+const isFile = computed(() => mode.value === 'file')
+const serverPhase = props.server.phase
+const isBusy = computed(() =>
+    isFile.value
+        ? phase.value === 'reading' || phase.value === 'working'
+        : serverPhase.value === 'connecting' || serverPhase.value === 'working',
+)
+const busyText = computed(() =>
+    isFile.value
+        ? phase.value === 'reading'
+            ? strings.value.progress.reading
+            : strings.value.progress.storing
+        : serverPhase.value === 'connecting'
+          ? strings.value.progress.connecting
+          : strings.value.progress.downloading,
+)
 const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
+// What Use needs: an item selected, and nothing under way.
+const canUse = computed(() =>
+    isFile.value
+        ? selected.value !== undefined && phase.value === 'listed'
+        : props.server.selected.value !== undefined && serverPhase.value === 'listed',
+)
+const use = () => (isFile.value ? props.chooser.use() : props.server.use())
+// Cancel leaves both views as new; the file chooser's closes the chooser.
+const cancel = () => {
+    props.server.cancel()
+    props.chooser.cancel()
+}
 
 const selectFile = async () => {
     const file = await pickFile()
@@ -40,12 +72,31 @@ const selectFile = async () => {
 }
 
 const selectButton = useTemplateRef<HTMLButtonElement>('selectButton')
+const serverBody = useTemplateRef<HTMLElement>('serverBody')
 const useButton = useTemplateRef<HTMLButtonElement>('useButton')
 const list = useTemplateRef<HTMLElement>('list')
 
+// The address field takes the focus when the server view opens.
+const focusAddress = () =>
+    void nextTick(() =>
+        serverBody.value
+            ?.querySelector<HTMLElement>('[data-server-address]')
+            ?.focus({ focusVisible: false }),
+    )
+
 onMounted(() => {
     // A chooser opened with a file already picked lands on its list; otherwise on the file button.
-    if (phase.value === 'idle') selectButton.value?.focus({ focusVisible: false })
+    if (isFile.value) {
+        if (phase.value === 'idle') selectButton.value?.focus({ focusVisible: false })
+        return
+    }
+    props.server.prefill()
+    if (serverPhase.value === 'idle') focusAddress()
+})
+
+// The switch keeps the focus; the last server connected to fills an empty address.
+watch(mode, (now) => {
+    if (now === 'server') props.server.prefill()
 })
 
 // After the items are listed, focus goes where the next key is useful: Use for a lone item,
@@ -55,6 +106,17 @@ watch(phase, async (now, before) => {
     await nextTick()
     if (selected.value !== undefined) useButton.value?.focus({ focusVisible: false })
     else list.value?.querySelector<HTMLElement>('input')?.focus({ focusVisible: false })
+})
+
+// The same for a server's list, once it is connected.
+watch(serverPhase, async (now, before) => {
+    if (before !== 'connecting' || now !== 'listed') return
+    await nextTick()
+    if (props.server.selected.value !== undefined) useButton.value?.focus({ focusVisible: false })
+    else
+        serverBody.value
+            ?.querySelector<HTMLElement>('[data-chooser-list] input')
+            ?.focus({ focusVisible: false })
 })
 
 const alsoText = (option: (typeof also.value)[number]) =>
@@ -75,7 +137,11 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
     >
         <h3 class="px-2 pt-1 text-base font-bold" data-chooser-title>{{ titles }}</h3>
 
-        <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-2">
+        <div class="px-2">
+            <ChooserModeSwitch v-model="mode" :label="titles" :disabled="isBusy" />
+        </div>
+
+        <div v-if="isFile" class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-2">
             <button
                 ref="selectButton"
                 type="button"
@@ -96,9 +162,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
         </div>
 
         <div v-if="isBusy" class="px-2" role="status" data-chooser-progress>
-            <p class="text-sm">
-                {{ phase === 'reading' ? strings.progress.reading : strings.progress.storing }}
-            </p>
+            <p class="text-sm">{{ busyText }}</p>
             <div
                 class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
                 aria-hidden="true"
@@ -108,7 +172,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
         </div>
 
         <p
-            v-if="error"
+            v-if="isFile && error"
             :id="errorId"
             class="relative pl-8 pr-2 text-sm"
             aria-live="polite"
@@ -117,7 +181,11 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
             <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />{{ error }}
         </p>
 
-        <template v-if="isListed">
+        <div v-if="!isFile" ref="serverBody" class="contents">
+            <ServerBody :type="type" :server="server" />
+        </div>
+
+        <template v-if="isFile && isListed">
             <div
                 v-if="items.length"
                 ref="list"
@@ -171,21 +239,16 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
         <p class="px-2 text-sm opacity-75" data-chooser-rights>{{ strings.rights }}</p>
 
         <div class="flex justify-end gap-2 px-2">
-            <button
-                type="button"
-                :class="buttonClass"
-                data-chooser-cancel
-                @click="chooser.cancel()"
-            >
+            <button type="button" :class="buttonClass" data-chooser-cancel @click="cancel">
                 {{ i18n.modals.confirm.cancel }}
             </button>
             <button
                 ref="useButton"
                 type="button"
-                :class="selected !== undefined && phase === 'listed' ? primaryClass : buttonClass"
-                :disabled="selected === undefined || phase !== 'listed'"
+                :class="canUse ? primaryClass : buttonClass"
+                :disabled="!canUse"
                 data-chooser-use
-                @click="chooser.use()"
+                @click="use"
             >
                 {{ strings.use }}
             </button>

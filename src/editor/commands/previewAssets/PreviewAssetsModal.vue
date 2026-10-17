@@ -12,14 +12,17 @@ import {
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import { platform } from '../../../platform'
-import { assetTypes } from '../../../preview/assets/choice'
+import { assetTypes, withRecentServer } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
-import { createAssetChooser } from '../../../preview/assets/files/chooser'
+import { createAssetChooser, storedChoice } from '../../../preview/assets/files/chooser'
 import { decodeToCheck } from '../../../preview/assets/files/audio'
 import { importMessage } from '../../../preview/assets/files/importText'
 import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
 import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
+import { createServerChooser } from '../../../preview/assets/server/chooser'
+import { createLiveServerClient } from '../../../preview/assets/server/live'
+import { serverItemText } from '../../../preview/assets/server/liveText'
 import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
 import type { AssetType } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
@@ -62,6 +65,39 @@ const choosers = Object.fromEntries(
     ]),
 ) as Record<AssetType, ReturnType<typeof createAssetChooser>>
 
+// One server chooser per type, beside the file chooser: they share the open state and the choices.
+const serverClient = createLiveServerClient()
+const servers = Object.fromEntries(
+    assetTypes.map((type) => [
+        type,
+        createServerChooser(type, {
+            client: serverClient,
+            store: workerStore,
+            maxTextureSide,
+            decodeAudio: decodeToCheck,
+            describe: serverItemText,
+            toChoice: storedChoice,
+            apply: (choices) => {
+                settings.previewAssets = { ...settings.previewAssets, ...choices }
+            },
+            recent: () => settings.recentServers,
+            remember: (address) => {
+                settings.recentServers = withRecentServer(settings.recentServers, address)
+            },
+            onStored: () => void refreshStored(),
+            close: () => {
+                choosers[type].cancel()
+            },
+            // A share link to another type's item: that tab opens on the server and connects.
+            handOver: (other, input) => {
+                active.value = other
+                choosers[other].show()
+                void servers[other].connectTo(input)
+            },
+        }),
+    ]),
+) as Record<AssetType, ReturnType<typeof createServerChooser>>
+
 onMounted(() => {
     void refreshStored()
     if (props.file && isAssetTab(active.value)) {
@@ -71,6 +107,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
     for (const chooser of Object.values(choosers)) chooser.dispose()
+    for (const server of Object.values(servers)) server.dispose()
     clearStoredThumbnails()
 })
 
@@ -231,6 +268,7 @@ const buttonClass =
                     :key="active"
                     :type="active"
                     :chooser="choosers[active]"
+                    :server="servers[active]"
                 />
                 <StoredAssets v-else />
             </div>

@@ -508,7 +508,9 @@
       "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur. N’utilisez que des éléments que vous avez le droit d’utiliser.",
       "progress": {
         "reading": "Lecture du fichier…",
-        "storing": "Stockage…"
+        "storing": "Stockage…",
+        "connecting": "Connexion…",
+        "downloading": "Téléchargement…"
       },
       "part": {
         "list": "liste",
@@ -541,6 +543,44 @@
         "audioLength": "Dans ce fichier, l’audio ({0}) dépasse {1} secondes au total.",
         "packageTooLarge": "Cet élément dépasse {0} une fois stocké.",
         "storeFailed": "Cet élément n’a pas pu être stocké."
+      },
+      "chooseHint": "Depuis un fichier ou un serveur Sonolus",
+      "fromFile": "Depuis un fichier",
+      "fromServer": "Depuis un serveur",
+      "serverAddress": "Adresse du serveur",
+      "connect": "Se connecter",
+      "search": "Rechercher…",
+      "more": "Plus",
+      "alsoServerItem": "Utiliser aussi \"{1}\" ({0}) de ce serveur",
+      "noneFound": "Aucun élément trouvé",
+      "forServerOwners": "Pour les propriétaires de serveur",
+      "server": {
+        "blocked": "Ce serveur n’autorise pas l’accès depuis les pages web.",
+        "blockedRoute": "Pour utiliser l’un de ses éléments, obtenez-le sous forme de fichier .scp et choisissez Depuis un fichier.",
+        "blockedOwners": "Envoyez l’en-tête Access-Control-Allow-Origin avec la valeur * sur /sonolus/* et sur les fichiers de ressources.",
+        "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
+        "auth": "Ce serveur demande une connexion, que l’éditeur ne prend pas en charge.",
+        "insecure": "Ce serveur utilise http, que l’éditeur ne peut pas charger depuis une page https.",
+        "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
+        "notFound": "Ce serveur n’a pas cet élément.",
+        "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
+        "status": "Ce serveur a répondu par une erreur ({0}).",
+        "addressEmpty": "Saisissez l’adresse d’un serveur.",
+        "addressInvalid": "Cette adresse de serveur n’est pas valide.",
+        "addressCredentials": "Une adresse de serveur ne peut pas contenir de nom d’utilisateur ni de mot de passe."
+      },
+      "serverImport": {
+        "tooBig": "Dans cet élément, {1} ({0}) dépasse {2}.",
+        "unreadable": "Impossible de lire {1} ({0}) dans cet élément.",
+        "missing": "Dans cet élément, {1} ({0}) manque.",
+        "notImage": "Dans cet élément, {1} ({0}) doit être une image PNG ou JPEG.",
+        "imageSize": "Dans cet élément, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
+        "spriteOutside": "Dans cet élément, les données ({0}) contiennent un sprite hors de la texture.",
+        "tooManySprites": "Dans cet élément, les données ({0}) contiennent plus de {1} sprites.",
+        "tooManyEffects": "Dans cet élément, les données ({0}) contiennent plus de {1} effets.",
+        "particleCount": "Dans cet élément, l’effet \"{1}\" ({0}) utilise plus de {2} particules.",
+        "noPerfect": "Dans cet élément, l’audio ({0}) n’a pas de clip #PERFECT utilisable.",
+        "audioLength": "Dans cet élément, l’audio ({0}) dépasse {1} secondes au total."
       }
     }
   },
@@ -697,7 +737,8 @@
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification."
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification.",
+    "builtinServer": "Pour essayer Depuis un serveur, connectez-vous à {0}, qui sert les éléments intégrés."
   },
   "elevation": {
     "edit": "Modifier les élévations",

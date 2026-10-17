@@ -508,7 +508,9 @@
       "rights": "您載入的項目僅儲存在此瀏覽器中。請只使用您有權使用的項目。",
       "progress": {
         "reading": "正在讀取檔案…",
-        "storing": "正在儲存…"
+        "storing": "正在儲存…",
+        "connecting": "正在連線…",
+        "downloading": "正在下載…"
       },
       "part": {
         "list": "清單",
@@ -541,6 +543,44 @@
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
         "packageTooLarge": "此項目儲存後超過 {0}。",
         "storeFailed": "無法儲存此項目。"
+      },
+      "chooseHint": "從檔案或 Sonolus 伺服器",
+      "fromFile": "從檔案",
+      "fromServer": "從伺服器",
+      "serverAddress": "伺服器位址",
+      "connect": "連線",
+      "search": "搜尋…",
+      "more": "更多",
+      "alsoServerItem": "同時使用此伺服器中的{0} \"{1}\"",
+      "noneFound": "找不到項目",
+      "forServerOwners": "給伺服器擁有者",
+      "server": {
+        "blocked": "此伺服器不允許網頁存取。",
+        "blockedRoute": "若要使用其中的項目，請先取得 .scp 檔案，再選擇「從檔案」。",
+        "blockedOwners": "請在 /sonolus/* 和資源檔案上傳送 Access-Control-Allow-Origin: *。",
+        "unreachable": "無法連線到此伺服器。請檢查位址，或稍後再試。",
+        "auth": "此伺服器需要登入，編輯器不支援登入。",
+        "insecure": "此伺服器使用 http，編輯器無法在 https 頁面中載入。",
+        "checksum": "此項目的檢查碼與伺服器傳送的內容不符。",
+        "notFound": "此伺服器上沒有該項目。",
+        "invalid": "此位址不是 Sonolus 伺服器。",
+        "status": "伺服器回傳了錯誤（{0}）。",
+        "addressEmpty": "請輸入伺服器位址。",
+        "addressInvalid": "伺服器位址無效。",
+        "addressCredentials": "伺服器位址不能包含使用者名稱或密碼。"
+      },
+      "serverImport": {
+        "tooBig": "此項目的{0}{1}超過 {2}。",
+        "unreadable": "無法讀取此項目的{0}{1}。",
+        "missing": "此項目缺少{0}{1}。",
+        "notImage": "此項目的{0}{1}不是 PNG 或 JPEG 圖片。",
+        "imageSize": "此項目的{0}{1}為 {2} × {3}，上限為 {4} × {4}。",
+        "spriteOutside": "此項目的{0}資料中有位於紋理之外的精靈。",
+        "tooManySprites": "此項目的{0}資料中的精靈超過 {1} 個。",
+        "tooManyEffects": "此項目的{0}資料中的效果超過 {1} 個。",
+        "particleCount": "此項目的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
+        "noPerfect": "此項目的{0}音訊中沒有可用的 #PERFECT 片段。",
+        "audioLength": "此項目的{0}音訊總長超過 {1} 秒。"
       }
     }
   },
@@ -697,7 +737,8 @@
         "properties": "再次切換到舞台變換事件工具以變更預設屬性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知的按鈕。"
+    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知的按鈕。",
+    "builtinServer": "若要試用「從伺服器」，請連線到提供內建項的 {0}。"
   },
   "elevation": {
     "edit": "編輯高度",

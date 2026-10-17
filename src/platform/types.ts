@@ -164,7 +164,10 @@ export type UpdateService = {
     check: () => Promise<boolean>
 }
 
-export type ServerFetchInit = Pick<RequestInit, 'method' | 'headers' | 'body' | 'signal'>
+export type ServerFetchInit = Pick<
+    RequestInit,
+    'method' | 'headers' | 'body' | 'signal' | 'credentials' | 'mode' | 'referrerPolicy'
+>
 
 /** Copy Diagnostic Info… (Part 1 §1.4.16); Step 1b adds the rest. */
 export type DiagnosticInfo = {

@@ -1,6 +1,7 @@
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import type { FallbackState } from './notices'
+import { displayOrigin } from './serverUrl'
 
 const strings = () => i18n.value.commands.previewAssets
 
@@ -26,7 +27,7 @@ export const reasonText = (fallback: FallbackState) => {
             // Stage 2 adds the on-this-device wording, chosen by the browserStorage capability.
             return interpolateRaw(reason.fileGone, noun)
         case 'serverFailed':
-            return interpolateRaw(reason.serverFailed, noun, fallback.origin)
+            return interpolateRaw(reason.serverFailed, noun, displayOrigin(fallback.origin))
         case 'invalid':
             return interpolateRaw(reason.invalid, noun)
         case 'defaultFailed':

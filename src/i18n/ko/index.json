@@ -508,7 +508,9 @@
       "rights": "불러온 항목은 이 브라우저에만 저장됩니다. 사용 권한이 있는 항목만 사용하세요.",
       "progress": {
         "reading": "파일을 읽는 중…",
-        "storing": "저장하는 중…"
+        "storing": "저장하는 중…",
+        "connecting": "연결하는 중…",
+        "downloading": "다운로드하는 중…"
       },
       "part": {
         "list": "목록",
@@ -541,6 +543,44 @@
         "audioLength": "이 파일의 {0} 오디오가 모두 합쳐 {1}초를 넘습니다.",
         "packageTooLarge": "이 항목은 저장하면 {0}보다 큽니다.",
         "storeFailed": "이 항목을 저장하지 못했습니다."
+      },
+      "chooseHint": "파일 또는 Sonolus 서버에서",
+      "fromFile": "파일에서",
+      "fromServer": "서버에서",
+      "serverAddress": "서버 주소",
+      "connect": "연결",
+      "search": "검색…",
+      "more": "더 보기",
+      "alsoServerItem": "이 서버의 {0} \"{1}\"도 사용",
+      "noneFound": "항목을 찾을 수 없습니다",
+      "forServerOwners": "서버 운영자용",
+      "server": {
+        "blocked": "이 서버는 웹 페이지에서의 접근을 허용하지 않습니다.",
+        "blockedRoute": "항목을 사용하려면 .scp 파일로 받은 뒤 \"파일에서\"를 선택하세요.",
+        "blockedOwners": "/sonolus/* 및 리소스 파일 응답에 Access-Control-Allow-Origin: * 헤더를 추가하세요.",
+        "unreachable": "이 서버에 연결할 수 없습니다. 주소를 확인하거나 나중에 다시 시도하세요.",
+        "auth": "이 서버는 로그인이 필요하지만 편집기는 로그인을 지원하지 않습니다.",
+        "insecure": "이 서버는 http를 사용하며, 편집기는 https 페이지에서 이를 불러올 수 없습니다.",
+        "checksum": "이 항목의 체크섬이 서버가 보낸 내용과 일치하지 않습니다.",
+        "notFound": "이 서버에 해당 항목이 없습니다.",
+        "invalid": "이 주소는 Sonolus 서버가 아닙니다.",
+        "status": "서버가 오류({0})를 반환했습니다.",
+        "addressEmpty": "서버 주소를 입력하세요.",
+        "addressInvalid": "올바른 서버 주소가 아닙니다.",
+        "addressCredentials": "서버 주소에는 사용자 이름이나 비밀번호를 넣을 수 없습니다."
+      },
+      "serverImport": {
+        "tooBig": "이 항목의 {0} {1}이(가) {2}보다 큽니다.",
+        "unreadable": "이 항목의 {0} {1}을(를) 읽을 수 없습니다.",
+        "missing": "이 항목의 {0} {1}이(가) 없습니다.",
+        "notImage": "이 항목의 {0} {1}이(가) PNG 또는 JPEG 이미지가 아닙니다.",
+        "imageSize": "이 항목의 {0} {1} 크기는 {2} × {3}이며, 제한은 {4} × {4}입니다.",
+        "spriteOutside": "이 항목의 {0} 데이터에 텍스처 밖에 있는 스프라이트가 있습니다.",
+        "tooManySprites": "이 항목의 {0} 데이터에 스프라이트가 {1}개를 넘습니다.",
+        "tooManyEffects": "이 항목의 {0} 데이터에 효과가 {1}개를 넘습니다.",
+        "particleCount": "이 항목의 {0} 효과 \"{1}\"에 파티클이 {2}개를 넘습니다.",
+        "noPerfect": "이 항목의 {0} 오디오에 사용할 수 있는 #PERFECT 클립이 없습니다.",
+        "audioLength": "이 항목의 {0} 오디오가 모두 합쳐 {1}초를 넘습니다."
       }
     }
   },
@@ -697,7 +737,8 @@
         "properties": "기본 속성을 변경하려면 스테이지 변형 이벤트 도구를 다시 선택합니다."
       }
     },
-    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림의 버튼으로 포커스가 이동합니다."
+    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림의 버튼으로 포커스가 이동합니다.",
+    "builtinServer": "\"서버에서\"를 사용해 보려면 내장 항목을 제공하는 {0}에 연결하세요."
   },
   "elevation": {
     "edit": "높이 편집",
