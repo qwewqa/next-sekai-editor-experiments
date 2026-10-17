@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
 import { i18n } from '../i18n'
 import { isPlaying } from '../player'
@@ -16,6 +16,15 @@ const background = useTemplateRef<HTMLDivElement>('background')
 const selectionCanvas = useTemplateRef<HTMLCanvasElement>('selection')
 const resources = usePreviewResources()
 const { status, errorDetail, loadVersion, reload } = resources
+const backgroundStyle = computed(() => {
+    const background = resources.background.value
+    return background
+        ? {
+              backgroundImage: `url("${background.url}")`,
+              backgroundColor: background.color,
+          }
+        : undefined
+})
 const viewport = usePreviewViewport(container)
 const {
     canvasStyle,
@@ -46,6 +55,7 @@ const isErrorDetailOpen = ref(false)
             <div
                 ref="background"
                 class="preview-background pointer-events-none absolute inset-0 origin-top-left"
+                :style="backgroundStyle"
                 aria-hidden="true"
             />
             <canvas
@@ -129,6 +139,8 @@ const isErrorDetailOpen = ref(false)
 
 <style scoped>
 .preview-background {
-    background: url('./bg.png') center / cover no-repeat;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 </style>

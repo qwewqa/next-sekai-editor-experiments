@@ -8,7 +8,7 @@ export const loadPreviewResource = async <T extends { texture: ImageBitmap }>(
     const isAborted = () => signal.aborted
     if (isAborted()) return
 
-    const response = await fetch(url, { cache: 'no-store', signal })
+    const response = await fetch(url, { signal })
     if (isAborted() || response.status === 404) return
     if (!response.ok) throw new Error(`Resource download failed: HTTP ${response.status}`)
 
