@@ -102,6 +102,7 @@ test.beforeEach(async ({ page }) => {
                 | 'moveTo'
                 | 'lineTo'
                 | 'fill'
+                | 'fillConnectorBody'
                 | 'fillCircle'
                 | 'stroke'
                 | 'strokeLine'
@@ -134,6 +135,7 @@ test.beforeEach(async ({ page }) => {
         wrap('moveTo', (ctx, args) => points.get(ctx)?.push(args[1] as number))
         wrap('lineTo', (ctx, args) => points.get(ctx)?.push(args[1] as number))
         wrap('fill', (_, args, ops) => ops.push(args[0] instanceof DrawPath ? 'slide' : 'fill'))
+        wrap('fillConnectorBody', (_, __, ops) => ops.push('slide'))
         wrap('fillCircle', (_, __, ops) => ops.push('fill'))
         wrap('stroke', (ctx, args, ops) => {
             const ys = points.get(ctx)
@@ -217,18 +219,15 @@ for (const layout of ['basic', 'composed'] as const) {
         }, layout)
         await expect
             .poll(async () => {
-                const { ops, vectors, cursorTime } = await frameOps(page, 'chart')
+                const { ops, vectors } = await frameOps(page, 'chart')
                 const lastSlide = ops.lastIndexOf('slide')
                 const lines = ops.flatMap((op, index) => {
                     const [kind, color, y] = op.split(':')
                     return kind === 'line' ? [{ color, y: Number(y), index }] : []
                 })
-                // The BPM change is 2 s in, so its line gives the units per second.
-                const bpmLine = lines.find(({ color, y }) => color === '#ff00ff' && y !== 0)
-                const ups = (bpmLine?.y ?? NaN) / 2
-                const cursor = lines.find(
-                    ({ color, y }) => color === '#ffffff' && Math.abs(y - cursorTime * ups) < 1e-6,
-                )
+                // Event lines are retained as points drawn at y 0, so only the cursor line,
+                // which is not retained, is a white line off 0.
+                const cursor = lines.find(({ color, y }) => color === '#ffffff' && y !== 0)
                 const drawn = texts(ops)
                 // Slides, notes, connections and BPM and time scale lines.
                 const firstObject = ops.findIndex(

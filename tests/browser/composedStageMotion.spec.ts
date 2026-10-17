@@ -526,7 +526,8 @@ test.describe('changes during motion', () => {
     test('a theme switch mid-scroll settles on a fresh frame in the new theme', async ({
         page,
     }, testInfo) => {
-        // Selected names drawn against the chart background follow the theme.
+        // The chart canvas is transparent over the themed background and its names do not
+        // change with the theme, so the theme shows in the page background only.
         const seedNames = (time: number) =>
             page.evaluate(async (time) => {
                 const { fixtures, show, view, settings, history, store, appImport, nextTick } =
@@ -590,10 +591,14 @@ test.describe('changes during motion', () => {
         expect(difference.changed).toBeLessThanOrEqual(16)
         expect(difference.integrated).toBeLessThanOrEqual(2)
         expect(difference.interior).toBe(0)
+        const background = () =>
+            page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+        const light = await background()
         await page.evaluate(() => {
             window.editorTest.settings.theme = 'dark'
         })
-        expect(settled.equals(await pixels(page))).toBe(false)
+        expect(await theme()).toBe('dark')
+        expect(await background()).not.toBe(light)
     })
 
     test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {

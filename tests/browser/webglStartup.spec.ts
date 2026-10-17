@@ -104,7 +104,7 @@ for (const mode of ['sync', 'async'] as const) {
         const alert = page.locator('.rendering-error')
         await expect(alert).toContainText(
             mode === 'sync'
-                ? 'Unable to create the editor WebGL context'
+                ? 'Unable to create the editor WebGL2 context'
                 : 'Injected renderer initialization failure',
         )
         const before = await page.evaluate(() => window.editorTest.snapshot().notes)
