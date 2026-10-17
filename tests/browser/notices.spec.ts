@@ -483,3 +483,108 @@ test('a notice raised while a dialog is open is announced by the dialog', async 
     await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
     await expect(page.getByRole('status')).toHaveCount(1)
 })
+
+type RegionEntry = { added: number; texts: { text: string; at: number }[] }
+
+/** Records when each live region is added and each text it takes, in `window.regionLog`. */
+const watchRegions = () => {
+    const log: RegionEntry[] = []
+    Reflect.set(window, 'regionLog', log)
+    const tracked = new WeakMap<Element, RegionEntry>()
+    const look = () => {
+        for (const region of document.querySelectorAll('[data-notice-region]')) {
+            let entry = tracked.get(region)
+            if (!entry) {
+                entry = { added: performance.now(), texts: [] }
+                tracked.set(region, entry)
+                log.push(entry)
+            }
+            const text = region.textContent ?? ''
+            if (text && entry.texts.at(-1)?.text !== text)
+                entry.texts.push({ text, at: performance.now() })
+        }
+    }
+    new MutationObserver(look).observe(document, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+    })
+}
+
+/** How long after its region was added a text first appeared in it. */
+const delayOf = async (page: Page, text: string) => {
+    const log = await page.evaluate(() => Reflect.get(window, 'regionLog') as RegionEntry[])
+    const entry = log.find((e) => e.texts.some((t) => t.text === text))
+    expect(entry, text).toBeDefined()
+    return entry!.texts.find((t) => t.text === text)!.at - entry!.added
+}
+
+const openBlocking = (page: Page, notice?: string) =>
+    page.evaluate(async (notice) => {
+        const { showChoice } =
+            await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
+                '/src/modals/choice.ts',
+            )
+        const { notify } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        // The notice comes first in the same tick, with no region on the page yet to hold it.
+        if (notice) notify(() => notice)
+        void showChoice({
+            title: () => 'Blocking',
+            choices: [{ value: 'go', label: () => 'Go', default: true }],
+        })
+    }, notice)
+
+test('a notice raised just before a dialog opens is announced by the dialog’s region, after it is ready', async ({
+    page,
+}) => {
+    await boot(page, watchRegions)
+    await expect(page.getByRole('status')).toHaveText(/Version 0\.6\.0/)
+    await openBlocking(page, 'Raised just before')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('status')).toHaveText('Raised just before')
+    // Not written as the region was added: a live region may miss that.
+    expect(await delayOf(page, 'Raised just before')).toBeGreaterThanOrEqual(80)
+})
+
+test('a notice raised right after a page region is put back is not written as it is added', async ({
+    page,
+}) => {
+    await boot(page, watchRegions)
+    await expect(page.getByRole('status')).toHaveText(/Version 0\.6\.0/)
+    await openBlocking(page)
+    // A press right after opening is ignored, so press until it closes.
+    await expect(async () => {
+        await page.getByRole('dialog').getByRole('button', { name: 'Go' }).click({ timeout: 500 })
+        await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 500 })
+    }).toPass()
+    await page.evaluate(async () => {
+        const { notify } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        notify(() => 'Raised after closing')
+    })
+    await expect(page.getByRole('status')).toHaveText('Raised after closing')
+    expect(await delayOf(page, 'Raised after closing')).toBeGreaterThanOrEqual(80)
+})
+
+test('a dialog opened before the start-up line is put in announces it', async ({ page }) => {
+    // Hold the region's 100 ms wait, so the dialog opens before it.
+    await boot(page, () => {
+        const held: (() => void)[] = []
+        Reflect.set(window, 'releaseHeld', () => held.splice(0).forEach((run) => run()))
+        const original = window.setTimeout
+        window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) =>
+            delay === 100 && typeof handler === 'function'
+                ? (held.push(() => handler(...args)), 0)
+                : original(handler, delay, ...args)) as typeof window.setTimeout
+    })
+    await expect(page.getByRole('status')).toHaveText('')
+    await openBlocking(page)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('status')).toHaveText('')
+    await page.evaluate(() => (Reflect.get(window, 'releaseHeld') as () => void)())
+    await expect(dialog.getByRole('status')).toHaveText(/Version 0.6.0/)
+})

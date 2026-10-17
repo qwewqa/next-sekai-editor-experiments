@@ -7,9 +7,12 @@ import { notify } from '../../notification'
 
 const carriesFiles = (event: DragEvent) => !!event.dataTransfer?.types.includes('Files')
 
+// Text-entry fields only: a link dropped on a checkbox or a slider would navigate the tab.
+const textField =
+    'input:not([type]), input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="number"], input[type="tel"], input[type="password"], textarea, [contenteditable]:not([contenteditable="false"])'
+
 const intoField = (event: DragEvent) =>
-    event.target instanceof HTMLElement &&
-    !!event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
+    event.target instanceof HTMLElement && !!event.target.closest(textField)
 
 const onDragover = (event: DragEvent) => {
     if (carriesFiles(event) || !intoField(event)) event.preventDefault()

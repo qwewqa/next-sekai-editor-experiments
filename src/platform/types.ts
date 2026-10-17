@@ -90,7 +90,7 @@ export type SaveRequest = {
     replaces?: string
     /** Runs after any pick. */
     build: (sources: PinnedSource[]) => Promise<FileBody>
-    /** Cancels a pending write before it commits. */
+    /** Cancels a pending write before it commits; a pick `picked` accepted is written to its end. */
     signal?: AbortSignal
     /** The save picker, when no target is given; level data defaults to today's. */
     picker?: SavePicker
@@ -108,12 +108,18 @@ export type SaveResult =
 
 export type FileErrorCode = 'conflict' | 'not-found' | 'denied' | 'not-local' | 'no-space' | 'io'
 
+/** Which step failed, where the code alone does not tell the user. */
+export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download'
+
 /** How a file operation fails. */
 export class FileError extends Error {
     constructor(
         readonly code: FileErrorCode,
         message: string,
         readonly disk?: DiskState,
+        readonly step?: FileErrorStep,
+        /** The file that failed, where the caller may not know it, as a picked one. */
+        readonly fileName?: string,
     ) {
         super(message)
         this.name = 'FileError'

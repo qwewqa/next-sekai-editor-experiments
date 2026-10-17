@@ -1650,7 +1650,8 @@
     "export": "Exporter",
     "exported": "Exporté vers {0}",
     "notLevelData": "\"{0}\" ne contient pas de données de niveau.",
-    "fileType": "Données de niveau Next SEKAI"
+    "fileType": "Données de niveau Next SEKAI",
+    "unsupportedParts": "\"{0}\" contient des parties que cette version de l’éditeur ne prend pas en charge."
   },
   "peek": {
     "exportsCurrent": "Exporte la version actuelle."
@@ -1664,7 +1665,16 @@
     "notFoundNote": "Si vous l’avez déplacé ou renommé, choisissez-le à l’étape suivante et confirmez.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
-    "download": "Télécharger"
+    "download": "Télécharger",
+    "buildFailed": "\"{0}\" n’a pas pu être préparé.",
+    "readFailed": "\"{0}\" n’a pas pu être lu.",
+    "changedWhileWriting": "\"{0}\" a changé pendant son écriture.",
+    "downloadFailed": "\"{0}\" n’a pas pu être téléchargé.",
+    "notLocal": "\"{0}\" n’est pas encore disponible sur cet appareil.",
+    "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
+    "writeFailed": "\"{0}\" n’a pas pu être écrit.",
+    "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
+    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert."
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",

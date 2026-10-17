@@ -103,6 +103,12 @@ const preparingText = computed(() =>
         : '',
 )
 
+// Cancel, × and Escape stop a running export; once a follow-up dialog takes over, it runs on.
+// An accepted pick, which the picker emptied (D5), is written first, then the dialog closes.
+const controller = new AbortController()
+let left = false
+let committed = false
+
 const context = (): ExportContext => ({
     ui: exportUi,
     build: buildLevelData,
@@ -113,9 +119,14 @@ const context = (): ExportContext => ({
         : [{ description: i18n.value.export.fileType, extension: '.nsld' }],
     exportName: fromSource.value ? undefined : value.value,
     leave: () => {
+        left = true
         emit('close')
     },
     ready,
+    signal: controller.signal,
+    committed: () => {
+        committed = true
+    },
 })
 
 // The flow starts in the press itself, so its first call keeps the gesture.
@@ -152,15 +163,21 @@ const download = () => {
     answerReady = undefined
 }
 
-const cancel = () => {
+const stop = () => {
+    if (!left && !committed) controller.abort()
     answerReady?.(false)
     answerReady = undefined
+}
+
+const cancel = () => {
+    stop()
+    if (committed && busy.value) return
     emit('close')
 }
 
 onBeforeUnmount(() => {
     clearTimeout(pause)
-    answerReady?.(false)
+    stop()
 })
 
 const buttonClass =
@@ -174,6 +191,7 @@ const buttonClass =
             class="flex flex-col gap-4"
             :data-modal-busy="busy || undefined"
             @submit.prevent="submit"
+            @modalcancel="cancel"
         >
             <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
                 {{ preparingText }}

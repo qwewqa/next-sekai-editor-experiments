@@ -23,7 +23,11 @@ import {
 } from '../../src/levelData/known'
 import { LEVEL_VERSION } from '../../src/levelData/levelVersion'
 import { parseLevelData } from '../../src/levelData/parse'
-import { LevelDataReport, reportLevelDataEntities } from '../../src/levelData/report'
+import {
+    LevelDataReport,
+    reportLevelDataEntities,
+    resetAllowedFieldsForTests,
+} from '../../src/levelData/report'
 import { LATEST_REVISION } from '../../src/levelData/revision'
 import { createState } from '../../src/state'
 import { pinned } from './levelDataPin'
@@ -532,6 +536,7 @@ test('an ignored entry added with a version bump leaves the earlier tables as th
     const before = tableLevelVersion()
     archetypes.GuideSegment = { reason: 'rewritten', note: 'test', since: before + 1 }
     fields['#BPM_CHANGE'] = { swing: { reason: 'nothing', note: 'test', since: before + 1 } }
+    resetAllowedFieldsForTests()
     try {
         assert.equal(tableLevelVersion(), before + 1)
         assert.deepEqual(tableAt(before), pinned[before])
@@ -547,6 +552,7 @@ test('an ignored entry added with a version bump leaves the earlier tables as th
     } finally {
         delete archetypes.GuideSegment
         delete fields['#BPM_CHANGE']
+        resetAllowedFieldsForTests()
     }
 })
 

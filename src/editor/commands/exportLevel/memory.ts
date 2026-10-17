@@ -19,7 +19,9 @@ export type OpenedSource = {
     handle: FileSystemFileHandle
     /** This engine's level data by content; a chart or another engine's level is not. */
     levelData: boolean
-    /** The bytes read, to put back if a save picker empties the file (D5). */
+    /** Level data whose import left parts out, so it is never written over (D2). */
+    partial: boolean
+    /** The bytes read, for a file never written over, to put back if a picker empties it (D5). */
     bytes?: ArrayBuffer
 }
 
@@ -29,6 +31,8 @@ export type ExportMemory = {
     exportName?: string
     /** The gzipped level data file this session was imported from, by its own name. */
     sourceName?: string
+    /** Imported from level data with parts left out: pickers suggest "<name> (2)" (§1.4.7). */
+    partial?: boolean
     opened?: OpenedSource
 }
 
@@ -39,10 +43,14 @@ export const clearExportMemory = () => {
     delete exportMemory.target
     delete exportMemory.exportName
     delete exportMemory.sourceName
+    delete exportMemory.partial
     delete exportMemory.opened
 }
 
 onResetState(clearExportMemory)
+
+/** The name a picker suggests: "<name> (2)" for an unlinked copy, so it is not the original's. */
+export const copyName = (name: string) => (name && exportMemory.partial ? `${name} (2)` : name)
 
 /** Whether two handles name one file; false where the browser cannot tell. */
 export const sameEntry = async (a: FileSystemFileHandle, b: FileSystemFileHandle) => {

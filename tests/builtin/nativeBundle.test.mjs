@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { after, before, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { buildNative, stageNativePublic } from '../../scripts/build-native.mjs'
-import { checkNativeBundle, localReferences } from '../../scripts/check-native-bundle.mjs'
+import {
+    checkNativeBundle,
+    localReferences,
+    mentionsCrate,
+} from '../../scripts/check-native-bundle.mjs'
 import { nativeIndexHtml, productName } from '../../scripts/native.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -14,7 +18,7 @@ const planted = join(root, 'public/resource/skin.scp')
 
 let scratch
 let dist
-let plantedHere = false
+let createdDir // the first folder the test created, if any
 
 const copyDist = async (name) => {
     const target = join(scratch, name)
@@ -28,15 +32,18 @@ before(async () => {
     scratch = await mkdtemp(join(tmpdir(), 'sekai-native-test-'))
     // A local public/resource/ must not reach the build; plant one when the checkout has none.
     if (!existsSync(planted)) {
-        await mkdir(dirname(planted), { recursive: true })
+        createdDir = await mkdir(dirname(planted), { recursive: true })
         await writeFile(planted, 'planted')
-        plantedHere = true
     }
     dist = await buildNative({ root, outDir: join(scratch, 'dist-native') })
 })
 
 after(async () => {
-    if (plantedHere) await rm(dirname(planted), { recursive: true, force: true })
+    // Remove only what the test made: the planted file, and the folders it created.
+    if (existsSync(planted) && readFileSync(planted, 'utf8') === 'planted') {
+        await rm(planted, { force: true })
+        if (createdDir) await rm(createdDir, { recursive: true, force: true })
+    }
     await rm(scratch, { recursive: true, force: true })
 })
 
@@ -166,4 +173,15 @@ test('the bundle check fails on each kind of web-only content', async () => {
     )
     if (!existsSync(join(root, 'src-tauri/Cargo.lock')))
         await tamper('full', async () => undefined, /Cargo\.lock is missing/, { full: true })
+})
+
+test('a crate counts as named only by its whole name', () => {
+    const notices = 'catalog 1.0\nserde_json 1.0.1\nlog-surgeon\nurl 2.5.0\n'
+    assert.equal(mentionsCrate(notices, 'log'), false)
+    assert.equal(mentionsCrate(notices, 'serde'), false)
+    assert.equal(mentionsCrate(notices, 'cat'), false)
+    assert.equal(mentionsCrate(notices, 'serde_json'), true)
+    assert.equal(mentionsCrate(notices, 'url'), true)
+    assert.equal(mentionsCrate('a.b 1', 'a.b'), true)
+    assert.equal(mentionsCrate('axb 1', 'a.b'), false)
 })

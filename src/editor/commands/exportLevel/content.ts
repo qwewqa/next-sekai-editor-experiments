@@ -22,3 +22,7 @@ export const isLevelDataContent = (bytes: Uint8Array) => {
         !isChcyLevelData(json)
     )
 }
+
+/** Whether a file starting with this byte may be level data: gzip, or JSON text. */
+export const mayBeLevelData = (first: number | undefined) =>
+    first !== undefined && [0x1f, 0x7b, 0x20, 0x09, 0x0a, 0x0d, 0xef].includes(first)

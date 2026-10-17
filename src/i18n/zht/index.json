@@ -1650,21 +1650,31 @@
     "export": "匯出",
     "exported": "已匯出至 {0}",
     "notLevelData": "\"{0}\" 不是關卡資料。",
-    "fileType": "Next SEKAI 關卡資料"
+    "fileType": "Next SEKAI 關卡資料",
+    "unsupportedParts": "\"{0}\" 包含此版本編輯器不支援的部分。"
   },
   "peek": {
     "exportsCurrent": "匯出目前版本。"
   },
   "save": {
     "fileName": "檔案名稱",
-    "chooseAnother": "選擇其他…",
+    "chooseAnother": "選擇其他檔案…",
     "tryAgain": "重試",
     "denied": "瀏覽器不允許寫入 {0}。",
     "notFound": "找不到 \"{0}\"。",
     "notFoundNote": "如果已移動或重新命名，請在下一步中選擇它並確認。",
     "downloadStarted": "已開始下載：{0} · {1}",
     "preparing": "正在準備 {0}… {1}",
-    "download": "下載"
+    "download": "下載",
+    "buildFailed": "無法準備 \"{0}\"。",
+    "readFailed": "無法讀取 \"{0}\"。",
+    "changedWhileWriting": "\"{0}\" 在寫入時已變更。",
+    "downloadFailed": "無法下載 \"{0}\"。",
+    "notLocal": "\"{0}\" 尚不在此裝置上。",
+    "noSpace": "空間不足，無法寫入 {0}。",
+    "writeFailed": "無法寫入 \"{0}\"。",
+    "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
+    "openedContentGone": "\"{0}\" 已不再包含開啟時的內容。"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",

@@ -1650,21 +1650,31 @@
     "export": "导出",
     "exported": "已导出到 {0}",
     "notLevelData": "“{0}”不是关卡数据。",
-    "fileType": "Next SEKAI 关卡数据"
+    "fileType": "Next SEKAI 关卡数据",
+    "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
   },
   "peek": {
     "exportsCurrent": "导出当前版本。"
   },
   "save": {
     "fileName": "文件名",
-    "chooseAnother": "选择其他…",
+    "chooseAnother": "选择其他文件…",
     "tryAgain": "重试",
     "denied": "浏览器不允许写入 {0}。",
     "notFound": "找不到“{0}”。",
     "notFoundNote": "如果已移动或重命名，请在下一步中选择它并确认。",
     "downloadStarted": "已开始下载：{0} · {1}",
     "preparing": "正在准备 {0}… {1}",
-    "download": "下载"
+    "download": "下载",
+    "buildFailed": "无法准备“{0}”。",
+    "readFailed": "无法读取“{0}”。",
+    "changedWhileWriting": "“{0}”在写入时已更改。",
+    "downloadFailed": "无法下载“{0}”。",
+    "notLocal": "“{0}”尚不在此设备上。",
+    "noSpace": "空间不足，无法写入 {0}。",
+    "writeFailed": "无法写入“{0}”。",
+    "notPutBack": "“{0}”已被清空，且无法恢复其内容。",
+    "openedContentGone": "“{0}”已不再包含打开时的内容。"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",

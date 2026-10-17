@@ -7,7 +7,7 @@ import { platform } from '../../../platform'
 import ExportIcon from './ExportIcon.vue'
 import ExportModal from './ExportModal.vue'
 import { validName } from './fileName'
-import { exportMemory } from './memory'
+import { copyName, exportMemory } from './memory'
 
 export const exportLevel: Command = {
     // Exports the live session while peeking, as Save does.
@@ -20,9 +20,10 @@ export const exportLevel: Command = {
     execute() {
         const { exportName, sourceName } = exportMemory
         const target = platform.capabilities.writeBack ? exportMemory.target : undefined
-        // The name used last; else the source file's own name; else the displayed name, made valid.
+        // The name used last; else the source file's own name; else the displayed name, made
+        // valid, as "<name> (2)" for a partial import so the picker never suggests the original.
         const fromSource = exportName === undefined && sourceName !== undefined
-        const name = exportName ?? sourceName ?? validName(filename.value ?? '')
+        const name = exportName ?? sourceName ?? copyName(validName(filename.value ?? ''))
         void showModal(ExportModal, {
             target,
             name,

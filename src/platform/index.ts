@@ -2,7 +2,7 @@ import { platform as buildPlatform } from '#platform'
 import { startDetection } from './detect'
 import type { Platform } from './types'
 
-export { levelDataDiskState } from './fingerprint'
+export { diskStateOfBytes, levelDataDiskState } from './fingerprint'
 export * from './types'
 export { appVersion, type AppVersion } from './version'
 

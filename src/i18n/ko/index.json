@@ -1644,13 +1644,14 @@
   "export": {
     "title": "레벨 데이터 내보내기",
     "to": "대상",
-    "targetOpened": "{0} (연 파일)",
+    "targetOpened": "{0} (열었던 파일)",
     "targetLast": "{0} (마지막으로 내보낸 파일)",
     "placeholder": "LevelData",
     "export": "내보내기",
     "exported": "{0}에 내보냄",
     "notLevelData": "\"{0}\"은(는) 레벨 데이터가 아닙니다.",
-    "fileType": "Next SEKAI 레벨 데이터"
+    "fileType": "Next SEKAI 레벨 데이터",
+    "unsupportedParts": "\"{0}\"에는 이 버전의 편집기가 지원하지 않는 부분이 있습니다."
   },
   "peek": {
     "exportsCurrent": "현재 버전을 내보냅니다."
@@ -1664,13 +1665,22 @@
     "notFoundNote": "옮기거나 이름을 바꿨다면 다음 단계에서 파일을 선택하고 확인하세요.",
     "downloadStarted": "다운로드 시작됨: {0} · {1}",
     "preparing": "{0} 준비 중… {1}",
-    "download": "다운로드"
+    "download": "다운로드",
+    "buildFailed": "\"{0}\"을(를) 준비하지 못했습니다.",
+    "readFailed": "\"{0}\"을(를) 읽지 못했습니다.",
+    "changedWhileWriting": "\"{0}\"이(가) 쓰는 중에 변경되었습니다.",
+    "downloadFailed": "\"{0}\"을(를) 다운로드하지 못했습니다.",
+    "notLocal": "\"{0}\"이(가) 아직 이 기기에 없습니다.",
+    "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
+    "writeFailed": "\"{0}\"에 쓰지 못했습니다.",
+    "notPutBack": "\"{0}\"이(가) 비워졌으며 원래 내용을 되돌리지 못했습니다.",
+    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다."
   },
   "conflict": {
     "exportTitle": "\"{0}\" 변경됨",
     "exportBody": "\"{0}\"이(가) 마지막으로 내보낸 후 변경되었습니다.",
     "exportBodyOpened": "\"{0}\"이(가) 여기서 연 후 변경되었습니다.",
-    "replace": "바꾸기"
+    "replace": "교체"
   },
   "name": {
     "invalidChar": "이름에 {0}을(를) 포함할 수 없습니다",

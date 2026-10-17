@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { productName as manifestName } from '../../builtin-assets/manifest.mjs'
 import {
     arrowColors,
@@ -97,7 +98,7 @@ const lint = async (filePath, code) => {
     const eslint = new ESLint({
         overrideConfigFile: true,
         overrideConfig: boundary,
-        cwd: new URL('../../', import.meta.url).pathname.slice(1),
+        cwd: fileURLToPath(new URL('../../', import.meta.url)),
     })
     const [result] = await eslint.lintText(code, { filePath })
     return result.messages.map((message) => message.ruleId).filter(Boolean)
@@ -113,6 +114,13 @@ test('the boundary rules stop native names in shared code', async () => {
         'export const tauri = isTauri()\n',
         'export const kind = platform.kind\n',
         'export const os = platform.os\n',
+        'const { kind } = platform\n',
+        'export const k = this.platform.kind\n',
+        "export const k = platform['kind']\n",
+        'const { os } = deps.platform\n',
+        "export const lazy = () => import('../platform/native')\n",
+        "export const lazy = () => import('../library/home')\n",
+        "export const lazy = () => import('@tauri-apps/api/core')\n",
     ])
         assert.ok((await lint(shared, code)).length > 0, code)
     assert.deepEqual(
@@ -134,4 +142,8 @@ test('the boundary rules allow native names where they belong', async () => {
     )
     assert.deepEqual(await lint('src/library/example.ts', 'export const n = __NATIVE__\n'), [])
     assert.deepEqual(await lint('src/platform/example.ts', 'export const k = platform.kind\n'), [])
+    assert.deepEqual(
+        await lint('src/nativeLoader.ts', "export const l = () => import('./library/home')\n"),
+        [],
+    )
 })

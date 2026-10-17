@@ -70,6 +70,7 @@ export const open: Command = {
                 signal.throwIfAborted()
 
                 const [type, data] = tryImport(buffer)
+                let partial = false
                 try {
                     switch (type) {
                         case 'chcy': {
@@ -101,10 +102,13 @@ export const open: Command = {
 
                             // Content this build did not read: no file is written over (D2).
                             const complete = report.isEmpty
+                            partial = !complete
                             resetState(false, chart, levelData.bgmOffset, {
                                 sourceName: getFilename(file),
                             })
                             setLevelDataHandle(complete ? handle : undefined)
+                            // Pickers then suggest "<name> (2)", never the original (§1.4.7).
+                            if (partial) exportMemory.partial = true
                             warning = complete ? revisionWarning : 'unsupportedParts'
                             if (complete && isGzip(buffer)) {
                                 // Export's own format: its file is the remembered target (§1.4.8).
@@ -154,7 +158,9 @@ export const open: Command = {
                     exportMemory.opened = {
                         handle,
                         levelData: type === 'levelData',
-                        bytes: type === 'levelData' ? undefined : buffer,
+                        partial,
+                        // Complete level data may be written over; anything else is kept.
+                        bytes: type === 'levelData' && !partial ? undefined : buffer,
                     }
 
                 notify(() => i18n.value.commands.open[openedMessages[type]])

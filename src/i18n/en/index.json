@@ -1650,7 +1650,8 @@
         "export": "Export",
         "exported": "Exported to {0}",
         "notLevelData": "\"{0}\" is not level data.",
-        "fileType": "Next SEKAI level data"
+        "fileType": "Next SEKAI level data",
+        "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
     },
     "peek": {
         "exportsCurrent": "Exports the current version."
@@ -1664,7 +1665,16 @@
         "notFoundNote": "If you moved or renamed it, choose it in the next step and confirm.",
         "downloadStarted": "Download started: {0} · {1}",
         "preparing": "Preparing {0}… {1}",
-        "download": "Download"
+        "download": "Download",
+        "buildFailed": "\"{0}\" could not be prepared.",
+        "readFailed": "\"{0}\" could not be read.",
+        "changedWhileWriting": "\"{0}\" changed while it was being written.",
+        "downloadFailed": "\"{0}\" could not be downloaded.",
+        "notLocal": "\"{0}\" is not available on this device yet.",
+        "noSpace": "There is not enough space to write {0}.",
+        "writeFailed": "\"{0}\" could not be written.",
+        "notPutBack": "\"{0}\" was emptied, and its content could not be put back.",
+        "openedContentGone": "\"{0}\" no longer holds the content you opened."
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",

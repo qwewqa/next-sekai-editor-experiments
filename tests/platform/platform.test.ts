@@ -102,7 +102,8 @@ test('the mock downloads, writes to targets and cancels', async () => {
         }),
         { status: 'cancelled' },
     )
-    assert.equal(built, false)
+    // Built before the picker, as on the web, since the picker empties what it returns (D5).
+    assert.equal(built, true)
 
     const handle = mock.createHandle('chart.nsld')
     const result = await mock.saveFile({

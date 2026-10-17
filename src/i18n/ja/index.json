@@ -275,7 +275,7 @@
         "meter": "拍子が無効です",
         "missingMeter": "小節 {0} の拍子がありません"
       },
-      "unsupportedParts": "この譜面には、このバージョンのエディターが対応していない部分があります。それらは読み込まれていません。"
+      "unsupportedParts": "この譜面には、このバージョンのエディターが対応していない部分があります。その部分は読み込まれていません。"
     },
     "paste": {
       "title": "ペースト",
@@ -1650,7 +1650,8 @@
     "export": "出力",
     "exported": "{0} に出力しました",
     "notLevelData": "「{0}」はレベルデータではありません。",
-    "fileType": "Next SEKAI レベルデータ"
+    "fileType": "Next SEKAI レベルデータ",
+    "unsupportedParts": "「{0}」には、このバージョンのエディターが対応していない部分があります。"
   },
   "peek": {
     "exportsCurrent": "現在のバージョンを出力します。"
@@ -1662,9 +1663,18 @@
     "denied": "ブラウザが {0} への書き込みを許可しませんでした。",
     "notFound": "「{0}」が見つかりません。",
     "notFoundNote": "移動または名前を変更した場合は、次の画面でそのファイルを選んで確定してください。",
-    "downloadStarted": "ダウンロードを開始しました: {0} · {1}",
+    "downloadStarted": "ダウンロードを開始しました：{0} · {1}",
     "preparing": "{0} を準備中… {1}",
-    "download": "ダウンロード"
+    "download": "ダウンロード",
+    "buildFailed": "「{0}」を準備できませんでした。",
+    "readFailed": "「{0}」を読み込めませんでした。",
+    "changedWhileWriting": "「{0}」は書き込み中に変更されました。",
+    "downloadFailed": "「{0}」をダウンロードできませんでした。",
+    "notLocal": "「{0}」はまだこのデバイス上にありません。",
+    "noSpace": "{0} を書き込むための空き容量が足りません。",
+    "writeFailed": "「{0}」に書き込めませんでした。",
+    "notPutBack": "「{0}」は空になり、元の内容を戻せませんでした。",
+    "openedContentGone": "「{0}」には、開いたときの内容がもうありません。"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",

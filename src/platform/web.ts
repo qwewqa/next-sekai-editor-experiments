@@ -113,9 +113,8 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     if (req.target && permission) {
         // A precondition makes a failure the caller's to show; without one, today's download.
         if (req.expected !== undefined) return writeHandle(req, req.target.handle, permission)
-        return writeHandle(req, req.target.handle, permission).catch(async (error: unknown) => {
+        return writeHandle(req, req.target.handle, permission).catch(async () => {
             signal?.throwIfAborted()
-            if (isAbort(error)) throw error
             const blob = toBlob(await req.build([]))
             await verifyBuilt(req.kind, blob)
             return handOver(blob, req.suggestedName, startedAt, req.ready)
@@ -137,26 +136,29 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
             if (isAbort(error)) return { status: 'cancelled' }
             throw error
         }
-        signal?.throwIfAborted()
     }
 
-    if (!handle) return handOver(blob, req.suggestedName, startedAt, req.ready)
+    if (!handle) {
+        signal?.throwIfAborted()
+        return handOver(blob, req.suggestedName, startedAt, req.ready)
+    }
 
+    // Checked before a cancel is honoured, so a refused file the picker emptied is put back.
     const target: FileTarget = { kind: 'handle', handle }
     if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
     signal?.throwIfAborted()
-    // A picked file is the user's confirmed choice; it is written without a precondition.
+    // The user's choice, which the picker emptied (D5): written without a precondition, and to
+    // its end once accepted, cancel or not.
     const picked: SaveRequest = {
         ...req,
         target,
         expected: undefined,
+        signal: undefined,
         build: () => Promise.resolve(blob),
     }
     try {
         return await writeHandle(picked, handle, requestWrite(handle))
     } catch (error) {
-        signal?.throwIfAborted()
-        if (isAbort(error)) throw error
         // A picked file that could not be written is downloaded instead, as today.
         if (req.kind === 'nsld' && !req.picker)
             return handOver(blob, req.suggestedName, startedAt, req.ready)
