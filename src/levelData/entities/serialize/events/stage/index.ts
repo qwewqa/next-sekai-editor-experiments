@@ -6,6 +6,7 @@ import type { StageEventJointEntity } from '../../../../../state/entities/events
 import type { Range } from '../../../../../utils/range'
 
 export const serializeStageEventsToLevelDataEntities = <T extends StageEventJointEntity>(
+    joints: readonly T[],
     connectionEntities: Iterable<BaseStageEventConnectionEntity<T>>,
     ranges: Map<StageId, Range<T>>,
     getName: () => string,
@@ -13,38 +14,23 @@ export const serializeStageEventsToLevelDataEntities = <T extends StageEventJoin
     stageEntities: Map<StageId, LevelDataEntity> | undefined,
     refDataName: string,
 ) => {
-    const stageConnectionEntities = new Map<StageId, BaseStageEventConnectionEntity<T>[]>()
-    for (const entity of connectionEntities) {
-        const entities = stageConnectionEntities.get(entity.min.stageId)
-        if (entities) {
-            entities.push(entity)
-        } else {
-            stageConnectionEntities.set(entity.min.stageId, [entity])
-        }
+    const entities = serializeEventsToLevelDataEntities(joints, connectionEntities, getName, create)
+
+    // Stages in their own order, so first refs are named the same way every time.
+    for (const [id, stage] of stageEntities ?? []) {
+        const range = ranges.get(id)
+        if (!range) continue
+
+        const first = entities.get(range.min)
+        if (!first) throw new Error('Unexpected missing joint')
+
+        stage.data.push({
+            name: refDataName,
+            ref: (first.name ??= getName()),
+        })
     }
+    for (const id of ranges.keys())
+        if (!stageEntities?.has(id)) throw new Error('Unexpected stage not found')
 
-    const allEntities: LevelDataEntity[] = []
-
-    for (const [id, range] of ranges) {
-        const { ref, entities } = serializeEventsToLevelDataEntities(
-            stageConnectionEntities.get(id) ?? [],
-            range,
-            getName,
-            create,
-        )
-
-        if (ref) {
-            const stage = stageEntities?.get(id)
-            if (!stage) throw new Error('Unexpected stage not found')
-
-            stage.data.push({
-                name: refDataName,
-                ref,
-            })
-        }
-
-        allEntities.push(...entities)
-    }
-
-    return allEntities
+    return [...entities.values()]
 }

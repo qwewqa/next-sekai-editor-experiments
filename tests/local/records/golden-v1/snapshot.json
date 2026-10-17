@@ -1,6 +1,6 @@
 {
-    "root": "08d8f12d473629d2c451d83f3cdbb3e4",
-    "header": "c81ef5e2ae6c80e30f6b040a39ba89e6",
+    "root": "1eefa5076b1478062ac0bdd60604e3bb",
+    "header": "f79e920e0e77b51ba624c6c67d832647",
     "nodes": [
         {
             "kind": "slides",
@@ -20,7 +20,7 @@
         {
             "kind": "cameraEvents",
             "depth": 0,
-            "hash": "1492cd4f8f10fde4fad708d777291677"
+            "hash": "75fcebec3c4ba89fe2a995a6e890fdae"
         },
         {
             "kind": "stageMaskEvents",
@@ -58,7 +58,7 @@
         },
         {
             "kind": "cameraEvents",
-            "hash": "6a21cfcdbec1f7910862433f875f4a54"
+            "hash": "e9a279deffd46e42dbea2c852e1d9489"
         },
         {
             "kind": "stageMaskEvents",

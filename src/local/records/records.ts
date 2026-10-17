@@ -13,191 +13,24 @@ import type { TimeScaleObject } from '../../chart/timeScale'
 import { createState, type State } from '../../state'
 import type { BgmMeta } from '../../state/bgm'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../state/levelInfo'
-import { canonical, type RecordValue } from './canonical'
-import { extractChart } from './extract'
-import { kindNames, type KindName } from './schema'
+import type { RecordValue } from './canonical'
+import {
+    kindEncoders,
+    slideRecord,
+    sortEventRecords,
+    sortSlideRecords,
+    type KeyedRecord,
+    type KindRecords,
+    type SnapshotRecords,
+} from './encode'
+import { orderStore, type Ordered, type OrderedStore } from './extract'
+import { kindNames } from './schema'
 
-// Explicit positional encoders and decoders per record (§1.6.11.1), never `JSON.stringify`
-// of a model object. `fields.test.ts` checks every position against `fields-v1.json`.
+export * from './encode'
+
+// Records from a state or chart and back (§1.6.11.1), with explicit decoders per record.
 
 type Rec = readonly RecordValue[]
-
-export const noteRecord = (n: NoteObject): Rec => [
-    n.groupId,
-    n.stageId,
-    n.beat,
-    n.elevation ?? 0,
-    n.noteStyle,
-    n.connectorStyle,
-    n.noteType,
-    n.isAttached,
-    n.left,
-    n.size,
-    n.isCritical,
-    n.flickDirection,
-    n.isFake,
-    n.sfx,
-    n.isConnectorSeparator,
-    n.connectorType,
-    n.connectorEase,
-    n.connectorIsFake,
-    n.connectorActiveIsCritical,
-    n.connectorGuideAlpha,
-    n.connectorLayer,
-    n.connectorIsPassThrough,
-    n.connectorPresentation,
-]
-
-export const slideRecord = (notes: readonly NoteObject[]): Rec => notes.map(noteRecord)
-
-export const bpmRecord = (e: BpmObject): Rec => [e.beat, e.bpm, e.meter ?? 4]
-
-export const timeScaleRecord = (e: TimeScaleObject): Rec => [
-    e.groupId,
-    e.beat,
-    e.editorLane,
-    e.timeScale,
-    e.skip,
-    e.timeScaleEase,
-    e.timeScaleTransition,
-    e.hideNotes,
-]
-
-export const cameraEventRecord = (e: CameraEventObject): Rec => [
-    e.beat,
-    e.cameraLeft,
-    e.cameraSize,
-    e.cameraZoom,
-    e.cameraZoomTargetLane,
-    e.cameraZoomTargetY,
-    e.cameraZoomVerticalAlign,
-    e.cameraRotation,
-    e.cameraStageTilt,
-    e.eventEase,
-]
-
-export const stageMaskEventRecord = (e: StageMaskEventObject): Rec => [
-    e.stageId,
-    e.beat,
-    e.maskLeft,
-    e.maskSize,
-    e.isMaskNotes,
-    e.eventEase,
-]
-
-export const stagePivotEventRecord = (e: StagePivotEventObject): Rec => [
-    e.stageId,
-    e.beat,
-    e.pivotLane,
-    e.divisionSize,
-    e.divisionParity,
-    e.yOffset,
-    e.yOffsetBeat,
-    e.eventEase,
-]
-
-export const stageStyleEventRecord = (e: StageStyleEventObject): Rec => [
-    e.stageId,
-    e.beat,
-    e.editorLane,
-    e.judgmentLineColor,
-    e.judgmentLineStyle,
-    e.leftBorderStyle,
-    e.rightBorderStyle,
-    e.isFullWidth,
-    e.noteAlpha,
-    e.laneAlpha,
-    e.judgmentLineAlpha,
-    e.divisionLineAlpha,
-    e.eventEase,
-]
-
-export const stageTransformEventRecord = (e: StageTransformEventObject): Rec => [
-    e.stageId,
-    e.beat,
-    e.rotation,
-    e.xTranslation,
-    e.yTranslation,
-    e.elevation,
-    e.anchor,
-    e.eventEase,
-]
-
-/** Each kind's model object, and its record encoder. */
-type KindObjects = {
-    slides: NoteObject[]
-    bpms: BpmObject
-    timeScales: TimeScaleObject
-    cameraEvents: CameraEventObject
-    stageMaskEvents: StageMaskEventObject
-    stagePivotEvents: StagePivotEventObject
-    stageStyleEvents: StageStyleEventObject
-    stageTransformEvents: StageTransformEventObject
-}
-
-export const kindEncoders: { [K in KindName]: (object: KindObjects[K]) => Rec } = {
-    slides: slideRecord,
-    bpms: bpmRecord,
-    timeScales: timeScaleRecord,
-    cameraEvents: cameraEventRecord,
-    stageMaskEvents: stageMaskEventRecord,
-    stagePivotEvents: stagePivotEventRecord,
-    stageStyleEvents: stageStyleEventRecord,
-    stageTransformEvents: stageTransformEventRecord,
-}
-
-/** A record and its window key: a slide's first beat, or an event's beat. */
-export type KeyedRecord = { key: number; record: Rec }
-
-/** Where each kind's records hold the window key's beat. */
-const beatPositions: Record<Exclude<KindName, 'slides'>, number> = {
-    bpms: 0,
-    timeScales: 1,
-    cameraEvents: 0,
-    stageMaskEvents: 1,
-    stagePivotEvents: 1,
-    stageStyleEvents: 1,
-    stageTransformEvents: 1,
-}
-
-/** A record's window key (§1.6.11.1): a slide's first note's beat, or the record's beat. */
-export const recordKey = (kind: KindName, record: Rec) =>
-    (kind === 'slides' ? (record[0] as Rec)[2] : record[beatPositions[kind]]) as number
-
-/** A kind's records in the v1 order (§1.6.11.1), keyed for the split. */
-export type KindRecords = { kind: KindName; records: KeyedRecord[] }
-
-/**
- * A snapshot's records before the split: the header chunk's record and each kind that has
- * records, in the v1 kind order.
- */
-export type SnapshotRecords = { header: Rec; kinds: KindRecords[] }
-
-const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
-
-/**
- * Slides: by window key, then canonical bytes (UTF-16 code units, which is byte order for
- * these ASCII records), a total order. A slide's own note order is never touched.
- */
-export const sortSlideRecords = (records: KeyedRecord[]): KeyedRecord[] =>
-    records
-        .map((item) => ({ item, text: canonical(item.record) }))
-        .sort((a, b) => a.item.key - b.item.key || compareText(a.text, b.text))
-        .map(({ item }) => item)
-
-/** An event's place: its beat, its track (stage, or group for time scales; 0 for one track). */
-export type EventPlace = { key: number; track: number; record: Rec }
-
-/**
- * Events (and BPMs and time scales): by window key and beat, then track, then their order
- * along the track's chain, which is the input's order (D4: same-beat events play in chain
- * order, so a byte sort would change the chart).
- */
-export const sortEventRecords = (records: readonly EventPlace[]): KeyedRecord[] =>
-    records
-        .map((item, index) => ({ item, index }))
-        .sort((a, b) => a.item.key - b.item.key || a.item.track - b.item.track || a.index - b.index)
-        .map(({ item }) => ({ key: item.key, record: item.record }))
 
 const trackOf = (object: object) =>
     'stageId' in object
@@ -287,7 +120,13 @@ const foldersRecord = (folders: Folders | undefined): Rec =>
 /** What a header holds beside the chart (§1.6.2). */
 export type HeaderExtras = { bgmOffset: number; levelInfo: LevelInfo; bgm?: BgmMeta }
 
-export const headerRecord = (chart: Chart, extras: HeaderExtras): Rec => [
+/** The chart fields a header holds. */
+export type HeaderChart = Pick<
+    Chart,
+    'initialLife' | 'isDynamicStages' | 'groups' | 'stages' | 'groupFolders' | 'stageFolders'
+>
+
+export const headerRecord = (chart: HeaderChart, extras: HeaderExtras): Rec => [
     chart.initialLife,
     chart.isDynamicStages,
     extras.bgmOffset,
@@ -304,13 +143,24 @@ export const chartToRecords = (chart: Chart, extras: HeaderExtras): SnapshotReco
     kinds: chartKindRecords(chart),
 })
 
+const keyed = <T>(list: readonly Ordered<T>[]): KeyedRecord[] =>
+    list.map(({ key, record }) => ({ key, record }))
+
+/** A store's kinds from its entities in the v1 order. */
+export const orderedKindRecords = (ordered: OrderedStore): KindRecords[] =>
+    kindNames
+        .map((kind) => ({ kind, records: keyed<unknown>(ordered[kind]) }))
+        .filter(({ records }) => records.length)
+
 /** A state's records (§1.6.2): what a snapshot stores. */
-export const toRecords = (state: State): SnapshotRecords =>
-    chartToRecords(extractChart(state), {
+export const toRecords = (state: State): SnapshotRecords => ({
+    header: headerRecord(state, {
         bgmOffset: state.bgm.offset,
         levelInfo: state.levelInfo,
         ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
-    })
+    }),
+    kinds: orderedKindRecords(orderStore(state.store)),
+})
 
 /** What `createState` takes, from records. */
 export type RecordsContent = {

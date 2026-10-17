@@ -4,6 +4,7 @@ import type { NoteObject } from '../../../chart/note'
 import { connectorKindValue, noteStyleValue } from '../../../chart/noteStyle'
 import type { StageId, Stages } from '../../../chart/stages'
 import { easeValues } from '../../../ease'
+import { orderStore, type OrderedStore } from '../../../local/records/extract'
 import { beatToTicks, scheduleHiddenTicks } from '../../../state/entities/slides/hiddenTicks'
 import type { NoteEntity } from '../../../state/entities/slides/note'
 import {
@@ -20,6 +21,7 @@ export const serializeSlidesToLevelDataEntities = (
     store: Store,
     stages: Stages,
     getName: () => string,
+    ordered: OrderedStore = orderStore(store),
 ) => {
     const entities: LevelDataEntity[] = []
 
@@ -46,7 +48,11 @@ export const serializeSlidesToLevelDataEntities = (
         return newAllowSimLines
     }
 
-    for (const infos of store.slides.info.values()) {
+    // Slides in the records' order (§1.6.11.6), so names and sim lines follow it too.
+    for (const { slideId } of ordered.slides) {
+        const infos = store.slides.info.get(slideId)
+        if (!infos) throw new Error('Unexpected missing slide')
+
         let prev: LevelDataEntity | undefined
         for (const [i, { note }] of infos.entries()) {
             const timeScaleGroup = groupEntities.get(note.groupId)

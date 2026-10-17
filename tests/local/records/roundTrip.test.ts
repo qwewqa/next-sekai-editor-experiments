@@ -2,7 +2,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { addToFolders } from '../../../src/chart/folders'
 import { addToStages } from '../../../src/chart/stages'
-import { fromRecords, stateFromRecords, toRecords } from '../../../src/local/records/records'
+import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
+import { serializeToLevelData } from '../../../src/levelData/serialize'
+import { extractChart } from '../../../src/local/records/extract'
+import { levelDataMatchesState } from '../../../src/local/records/normalised'
+import {
+    chartToRecords,
+    fromRecords,
+    stateFromRecords,
+    toRecords,
+} from '../../../src/local/records/records'
 import type { State } from '../../../src/state'
 import { createSlideId } from '../../../src/state/entities/slides'
 import { addCameraEventJoint } from '../../../src/state/mutations/events/camera'
@@ -22,10 +31,48 @@ import {
     stateOf,
 } from './charts'
 
-const assertRoundTrip = (state: State, name: string) => {
+/** A state's level data and editor metadata, as Export and the auto save write them. */
+const levelData = (state: State) => {
+    const data = serializeToLevelData(
+        state.initialLife,
+        state.isDynamicStages,
+        state.bgm.offset,
+        state.store,
+        state.groups,
+        state.stages,
+        { groups: state.groupFolders, stages: state.stageFolders },
+    )
+    return { data, metadata: serializeEditorMetadata(data.entities, state.store) }
+}
+
+const assertRoundTrip = (state: State, name: string, { checkLevelData = true } = {}) => {
     const records = toRecords(state)
     const rebuilt = stateFromRecords(records)
     assert.equal(recordsText(toRecords(rebuilt)), recordsText(records), name)
+    // One order: the extractor's chart sorts to the same records.
+    assert.equal(
+        recordsText(chartToRecords(extractChart(state), headerExtras(state))),
+        recordsText(records),
+        name,
+    )
+    if (checkLevelData) {
+        // Level data is a function of the record set, editor metadata included.
+        const before = levelData(state)
+        const after = levelData(rebuilt)
+        assert.equal(JSON.stringify(after.data), JSON.stringify(before.data), name)
+        assert.deepEqual(after.metadata, before.metadata, name)
+        // The state's own level.json matches it, and the rebuilt state.
+        for (const target of [state, rebuilt])
+            assert.ok(
+                levelDataMatchesState(
+                    before.data.entities,
+                    before.data.bgmOffset,
+                    before.metadata.defaultGuideColors,
+                    target,
+                ),
+                name,
+            )
+    }
     // Ids are kept, so a restored state's chunks hash as before.
     assert.deepEqual([...rebuilt.groups.keys()], [...state.groups.keys()], name)
     assert.deepEqual([...rebuilt.stages.keys()], [...state.stages.keys()], name)
@@ -33,6 +80,12 @@ const assertRoundTrip = (state: State, name: string) => {
     assert.deepEqual(rebuilt.bgm.meta, state.bgm.meta, name)
     return rebuilt
 }
+
+const headerExtras = (state: State) => ({
+    bgmOffset: state.bgm.offset,
+    levelInfo: state.levelInfo,
+    ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
+})
 
 const edit = (state: State, change: (transaction: Transaction) => void) => {
     const transaction = createTransaction(state)
@@ -68,7 +121,8 @@ test('records round-trip the golden and edge charts, and fromRecords returns the
     assert.deepEqual(content.bgm, golden.extras.bgm)
 
     const edge = stateOf(edgeChart())
-    const rebuilt = assertRoundTrip(edge, 'edge')
+    // The edge chart holds values level data refuses, so only its records are checked.
+    const rebuilt = assertRoundTrip(edge, 'edge', { checkLevelData: false })
     // Same-beat events keep their chain order, which byte order would reverse.
     assert.deepEqual(maskChains(rebuilt), maskChains(edge))
     assert.deepEqual(maskChains(edge)[0]?.[1], ['129:-6:12', '129:-2:4'])
@@ -95,7 +149,7 @@ test('records round-trip after scripted edits', () => {
                     for (const [i, n] of [3, 5, 6, 10, 12].entries()) {
                         addCameraEventJoint(
                             t,
-                            camera(30 + i, { cameraLeft: 1 / n, cameraSize: 5 / n }),
+                            camera(30 + i, { cameraLeft: 1 / n, cameraSize: 6 + 5 / n }),
                         )
                         addStageMaskEventJoint(
                             t,

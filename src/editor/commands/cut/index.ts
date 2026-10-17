@@ -87,7 +87,7 @@ export const cut: Command = {
                 ),
             beat: position?.beat ?? yToValidBeat(view.pointer.y),
             entities: copiedEntities,
-            anchor: getClipboardAnchor(entities, copiedEntities),
+            anchor: getClipboardAnchor(entities, copiedEntities, undefined, copiedStore),
             ...serializeEditorMetadata(copiedEntities, copiedStore),
             source: clipboardSource(),
         })

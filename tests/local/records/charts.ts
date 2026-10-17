@@ -155,7 +155,7 @@ export const goldenChart = (): FixtureChart => ({
         ],
         groups: new Map([
             [group(1), { name: 'Default', folderId: folder(1) }],
-            [group(2), { name: 'Fast', forceNoteSpeed: 10.5, folderId: folder(1) }],
+            [group(2), { name: 'Fast', forceNoteSpeed: 10, folderId: folder(1) }],
         ]),
         stages: new Map([
             [
@@ -174,7 +174,7 @@ export const goldenChart = (): FixtureChart => ({
         ]),
         groupFolders: new Map([[folder(1), { name: 'Folder', index: 0 }]]),
         stageFolders: new Map(),
-        cameraEvents: [camera(0), camera(2, { cameraLeft: 1 / 3, cameraSize: 2 / 3 })],
+        cameraEvents: [camera(0), camera(2, { cameraLeft: 1 / 3, cameraSize: 20 / 3 })],
         stageMaskEvents: [mask(0), mask(2, { maskLeft: 0.7, maskSize: 0.3, isMaskNotes: true })],
         stagePivotEvents: [
             {
