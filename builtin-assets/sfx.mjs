@@ -110,7 +110,7 @@ const tap = (pitch, bright, seed) =>
         scale(knock(0.12, 420 * pitch, 260 * pitch, 0.03), 0.45),
     )
 
-/** The flick: a rising swish of band-limited noise, a rising chirp and the tap's tick. */
+/** The flick: a soft rising swish of band-limited noise over a quiet chirp, with a gentle start. */
 const swish = (seconds, from, to, seed, bright) => {
     const random = createRandom(seed)
     const out = empty(seconds)
@@ -119,18 +119,22 @@ const swish = (seconds, from, to, seed, bright) => {
     let phase = 0
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        const rise = t < 0.12 ? t / 0.12 : 1
+        // An eased rise, so the sweep glides rather than shoots up.
+        const linear = t < 0.16 ? t / 0.16 : 1
+        const rise = linear * (2 - linear)
         const frequency = from + (to - from) * rise
         // A band of noise round the rising frequency: the difference of two one-pole low passes.
         const coefficient = (tau * frequency) / sampleRate
         const noise = random() * 2 - 1
-        low += coefficient * 1.6 * (noise - low)
+        low += coefficient * 1.2 * (noise - low)
         lower += coefficient * 0.5 * (noise - lower)
         phase += (tau * frequency) / sampleRate
-        const envelope = Math.min(1, t / 0.012) * Math.exp(-t / 0.07)
-        out[i] = envelope * (1.6 * (low - lower) + 0.35 * bright * Math.sin(phase))
+        const attack = t < 0.025 ? Math.sin((Math.PI / 2) * (t / 0.025)) : 1
+        const envelope = attack * attack * Math.exp(-t / 0.075)
+        out[i] = envelope * (1.6 * (low - lower) + 0.2 * bright * Math.sin(phase))
     }
-    return mix(out, scale(burst(0.03, 0.003, seed + 1, 0.6), 0.35))
+    // A one-pole low pass takes the edge off the top of the noise.
+    return mix(lowPass(out, 0.55), scale(burst(0.03, 0.004, seed + 1, 0.85), 0.15))
 }
 
 /** A bell chord with a longer ring: [frequency, level] pairs. */
@@ -200,7 +204,7 @@ const fourthDown = 0.7491535384383408
 /** The 15 clips in the engine's order, as Float64 samples before levelling. */
 export function renderClips() {
     const perfect = tap(1, 1, 1)
-    const flick = swish(0.32, 1100, 3200, 2, 1)
+    const flick = swish(0.32, 900, 2200, 2, 1)
     const crown = (notes) => bell(0.6, notes, 0.16)
     const holdNotes = [
         [523, 0.5],
@@ -213,8 +217,8 @@ export function renderClips() {
         '#GREAT': lowPass(tap(toneDown, 0.6, 3), 0.7),
         '#GOOD': lowPass(tap(fourthDown, 0.3, 4), 0.45),
         '#PERFECT_ALTERNATIVE': flick,
-        '#GREAT_ALTERNATIVE': lowPass(swish(0.3, 900, 2500, 5, 0.6), 0.7),
-        '#GOOD_ALTERNATIVE': lowPass(swish(0.28, 700, 1800, 6, 0.3), 0.45),
+        '#GREAT_ALTERNATIVE': lowPass(swish(0.3, 750, 1800, 5, 0.6), 0.7),
+        '#GOOD_ALTERNATIVE': lowPass(swish(0.28, 600, 1400, 6, 0.3), 0.45),
         '#HOLD': pad(holdNotes, 0.08, 2, 7),
         '#STAGE': thud(8),
         'Sekai Tick': tick(9),
@@ -332,20 +336,21 @@ const peakOf = (samples) => samples.reduce((peak, sample) => Math.max(peak, Math
 /**
  * The loudness each clip is set to (LUFS, as loudness() measures it), from the web's Default clips
  * measured the same way (mono equivalent, from the onset); the Sonolus-only clips sit under the hits.
+ * After the owner’s listening pass the flicks sit 1 LU and the hold loops 3 LU under the Default's.
  */
 export const targets = {
     '#PERFECT': -15.5,
     '#GREAT': -16.5,
     '#GOOD': -17.5,
-    '#PERFECT_ALTERNATIVE': -14.3,
-    '#GREAT_ALTERNATIVE': -15.3,
-    '#GOOD_ALTERNATIVE': -16.3,
-    '#HOLD': -22.5,
+    '#PERFECT_ALTERNATIVE': -15.3,
+    '#GREAT_ALTERNATIVE': -16.3,
+    '#GOOD_ALTERNATIVE': -17.3,
+    '#HOLD': -25.5,
     '#STAGE': -20,
     'Sekai Tick': -18.2,
     'Sekai Critical Tap': -11.7,
-    'Sekai Critical Flick': -12.9,
-    'Sekai Critical Hold': -17.5,
+    'Sekai Critical Flick': -13.9,
+    'Sekai Critical Hold': -20.5,
     'Sekai Critical Tick': -17.9,
     'Sekai Trace': -17.2,
     'Sekai Critical Trace': -11.4,
