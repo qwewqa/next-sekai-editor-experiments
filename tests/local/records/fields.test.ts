@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import test from 'node:test'
 import { eases, timeScaleEaseFunctionNames } from '../../../src/ease'
 import { canonical, type RecordValue } from '../../../src/local/records/canonical'
@@ -239,4 +241,75 @@ test('the ease value sets are the model’s', () => {
     )
     for (const values of Object.values(fields.enums))
         for (const since of Object.values(values)) assert.equal(since, 1)
+})
+
+/** JSON parsed as a reader whose objects keep no key order (serde_json's `BTreeMap`) sees it. */
+const parseSorted = (text: string): unknown =>
+    JSON.parse(text, (_, value: unknown) =>
+        value && typeof value === 'object' && !Array.isArray(value)
+            ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1)))
+            : value,
+    )
+
+test('the kind order is the kindOrder array, which a reader with unordered objects reads too', () => {
+    assert.deepEqual(fields.kindOrder, [...kindNames])
+    const sorted = parseSorted(
+        readFileSync(
+            join(import.meta.dirname, '../../../src/local/records/fields-v1.json'),
+            'utf8',
+        ),
+    ) as { kindOrder: string[]; kinds: Record<string, string>; enums: { kinds: object } }
+    // Key order is lost, as in a Rust reader without `preserve_order`.
+    assert.notDeepEqual(Object.keys(sorted.kinds), [...kindNames])
+    assert.deepEqual(Object.keys(sorted.enums.kinds).sort(), Object.keys(sorted.kinds).sort())
+    // A table-driven root check: `kinds` must follow `kindOrder`, no name twice.
+    const inOrder = (names: string[]) =>
+        names.every(
+            (name, i) =>
+                i === 0 ||
+                sorted.kindOrder.indexOf(name) > sorted.kindOrder.indexOf(names[i - 1] ?? ''),
+        )
+    const golden = join(import.meta.dirname, 'golden-v1')
+    const { root } = JSON.parse(readFileSync(join(golden, 'snapshot.json'), 'utf8')) as {
+        root: string
+    }
+    const rootJson = JSON.parse(
+        readFileSync(join(golden, 'records', `${root}.canonical`), 'utf8'),
+    ) as [number, string, [string, string][], number]
+    const names = rootJson[2].map(([name]) => name)
+    assert.deepEqual(names.slice(0, 2), ['slides', 'bpms'])
+    assert.ok(inOrder(names))
+    assert.ok(!inOrder(['bpms', 'slides']))
+    assert.ok(!inOrder(['slides', 'slides']))
+})
+
+test('the ids a record names are refs to their header maps (D9)', () => {
+    const refs = Object.entries(table).flatMap(([name, form]) =>
+        Array.isArray(form)
+            ? form.flatMap((field) => {
+                  const ref = (field as Entry & { ref?: string }).ref
+                  return ref ? [`${name}.${field.name}→${ref}`] : []
+              })
+            : [],
+    )
+    assert.deepEqual(refs, [
+        'group.folderId→groupFolders',
+        'stage.folderId→stageFolders',
+        'folder.folderId→folders',
+        'note.groupId→groups',
+        'note.stageId→stages',
+        'timeScale.groupId→groups',
+        'stageMaskEvent.stageId→stages',
+        'stagePivotEvent.stageId→stages',
+        'stageStyleEvent.stageId→stages',
+        'stageTransformEvent.stageId→stages',
+    ])
+    const acyclic = Object.entries(table).flatMap(([name, form]) =>
+        Array.isArray(form)
+            ? form
+                  .filter((field) => (field as Entry & { acyclic?: boolean }).acyclic)
+                  .map((field) => `${name}.${field.name}`)
+            : [],
+    )
+    assert.deepEqual(acyclic, ['folder.folderId'])
 })

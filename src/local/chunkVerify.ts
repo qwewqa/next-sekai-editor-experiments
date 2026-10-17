@@ -19,6 +19,9 @@ export class ChunkVerifyError extends Error {
 
 const Z_FINISH = 4
 
+/** The reader cap on a chunk's inflated size (§1.6.11.4): bytes from outside never inflate past it. */
+export const CHUNK_CAP = 16 * 1024 * 1024
+
 /**
  * Inflates one raw DEFLATE stream that must end exactly at the input's last byte (§1.6.11.1's
  * strict end check): trailing bytes, a truncated stream, or a last block that isn't final throw.
@@ -82,7 +85,7 @@ const made = new WeakSet()
 export type ChunkToVerify =
     /** Bytes this build deflated from canonical bytes it hashed. */
     | { hash: Uint8Array; stored: Uint8Array; canonical: Uint8Array }
-    /** Bytes from outside (a file): they must hash to `hash`. */
+    /** Bytes from outside (a file): they must hash to `hash`, inflating to at most `maxSize`. */
     | { hash: Uint8Array; stored: Uint8Array; canonical?: undefined; maxSize?: number }
 
 /**
@@ -91,19 +94,23 @@ export type ChunkToVerify =
  */
 export const verifyChunk = async (chunk: ChunkToVerify): Promise<VerifiedChunk> => {
     if (chunk.hash.length !== 16) throw new ChunkVerifyError('Unexpected hash length')
+    // Verified and kept as copies, so the bytes stored are the bytes checked, whatever the
+    // caller later does with its buffers.
+    const hash = chunk.hash.slice()
+    const stored = chunk.stored.slice()
     let size: number
     if (chunk.canonical) {
-        const inflated = inflateStrict(chunk.stored, chunk.canonical.length)
+        const inflated = inflateStrict(stored, chunk.canonical.length)
         if (!equalBytes(inflated, chunk.canonical))
             throw new ChunkVerifyError('Deflated bytes do not inflate to the canonical bytes')
         size = inflated.length
     } else {
-        const inflated = inflateStrict(chunk.stored, chunk.maxSize)
-        if (!equalBytes(await hash16(inflated), chunk.hash))
+        const inflated = inflateStrict(stored, Math.min(chunk.maxSize ?? CHUNK_CAP, CHUNK_CAP))
+        if (!equalBytes(await hash16(inflated), hash))
             throw new ChunkVerifyError('Stored bytes do not hash to the chunk’s hash')
         size = inflated.length
     }
-    const result = { hash: chunk.hash.slice(), stored: chunk.stored, size } as VerifiedChunk
+    const result = { hash, stored, size } as VerifiedChunk
     made.add(result)
     return result
 }

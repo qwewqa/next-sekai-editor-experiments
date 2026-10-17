@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { LEVEL_VERSION } from '../../src/levelData/levelVersion'
 import { LATEST_REVISION } from '../../src/levelData/revision'
+import { DB_VERSION, FORMAT_VERSION } from '../../src/local/db'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 
 // The pinned constants (§1.6.11.8). Changing one means editing this test and the plan's
@@ -11,6 +12,8 @@ test('the format constants have their v0.6.0 values', () => {
     assert.equal(RECORDS_V, 1)
     assert.equal(SESSION_V, 1)
     assert.equal(LEVEL_VERSION, 1)
+    assert.equal(DB_VERSION, 1)
+    assert.equal(FORMAT_VERSION, 1)
 })
 
 test('each RECORDS_V stands for the engine revision its writer used', () => {

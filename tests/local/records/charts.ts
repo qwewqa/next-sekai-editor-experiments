@@ -6,6 +6,7 @@ import type { FolderId } from '../../../src/chart/folders'
 import type { GroupId } from '../../../src/chart/groups'
 import type { NoteObject } from '../../../src/chart/note'
 import type { StageId } from '../../../src/chart/stages'
+import type { TimeScaleObject } from '../../../src/chart/timeScale'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { canonical } from '../../../src/local/records/canonical'
 import type { SnapshotRecords } from '../../../src/local/records/records'
@@ -107,7 +108,8 @@ export const stateOf = ({ chart, offset, extras }: FixtureChart): State =>
     createState(structuredClone(chart), offset, extras)
 
 /**
- * The golden chart (§1.6.11.1): two groups and a group folder, two stages, a slide with an
+ * The golden chart (§1.6.11.1): two groups and a group folder, two stages, a stage folder with
+ * a nested folder in it, a slide with an
  * attached tick and an anchor, guides with a default and a set colour, elevation, notes and
  * a camera and a mask event at thirds and tenths of a lane, BPMs, a time-scale change, one
  * event of every kind, and level info with tags, cover, preview and BGM references.
@@ -166,11 +168,16 @@ export const goldenChart = (): FixtureChart => ({
                     isFromStart: false,
                     isUntilEnd: true,
                     generateSimLines: 'isolated',
+                    folderId: folder(2),
                 },
             ],
         ]),
         groupFolders: new Map([[folder(1), { name: 'Folder', index: 0 }]]),
-        stageFolders: new Map(),
+        // Indices as the folder tree writes them back; the nested folder is reserved for later.
+        stageFolders: new Map([
+            [folder(2), { name: 'Stage folder', index: 1 }],
+            [folder(3), { name: 'Inner', index: 2, folderId: folder(2) }],
+        ]),
         cameraEvents: [camera(0), camera(2, { cameraLeft: 1 / 3, cameraSize: 20 / 3 })],
         stageMaskEvents: [mask(0), mask(2, { maskLeft: 0.7, maskSize: 0.3, isMaskNotes: true })],
         stagePivotEvents: [
@@ -234,8 +241,9 @@ const astral = '\u{1F600}'
 const loneHigh = '\uD83D'
 
 /**
- * The edge chart (§1.6.11.1): number spellings, text escapes, ties, same-beat events in chain
- * order against byte order, window boundaries, the three splits and a depth-1 node.
+ * The edge chart (§1.6.11.1): number spellings, text escapes, ties, same-beat events, BPMs and
+ * time scales in chain order against byte order, window boundaries, the three splits, an event
+ * kind split by window and a depth-1 node.
  */
 export const edgeChart = (): FixtureChart => {
     const slides: NoteObject[][] = []
@@ -274,6 +282,9 @@ export const edgeChart = (): FixtureChart => {
                 { beat: 0, bpm: 0.30000000000000004, meter: 4 },
                 { beat: 16, bpm: 1e21, meter: 4 },
                 { beat: 15.999999999999998, bpm: 1e20, meter: 4 },
+                // Same beat, stored order the reverse of byte order.
+                { beat: 4, bpm: 200, meter: 4 },
+                { beat: 4, bpm: 150, meter: 3 },
             ],
             groups: new Map([
                 [group(3), { name: 'Caf\u00e9', forceNoteSpeed: 1e-7 }],
@@ -305,6 +316,8 @@ export const edgeChart = (): FixtureChart => {
                 camera(0, { cameraZoom: 1e-6, cameraRotation: -1e-7 }),
                 camera(1, { cameraZoom: 1e20, cameraRotation: -1.5, cameraStageTilt: -0 }),
                 camera(2, { cameraLeft: 0.1, cameraSize: 1 / 3 }),
+                // Over 64 events, so the kind splits by window: 64 in window 2, in 4-beat parts.
+                ...Array.from({ length: 70 }, (_, i) => camera(32 + i / 4, { cameraLeft: i })),
             ],
             // On stage 1 at beat 129, chain order is the reverse of byte order, as in coconut.
             stageMaskEvents: [
@@ -348,6 +361,17 @@ export const edgeChart = (): FixtureChart => {
                     timeScaleTransition: 'timeScale',
                     hideNotes: false,
                 },
+                // Same beat on one group, stored order the reverse of byte order.
+                ...[3, 1].map((timeScale): TimeScaleObject => ({
+                    groupId: group(3),
+                    beat: 5,
+                    editorLane: 0,
+                    timeScale,
+                    skip: 0,
+                    timeScaleEase: 'linear',
+                    timeScaleTransition: 'timeScale',
+                    hideNotes: false,
+                })),
             ],
             slides: slides.map((slide) =>
                 slide.map((n) => ({ ...n, groupId: group(n.beat < 64 ? 3 : 7) })),

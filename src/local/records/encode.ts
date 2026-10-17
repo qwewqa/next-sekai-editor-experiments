@@ -171,11 +171,14 @@ const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
  * Slides: by window key, then canonical bytes (UTF-16 code units, which is byte order for
  * these ASCII records), a total order. A slide's own note order is never touched.
  */
-export const sortSlideRecords = <T extends KeyedRecord>(records: readonly T[]): T[] =>
-    records
-        .map((item) => ({ item, text: canonical(item.record) }))
-        .sort((a, b) => a.item.key - b.item.key || compareText(a.text, b.text))
+export const sortSlideRecords = <T extends KeyedRecord>(records: readonly T[]): T[] => {
+    const items = records.map((item) => ({ item, text: undefined as string | undefined }))
+    // Text only for slides that share a key: the encoder checks every record when it hashes.
+    const textOf = (entry: (typeof items)[number]) => (entry.text ??= canonical(entry.item.record))
+    return items
+        .sort((a, b) => a.item.key - b.item.key || compareText(textOf(a), textOf(b)))
         .map(({ item }) => item)
+}
 
 /** An event's place: its beat, its track (stage, or group for time scales; 0 for one track). */
 export type EventPlace = { key: number; track: number; record: Rec }

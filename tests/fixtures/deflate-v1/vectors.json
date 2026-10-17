@@ -1,5 +1,16 @@
 {
     "inflatesTo": "canonical.bin",
     "valid": ["valid.bin", "valid-stored.bin"],
-    "damage": ["trailing-byte.bin", "truncated.bin", "concatenated.bin", "non-final.bin"]
+    "damage": [
+        "trailing-byte.bin",
+        "truncated.bin",
+        "concatenated.bin",
+        "non-final.bin",
+        "reserved-block-type.bin",
+        "stored-length-mismatch.bin",
+        "distance-too-far.bin",
+        "invalid-literal-code.bin",
+        "oversubscribed-code-lengths.bin",
+        "incomplete-code-lengths.bin"
+    ]
 }
