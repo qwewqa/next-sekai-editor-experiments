@@ -110,12 +110,14 @@ const n = (value) => Math.round(value * 1000) / 1000
 const endShape = (x, top, bottom, radius, end = 48) =>
     `M${end} ${n(top)}H${n(x + radius)}A${radius} ${radius} 0 0 0 ${n(x)} ${n(top + radius)}` +
     `V${n(bottom - radius)}A${radius} ${radius} 0 0 0 ${n(x + radius)} ${n(bottom)}H${end}Z`
-// Regular bodies: a 16 unit border in the outer colour round the inner face, and the accent mark.
+// Regular bodies: a 16 unit border in the outer colour round the inner face, and the accent mark,
+// a bar a quarter of the note's height (as the base's).
 const bodyVars = {
     h: n(bodyH),
     rim: endShape(0, 0, bodyH, 16),
     face: endShape(16, 16, bodyH - 16, 16),
-    mark: n(bodyH / 2 - 12),
+    mark: n(bodyH / 2 - bodyH / 8),
+    tall: n(bodyH / 4),
     span: n(bodyH - 32),
 }
 // Slim traces: the bar is 62.5% of the note's height, with round ends.

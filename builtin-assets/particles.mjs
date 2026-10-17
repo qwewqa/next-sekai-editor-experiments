@@ -204,8 +204,8 @@ const needleFan = (color) =>
 const sparkleFan = (color) =>
     Array.from({ length: 18 }, (_, k) => {
         const angle = Math.PI * (-0.15 + 1.3 * ((k + 0.5) / 18)) + 0.2 * (spread(k, 1) - 0.5)
-        const near = 0.3 + 0.9 * spread(k, 2)
-        const far = 1.8 + 2.2 * spread(k, 3)
+        const near = 0.4 + 1.5 * spread(k, 2)
+        const far = near + 1.2 + 1.5 * spread(k, 3)
         const [c, s] = [Math.cos(angle), Math.sin(angle)]
         const size = 0.25 + 0.35 * spread(k, 4)
         return pt('sparkle', sparkleTints(color)[k % 4], 0.209, 0.791, {
@@ -232,11 +232,11 @@ const hitDust = (color, count, { alpha = 1, size: big = 0.12 } = {}) =>
         })
     })
 // The white-hot start: a small bright oval on the note with a glint, shrinking as it fades.
-const hotStart = (color) => [
+const hotStart = (color, size = 1) => [
     pt('glow', color, 0, 0.636, {
         y: [-0.09, 0],
-        w: [0.6, 0.15],
-        h: [0.75, 0.2],
+        w: [0.6 * size, 0.15],
+        h: [0.75 * size, 0.2],
         a: [1, 0.1, 'outQuad'],
     }),
     pt('flare', white, 0, 0.4, { w: [0.5, 0.1], h: [0.6, 0.12], a: [1, 0, 'outQuad'] }),
@@ -255,7 +255,7 @@ const slideHit = (color) => [
             y: [0, 0.3, 'outCubic'],
             w: [0, 1, 'outCubic'],
             h: [0, 1.13, 'outCubic'],
-            a: [1, 0, 'inCubic'],
+            a: [0.6, 0, 'inCubic'],
         }),
         pt('frame', pale(color, 0.4), 0.251, 0.307, {
             y: [-0.05, -0.16, 'outQuad'],
@@ -297,7 +297,7 @@ const slideHit = (color) => [
             a: [0.3, 0],
         }),
     ),
-    once(...hotStart(pale(color, 0.5))),
+    once(...hotStart(pale(color, 0.5), 1.6)),
 ]
 
 // Frames turning in on a critical hit, then opening as they fade.
@@ -327,7 +327,7 @@ const turningFrames = (color, start) => [
 
 // Traces at the note, in the tick quad (eight lanes across): kept lighter than the base's, as
 // the owner asked (scale).
-const traceScale = 0.45
+const traceScale = 0.3
 
 // Held slides loop over 1 s. A particle that runs past the end continues from the start; with
 // linear properties the two halves join exactly.
@@ -771,7 +771,7 @@ export const kinds = {
                 x: [{ cosr1: 0.25 }, { cosr1: 0.5 }],
                 y: [{ c: -1.3, sinr4: 0.3 }, { c: 1.3, r2: 2, sinr4: 1 }, 'outCubic'],
                 w: 0.25,
-                a: [1, 0, 'outCubic'],
+                a: [2 * traceScale, 0, 'outCubic'],
             }),
         ),
         group(
@@ -780,7 +780,7 @@ export const kinds = {
                 x: [{ cosr1: 0.15 }, { cosr1: 1.5 }],
                 y: [{ c: -1.3, sinr4: 0.3 }, { c: -0.5, r2: 0.4, sinr4: 0.6 }, 'outBack'],
                 w: { c: 0.15, r2: -0.05 },
-                a: [1, 0, 'outCubic'],
+                a: [2 * traceScale, 0, 'outCubic'],
             }),
         ),
     ],

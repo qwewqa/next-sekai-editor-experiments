@@ -54,12 +54,12 @@
             "bytes": 353500
         },
         "public/builtin/particle.scp": {
-            "sha256": "6abed652c38a0011cf06658ea73692412855e452cabd04ec0255b9bf6c14f249",
-            "bytes": 93501
+            "sha256": "c1508a576560d4954bcb8a525f24b2dea768749f6195fc0d048f8d649c0faa2f",
+            "bytes": 93586
         },
         "public/builtin/skin.scp": {
-            "sha256": "5ee3e6aa00c2a8b2532bb763d63ab22ec0a5069f58629e4a27fb3adc10f6194e",
-            "bytes": 958855
+            "sha256": "235f47fad90e3a7e347dcf364d48d4113bf01a0abf5212144e63c86b40d3fbad",
+            "bytes": 958818
         }
     },
     "resources": {
@@ -70,14 +70,14 @@
                 "bytes": 1986
             },
             "data": {
-                "sha1": "a0abaee53b21301da4541d8238755d52f4064bc7",
-                "sha256": "edd78dd9514b2471fa7e394bb8e8f01c6cf5d6a85b60ce759b2aba46331ad4d5",
-                "bytes": 23710
+                "sha1": "a4eb5a1e899590ac79b55c5b7031154009357cfa",
+                "sha256": "0af238039ff53695bee1a1b265a1d2e83f759a8be7932727da9f15b526ffe90b",
+                "bytes": 23674
             },
             "texture": {
-                "sha1": "38b1e526edf8c17406fc614075c9aa8cd8b201e6",
-                "sha256": "634482c2f819e4d79bde629ad8cae2d72f72face90da5673a1c057cfd59f5814",
-                "bytes": 931149
+                "sha1": "cad445c27dc0c249e27799afeed196383fa98ee0",
+                "sha256": "d272fb62c4eb7dab14939752f122e2730edc604cbee783208e4b77f073a63e4a",
+                "bytes": 931147
             }
         },
         "particle": {
@@ -87,9 +87,9 @@
                 "bytes": 5039
             },
             "data": {
-                "sha1": "cd306098885532b332cb0881988a903a65c211a5",
-                "sha256": "c244bcfa5087d57b310eec594bc956399ebf701ffcb2ed702d326f31c73fce03",
-                "bytes": 51864
+                "sha1": "af824bc415ec6c3041e90bbdc916a81d17185452",
+                "sha256": "274983842e47cc4d53d920da59a5d25c9c2312089d13a9c9655240b79b342057",
+                "bytes": 51956
             },
             "texture": {
                 "sha1": "3e807633ba397e0862fc21b26540d651cc5ce292",

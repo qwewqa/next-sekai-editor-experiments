@@ -2,6 +2,6 @@
     <g transform="translate(48 0) scale(-1 1)">
         <path d="var(--rim)" fill="var(--outer)"/>
         <path d="var(--face)" fill="var(--inner)"/>
-        <rect x="16" y="var(--mark)" width="24" height="24" fill="var(--accent)"/>
+        <rect x="16" y="var(--mark)" width="24" height="var(--tall)" fill="var(--accent)"/>
     </g>
 </svg>
