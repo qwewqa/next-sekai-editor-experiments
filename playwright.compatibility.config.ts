@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import config from './playwright.config'
 
 // Parallel local runs can each choose a free preview server port.
+// CI runs under xvfb-run, which gives headless Firefox a WebGL2 context.
 // CI runs the storage projects (`*-storage`) as a job of their own, beside the others.
 const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? '5211'
 const previewUrl = `http://127.0.0.1:${previewPort}`
@@ -19,15 +20,7 @@ export default defineConfig({
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,
-        // Headless Firefox on a CI runner has no GPU: force WebGL on, through Mesa's software rasterizer.
-        launchOptions: {
-            firefoxUserPrefs: {
-                'webgl.disabled': false,
-                'webgl.force-enabled': true,
-                'webgl.enable-webgl2': true,
-                'webgl.out-of-process': false,
-            },
-        },
+        launchOptions: {},
     },
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
