@@ -2,14 +2,39 @@ import type { DecodeImage } from '../files/decodeImage'
 import { AssetImportError } from '../files/errors'
 import { importItem } from '../files/importer'
 import type { UserAssetRecord, UserAssetStore } from '../files/store'
+import { storeRecords } from '../files/storeRecords'
 import { parseServerUrl } from '../serverUrl'
-import { AssetError, type AssetType, type LoadContext } from '../types'
+import { AssetError, type AssetChoice, type AssetType, type LoadContext } from '../types'
 import { ServerError, type ServerClient } from './client'
 import { createServerSource } from './source'
 
 // A server item whose package left storage is downloaded again when the preview loads (Part 2,
-// 2.5.4): a background request to the server the user chose earlier, with no prompt. A failure is
-// the loader's fallback, whose line says the item could not be downloaded again.
+// 2.5.4), in the apps: a background request to the server the user chose earlier, with no prompt.
+// A failure is the loader's fallback, whose line says why: offline, or not downloaded again.
+
+/**
+ * The choices with a type's server choice moved to the record's new key, or undefined when the
+ * choice no longer names the old key (the user chose something else meanwhile).
+ */
+export const followedChoices = <T extends Record<AssetType, AssetChoice>>(
+    choices: T,
+    type: AssetType,
+    oldKey: string,
+    record: UserAssetRecord,
+): T | undefined => {
+    const current = choices[type]
+    if (current.source !== 'server' || current.key !== oldKey) return
+    return {
+        ...choices,
+        [type]: {
+            ...current,
+            key: record.key,
+            title: record.title,
+            author: record.author,
+            origin: record.origin,
+        },
+    }
+}
 
 export type RedownloadOptions = {
     client: ServerClient
@@ -61,7 +86,11 @@ export const createRedownload =
             )
         } catch (error) {
             if (error instanceof ServerError)
-                throw new AssetError('unavailable', error.message, { cause: error })
+                throw new AssetError(
+                    error.code === 'offline' ? 'offline' : 'unavailable',
+                    error.message,
+                    { cause: error },
+                )
             // An item the server no longer has is not a bad item.
             if (
                 error instanceof AssetImportError &&
@@ -73,8 +102,9 @@ export const createRedownload =
                 })
             throw error
         }
+        // Stored and read back, as Use stores (I24).
         try {
-            await store.put(record)
+            await storeRecords(store, [record])
         } catch (error) {
             // It still loads this time; the next load downloads it again.
             console.error('Could not store the downloaded preview asset:', error)

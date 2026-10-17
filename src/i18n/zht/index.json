@@ -562,18 +562,15 @@
       "more": "更多",
       "alsoServerItem": "同時使用此伺服器中的{0} \"{1}\"",
       "noneFound": "找不到項目",
-      "forServerOwners": "給伺服器擁有者",
       "server": {
-        "blocked": "此伺服器不允許網頁存取。",
-        "blockedRoute": "若要使用其中的項目，請先取得 .scp 檔案，再選擇「從檔案」。",
-        "blockedOwners": "請在 /sonolus/* 和資源檔案上傳送 Access-Control-Allow-Origin: *。",
         "unreachable": "無法連線到此伺服器。請檢查位址，或稍後再試。",
         "auth": "此伺服器需要登入，編輯器不支援登入。",
-        "insecure": "此伺服器使用 http，編輯器無法在 https 頁面中載入。",
+        "insecure": "此伺服器使用 http，編輯器無法載入。",
         "checksum": "此項目的檢查碼與伺服器傳送的內容不符。",
         "notFound": "此伺服器上沒有該項目。",
         "invalid": "此位址不是 Sonolus 伺服器。",
         "status": "伺服器回傳了錯誤（{0}）。",
+        "filesFailed": "無法從 {0} 下載此項目的檔案。",
         "addressEmpty": "請輸入伺服器位址。",
         "addressInvalid": "伺服器位址無效。",
         "addressCredentials": "伺服器位址不能包含使用者名稱或密碼。"
@@ -592,7 +589,8 @@
         "audioLength": "此項目的{0}音訊總長超過 {1} 秒。",
         "tooManyParticles": "此項目的{0}資料中的粒子超過 {1} 個。",
         "tooManyGroups": "此項目的{0}資料中的粒子組超過 {1} 個。",
-        "effectGroups": "此項目的{0}效果 \"{1}\" 的粒子組超過 {2} 個。"
+        "effectGroups": "此項目的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
+        "ratio": "此項目的{0}{1}解壓縮後超過其大小的 {2} 倍。"
       }
     }
   },
@@ -749,8 +747,7 @@
         "properties": "再次切換到舞台變換事件工具以變更預設屬性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知的按鈕。",
-    "builtinServer": "若要試用「從伺服器」，請連線到提供內建項的 {0}。"
+    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知的按鈕。"
   },
   "elevation": {
     "edit": "編輯高度",

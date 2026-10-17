@@ -20,6 +20,7 @@ export const platform = {
         safeModeEntry: 'startMarker',
         fileAssociations: true,
         mp3Export: true,
+        serverFetch: true,
     }),
 
     pickFiles: notImplemented,

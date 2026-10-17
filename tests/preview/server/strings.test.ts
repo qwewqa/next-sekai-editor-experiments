@@ -28,13 +28,9 @@ test('every locale has the From a Server strings', () => {
         'more',
         'alsoServerItem',
         'noneFound',
-        'forServerOwners',
     ]
     const nested = ['progress.connecting', 'progress.downloading']
     const server = [
-        'blocked',
-        'blockedRoute',
-        'blockedOwners',
         'unreachable',
         'auth',
         'insecure',
@@ -42,6 +38,7 @@ test('every locale has the From a Server strings', () => {
         'notFound',
         'invalid',
         'status',
+        'filesFailed',
         'addressEmpty',
         'addressInvalid',
         'addressCredentials',
@@ -59,8 +56,18 @@ test('every locale has the From a Server strings', () => {
                 'string',
                 `${locale} server.${key}`,
             )
+        assert.equal(typeof (strings.serverImport as Strings).ratio, 'string', `${locale} ratio`)
+    }
+})
+
+test('the web-only strings are gone from every locale', () => {
+    for (const locale of locales) {
+        const strings = previewAssets(locale)
+        assert.equal(strings.forServerOwners, undefined, locale)
+        for (const key of ['blocked', 'blockedRoute', 'blockedOwners'])
+            assert.equal((strings.server as Strings)[key], undefined, `${locale} server.${key}`)
         const help = (JSON.parse(raw(locale)) as { help: Strings }).help
-        assert.match(help.builtinServer as string, /\{0\}/, `${locale} help.builtinServer`)
+        assert.equal(help.builtinServer, undefined, locale)
     }
 })
 
@@ -76,7 +83,6 @@ test('the English words follow the editor’s conventions', () => {
         english.chooseHint,
         english.alsoServerItem,
         english.noneFound,
-        english.forServerOwners,
     ] as string[]) {
         // ’ for apostrophes, and no contractions.
         assert.doesNotMatch(text, /'/, text)
@@ -84,6 +90,5 @@ test('the English words follow the editor’s conventions', () => {
     }
     // Buttons are in Title Case.
     assert.equal(english.connect, 'Connect')
-    assert.equal(english.forServerOwners, 'For Server Owners')
     assert.equal(english.fromServer, 'From a Server')
 })

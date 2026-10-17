@@ -244,44 +244,9 @@ test('a response past the cap stops reading', async () => {
     assert.equal((await client.resource(`${server.base}/x`, big.length)).length, big.length)
 })
 
-test('a TypeError with a resolving no-cors probe says the server blocks web pages', async () => {
+test('a failed fetch says the server could not be reached, and asks once', async () => {
     const { server, client } = setup()
     server.state.failing = true
-    server.state.reachable = true
-    await rejectsWith(client.connect(server.base), 'blocked')
-    // The probe repeats the same GET once, with no credentials and no referrer.
-    assert.equal(server.requests.length, 2)
-    assert.equal(server.requests[1]!.url, server.requests[0]!.url)
-    assert.deepEqual(
-        { ...server.requests[1]!.init, signal: undefined },
-        {
-            method: 'GET',
-            mode: 'no-cors',
-            credentials: 'omit',
-            referrerPolicy: 'no-referrer',
-            signal: undefined,
-        },
-    )
-})
-
-test('a TypeError with a rejected probe says the server could not be reached', async () => {
-    const { server, client } = setup()
-    server.state.failing = true
-    server.state.reachable = false
-    await rejectsWith(client.connect(server.base), 'unreachable')
-    assert.equal(server.requests.length, 2)
-    assert.equal(server.requests[1]!.init!.mode, 'no-cors')
-})
-
-test('without the probe (the apps) a failed fetch is only unreachable', async () => {
-    const server = createFakeServer()
-    server.state.failing = true
-    server.state.reachable = true
-    const client = createServerClient({
-        fetch: server.fetch,
-        language: () => 'en',
-        corsProbe: false,
-    })
     await rejectsWith(client.connect(server.base), 'unreachable')
     assert.equal(server.requests.length, 1)
 })
@@ -294,11 +259,38 @@ test('offline asks nothing and says so; a fetch that fails while the device goes
 
     online = true
     server.state.failing = true
-    server.state.reachable = true
     const failing = client.connect(server.base)
-    // The device lost its network before the probe could tell.
+    // The device lost its network before the failure came back.
     online = false
     await rejectsWith(failing, 'offline')
+})
+
+test('a thumbnail on this device or its network is not shown, unless local servers are allowed', async () => {
+    const items = [
+        { name: 'public', thumbnail: { url: 'https://cdn.test/t.png' } },
+        { name: 'loopback', thumbnail: { url: 'https://127.0.0.1/t.png' } },
+        { name: 'private', thumbnail: { url: 'https://192.168.1.20/t.png' } },
+        { name: 'mapped', thumbnail: { url: 'https://[::ffff:10.0.0.1]/t.png' } },
+        { name: 'linkLocal', thumbnail: { url: 'https://[fe80::1]/t.png' } },
+        { name: 'mdns', thumbnail: { url: 'https://printer.local/t.png' } },
+        { name: 'named', thumbnail: { url: 'https://localhost:8443/t.png' } },
+    ]
+    const handler = () => ({ body: json({ pageCount: 1, items }) })
+    const { server, client } = setup({ handler })
+    const listed = (await client.list(server.base, 'skin')).items
+    assert.deepEqual(
+        listed.filter((item) => item.thumbnail).map((item) => item.name),
+        ['public'],
+    )
+    const allowing = createServerClient({
+        fetch: server.fetch,
+        language: () => 'en',
+        allowLocal: true,
+    })
+    assert.equal(
+        (await allowing.list(server.base, 'skin')).items.filter((item) => item.thumbnail).length,
+        items.length,
+    )
 })
 
 test('an http address is refused before any request, unless http is allowed', async () => {
@@ -319,18 +311,140 @@ test('an http address is refused before any request, unless http is allowed', as
     assert.equal((await allowing.connect(local.base)).title, 'Local')
 })
 
-test('a request that never answers times out as unreachable and frees its slot', async () => {
+/** A fetch that never settles and ignores its signal, as a server that never answers can. */
+const neverAnswers = () => new Promise<Response>(() => undefined)
+
+/**
+ * A body that sends a byte each `every` ms, `count` times (forever when undefined), on timers. It
+ * breaks off when the request is aborted, as a real body does.
+ */
+const dripping = (every: number, count: number | undefined, signal: AbortSignal | undefined) => {
+    let sent = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    return new Response(
+        new ReadableStream<Uint8Array>({
+            start: (stream) => {
+                signal?.addEventListener('abort', () => {
+                    clearTimeout(timer)
+                    stream.error(new DOMException('Aborted', 'AbortError'))
+                })
+            },
+            pull: (stream) =>
+                new Promise<void>((resolve) => {
+                    if (count !== undefined && sent >= count) {
+                        stream.close()
+                        resolve()
+                        return
+                    }
+                    timer = setTimeout(() => {
+                        sent++
+                        stream.enqueue(new Uint8Array([0x20]))
+                        resolve()
+                    }, every)
+                }),
+        }),
+    )
+}
+
+/** A body that sends one byte and then nothing. */
+const stalling = () =>
+    new Response(
+        new ReadableStream<Uint8Array>({
+            start: (stream) => {
+                stream.enqueue(new Uint8Array([0x20]))
+            },
+        }),
+    )
+
+const flush = () => new Promise((resolve) => setImmediate(resolve))
+
+/** Moves the fake clock on in steps, letting the streams and promises run between them. */
+const advance = async (mock: { tick: (ms: number) => void }, ms: number, step = 1000) => {
+    for (let at = 0; at < ms; at += step) {
+        await flush()
+        mock.tick(Math.min(step, ms - at))
+        await flush()
+    }
+}
+
+const settled = (promise: Promise<unknown>) => {
+    const state = { done: false }
+    promise.then(
+        () => (state.done = true),
+        () => (state.done = true),
+    )
+    return state
+}
+
+test('a request with no response headers after 30 s fails as unreachable, and frees its slot', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const client = createServerClient({ language: () => 'en', fetch: neverAnswers, concurrency: 1 })
+    const pending = client.connect('https://slow.test')
+    const state = settled(pending)
+    await advance(t.mock.timers, 29_000)
+    assert.equal(state.done, false)
+    await advance(t.mock.timers, 1000)
+    await rejectsWith(pending, 'unreachable')
+    // The slot is free again: the next request is asked.
+    const next = client.connect('https://slow.test')
+    const nextState = settled(next)
+    await advance(t.mock.timers, 30_000)
+    assert.equal(nextState.done, true)
+    await rejectsWith(next, 'unreachable')
+})
+
+test('a body that stalls for 30 s fails as unreachable', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
     const client = createServerClient({
         language: () => 'en',
-        timeoutMs: 20,
-        fetch: (_url, init) =>
-            new Promise((_resolve, reject) => {
-                const abort = () => reject(new DOMException('Aborted', 'AbortError'))
-                if (init?.signal?.aborted) abort()
-                init?.signal?.addEventListener('abort', abort)
-            }),
+        fetch: () => Promise.resolve(stalling()),
     })
-    await rejectsWith(client.connect('https://slow.test'), 'unreachable')
+    const pending = client.resource('https://cdn.test/big', 1000)
+    const state = settled(pending)
+    await advance(t.mock.timers, 29_000)
+    assert.equal(state.done, false)
+    await advance(t.mock.timers, 1000)
+    await rejectsWith(pending, 'unreachable')
+})
+
+test('a slow but steady body succeeds past 30 s', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const client = createServerClient({
+        language: () => 'en',
+        fetch: (_url, init) => Promise.resolve(dripping(20_000, 6, init?.signal ?? undefined)),
+    })
+    const pending = client.resource('https://cdn.test/big', 1000)
+    await advance(t.mock.timers, 130_000)
+    assert.equal((await pending).length, 6)
+})
+
+test('a request fails after 10 minutes in all, however steady its body', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const client = createServerClient({
+        language: () => 'en',
+        fetch: (_url, init) =>
+            Promise.resolve(dripping(10_000, undefined, init?.signal ?? undefined)),
+    })
+    const pending = client.resource('https://cdn.test/endless', 10_000_000)
+    const state = settled(pending)
+    await advance(t.mock.timers, 599_000, 10_000)
+    assert.equal(state.done, false)
+    await advance(t.mock.timers, 1000)
+    await rejectsWith(pending, 'unreachable')
+})
+
+test('Cancel stops a request at once, even one whose fetch ignores the signal', async () => {
+    for (const fetch of [neverAnswers, () => Promise.resolve(stalling())]) {
+        const controller = new AbortController()
+        const client = createServerClient({ language: () => 'en', fetch })
+        const pending = client.resource('https://cdn.test/x', 1000, controller.signal)
+        await flush()
+        controller.abort()
+        await assert.rejects(
+            pending,
+            (error) => error instanceof DOMException && error.name === 'AbortError',
+        )
+    }
 })
 
 test('a caller’s abort is an abort, not a failure', async () => {
@@ -350,6 +464,69 @@ test('a caller’s abort is an abort, not a failure', async () => {
         pending,
         (error) => error instanceof DOMException && error.name === 'AbortError',
     )
+})
+
+/** A fetch whose answers wait until the test lets them go, in the order asked. */
+const heldFetch = () => {
+    const asked: string[] = []
+    const releases: (() => void)[] = []
+    const fetch = (url: string) => {
+        asked.push(url)
+        return new Promise<Response>((resolve) =>
+            releases.push(() => resolve(new Response(new Uint8Array(4)))),
+        )
+    }
+    const releaseAll = async () => {
+        await flush()
+        releases.splice(0).forEach((release) => release())
+        await flush()
+    }
+    return { asked, fetch, releaseAll }
+}
+
+test('the user’s requests go before background ones', async () => {
+    const held = heldFetch()
+    const client = createServerClient({ language: () => 'en', fetch: held.fetch, concurrency: 1 })
+    const all = [
+        client.thumbnail('https://cdn.test/t1'),
+        client.thumbnail('https://cdn.test/t2'),
+        client.thumbnail('https://cdn.test/t3'),
+        client.resource('https://cdn.test/use', 100),
+    ]
+    for (let round = 0; round < 4; round++) await held.releaseAll()
+    await Promise.all(all)
+    assert.deepEqual(held.asked, [
+        'https://cdn.test/t1',
+        'https://cdn.test/use',
+        'https://cdn.test/t2',
+        'https://cdn.test/t3',
+    ])
+})
+
+test('a waiting request cancelled as its turn comes gives the turn to the next', async () => {
+    const held = heldFetch()
+    const client = createServerClient({ language: () => 'en', fetch: held.fetch, concurrency: 1 })
+    const controller = new AbortController()
+    const { signal } = controller
+    // Cancelled at the moment the waiter is woken, which is when it stops listening for a cancel.
+    let armed = false
+    signal.removeEventListener = function (this: AbortSignal, ...args: unknown[]) {
+        AbortSignal.prototype.removeEventListener.apply(
+            this,
+            args as Parameters<AbortSignal['removeEventListener']>,
+        )
+        if (armed) controller.abort()
+    } as AbortSignal['removeEventListener']
+    const first = client.resource('https://cdn.test/1', 100)
+    const cancelled = assert.rejects(client.resource('https://cdn.test/2', 100, signal))
+    const third = client.resource('https://cdn.test/3', 100)
+    armed = true
+    await held.releaseAll()
+    await cancelled
+    await held.releaseAll()
+    await held.releaseAll()
+    await Promise.all([first, third])
+    assert.equal(held.asked.at(-1), 'https://cdn.test/3')
 })
 
 test('at most four requests are open at once', async () => {

@@ -15,7 +15,7 @@ import {
     type ServerStrings,
 } from '../../../src/preview/assets/server/text'
 import type { AssetChoice, AssetType } from '../../../src/preview/assets/types'
-import { scpEntries, utf8, type NamedEntry, type ScpOptions } from '../files/fixtures'
+import { rawZip, scpEntries, utf8, wav, type NamedEntry, type ScpOptions } from '../files/fixtures'
 import { createFakeServer, filesFromEntries, json, type FakeAnswer } from './fakeServer'
 
 const en = (
@@ -491,23 +491,14 @@ test('only the newest search shows', async () => {
 test('the failures read as 2.5.3 words them', async () => {
     const say = (error: Parameters<typeof serverErrorText>[0]) => serverErrorText(error, en)
 
-    const blocked = setup(collection())
-    blocked.server.state.failing = true
-    blocked.server.state.reachable = true
-    const first = createServerChooser('skin', blocked.deps('skin'))
-    first.address.value = blocked.server.base
+    const down = setup(collection())
+    down.server.state.failing = true
+    const first = createServerChooser('skin', down.deps('skin'))
+    first.address.value = down.server.base
     await first.connect()
     assert.equal(first.phase.value, 'idle')
-    assert.deepEqual(say(first.error.value!), {
-        text: 'This server does not allow access from web pages.',
-        route: 'To use one of its items, get it as an .scp file and choose From a File.',
-        owners: 'Send Access-Control-Allow-Origin: * on /sonolus/* and on resource files.',
-    })
-
-    blocked.server.state.reachable = false
-    await first.connect()
     assert.equal(
-        say(first.error.value!).text,
+        say(first.error.value!),
         'Could not reach this server. Check the address, or try again later.',
     )
 
@@ -516,7 +507,7 @@ test('the failures read as 2.5.3 words them', async () => {
     second.address.value = auth.server.base
     await second.connect()
     assert.equal(
-        say(second.error.value!).text,
+        say(second.error.value!),
         'This server needs you to sign in, which the editor does not support.',
     )
 
@@ -524,7 +515,7 @@ test('the failures read as 2.5.3 words them', async () => {
     const third = createServerChooser('skin', offline.deps('skin'))
     third.address.value = offline.server.base
     await third.connect()
-    assert.equal(say(third.error.value!).text, 'You are offline.')
+    assert.equal(say(third.error.value!), 'You are offline.')
     assert.equal(offline.server.requests.length, 0)
 })
 
@@ -534,16 +525,16 @@ test('an http address is refused before anything is fetched, and a bad field say
     chooser.address.value = 'http://server.test/api'
     await chooser.connect()
     assert.equal(
-        serverErrorText(chooser.error.value!, en).text,
-        'This server uses http, which the editor cannot load from an https page.',
+        serverErrorText(chooser.error.value!, en),
+        'This server uses http, which the editor cannot load.',
     )
     chooser.address.value = ''
     await chooser.connect()
-    assert.equal(serverErrorText(chooser.error.value!, en).text, 'Enter a server address.')
+    assert.equal(serverErrorText(chooser.error.value!, en), 'Enter a server address.')
     chooser.address.value = 'https://user:pw@server.test'
     await chooser.connect()
     assert.equal(
-        serverErrorText(chooser.error.value!, en).text,
+        serverErrorText(chooser.error.value!, en),
         'A server address cannot contain a user name or password.',
     )
     assert.equal(server.requests.length, 0)
@@ -554,10 +545,7 @@ test('an address with no Sonolus server behind it says so', async () => {
     const chooser = createServerChooser('skin', deps('skin'))
     chooser.address.value = 'https://server.test/api/elsewhere'
     await chooser.connect()
-    assert.equal(
-        serverErrorText(chooser.error.value!, en).text,
-        'This address is not a Sonolus server.',
-    )
+    assert.equal(serverErrorText(chooser.error.value!, en), 'This address is not a Sonolus server.')
 })
 
 test('cancelling while connecting leaves nothing behind', async () => {
@@ -587,4 +575,201 @@ test('cancelling during Use stores nothing', async () => {
     assert.deepEqual(await store.list(), [])
     assert.deepEqual(applied, [])
     assert.equal(chooser.phase.value, 'idle')
+})
+
+/** A client over the server whose other-type lookups never answer until they are stopped. */
+const stuckLookups = (server: ReturnType<typeof setup>['server']) => {
+    const stopped: string[] = []
+    const client = createServerClient({
+        language: () => 'en',
+        fetch: (url, init) => {
+            const path = new URL(url).pathname
+            if (/\/sonolus\/(particles|backgrounds|effects)\/[^/]+$/.test(path))
+                return new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => {
+                        stopped.push(path)
+                        reject(new DOMException('Aborted', 'AbortError'))
+                    })
+                })
+            return server.fetch(url, init)
+        },
+    })
+    return { client, stopped }
+}
+
+test('moving to another row stops the last row’s lookups, and Use does not wait for any', async () => {
+    const parts = setup([
+        ['skin', named('a', 'First')],
+        ['skin', named('b', 'Second')],
+    ])
+    const { client, stopped } = stuckLookups(parts.server)
+    const chooser = createServerChooser('skin', { ...parts.deps('skin'), client })
+    chooser.address.value = parts.server.base
+    await chooser.connect()
+    chooser.select('a')
+    await settle()
+    assert.deepEqual(stopped, [])
+    chooser.select('b')
+    await settle()
+    assert.deepEqual(stopped.sort(), [
+        '/api/sonolus/backgrounds/a',
+        '/api/sonolus/effects/a',
+        '/api/sonolus/particles/a',
+    ])
+    // Use goes ahead while b's lookups hang, and stops them.
+    await chooser.use()
+    assert.equal(parts.applied.length, 1)
+    assert.equal(parts.applied[0]!.skin?.source === 'server' && parts.applied[0]!.skin.name, 'b')
+    assert.equal(stopped.length, 6)
+})
+
+test('Use does not ask again for the details a lookup found', async () => {
+    const { deps, server } = setup(collection())
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+    const asked = server.requests.filter(
+        (request) => new URL(request.url).pathname === '/api/sonolus/particles/neon',
+    )
+    assert.equal(asked.length, 1)
+})
+
+test('a server effect whose audio expands too far is refused as the item’s', async () => {
+    const { deps, server } = setup([
+        [
+            'effect',
+            {
+                ...named('boom', 'Boom'),
+                resources: { audio: rawZip([{ name: 'perfect.mp3', data: wav(100), method: 8 }]) },
+            },
+        ],
+    ])
+    const chooser = createServerChooser('effect', deps('effect'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.use()
+    const error = chooser.useError.value
+    assert.equal(
+        error?.kind === 'item' && error.message,
+        'This item’s sound effects audio expands to more than 200 times its size.',
+    )
+})
+
+test('details too large for an item are the item’s, and details the server lacks say so', async () => {
+    const big = setup([['skin', named('neon', 'Neon')]], {
+        handler: (url) =>
+            url.pathname === '/api/sonolus/skins/neon'
+                ? { body: new Uint8Array(4_000_001).fill(0x20) }
+                : undefined,
+    })
+    const first = createServerChooser('skin', big.deps('skin'))
+    first.address.value = big.server.base
+    await first.connect()
+    await first.use()
+    assert.equal(
+        first.useError.value?.kind === 'item' && first.useError.value.message,
+        'This item’s skin detail entry is larger than 4000000 bytes.',
+    )
+    // Gone from the server between the list and Use.
+    const gone = setup([['skin', named('neon', 'Neon')]])
+    const second = createServerChooser('skin', gone.deps('skin'))
+    second.address.value = gone.server.base
+    await second.connect()
+    gone.server.files.delete('/sonolus/skins/neon')
+    await second.use()
+    assert.equal(
+        second.useError.value?.kind === 'item' && second.useError.value.message,
+        'This server does not have that item.',
+    )
+})
+
+test('files that cannot be fetched from another host name that host', async () => {
+    const { deps, server } = setup([['skin', named('neon', 'Neon')]])
+    const path = '/sonolus/skins/neon'
+    const details = JSON.parse(new TextDecoder().decode(server.files.get(path) as Uint8Array)) as {
+        item: { texture: { url: string } }
+    }
+    // The fake server answers nothing outside its own address.
+    details.item.texture = { url: 'https://cdn.test/texture.png' }
+    server.files.set(path, json(details))
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.use()
+    assert.deepEqual(chooser.useError.value, {
+        kind: 'server',
+        code: 'unreachable',
+        status: undefined,
+        host: 'cdn.test',
+    })
+    assert.equal(
+        serverErrorText(chooser.useError.value!, en),
+        'Could not download this item’s files from cdn.test.',
+    )
+})
+
+test('More stops at 1,000 items', async () => {
+    const page = (index: number) =>
+        Array.from({ length: 600 }, (_, item) => ({ name: `i${index}-${item}`, title: 'Item' }))
+    const { deps, server } = setup([], {
+        handler: (url) => {
+            if (url.pathname === '/api/sonolus/info') return { body: json({ title: 'Big' }) }
+            if (url.pathname !== '/api/sonolus/skins/list') return
+            const index = Number(url.searchParams.get('page'))
+            return { body: json({ pageCount: 10, items: page(index) }) }
+        },
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = server.base
+    await chooser.connect()
+    await chooser.more()
+    assert.equal(chooser.items.value.length, 1000)
+    assert.equal(chooser.hasMore.value, false)
+})
+
+test('a share link whose item has no usable name says the server does not have it', async () => {
+    const { deps, server } = setup([['skin', named('a', 'First')]], {
+        handler: (url) =>
+            url.pathname === '/api/sonolus/skins/odd'
+                ? { body: json({ item: { name: '../odd', title: 'Odd' } }) }
+                : undefined,
+    })
+    const chooser = createServerChooser('skin', deps('skin'))
+    chooser.address.value = `${server.base}/skins/odd`
+    await chooser.connect()
+    assert.equal(chooser.phase.value, 'listed')
+    assert.deepEqual(chooser.error.value, { kind: 'server', code: 'notFound' })
+})
+
+test('thumbnails are fetched as object URLs, not from a local address, and go with the list', async () => {
+    const parts = setup([
+        ['skin', named('a', 'First')],
+        ['skin', named('b', 'Second')],
+    ])
+    const list = JSON.parse(
+        new TextDecoder().decode(parts.server.files.get('/sonolus/skins/list') as Uint8Array),
+    ) as { items: { name: string; thumbnail: { url: string } }[] }
+    list.items[1]!.thumbnail = { url: 'https://192.168.1.2/t.png' }
+    parts.server.files.set('/sonolus/skins/list', json(list))
+    const made: Blob[] = []
+    const revoked: string[] = []
+    const chooser = createServerChooser('skin', {
+        ...parts.deps('skin'),
+        objectUrls: {
+            create: (blob) => `blob:${made.push(blob)}`,
+            revoke: (url) => revoked.push(url),
+        },
+    })
+    chooser.address.value = parts.server.base
+    await chooser.connect()
+    await settle()
+    assert.deepEqual([...chooser.thumbnails.value], [['a', 'blob:1']])
+    assert.equal(made[0]?.type, 'image/png')
+    assert.ok(!parts.server.requests.some((request) => request.url.startsWith('https://192.168.')))
+    chooser.cancel()
+    assert.deepEqual(revoked, ['blob:1'])
+    assert.equal(chooser.thumbnails.value.size, 0)
 })

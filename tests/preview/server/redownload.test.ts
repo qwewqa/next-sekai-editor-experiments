@@ -7,7 +7,7 @@ import { createAssetLoader } from '../../../src/preview/assets/loader'
 import { fallbackOf } from '../../../src/preview/assets/notices'
 import { createServerChooser } from '../../../src/preview/assets/server/chooser'
 import { createServerClient } from '../../../src/preview/assets/server/client'
-import { createRedownload } from '../../../src/preview/assets/server/redownload'
+import { createRedownload, followedChoices } from '../../../src/preview/assets/server/redownload'
 import type {
     AssetChoice,
     AssetDefaults,
@@ -45,7 +45,12 @@ const chosen = async (title = 'Neon Skin') => {
         files: filesFromEntries(scpEntries('skin', { name: 'neon', title })),
     })
     const store = createMemoryStore()
-    const client = createServerClient({ fetch: server.fetch, language: () => 'en' })
+    const net = { online: true }
+    const client = createServerClient({
+        fetch: server.fetch,
+        language: () => 'en',
+        isOnline: () => net.online,
+    })
     let choice: AssetChoice | undefined
     const chooser = createServerChooser('skin', {
         client,
@@ -64,7 +69,7 @@ const chosen = async (title = 'Neon Skin') => {
     await chooser.connect()
     await chooser.use()
     assert.ok(choice)
-    return { server, store, client, choice, served: server.requests.length }
+    return { server, store, client, net, choice, served: server.requests.length }
 }
 
 const loaderOver = (parts: Awaited<ReturnType<typeof chosen>>, replaced: [string, string][] = []) =>
@@ -131,12 +136,30 @@ test('an item the server changed comes back under a new key, which the choice fo
     ])
 })
 
-test('offline, Default is used, the reason is the server’s, and the choice is untouched', async (t) => {
+test('offline, Default is used, the reason is being offline, and the choice is untouched', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const parts = await chosen()
+    await evict(parts)
+    const before = parts.server.requests.length
+    parts.net.online = false
+    const result = await loaderOver(parts).load('skin', parts.choice, context())
+    assert.equal(result?.value.title, 'default skin')
+    assert.deepEqual(result?.status, { active: 'default', reason: 'offline' })
+    const fallback = fallbackOf('skin', {
+        state: 'ready',
+        choice: parts.choice,
+        status: result!.status,
+    })
+    assert.equal(fallback?.reason, 'offline')
+    assert.equal(parts.server.requests.length, before)
+    assert.deepEqual(await parts.store.list(), [])
+})
+
+test('a server that cannot be reached gives Default, with the server’s reason', async (t) => {
     t.mock.method(console, 'error', () => {})
     const parts = await chosen()
     await evict(parts)
     parts.server.state.failing = true
-    parts.server.state.reachable = false
     const result = await loaderOver(parts).load('skin', parts.choice, context())
     assert.equal(result?.value.title, 'default skin')
     assert.deepEqual(result?.status, { active: 'default', reason: 'unavailable' })
@@ -206,4 +229,71 @@ test('a server item is downloaded again even when the store cannot be read', asy
     )
     assert.deepEqual(result?.status, { active: 'chosen' })
     assert.equal(result?.value.title, 'Neon Skin')
+})
+
+test('a downloaded item that does not read back is used this time, and the choice stays', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const parts = await chosen()
+    await evict(parts)
+    const newer = scpEntries('skin', { name: 'neon', title: 'Neon Skin 2' })
+    parts.server.files.clear()
+    for (const [path, body] of Object.entries(filesFromEntries(newer)))
+        parts.server.files.set(path, body)
+    // The store takes the record but gives back other bytes.
+    const lossy = {
+        ...parts.store,
+        get: async (key: string) => {
+            const record = await parts.store.get(key)
+            return record && { ...record, bytes: new Blob([new Uint8Array(record.size)]) }
+        },
+    }
+    const replaced: [string, string][] = []
+    const result = await loaderOver({ ...parts, store: lossy }, replaced).load(
+        'skin',
+        parts.choice,
+        context(),
+    )
+    assert.deepEqual(result?.status, { active: 'chosen' })
+    assert.equal(result?.value.title, 'Neon Skin 2')
+    assert.deepEqual(replaced, [])
+    // What did not read back is not kept.
+    assert.deepEqual(await parts.store.list(), [])
+})
+
+test('the choice follows a new key only while it still names the old one', () => {
+    const server = (key: string): AssetChoice => ({
+        source: 'server',
+        key,
+        name: 'neon',
+        title: 'Neon',
+        author: 'A',
+        origin: 'https://server.test/api',
+    })
+    const choices = {
+        skin: server('old'),
+        particle: { source: 'default' },
+        background: { source: 'default' },
+        effect: { source: 'default' },
+    } satisfies Record<string, AssetChoice>
+    const record = {
+        key: 'new',
+        title: 'Neon 2',
+        author: 'B',
+        origin: 'https://server.test/v2',
+    } as Parameters<typeof followedChoices>[3]
+    assert.deepEqual(followedChoices(choices, 'skin', 'old', record)?.skin, {
+        ...server('new'),
+        title: 'Neon 2',
+        author: 'B',
+        origin: 'https://server.test/v2',
+    })
+    // The user picked another item, or Default, while it downloaded.
+    assert.equal(
+        followedChoices({ ...choices, skin: server('other') }, 'skin', 'old', record),
+        undefined,
+    )
+    assert.equal(
+        followedChoices({ ...choices, skin: { source: 'default' } }, 'skin', 'old', record),
+        undefined,
+    )
 })

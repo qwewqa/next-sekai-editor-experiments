@@ -2,7 +2,7 @@ import type { ServerFetchInit } from '../../../src/platform/types'
 import { utf8, type NamedEntry } from '../files/fixtures'
 
 // A fake Sonolus server for the From a Server tests: a fake `fetch` that answers from a table of
-// paths, records every request, and can redirect, fail like a page blocked by CORS, or go offline.
+// paths, records every request, and can redirect or fail as an unreachable server does.
 
 export type Request = { url: string; init: ServerFetchInit | undefined }
 
@@ -30,10 +30,8 @@ export const createFakeServer = (options: FakeServerOptions = {}) => {
     const files = new Map(Object.entries(options.files ?? {}))
     const requests: Request[] = []
     const state = {
-        /** Every `fetch` throws a TypeError, as a blocked or unreachable server does. */
+        /** Every `fetch` throws a TypeError, as an unreachable server does. */
         failing: false,
-        /** Whether a `no-cors` request still resolves (an opaque answer). */
-        reachable: false,
         handler: options.handler,
     }
 
@@ -51,10 +49,6 @@ export const createFakeServer = (options: FakeServerOptions = {}) => {
 
     const fetch = (url: string, init?: ServerFetchInit): Promise<Response> => {
         requests.push({ url, init })
-        if (init?.mode === 'no-cors')
-            return state.reachable
-                ? Promise.resolve(answer(url, {}))
-                : Promise.reject(new TypeError('Failed to fetch'))
         if (state.failing) return Promise.reject(new TypeError('Failed to fetch'))
         const parsed = new URL(url)
         const custom = state.handler?.(parsed, init)

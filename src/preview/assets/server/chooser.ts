@@ -3,7 +3,9 @@ import { assetTypes } from '../choice'
 import type { AlsoOption } from '../files/chooser'
 import type { DecodeImage } from '../files/decodeImage'
 import { AssetImportError } from '../files/errors'
+import { readImageSize } from '../files/image'
 import { importItem } from '../files/importer'
+import { LIMITS } from '../files/limits'
 import { displayText } from '../files/package'
 import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from '../files/store'
 import { rollBack, storeRecords } from '../files/storeRecords'
@@ -24,14 +26,16 @@ import {
 } from './client'
 import { createServerSource } from './source'
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6) without its markup: connect, list one
-// type's items with paging and quick search, offer the other types' items of the same name, and
-// on Use download, check, repack and store what was selected and ticked. One per type lives with
-// the dialog, beside the From a File chooser, so a tab keeps its state while another shows.
+// The chooser's From a Server view (Part 2, 2.5.3, 2.6), in the apps, without its markup: connect,
+// list one type's items with paging and quick search, offer the other types' items of the same
+// name, and on Use download, check, repack and store what was selected and ticked. One per type
+// lives with the dialog, beside the From a File chooser, so a tab keeps its state while another
+// shows. Thumbnails are fetched like the rest and shown as object URLs.
 
 export type ServerChooserError =
     | { kind: 'address'; code: ServerUrlErrorCode }
-    | { kind: 'server'; code: ServerErrorCode; status?: number }
+    /** `host`: the failing request was to another host than the server's (its files' CDN). */
+    | { kind: 'server'; code: ServerErrorCode; status?: number; host?: string }
     /** A problem with the item itself, already worded. */
     | { kind: 'item'; message: string }
 
@@ -59,6 +63,8 @@ export type ServerChooserDeps = {
     allowHttp?: boolean
     now?: () => number
     onStored?: (metas: UserAssetMeta[]) => void
+    /** Object URLs for the thumbnails; `URL`'s by default. */
+    objectUrls?: { create: (blob: Blob) => string; revoke: (url: string) => void }
 }
 
 export type ServerPhase = 'idle' | 'connecting' | 'listed' | 'working'
@@ -90,6 +96,14 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
     const error = shallowRef<ServerChooserError | undefined>()
     /** Why Use failed: shown next to Use. */
     const useError = shallowRef<ServerChooserError | undefined>()
+    /** Object URLs of the listed items' thumbnails, by item name. */
+    const thumbnails = shallowRef<ReadonlyMap<string, string>>(new Map())
+    const objectUrls = deps.objectUrls ?? {
+        create: (blob: Blob) => URL.createObjectURL(blob),
+        revoke: (url: string) => {
+            URL.revokeObjectURL(url)
+        },
+    }
 
     /** The connected server's address, after redirects. */
     let server = ''
@@ -99,18 +113,61 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
     // The newest page or search; an older answer is dropped.
     let operation = 0
     let operationController = new AbortController()
-    const lookups = new Map<string, Promise<string>>()
+    // The other types' lookups of the selected row; a new selection stops them.
+    let lookupController = new AbortController()
+    // The thumbnails of what is listed; a new list stops them.
+    let thumbnailController = new AbortController()
+    /** Details found by the lookups while connected, by `type:name`; Use starts from them. */
+    const found = new Map<string, Record<string, unknown>>()
+    /** Lookups that found nothing, so a row is not asked about twice. */
+    const missing = new Set<string>()
+
+    const dropThumbnails = () => {
+        thumbnailController.abort()
+        thumbnailController = new AbortController()
+        for (const url of thumbnails.value.values()) objectUrls.revoke(url)
+        thumbnails.value = new Map()
+    }
+
+    /** Fetches the thumbnails of items that have none yet, behind the user's own requests. */
+    const loadThumbnails = (listed: ServerListItem[]) => {
+        const { signal } = thumbnailController
+        for (const item of listed) {
+            const url = item.thumbnail
+            if (!url || thumbnails.value.has(item.name)) continue
+            void client.thumbnail(url, signal).then(
+                (bytes) => {
+                    const size = readImageSize(bytes)
+                    if (signal.aborted || !size || thumbnails.value.has(item.name)) return
+                    if (size.width > LIMITS.thumbnailSide || size.height > LIMITS.thumbnailSide)
+                        return
+                    const mime = size.format === 'jpeg' ? 'image/jpeg' : 'image/png'
+                    const objectUrl = objectUrls.create(
+                        new Blob([new Uint8Array(bytes)], { type: mime }),
+                    )
+                    thumbnails.value = new Map(thumbnails.value).set(item.name, objectUrl)
+                },
+                () => {
+                    // A picture that cannot be fetched is the type's glyph.
+                },
+            )
+        }
+    }
 
     const reset = () => {
         controller.abort()
         operationController.abort()
+        lookupController.abort()
         controller = new AbortController()
         operationController = new AbortController()
+        lookupController = new AbortController()
+        dropThumbnails()
         generation++
         operation++
         server = ''
         next = undefined
-        lookups.clear()
+        found.clear()
+        missing.clear()
         phase.value = 'idle'
         loading.value = false
         title.value = ''
@@ -123,9 +180,24 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         useError.value = undefined
     }
 
+    const hostOf = (url: string | undefined) => {
+        try {
+            return url === undefined ? undefined : new URL(url).host
+        } catch {
+            return
+        }
+    }
+
     const toError = (failure: unknown): ServerChooserError => {
-        if (failure instanceof ServerError)
-            return { kind: 'server', code: failure.code, status: failure.status }
+        if (failure instanceof ServerError) {
+            const host = hostOf(failure.url)
+            return {
+                kind: 'server',
+                code: failure.code,
+                status: failure.status,
+                ...(server !== '' && host !== undefined && host !== hostOf(server) ? { host } : {}),
+            }
+        }
         if (failure instanceof ServerUrlError) return { kind: 'address', code: failure.code }
         if (failure instanceof AssetImportError)
             return { kind: 'item', message: deps.describe(failure) }
@@ -136,38 +208,54 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         }
     }
 
-    /** The other types' items of the same name. */
-    const lookUpAlso = async (name: string, mine: number) => {
-        const { signal } = controller
-        const found: AlsoOption[] = []
+    /** The other types' items of the same name, in the background; stopped with the selection. */
+    const lookUpAlso = async (name: string, mine: number, signal: AbortSignal) => {
+        const options: AlsoOption[] = []
         await Promise.all(
             assetTypes
                 .filter((other) => other !== type)
                 .map(async (other) => {
                     const key = `${other}:${name}`
-                    let lookup = lookups.get(key)
-                    if (!lookup) {
-                        lookup = client
-                            .details(server, other, name, signal)
-                            .then((raw) => displayText(raw.title) || name)
-                        lookups.set(key, lookup)
+                    if (missing.has(key)) return
+                    let details = found.get(key)
+                    if (!details) {
+                        try {
+                            details = await client.details(
+                                server,
+                                other,
+                                name,
+                                signal,
+                                'background',
+                            )
+                        } catch (failure) {
+                            // A lookup that fails or finds nothing offers no checkbox; one that
+                            // was stopped is asked again when the row is selected again.
+                            if (!isAbort(failure) && !signal.aborted) missing.add(key)
+                            return
+                        }
+                        found.set(key, details)
                     }
-                    try {
-                        found.push({ type: other, name, title: await lookup, ticked: false })
-                    } catch {
-                        // A lookup that fails or finds nothing offers no checkbox.
-                    }
+                    options.push({
+                        type: other,
+                        name,
+                        title: displayText(details.title) || name,
+                        ticked: false,
+                    })
                 }),
         )
-        if (mine !== generation || selected.value !== name) return
-        also.value = assetTypes.flatMap((other) => found.filter((option) => option.type === other))
+        if (mine !== generation || selected.value !== name || signal.aborted) return
+        also.value = assetTypes.flatMap((other) =>
+            options.filter((option) => option.type === other),
+        )
     }
 
     const select = (name: string) => {
         if (selected.value === name) return
         selected.value = name
         also.value = []
-        void lookUpAlso(name, generation)
+        lookupController.abort()
+        lookupController = new AbortController()
+        void lookUpAlso(name, generation, lookupController.signal)
     }
 
     const connect = async () => {
@@ -203,6 +291,8 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
                     const raw = await client.details(info.address, type, parsed.item.name, signal)
                     if (mine !== generation) return
                     linked = client.listItem(info.address, raw)
+                    // Details with no usable name are no item this chooser can take.
+                    if (!linked) linkError = { kind: 'server', code: 'notFound' }
                 } catch (failure) {
                     if (mine !== generation || isAbort(failure)) return
                     linkError = toError(failure)
@@ -218,6 +308,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
             hasMore.value = !!next
             error.value = linkError
             phase.value = 'listed'
+            loadThumbnails(items.value)
             // With exactly one item, there is nothing to choose.
             if (linked) select(linked.name)
             else if (items.value.length === 1 && items.value[0]) select(items.value[0].name)
@@ -250,17 +341,19 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         try {
             const page = await client.list(server, type, { ...request, keywords }, signal)
             if (mine !== operation || mineGeneration !== generation) return
+            const held = new Set(items.value.map((item) => item.name))
+            // At most as many as a file lists: More stops there.
             const loaded = append
-                ? [
-                      ...items.value,
-                      ...page.items.filter(
-                          (item) => !items.value.some((held) => held.name === item.name),
-                      ),
-                  ]
+                ? [...items.value, ...page.items.filter((item) => !held.has(item.name))].slice(
+                      0,
+                      LIMITS.listed,
+                  )
                 : page.items
+            if (!append) dropThumbnails()
             items.value = loaded
-            next = page.next
+            next = loaded.length < LIMITS.listed ? page.next : undefined
             hasMore.value = !!next
+            loadThumbnails(loaded)
             // A selection that a new search dropped is gone with it.
             if (
                 selected.value !== undefined &&
@@ -268,6 +361,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
             ) {
                 selected.value = undefined
                 also.value = []
+                lookupController.abort()
             }
         } catch (failure) {
             if (mine !== operation || mineGeneration !== generation || isAbort(failure)) return
@@ -310,8 +404,15 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         ]
         phase.value = 'working'
         useError.value = undefined
+        // The checkboxes are settled: lookups still under way would only hold up Use.
+        lookupController.abort()
         try {
-            const source = createServerSource(client, server, signal)
+            // What the lookups already fetched is not asked for again.
+            const seed = wanted.flatMap(({ type: wantedType, name: wantedName }) => {
+                const details = found.get(`${wantedType}:${wantedName}`)
+                return details ? [[wantedType, wantedName, details] as const] : []
+            })
+            const source = createServerSource(client, server, signal, seed)
             const records: UserAssetRecord[] = []
             for (const entry of wanted)
                 records.push(
@@ -358,6 +459,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         also,
         error,
         useError,
+        thumbnails,
         /** Switches between the two views. */
         setMode: (value: 'file' | 'server') => {
             mode.value = value

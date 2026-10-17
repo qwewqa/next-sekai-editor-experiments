@@ -2,12 +2,13 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { collection, patched, type Type } from './previewAssetsPackages'
-import { BASE, filesOf, serve } from './previewAssetsServers'
+import { BASE, filesOf, ORIGIN, serve } from './previewAssetsServers'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with From a Server (Part 2, 2.5.3, 2.6; the A4 tests of 2.11), against
-// fake servers whose answers go through the browser's real CORS check. With A4_SHOTS_DIR set, each
-// state is also saved there as a screenshot.
+// The Preview Assets dialog with From a Server (Part 2, 2.5.3, 2.6; the A4 tests of 2.11), which
+// only the apps have: the page gets their capability from a test platform whose fetch asks fake
+// servers in Node (previewAssetsServers.ts). The web, with no servers, is tested too. With
+// A4_SHOTS_DIR set, each state is also saved there as a screenshot.
 const shotsDir = process.env.A4_SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
 
@@ -132,6 +133,28 @@ const connect = async (page: Page, address: string) => {
 
 const SKIN = { skin: [{ name: 'neon', title: 'Neon Skin', author: 'Someone' }] }
 
+/** A server choice whose package is not stored. */
+const serverChoice = (title = 'Neon Skin') => ({
+    source: 'server',
+    key: 'f'.repeat(64),
+    name: 'neon',
+    title,
+    author: 'Someone',
+    origin: BASE,
+})
+
+/** Chooses an item as if elsewhere, so the loader takes the choice from the setting. */
+const setChoice = (page: Page, type: string, choice: unknown) =>
+    page.evaluate(
+        ([type, choice]) => {
+            const settings = window.editorTest.settings as unknown as {
+                previewAssets: Record<string, unknown>
+            }
+            settings.previewAssets = { ...settings.previewAssets, [type as string]: choice }
+        },
+        [type, choice] as const,
+    )
+
 test.describe('From a Server', () => {
     test('a skin is connected, listed, used, stored and shown, and loads again after a reload', async ({
         page,
@@ -160,13 +183,10 @@ test.describe('From a Server', () => {
         // A lone item is selected already, and Use has focus.
         await expect(item.locator('input')).toBeChecked()
         await expect(useButton(page)).toBeFocused()
-        // Its thumbnail comes from the server, shown without a referrer.
+        // Its thumbnail is fetched from the server like the rest, and shown from a blob.
         const picture = item.locator('img')
-        await expect(picture).toHaveAttribute('referrerpolicy', 'no-referrer')
-        await expect(picture).toHaveAttribute(
-            'src',
-            /^https:\/\/server\.test\/api\/sonolus\/repository\//,
-        )
+        await expect(picture).toHaveAttribute('src', /^blob:/)
+        expect(server.state.requests.some((url) => url.includes('/sonolus/repository/'))).toBe(true)
         await expect
             .poll(() => picture.evaluate((image: HTMLImageElement) => image.naturalWidth))
             .toBeGreaterThan(0)
@@ -463,57 +483,41 @@ test.describe('From a Server', () => {
     })
 })
 
-test('Help names our own server, at this site’s address', async ({ page }) => {
-    await start(page)
-    await page.evaluate(async () => {
-        const { appImport } = window.editorTest
-        const { showModal } =
-            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
-        const { default: HelpModal } = await appImport<{
-            default: typeof import('../../src/editor/help/HelpModal.vue').default
-        }>('/src/editor/help/HelpModal.vue')
-        void showModal(HelpModal, {})
+test.describe('on the web', () => {
+    test('the chooser offers a file only, with no switch and no server hint', async ({ page }) => {
+        const errors = await start(page)
+        await open(page)
+        await expect(dialog(page).locator('[data-asset-choose-hint]')).toHaveCount(0)
+        await expect(dialog(page).locator('[data-asset-choose]')).not.toHaveAttribute(
+            'aria-describedby',
+            /./,
+        )
+        await choose(page)
+        await expect(chooser(page).locator('[data-chooser-mode]')).toHaveCount(0)
+        await expect(chooser(page).locator('[data-chooser-select-file]')).toBeVisible()
+        await expect(chooser(page).locator('[data-server-address]')).toHaveCount(0)
+        expect(errors).toEqual([])
     })
-    const address = new URL('/builtin-server/', page.url()).href
-    const line = dialog(page).getByText('To try From a Server, connect to')
-    await expect(line).toHaveText(
-        `To try From a Server, connect to ${address}, which serves the Built-in items.`,
-    )
-    // Under the Preview Assets heading, with the command’s icon.
-    const section = dialog(page).locator('section').filter({ hasText: 'To try From a Server' })
-    await expect(section.locator('h2')).toHaveText('Preview Assets')
-    await expect(section.locator('[data-icon-column] svg')).toBeVisible()
+
+    test('a server choice whose package is gone falls back to Default, asks nothing, and is kept', async ({
+        page,
+    }) => {
+        const requests: string[] = []
+        page.on('request', (request) => requests.push(request.url()))
+        await start(page, { previewAssets: { skin: serverChoice() } })
+        await expect
+            .poll(() => slot(page, 'skin'), { timeout: 15_000 })
+            .toMatchObject({ state: 'ready', status: { active: 'default', reason: 'missing' } })
+        expect(requests.filter((url) => !url.startsWith(new URL(page.url()).origin))).toEqual([])
+        expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
+        await open(page, 'skin')
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            'Using Default. The skin could not be downloaded again from server.test/api.',
+        )
+    })
 })
 
 test.describe('when a server cannot be used', () => {
-    test('a server that sends no CORS headers is reachable but blocked, with what to do instead', async ({
-        page,
-    }) => {
-        await start(page)
-        const server = await serve(page, { files: await files(SKIN) })
-        server.state.blocked = true
-        await open(page)
-        await chooseServer(page)
-        await connect(page, BASE)
-        const text = errorOf(page).locator('[data-server-error-text]')
-        await expect(text).toHaveText('This server does not allow access from web pages.')
-        await expect(errorOf(page).locator('[data-server-error-route]')).toHaveText(
-            'To use one of its items, get it as an .scp file and choose From a File.',
-        )
-        const owners = errorOf(page).locator('[data-server-owners]')
-        await expect(owners.locator('summary')).toHaveText('For Server Owners')
-        await expect(owners.locator('p')).toBeHidden()
-        await owners.locator('summary').click()
-        await expect(owners.locator('p')).toHaveText(
-            'Send Access-Control-Allow-Origin: * on /sonolus/* and on resource files.',
-        )
-        // Nothing else of the chooser changed: still no list, and Use waits.
-        await expect(chooser(page).locator('[data-chooser-list]')).toHaveCount(0)
-        await expect(useButton(page)).toBeDisabled()
-        // The same request was repeated once, without CORS.
-        expect(server.state.requests.filter((url) => url === '/api/sonolus/info')).toHaveLength(2)
-    })
-
     test('a server that cannot be reached says so', async ({ page }) => {
         await start(page)
         const server = await serve(page, { files: await files(SKIN) })
@@ -524,7 +528,6 @@ test.describe('when a server cannot be used', () => {
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
             'Could not reach this server. Check the address, or try again later.',
         )
-        await expect(errorOf(page).locator('[data-server-owners]')).toHaveCount(0)
         // It can be tried again, and works once the server is back.
         server.state.down = false
         await connectButton(page).click()
@@ -567,7 +570,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, 'http://server.test/api')
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'This server uses http, which the editor cannot load from an https page.',
+            'This server uses http, which the editor cannot load.',
         )
         expect(server.state.requests).toEqual([])
         await field(page).fill('')
@@ -614,6 +617,28 @@ test.describe('when a server cannot be used', () => {
         expect((await choices(page)).skin).toEqual({ source: 'default' })
     })
 
+    test('a Use that cannot fetch the files from another host names that host, next to Use', async ({
+        page,
+    }) => {
+        await start(page)
+        const skin = await files(SKIN)
+        const details = JSON.parse(Buffer.from(skin.get('sonolus/skins/neon')!).toString()) as {
+            item: { texture: { url: string } }
+        }
+        details.item.texture.url = 'https://cdn.test/texture.png'
+        skin.set('sonolus/skins/neon', Buffer.from(JSON.stringify(details)))
+        await serve(page, { files: skin })
+        await open(page)
+        await chooseServer(page)
+        await connect(page, BASE)
+        await useButton(page).click()
+        await expect(useErrorOf(page)).toHaveText(
+            'Could not download this item’s files from cdn.test.',
+        )
+        await expect(useButton(page)).toBeEnabled()
+        expect(await stored(page)).toHaveLength(0)
+    })
+
     test('an item the checks refuse is worded as the server’s item', async ({ page }) => {
         await start(page)
         const { pngHeader } = await import('../preview/files/fixtures')
@@ -634,25 +659,10 @@ test.describe('when a server cannot be used', () => {
 })
 
 test.describe('a server item that left storage', () => {
-    const serverChoice = (title = 'Neon Skin') => ({
-        source: 'server',
-        key: 'f'.repeat(64),
-        name: 'neon',
-        title,
-        author: 'Someone',
-        origin: BASE,
-    })
-
     test('is downloaded again at load, stored, and chosen under its new key', async ({ page }) => {
-        await start(page, { previewAssets: { skin: serverChoice() } })
+        await start(page)
         const served = await serve(page, { files: await files(SKIN) })
-        // The page loaded before the server was there: reload to let the load find it.
-        await page.reload()
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(() => {
-            window.editorTest.settings.showPreview = true
-        })
+        await setChoice(page, 'skin', serverChoice())
         await expect
             .poll(() => slot(page, 'skin'), { timeout: 15_000 })
             .toMatchObject({ state: 'ready', status: { active: 'chosen' }, title: 'Neon Skin' })
@@ -667,15 +677,10 @@ test.describe('a server item that left storage', () => {
     test('falls back to Default when the server cannot be reached, and says why', async ({
         page,
     }) => {
-        await start(page, { previewAssets: { skin: serverChoice() } })
+        await start(page)
         const server = await serve(page, { files: await files(SKIN) })
         server.state.down = true
-        await page.reload()
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(() => {
-            window.editorTest.settings.showPreview = true
-        })
+        await setChoice(page, 'skin', serverChoice())
         await expect
             .poll(() => slot(page, 'skin'), { timeout: 15_000 })
             .toMatchObject({ state: 'ready', status: { active: 'default', reason: 'unavailable' } })
@@ -687,32 +692,34 @@ test.describe('a server item that left storage', () => {
         )
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         await expect(tabOf(page, 'skin').locator('[data-tab-warning]')).toBeVisible()
+        await page.keyboard.press('Escape')
 
-        // Once the server is back, a reload finds the item again.
+        // Once the server is back, the next load finds the item again.
         server.state.down = false
-        await page.reload()
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(() => {
-            window.editorTest.settings.showPreview = true
-        })
+        await setChoice(page, 'skin', { source: 'default' })
+        await setChoice(page, 'skin', serverChoice())
         await expect
             .poll(() => slot(page, 'skin'), { timeout: 15_000 })
             .toMatchObject({ state: 'ready', status: { active: 'chosen' } })
     })
 
-    test('falls back to Default when offline, and asks nothing', async ({ page }) => {
+    test('falls back to Default when offline, asks nothing, and says so', async ({ page }) => {
         // The page itself loads from the dev server, so only what the browser reports is offline.
         await page.addInitScript(() => {
             Object.defineProperty(navigator, 'onLine', { get: () => false })
         })
-        await start(page, { previewAssets: { skin: serverChoice() } })
+        await start(page)
         const server = await serve(page, { files: await files(SKIN) })
+        await setChoice(page, 'skin', serverChoice())
         await expect
             .poll(() => slot(page, 'skin'), { timeout: 15_000 })
-            .toMatchObject({ state: 'ready', status: { active: 'default', reason: 'unavailable' } })
+            .toMatchObject({ state: 'ready', status: { active: 'default', reason: 'offline' } })
         expect(server.state.requests).toEqual([])
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
+        await open(page, 'skin')
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            'Using Default. You are offline.',
+        )
     })
 })
 
@@ -799,6 +806,7 @@ test.describe('the chooser keeps its state', () => {
             origin: 'neon.scp',
         }
         await start(page, { previewAssets: { background: fileChoice } })
+        await serve(page)
         await open(page, 'skin')
         await chooseServer(page)
         await chooser(page).locator('[data-chooser-cancel]').click()
@@ -860,148 +868,252 @@ test.describe('narrow', () => {
     })
 })
 
-// Every state of the server chooser, wide and narrow, light and dark.
+test.describe('narrow, downloading', () => {
+    test.use({ viewport: { width: 360, height: 740 } })
+
+    test('“Downloading…” takes only the room it needs', async ({ page }) => {
+        await start(page)
+        await serve(page, {
+            files: await files(SKIN),
+            delay: (path) => (path.includes('/repository/') ? 30_000 : 0),
+        })
+        await open(page)
+        await chooseServer(page)
+        await connect(page, BASE)
+        await expect(chooser(page).locator('[data-chooser-item]')).toHaveCount(1)
+        await useButton(page).click()
+        const progress = chooser(page).locator('[data-chooser-actions] [data-chooser-progress]')
+        await expect(progress).toHaveText(/Downloading…/)
+        const box = await progress.boundingBox()
+        expect(box!.height).toBeLessThan(60)
+        await chooser(page).locator('[data-chooser-cancel]').click()
+    })
+})
+
+// Every state of the server chooser, wide (1280 px) and narrow (360 px), light and dark, as the
+// whole page.
 test.describe('looks', () => {
     for (const theme of ['light', 'dark'] as const)
         for (const [size, viewport] of [
-            ['wide', { width: 1600, height: 1000 }],
+            ['wide', { width: 1280, height: 800 }],
             ['narrow', { width: 360, height: 740 }],
         ] as const)
             test(`the server chooser, ${size}, in the ${theme} theme`, async ({
                 page,
                 context,
             }) => {
-                test.setTimeout(120_000)
+                test.setTimeout(180_000)
                 await page.setViewportSize(viewport)
                 await start(page)
                 await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
+                const skins = Array.from({ length: 3 }, (_, index) => ({
+                    name: `more${index}`,
+                    title: `More Skin ${index + 1}`,
+                    author: 'Someone',
+                }))
+                const serverFiles = await files({
+                    skin: [
+                        { name: 'neon', title: 'Neon Skin', author: 'Someone' },
+                        { name: 'night', title: 'Night Skin', author: 'Someone Else' },
+                        {
+                            name: 'long',
+                            title: 'A skin with a very long title that has to be cut somewhere',
+                            author: 'An author with a long name',
+                        },
+                        ...skins,
+                    ],
+                    particle: [{ name: 'neon', title: 'Neon Particle' }],
+                    effect: [{ name: 'neon', title: 'Neon Sounds' }],
+                })
+                const listOf = (names: string[]) =>
+                    names.map((name) => {
+                        const details = JSON.parse(
+                            Buffer.from(serverFiles.get(`sonolus/skins/${name}`)!).toString(),
+                        ) as { item: unknown }
+                        return details.item
+                    })
+                let holdMore = false
                 const server = await serve(page, {
                     title: 'Neon Server',
-                    files: await files({
-                        skin: [
-                            { name: 'neon', title: 'Neon Skin', author: 'Someone' },
-                            { name: 'night', title: 'Night Skin', author: 'Someone Else' },
-                            {
-                                name: 'long',
-                                title: 'A skin with a very long title that has to be cut somewhere',
-                                author: 'An author with a long name',
-                            },
-                        ],
-                        particle: [{ name: 'neon', title: 'Neon Particle' }],
-                        effect: [{ name: 'neon', title: 'Neon Sounds' }],
-                    }),
-                    // Every search finds nothing.
-                    list: (category, query) =>
-                        category === 'skins' && query.get('keywords')
-                            ? { pageCount: 1, items: [] }
-                            : undefined,
+                    files: serverFiles,
+                    // Two pages; every search finds nothing.
+                    list: (category, query) => {
+                        if (category !== 'skins') return undefined
+                        if (query.get('keywords')) return { pageCount: 1, items: [] }
+                        return Number(query.get('page')) === 0
+                            ? { pageCount: 2, items: listOf(['neon', 'night', 'long']) }
+                            : { pageCount: 2, items: listOf(skins.map((skin) => skin.name)) }
+                    },
+                    delay: (path, query) =>
+                        holdMore && path.endsWith('/skins/list') && query.get('page') === '1'
+                            ? 60_000
+                            : 0,
+                    status: (path) =>
+                        path.startsWith('/auth/')
+                            ? 401
+                            : path.startsWith('/broken/')
+                              ? 503
+                              : undefined,
                 })
                 await open(page, 'skin')
                 const name = (state: string) => `server-${state}-${size}-${theme}`
-                const frame = dialog(page)
+                const again = async () => {
+                    await choose(page)
+                    await chooser(page).locator('[data-chooser-mode-option="server"]').check()
+                }
 
                 // The chooser on a file, with the switch.
                 await choose(page)
-                await shot(page, name('file'), frame)
+                await shot(page, name('file'))
 
                 // The server view, empty.
                 await chooser(page).locator('[data-chooser-mode-option="server"]').check()
-                await shot(page, name('empty'), frame)
+                await shot(page, name('empty'))
 
                 // Connecting: the answer is held back.
-                server.state.down = false
-                await field(page).fill(BASE)
                 const slow = await serve(page, { origin: 'https://slow.test', delay: () => 60_000 })
                 await field(page).fill('https://slow.test/api')
                 await connectButton(page).click()
                 await expect(chooser(page).locator('[data-chooser-progress]')).toHaveText(
                     /Connecting…/,
                 )
-                await shot(page, name('connecting'), frame)
+                await shot(page, name('connecting'))
                 await chooser(page).locator('[data-chooser-cancel]').click()
                 expect(slow.state.requests.length).toBeGreaterThan(0)
 
-                // Listed, several items, none selected.
-                await choose(page)
-                await chooser(page).locator('[data-chooser-mode-option="server"]').check()
+                // Listed, several items, none selected, with More.
+                await again()
                 await connect(page, BASE)
                 await expect(chooser(page).locator('[data-chooser-item]')).toHaveCount(3)
-                await shot(page, name('listed-many'), frame)
+                await expect(chooser(page).locator('[data-chooser-item] img')).toHaveCount(3)
+                await shot(page, name('listed-many'))
+
+                // More, while the next page loads.
+                holdMore = true
+                await chooser(page).locator('[data-server-more]').click()
+                await expect(chooser(page).locator('[data-server-loading]')).toBeVisible()
+                await shot(page, name('more-loading'))
+                await chooser(page).locator('[data-chooser-cancel]').click()
+                holdMore = false
 
                 // One selected, with the other types offered.
+                await again()
+                await connect(page, BASE)
                 await chooser(page).locator('[data-chooser-item="neon"] input').check()
                 await expect(chooser(page).locator('[data-chooser-also] label')).toHaveCount(2)
                 await chooser(page).locator('[data-chooser-also-type="particle"]').check()
-                await shot(page, name('listed-selected'), frame)
+                await shot(page, name('listed-selected'))
 
                 // A search with no result.
                 await chooser(page).locator('[data-server-search]').fill('zzz')
                 await expect(chooser(page).locator('[data-chooser-empty]')).toBeVisible()
-                await shot(page, name('searched'), frame)
+                await shot(page, name('searched'))
+                await chooser(page).locator('[data-chooser-cancel]').click()
+
+                // A share link to an item the server lacks: the list, and why.
+                await again()
+                await connect(page, `${BASE}/skins/gone`)
+                await expect(errorOf(page)).toContainText('This server does not have that item.')
+                await shot(page, name('not-found'))
+                await chooser(page).locator('[data-chooser-cancel]').click()
 
                 // A server without items of the type.
-                await chooser(page).locator('[data-chooser-cancel]').click()
                 await tabOf(page, 'background').click()
-                await choose(page)
-                await chooser(page).locator('[data-chooser-mode-option="server"]').check()
+                await again()
                 await connect(page, BASE)
                 await expect(chooser(page).locator('[data-chooser-empty]')).toBeVisible()
-                await shot(page, name('none'), frame)
+                await shot(page, name('none'))
                 await chooser(page).locator('[data-chooser-cancel]').click()
 
                 // Failures under the field.
                 await tabOf(page, 'skin').click()
-                await choose(page)
-                await chooser(page).locator('[data-chooser-mode-option="server"]').check()
-                server.state.blocked = true
-                await connect(page, BASE)
-                await expect(errorOf(page).locator('[data-server-owners]')).toBeVisible()
-                await errorOf(page).locator('[data-server-owners] summary').click()
-                await shot(page, name('error-blocked'), frame)
-                server.state.blocked = false
+                await again()
                 server.state.down = true
-                await connectButton(page).click()
+                await connect(page, BASE)
                 await expect(errorOf(page)).toContainText('Could not reach this server')
-                await shot(page, name('error-unreachable'), frame)
+                await shot(page, name('error-unreachable'))
                 server.state.down = false
+                await connect(page, `${ORIGIN}/auth`)
+                await expect(errorOf(page)).toContainText('needs you to sign in')
+                await shot(page, name('error-auth'))
+                await connect(page, `${ORIGIN}/broken`)
+                await expect(errorOf(page)).toContainText('answered with an error (503)')
+                await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
                 await expect(errorOf(page)).toContainText('uses http')
-                await shot(page, name('error-http'), frame)
+                await shot(page, name('error-http'))
                 await context.setOffline(true)
                 await connect(page, BASE)
                 await expect(errorOf(page)).toContainText('You are offline.')
-                await shot(page, name('error-offline'), frame)
+                await shot(page, name('error-offline'))
                 await context.setOffline(false)
 
-                // Downloading: the resources are held back.
-                await page.unroute(`${server.origin}/**`)
-                const held = await serve(page, {
-                    title: 'Neon Server',
-                    files: server.files,
-                    delay: (path) => (path.includes('/repository/') ? 60_000 : 0),
-                })
+                // A Use that fails, next to Use.
+                server.state.down = false
                 await connect(page, BASE)
                 await chooser(page).locator('[data-chooser-item="neon"] input').check()
+                server.state.down = true
+                await useButton(page).click()
+                await expect(useErrorOf(page)).toBeVisible()
+                await shot(page, name('use-failed'))
+                server.state.down = false
+
+                // Downloading: the resources are held back.
+                const held = await serve(page, {
+                    title: 'Neon Server',
+                    files: serverFiles,
+                    delay: (path) => (path.includes('/repository/') ? 60_000 : 0),
+                })
                 await useButton(page).click()
                 await expect(chooser(page).locator('[data-chooser-progress]')).toHaveText(
                     /Downloading…/,
                 )
-                await shot(page, name('downloading'), frame)
+                await shot(page, name('downloading'))
                 expect(held.state.requests.length).toBeGreaterThan(0)
                 await chooser(page).locator('[data-chooser-cancel]').click()
 
                 // Used: the list shows the server item, and the Stored tab lists it with its origin.
-                await page.unroute(`${server.origin}/**`)
-                await serve(page, { title: 'Neon Server', files: server.files })
-                await choose(page)
-                await chooser(page).locator('[data-chooser-mode-option="server"]').check()
+                await serve(page, { title: 'Neon Server', files: serverFiles })
+                await again()
                 await connect(page, BASE)
                 await chooser(page).locator('[data-chooser-item="night"] input').check()
                 await useButton(page).click()
                 await expect(chooser(page)).toHaveCount(0)
-                await shot(page, name('sources-server'), frame)
+                await shot(page, name('sources-server'))
                 await tabOf(page, 'stored').click()
                 await expect(dialog(page).locator('[data-stored-item]')).toHaveCount(1)
-                await shot(page, name('stored'), frame)
+                await shot(page, name('stored'))
+
+                // A server choice that could not be downloaded again: the reason under its row.
+                const gone = await serve(page, { title: 'Neon Server', files: serverFiles })
+                gone.state.down = true
+                await setChoice(page, 'particle', {
+                    ...serverChoice('Neon Particle'),
+                    key: 'e'.repeat(64),
+                })
+                await expect
+                    .poll(() => slot(page, 'particle'), { timeout: 15_000 })
+                    .toMatchObject({ status: { reason: 'unavailable' } })
+                await tabOf(page, 'particle').click()
+                await expect(dialog(page).locator('[data-asset-note]')).toContainText(
+                    'could not be downloaded again',
+                )
+                await shot(page, name('server-failed'))
+            })
+
+    for (const theme of ['light', 'dark'] as const)
+        for (const [size, viewport] of [
+            ['wide', { width: 1280, height: 800 }],
+            ['narrow', { width: 360, height: 740 }],
+        ] as const)
+            test(`the web chooser, ${size}, in the ${theme} theme`, async ({ page }) => {
+                await page.setViewportSize(viewport)
+                await start(page)
+                await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
+                await open(page, 'skin')
+                await shot(page, `web-sources-${size}-${theme}`)
+                await choose(page)
+                await expect(chooser(page).locator('[data-chooser-mode]')).toHaveCount(0)
+                await shot(page, `web-file-${size}-${theme}`)
             })
 })

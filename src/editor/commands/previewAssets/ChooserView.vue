@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, useId, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../../i18n'
+import { platform } from '../../../platform'
 import type { AssetType } from '../../../preview/assets'
 import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { AssetChooser } from '../../../preview/assets/files/chooser'
@@ -13,8 +14,9 @@ import AssetRow from './AssetRow.vue'
 import ChooserModeSwitch from './ChooserModeSwitch.vue'
 import ServerBody from './ServerBody.vue'
 
-// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or From a
-// Server, by the switch under the title (the server's view is ServerBody's). Reading the file and
+// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or, in the apps,
+// From a Server, by the switch under the title (the server's view is ServerBody's); the web has no
+// switch, as it fetches no servers. Reading the file and
 // its errors show under Select File…, connecting and its errors under the address; storing or
 // downloading and a failed Use show next to Use, which stays in view at the bottom of the tab
 // while the dialog's own footer is inactive.
@@ -41,8 +43,9 @@ const titles = computed(
 const { phase, items, selected, also, error, useError, fileName, thumbnails } = props.chooser
 const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
 
+const hasServers = platform.capabilities.serverFetch
 const mode = props.server.mode
-const isFile = computed(() => mode.value === 'file')
+const isFile = computed(() => !hasServers || mode.value === 'file')
 const serverPhase = props.server.phase
 // Under way: reading or storing a file, connecting to a server or downloading from it.
 const isBusy = computed(() =>
@@ -59,7 +62,7 @@ const workingText = computed(() =>
 const failure = computed(() =>
     isFile.value
         ? useError.value
-        : props.server.useError.value && serverFailureText(props.server.useError.value).text,
+        : props.server.useError.value && serverFailureText(props.server.useError.value),
 )
 // What Use needs: an item selected, and nothing under way.
 const canUse = computed(() =>
@@ -145,7 +148,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
     >
         <h3 class="px-2 pt-1 text-base font-bold" data-chooser-title>{{ titles }}</h3>
 
-        <div class="px-2">
+        <div v-if="hasServers" class="px-2">
             <ChooserModeSwitch v-model="mode" :label="titles" :disabled="isBusy" />
         </div>
 
@@ -252,7 +255,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
         >
             <div
                 v-if="isWorking"
-                class="min-w-0 flex-1 basis-40"
+                class="min-w-0 flex-1 basis-40 max-[440px]:basis-auto"
                 role="status"
                 data-chooser-progress
             >
@@ -267,7 +270,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
             <p
                 v-else-if="failure"
                 :id="errorId"
-                class="relative min-w-0 flex-1 basis-40 pl-6 text-sm"
+                class="relative min-w-0 flex-1 basis-40 pl-6 text-sm max-[440px]:basis-auto"
                 aria-live="polite"
                 data-chooser-error
             >

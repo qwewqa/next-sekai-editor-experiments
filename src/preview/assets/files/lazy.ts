@@ -1,3 +1,4 @@
+import { platform } from '../../../platform'
 import { assetTypes } from '../choice'
 import { AssetError, type AssetType, type ChoiceProviders } from '../types'
 import { decodeImageToCheck } from './decodeImage'
@@ -13,16 +14,17 @@ export const lazyStoredProviders = (
     importProvider: () => Promise<typeof import('./provider')> = () => import('./provider'),
 ): ChoiceProviders => {
     let providers: Promise<ChoiceProviders> | undefined
-    // The server code loads on the first server choice whose package is gone.
+    // The server code loads on the first server choice whose package is gone. The web fetches
+    // no servers: there such a choice falls back.
     let redownload: Promise<NonNullable<StoredProviderOptions['redownload']>> | undefined
     const redownloader = () =>
         (redownload ??= Promise.all([
             import('../server/redownload'),
             import('../server/live'),
         ]).then(
-            ([{ createRedownload }, { createLiveServerClient, followRedownload }]) =>
+            ([{ createRedownload }, { liveServerClient, followRedownload }]) =>
                 createRedownload({
-                    client: createLiveServerClient(),
+                    client: liveServerClient(),
                     store: workerStore,
                     maxTextureSide,
                     decodeImage: decodeImageToCheck,
@@ -42,8 +44,11 @@ export const lazyStoredProviders = (
                 createStoredProviders({
                     store: workerStore,
                     maxTextureSide,
-                    redownload: async (type, choice, context) =>
-                        (await redownloader())(type, choice, context),
+                    redownload: async (type, choice, context) => {
+                        if (!platform.capabilities.serverFetch)
+                            throw new AssetError('missing', 'This build fetches no servers')
+                        return (await redownloader())(type, choice, context)
+                    },
                 }),
             (error: unknown) => {
                 providers = undefined

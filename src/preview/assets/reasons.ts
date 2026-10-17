@@ -6,6 +6,7 @@ export type ReasonKey =
     | 'fileGone'
     | 'storageUnavailable'
     | 'serverFailed'
+    | 'offline'
     | 'invalid'
     | 'defaultFailed'
     | 'builtinFailed'
@@ -26,7 +27,11 @@ export const reasonKey = (choice: AssetChoice, status: AssetStatus): ReasonKey |
                   ? 'storageUnavailable'
                   : 'fileGone'
         case 'server':
-            return status.reason === 'corrupt' ? 'invalid' : 'serverFailed'
+            return status.reason === 'corrupt'
+                ? 'invalid'
+                : status.reason === 'offline'
+                  ? 'offline'
+                  : 'serverFailed'
     }
 }
 

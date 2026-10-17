@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
-// Part 0 §0.9.2: one base policy, with the web, native and dev additions.
+// Part 0 §0.9.2: one base policy, with the native and dev additions. The web adds nothing: it
+// makes no cross-origin requests.
 const base = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'wasm-unsafe-eval'"],
@@ -15,7 +16,6 @@ const base = {
     'frame-src': ["'none'"],
 }
 
-export const webAdditions = { 'img-src': ['https:'], 'connect-src': ['https:'] }
 export const nativeAdditions = { 'connect-src': ['ipc:', 'http://ipc.localhost'] }
 export const devAdditions = { 'connect-src': ['ws://127.0.0.1:*'] }
 
@@ -37,16 +37,9 @@ function policy(additions, scripts) {
 
 /** Each takes the texts of the page's inline scripts, which get a hash source. */
 export const basePolicy = (scripts = []) => policy({}, scripts)
-export const webPolicy = (scripts = []) => policy(webAdditions, scripts)
+export const webPolicy = (scripts = []) => policy({}, scripts)
 export const nativePolicy = (scripts = []) => policy(nativeAdditions, scripts)
-export const devPolicy = (scripts = []) =>
-    policy(
-        {
-            ...webAdditions,
-            'connect-src': [...webAdditions['connect-src'], ...devAdditions['connect-src']],
-        },
-        scripts,
-    )
+export const devPolicy = (scripts = []) => policy(devAdditions, scripts)
 
 /** The text of every inline script: a `<script>` without `src`, as the browser hashes it. */
 export function inlineScripts(html) {

@@ -79,6 +79,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
               safeModeEntry: 'query',
               fileAssociations: false,
               mp3Export: true,
+              serverFetch: true,
           }
         : {
               writeBack: true,
@@ -91,6 +92,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
               safeModeEntry: 'startMarker',
               fileAssociations: true,
               mp3Export: true,
+              serverFetch: true,
           }
 
 const targetKey = (target: FileTarget) => {

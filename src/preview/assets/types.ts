@@ -63,7 +63,8 @@ export type Loaded = {
     effect: LoadedEffect
 }
 
-export type AssetErrorCode = 'missing' | 'corrupt' | 'unavailable'
+/** `offline`: a server item could not be downloaded again with the device offline. */
+export type AssetErrorCode = 'missing' | 'corrupt' | 'unavailable' | 'offline'
 
 /** The typed failure of a provider; the code picks the reason shown to the user. */
 export class AssetError extends Error {

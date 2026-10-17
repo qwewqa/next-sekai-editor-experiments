@@ -23,7 +23,7 @@ import { importMessage } from '../../../preview/assets/files/importText'
 import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
 import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
 import { createServerChooser } from '../../../preview/assets/server/chooser'
-import { createLiveServerClient } from '../../../preview/assets/server/live'
+import { liveServerClient } from '../../../preview/assets/server/live'
 import { serverItemText } from '../../../preview/assets/server/liveText'
 import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
 import type { AssetType } from '../../../preview/assets/types'
@@ -71,7 +71,7 @@ const choosers = Object.fromEntries(
 ) as Record<AssetType, ReturnType<typeof createAssetChooser>>
 
 // One server chooser per type, beside the file chooser: they share the open state and the choices.
-const serverClient = createLiveServerClient()
+const serverClient = liveServerClient()
 const servers = Object.fromEntries(
     assetTypes.map((type) => [
         type,
@@ -94,11 +94,12 @@ const servers = Object.fromEntries(
             close: () => {
                 choosers[type].cancel()
             },
-            // A share link to another type's item: that tab opens on the server and connects.
+            // A share link to another type's item: that tab opens on the server and connects,
+            // unless it is downloading, which a new connection would stop.
             handOver: (other, input) => {
                 active.value = other
                 choosers[other].show()
-                void servers[other].connectTo(input)
+                if (servers[other].phase.value !== 'working') void servers[other].connectTo(input)
             },
         }),
     ]),

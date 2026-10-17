@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { instrumentRendering } from './fixtures'
-import { openAssets, useBuiltinServerSkin } from './serverFlow'
 
 // The release build under its exact policy (Part 0 §0.9.2).
 
@@ -81,6 +80,16 @@ test('the page carries the web policy first, hashing its one inline script', asy
     expect(scripts).toHaveLength(1)
     expect(meta).toBe(webPolicy(inlineScripts(`<script>${scripts[0]}</script>`)))
     expect(meta).not.toContain("'unsafe-eval'")
+    // The web makes no cross-origin requests: no https: source for requests or pictures.
+    const directives = Object.fromEntries(
+        (meta ?? '').split(';').map((part) => {
+            const [name = '', ...sources] = part.trim().split(/\s+/)
+            return [name, sources]
+        }),
+    )
+    expect(directives['connect-src']).toEqual(["'self'", 'blob:', 'data:'])
+    expect(directives['img-src']).toEqual(["'self'", 'blob:', 'data:'])
+    expect(meta).not.toContain('https:')
 })
 
 test('Pixi starts, the Lyon wasm runs and the preview packages load without a violation', async ({
@@ -161,67 +170,6 @@ test('the storage worker runs as a classic worker and restarts from its Blob cop
     expect((await read(page)).hooked).toEqual([])
     expect(errors).toEqual([])
 })
-
-// The release build's own Built-in server, at an https address of its own: the policy lets the
-// page fetch it and show its pictures, which only the web policy's `https:` sources allow.
-const SERVER = 'https://builtin.test'
-const routeBuiltinServer = (page: Page) =>
-    page.route(`${SERVER}/**`, async (route) => {
-        const path = new URL(route.request().url()).pathname
-        const served = await page.request.get(path)
-        await route.fulfill({
-            status: served.status(),
-            headers: { 'access-control-allow-origin': '*' },
-            body: await served.body(),
-        })
-    })
-
-test('a server is fetched under the policy: its list, its picture and its item', async ({
-    page,
-}) => {
-    const errors = await watch(page)
-    await routeBuiltinServer(page)
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await openAssets(page)
-    await useBuiltinServerSkin(page, `${SERVER}/builtin-server/`)
-
-    expect((await read(page)).violations).toEqual([])
-    expect((await read(page)).hooked).toEqual([])
-    expect(errors).toEqual([])
-})
-
-for (const [directive, replacement, what] of [
-    ['connect-src', "connect-src 'self' blob: data:", 'requests'],
-    ['img-src', "img-src 'self' blob: data:", 'pictures'],
-] as const) {
-    test(`without https: in ${directive} the server’s ${what} are violations`, async ({ page }) => {
-        await watch(page)
-        await routeBuiltinServer(page)
-        await rewritePolicy(page, (policy) =>
-            policy.replace(new RegExp(`${directive}[^;]*`), replacement),
-        )
-        await page.goto('/')
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await openAssets(page)
-        const dialog = page.locator('dialog[open]')
-        await dialog.getByRole('tab', { name: 'Skin' }).click()
-        await dialog.locator('[data-asset-choose]').click()
-        await dialog.locator('[data-chooser-mode-option="server"]').check()
-        await dialog.locator('[data-server-address]').fill(`${SERVER}/builtin-server/`)
-        await dialog.locator('[data-server-connect]').click()
-        if (directive === 'connect-src') {
-            await expect(dialog.locator('[data-server-error]')).toBeVisible()
-            await expect(dialog.locator('[data-chooser-item]')).toHaveCount(0)
-        } else {
-            // The list loads; its picture does not.
-            await expect(dialog.locator('[data-chooser-item]')).toHaveCount(1)
-        }
-        await expect
-            .poll(async () => (await read(page)).violations.map((violation) => violation.directive))
-            .toContain(directive)
-    })
-}
 
 for (const [name, setting, system] of [
     ['light', 'light', 'dark'],

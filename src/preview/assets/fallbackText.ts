@@ -31,6 +31,8 @@ export const reasonText = (fallback: FallbackState) => {
             return interpolateRaw(reason.storageUnavailable, noun)
         case 'serverFailed':
             return interpolateRaw(reason.serverFailed, noun, displayOrigin(fallback.origin))
+        case 'offline':
+            return strings().offline
         case 'invalid':
             return interpolateRaw(reason.invalid, noun)
         case 'defaultFailed':

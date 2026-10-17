@@ -243,6 +243,8 @@ const webCapabilities = (): PlatformCapabilities =>
         safeModeEntry: 'query',
         fileAssociations: false,
         mp3Export: true,
+        // The web makes no cross-origin requests.
+        serverFetch: false,
     }))
 
 export const platform: Platform = {
@@ -268,8 +270,7 @@ export const platform: Platform = {
     journal: storageJournalStore(() => localStorage, storageKey('')),
 
     openExternal,
-    fetchServer: (url, init) =>
-        fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer', ...init }),
+    fetchServer: () => Promise.reject(new Error('The web build fetches no servers')),
     diagnostics: () => {
         const { engine, os } = detection()
         return {
