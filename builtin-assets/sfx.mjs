@@ -164,21 +164,25 @@ const criticalSwish = (seed) =>
     )
 
 /**
- * A seamless one-second loop of soft noise: filtered noise with whole-cycle swells, its end
- * crossfaded into the noise that follows it, so the loop point joins.
+ * A seamless one-second loop of a soft low hum: sine partials on whole hertz, so every one ends
+ * where it began, each with a quieter twin a hertz or two off for a slow beat, and one gentle swell a
+ * second whose low point is the loop's start, so a hold fades in. Partials are [hertz, level, twin].
  */
-const wash = (seed, { centre, damping, air, swell }) => {
-    const extra = Math.round(0.1 * sampleRate)
-    const source = mix(
-        band(noise(1.1, seed), centre, damping),
-        scale(highPass(noise(1.1, seed + 1), 0.15), air),
-    )
+const hum = (partials, swell) => {
     const out = empty(1)
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        const fade = i < extra ? i / extra : 1
-        const value = source[i] * fade + (i < extra ? source[i + out.length] * (1 - fade) : 0)
-        out[i] = value * (1 - swell + swell * Math.sin(tau * 2 * t) * Math.sin(tau * 2 * t))
+        let sum = 0
+        for (const [frequency, amount, twin] of partials) {
+            sum += amount * Math.sin((tau * ((frequency * i) % sampleRate)) / sampleRate)
+            // The twin starts in opposite phase, so the beat too starts at its quietest.
+            if (twin) {
+                const at = ((frequency + twin) * i) % sampleRate
+                sum -= 0.12 * amount * Math.sin((tau * at) / sampleRate)
+            }
+        }
+        const rise = 0.5 - 0.5 * Math.sin(tau * (t + 0.25))
+        out[i] = sum * (1 - swell * (1 - rise))
     }
     return out
 }
@@ -215,6 +219,9 @@ const trace = (seed, bright = 0) =>
         0.6,
     )
 
+/** The clips the engine loops while a hold is held. */
+export const loops = ['#HOLD', 'Sekai Critical Hold']
+
 /** The 15 clips in the engine's order, as Float64 samples before levelling. */
 export function renderClips() {
     const clips = {
@@ -224,17 +231,34 @@ export function renderClips() {
         '#PERFECT_ALTERNATIVE': swish(2),
         '#GREAT_ALTERNATIVE': swish(5, { from: 950, to: 2200, dull: 0.45 }),
         '#GOOD_ALTERNATIVE': swish(6, { from: 800, to: 1800, dull: 0.3 }),
-        '#HOLD': wash(7, { centre: 900, damping: 1.8, air: 0.08, swell: 0.25 }),
+        '#HOLD': hum(
+            [
+                [110, 1, 1],
+                [220, 0.4, 2],
+                [330, 0.12],
+                [440, 0.04],
+            ],
+            0.1,
+        ),
         '#STAGE': thud(8),
         'Sekai Tick': tick(9),
         'Sekai Critical Tap': clap(20),
         'Sekai Critical Flick': criticalSwish(30),
-        'Sekai Critical Hold': wash(10, { centre: 1400, damping: 1.6, air: 0.18, swell: 0.3 }),
+        'Sekai Critical Hold': hum(
+            [
+                [110, 1, 1],
+                [220, 0.55, 2],
+                [330, 0.25, 1],
+                [440, 0.12],
+                [550, 0.05],
+                [660, 0.025],
+            ],
+            0.12,
+        ),
         'Sekai Critical Tick': tick(11, 1),
         'Sekai Trace': trace(12),
         'Sekai Critical Trace': trace(13, 1),
     }
-    const loops = ['#HOLD', 'Sekai Critical Hold']
     return Object.fromEntries(
         Object.entries(clips).map(([name, samples]) => [
             name,
@@ -243,8 +267,8 @@ export function renderClips() {
     )
 }
 
-// Loudness is measured as K-weighted (ITU-R BS.1770) power over the first 200 ms, zero padded, in LU
-// relative to full scale: short clips and the start of a loop are compared on the same window.
+// Loudness is measured as K-weighted (ITU-R BS.1770) power in LU relative to full scale: over the first
+// 200 ms, zero padded, for one-shot clips, and over the whole loop for the hold loops.
 const window = Math.round(0.2 * sampleRate)
 
 const biquad = (samples, [b0, b1, b2, a1, a2]) => {
@@ -297,12 +321,28 @@ export function loudness(samples) {
     return -0.691 + 10 * Math.log10(sum / window)
 }
 
+/** A loop's whole-length loudness in LUFS, K-weighted and measured on its second play. */
+export function loopLoudness(samples) {
+    const twice = new Float64Array(samples.length * 2)
+    twice.set(samples)
+    twice.set(samples, samples.length)
+    const weighted = biquad(biquad(twice, shelf()), kHighPass())
+    let sum = 0
+    for (let i = samples.length; i < twice.length; i++) sum += weighted[i] * weighted[i]
+    return -0.691 + 10 * Math.log10(sum / samples.length)
+}
+
+/** A clip's loudness as its target is set: loops over their length, the rest over 200 ms. */
+export const measure = (name, samples) =>
+    loops.includes(name) ? loopLoudness(samples) : loudness(samples)
+
 const peakOf = (samples) => samples.reduce((peak, sample) => Math.max(peak, Math.abs(sample)), 0)
 
 /**
- * The loudness each clip is set to (LUFS, as loudness() measures it), from the web's Default clips
- * measured the same way (mono equivalent, from the onset); the Sonolus-only clips sit under the hits.
- * After the owner’s listening pass the flicks sit 1 LU and the hold loops 3 LU under the Default's.
+ * The loudness each clip is set to (LUFS, as measure() measures it), from the web's Default clips
+ * measured the same way (mono equivalent, from the onset; the holds over their whole length); the
+ * Sonolus-only clips sit under the hits. After the owner’s listening pass the flicks sit 1 LU and the
+ * hold loops 3 LU under the Default's.
  */
 export const targets = {
     '#PERFECT': -15.5,
@@ -311,12 +351,12 @@ export const targets = {
     '#PERFECT_ALTERNATIVE': -15.3,
     '#GREAT_ALTERNATIVE': -16.3,
     '#GOOD_ALTERNATIVE': -17.3,
-    '#HOLD': -25.5,
+    '#HOLD': -24.4,
     '#STAGE': -20,
     'Sekai Tick': -18.2,
     'Sekai Critical Tap': -11.7,
     'Sekai Critical Flick': -13.9,
-    'Sekai Critical Hold': -20.5,
+    'Sekai Critical Hold': -22.3,
     'Sekai Critical Tick': -17.9,
     'Sekai Trace': -17.2,
     'Sekai Critical Trace': -11.4,
@@ -334,7 +374,7 @@ const limit = (samples) =>
     })
 
 /** Scales a clip to its target, limiting peaks; a few passes settle the gain the limiter costs. */
-function level(samples, target) {
+function level(samples, target, loudness) {
     let gain = Math.exp(((target - loudness(samples)) / 20) * Math.LN10)
     let out = limit(scale(samples, gain))
     for (let pass = 0; pass < 6; pass++) {
@@ -347,7 +387,8 @@ function level(samples, target) {
 /** The clips by name as Float64 samples at their targets, peaks below peakLevel. */
 export function matchLoudness(clips) {
     const out = {}
-    for (const [name, samples] of Object.entries(clips)) out[name] = level(samples, targets[name])
+    for (const [name, samples] of Object.entries(clips))
+        out[name] = level(samples, targets[name], (part) => measure(name, part))
     return { clips: out }
 }
 
