@@ -226,6 +226,7 @@ function validateFileNames(files, assets) {
     if (remaining.has('resource/skin.scp')) throw new Error('Missing preview skin')
     const exact = new Set([
         'index.html',
+        'privacy/index.html',
         'release-manifest.json',
         ...staticFiles,
         ...noticeFiles,

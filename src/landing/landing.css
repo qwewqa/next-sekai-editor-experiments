@@ -1,0 +1,23 @@
+@import '../themes.css';
+@config '../../tailwind.landing.config.js';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* Links are underlined ink, never accent: mint fails contrast on the light surface. */
+    .link {
+        @apply rounded-sm text-fg-strong underline underline-offset-2 outline-none transition-colors hover:decoration-2 focus-visible:ring-2 focus-visible:ring-fg;
+    }
+
+    /* A button on a header band, as in the editor's dialogs. */
+    .band-button {
+        @apply inline-flex h-9 shrink-0 items-center rounded-full px-4 font-bold outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11;
+    }
+}
+
+/* Anchored headings clear the top edge. */
+[id] {
+    scroll-margin-top: 1rem;
+}
