@@ -4,7 +4,7 @@ import { isBlockingModalOpen, isToolModalOpen } from '../../modals'
 import { holdsTyping } from '../../modals/form/resync'
 import { settings } from '../../settings'
 import { isComposingKey } from '../../utils/composition'
-import { commands, type CommandName } from '../commands'
+import { commands, isCommandName, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { drawerSide, takesDockKeys } from '../workspace'
 import {
@@ -109,7 +109,10 @@ const onKeydown = (event: KeyboardEvent) => {
 
     const commandChord = isCommandChord(event) && isCharacter(event.key)
     const active = document.activeElement
-    const { names, exact } = matchBindings(settings.keyboardShortcuts, event, isApple)
+    const matched = matchBindings(settings.keyboardShortcuts, event, isApple)
+    // Bindings naming commands not registered yet wait for them.
+    const names = matched.names.filter(isCommandName)
+    const { exact } = matched
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This
     // exception enables just the bound Deselect action, never other Escape bindings.
     if (

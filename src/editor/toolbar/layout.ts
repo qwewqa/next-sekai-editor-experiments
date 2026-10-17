@@ -3,8 +3,17 @@ import type { CommandName } from '../commands'
 /** Always last: a group of its own. */
 const fixedGroup: CommandName[] = ['fullscreen', 'settings', 'openContextMenu', 'help']
 
+/** The groups' names that are registered commands; the rest wait for their command. */
+export const registeredGroups = <N extends string>(
+    groups: string[][],
+    isRegistered: (name: string) => name is N,
+) => groups.map((group) => group.filter(isRegistered))
+
 /** The toolbar's groups, each shown as one tool, limited to `available` if given. */
-export const toolbarGroups = (groups: CommandName[][], available?: CommandName[]) => [
+export const toolbarGroups = <N extends string>(
+    groups: N[][],
+    available?: N[],
+): (N | CommandName)[][] => [
     ...groups
         .map((group) => (available ? group.filter((name) => available.includes(name)) : group))
         .filter((group) => group.length),
