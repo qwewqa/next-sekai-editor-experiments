@@ -79,7 +79,11 @@ const pip = (seconds, frequency, level = 1) => {
     const out = empty(seconds)
     for (let i = 0; i < out.length; i++) {
         const t = timeOf(i)
-        out[i] = level * Math.sin(tau * frequency * t) * Math.exp(-t / (seconds / 4)) * Math.min(1, t / 0.001)
+        out[i] =
+            level *
+            Math.sin(tau * frequency * t) *
+            Math.exp(-t / (seconds / 4)) *
+            Math.min(1, t / 0.001)
     }
     return out
 }
