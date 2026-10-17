@@ -91,15 +91,16 @@ test('the web build keeps the default targets', async () => {
     )
 })
 
-test('the native page has no og tags or icon link and keeps its theme script', async () => {
+test('the native page has no og tags, icon link or support gate and keeps its theme script', async () => {
     const html = await readFile(join(dist, 'index.html'), 'utf8')
-    assert.equal(/og:|rel="icon"/.test(html), false)
+    assert.equal(/og:|rel="icon"|gate.js|support gate/.test(html), false)
     assert.ok(html.includes(`<title>${productName}</title>`))
     assert.ok(html.includes('dataset.theme'))
     assert.ok(html.includes('name="description"'))
     assert.ok(html.includes('name="viewport"'))
     const source = await readFile(join(root, 'index.html'), 'utf8')
     assert.ok(source.includes('og:image'), 'the web page is unchanged')
+    assert.ok(source.includes('src="/gate.js"'), 'the web page loads the support gate')
     assert.throws(() => nativeIndexHtml('<html><head></head></html>'), /title/)
 })
 

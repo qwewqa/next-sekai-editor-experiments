@@ -1122,6 +1122,18 @@
       "generating": "Önizleme oluşturuluyor…"
     }
   },
+  "startup": {
+    "opening": "\"{0}\" açılıyor…",
+    "openingBlank": "Açılıyor…",
+    "slow": "Bu işlem her zamankinden uzun sürüyor.",
+    "error": "Editör saklanan çalışmanızı açamadı.",
+    "blank": "Boş Başlat"
+  },
+  "safe": {
+    "bar": "Güvenli mod: hiçbir şey saklanmıyor.",
+    "leave": "Güvenli Moddan Çık",
+    "open": "Güvenli Modda Aç"
+  },
   "load": {
     "version": "Sürüm {0}",
     "updated": "{0} sürümüne güncellendi",

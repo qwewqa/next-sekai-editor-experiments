@@ -17,7 +17,11 @@ import WorkspaceDock from './editor/workspace/WorkspaceDock.vue'
 import { languageTag } from './i18n/plural'
 import { modals } from './modals'
 import ModalManager from './modals/ModalManager.vue'
+import { isSafeMode } from './safe'
 import { settings } from './settings'
+import { startupGate } from './startup/gate'
+import SafeModeBar from './startup/SafeModeBar.vue'
+import StartupGate from './startup/StartupGate.vue'
 
 watch(
     () => settings.locale,
@@ -111,7 +115,15 @@ watch(root, (element, _, onCleanup) => {
 </script>
 
 <template>
-    <div ref="root" class="flex h-screen w-screen overflow-hidden">
+    <SafeModeBar v-if="isSafeMode()" />
+    <div
+        ref="root"
+        class="flex h-screen w-screen overflow-hidden"
+        :class="
+            isSafeMode() &&
+            'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(100vh_-_var(--safe-bar-height,2.5rem))]'
+        "
+    >
         <WorkspaceDock side="left" />
         <div class="relative flex min-w-0 flex-1 flex-col">
             <WorkspaceDock side="top" />
@@ -129,4 +141,5 @@ watch(root, (element, _, onCleanup) => {
 
     <NoticeHost />
     <ModalManager />
+    <StartupGate v-if="startupGate.phase !== 'done'" />
 </template>

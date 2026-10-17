@@ -1,0 +1,192 @@
+import { shallowReactive } from 'vue'
+import { errorMessage } from '../utils/error'
+
+// The startup gate (Part 1 §1.4.2): until the session is open, the editor refuses input, so
+// nothing typed into a default chart is lost to the open that replaces it. This is its state and
+// its input guard; StartupGate.vue draws it. It is imported ahead of the app (`launch.ts`), so
+// input is swallowed from the first frame.
+
+/** After this long, the gate adds the slow text with Start Blank and Open in Safe Mode. */
+export const SLOW_MS = 10_000
+/** The spinner and the text wait this long, so a quick open shows nothing. */
+export const SPINNER_DELAY_MS = 150
+
+/** The test flags: a JSON object in this key (a tab's sessionStorage first, then localStorage). */
+export const STARTUP_TEST_KEY = 'nse.test.startup'
+
+type StartupFlags = {
+    /** Startup stays open until `window.nseStartupRelease()` is called. */
+    hold?: boolean
+    /** Startup fails with this text, after the real startup has run. */
+    fail?: string
+    /** The slow text comes after this many milliseconds instead of 10 s. */
+    slowMs?: number
+}
+
+declare global {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        /** Ends a startup held by the `hold` test flag. */
+        nseStartupRelease?: () => void
+    }
+}
+
+export type StartupPhase = 'opening' | 'error' | 'done'
+
+/** The error state's Export Raw Data… (§1.4.14): its label, in the app's language, and what it does. */
+export type RawExport = { label: () => string; run: () => void | Promise<void> }
+
+type GateState = {
+    phase: StartupPhase
+    /** The session being opened, once known: "Opening "Coconut (Master)"…". */
+    name: string | undefined
+    /** Startup took longer than SLOW_MS. */
+    slow: boolean
+    /** The failed startup's own text. */
+    error: string
+    /** Export Raw Data… on the error state, once it is built (Step 8); undefined until then. */
+    rawExport: RawExport | undefined
+}
+
+export const startupGate = shallowReactive<GateState>({
+    phase: 'opening',
+    name: undefined,
+    slow: false,
+    error: '',
+    rawExport: undefined,
+})
+
+const readFlags = (): StartupFlags => {
+    try {
+        const text =
+            sessionStorage.getItem(STARTUP_TEST_KEY) ?? localStorage.getItem(STARTUP_TEST_KEY)
+        const parsed: unknown = text ? JSON.parse(text) : undefined
+        return typeof parsed === 'object' && parsed !== null ? parsed : {}
+    } catch {
+        return {}
+    }
+}
+
+let slowTimer: ReturnType<typeof setTimeout> | undefined
+let element: HTMLElement | undefined
+
+/** Events that carry input to the editor. */
+const POINTER_EVENTS = [
+    'pointerdown',
+    'pointerup',
+    'mousedown',
+    'mouseup',
+    'click',
+    'dblclick',
+    'auxclick',
+    'contextmenu',
+    'touchstart',
+    'touchend',
+    'wheel',
+    'paste',
+    'cut',
+    'copy',
+    'drop',
+    'dragover',
+    'dragenter',
+] as const
+const KEY_EVENTS = ['keydown', 'keyup', 'keypress', 'beforeinput', 'input'] as const
+
+const inGate = (target: EventTarget | null) =>
+    element !== undefined && target instanceof Node && element.contains(target)
+
+// Capture on window, registered first, so no editor listener sees the event. A key's default
+// action stays: Tab moves focus to the gate's buttons, Enter and Space press the focused one,
+// and the browser's own shortcuts (a reload) still work.
+const swallow = (event: Event) => {
+    if (startupGate.phase === 'done') return
+    if (!(KEY_EVENTS as readonly string[]).includes(event.type) && inGate(event.target)) return
+    event.stopImmediatePropagation()
+}
+
+const listening = typeof window !== 'undefined'
+
+if (listening) {
+    for (const type of [...POINTER_EVENTS, ...KEY_EVENTS])
+        window.addEventListener(type, swallow, { capture: true })
+}
+
+/** The gate's element, so presses on its own buttons get through. */
+export const registerGateElement = (target: HTMLElement | undefined) => {
+    element = target
+}
+
+const startSlowTimer = (ms: number) => {
+    clearTimeout(slowTimer)
+    slowTimer = setTimeout(() => {
+        if (startupGate.phase === 'opening') startupGate.slow = true
+    }, ms)
+}
+
+if (listening) startSlowTimer(readFlags().slowMs ?? SLOW_MS)
+
+/** The session being opened has a name: "Opening "Coconut (Master)"…". */
+export const setOpeningName = (name: string | undefined) => {
+    startupGate.name = name
+}
+
+/** The session is open: input reaches the editor. */
+export const finishStartup = () => {
+    if (startupGate.phase === 'done') return
+    clearTimeout(slowTimer)
+    startupGate.phase = 'done'
+    if (listening)
+        for (const type of [...POINTER_EVENTS, ...KEY_EVENTS])
+            window.removeEventListener(type, swallow, { capture: true })
+}
+
+/** Startup threw: the gate says so, with the error's own text, and stays. */
+export const failStartup = (error: unknown) => {
+    console.error(error)
+    // Once the editor is open, a late failure doesn't take it away again.
+    if (startupGate.phase === 'done') return
+    clearTimeout(slowTimer)
+    startupGate.error = errorMessage(error)
+    startupGate.phase = 'error'
+}
+
+/**
+ * Follows the startup sequence (the database opening, the recovery order and loading the
+ * session): the gate lifts when it resolves and shows its error when it rejects.
+ */
+export const trackStartup = (task: Promise<unknown>) => {
+    const flags = readFlags()
+    void (async () => {
+        await task
+        if (flags.hold)
+            await new Promise<void>((resolve) => {
+                window.nseStartupRelease = resolve
+            })
+        if (flags.fail !== undefined) throw new Error(flags.fail)
+    })().then(finishStartup, failStartup)
+}
+
+let startBlankHandler: (() => void | Promise<void>) | undefined
+
+/**
+ * What Start Blank does besides lifting the gate: the startup sequence stops waiting for the
+ * stored session, leaving it untouched, and the editor opens blank. Without one, the gate lifts
+ * and startup carries on in the background.
+ */
+export const setStartBlankHandler = (handler: (() => void | Promise<void>) | undefined) => {
+    startBlankHandler = handler
+}
+
+export const startBlank = async () => {
+    try {
+        await startBlankHandler?.()
+    } catch (error) {
+        console.error(error)
+    }
+    finishStartup()
+}
+
+/** Export Raw Data… (§1.4.14) registers here once built, and the error state offers it. */
+export const setRawExport = (rawExport: RawExport | undefined) => {
+    startupGate.rawExport = rawExport
+}

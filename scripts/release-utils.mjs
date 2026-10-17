@@ -34,7 +34,8 @@ export const lyonNoticeFiles = [...lyonNoticeHashes.keys()]
 
 // The extension point for files copied from public/: a step that adds one lists it here (or in a list
 // beside this one, staged below), and in validateFileNames and tests/release/artifacts.test.mjs.
-export const staticFiles = ['favicon.ico', 'thumbnail.png']
+// gate.js is the support gate (Part 1 §1.6.10): a classic script that index.html loads ahead of the bundle.
+export const staticFiles = ['favicon.ico', 'thumbnail.png', 'gate.js']
 export const builtinTypes = ['skin', 'particle', 'background', 'effect']
 // The four Built-in packages (Part 2, 2.5.7), and the Sonolus server folder made from them.
 export const builtinFiles = builtinTypes.map((type) => `builtin/${type}.scp`)
@@ -368,6 +369,13 @@ function validAppVersion(manifest) {
 // The Vite entries (Part 5 adds /privacy/ and /app/); the third-party notice pages are static documents.
 const pageEntries = /^(?:index|privacy\/index|app\/index)\.html$/
 
+// The support gate is a plain classic script with no async or defer, ahead of every module script.
+function gateComesFirst(html) {
+    const gate = /<script\s+src="\/gate\.js"\s*><\/script>/i.exec(html)
+    const module = /<script\b[^>]*\btype="module"/i.exec(html)
+    return Boolean(gate && module && gate.index < module.index)
+}
+
 // The pages' policy is the web policy hashing exactly their inline scripts, first in <head>.
 async function checkPages(directory, files, manifest) {
     for (const file of files.filter((file) => pageEntries.test(file))) {
@@ -376,6 +384,8 @@ async function checkPages(directory, files, manifest) {
             throw new Error(`Content Security Policy differs from the web policy: ${file}`)
     }
     const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
+    if (!gateComesFirst(index))
+        throw new Error('index.html does not load gate.js before the bundle')
     if (isTestSitePage(index) !== (manifest.site === 'test'))
         throw new Error(`index.html does not match the site: ${manifest.site}`)
 }

@@ -20,6 +20,7 @@ import {
     previewRenderScale,
     previewTransportPositions,
 } from './preview/options'
+import { registerSettingKeys } from './safe'
 import { insertExportLevel } from './settings/toolbarExport'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
 import { storedBindings, storedNames } from './settingsCodecs'
@@ -655,6 +656,9 @@ const migrateSetting = (key: string, value: unknown) => {
 
 const normalize = <T extends Type.TSchema>(schema: T, value: unknown) =>
     Value.Decode(schema, Value.Repair(schema, value))
+
+// The only keys safe mode writes (Part 1 §1.4.2).
+registerSettingKeys(Object.keys(settingsProperties))
 
 export const settings = Object.defineProperties(
     {},

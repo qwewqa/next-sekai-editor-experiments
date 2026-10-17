@@ -1122,6 +1122,18 @@
             "generating": "Generating preview…"
         }
     },
+    "startup": {
+        "opening": "Opening \"{0}\"…",
+        "openingBlank": "Opening…",
+        "slow": "This is taking longer than usual.",
+        "error": "The editor could not open your stored work.",
+        "blank": "Start Blank"
+    },
+    "safe": {
+        "bar": "Safe mode: nothing is stored.",
+        "leave": "Leave Safe Mode",
+        "open": "Open in Safe Mode"
+    },
     "load": {
         "version": "Version {0}",
         "updated": "Updated to version {0}",
