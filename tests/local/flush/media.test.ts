@@ -7,6 +7,7 @@ import { unpackHashes } from '../../../src/local/records/rows'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld } from '../../../src/local/testing/world'
+import type { StorageStatus } from '../../../src/local/worker/core'
 import { setMediaReadBackHookForTests } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
 import { goldenChart, stateOf } from '../records/charts'
@@ -167,28 +168,34 @@ test('a media row that reads back wrong is written again from memory', async () 
     assert.equal(rows(world, 'media').size, 1)
 })
 
-test('a media row that reads back wrong twice is removed and held paused, and the history is stored', async () => {
+test('a media row that reads back wrong twice is removed and pending, and the history is stored', async () => {
     const world = createWorld({ seed: 5 })
     const page = await openPage(world, world.tab('a'))
+    const statuses: StorageStatus[] = []
+    page.core.onStatus((status) => statuses.push(status))
+    const picked = await withSong(stateOf(goldenChart()), 5)
+    const hash = picked.bgm.meta!.hash
     setMediaReadBackHookForTests((bytes) => bytes.slice(1))
     try {
-        begin(page, await withSong(stateOf(goldenChart()), 5))
+        begin(page, picked)
         await page.flusher.flush()
     } finally {
         setMediaReadBackHookForTests(undefined)
     }
-    assert.equal(page.core.status.reason, 'failed')
+    // Storing is not paused: the status says stored, with the media pending beside it.
+    assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [hash] })
+    assert.ok(statuses.every((status) => status.mode === 'stored' && !status.reason))
     // The bad row went, and the entries are stored all the same: the root names a BGM not held.
     assert.equal(rows(world, 'media').size, 0)
     assert.equal(page.flusher.hasPending, false)
     assert.equal(rows(world, 'entries').size, 1)
     assert.deepEqual(checkStored(world.memory), [])
-    // Another write that succeeds doesn't resume storing.
+    // Another write that succeeds leaves it pending.
     await page.tab.run(() => page.handlers.countDay())
-    assert.equal(page.core.status.reason, 'failed')
+    assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [hash] })
     // The media is stored again on its own, from the page's bytes.
     await page.flusher.retryMedia()
-    assert.equal(page.core.status.reason, undefined)
+    assert.deepEqual(page.core.status, { mode: 'stored' })
     assert.equal(rows(world, 'media').size, 1)
     assert.deepEqual(checkStored(world.memory), [])
 })
@@ -218,7 +225,8 @@ test('a BGM that never reads back right blocks no history, and later flushes don
         await page.flusher.retryMedia()
         assert.equal(reads, 4)
         assert.equal(rows(world, 'media').size, 0)
-        assert.equal(page.core.status.reason, 'failed')
+        assert.equal(page.core.status.reason, undefined)
+        assert.equal(page.core.status.mediaPending?.length, 1)
         assert.equal(rows(world, 'meta').get('epoch')?.value ?? 0, 0)
         assert.deepEqual(checkStored(world.memory), [])
     } finally {
@@ -239,10 +247,11 @@ test('a media row that can’t be read is kept, and read back again later', asyn
         setMediaReadBackHookForTests(undefined)
     }
     assert.equal(rows(world, 'media').size, 1)
-    assert.equal(page.core.status.reason, 'failed')
+    assert.equal(page.core.status.reason, undefined)
+    assert.equal(page.core.status.mediaPending?.length, 1)
     assert.equal(page.flusher.hasPending, false)
     await page.flusher.retryMedia()
-    assert.equal(page.core.status.reason, undefined)
+    assert.deepEqual(page.core.status, { mode: 'stored' })
     assert.equal(rows(world, 'media').size, 1)
 })
 

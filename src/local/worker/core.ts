@@ -28,6 +28,11 @@ export type StorageStatus = {
     mode: StorageMode
     /** Stored: why storing is paused. Memory: olderTabs when an upgrade is blocked. */
     reason?: PauseReason
+    /**
+     * Media whose read-back failed, as hex, until a later read-back succeeds (§1.6.8.4). Storing
+     * isn't paused for them: the history goes on being stored. Absent when there are none.
+     */
+    mediaPending?: string[]
 }
 
 /** The worker's startup test flag (§1.11's test notes): addInitScript can't reach a worker. */
@@ -110,8 +115,8 @@ export class StorageCore {
     /** Set while Try Again moves the in-memory rows: writes wait, so none lands behind it. */
     private moving: Promise<void> | undefined
     private readonly memoryWrites = new Set<Promise<unknown>>()
-    /** Pauses that last until their cause is put right, such as a media row that read back wrong. */
-    private readonly holds = new Map<string, PauseReason>()
+    /** Media whose read-back failed, until one succeeds: reported beside the status. */
+    private readonly mediaPending = new Set<string>()
     /** The progress of calls waiting on Try Again's move: the move's steps count as theirs. */
     private readonly behindMove = new Set<() => void>()
     private readonly listeners = new Set<(status: StorageStatus) => void>()
@@ -137,26 +142,30 @@ export class StorageCore {
         return () => this.listeners.delete(listener)
     }
 
-    /** Keeps storing paused under a key until `release`, whatever later writes do. */
-    hold(key: string, reason: PauseReason) {
-        this.holds.set(key, reason)
-        if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
-            this.setStatus({ mode: 'stored', reason })
+    /** A media item that didn't read back right: pending until `mediaStored`. */
+    mediaFailed(hash: string) {
+        if (this.mediaPending.has(hash)) return
+        this.mediaPending.add(hash)
+        this.setStatus(this.current)
     }
 
-    release(key: string) {
-        if (!this.holds.delete(key)) return
-        if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
-            this.setStatus(storedStatus(this.heldReason()))
+    mediaStored(hash: string) {
+        if (this.mediaPending.delete(hash)) this.setStatus(this.current)
     }
 
-    private heldReason(): PauseReason | undefined {
-        for (const reason of this.holds.values()) return reason
-        return undefined
-    }
-
-    private setStatus(status: StorageStatus) {
-        if (status.mode === this.current.mode && status.reason === this.current.reason) return
+    /** Sets the mode and reason; the pending media are added from the core's own list. */
+    private setStatus({ mode, reason }: StorageStatus) {
+        const pending = [...this.mediaPending]
+        const status: StorageStatus = {
+            mode,
+            ...(reason ? { reason } : {}),
+            ...(pending.length ? { mediaPending: pending } : {}),
+        }
+        const same = (a: StorageStatus, b: StorageStatus) =>
+            a.mode === b.mode &&
+            a.reason === b.reason &&
+            (a.mediaPending ?? []).join() === (b.mediaPending ?? []).join()
+        if (same(status, this.current)) return
         this.current = status
         for (const listener of [...this.listeners]) listener(status)
     }
@@ -314,7 +323,7 @@ export class StorageCore {
             throw new StoragePausedError(paused, error)
         }
         if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
-            this.setStatus(storedStatus(this.heldReason()))
+            this.setStatus({ mode: 'stored' })
         tick?.()
         return result
     }
@@ -474,7 +483,7 @@ export class StorageCore {
                 return
             }
             this.adopt(target)
-            this.setStatus(storedStatus(this.heldReason()))
+            this.setStatus({ mode: 'stored' })
         } catch (error) {
             this.upgradeAnswer = undefined
             throw error
@@ -546,7 +555,3 @@ const withDay = (value: unknown, day: number) =>
     typeof (value as { day?: unknown }).day === 'number'
         ? { ...value, day }
         : value
-
-/** The stored status, with a reason only when paused. */
-const storedStatus = (reason: PauseReason | undefined): StorageStatus =>
-    reason ? { mode: 'stored', reason } : { mode: 'stored' }

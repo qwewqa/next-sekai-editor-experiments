@@ -40,12 +40,12 @@ export const setMediaReadBackHookForTests = (hook: typeof readBackHook) => {
 /**
  * Reads back each media row just written and re-hashes it (§1.6.8.4). On a mismatch it's written
  * again from memory; a second mismatch removes the row, which reads as not held. A row that can't
- * be read is kept: the error may pass. Either way storing is held paused for that item alone
- * until a read-back of it succeeds, and the page stores it again on its own. Returns the hashes
- * that failed.
+ * be read is kept: the error may pass. Either way the item is reported in the status's
+ * `mediaPending` until a read-back of it succeeds, and the page stores it again on its own;
+ * storing isn't paused, so the history goes on. Returns the hashes that failed.
  */
 export const readBackMedia = async (
-    core: Pick<StorageCore, 'read' | 'write' | 'hold' | 'release'>,
+    core: Pick<StorageCore, 'read' | 'write' | 'mediaFailed' | 'mediaStored'>,
     hashes: readonly string[],
     media: CarriedMedia,
     waiter: Waiter = directWaiter,
@@ -55,7 +55,6 @@ export const readBackMedia = async (
     for (const hex of hashes) {
         const key = hashKey(fromHex16(hex))
         const item = media.get(hex)
-        const hold = `media:${hex}`
         for (let attempt = 0; ; attempt++) {
             let outcome: 'intact' | 'wrong' | 'unread' = 'unread'
             let row: MediaRow | undefined
@@ -74,7 +73,7 @@ export const readBackMedia = async (
                 outcome = 'unread'
             }
             if (outcome === 'intact') {
-                core.release(hold)
+                core.mediaStored(hex)
                 break
             }
             if (outcome === 'wrong' && row && item && attempt === 0) {
@@ -97,7 +96,7 @@ export const readBackMedia = async (
                     .write(['media'], (tx) => tx.delete('media', key), progress)
                     .catch(() => undefined)
             }
-            core.hold(hold, 'failed')
+            core.mediaFailed(hex)
             failed.push(hex)
             break
         }
