@@ -265,3 +265,24 @@ test('the footer line counts items with a singular form', () => {
     assert.equal(storedLine(message, { count: 1, bytes: 4200 }, size), 'Stored: 1 item, 4.2 kB')
     assert.equal(storedLine(message, { count: 3, bytes: 14000 }, size), 'Stored: 3 items, 14 kB')
 })
+
+test('a value that arrives after an abort is released, not dropped', async () => {
+    const controller = new AbortController()
+    let closed = 0
+    const loader = createAssetLoader({
+        defaults: set(async () => {
+            controller.abort()
+            return { texture: { close: () => closed++ } } as unknown as Loaded['skin']
+        }),
+    })
+    const result = await loader.load(
+        'skin',
+        { source: 'default' },
+        {
+            ...context(),
+            signal: controller.signal,
+        },
+    )
+    assert.equal(result, undefined)
+    assert.equal(closed, 1)
+})

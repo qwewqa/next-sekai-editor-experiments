@@ -308,6 +308,7 @@ async function checkBuiltinRelease(directory, files) {
     )
     const packages = new Map()
     for (const [index, file] of builtinFiles.entries()) {
+        if (!files.includes(file)) throw new Error(`Missing release file: ${file}`)
         const bytes = await regularFile(containedPath(directory, file))
         if (sha256(bytes) !== lock.files[`public/${file}`]?.sha256)
             throw new Error(`Built-in package differs from builtin-assets.lock.json: ${file}`)

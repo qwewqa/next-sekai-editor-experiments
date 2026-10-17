@@ -465,15 +465,14 @@
       "storedTab": "保存済み",
       "effectHint": "プレビューと再生で使用されます。",
       "default": "デフォルト",
-      "defaultSkin": "デフォルト: Next SEKAI 01",
-      "defaultParticle": "デフォルト: Next SEKAI",
-      "builtin": "内蔵",
-      "builtinDefault": "内蔵 (デフォルト)",
+      "defaultSkin": "デフォルト：Next SEKAI 01",
+      "defaultParticle": "デフォルト：Next SEKAI",
+      "builtin": "内蔵アセット",
       "storedFile": "{0} (ファイル)",
       "storedServer": "{0} (サーバー)",
-      "useBuiltinAll": "すべて内蔵にする",
+      "useBuiltinAll": "すべて内蔵アセットにする",
       "resetDefault": "デフォルトに戻す",
-      "stored": "保存済み: {0}件、{1}",
+      "stored": "保存済み：{0}件、{1}",
       "storedEmpty": "保存済みの項目はありません",
       "noun": {
         "skin": "スキン",
@@ -482,20 +481,18 @@
         "effect": "効果音"
       },
       "fallback": {
-        "panel": "{0}: {1}を使用中。{2}",
+        "panel": "{0}：{1}を使用中。{2}",
         "row": "{0}を使用中。{1}"
       },
       "reason": {
-        "fileGone": "{0}のファイルはこのブラウザーに保存されていません。",
-        "fileGoneApp": "{0}のファイルはこのデバイスに保存されていません。",
+        "fileGone": "{0}のファイルはこのブラウザーにはもう保存されていません。",
         "serverFailed": "{1}から{0}を再ダウンロードできませんでした。",
         "invalid": "保存済みの{0}を読み込めませんでした。",
         "defaultFailed": "デフォルトを読み込めませんでした。",
-        "builtinFailed": "内蔵を読み込めませんでした。"
+        "builtinFailed": "内蔵アセットを読み込めませんでした。"
       },
       "offline": "オフラインです。",
-      "safeMode": "セーフモードではデフォルトを使用します。",
-      "safeModeApp": "セーフモードでは内蔵を使用します。"
+      "safeMode": "セーフモードではデフォルトを使用します。"
     }
   },
   "help": {

@@ -462,19 +462,18 @@
       "particle": "Parçacık",
       "background": "Arka Plan",
       "effect": "Ses Efektleri",
-      "storedTab": "Kayıtlı",
+      "storedTab": "Saklanan",
       "effectHint": "Önizleme ve oynatma için kullanılır.",
       "default": "Varsayılan",
       "defaultSkin": "Varsayılan: Next SEKAI 01",
       "defaultParticle": "Varsayılan: Next SEKAI",
       "builtin": "Yerleşik",
-      "builtinDefault": "Yerleşik (Varsayılan)",
       "storedFile": "{0} (Dosya)",
       "storedServer": "{0} (Sunucu)",
-      "useBuiltinAll": "Tümünde Yerleşiği Kullan",
+      "useBuiltinAll": "Tümü İçin Yerleşiği Kullan",
       "resetDefault": "Varsayılana Sıfırla",
-      "stored": "Kayıtlı: {0} öğe, {1}",
-      "storedEmpty": "Kayıtlı öğe yok",
+      "stored": "Saklanan: {0} öğe, {1}",
+      "storedEmpty": "Saklanan öğe yok",
       "noun": {
         "skin": "görünüm",
         "particle": "parçacık",
@@ -486,16 +485,14 @@
         "row": "{0} kullanılıyor. {1}"
       },
       "reason": {
-        "fileGone": "{0} dosyası artık bu tarayıcıda kayıtlı değil.",
-        "fileGoneApp": "{0} dosyası artık bu cihazda kayıtlı değil.",
+        "fileGone": "{0} dosyası artık bu tarayıcıda saklanmıyor.",
         "serverFailed": "{0}, {1} adresinden yeniden indirilemedi.",
-        "invalid": "Kayıtlı {0} okunamadı.",
+        "invalid": "Saklanan {0} okunamadı.",
         "defaultFailed": "Varsayılan yüklenemedi.",
         "builtinFailed": "Yerleşik yüklenemedi."
       },
       "offline": "Çevrimdışısınız.",
-      "safeMode": "Güvenli mod varsayılanı kullanır.",
-      "safeModeApp": "Güvenli mod yerleşiği kullanır."
+      "safeMode": "Güvenli mod varsayılanı kullanır."
     }
   },
   "help": {

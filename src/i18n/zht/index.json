@@ -468,7 +468,6 @@
       "defaultSkin": "預設：Next SEKAI 01",
       "defaultParticle": "預設：Next SEKAI",
       "builtin": "內建",
-      "builtinDefault": "內建（預設）",
       "storedFile": "{0}（檔案）",
       "storedServer": "{0}（伺服器）",
       "useBuiltinAll": "全部使用內建",
@@ -486,16 +485,14 @@
         "row": "正在使用{0}。{1}"
       },
       "reason": {
-        "fileGone": "{0}檔案已不在此瀏覽器中儲存。",
-        "fileGoneApp": "{0}檔案已不在此裝置中儲存。",
+        "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已儲存的{0}。",
         "defaultFailed": "無法載入預設項。",
         "builtinFailed": "無法載入內建項。"
       },
       "offline": "您已離線。",
-      "safeMode": "安全模式使用預設項。",
-      "safeModeApp": "安全模式使用內建項。"
+      "safeMode": "安全模式使用預設項。"
     }
   },
   "help": {

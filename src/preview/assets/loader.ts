@@ -1,3 +1,4 @@
+import { release } from './release'
 import {
     AssetError,
     type AssetChoice,
@@ -12,7 +13,7 @@ import {
     type Loaded,
 } from './types'
 
-const reasonOf = (error: unknown): AssetErrorCode =>
+export const reasonOf = (error: unknown): AssetErrorCode =>
     error instanceof AssetError ? error.code : 'corrupt'
 
 /**
@@ -43,7 +44,10 @@ export const createAssetLoader = (options: {
         if (choice.source === 'builtin' && builtinProvider) {
             try {
                 const value = await builtinProvider(context)
-                if (isAborted()) return
+                if (isAborted()) {
+                    release(type, value)
+                    return
+                }
                 if (value !== undefined) return { value, status: { active: 'builtin' } }
                 reason = 'missing'
             } catch (error) {
@@ -59,7 +63,10 @@ export const createAssetLoader = (options: {
                 const value = await (
                     provider as (choice: AssetChoice, context: LoadContext) => Promise<Loaded[T]>
                 )(choice, context)
-                if (isAborted()) return
+                if (isAborted()) {
+                    release(type, value)
+                    return
+                }
                 return { value, status: { active: 'chosen' } }
             } catch (error) {
                 if (isAborted()) return
@@ -71,7 +78,10 @@ export const createAssetLoader = (options: {
         let failure: unknown
         try {
             const value = await defaultProvider(context)
-            if (isAborted()) return
+            if (isAborted()) {
+                release(type, value)
+                return
+            }
             if (value !== undefined) return { value, status: { active: 'default', reason } }
             failure = new AssetError('missing', `The default ${type} is missing`)
         } catch (error) {
@@ -85,7 +95,10 @@ export const createAssetLoader = (options: {
                 console.error(`Failed to load the default ${type}:`, failure)
             try {
                 const value = await builtinProvider(context)
-                if (isAborted()) return
+                if (isAborted()) {
+                    release(type, value)
+                    return
+                }
                 if (value !== undefined) {
                     const status: AssetStatus = {
                         active: 'builtin',

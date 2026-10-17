@@ -14,13 +14,13 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 <template>
     <div
         v-if="panelFallbacks.length"
-        class="pointer-events-none absolute inset-x-2 top-2 z-20 flex flex-col items-start gap-1"
+        class="flex shrink-0 flex-col items-start gap-1 p-2"
         data-asset-fallbacks
     >
         <div
             v-for="fallback in panelFallbacks"
             :key="fallback.key"
-            class="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-modal/95 py-1 pl-3 pr-1 text-sm text-fg shadow-md"
+            class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-modal/95 py-1 pl-3 pr-1 text-sm text-fg shadow-md"
             :data-asset-fallback="fallback.type"
         >
             <p class="min-w-[10rem] flex-1 py-0.5" data-asset-fallback-text>

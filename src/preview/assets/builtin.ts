@@ -4,12 +4,15 @@ import type {
     BackgroundItem,
     EffectData,
     EffectItem,
+    ServerItemDetails,
+    ServerItemList,
 } from '@sonolus/core'
 import { loadParticleFromScp } from '../particle'
 import { loadPreviewResource } from '../resource'
 import { parseGzippedJson, parseScp } from '../scp'
 import { loadSkinFromScp } from '../skin'
 import { readItem } from './scpItem'
+import { openRangedScp, type RangedScp } from './scpRange'
 import {
     AssetError,
     sfxSlots,
@@ -142,31 +145,42 @@ export type BuiltinInfo = {
     image: string | undefined
 }
 
-// The package field's name is assembled here: the native bundle check refuses the web-only word.
-const pictureField = ['thumb', 'nail'].join('')
-
 const infos = new Map<AssetType, Promise<BuiltinInfo | undefined>>()
 
-/** The Built-in item's title, author and picture for the source lists; undefined when it cannot be read. */
+type ItemInfo = { name: string; title: string; author: string; thumbnail?: { url?: string | null } }
+
+const readJson = async <T>(archive: RangedScp, path: string) => {
+    const bytes = await archive.get(path)
+    return bytes ? (JSON.parse(new TextDecoder().decode(bytes)) as T) : undefined
+}
+
+/**
+ * The Built-in item's title, author and picture for the source lists; undefined when it cannot be read.
+ * Only the package's list, details and picture are fetched, not the resources the item loads with.
+ */
 export const loadBuiltinInfo = (type: AssetType): Promise<BuiltinInfo | undefined> => {
     let info = infos.get(type)
     if (!info) {
         info = (async () => {
-            const buffer = await fetchPackage(type, new AbortController().signal)
-            const read =
-                buffer &&
-                readItem<
-                    { name: string; title: string; author: string } & Record<
-                        string,
-                        { url?: string | null } | string | undefined
-                    >
-                >(buffer, categories[type])
-            if (!read) return
-            const field = read.item[pictureField]
-            const bytes = read.getResource(typeof field === 'object' ? field : undefined)
+            const archive = await openRangedScp(builtinUrl(type), new AbortController().signal)
+            if (!archive) return
+            const category = categories[type]
+            const list = await readJson<ServerItemList<ItemInfo>>(
+                archive,
+                `sonolus/${category}/list`,
+            )
+            const listed = list?.items[0]
+            if (!listed) return
+            const details = await readJson<ServerItemDetails<ItemInfo>>(
+                archive,
+                `sonolus/${category}/${listed.name}`,
+            )
+            const item = details?.item ?? listed
+            const url = item.thumbnail?.url
+            const bytes = url ? await archive.get(url) : undefined
             return {
-                title: read.item.title,
-                author: read.item.author,
+                title: item.title,
+                author: item.author,
                 image: bytes
                     ? URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'image/png' }))
                     : undefined,

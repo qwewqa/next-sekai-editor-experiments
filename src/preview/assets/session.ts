@@ -1,6 +1,7 @@
 import { shallowRef, watch, type ShallowRef } from 'vue'
 import { choiceKey } from './choice'
-import type { AssetLoader } from './loader'
+import { reasonOf, type AssetLoader } from './loader'
+import { release } from './release'
 import type { AssetChoice, AssetStatus, AssetType, LoadContext, Loaded } from './types'
 
 export type AssetSlot<T extends AssetType> = {
@@ -11,19 +12,14 @@ export type AssetSlot<T extends AssetType> = {
     status?: AssetStatus
     /** The choice the shown value (or the load in flight) is for. */
     choice?: AssetChoice
+    /** The last switch failed and the previous value still shows; a retry may load it again. */
+    stale?: boolean
     error?: unknown
 }
 
 export type AssetSession = ReturnType<typeof createAssetSession>
 
 const types: AssetType[] = ['skin', 'particle', 'background', 'effect']
-
-/** Releases what a replaced asset holds: the GPU-bound bitmap, the object URL. */
-const release = (type: AssetType, value: Loaded[AssetType] | undefined) => {
-    if (!value) return
-    if (type === 'skin' || type === 'particle') (value as Loaded['skin']).texture.close()
-    else if (type === 'background') (value as Loaded['background']).dispose?.()
-}
 
 /**
  * What the preview shows of each asset type (Part 2, 2.4.2): one load per type, started on first
@@ -63,9 +59,14 @@ export const createAssetSession = (options: {
         } catch (error) {
             if (controller.signal.aborted) return
             if (slot.value.value) {
-                // The old asset keeps showing; the failed choice is reported by the next load.
-                slot.value = { ...slot.value, choice }
                 console.error(`Failed to load the ${type}:`, error)
+                // The old asset keeps showing, reported as a fallback from the failed choice.
+                const shown = slot.value.status?.active
+                const status: AssetStatus | undefined =
+                    shown === 'default' || shown === 'builtin'
+                        ? { active: shown, reason: reasonOf(error) }
+                        : slot.value.status
+                slot.value = { ...slot.value, state: 'ready', status, choice, stale: true }
                 return
             }
             slot.value = { state: 'failed', error, choice }
@@ -90,9 +91,10 @@ export const createAssetSession = (options: {
         ensure: (type: AssetType) => {
             if (slots[type].value.state === 'idle') void start(type)
         },
-        /** Loads a failed type again. */
+        /** Loads a failed type again, or one whose last switch failed. */
         retry: (type: AssetType) => {
-            if (slots[type].value.state === 'failed') void start(type)
+            const { state, stale } = slots[type].value
+            if (state === 'failed' || stale) void start(type)
         },
         /** Aborts every load and closes what is shown. */
         dispose: () => {

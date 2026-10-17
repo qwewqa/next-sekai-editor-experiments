@@ -468,7 +468,6 @@
       "defaultSkin": "기본: Next SEKAI 01",
       "defaultParticle": "기본: Next SEKAI",
       "builtin": "내장",
-      "builtinDefault": "내장 (기본)",
       "storedFile": "{0} (파일)",
       "storedServer": "{0} (서버)",
       "useBuiltinAll": "모두 내장 사용",
@@ -487,15 +486,13 @@
       },
       "reason": {
         "fileGone": "{0} 파일이 더 이상 이 브라우저에 저장되어 있지 않습니다.",
-        "fileGoneApp": "{0} 파일이 더 이상 이 기기에 저장되어 있지 않습니다.",
         "serverFailed": "{1}에서 {0}을(를) 다시 다운로드하지 못했습니다.",
         "invalid": "저장된 {0}을(를) 읽을 수 없습니다.",
         "defaultFailed": "기본 항목을 불러오지 못했습니다.",
         "builtinFailed": "내장 항목을 불러오지 못했습니다."
       },
       "offline": "오프라인 상태입니다.",
-      "safeMode": "안전 모드에서는 기본 항목을 사용합니다.",
-      "safeModeApp": "안전 모드에서는 내장 항목을 사용합니다."
+      "safeMode": "안전 모드에서는 기본 항목을 사용합니다."
     }
   },
   "help": {

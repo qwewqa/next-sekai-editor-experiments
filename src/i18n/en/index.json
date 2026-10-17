@@ -468,7 +468,6 @@
             "defaultSkin": "Default: Next SEKAI 01",
             "defaultParticle": "Default: Next SEKAI",
             "builtin": "Built-in",
-            "builtinDefault": "Built-in (Default)",
             "storedFile": "{0} (File)",
             "storedServer": "{0} (Server)",
             "useBuiltinAll": "Use Built-in for All",
@@ -487,15 +486,13 @@
             },
             "reason": {
                 "fileGone": "The {0} file is no longer stored in this browser.",
-                "fileGoneApp": "The {0} file is no longer stored on this device.",
                 "serverFailed": "The {0} could not be downloaded again from {1}.",
                 "invalid": "The stored {0} could not be read.",
                 "defaultFailed": "Default could not be loaded.",
                 "builtinFailed": "Built-in could not be loaded."
             },
             "offline": "You are offline.",
-            "safeMode": "Safe mode uses Default.",
-            "safeModeApp": "Safe mode uses Built-in."
+            "safeMode": "Safe mode uses Default."
         }
     },
     "help": {

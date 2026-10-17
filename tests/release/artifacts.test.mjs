@@ -391,6 +391,12 @@ test('the release must hold the locked Built-in packages and exactly their serve
 
     // A package other than the locked one, even with the manifest recomputed.
     const skin = await readFile(join(directory, 'builtin/skin.scp'))
+    await rm(join(directory, 'builtin/skin.scp'))
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Missing release file: builtin\/skin\.scp/,
+    )
+    await write(directory, 'builtin/skin.scp', skin)
     await write(directory, 'builtin/skin.scp', Buffer.concat([skin, Buffer.from('x')]))
     await assert.rejects(
         writeReleaseManifest(directory, metadata, assets),

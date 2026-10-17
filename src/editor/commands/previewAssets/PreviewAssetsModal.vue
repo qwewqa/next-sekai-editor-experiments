@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    shallowRef,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import { platform } from '../../../platform'
@@ -9,6 +18,7 @@ import { fallbacks } from '../../../preview/assets/active'
 import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
 import { settings } from '../../../settings'
 import { formatSize } from '../exportLevel/format'
+import AssetGlyph from './AssetGlyph.vue'
 import AssetSources from './AssetSources.vue'
 import { isAssetTab, previewAssetsTabs, type PreviewAssetsTab } from './tabs'
 
@@ -45,12 +55,34 @@ const showActive = () =>
         const strip = tablist.value
         const tab = strip?.querySelector<HTMLElement>(`#${CSS.escape(tabId(active.value))}`)
         if (!strip || !tab) return
-        if (tab.offsetLeft < strip.scrollLeft) strip.scrollLeft = tab.offsetLeft
-        else if (tab.offsetLeft + tab.offsetWidth > strip.scrollLeft + strip.clientWidth)
-            strip.scrollLeft = tab.offsetLeft + tab.offsetWidth - strip.clientWidth
+        // Centred, so its neighbours show part of themselves.
+        if (
+            tab.offsetLeft < strip.scrollLeft ||
+            tab.offsetLeft + tab.offsetWidth > strip.scrollLeft + strip.clientWidth
+        )
+            strip.scrollLeft = tab.offsetLeft + (tab.offsetWidth - strip.clientWidth) / 2
+        updateEdges()
     })
 watch(active, showActive)
-onMounted(showActive)
+
+// The strip fades at an edge that has more tabs beyond it.
+const atStart = shallowRef(true)
+const atEnd = shallowRef(true)
+const updateEdges = () => {
+    const strip = tablist.value
+    if (!strip) return
+    atStart.value = strip.scrollLeft <= 1
+    atEnd.value = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1
+}
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+    showActive()
+    if (tablist.value && typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(updateEdges)
+        resizeObserver.observe(tablist.value)
+    }
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
 
 const onTab = (event: MouseEvent, tab: PreviewAssetsTab) => {
     active.value = tab
@@ -91,7 +123,7 @@ const allDefault = computed(() =>
     assetTypes.every((type) => settings.previewAssets[type].source === 'default'),
 )
 
-// Nothing is stored yet; the footer counts what From a File and From a Server will keep.
+// Nothing is stored yet; once A3 stores packages the footer counts them, and says nothing before.
 const summary = computed<StoredSummary>(() => ({ count: 0, bytes: 0 }))
 const storedText = computed(() => storedLine(strings.value.stored, summary.value, formatSize))
 
@@ -105,7 +137,12 @@ const buttonClass =
             <div
                 ref="tablist"
                 class="preview-assets-tabs relative flex h-full min-w-0 self-stretch overflow-x-auto text-base"
+                :class="{
+                    'preview-assets-tabs-more-before': !atStart,
+                    'preview-assets-tabs-more-after': !atEnd,
+                }"
                 role="tablist"
+                @scroll.passive="updateEdges"
             >
                 <button
                     v-for="item in previewAssetsTabs"
@@ -128,10 +165,12 @@ const buttonClass =
                         class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-fg group-active:bg-accent group-active:text-on-accent"
                     >
                         <span class="preview-assets-tab-label relative whitespace-nowrap">
-                            <span v-if="fallbackOf(item)" aria-hidden="true" data-tab-warning
-                                >⚠
-                            </span>
-                            {{ label(item) }}
+                            <AssetGlyph
+                                v-if="fallbackOf(item)"
+                                type="warning"
+                                class="mr-1 inline align-[-0.1em]"
+                                data-tab-warning
+                            />{{ label(item) }}
                         </span>
                     </span>
                 </button>
@@ -145,14 +184,18 @@ const buttonClass =
         >
             <div class="min-h-0 flex-1 overflow-y-auto p-2">
                 <AssetSources v-if="isAssetTab(active)" :key="active" :type="active" />
-                <p v-else class="p-2 opacity-75" data-stored-empty>{{ strings.storedEmpty }}</p>
+                <p v-else class="px-3 py-2 opacity-75" data-stored-empty>
+                    {{ strings.storedEmpty }}
+                </p>
             </div>
 
             <div
                 class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-fg/25 p-3"
                 data-preview-assets-footer
             >
-                <p class="min-w-0 max-[440px]:w-full" data-stored-line>{{ storedText }}</p>
+                <p v-if="summary.count > 0" class="min-w-0 max-[440px]:w-full" data-stored-line>
+                    {{ storedText }}
+                </p>
                 <div
                     class="ml-auto flex gap-2 max-[440px]:ml-0 max-[440px]:w-full max-[440px]:flex-col"
                 >
@@ -188,6 +231,24 @@ const buttonClass =
 
 .preview-assets-tabs::-webkit-scrollbar {
     display: none;
+}
+
+.preview-assets-tabs-more-before {
+    mask-image: linear-gradient(to right, transparent 0, #000 1.5rem);
+}
+
+.preview-assets-tabs-more-after {
+    mask-image: linear-gradient(to left, transparent 0, #000 1.5rem);
+}
+
+.preview-assets-tabs-more-before.preview-assets-tabs-more-after {
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 1.5rem,
+        #000 calc(100% - 1.5rem),
+        transparent 100%
+    );
 }
 
 /* The shown tab's bar sits on the header's lower edge, as in the manager. */

@@ -219,3 +219,44 @@ test('a background releases its object URL when replaced, and dispose closes eve
     assert.equal((skin.texture as unknown as { closed: number }).closed, 1)
     assert.equal(session.slots.background.value.state, 'idle')
 })
+
+test('a switch that fails everywhere keeps the shown asset, reports it, and can be retried', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    let offline = false
+    const first = skinOf('default')
+    const second = skinOf('built-in')
+    const { session, ref } = sessionOf(
+        {
+            skin: async () => {
+                if (offline) throw new AssetError('unavailable', 'HTTP 503')
+                return first
+            },
+        },
+        choices(),
+        {
+            skin: async () => {
+                if (offline) throw new AssetError('unavailable', 'HTTP 503')
+                return second
+            },
+        },
+    )
+    session.ensure('skin')
+    await flush()
+    offline = true
+    ref.value = { ...ref.value, skin: { source: 'builtin' } }
+    await flush()
+    const slot = session.slots.skin.value
+    assert.equal(slot.state, 'ready')
+    assert.equal(slot.value, first)
+    assert.deepEqual(slot.choice, { source: 'builtin' })
+    assert.deepEqual(slot.status, { active: 'default', reason: 'unavailable' })
+    assert.equal(slot.stale, true)
+
+    offline = false
+    session.retry('skin')
+    await flush()
+    assert.equal(session.slots.skin.value.value, second)
+    assert.equal(session.slots.skin.value.stale, undefined)
+    assert.deepEqual(session.slots.skin.value.status, { active: 'builtin' })
+    assert.equal((first.texture as unknown as { closed: number }).closed, 1)
+})

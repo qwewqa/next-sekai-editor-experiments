@@ -13,6 +13,7 @@ import { rowText } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
+import AssetGlyph from './AssetGlyph.vue'
 import { interpolateRaw } from '../../../utils/interpolate'
 
 const props = defineProps<{
@@ -21,6 +22,7 @@ const props = defineProps<{
 
 const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
+const noteId = useId()
 const hasDefault = platform.capabilities.defaultAssets
 
 type Row = {
@@ -67,7 +69,7 @@ const rows = computed<Row[]>(() => {
         id: 'builtin',
         // In the apps Default is Built-in, which the setting stores as Default.
         choice: { source: hasDefault ? 'builtin' : 'default' },
-        name: hasDefault ? strings.value.builtin : strings.value.builtinDefault,
+        name: strings.value.builtin,
         detail: builtin.value?.author ?? '',
         image: builtin.value?.image,
     })
@@ -99,15 +101,12 @@ const select = (row: Row) => {
 }
 
 const fallback = computed(() => fallbacks.value.find((item) => item.type === props.type))
-const noteText = computed(() =>
-    isAssetSafeModeActive
-        ? hasDefault
-            ? strings.value.safeMode
-            : strings.value.safeModeApp
-        : fallback.value
-          ? rowText(fallback.value)
-          : '',
-)
+const noteText = computed(() => {
+    if (isAssetSafeModeActive)
+        return fallback.value ? rowText(fallback.value) : hasDefault ? strings.value.safeMode : ''
+    return fallback.value ? rowText(fallback.value) : ''
+})
+const hasWarning = computed(() => !!fallback.value)
 </script>
 
 <template>
@@ -122,6 +121,8 @@ const noteText = computed(() =>
                     class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none"
                     :name="groupName"
                     :checked="row.id === selectedId"
+                    :data-autofocus="row.id === selectedId || undefined"
+                    :aria-describedby="row.id === selectedId && noteText ? noteId : undefined"
                     @change="select(row)"
                 />
                 <span
@@ -129,10 +130,11 @@ const noteText = computed(() =>
                     aria-hidden="true"
                 />
                 <span
-                    class="pointer-events-none size-10 shrink-0 overflow-hidden rounded-lg bg-recess"
+                    class="pointer-events-none flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-recess"
                     aria-hidden="true"
                 >
                     <img v-if="row.image" :src="row.image" alt="" class="size-full object-cover" />
+                    <AssetGlyph v-else :type="type" class="opacity-60" />
                 </span>
                 <span class="pointer-events-none min-w-0 flex-1">
                     <span class="block truncate">{{ row.name }}</span>
@@ -143,10 +145,15 @@ const noteText = computed(() =>
             </label>
             <p
                 v-if="row.id === selectedId && noteText"
-                class="pb-2 pl-[4.75rem] pr-3 pt-1 text-sm"
+                :id="noteId"
+                class="relative pb-2 pl-[5.75rem] pr-3 pt-1 text-sm"
                 data-asset-note
             >
-                <span v-if="!isAssetSafeModeActive" aria-hidden="true">⚠ </span>{{ noteText }}
+                <AssetGlyph
+                    v-if="hasWarning"
+                    type="warning"
+                    class="absolute left-[4.25rem] top-[0.4375rem]"
+                />{{ noteText }}
             </p>
         </template>
         <p v-if="type === 'effect'" class="px-3 pt-3 text-sm opacity-75" data-effect-hint>
