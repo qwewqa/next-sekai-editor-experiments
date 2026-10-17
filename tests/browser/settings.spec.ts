@@ -299,7 +299,7 @@ test('visibility toggles list kinds in the tools’ order everywhere', async ({ 
         const { settings, view, history, fixtures } = window.editorTest
         const chart = structuredClone(fixtures.notes)
         chart.isDynamicStages = true
-        history.resetState(false, chart, 0, 'visibility.json')
+        history.resetState(false, chart, 0, { sourceName: 'visibility.json' })
         // The default toolbar's flyout, read upward from its button.
         const group = settings.toolbar.find((names) => names.includes('cycleVisibilities')) ?? []
         // Each cycle shows one kind alone, in order.

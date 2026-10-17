@@ -8,7 +8,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { checkState, resetState } from '../../../history'
+import { checkState, resetState, setLevelDataHandle } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import {
@@ -72,7 +72,7 @@ export const open: Command = {
                             const chart = parseUscChart(objects)
                             validateChart(chart)
 
-                            resetState(false, chart, offset, getFilename(file))
+                            resetState(false, chart, offset, { sourceName: getFilename(file) })
                             break
                         }
                         case 'levelData': {
@@ -85,7 +85,10 @@ export const open: Command = {
                                 chart,
                             )
 
-                            resetState(false, chart, levelData.bgmOffset, getFilename(file), handle)
+                            resetState(false, chart, levelData.bgmOffset, {
+                                sourceName: getFilename(file),
+                            })
+                            setLevelDataHandle(handle)
                             warning = revisionWarning
                             break
                         }
@@ -95,7 +98,7 @@ export const open: Command = {
                             const chart = parseUscChart(usc.objects)
                             validateChart(chart)
 
-                            resetState(false, chart, usc.offset, getFilename(file))
+                            resetState(false, chart, usc.offset, { sourceName: getFilename(file) })
                             break
                         }
                         case 'sus': {
@@ -104,7 +107,7 @@ export const open: Command = {
                             const chart = parseSusChart(sus)
                             validateChart(chart)
 
-                            resetState(false, chart, sus.offset, getFilename(file))
+                            resetState(false, chart, sus.offset, { sourceName: getFilename(file) })
                             break
                         }
                     }

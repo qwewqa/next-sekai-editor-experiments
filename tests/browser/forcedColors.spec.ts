@@ -42,7 +42,7 @@ test.beforeEach(async ({ page }) => {
             { ...head!, isCritical: index === 0 },
             { ...head!, beat: head!.beat + 1 },
         ])
-        history.resetState(false, chart, 0, 'forced.json')
+        history.resetState(false, chart, 0, { sourceName: 'forced.json' })
         Object.assign(settings, { showSidebar: true, propertiesConnectorExpanded: true })
         await nextTick()
         history.replaceState({

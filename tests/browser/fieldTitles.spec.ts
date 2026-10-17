@@ -16,7 +16,7 @@ const open = async (page: Page) => {
             { ...head!, isCritical: index === 0 },
             { ...head!, beat: head!.beat + 1 },
         ])
-        history.resetState(false, chart, 0, 'titles.json')
+        history.resetState(false, chart, 0, { sourceName: 'titles.json' })
         Object.assign(settings, {
             locale: 'fr',
             showSidebar: true,

@@ -30,7 +30,7 @@ test.beforeEach(async ({ page }) => {
                 { ...stage!, name },
             ]),
         )
-        history.resetState(false, chart, 0, 'commands.json')
+        history.resetState(false, chart, 0, { sourceName: 'commands.json' })
         view.groupId = undefined
         view.stageId = undefined
         settings.showOtherGroups = false

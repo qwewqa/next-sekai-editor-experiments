@@ -7,10 +7,11 @@ import { i18n } from '../i18n'
 import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import { platform } from '../platform'
-import { createState } from '../state'
+import { createState, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
 import { resetAutoSave } from './autoSave/index.ts'
 import { notifyResetState } from './resetHooks'
+import { createSessionDescriptor, session, type SessionDescriptor } from './session'
 import { isDirty, resetStates } from './stack'
 
 export {
@@ -74,20 +75,26 @@ export const checkState = async () => {
     })
 }
 
+/**
+ * Starts over with a chart, or the default one, in a session (§1.3.5): the
+ * descriptor's missing ids are fresh. The level-data handle is cleared; an
+ * open sets it again afterwards.
+ */
 export const resetState = (
     isDirty: boolean,
     chart?: Chart,
     offset?: number,
-    filename?: string,
-    handle?: FileSystemFileHandle,
+    descriptor?: Partial<SessionDescriptor>,
+    extras?: StateExtras,
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
+    session.value = createSessionDescriptor(descriptor)
     resetStates({
         isDirty,
         name: () => i18n.value.history.initialize,
-        state: createState(chart ?? createDefaultChart(), offset ?? 0, filename),
+        state: createState(chart ?? createDefaultChart(), offset ?? 0, extras),
     })
-    setLevelDataHandle(handle)
+    setLevelDataHandle(undefined)
 
     resetAutoSave()
     cleanupWaveform()

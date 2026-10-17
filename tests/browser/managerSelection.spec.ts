@@ -49,7 +49,7 @@ const seedGroups = (page: Page, groups: Seed, emptyFolders: string[] = []) =>
                     { name, index: emptyFolders.includes(name) ? Infinity : 0 },
                 ]),
             )
-            history.resetState(false, chart, 0, 'selection.json')
+            history.resetState(false, chart, 0, { sourceName: 'selection.json' })
             view.groupId = undefined
             view.stageId = undefined
             view.groupVisibility = new Map()
@@ -900,7 +900,7 @@ test('stages select, move into a new folder and delete in one step each', async 
             false,
             { ...window.editorTest.fixtures.notes, isDynamicStages: true, stages },
             0,
-            'stages.json',
+            { sourceName: 'stages.json' },
         )
         settings.showStages = true
     })
@@ -939,7 +939,9 @@ test('stages select, move into a new folder and delete in one step each', async 
 test('deleting every stage leaves the default stage a new chart starts with', async ({ page }) => {
     await page.evaluate(() => {
         const { history, settings, fixtures } = window.editorTest
-        history.resetState(false, { ...fixtures.events, isDynamicStages: true }, 0, 'stages.json')
+        history.resetState(false, { ...fixtures.events, isDynamicStages: true }, 0, {
+            sourceName: 'stages.json',
+        })
         settings.showStages = true
     })
     const list = page.locator('#workspace-panel-stages')

@@ -235,7 +235,6 @@ export const applyScalingSession = () => {
         return false
     }
     const result = draftState()
-    const filename = state.value.filename
     const labels = () => getScaleLabels(session.axis)
     const message = interpolate(
         () => labels().scaled,
@@ -243,7 +242,7 @@ export const applyScalingSession = () => {
     )
     cancelScalingSession()
     if (result === session.source) return true
-    pushState(message, { ...result, filename })
+    pushState(message, result)
     notify(message)
     return true
 }

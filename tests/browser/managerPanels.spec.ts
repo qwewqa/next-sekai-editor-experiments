@@ -28,7 +28,7 @@ const seedGroups = (page: Page, names: string[], dynamicStages = true) =>
             chart.groups = new Map(
                 names.map((name, i) => [(i < 2 ? i + 1 : 1000 + i) as never, { name }]),
             )
-            history.resetState(false, chart, 0, 'managers.json')
+            history.resetState(false, chart, 0, { sourceName: 'managers.json' })
             view.groupId = undefined
             view.stageId = undefined
             view.groupVisibility = new Map()

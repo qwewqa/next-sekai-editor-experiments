@@ -302,7 +302,7 @@ for (const position of ['left', 'right'] as const) {
                     { name: `Group ${i + 1}` },
                 ]),
             )
-            history.resetState(false, chart, 0, 'groups.json')
+            history.resetState(false, chart, 0, { sourceName: 'groups.json' })
             settings.groupsPosition = position
             settings.showGroups = true
             await nextTick()
@@ -372,7 +372,7 @@ test('a manager list makes room for the bar only while it scrolls', async ({ pag
                     { name: `Group ${i + 1}` },
                 ]),
             )
-            history.resetState(false, chart, 0, 'groups.json')
+            history.resetState(false, chart, 0, { sourceName: 'groups.json' })
             settings.showGroups = true
             await nextTick()
         }, count)
@@ -409,7 +409,7 @@ test('the bar in a Manage dialog hovers, drags and pages, and its buttons keep t
         chart.groups = new Map(
             Array.from({ length: 60 }, (_, i) => [(i + 1) as never, { name: `Group ${i + 1}` }]),
         )
-        history.resetState(false, chart, 0, 'groups.json')
+        history.resetState(false, chart, 0, { sourceName: 'groups.json' })
         settings.groupsPosition = 'disabled'
         await nextTick()
     })
@@ -454,7 +454,7 @@ test('a row button beneath the bar in a dock keeps its clicks', async ({ page })
         chart.groups = new Map(
             Array.from({ length: 40 }, (_, i) => [(i + 1) as never, { name: `Group ${i + 1}` }]),
         )
-        history.resetState(false, chart, 0, 'groups.json')
+        history.resetState(false, chart, 0, { sourceName: 'groups.json' })
         settings.groupsPosition = 'left'
         settings.showGroups = true
         await nextTick()
@@ -473,7 +473,7 @@ test('a manager list follows forced colors turned on or off after it mounts', as
         chart.groups = new Map(
             Array.from({ length: 40 }, (_, i) => [(i + 1) as never, { name: `Group ${i + 1}` }]),
         )
-        history.resetState(false, chart, 0, 'groups.json')
+        history.resetState(false, chart, 0, { sourceName: 'groups.json' })
         settings.groupsPosition = 'right'
         settings.showGroups = true
         await nextTick()

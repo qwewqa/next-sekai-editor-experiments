@@ -8,7 +8,9 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
     await page.evaluate(() => {
         const { history, fixtures, settings } = window.editorTest
-        history.resetState(false, structuredClone(fixtures.notes), 0, 'toolbar.json')
+        history.resetState(false, structuredClone(fixtures.notes), 0, {
+            sourceName: 'toolbar.json',
+        })
         settings.showPreview = false
         settings.keyboardShortcuts = { ...settings.keyboardShortcuts, eraser: 'g', select: 'f' }
     })
@@ -1342,7 +1344,9 @@ test('Escape over a hovered flyout reverts the typing in a focused field', async
         const { history, fixtures, settings } = window.editorTest
         settings.toolbar = [['undo'], ['redo'], ['open'], ['eraser', 'select']]
         settings.showSidebar = true
-        history.resetState(false, structuredClone(fixtures.notes), 0, 'toolbar.json')
+        history.resetState(false, structuredClone(fixtures.notes), 0, {
+            sourceName: 'toolbar.json',
+        })
     })
     await page.mouse.click(700, 300)
     await page.keyboard.press('ControlOrMeta+a')

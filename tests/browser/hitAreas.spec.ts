@@ -16,7 +16,9 @@ test.beforeEach(async ({ page }) => {
     await page.evaluate(installEditorFixture)
     await page.evaluate(() => {
         const { history, fixtures, settings } = window.editorTest
-        history.resetState(false, structuredClone(fixtures.interaction), 0, 'hits.json')
+        history.resetState(false, structuredClone(fixtures.interaction), 0, {
+            sourceName: 'hits.json',
+        })
         Object.assign(settings, { showPreview: true, showGroups: true })
     })
 })
@@ -370,7 +372,7 @@ test.describe('with a folder head stuck over its members', () => {
                 ]),
             )
             chart.groupFolders = new Map([[9000 as never, { name: 'Folder', index: 0 }]])
-            history.resetState(false, chart, 0, 'folders.json')
+            history.resetState(false, chart, 0, { sourceName: 'folders.json' })
             view.groupId = undefined
             view.stageId = undefined
         })

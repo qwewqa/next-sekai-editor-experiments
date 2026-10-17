@@ -365,7 +365,7 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     ]
 
     const show = (chart: Chart, time = 5) => {
-        history.resetState(false, chart, 0, 'browser-regression.json')
+        history.resetState(false, chart, 0, { sourceName: 'browser-regression.json' })
         Object.assign(view, {
             time,
             lane: 0,

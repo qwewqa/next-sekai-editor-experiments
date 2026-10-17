@@ -28,6 +28,8 @@ export const addToStages = (
         generateSimLines: 'global',
     },
 ) => {
+    // Restored charts keep their ids (§1.6.11.1); adding must never replace a stage.
+    while (stages.has(i as StageId)) i++
     const id = i++ as StageId
     // A blank name, e.g. from level data, gets a default like a missing one.
     if (!name?.trim()) name = undefined

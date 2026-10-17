@@ -12,6 +12,8 @@ export const parseFoldersToChart = (
     { entities }: Pick<ParseCtx, 'entities'>,
     archetype: string,
     folders: Folders,
+    /** The other kind's folders, whose ids these never take. */
+    other: ReadonlyMap<FolderId, unknown>,
 ): Map<string, FolderId> => {
     const found = new Map<string, { name?: string; index: number; parent?: string }>()
     for (const entity of entities) {
@@ -47,7 +49,7 @@ export const parseFoldersToChart = (
         if (topOf(name) !== name) continue
         // A blank name falls back to the entity name like a missing one.
         const label = folder.name?.trim() ? folder.name : name
-        ids.set(name, addToFolders(folders, label, folder.index))
+        ids.set(name, addToFolders(folders, other, label, folder.index))
     }
     for (const name of found.keys()) {
         const id = ids.get(topOf(name))

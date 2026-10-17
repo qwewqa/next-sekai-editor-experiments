@@ -6,6 +6,7 @@ import {
     type Stages,
 } from '../../../chart/stages'
 import { pushState, state } from '../../../history'
+import { groupFolders } from '../../../history/groups'
 import { stageFolders, stages } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -134,6 +135,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
 export const stageFolderOps = createFolderOps({
     entries: () => stages.value,
     folders: () => stageFolders.value,
+    otherFolders: () => groupFolders.value,
     withData: (state, stages, stageFolders) => ({ ...state, stages, stageFolders }),
     removeEntries: removeStages,
     entriesOf: (state) => state.stages,

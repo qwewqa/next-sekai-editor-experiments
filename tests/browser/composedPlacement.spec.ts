@@ -250,7 +250,7 @@ for (const [tool, shortcut] of [
                     { ...pivot, beat: 4, pivotLane: 8, eventEase: 'linear' as const },
                 ],
             }
-            history.resetState(false, chart, 0, 'composed-jump.json')
+            history.resetState(false, chart, 0, { sourceName: 'composed-jump.json' })
             view.time = 3
         })
         await page.keyboard.press(shortcut)

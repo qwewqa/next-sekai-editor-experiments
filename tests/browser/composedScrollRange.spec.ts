@@ -283,7 +283,14 @@ test('a chart opened in Composed starts within its own reach', async ({ page }) 
         buffer: gzipSync(JSON.stringify(level)),
     })
     await expect
-        .poll(() => page.evaluate(() => window.editorTest.history.state.value.filename))
+        .poll(() =>
+            page.evaluate(
+                async () =>
+                    (
+                        (await import('/src/history/filename.ts')) as typeof import('../../src/history/filename')
+                    ).filename.value,
+            ),
+        )
         .toBe('narrow')
     expect(await page.evaluate(() => window.editorTest.view.lane)).toBeCloseTo(10 - 8, 6)
 })
