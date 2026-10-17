@@ -3,7 +3,7 @@ import type { NoteEntity } from '../state/entities/slides/note'
 import type { Store } from '../state/store'
 import type { KnownAt } from './flushWrite'
 import { toHex } from './hash'
-import type { RecordValue } from './records/canonical'
+import { canonical, type RecordValue } from './records/canonical'
 import {
     bpmRecord,
     cameraEventRecord,
@@ -17,7 +17,15 @@ import {
 } from './records/encode'
 import { entitiesOf, inChainOrder, stageHeads } from './records/extract'
 import { headerRecord } from './records/records'
-import { kindNames, type KindName } from './records/schema'
+import {
+    checkHeader,
+    checkRefs,
+    headerIds,
+    kindNames,
+    kindRecords,
+    type HeaderIds,
+    type KindName,
+} from './records/schema'
 import { headerMedia } from './records/snapshot'
 import { splitKind } from './records/split'
 
@@ -35,31 +43,6 @@ type RecordMemo = { readonly text: string; readonly key: number }
 
 /** An entity in the emission order with its record's text. */
 type Item = { readonly entity: object; readonly key: number; readonly text: string }
-
-/** Whether a value is one a record can hold, as `canonical` requires (§1.6.11.1). */
-const checkRecordValue = (value: unknown): void => {
-    if (Array.isArray(value)) {
-        if (Object.getPrototypeOf(value) !== Array.prototype)
-            throw new TypeError('Unexpected array')
-        for (let i = 0; i < value.length; i++) {
-            if (!(i in value)) throw new TypeError('Unexpected hole')
-            checkRecordValue(value[i])
-        }
-        return
-    }
-    if (typeof value === 'string' || typeof value === 'boolean') return
-    if (typeof value === 'number' && Number.isFinite(value)) return
-    throw new TypeError(`Unexpected ${typeof value}`)
-}
-
-/**
- * A record's canonical text, as `canonical` gives it: checked first, then `JSON.stringify`,
- * which writes exactly that text for what a record can hold, about four times faster.
- */
-export const recordText = (record: Rec): string => {
-    checkRecordValue(record)
-    return JSON.stringify(record)
-}
 
 /** One batch's new chunk texts; a chunk is never sent twice. */
 export class ChunkBatch {
@@ -144,11 +127,32 @@ export class Extractor {
     private chunks = new WeakMap<object, ChunkMemo[]>()
     /** Records encoded since the last reset: a test's measure of the memo's work. */
     encoded = 0
+    /**
+     * Outside release builds, every snapshot is checked before it's sent for the group, stage
+     * and folder ids its records name (D9), so a bug fails here rather than storing a snapshot
+     * this build can't read: new records as they're encoded, all of them when the ids change.
+     */
+    private readonly checking: boolean
+    private ids: { key: string; ids: HeaderIds } | undefined
+
+    constructor({ check = !isProduction() }: { check?: boolean } = {}) {
+        this.checking = check
+    }
 
     /** Forgets everything, after a worker restart. */
     reset() {
         this.kinds = new Map()
         this.chunks = new WeakMap()
+    }
+
+    /** The header's ids, checked; whether they changed since the last plan. */
+    private headerIds(header: readonly RecordValue[]) {
+        checkHeader(header)
+        const ids = headerIds(header)
+        const key = JSON.stringify(Object.values(ids).map((set) => [...set]))
+        const changed = this.ids?.key !== key
+        this.ids = { key, ids }
+        return { ids, changed }
     }
 
     private chunk(members: readonly Item[], kind: KindName, batch: ChunkBatch): PlannedChunk {
@@ -248,11 +252,15 @@ export class Extractor {
             levelInfo: state.levelInfo,
             ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
         })
-        const headerId = batch.header(recordText(header))
+        const headerId = batch.header(canonical(header))
+        const check = this.checking ? this.headerIds(header) : undefined
         const kinds: { kind: KindName; chunks: PlannedChunk[] }[] = []
         let noteCount = 0
         for (const kind of kindNames) {
-            const items = yield* this.kindItems(kind, state.store)
+            const items = yield* this.kindItems(kind, state.store, check?.ids)
+            if (check?.changed)
+                for (const item of items)
+                    checkRefs(kindRecords[kind], JSON.parse(item.text), check.ids, kind)
             if (kind === 'slides')
                 for (const item of items) noteCount += (item.entity as unknown[]).length
             const parts = splitKind(kind, items as unknown as KeyedRecord[]) as unknown as Item[][]
@@ -273,7 +281,7 @@ export class Extractor {
     }
 
     /** A kind's items in the v1 order (§1.6.11.1), as `orderStore` gives them. */
-    private *kindItems(kind: KindName, store: Store): Generator<void, Item[]> {
+    private *kindItems(kind: KindName, store: Store, ids?: HeaderIds): Generator<void, Item[]> {
         const source = kindSource(kind, store)
         const cached = this.kinds.get(kind)
         if (
@@ -286,7 +294,9 @@ export class Extractor {
         const record = (entity: object, key: number, encode: () => Rec): Item => {
             let memo = previous?.get(entity) ?? records.get(entity)
             if (!memo) {
-                memo = { text: recordText(encode()), key }
+                const value = encode()
+                if (ids) checkRefs(kindRecords[kind], value, ids, kind)
+                memo = { text: canonical(value), key }
                 this.encoded++
             }
             records.set(entity, memo)
@@ -322,6 +332,9 @@ export class Extractor {
 }
 
 type Beat = { beat: number }
+
+// Vite sets it; Node tests have no import.meta.env.
+const isProduction = () => (import.meta as { env?: { PROD?: boolean } }).env?.PROD === true
 
 type KindSource =
     | { kind: 'slides'; inputs: KindInputs; slides: Iterable<readonly NoteEntity[]> }

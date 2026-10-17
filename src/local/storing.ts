@@ -87,6 +87,8 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         },
         onError: (error) => {
             if (test) errors.push(error)
+            // A dev build's checks (D9, a published state changed in place) fail loudly.
+            if (import.meta.env.DEV) console.error('A flush failed', error)
         },
     })
     flusher = instance
