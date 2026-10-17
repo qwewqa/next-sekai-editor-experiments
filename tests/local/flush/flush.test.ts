@@ -514,7 +514,7 @@ test('a failed flush is tried again later, less often each time, and pending ent
         setTimer: (_, ms) => timers.push(ms),
         transport: async (batch) => {
             if (failing) throw new Error('Storing paused: full')
-             
+
             const page = ref.page!
             return page.tab.run(() => page.handlers.flush(batch))
         },
