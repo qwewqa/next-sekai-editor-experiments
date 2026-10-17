@@ -1,6 +1,6 @@
 // The platform interface (Part 0 §0.9.1). Step 1a implements pickFiles, saveFile for downloads
-// and handles without preconditions, onCloseRequested, onLifecycle, openExternal, fetchServer
-// and diagnostics; later steps fill the rest.
+// and handles, onCloseRequested, onLifecycle, openExternal, fetchServer and diagnostics; Step 1c
+// inspect, read and expected for level data; later steps fill the rest.
 
 export type PlatformKind = 'web' | 'native'
 
@@ -49,7 +49,7 @@ export type OpenedFile = {
     native?: NativeRef
 }
 
-/** A source pinned at the changed-on-disk check (Part 1 §1.6.11.7); filled with Step 1c. */
+/** A source pinned at the changed-on-disk check (Part 1 §1.6.11.7). */
 export type PinnedSource = {
     target: FileTarget
     file: Blob
@@ -65,12 +65,26 @@ export type FileBody = Blob | WritePlan
 
 export type SaveKind = 'nxsp' | 'nsld' | 'archive' | 'audio' | 'image' | 'recovery'
 
+/** A file type a save picker offers. */
+export type SavePickerType = { description: string; extension: string }
+
+/** How a save picker opens, where the browser has one. */
+export type SavePicker = {
+    /** The picker id, so the browser remembers its folder. */
+    id: string
+    /** Offered before "All files", the first one selected; none offers "All files" alone. */
+    types: SavePickerType[]
+}
+
+/** Asks for a new tap once a build has outlasted the gesture; false cancels. */
+export type ReadyPrompt = (file: { name: string; size: number }) => Promise<boolean>
+
 export type SaveRequest = {
     kind: SaveKind
     suggestedName: string
     /** Write back here; omitted = ask where (picker or dialog), or download. */
     target?: FileTarget
-    /** The precondition: write only if the target still matches (Step 1c). */
+    /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
     replaced?: 'keep' | 'discard'
     replaces?: string
@@ -78,6 +92,12 @@ export type SaveRequest = {
     build: (sources: PinnedSource[]) => Promise<FileBody>
     /** Cancels a pending write before it commits. */
     signal?: AbortSignal
+    /** The save picker, when no target is given; level data defaults to today's. */
+    picker?: SavePicker
+    /** Runs on a picked file before anything is written to it; false writes nothing. */
+    picked?: (target: FileTarget) => Promise<boolean>
+    /** Asks for the tap a download needs when the build outlasted the gesture. */
+    ready?: ReadyPrompt
 }
 
 export type SaveResult =

@@ -19,6 +19,7 @@ import { stageMaskEvent } from './events/stage/mask'
 import { stagePivotEvent } from './events/stage/pivot'
 import { stageStyleEvent } from './events/stage/style'
 import { stageTransformEvent } from './events/stage/transform'
+import { exportLevel } from './exportLevel'
 import { flip } from './flip'
 import { flipVertical } from './flipVertical'
 import { fullscreen } from './fullscreen'
@@ -99,6 +100,7 @@ export type Command = {
 const builtInCommands = {
     open,
     save,
+    exportLevel,
     reset,
     properties,
     utilities,

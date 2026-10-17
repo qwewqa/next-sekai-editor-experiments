@@ -1,20 +1,24 @@
+import { levelDataDiskState, sameContent } from './fingerprint'
 import { journalStub, locksStub, notYet } from './stubs'
-import type {
-    DiagnosticInfo,
-    FileTarget,
-    LifecycleEvent,
-    OpenedFile,
-    Platform,
-    PlatformCapabilities,
-    PlatformKind,
-    PlatformOs,
-    SaveRequest,
-    SaveResult,
-    ServerFetchInit,
+import {
+    FileError,
+    type DiagnosticInfo,
+    type DiskState,
+    type FileTarget,
+    type LifecycleEvent,
+    type OpenedFile,
+    type Platform,
+    type PlatformCapabilities,
+    type PlatformKind,
+    type PlatformOs,
+    type SaveRequest,
+    type SaveResult,
+    type ServerFetchInit,
 } from './types'
 
 // The in-memory platform for tests, injected with setPlatformForTests. Step 1a covers the 1a
-// subset; Step 1c adds inspect, read and expected, and Step 6 revision semantics and faults.
+// subset; Step 1c adds inspect, read and expected with level data's sha256 fingerprint, and
+// Step 6 revision semantics and faults.
 
 export type MockPlatformOptions = {
     /** The kind it simulates. */
@@ -27,17 +31,25 @@ export type MockPlatformOptions = {
 export type MockPlatform = Platform & {
     /** The in-memory filesystem, by handle name or path. */
     readonly files: Map<string, Blob>
+    /** Each file's time, advanced by every write. */
+    readonly modified: Map<string, number>
     /** Each pickFiles call takes the next entry; none left is a cancel. */
     readonly picks: OpenedFile[][]
     /** Where each save without a target goes: a target, a cancelled picker, or a download. */
     readonly saveTargets: (FileTarget | 'cancel' | 'download')[]
     readonly downloads: { kind: SaveRequest['kind']; name: string; blob: Blob }[]
     readonly external: string[]
+    /** Calls in order, such as `requestPermission:<name>` and `write:<name>`. */
+    readonly calls: string[]
+    /** Called just before a write commits, so a test can change the file under it. */
+    beforeCommit?: (name: string) => void
     /** Asks every close handler, as closing the tab or window does; true when all allow it. */
     requestClose: () => Promise<boolean>
     emitLifecycle: (e: LifecycleEvent) => Promise<void>
     /** A handle whose writes land in files. */
     createHandle: (name: string) => FileSystemFileHandle
+    /** Writes a file as another program would. */
+    writeFile: (name: string, blob: Blob) => void
 }
 
 const defaults = (kind: PlatformKind): PlatformCapabilities =>
@@ -83,21 +95,39 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
     const os = options.os ?? 'windows'
     const capabilities = Object.freeze({ ...defaults(kind), ...options.capabilities })
     const files = new Map<string, Blob>()
+    const modified = new Map<string, number>()
     const picks: OpenedFile[][] = []
     const saveTargets: (FileTarget | 'cancel' | 'download')[] = []
     const downloads: MockPlatform['downloads'] = []
     const external: string[] = []
+    const calls: string[] = []
     const closeHandlers = new Set<() => boolean | Promise<boolean>>()
     const lifecycleHandlers = new Set<(e: LifecycleEvent) => void | Promise<void>>()
+    let clock = 1_700_000_000_000
 
-    const createHandle = (name: string) =>
-        ({
+    const writeFile = (name: string, blob: Blob) => {
+        files.set(name, blob)
+        modified.set(name, (clock += 1000))
+    }
+
+    const fileOf = (name: string) => {
+        const blob = files.get(name)
+        return blob && new File([blob], name, { type: blob.type, lastModified: modified.get(name) })
+    }
+
+    const createHandle = (name: string): FileSystemFileHandle => {
+        const handle = {
             kind: 'file',
             name,
+            requestPermission: () => {
+                calls.push(`requestPermission:${name}`)
+                return Promise.resolve('granted')
+            },
+            isSameEntry: (other: FileSystemHandle) => Promise.resolve(other.name === name),
             getFile: () => {
-                const blob = files.get(name)
-                if (!blob) return Promise.reject(new DOMException('Not found', 'NotFoundError'))
-                return Promise.resolve(new File([blob], name, { type: blob.type }))
+                const file = fileOf(name)
+                if (!file) return Promise.reject(new DOMException('Not found', 'NotFoundError'))
+                return Promise.resolve(file)
             },
             createWritable: () => {
                 const parts: Blob[] = []
@@ -107,21 +137,58 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
                         return Promise.resolve()
                     },
                     close: () => {
-                        files.set(name, new Blob(parts))
+                        calls.push(`write:${name}`)
+                        writeFile(name, new Blob(parts))
                         return Promise.resolve()
                     },
                     abort: () => Promise.resolve(),
                 })
             },
-        }) as unknown as FileSystemFileHandle
+        }
+        return handle as unknown as FileSystemFileHandle
+    }
+
+    const diskOf = async (name: string): Promise<DiskState | undefined> => {
+        const file = fileOf(name)
+        return file && (await levelDataDiskState(file))
+    }
+
+    // The precondition, as the web checks it: content, not time.
+    const check = async (name: string, expected: DiskState | 'absent') => {
+        const disk = await diskOf(name)
+        if (expected === 'absent') {
+            if (disk) throw new FileError('conflict', `${name} exists`, disk)
+        } else if (!disk) {
+            throw new FileError('not-found', `${name} cannot be found`)
+        } else if (!sameContent(disk, expected)) {
+            throw new FileError('conflict', `${name} changed on disk`, disk)
+        }
+        return disk
+    }
 
     const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
-        if (req.expected !== undefined) throw notYet('Save preconditions', 'Step 1c')
+        // The gesture's first call, as on the web.
+        const permission =
+            req.target?.kind === 'handle'
+                ? (
+                      req.target.handle as FileSystemFileHandle & {
+                          requestPermission: (d: object) => Promise<PermissionState>
+                      }
+                  ).requestPermission({ mode: 'readwrite' })
+                : undefined
+        if (permission && (await permission) !== 'granted')
+            throw new FileError('denied', 'Not allowed')
         const target = req.target ?? saveTargets.shift() ?? 'download'
         if (target === 'cancel') return { status: 'cancelled' }
         req.signal?.throwIfAborted()
 
-        const body = await req.build([])
+        const expected = req.target ? req.expected : undefined
+        const name = target === 'download' ? req.suggestedName : targetKey(target)
+        const pinned = expected === undefined ? undefined : await check(name, expected)
+        const file = pinned && fileOf(name)
+        const body = await req.build(
+            pinned && file && target !== 'download' ? [{ target, file, disk: pinned }] : [],
+        )
         if (!(body instanceof Blob)) throw notYet('Write plans', 'Step 6')
         req.signal?.throwIfAborted()
 
@@ -129,9 +196,21 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
             return { status: 'download-started', name: req.suggestedName }
         }
-        const name = targetKey(target)
-        files.set(name, body)
-        return { status: 'saved', target, name }
+        if (!req.target && req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+        mock.beforeCommit?.(name)
+        if (expected !== undefined) await check(name, expected)
+        calls.push(`write:${name}`)
+        writeFile(name, body)
+        return { status: 'saved', target, name, disk: await diskOf(name) }
+    }
+
+    const inspect = async (target: FileTarget): Promise<DiskState | 'missing'> =>
+        (await diskOf(targetKey(target))) ?? 'missing'
+
+    const read = (target: FileTarget): Promise<Blob> => {
+        const file = fileOf(targetKey(target))
+        if (!file) return Promise.reject(new FileError('not-found', 'Not found'))
+        return Promise.resolve(file)
     }
 
     const diagnostics = (): DiagnosticInfo => ({
@@ -142,20 +221,22 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         userAgent: 'mock',
     })
 
-    return {
+    const mock: MockPlatform = {
         kind,
         os,
         capabilities,
         files,
+        modified,
         picks,
         saveTargets,
         downloads,
         external,
+        calls,
 
         pickFiles: () => Promise.resolve(picks.shift() ?? []),
         saveFile,
-        inspect: () => Promise.reject(notYet('platform.inspect', 'Step 1c')),
-        read: () => Promise.reject(notYet('platform.read', 'Step 1c')),
+        inspect,
+        read,
         onOpenFiles: () => undefined,
 
         onCloseRequested: (handler) => {
@@ -187,5 +268,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             for (const handler of [...lifecycleHandlers]) await handler(e)
         },
         createHandle,
+        writeFile,
     }
+    return mock
 }

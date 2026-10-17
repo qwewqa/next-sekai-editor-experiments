@@ -274,7 +274,8 @@
         "timeScaleChange": "時間倍率變化異常",
         "meter": "每小節拍數無效",
         "missingMeter": "第 {0} 小節沒有每小節拍數"
-      }
+      },
+      "unsupportedParts": "此關卡包含此版本編輯器不支援的部分。這些部分已被省略。"
     },
     "paste": {
       "title": "貼上",
@@ -448,6 +449,9 @@
       "title": "編輯器配置",
       "basic": "已切換至基本配置",
       "composed": "已切換至合成配置"
+    },
+    "exportLevel": {
+      "title": "匯出關卡資料…"
     }
   },
   "help": {
@@ -1584,5 +1588,46 @@
       "inSlides": "在 {0} 條滑條中",
       "valuesDiffer": "{0} 個值不同"
     }
+  },
+  "export": {
+    "title": "匯出關卡資料",
+    "to": "匯出至",
+    "targetOpened": "{0}（開啟的檔案）",
+    "targetLast": "{0}（上次匯出）",
+    "placeholder": "LevelData",
+    "export": "匯出",
+    "exported": "已匯出至 {0}",
+    "notLevelData": "\"{0}\" 不是關卡資料。",
+    "fileType": "Next SEKAI 關卡資料"
+  },
+  "peek": {
+    "exportsCurrent": "匯出目前版本。"
+  },
+  "save": {
+    "fileName": "檔案名稱",
+    "chooseAnother": "選擇其他…",
+    "tryAgain": "重試",
+    "denied": "瀏覽器不允許寫入 {0}。",
+    "notFound": "找不到 \"{0}\"。",
+    "notFoundNote": "如果已移動或重新命名，請在下一步中選擇它並確認。",
+    "downloadStarted": "已開始下載：{0} · {1}",
+    "preparing": "正在準備 {0}… {1}",
+    "download": "下載"
+  },
+  "conflict": {
+    "exportTitle": "\"{0}\" 已變更",
+    "exportBody": "\"{0}\" 在上次匯出後已變更。",
+    "exportBodyOpened": "\"{0}\" 在此處開啟後已變更。",
+    "replace": "取代"
+  },
+  "name": {
+    "invalidChar": "名稱不能包含 {0}",
+    "controlChar": "名稱不能包含控制字元",
+    "edgeDotSpace": "名稱不能以句點或空格開頭或結尾",
+    "reserved": "名稱不能是 \"{0}\"",
+    "tooLong": "名稱過長"
+  },
+  "notice": {
+    "useOpenFile": "要開啟檔案，請使用 \"開啟\"。"
   }
 }

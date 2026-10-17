@@ -59,6 +59,7 @@ path = [
     "src/editor/commands/cut/CutIcon.vue",
     "src/editor/commands/deselect/DeselectIcon.vue",
     "src/editor/commands/eraser/EraserIcon.vue",
+    "src/editor/commands/exportLevel/ExportIcon.vue",
     "src/editor/commands/flip/FlipIcon.vue",
     "src/editor/commands/fullscreen/FullscreenIcon.vue",
     "src/editor/commands/groups/GroupAllIcon.vue",

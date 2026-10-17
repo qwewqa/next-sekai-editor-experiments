@@ -33,10 +33,14 @@ test('nothing in src/ navigates the app context', () => {
     // Assigning location, or its assign and replace, would navigate the editor's own tab.
     assert.deepEqual(matching(/\blocation\s*=[^=]|\blocation\.href\s*=[^=]/), [])
     assert.deepEqual(matching(/\blocation\.(assign|replace)\s*\(/), [])
-    // window.open is only openExternal's, which refuses Blob and data: URLs.
+    // window.open is openExternal's, which refuses Blob and data: URLs, and the hand-over's
+    // fallback, which opens a new context.
     assert.deepEqual(matching(/\bwindow\.open\s*\(|(^|[^.\w])open\s*\(\s*['"`]/m), [
+        'src/platform/handover.ts',
         'src/platform/web.ts',
     ])
+    // Downloads never target this context.
+    assert.deepEqual(matching(/['"]_self['"]/), [])
 })
 
 test('only src/platform/index.ts imports #platform', () => {
@@ -46,7 +50,7 @@ test('only src/platform/index.ts imports #platform', () => {
 })
 
 test('downloads, pickers and close handling go through the platform', () => {
-    assert.deepEqual(matching(/\.download\s*=/), ['src/platform/web.ts'])
+    assert.deepEqual(matching(/\.download\s*=/), ['src/platform/handover.ts'])
     assert.deepEqual(matching(/showSaveFilePicker|showOpenFilePicker/), ['src/platform/web.ts'])
     assert.deepEqual(matching(/['"]beforeunload['"]|['"]pagehide['"]/), ['src/platform/web.ts'])
 })

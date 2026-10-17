@@ -11,6 +11,7 @@ import { detectHead } from '../../../files/detect'
 import { checkState, resetState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
+import { LevelDataReport } from '../../../levelData/report'
 import {
     getLevelDataRevision,
     getRevisionWarning,
@@ -19,6 +20,7 @@ import {
 import { showModal } from '../../../modals'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
+import { levelDataDiskState } from '../../../platform'
 import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
@@ -26,7 +28,11 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
 import { changeBgm } from '../bgm/index.ts'
+import { exportMemory } from '../exportLevel/memory'
+import { installDropGuard } from './dropGuard'
 import OpenIcon from './OpenIcon.vue'
+
+installDropGuard()
 
 export const open: Command = {
     title: () => i18n.value.commands.open.title,
@@ -47,7 +53,7 @@ export const open: Command = {
             return
         }
 
-        let warning: RevisionWarning | undefined
+        let warning: RevisionWarning | 'unsupportedParts' | undefined
         await showModal(LoadingModal, {
             title: () => i18n.value.commands.open.title,
             async *task(signal: AbortSignal) {
@@ -78,15 +84,46 @@ export const open: Command = {
                         case 'levelData': {
                             const levelData = parseLevelData(data)
 
-                            const chart = parseLevelDataChart(levelData.entities)
+                            // An unknown choice value still refuses the open (its confirm is Step 6's).
+                            const report = new LevelDataReport()
+                            const chart = parseLevelDataChart(
+                                levelData.entities,
+                                undefined,
+                                undefined,
+                                report,
+                            )
+                            report.refuseUnknownValues()
                             validateChart(chart)
                             const revisionWarning = getRevisionWarning(
                                 getLevelDataRevision(levelData.entities),
                                 chart,
                             )
 
-                            resetState(false, chart, levelData.bgmOffset, getFilename(file), handle)
-                            warning = revisionWarning
+                            // Content this build did not read: no file is written over (D2).
+                            const complete = report.isEmpty
+                            resetState(
+                                false,
+                                chart,
+                                levelData.bgmOffset,
+                                getFilename(file),
+                                complete ? handle : undefined,
+                            )
+                            warning = complete ? revisionWarning : 'unsupportedParts'
+                            if (complete && isGzip(buffer)) {
+                                // Export's own format: its file is the remembered target (§1.4.8).
+                                exportMemory.sourceName = file.name
+                                if (handle)
+                                    exportMemory.target = {
+                                        name: handle.name,
+                                        handle,
+                                        disk: await levelDataDiskState(
+                                            new File([buffer], file.name, {
+                                                lastModified: file.lastModified,
+                                            }),
+                                        ),
+                                        exported: false,
+                                    }
+                            }
                             break
                         }
                         case 'usc': {
@@ -115,6 +152,14 @@ export const open: Command = {
                     throw error
                 }
 
+                // The source's bytes, so a save picker that empties it can be undone (D5).
+                if (handle)
+                    exportMemory.opened = {
+                        handle,
+                        levelData: type === 'levelData',
+                        bytes: type === 'levelData' ? undefined : buffer,
+                    }
+
                 notify(() => i18n.value.commands.open[openedMessages[type]])
             },
         })
@@ -123,7 +168,10 @@ export const open: Command = {
         const message = warning
         void showModal(InfoModal, {
             title: () => i18n.value.commands.open.title,
-            message: () => i18n.value.commands.open.revision[message],
+            message: () =>
+                message === 'unsupportedParts'
+                    ? i18n.value.commands.open.unsupportedParts
+                    : i18n.value.commands.open.revision[message],
         })
     },
 }
@@ -176,11 +224,15 @@ class RefusedFileError extends Error {
 const isLevelDataLike = (data: unknown) =>
     typeof data === 'object' && data !== null && 'entities' in data
 
+const isGzip = (buffer: ArrayBuffer) => {
+    const bytes = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength))
+    return bytes[0] === 0x1f && bytes[1] === 0x8b
+}
+
 const tryParseJson = (buffer: ArrayBuffer): unknown => {
     const bytes = new Uint8Array(buffer)
-    const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
     try {
-        return JSON.parse(new TextDecoder().decode(isGzip ? ungzip(bytes) : bytes))
+        return JSON.parse(new TextDecoder().decode(isGzip(buffer) ? ungzip(bytes) : bytes))
     } catch {
         return
     }

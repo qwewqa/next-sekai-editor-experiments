@@ -6,7 +6,11 @@ import { parseAutoSave } from '../../src/history/autoSave/parse'
 
 const older =
     'This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.'
+// A newer revision is content this build does not read, so Open says so in place of the warning.
 const newer =
+    'This level has parts this version of the editor does not support. They were left out.'
+// A restored auto save still warns as before.
+const newerAutoSave =
     'This level was made for a newer engine revision than this editor supports. Some parts may not show or save as intended.'
 const recoveryKey = 'sonolus-next-sekai-editor.autoSave.levelData'
 const asideKey = 'sonolus-next-sekai-editor.autoSave.unreadable'
@@ -400,8 +404,8 @@ test('restoring a newer auto save warns on every start and keeps it as stored un
     for (let start = 0; start < 2; start++) {
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        expect(await dialogsAfterLoading(page)).toEqual([newer])
-        await dismiss(page, 'Auto Save', newer)
+        expect(await dialogsAfterLoading(page)).toEqual([newerAutoSave])
+        await dismiss(page, 'Auto Save', newerAutoSave)
         expect(await storedRecovery(page)).toBe(text)
     }
 

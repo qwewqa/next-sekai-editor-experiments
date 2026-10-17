@@ -198,6 +198,7 @@ const xToLane = (x: number) =>
 const availableCommands: CommandName[] = [
     'open',
     'save',
+    'exportLevel',
     'reset',
     'properties',
     'utilities',

@@ -127,12 +127,14 @@ const writers: {
     readsDisplay?: true
 }[] = [
     // Today's Save serializer, which becomes Export.
+    { file: 'src/editor/commands/save/index.ts', imports: { live: ['filename'] } },
+    { file: 'src/editor/commands/exportLevel/index.ts', imports: { live: ['filename'] } },
+    // Save and Export build level data here.
     {
-        file: 'src/editor/commands/save/index.ts',
+        file: 'src/editor/commands/exportLevel/build.ts',
         imports: {
             live: [
                 'bgm',
-                'filename',
                 'groupFolders',
                 'groups',
                 'initialLife',

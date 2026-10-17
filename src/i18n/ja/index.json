@@ -274,7 +274,8 @@
         "timeScaleChange": "ハイスピード変化が想定外の値です",
         "meter": "拍子が無効です",
         "missingMeter": "小節 {0} の拍子がありません"
-      }
+      },
+      "unsupportedParts": "この譜面には、このバージョンのエディターが対応していない部分があります。それらは読み込まれていません。"
     },
     "paste": {
       "title": "ペースト",
@@ -448,6 +449,9 @@
       "title": "エディターのレイアウト",
       "basic": "基本レイアウトに切り替えました",
       "composed": "合成レイアウトに切り替えました"
+    },
+    "exportLevel": {
+      "title": "レベルデータを出力…"
     }
   },
   "help": {
@@ -1584,5 +1588,46 @@
       "inSlides": "{0}個のスライド内",
       "valuesDiffer": "{0}個の値が異なります"
     }
+  },
+  "export": {
+    "title": "レベルデータを出力",
+    "to": "出力先",
+    "targetOpened": "{0} (開いたファイル)",
+    "targetLast": "{0} (前回の出力先)",
+    "placeholder": "LevelData",
+    "export": "出力",
+    "exported": "{0} に出力しました",
+    "notLevelData": "「{0}」はレベルデータではありません。",
+    "fileType": "Next SEKAI レベルデータ"
+  },
+  "peek": {
+    "exportsCurrent": "現在のバージョンを出力します。"
+  },
+  "save": {
+    "fileName": "ファイル名",
+    "chooseAnother": "別のファイルを選択…",
+    "tryAgain": "再試行",
+    "denied": "ブラウザが {0} への書き込みを許可しませんでした。",
+    "notFound": "「{0}」が見つかりません。",
+    "notFoundNote": "移動または名前を変更した場合は、次の画面でそのファイルを選んで確定してください。",
+    "downloadStarted": "ダウンロードを開始しました: {0} · {1}",
+    "preparing": "{0} を準備中… {1}",
+    "download": "ダウンロード"
+  },
+  "conflict": {
+    "exportTitle": "「{0}」が変更されました",
+    "exportBody": "「{0}」は前回の出力後に変更されています。",
+    "exportBodyOpened": "「{0}」はここで開いた後に変更されています。",
+    "replace": "置き換え"
+  },
+  "name": {
+    "invalidChar": "名前に {0} は使用できません",
+    "controlChar": "名前に制御文字は使用できません",
+    "edgeDotSpace": "名前の先頭と末尾にピリオドやスペースは使用できません",
+    "reserved": "「{0}」は名前に使用できません",
+    "tooLong": "名前が長すぎます"
+  },
+  "notice": {
+    "useOpenFile": "ファイルを開くには「ファイルを開く」を使用してください。"
   }
 }

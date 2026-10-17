@@ -241,6 +241,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         'commands.visibilities.toggle.types.note',
         'elevation.auto',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         // French spells "Version" the same.
         'load.version',
         'modals.form.bpm.label',
@@ -287,6 +289,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.events.title',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -314,6 +318,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bpm.title',
         'commands.events.title',
         'commands.visibilities.toggle.types.bpm',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -341,6 +347,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bpm.title',
         'commands.events.title',
         'commands.visibilities.toggle.types.bpm',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -368,6 +376,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bpm.title',
         'commands.events.title',
         'commands.visibilities.toggle.types.bpm',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -394,6 +404,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.events.title',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
+        // A file name, as Sonolus servers name level data.
+        'export.placeholder',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',

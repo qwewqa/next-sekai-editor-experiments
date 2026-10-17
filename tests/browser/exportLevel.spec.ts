@@ -1,0 +1,447 @@
+import { expect, test, type Page } from '@playwright/test'
+import type { PlatformOverride } from '../../src/platform/detect'
+import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
+
+// Export Level Data… (Part 1 §1.4.8, Step 1c). Chromium's pickers run on OPFS handles through the
+// platform override (§1.11); download browsers are simulated with fileSystemAccess: false.
+
+const errors = new WeakMap<Page, string[]>()
+
+const start = async (page: Page, override: PlatformOverride) => {
+    const collected: string[] = []
+    errors.set(page, collected)
+    page.on('pageerror', (error) => collected.push(error.message))
+    await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(installTestPlatform, override)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    // A new chart, which has no name: the date fallback.
+    await page.evaluate(() => {
+        window.editorTest.history.resetState(false)
+    })
+}
+
+test.afterEach(({ page }) => {
+    expect(errors.get(page) ?? []).toEqual([])
+})
+
+type LevelChange = { bgmOffset?: number; archetype?: string; raw?: number[] }
+
+/** Writes an OPFS file: this blank chart's level data, gzipped, with a change, or raw bytes. */
+const writeFile = (page: Page, name: string, change: LevelChange = {}) =>
+    page.evaluate(
+        async ({ name, change }) => {
+            let bytes: ArrayBuffer
+            if (change.raw) bytes = new Uint8Array(change.raw).buffer
+            else {
+                const { buildLevelData } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/commands/exportLevel/build')
+                >('/src/editor/commands/exportLevel/build.ts')
+                const stream = buildLevelData()
+                    .stream()
+                    .pipeThrough(new DecompressionStream('gzip'))
+                const json = JSON.parse(await new Response(stream).text()) as {
+                    bgmOffset: number
+                    entities: { archetype: string; data: unknown[] }[]
+                }
+                if (change.bgmOffset !== undefined) json.bgmOffset = change.bgmOffset
+                if (change.archetype) json.entities.push({ archetype: change.archetype, data: [] })
+                bytes = await new Response(
+                    new Blob([JSON.stringify(json)])
+                        .stream()
+                        .pipeThrough(new CompressionStream('gzip')),
+                ).arrayBuffer()
+            }
+            const root = await navigator.storage.getDirectory()
+            const handle = await root.getFileHandle(name, { create: true })
+            const writable = await handle.createWritable()
+            await writable.write(bytes)
+            await writable.close()
+        },
+        { name, change },
+    )
+
+/** An OPFS file: its level data's bgmOffset, 'zip' for a ZIP, or undefined when missing. */
+const readFile = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        let file: File
+        try {
+            file = await (await root.getFileHandle(name)).getFile()
+        } catch {
+            return undefined
+        }
+        const head = new Uint8Array(await file.slice(0, 2).arrayBuffer())
+        if (head[0] === 0x50 && head[1] === 0x4b) return 'zip'
+        const stream = file.stream().pipeThrough(new DecompressionStream('gzip'))
+        return (JSON.parse(await new Response(stream).text()) as { bgmOffset: number }).bgmOffset
+    }, name)
+
+const opfsNames = (page: Page) =>
+    page.evaluate(async () => {
+        const names: string[] = []
+        const root = await navigator.storage.getDirectory()
+        for await (const name of (root as unknown as { keys: () => AsyncIterable<string> }).keys())
+            names.push(name)
+        return names.sort()
+    })
+
+/** Queues the names the next picks return; null dismisses one. */
+const queuePicks = (page: Page, picks: (string | null)[]) =>
+    page.evaluate((picks) => {
+        localStorage.setItem('nse.test.picks', JSON.stringify(picks))
+    }, picks)
+
+const pickerCalls = (page: Page) =>
+    page.evaluate(
+        () =>
+            JSON.parse(localStorage.getItem('nse.test.pickerCalls') ?? '[]') as {
+                picker: string
+                id?: string
+                suggestedName?: string
+                types?: { accept: Record<string, string[]> }[]
+            }[],
+    )
+
+const notice = (page: Page) => page.getByRole('status')
+
+/** Opens an OPFS file with Open, as Chromium's picker would. */
+const openFile = async (page: Page, name: string) => {
+    await queuePicks(page, [name])
+    await page.keyboard.press('o')
+    await expect(notice(page)).toHaveText('Opened level')
+}
+
+const dialog = (page: Page) => page.getByRole('dialog')
+
+const opfs: PlatformOverride = { fileSystemAccess: 'opfs' }
+
+/** Opens Export with Shift+P, once the dialog has placed its focus. */
+const openExport = async (page: Page) => {
+    await page.keyboard.press('Shift+P')
+    // The field, or Export with a target; showModal() first focuses the close button.
+    await expect(
+        dialog(page).locator('[data-export-name]:focus, button[type="submit"]:focus'),
+    ).toHaveCount(1)
+}
+
+test('Export names a new chart LevelData, from an empty field with the placeholder', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await openExport(page)
+    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('')
+    await expect(field).toHaveAttribute('placeholder', 'LevelData')
+    await expect(field).toBeFocused()
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
+    await expect(dialog(page).getByText('To', { exact: true })).toHaveCount(0)
+
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+    await expect(dialog(page)).toHaveCount(0)
+    const [call] = await pickerCalls(page)
+    expect(call).toMatchObject({ picker: 'save', id: 'levelData', suggestedName: 'LevelData.nsld' })
+    expect(call?.types?.[0]?.accept).toEqual({ 'application/octet-stream': ['.nsld'] })
+    expect(await readFile(page, 'LevelData.nsld')).toBe(0)
+
+    // The pick is the target now.
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target-name]')).toHaveText(
+        'LevelData.nsld (your last export)',
+    )
+})
+
+test('a typed name is checked, and a forbidden character disables Export at once', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await openExport(page)
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    const exporting = dialog(page).getByRole('button', { name: 'Export' })
+    await field.fill('Re:Zero')
+    await expect(dialog(page).getByRole('alert')).toHaveText('A name cannot contain :')
+    await expect(exporting).toBeDisabled()
+    await field.fill('Coconut ')
+    // The edge reason waits for a pause.
+    await expect(dialog(page).getByRole('alert')).toHaveText(
+        'A name cannot start or end with a dot or a space',
+    )
+    await expect(exporting).toBeDisabled()
+    await field.fill('Coconut (Master)')
+    await expect(dialog(page).getByRole('alert')).toHaveCount(0)
+    await exporting.click()
+    await expect(notice(page)).toHaveText('Exported to Coconut (Master).nsld')
+    expect(await opfsNames(page)).toEqual(['Coconut (Master).nsld'])
+})
+
+test('an opened gzipped LevelData is the target, and the dialog shows only the To row', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target]')).toContainText('To')
+    await expect(dialog(page).locator('[data-export-target-name]')).toHaveText(
+        'LevelData (the file you opened)',
+    )
+    await expect(dialog(page).getByRole('textbox')).toHaveCount(0)
+    await expect(dialog(page).getByRole('button', { name: 'Export' })).toBeFocused()
+
+    await writeFile(page, 'LevelData', { bgmOffset: 0 })
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData')
+    expect(await pickerCalls(page)).toEqual([{ picker: 'open', id: 'levelData' }])
+    expect(await opfsNames(page)).toEqual(['LevelData'])
+})
+
+test('a changed target meets the conflict dialog’s Export form; Replace keeps nothing', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    // Another program changes the file.
+    await writeFile(page, 'LevelData', { bgmOffset: 3 })
+
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    const conflict = dialog(page)
+    await expect(conflict).toHaveAccessibleName('"LevelData" Changed')
+    await expect(conflict).toContainText('"LevelData" changed since you opened it here.')
+    await expect(conflict).toContainText(/[\d.]+ kB.* · /)
+    const buttons = conflict.locator('[data-choice-buttons] button')
+    await expect(buttons).toHaveText(['Cancel', 'Replace', 'Choose Another…'])
+    await expect(conflict.getByRole('button', { name: 'Choose Another…' })).toBeFocused()
+    expect(await readFile(page, 'LevelData')).toBe(3)
+
+    await page.waitForTimeout(350)
+    await conflict.getByRole('button', { name: 'Replace' }).click()
+    await expect(notice(page)).toHaveText('Exported to LevelData')
+    expect(await readFile(page, 'LevelData')).toBe(0)
+    expect(await opfsNames(page)).toEqual(['LevelData'])
+
+    // After an export, a change is "since your last export".
+    await writeFile(page, 'LevelData', { bgmOffset: 4 })
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target-name]')).toHaveText(
+        'LevelData (your last export)',
+    )
+    await page.keyboard.press('Enter')
+    await expect(dialog(page)).toContainText('"LevelData" changed since your last export.')
+    await page.waitForTimeout(350)
+    await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await readFile(page, 'LevelData')).toBe(4)
+})
+
+test('Choose Another… in the conflict dialog exports to the picked file', async ({ page }) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    await writeFile(page, 'LevelData', { bgmOffset: 3 })
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(dialog(page)).toHaveAccessibleName('"LevelData" Changed')
+    await queuePicks(page, ['Copy.nsld'])
+    await page.waitForTimeout(350)
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to Copy.nsld')
+    expect(await readFile(page, 'LevelData')).toBe(3)
+    expect(await readFile(page, 'Copy.nsld')).toBe(0)
+})
+
+test('Export refuses to write over a .nxsp in its target’s place', async ({ page }) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    await writeFile(page, 'LevelData', { raw: [0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0] })
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(dialog(page)).toContainText('"LevelData" is not level data.')
+    await expect(dialog(page).locator('[data-choice-buttons] button')).toHaveText([
+        'Cancel',
+        'Choose Another…',
+    ])
+    await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
+    await page.waitForTimeout(350)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await readFile(page, 'LevelData')).toBe('zip')
+})
+
+test('level data with an unknown archetype gets no Export target', async ({ page }) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData', { archetype: 'Skill' })
+    await openFile(page, 'LevelData')
+    await expect(dialog(page)).toContainText(
+        'This level has parts this version of the editor does not support. They were left out.',
+    )
+    await dialog(page).getByRole('button', { name: 'OK' }).click()
+
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target]')).toHaveCount(0)
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('LevelData')
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+    // The original, with its Skill entity, is untouched.
+    expect(await opfsNames(page)).toEqual(['LevelData', 'LevelData.nsld'])
+})
+
+test('an opened gzipped LevelData saved with p then exported with Shift+P has no conflict', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    await page.evaluate(() => {
+        window.editorTest.history.pushState(() => 'Offset', {
+            ...window.editorTest.history.state.value,
+            bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
+        })
+    })
+    await page.keyboard.press('p')
+    await expect(notice(page)).toHaveText('Saved level')
+    expect(await readFile(page, 'LevelData')).toBe(2)
+
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData')
+    await expect(dialog(page)).toHaveCount(0)
+})
+
+test('on a download browser, an imported LevelData keeps its own name', async ({ page }) => {
+    await start(page, { fileSystemAccess: false })
+    const level = await page.evaluate(async () => {
+        const { buildLevelData } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/build')
+        >('/src/editor/commands/exportLevel/build.ts')
+        return Array.from(new Uint8Array(await buildLevelData().arrayBuffer()))
+    })
+    const chooser = page.waitForEvent('filechooser')
+    await page.keyboard.press('o')
+    await (
+        await chooser
+    ).setFiles({
+        name: 'LevelData',
+        mimeType: 'application/octet-stream',
+        buffer: Buffer.from(level),
+    })
+    await expect(notice(page)).toHaveText('Opened level')
+
+    await openExport(page)
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('LevelData')
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toHaveCount(0)
+    let download = page.waitForEvent('download')
+    await page.keyboard.press('Enter')
+    expect((await download).suggestedFilename()).toBe('LevelData')
+    await expect(notice(page)).toHaveText(/^Download started: LevelData · [\d.]+ kB/)
+
+    // An edited name gets the extension.
+    await openExport(page)
+    await field.fill('Coconut')
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
+    download = page.waitForEvent('download')
+    await page.keyboard.press('Enter')
+    expect((await download).suggestedFilename()).toBe('Coconut.nsld')
+})
+
+test('a build that outlasted the gesture asks for one more tap', async ({ page }) => {
+    await start(page, { fileSystemAccess: false, activation: false })
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    const preparing = dialog(page).locator('[data-export-preparing]')
+    await expect(preparing).toHaveText(/^Preparing LevelData\.nsld… [\d.]+ kB/)
+    const button = dialog(page).getByRole('button', { name: 'Download' })
+    await expect(button).toBeFocused()
+    const download = page.waitForEvent('download')
+    await button.click()
+    expect((await download).suggestedFilename()).toBe('LevelData.nsld')
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(notice(page)).toHaveText(/^Download started: LevelData\.nsld/)
+})
+
+test('a dropped file opens nothing and leaves the page where it is', async ({ page }) => {
+    await start(page, opfs)
+    const url = page.url()
+    const result = await page.evaluate(() => {
+        const data = new DataTransfer()
+        data.items.add(new File(['{"entities":[]}'], 'LevelData.json'))
+        const fire = (type: string) => {
+            const event = new DragEvent(type, {
+                dataTransfer: data,
+                bubbles: true,
+                cancelable: true,
+            })
+            document.querySelector('canvas.editor-chart')?.dispatchEvent(event)
+            return event.defaultPrevented
+        }
+        return { dragover: fire('dragover'), drop: fire('drop') }
+    })
+    expect(result).toEqual({ dragover: true, drop: true })
+    await expect(notice(page)).toHaveText('To open a file, use Open.')
+    expect(page.url()).toBe(url)
+    await expect(dialog(page)).toHaveCount(0)
+})
+
+test('Shift+P exports; p with Caps Lock still saves', async ({ page }) => {
+    await start(page, opfs)
+    // Caps Lock reports an uppercase key without Shift.
+    await page.keyboard.press('P')
+    await expect(notice(page)).toHaveText('Saved level')
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await pickerCalls(page)).toEqual([
+        { picker: 'save', id: 'levelData', suggestedName: 'LevelData' },
+    ])
+})
+
+test('the P default stays unbound where the user already took the key', async ({ page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem(
+            'sonolus-next-sekai-editor.keyboardShortcuts',
+            JSON.stringify({ open: 'o', save: 'p', flip: 'P' }),
+        )
+    })
+    await start(page, opfs)
+    expect(
+        await page.evaluate(() => window.editorTest.settings.keyboardShortcuts.exportLevel),
+    ).toBe('')
+})
+
+test('the toolbar step adds Export Level Data before Save once', async ({ page }) => {
+    await page.addInitScript(() => {
+        if (sessionStorage.getItem('seeded')) return
+        sessionStorage.setItem('seeded', '1')
+        localStorage.setItem(
+            'sonolus-next-sekai-editor.toolbar',
+            JSON.stringify([['undo', 'save'], ['play']]),
+        )
+        localStorage.removeItem('sonolus-next-sekai-editor.toolbarExportMigrated')
+    })
+    await start(page, opfs)
+    const toolbar = () => page.evaluate(() => window.editorTest.settings.toolbar)
+    expect((await toolbar())[0]).toEqual(['undo', 'exportLevel', 'save'])
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('sonolus-next-sekai-editor.toolbarExportMigrated'),
+        ),
+    ).toBe('true')
+
+    // Removing it afterwards is a customisation, kept across a reload.
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.toolbar = settings.toolbar.map((group) =>
+            group.filter((name) => name !== 'exportLevel'),
+        )
+    })
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    expect((await toolbar())[0]).toEqual(['undo', 'save'])
+})
