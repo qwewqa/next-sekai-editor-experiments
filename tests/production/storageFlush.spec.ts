@@ -87,3 +87,27 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     expect(await page.evaluate(() => window.nseFlushTest!.errors.map(String))).toEqual([])
     expect(errors).toEqual([])
 })
+
+test('the release build ignores the dbVersion test flag, so it can’t upgrade the real database', async ({
+    page,
+}) => {
+    await page.addInitScript(() => {
+        sessionStorage.setItem('nse.test.storage', '{"dbVersion":2}')
+    })
+    await page.goto('/')
+    await expect
+        .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
+        .toEqual({ mode: 'stored' })
+    const version = await page.evaluate(
+        () =>
+            new Promise<number>((resolve, reject) => {
+                const request = indexedDB.open('nse-local-data')
+                request.onsuccess = () => {
+                    resolve(request.result.version)
+                    request.result.close()
+                }
+                request.onerror = () => reject(request.error ?? new Error('open failed'))
+            }),
+    )
+    expect(version).toBe(1)
+})
