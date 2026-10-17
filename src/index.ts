@@ -24,7 +24,10 @@ createApp(App).mount(root)
 
 // The storage worker and the local-data modules load after first paint (Part 1 §1.6.5), with
 // a timer, not a frame: an unfocused tab schedules no frames.
-// The startup gate lifts when it is done, or shows the error if it throws (Part 1 §1.4.2).
 setTimeout(() => {
-    trackStartup(import('./local/start').then(({ startStorage }) => startStorage()))
+    void import('./local/start').then(({ startStorage }) => startStorage())
 }, 0)
+
+// The startup gate (Part 1 §1.4.2) covers what the session's opening takes. Until Step 4's startup
+// sequence (4-core) hands its promise over, nothing waits, as today's editor opens at once.
+trackStartup(Promise.resolve())
