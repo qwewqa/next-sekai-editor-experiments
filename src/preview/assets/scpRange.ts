@@ -46,21 +46,22 @@ export const openRangedScp = async (
         const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
             read.response.headers.get('Content-Range') ?? '',
         )
-        const [start, end, total] = (match?.slice(1) ?? []).map(Number)
-        return read.response.status === 206 && start !== undefined
-            ? { start, end: end!, total: total! }
-            : undefined
+        if (read.response.status !== 206 || !match) return
+        const [start = 0, end = 0, total = 0] = match.slice(1).map(Number)
+        return { start, end, total, isTail: end === total - 1 }
     }
+    // A function, so TypeScript does not keep an earlier check's narrowing across awaits.
+    const isAborted = () => signal.aborted
     let tail = await request(`bytes=-${TAIL_SIZE}`)
-    if (signal.aborted || !tail) return
+    if (isAborted() || !tail) return
     let range = covered(tail)
     if (!range) return whole(tail)
-    if (range.end !== range.total - 1) {
+    if (!range.isTail) {
         // The size is right even where the bytes are not: ask for the tail by position.
         tail = await request(`bytes=${Math.max(0, range.total - TAIL_SIZE)}-${range.total - 1}`)
-        if (signal.aborted || !tail) return
+        if (isAborted() || !tail) return
         range = covered(tail)
-        if (!range || range.end !== range.total - 1) return whole(tail)
+        if (!range?.isTail) return whole(tail)
     }
     const { total } = range
     if (tail.body.length !== range.end - range.start + 1) return whole()
