@@ -2,13 +2,26 @@
     <defs>
         <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#232539"/>
-            <stop offset="1" stop-color="#292b42"/>
+            <stop offset="1" stop-color="#2c2e49"/>
         </linearGradient>
-        <linearGradient id="halo" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="lane" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#b4d6e8" stop-opacity="0"/>
+            <stop offset="1" stop-color="#b4d6e8" stop-opacity="0.14"/>
+        </linearGradient>
+        <linearGradient id="edge" gradientUnits="userSpaceOnUse" x1="0" y1="110" x2="0" y2="1024">
+            <stop offset="0" stop-color="#b4d6e8" stop-opacity="0"/>
+            <stop offset="0.6" stop-color="#b4d6e8" stop-opacity="0.55"/>
+            <stop offset="1" stop-color="#b4d6e8" stop-opacity="0.7"/>
+        </linearGradient>
+        <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stop-color="#77efdc" stop-opacity="0"/>
-            <stop offset="0.5" stop-color="#77efdc" stop-opacity="0.45"/>
+            <stop offset="0.12" stop-color="#77efdc"/>
+            <stop offset="0.88" stop-color="#77efdc"/>
             <stop offset="1" stop-color="#77efdc" stop-opacity="0"/>
         </linearGradient>
+        <filter id="blur" filterUnits="userSpaceOnUse" x="0" y="560" width="1024" height="280">
+            <feGaussianBlur stdDeviation="26"/>
+        </filter>
     </defs>
     <filter id="shadow" x="-0.2" y="-0.2" width="1.4" height="1.4">
         <feGaussianBlur stdDeviation="14"/>
@@ -18,17 +31,19 @@
         <clipPath id="clip"><rect width="1024" height="1024" rx="230"/></clipPath>
         <g clip-path="url(#clip)">
             <rect width="1024" height="1024" fill="url(#plate)"/>
-            <g stroke="#b4d6e8" stroke-opacity="0.3" stroke-width="16" stroke-linecap="round">
-            <line x1="230" y1="1024" x2="440" y2="150"/>
-            <line x1="794" y1="1024" x2="584" y2="150"/>
-        </g>
-        <rect x="80" y="640" width="864" height="120" fill="url(#halo)"/>
-        <rect x="112" y="692" width="800" height="16" fill="#fff"/>
-        <rect x="262" y="628" width="500" height="144" rx="24" fill="#aabfff"/>
-        <rect x="286" y="652" width="452" height="96" rx="16" fill="#e6edff"/>
-        <rect x="304" y="682" width="36" height="36" fill="#8394f6"/>
-        <rect x="684" y="682" width="36" height="36" fill="#8394f6"/>
-        <polygon points="382,535 382,483 512,405 642,483 642,535 512,457" fill="#ec7cb4" stroke="#fff" stroke-width="12" stroke-linejoin="miter"/>
+    <polygon points="436,110 588,110 880,1024 144,1024" fill="url(#lane)"/>
+    <g stroke="url(#edge)" stroke-width="14" stroke-linecap="round">
+        <line x1="436" y1="110" x2="144" y2="1024"/>
+        <line x1="588" y1="110" x2="880" y2="1024"/>
+    </g>
+    <rect x="56" y="672" width="912" height="56" fill="#77efdc" fill-opacity="0.6" filter="url(#blur)"/>
+    <rect x="72" y="682" width="880" height="36" fill="url(#beam)"/>
+    <rect x="120" y="692" width="784" height="16" fill="#fff" fill-opacity="0.95"/>
+    <rect x="222" y="608" width="580" height="184" rx="44.2" fill="#aabfff"/>
+    <rect x="253.3" y="639.3" width="517.4" height="121.4" rx="25.4" fill="#e6edff"/>
+    <rect x="275.4" y="676.1" width="47.8" height="47.8" fill="#8394f6"/>
+    <rect x="700.8" y="676.1" width="47.8" height="47.8" fill="#8394f6"/>
+    <polygon points="350.8,490.6 350.8,426.1 512,329.4 673.2,426.1 673.2,490.6 512,393.9" fill="#ec7cb4" stroke="#fff" stroke-width="14" stroke-linejoin="miter" stroke-miterlimit="4"/>
         </g>
     </g>
 </svg>
