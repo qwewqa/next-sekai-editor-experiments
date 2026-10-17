@@ -274,7 +274,8 @@
                 "timeScaleChange": "unexpected time scale change",
                 "meter": "invalid meter",
                 "missingMeter": "no meter for measure {0}"
-            }
+            },
+            "unsupportedParts": "This level has parts this version of the editor does not support. They were left out."
         },
         "paste": {
             "title": "Paste",
@@ -448,6 +449,9 @@
             "title": "Editor Layout",
             "basic": "Switched to Basic layout",
             "composed": "Switched to Composed layout"
+        },
+        "exportLevel": {
+            "title": "Export Level Data…"
         }
     },
     "help": {
@@ -1584,5 +1588,46 @@
             "inSlides": "in {0} slide|in {0} slides",
             "valuesDiffer": "{0} value differs|{0} values differ"
         }
+    },
+    "export": {
+        "title": "Export Level Data",
+        "to": "To",
+        "targetOpened": "{0} (the file you opened)",
+        "targetLast": "{0} (your last export)",
+        "placeholder": "LevelData",
+        "export": "Export",
+        "exported": "Exported to {0}",
+        "notLevelData": "\"{0}\" is not level data.",
+        "fileType": "Next SEKAI level data"
+    },
+    "peek": {
+        "exportsCurrent": "Exports the current version."
+    },
+    "save": {
+        "fileName": "File Name",
+        "chooseAnother": "Choose Another…",
+        "tryAgain": "Try Again",
+        "denied": "The browser did not allow writing to {0}.",
+        "notFound": "\"{0}\" cannot be found.",
+        "notFoundNote": "If you moved or renamed it, choose it in the next step and confirm.",
+        "downloadStarted": "Download started: {0} · {1}",
+        "preparing": "Preparing {0}… {1}",
+        "download": "Download"
+    },
+    "conflict": {
+        "exportTitle": "\"{0}\" Changed",
+        "exportBody": "\"{0}\" changed since your last export.",
+        "exportBodyOpened": "\"{0}\" changed since you opened it here.",
+        "replace": "Replace"
+    },
+    "name": {
+        "invalidChar": "A name cannot contain {0}",
+        "controlChar": "A name cannot contain control characters",
+        "edgeDotSpace": "A name cannot start or end with a dot or a space",
+        "reserved": "A name cannot be \"{0}\"",
+        "tooLong": "The name is too long"
+    },
+    "notice": {
+        "useOpenFile": "To open a file, use Open."
     }
 }

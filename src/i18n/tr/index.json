@@ -274,7 +274,8 @@
         "timeScaleChange": "beklenmedik zaman ölçeği değişikliği",
         "meter": "geçersiz ölçü",
         "missingMeter": "{0}. ölçünün ölçü değeri yok"
-      }
+      },
+      "unsupportedParts": "Bu seviyede, editörün bu sürümünün desteklemediği kısımlar var. Bu kısımlar dahil edilmedi."
     },
     "paste": {
       "title": "Yapıştır",
@@ -448,6 +449,9 @@
       "title": "Editör Düzeni",
       "basic": "Temel düzene geçildi",
       "composed": "Birleşik düzene geçildi"
+    },
+    "exportLevel": {
+      "title": "Seviye Verisini Dışa Aktar…"
     }
   },
   "help": {
@@ -1584,5 +1588,46 @@
       "inSlides": "{0} kaydırmada",
       "valuesDiffer": "{0} değer farklı"
     }
+  },
+  "export": {
+    "title": "Seviye Verisini Dışa Aktar",
+    "to": "Hedef",
+    "targetOpened": "{0} (açtığınız dosya)",
+    "targetLast": "{0} (son dışa aktarmanız)",
+    "placeholder": "LevelData",
+    "export": "Dışa Aktar",
+    "exported": "{0} dosyasına dışa aktarıldı",
+    "notLevelData": "\"{0}\" seviye verisi değil.",
+    "fileType": "Next SEKAI seviye verisi"
+  },
+  "peek": {
+    "exportsCurrent": "Güncel sürümü dışa aktarır."
+  },
+  "save": {
+    "fileName": "Dosya Adı",
+    "chooseAnother": "Başka Birini Seç…",
+    "tryAgain": "Tekrar Dene",
+    "denied": "Tarayıcı {0} dosyasına yazmaya izin vermedi.",
+    "notFound": "\"{0}\" bulunamıyor.",
+    "notFoundNote": "Taşıdıysanız veya yeniden adlandırdıysanız sonraki adımda seçip onaylayın.",
+    "downloadStarted": "İndirme başlatıldı: {0} · {1}",
+    "preparing": "{0} hazırlanıyor… {1}",
+    "download": "İndir"
+  },
+  "conflict": {
+    "exportTitle": "\"{0}\" Değişti",
+    "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
+    "exportBodyOpened": "\"{0}\", burada açtığınızdan bu yana değişti.",
+    "replace": "Değiştir"
+  },
+  "name": {
+    "invalidChar": "Ad {0} içeremez",
+    "controlChar": "Ad kontrol karakterleri içeremez",
+    "edgeDotSpace": "Ad nokta veya boşlukla başlayamaz ya da bitemez",
+    "reserved": "Ad \"{0}\" olamaz",
+    "tooLong": "Ad çok uzun"
+  },
+  "notice": {
+    "useOpenFile": "Bir dosya açmak için Aç’ı kullanın."
   }
 }

@@ -16,7 +16,8 @@ export type PlatformOverride = {
     standalone?: boolean
     persisted?: boolean
     privateSuspected?: boolean
-    fileSystemAccess?: boolean
+    /** False turns the pickers off; 'opfs' makes them return OPFS handles, for Playwright. */
+    fileSystemAccess?: boolean | 'opfs'
     activation?: boolean
 }
 
@@ -92,6 +93,7 @@ export const parsePlatformOverride = (text: string | null | undefined): Platform
     if (engines.includes(raw.engine as Engine)) override.engine = raw.engine as Engine
     if (oses.includes(raw.os as PlatformOs)) override.os = raw.os as PlatformOs
     for (const flag of flags) if (typeof raw[flag] === 'boolean') override[flag] = raw[flag]
+    if (raw.fileSystemAccess === 'opfs') override.fileSystemAccess = 'opfs'
     return override
 }
 
@@ -181,7 +183,14 @@ export const hasActivation = () =>
     (hasWindow() && 'userActivation' in navigator ? navigator.userActivation.isActive : true)
 
 /** False when the override turns the File System Access pickers off. */
-export const allowsFileSystemAccess = () => platformOverride().fileSystemAccess ?? true
+export const allowsFileSystemAccess = () => platformOverride().fileSystemAccess !== false
+
+/** Whether the override makes the pickers return OPFS handles. */
+export const usesOpfsPickers = () => platformOverride().fileSystemAccess === 'opfs'
+
+/** Whether navigator.userActivation exists, so an expired gesture can be told. */
+export const reportsActivation = () =>
+    platformOverride().activation !== undefined || (hasWindow() && 'userActivation' in navigator)
 
 /** Detects and latches at startup. */
 export const startDetection = () => {

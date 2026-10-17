@@ -15,6 +15,7 @@ import {
     previewRenderScale,
     previewTransportPositions,
 } from './preview/options'
+import { insertExportLevel } from './settings/toolbarExport'
 import { storedBindings, storedNames } from './settingsCodecs'
 import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
@@ -272,7 +273,7 @@ const settingsProperties = {
     toolbar: Type.Codec(
         Type.Array(storedNames(), {
             default: [
-                ['utilities', 'properties', 'reset', 'save', 'open'],
+                ['utilities', 'properties', 'reset', 'exportLevel', 'save', 'open'],
                 [
                     'offset',
                     'bgm',
@@ -399,6 +400,7 @@ const settingsProperties = {
     keyboardShortcuts: storedBindings({
         open: 'o',
         save: 'p',
+        exportLevel: 'P',
         reset: 'n',
         utilities: '.',
         play: ' ',
@@ -585,15 +587,23 @@ const panelStateKeys = [
 ]
 
 const loadSetting = (key: string, defaultValue: unknown) => {
-    if (key === 'toolbar' && storageGet('toolbarEditorLayoutMigrated', false) !== true) {
+    if (key === 'toolbar') {
+        // Each step runs once, in order, under its own flag (Part 1 §1.4.6).
+        const steps = [
+            ['toolbarEditorLayoutMigrated', migrateToolbar],
+            ['toolbarExportMigrated', insertExportLevel],
+        ] as const
+        const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)
-        const migrated =
-            Array.isArray(loaded) && loaded.every(Array.isArray) ? migrateToolbar(loaded) : loaded
+        if (!pending.length) return loaded
+        let migrated = loaded
+        if (Array.isArray(migrated) && migrated.every(Array.isArray))
+            for (const [, migrate] of pending) migrated = migrate(migrated as unknown[][])
         try {
-            // Persist the migrated group before marking it complete. Afterwards, removing
-            // the new action is a customization, even when it recreates the old default.
+            // Persist the migrated groups before marking them complete. Afterwards, removing
+            // a new action is a customization, even when it recreates the old default.
             if (migrated !== loaded) storageSet(key, migrated)
-            storageSet('toolbarEditorLayoutMigrated', true)
+            for (const [flag] of pending) storageSet(flag, true)
         } catch {
             // Unavailable storage still allows the migrated toolbar in this tab.
         }

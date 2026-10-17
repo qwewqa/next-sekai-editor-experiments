@@ -274,7 +274,8 @@
         "timeScaleChange": "changement d’échelle de temps inattendu",
         "meter": "temps par mesure non valide",
         "missingMeter": "aucun temps par mesure pour la mesure {0}"
-      }
+      },
+      "unsupportedParts": "Ce niveau contient des parties que cette version de l’éditeur ne prend pas en charge. Elles ont été omises."
     },
     "paste": {
       "title": "Coller",
@@ -448,6 +449,9 @@
       "title": "Disposition de l’éditeur",
       "basic": "Disposition de base activée",
       "composed": "Disposition composée activée"
+    },
+    "exportLevel": {
+      "title": "Exporter les données de niveau…"
     }
   },
   "help": {
@@ -1584,5 +1588,46 @@
       "inSlides": "dans {0} slide|dans {0} slides",
       "valuesDiffer": "{0} valeur diffère|{0} valeurs diffèrent"
     }
+  },
+  "export": {
+    "title": "Exporter les données de niveau",
+    "to": "Vers",
+    "targetOpened": "{0} (le fichier ouvert)",
+    "targetLast": "{0} (votre dernière exportation)",
+    "placeholder": "LevelData",
+    "export": "Exporter",
+    "exported": "Exporté vers {0}",
+    "notLevelData": "\"{0}\" ne contient pas de données de niveau.",
+    "fileType": "Données de niveau Next SEKAI"
+  },
+  "peek": {
+    "exportsCurrent": "Exporte la version actuelle."
+  },
+  "save": {
+    "fileName": "Nom du fichier",
+    "chooseAnother": "Choisir un autre…",
+    "tryAgain": "Réessayer",
+    "denied": "Le navigateur n’a pas autorisé l’écriture dans {0}.",
+    "notFound": "\"{0}\" est introuvable.",
+    "notFoundNote": "Si vous l’avez déplacé ou renommé, choisissez-le à l’étape suivante et confirmez.",
+    "downloadStarted": "Téléchargement lancé : {0} · {1}",
+    "preparing": "Préparation de {0}… {1}",
+    "download": "Télécharger"
+  },
+  "conflict": {
+    "exportTitle": "\"{0}\" a changé",
+    "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",
+    "exportBodyOpened": "\"{0}\" a changé depuis que vous l’avez ouvert ici.",
+    "replace": "Remplacer"
+  },
+  "name": {
+    "invalidChar": "Un nom ne peut pas contenir {0}",
+    "controlChar": "Un nom ne peut pas contenir de caractères de contrôle",
+    "edgeDotSpace": "Un nom ne peut pas commencer ni se terminer par un point ou une espace",
+    "reserved": "Un nom ne peut pas être \"{0}\"",
+    "tooLong": "Le nom est trop long"
+  },
+  "notice": {
+    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir."
   }
 }

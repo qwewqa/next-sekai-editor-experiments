@@ -1,5 +1,8 @@
 /** The one list of web migration flags: localStorage keys that mark a migration done, not a user choice. */
-export const WEB_MIGRATION_FLAGS: readonly string[] = ['toolbarEditorLayoutMigrated']
+export const WEB_MIGRATION_FLAGS: readonly string[] = [
+    'toolbarEditorLayoutMigrated',
+    'toolbarExportMigrated',
+]
 
 /** Other keys the editor writes on its own, which a new visitor has too. */
 export const INTERNAL_KEYS: readonly string[] = ['diagnostics']

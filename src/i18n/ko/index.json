@@ -274,7 +274,8 @@
         "timeScaleChange": "예상치 못한 시간 배율 변경",
         "meter": "잘못된 박자",
         "missingMeter": "{0} 마디에 박자가 없음"
-      }
+      },
+      "unsupportedParts": "이 레벨에는 이 버전의 편집기가 지원하지 않는 부분이 있습니다. 해당 부분은 제외되었습니다."
     },
     "paste": {
       "title": "붙여넣기",
@@ -448,6 +449,9 @@
       "title": "편집기 레이아웃",
       "basic": "기본 레이아웃으로 전환했습니다",
       "composed": "합성 레이아웃으로 전환했습니다"
+    },
+    "exportLevel": {
+      "title": "레벨 데이터 내보내기…"
     }
   },
   "help": {
@@ -1584,5 +1588,46 @@
       "inSlides": "슬라이드 {0}개",
       "valuesDiffer": "{0}개 값이 다름"
     }
+  },
+  "export": {
+    "title": "레벨 데이터 내보내기",
+    "to": "대상",
+    "targetOpened": "{0} (연 파일)",
+    "targetLast": "{0} (마지막으로 내보낸 파일)",
+    "placeholder": "LevelData",
+    "export": "내보내기",
+    "exported": "{0}에 내보냄",
+    "notLevelData": "\"{0}\"은(는) 레벨 데이터가 아닙니다.",
+    "fileType": "Next SEKAI 레벨 데이터"
+  },
+  "peek": {
+    "exportsCurrent": "현재 버전을 내보냅니다."
+  },
+  "save": {
+    "fileName": "파일 이름",
+    "chooseAnother": "다른 파일 선택…",
+    "tryAgain": "다시 시도",
+    "denied": "브라우저가 {0}에 쓰기를 허용하지 않았습니다.",
+    "notFound": "\"{0}\"을(를) 찾을 수 없습니다.",
+    "notFoundNote": "옮기거나 이름을 바꿨다면 다음 단계에서 파일을 선택하고 확인하세요.",
+    "downloadStarted": "다운로드 시작됨: {0} · {1}",
+    "preparing": "{0} 준비 중… {1}",
+    "download": "다운로드"
+  },
+  "conflict": {
+    "exportTitle": "\"{0}\" 변경됨",
+    "exportBody": "\"{0}\"이(가) 마지막으로 내보낸 후 변경되었습니다.",
+    "exportBodyOpened": "\"{0}\"이(가) 여기서 연 후 변경되었습니다.",
+    "replace": "바꾸기"
+  },
+  "name": {
+    "invalidChar": "이름에 {0}을(를) 포함할 수 없습니다",
+    "controlChar": "이름에 제어 문자를 포함할 수 없습니다",
+    "edgeDotSpace": "이름은 마침표나 공백으로 시작하거나 끝날 수 없습니다",
+    "reserved": "이름은 \"{0}\"일 수 없습니다",
+    "tooLong": "이름이 너무 깁니다"
+  },
+  "notice": {
+    "useOpenFile": "파일을 열려면 열기를 사용하세요."
   }
 }

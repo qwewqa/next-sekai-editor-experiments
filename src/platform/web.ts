@@ -1,12 +1,25 @@
-import { allowsFileSystemAccess, detection, isStandalone } from './detect'
-import { journalStub, locksStub, notYet } from './stubs'
+import { allowsFileSystemAccess, detection, isStandalone, usesOpfsPickers } from './detect'
+import { levelDataDiskState } from './fingerprint'
+import {
+    fileErrorOf,
+    handOver,
+    isAbort,
+    requestWrite,
+    toBlob,
+    verifyBuilt,
+    writeHandle,
+} from './handover'
+import { opfsOpenPicker, opfsSavePicker } from './opfs'
+import { journalStub, locksStub } from './stubs'
 import type {
-    FileBody,
+    DiskState,
+    FileTarget,
     LifecycleEvent,
     OpenedFile,
     PickOptions,
     Platform,
     PlatformCapabilities,
+    SavePicker,
     SaveRequest,
     SaveResult,
 } from './types'
@@ -37,29 +50,51 @@ const pickWithInput = () =>
     })
 
 const pickFiles = async ({ id, handles }: PickOptions): Promise<OpenedFile[]> => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!handles || !allowsFileSystemAccess() || !window.showOpenFilePicker) {
+    if (
+        !handles ||
+        !allowsFileSystemAccess() ||
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        (!usesOpfsPickers() && !window.showOpenFilePicker)
+    ) {
         const file = await pickWithInput()
         return file ? [{ file }] : []
     }
 
     try {
-        const [handle] = await window.showOpenFilePicker({ id })
+        const [handle] = usesOpfsPickers()
+            ? await opfsOpenPicker({ id })
+            : await window.showOpenFilePicker({ id })
+        if (!handle) return []
         return [{ file: await handle.getFile(), handle }]
     } catch {
         return []
     }
 }
 
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
+/** Today's save picker for level data: its folder, and "All files" alone. */
+const levelDataPicker: SavePicker = { id: 'levelData', types: [] }
 
-/** The save picker for level data; undefined falls back to a download. */
-const pickSaveHandle = async (id: string, suggestedName: string) => {
+const savePickerOptions = (picker: SavePicker, suggestedName: string): SaveFilePickerOptions => ({
+    id: picker.id,
+    suggestedName,
+    ...(picker.types.length && {
+        types: picker.types.map(({ description, extension }) => ({
+            description,
+            accept: { 'application/octet-stream': [extension as `.${string}`] },
+        })),
+        excludeAcceptAllOption: false,
+    }),
+})
+
+/** The save picker; undefined falls back to a download. Dismissing it throws AbortError. */
+const pickSaveHandle = async (picker: SavePicker, suggestedName: string) => {
+    const options = savePickerOptions(picker, suggestedName)
+    if (usesOpfsPickers()) return opfsSavePicker(options)
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!allowsFileSystemAccess() || !window.showSaveFilePicker) return
 
     try {
-        return await window.showSaveFilePicker({ id, suggestedName })
+        return await window.showSaveFilePicker(options)
     } catch (error) {
         // Dismissing the picker cancels saving; other failures download instead.
         if (isAbort(error)) throw error
@@ -67,41 +102,36 @@ const pickSaveHandle = async (id: string, suggestedName: string) => {
     }
 }
 
-const toBlob = (body: FileBody) => {
-    if (body instanceof Blob) return body
-    throw notYet('Write plans', 'Step 6')
-}
-
-const download = (blob: Blob, name: string): SaveResult => {
-    // Step 1c replaces this hand-over; synchronous, so the click keeps its user activation.
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = name
-    link.rel = 'noopener'
-    document.body.append(link)
-    link.click()
-    link.remove()
-    // The browser may still be reading the Blob, so the URL is released later.
-    setTimeout(() => {
-        URL.revokeObjectURL(url)
-    }, 40_000)
-    return { status: 'download-started', name }
-}
-
 const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
+    // The gesture's first call, before any other await (Part 0 §0.9.1).
+    const permission = req.target?.kind === 'handle' ? requestWrite(req.target.handle) : undefined
+    const startedAt = performance.now()
     const { signal } = req
-    if (req.expected !== undefined) throw notYet('Save preconditions', 'Step 1c')
     if (req.target && req.target.kind !== 'handle') throw new Error('No file paths on the web')
 
-    // The picker empties the file it returns, so the body is built before it.
+    if (req.target && permission) {
+        // A precondition makes a failure the caller's to show; without one, today's download.
+        if (req.expected !== undefined) return writeHandle(req, req.target.handle, permission)
+        return writeHandle(req, req.target.handle, permission).catch(async (error: unknown) => {
+            signal?.throwIfAborted()
+            if (isAbort(error)) throw error
+            const blob = toBlob(await req.build([]))
+            await verifyBuilt(req.kind, blob)
+            return handOver(blob, req.suggestedName, startedAt, req.ready)
+        })
+    }
+
+    // The picker empties the file it returns, so the body is built and checked before it (D5).
     const blob = toBlob(await req.build([]))
     signal?.throwIfAborted()
+    await verifyBuilt(req.kind, blob)
+    signal?.throwIfAborted()
 
-    let handle = req.target?.handle
-    if (!handle && req.kind === 'nsld') {
+    let handle: FileSystemFileHandle | undefined
+    const picker = req.picker ?? (req.kind === 'nsld' ? levelDataPicker : undefined)
+    if (picker) {
         try {
-            handle = await pickSaveHandle('levelData', req.suggestedName)
+            handle = await pickSaveHandle(picker, req.suggestedName)
         } catch (error) {
             if (isAbort(error)) return { status: 'cancelled' }
             throw error
@@ -109,24 +139,47 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         signal?.throwIfAborted()
     }
 
-    if (!handle) return download(blob, req.suggestedName)
+    if (!handle) return handOver(blob, req.suggestedName, startedAt, req.ready)
 
-    let writable: FileSystemWritableFileStream | undefined
+    const target: FileTarget = { kind: 'handle', handle }
+    if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+    signal?.throwIfAborted()
+    // A picked file is the user's confirmed choice; it is written without a precondition.
+    const picked: SaveRequest = {
+        ...req,
+        target,
+        expected: undefined,
+        build: () => Promise.resolve(blob),
+    }
     try {
-        writable = await handle.createWritable()
-        signal?.throwIfAborted()
-        await writable.write(blob)
-        signal?.throwIfAborted()
-        await writable.close()
-        signal?.throwIfAborted()
-
-        return { status: 'saved', target: { kind: 'handle', handle }, name: handle.name }
+        return await writeHandle(picked, handle, requestWrite(handle))
     } catch (error) {
-        // Before close(), writes remain pending: release the stream without committing it.
-        await writable?.abort().catch(() => undefined)
         signal?.throwIfAborted()
         if (isAbort(error)) throw error
-        return download(blob, req.suggestedName)
+        // A picked file that could not be written is downloaded instead, as today.
+        if (req.kind === 'nsld' && !req.picker)
+            return handOver(blob, req.suggestedName, startedAt, req.ready)
+        throw error
+    }
+}
+
+const inspect = async (target: FileTarget): Promise<DiskState | 'missing'> => {
+    if (target.kind !== 'handle') throw new Error('No file paths on the web')
+    try {
+        return await levelDataDiskState(await target.handle.getFile())
+    } catch (error) {
+        const failure = fileErrorOf(error)
+        if (failure.code === 'not-found') return 'missing'
+        throw failure
+    }
+}
+
+const read = async (target: FileTarget): Promise<Blob> => {
+    if (target.kind !== 'handle') throw new Error('No file paths on the web')
+    try {
+        return await target.handle.getFile()
+    } catch (error) {
+        throw fileErrorOf(error)
     }
 }
 
@@ -173,9 +226,10 @@ let capabilities: PlatformCapabilities | undefined
 const webCapabilities = (): PlatformCapabilities =>
     (capabilities ??= Object.freeze({
         writeBack:
-            allowsFileSystemAccess() &&
-            typeof window !== 'undefined' &&
-            'showSaveFilePicker' in window,
+            usesOpfsPickers() ||
+            (allowsFileSystemAccess() &&
+                typeof window !== 'undefined' &&
+                'showSaveFilePicker' in window),
         unconfirmedDownloads: detection().os === 'ios',
         library: false,
         fileJournal: false,
@@ -198,8 +252,8 @@ export const platform: Platform = {
 
     pickFiles,
     saveFile,
-    inspect: () => Promise.reject(notYet('platform.inspect', 'Step 1c')),
-    read: () => Promise.reject(notYet('platform.read', 'Step 1c')),
+    inspect,
+    read,
     // The web registers no file types, so nothing arrives here.
     onOpenFiles: () => undefined,
 

@@ -175,6 +175,11 @@ test('the platform override keeps only its known fields', () => {
             activation: false,
         },
     )
+    // The OPFS pickers are the one other File System Access value.
+    assert.deepEqual(parsePlatformOverride(JSON.stringify({ fileSystemAccess: 'opfs' })), {
+        fileSystemAccess: 'opfs',
+    })
+    assert.deepEqual(parsePlatformOverride(JSON.stringify({ fileSystemAccess: 'native' })), {})
     assert.deepEqual(parsePlatformOverride(JSON.stringify({ engine: 'trident', os: 1 })), {})
     assert.deepEqual(parsePlatformOverride('not json'), {})
     assert.deepEqual(parsePlatformOverride('null'), {})
