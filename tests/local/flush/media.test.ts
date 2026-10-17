@@ -72,7 +72,7 @@ test('a picked BGM is stored with the entry first naming it, at once and strictl
     const batch = page.batches.at(-1)
     assert.equal(batch?.durability, 'strict')
     assert.equal(batch?.media.length, 1)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const meta = picked.bgm.meta!
     const media = rows(world, 'media')
     assert.equal(media.size, 1)
@@ -112,7 +112,7 @@ test('the head’s BGM is stored again when it went missing, while this tab hold
     const picked = await withSong(stateOf(goldenChart()), 2)
     begin(page, picked)
     await page.flusher.flush()
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const hash = picked.bgm.meta!.hash
     // Cleanup removed it as a cache in another tab.
     const other = world.tab('other')
