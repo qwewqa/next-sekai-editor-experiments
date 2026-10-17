@@ -6,7 +6,7 @@ import type { State } from '../state'
 // stack publishes has its store frozen, maps and sets included, so such a change throws where
 // it's made. Release builds skip it.
 
-const published = new WeakSet<object>()
+const published = new WeakSet()
 let guarded = false
 
 /** Maps and sets can't be frozen: their writers refuse a published one instead. */
