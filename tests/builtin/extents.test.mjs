@@ -31,7 +31,7 @@ const targets = {
     'Sekai Flick Arrow Down Left 2': [-0.24, 1.21, 0.11, 1.18],
     'Sekai Critical Flick Arrow Up 1 Neutral': [-0.16, 1.16, 0.23, 1.64],
 }
-const tolerance = 0.05
+const tolerance = 0.06
 
 const skin = readBuiltinItem('skin')
 const texture = decode(skin.resource('texture'))

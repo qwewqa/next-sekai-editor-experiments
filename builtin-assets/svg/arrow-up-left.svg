@@ -1,3 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-    <polygon points="27.3,120.7 6,75 32,7.3 100.7,30.9 122,76.6 58.7,64.4" fill="var(--accent)" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--light)"/>
+        <stop offset="1" stop-color="var(--accent)"/>
+    </linearGradient>
+    <polygon points="7.6,91.9 27.7,6 106.4,45.8 120.4,75.9 43.7,40.3 21.6,122" fill="url(#g)" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
 </svg>

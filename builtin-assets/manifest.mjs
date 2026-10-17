@@ -118,12 +118,12 @@ const arrowKeys = {
     'arrow-down': 'down',
     'arrow-down-left': 'downLeft',
 }
+// Arrows run from a light tint at the tip to the arrow colour, inside a white outline.
+const arrowTint = (accent) => ({ accent, light: mix(accent, '#ffffff', 0.65) })
 const arrow = (template, accent, width) =>
-    image(
-        template,
-        { accent },
-        { transform: fit(...arrowBoxes[arrowKeys[template]][width - 1], 0.03) },
-    )
+    image(template, arrowTint(accent), {
+        transform: fit(...arrowBoxes[arrowKeys[template]][width - 1], 0.03),
+    })
 
 // Note bodies sit 6% over and under their quad and their ends reach 0.14 of a slice past the note,
 // as the base skin's do; slim traces keep their own height in the art.
@@ -449,8 +449,8 @@ export function skinSprites() {
         }
         for (const key of ['green', 'red', 'yellow'])
             add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
-        add('#DIRECTIONAL_MARKER_RED', image('arrow-up', { accent: arrowColors.normal }))
-        add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', { accent: arrowColors.critical }))
+        add('#DIRECTIONAL_MARKER_RED', image('arrow-up', arrowTint(arrowColors.normal)))
+        add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', arrowTint(arrowColors.critical)))
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
