@@ -71,6 +71,14 @@ const choiceFor = (key: string, name = 'fixture'): AssetChoice => ({
     origin: 'fixture.scp',
 })
 
+/** Waits for a condition, however busy the machine is. */
+const until = async (condition: () => boolean) => {
+    for (let waited = 0; !condition(); waited += 5) {
+        if (waited > 10_000) assert.fail('timed out')
+        await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+}
+
 let counter = 0
 /** Puts bytes into the store as a stored package would be, whatever they hold. */
 const stored = async (
@@ -389,7 +397,7 @@ test('a missing stored package leaves the choice as it was, with the reason show
         decodeAudio,
     })
     session.ensure('skin')
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(() => session.slots.skin.value.state === 'ready')
     const slot = session.slots.skin.value
     assert.equal(slot.state, 'ready')
     assert.deepEqual(slot.status, { active: 'default', reason: 'missing' })
@@ -424,11 +432,15 @@ test('when a switch fails everywhere, a stored item that was showing keeps showi
         decodeAudio,
     })
     session.ensure('skin')
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(() => session.slots.skin.value.state === 'ready')
     assert.equal(session.slots.skin.value.status?.active, 'chosen')
 
     choices.value = { ...choices.value, skin: choiceFor('gone') }
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(
+        () =>
+            session.slots.skin.value.state === 'ready' &&
+            JSON.stringify(session.slots.skin.value.choice) === JSON.stringify(choiceFor('gone')),
+    )
     const slot = session.slots.skin.value
     assert.equal(slot.state, 'ready')
     assert.equal(slot.value?.title, 'Neon Skin')
