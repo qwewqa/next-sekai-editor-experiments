@@ -1,4 +1,5 @@
 import { CHANNEL_NAME } from '../../../src/local/channel'
+import { runToEnd } from '../../../src/local/chunks'
 import { inflateStrict } from '../../../src/local/chunkVerify'
 import { DB_NAME, hashKey } from '../../../src/local/db'
 import { Flusher, type FlushDeps, type FlushReport } from '../../../src/local/flush'
@@ -77,7 +78,8 @@ export const openPage = async (
         },
         onFlushed: (report) => reports.push(report),
         onError: (error) => errors.push(error),
-        // Flushes run when a test asks.
+        // Flushes run when a test asks, and extract in one go: a timer is outside the scheduler.
+        runJob: (job) => Promise.resolve(runToEnd(job)),
         setTimer: () => undefined,
         clearTimer: () => undefined,
         ...deps,

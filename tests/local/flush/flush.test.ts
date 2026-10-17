@@ -26,7 +26,7 @@ const edit = (state: State, change: (transaction: Transaction) => void) => {
 /** The state with its n-th note one quarter wider. */
 const widen = (state: State, n = 0) => {
     const notes = [...state.store.slides.note.values()].flat()
-     
+
     const target = notes[n % notes.length]!
     return edit(state, (t) => {
         replaceNote(t, target, { ...target, size: target.size + 0.25 })
@@ -393,7 +393,6 @@ test('a worker restart resets the memo and sends every pending entry again', asy
     const ref: { page?: Page } = {}
     const page = await openPage(world, world.tab('a'), {
         transport: async (batch) => {
-             
             const page = ref.page!
             page.batches.push(batch)
             if (failNext) {
@@ -463,10 +462,11 @@ test('two tabs flushing at once store both sessions whole, under the CI seeds', 
     }
 })
 
-test('a kill at every await of a flush leaves no dangling refs and no half-written session', async () => {
+test('a kill at every await of two flushes leaves no dangling refs and no half-written session', async () => {
     const base = stateOf(goldenChart())
     const edited = widen(base)
-    await crashSweep({
+    const again = widen(edited, 3)
+    const result = await crashSweep({
         seeds: [undefined, ...CI_SEEDS.slice(0, 2)],
         setup: async (world) => {
             const page = await openPage(world, world.tab('setup'))
@@ -478,16 +478,29 @@ test('a kill at every await of a flush leaves no dangling refs and no half-writt
             begin(page, base)
             page.flusher.append('edit', () => 'Changed note', edited, true)
             await page.flusher.flush()
+            // A second flush updates the rows the first created.
+            page.flusher.append('edit', () => 'Changed note', again, true)
+            await page.flusher.flush()
         },
         check: ({ world }) => {
             assert.deepEqual(checkStored(world.memory), [])
             const sessions = [...rows(world, 'sessions').values()]
             const entries = [...rows(world, 'entries').values()]
-            // The victim's session is stored whole or not at all.
-            const victim = sessions.filter((session) => session.origin === 'new')
-            const own = entries.filter((entry) => victim.some((s) => s.id === entry.sessionId))
-            assert.ok(victim.length === 0 ? own.length === 0 : own.length === 2)
             assert.equal(rows(world, 'chains').size, sessions.length)
+            // Each flush is stored whole or not at all: the session's counters match its entries.
+            for (const session of sessions) {
+                const own = entries
+                    .filter((entry) => entry.sessionId === session.id)
+                    .map((entry) => entry.seq as number)
+                assert.deepEqual(
+                    own,
+                    Array.from({ length: own.length }, (_, i) => i + 1),
+                )
+                assert.equal(session.lastSeq, own.length)
+                assert.equal(session.entryCount, own.length)
+                if (session.origin === 'new') assert.ok(own.length === 2 || own.length === 3)
+            }
         },
     })
+    assert.ok(result.every(({ points }) => points > 10))
 })

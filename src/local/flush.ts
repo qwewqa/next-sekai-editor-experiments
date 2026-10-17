@@ -97,6 +97,8 @@ export type FlushDeps = {
     onFork?: (session: FlushSession) => void
     onFlushed?: (report: FlushReport) => void
     onError?: (error: unknown) => void
+    /** Runs an extraction in slices; `runSliced` by default. */
+    runJob?: typeof runSliced
     setTimer?: (fn: () => void, ms: number) => unknown
     clearTimer?: (handle: unknown) => void
 }
@@ -365,7 +367,12 @@ export class Flusher {
                 const start = performance.now()
                 plans.push(runToEnd(job))
                 slices.push(performance.now() - start)
-            } else plans.push(await runSliced(job, { onSlice: (ms) => slices.push(ms) }))
+            } else
+                plans.push(
+                    await (this.deps.runJob ?? runSliced)(job, {
+                        onSlice: (ms) => slices.push(ms),
+                    }),
+                )
             if (batch.size > BATCH_TEXT) break
         }
         const entries = take.slice(0, plans.length)

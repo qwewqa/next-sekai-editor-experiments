@@ -5,7 +5,8 @@ import { fromHex16, sha256Sync, toHex } from '../../../src/local/hash'
 import { captureMedia, sniffAudioType } from '../../../src/local/media'
 import { unpackHashes } from '../../../src/local/records/rows'
 import { checkStored } from '../../../src/local/testing/invariants'
-import { createWorld } from '../../../src/local/testing/world'
+import { crashSweep } from '../../../src/local/testing/sweep'
+import { CI_SEEDS, createWorld } from '../../../src/local/testing/world'
 import { setMediaReadBackHookForTests } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
 import { goldenChart, stateOf } from '../records/charts'
@@ -72,7 +73,7 @@ test('a picked BGM is stored with the entry first naming it, at once and strictl
     const batch = page.batches.at(-1)
     assert.equal(batch?.durability, 'strict')
     assert.equal(batch?.media.length, 1)
-     
+
     const meta = picked.bgm.meta!
     const media = rows(world, 'media')
     assert.equal(media.size, 1)
@@ -112,7 +113,7 @@ test('the head’s BGM is stored again when it went missing, while this tab hold
     const picked = await withSong(stateOf(goldenChart()), 2)
     begin(page, picked)
     await page.flusher.flush()
-     
+
     const hash = picked.bgm.meta!.hash
     // Cleanup removed it as a cache in another tab.
     const other = world.tab('other')
@@ -195,4 +196,23 @@ test('media bytes that don’t hash to their hash are refused', async () => {
     assert.ok(page.errors.length > 0)
     assert.equal(rows(world, 'media').size, 0)
     assert.equal(rows(world, 'sessions').size, 0)
+})
+
+test('a kill at every await of a flush with a picked BGM stores the BGM with its entry or not at all', async () => {
+    const picked = await withSong(stateOf(goldenChart()), 8)
+    const result = await crashSweep({
+        seeds: [undefined, CI_SEEDS[0]],
+        scenario: async ({ world, victim }) => {
+            const page = await openPage(world, victim)
+            begin(page, picked)
+            await page.flusher.flush()
+        },
+        check: ({ world }) => {
+            assert.deepEqual(checkStored(world.memory), [])
+            const media = rows(world, 'media').size
+            const sessions = rows(world, 'sessions').size
+            assert.equal(media, sessions)
+        },
+    })
+    assert.ok(result.every(({ points }) => points > 10))
 })
