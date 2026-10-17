@@ -165,6 +165,8 @@ export const startStoring = (
         flusher: () => flusher,
         state: () => liveState.value,
         pausedForSpace: () => worker.status?.reason === 'full',
+        strictCommits:
+            typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
         appVersion: appVersion().appVersion,
         onWrite: (write) => {
             if (test) writes.push(write)

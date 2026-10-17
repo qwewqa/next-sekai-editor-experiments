@@ -2,7 +2,7 @@ import type { Flusher, FlushSession } from '../../../src/local/flush'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import { replayJournal, type ReplayDeps } from '../../../src/local/journal/replay'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
-import { JournalWriter } from '../../../src/local/journal/writer'
+import { JournalWriter, type JournalWriterDeps } from '../../../src/local/journal/writer'
 import type { Tab, World } from '../../../src/local/testing/world'
 import type { JournalStore } from '../../../src/platform/types'
 import type { State } from '../../../src/state'
@@ -40,6 +40,7 @@ const journalled = (
     storage: MemoryStorage,
     flusher: () => Flusher | undefined,
     paused: () => boolean,
+    extra: Partial<JournalWriterDeps> = {},
 ) => {
     const store = storageJournalStore(() => storage, 'nse.')
     const live = { state: undefined as unknown as State }
@@ -50,6 +51,7 @@ const journalled = (
         pausedForSpace: paused,
         appVersion: '0.6.0',
         now: () => 1_792_130_467_000,
+        ...extra,
     })
     return { storage, store, writer, live }
 }
@@ -58,6 +60,7 @@ export const openJournalPage = async (
     world: World,
     name: string,
     storage = new MemoryStorage(),
+    writer: Partial<JournalWriterDeps> = {},
 ): Promise<JournalPage> => {
     const ref: { page?: Page; writer?: JournalWriter } = {}
     const page = await openPage(world, world.tab(name), {
@@ -77,6 +80,7 @@ export const openJournalPage = async (
         storage,
         () => page.flusher,
         () => page.core.status.reason === 'full',
+        writer,
     )
     ref.writer = parts.writer
     return { ...page, ...parts }

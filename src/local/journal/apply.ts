@@ -386,11 +386,12 @@ export const writeJournalApply = async (
     } else {
         const fields: Row = { ...common }
         // The identity fields only as one unit, and only when safe (§1.6.4 step 4): a write-back
-        // whose binding flush the tab didn't live to commit, never over a binding a save picker
-        // took over since (D5).
+        // whose binding flush the tab didn't live to commit, or a first Save's on a record with
+        // no binding yet (D15), never over a binding a save picker took over since (D5).
         if (
             descriptor.docId === chain.docId &&
-            descends(descriptor.revision, chain.revision) &&
+            (descends(descriptor.revision, chain.revision) ||
+                (chain.revision === undefined && chain.file === undefined)) &&
             afterReplaced(descriptor.file, chain.replaced)
         ) {
             const own = chainFieldsOf(descriptor)

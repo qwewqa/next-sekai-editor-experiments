@@ -124,11 +124,7 @@ for (const [name, record, change] of [
         { ...bound, replaced: { by: 'other-chain', at: 300, name: 'coconut.nxsp' } },
         writeBack,
     ],
-    [
-        'a record with no revision yet (a first Save whose binding flush did not commit)',
-        { file: recordFile },
-        writeBack,
-    ],
+    ['a record with a file but no revision', { file: recordFile }, writeBack],
 ] as const)
     test(`${name} never writes the identity over the record`, async () => {
         const { chain } = await replayWith(3, record, change)
@@ -139,6 +135,24 @@ for (const [name, record, change] of [
         // The other known fields are taken all the same: the session is still the head.
         assert.equal(chain.name, 'Coconut (Master)')
     })
+
+test('a record with no revision and no file takes a first Save’s binding (D15)', async () => {
+    const { chain } = await replayWith(5, {}, writeBack)
+    assert.deepEqual(chain.revision, { id: 'r2', n: 2, ancestors: ['r1'] })
+    const file = chain.file as Row
+    assert.equal(file.at, 200)
+    assert.equal(file.handle, undefined)
+})
+
+test('a record with no revision and no file still refuses a binding a save picker took over', async () => {
+    const { chain } = await replayWith(
+        6,
+        { replaced: { by: 'other-chain', at: 300, name: 'coconut.nxsp' } },
+        writeBack,
+    )
+    assert.equal(chain.revision, undefined)
+    assert.equal(chain.file, undefined)
+})
 
 test('a binding newer than the record’s replaced mark is taken', async () => {
     const { chain } = await replayWith(

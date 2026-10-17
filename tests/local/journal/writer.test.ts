@@ -244,3 +244,35 @@ test('the budget counts today’s auto save, and leaves it room to grow to the j
     page.storage.setItem('nse.journal.earlier', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 2.5 * size))
     assert.equal(page.writer.write(), true)
 })
+
+test('where a strict commit may not be on disk yet (D14), no commit clears a key; the next load does', async () => {
+    const world = createWorld({ seed: 12 })
+    const page = await openJournalPage(world, 'a', new MemoryStorage(), { strictCommits: false })
+    let state = stateOf(goldenChart())
+    const session = beginSession(page, state)
+    await page.flusher.flush({ strict: true })
+    for (let i = 0; i < 3; i++) {
+        state = widen(state, i)
+        append(page, 'edit', 'Changed note', state)
+        assert.equal(page.writer.write(), true)
+        await page.flusher.flush({ strict: true })
+        // Committed strictly: the key stays, one per session, at its newest seq.
+        assert.equal(page.flusher.unflushed(session), false)
+        assert.equal(journalIn(page.storage, session.id)?.seq, i + 2)
+        assert.equal(page.storage.length, 1)
+    }
+    // A second session of the visit leaves its own: one stale key per session.
+    const next = beginSession(page, stateOf(goldenChart()), 'new')
+    append(page, 'edit', 'Changed note', widen(state, 5))
+    assert.equal(page.writer.write(), true)
+    await page.flusher.flush({ strict: true })
+    assert.equal(page.storage.length, 2)
+    assert.ok(journalIn(page.storage, next.id))
+    // The next load finds both covered by the stored history and deletes them.
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.deepEqual(
+        outcomes.map((outcome) => outcome.kind),
+        ['covered', 'covered'],
+    )
+    assert.equal(page.storage.length, 0)
+})

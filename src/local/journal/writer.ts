@@ -19,6 +19,12 @@ export type JournalWriterDeps = {
      * however its write went, since localStorage is likely short too (§1.6.4).
      */
     pausedForSpace: () => boolean
+    /**
+     * Whether a strict commit is on disk when it resolves: false where IndexedDB has no
+     * `durability` option (Firefox before 126), and then no commit clears a journal; the next
+     * load finds it covered and deletes it (D14).
+     */
+    strictCommits?: boolean
     appVersion: string
     now?: () => number
     /** Each write's figures, for the timing specs. */
@@ -100,10 +106,11 @@ export class JournalWriter {
 
     /**
      * A flush committed the session's entries up to `seq`: a strict one clears its journal; a
-     * relaxed one leaves the key for the next strict one, which a power loss can't undo.
+     * relaxed one leaves the key for the next strict one, which a power loss can't undo. Where
+     * strict commits aren't (D14), none clears it.
      */
     committed(sessionId: string, seq: number, strict: boolean) {
-        if (!strict) return
+        if (!strict || this.deps.strictCommits === false) return
         if (seq >= (this.superseded.get(sessionId)?.moved ?? Infinity))
             this.dropSuperseded(sessionId)
         const last = this.written.get(sessionId)
