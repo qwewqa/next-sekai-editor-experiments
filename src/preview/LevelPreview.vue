@@ -4,6 +4,7 @@ import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
 import { i18n } from '../i18n'
 import { isPlaying } from '../player'
 import { settings } from '../settings'
+import { firstPaintBackgroundUrl } from './assets'
 import PreviewSettings from './PreviewSettings.vue'
 import PreviewTransport from './PreviewTransport.vue'
 import { usePreviewRendering } from './usePreviewRendering'
@@ -23,7 +24,7 @@ const backgroundStyle = computed(() => {
               backgroundImage: `url("${background.url}")`,
               backgroundColor: background.color,
           }
-        : undefined
+        : firstPaintBackgroundUrl && { backgroundImage: `url("${firstPaintBackgroundUrl}")` }
 })
 const viewport = usePreviewViewport(container)
 const {
@@ -139,6 +140,8 @@ const isErrorDetailOpen = ref(false)
 
 <style scoped>
 .preview-background {
-    background: url('./bg.png') center / cover no-repeat;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 </style>
