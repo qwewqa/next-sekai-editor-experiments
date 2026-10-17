@@ -87,11 +87,7 @@ const vOpen = {
         // Firefox hides a scripted focus ring after an earlier pointer open.
         const focusVisible = !byPointer
         el.toggleAttribute('autofocus', focusDialog)
-        el.showModal()
-        const opened = document.activeElement
-        setTimeout(() => {
-            // Focus moved since opening, by a click or key; it stays there.
-            if (document.activeElement !== opened) return
+        const focusDefault = () => {
             if (focusDialog) {
                 el.focus({ preventScroll: true })
                 return
@@ -101,6 +97,16 @@ const vOpen = {
             ;(primary ?? label?.control ?? label ?? body?.querySelector('button'))?.focus({
                 focusVisible,
             })
+        }
+        el.showModal()
+        // showModal lands on the first button, the close ×, so the default takes focus in the same
+        // task, before a key can reach the ×.
+        focusDefault()
+        const opened = document.activeElement
+        setTimeout(() => {
+            // Focus moved since opening, by a click or key, stays there; one lost to a moved node is restored.
+            const active = document.activeElement
+            if (active === opened || active === document.body) focusDefault()
         }, 0)
     },
     // Closing first returns focus to the opener, as Escape does.
