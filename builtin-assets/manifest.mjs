@@ -10,6 +10,7 @@ import {
     damageColor,
     diamondColors,
     guideColor,
+    mix,
     stage,
     styleColors,
     traceColors,
@@ -32,9 +33,16 @@ const image = (template, vars = {}, options = {}) => ({
 })
 const solid = (color, alpha = 1, w = 4, h = 4) =>
     image('solid', { color, alpha, w, h }, { stretch: true })
-const band = (color, alpha) => image('band', { color, alpha }, { stretch: true })
-const glow = (color) => image('slot-glow', { color }, { stretch: true })
+// A connector band: feathered sides, lighter towards them.
+const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
+    image('band', { color, light, alpha }, { stretch: true })
+const activeBand = (color) => band(mix(color, '#ffffff', 0.2), 0.8, mix(color, '#ffffff', 0.6))
+const glow = (color) =>
+    image('slot-glow', { color, light: mix(color, '#ffffff', 0.5) }, { stretch: true })
 const kite = (color, width) => image('kite', { color }, { width })
+
+// The dark base of the judgment band.
+const judgmentShade = '#0b0c16'
 
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
@@ -145,22 +153,22 @@ export function skinSprites() {
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
     })
 
+    // Opaque strips and dividers: darker at the stage edges, lighter at the centre, over a dark band.
     group('Judgment', () => {
-        add('Sekai Judgment Background', solid('#ffffff', 0.1))
+        add('Sekai Judgment Background', solid(judgmentShade, 0.55))
         for (const color of colorNames) {
             const hue = guideColor(color)
-            add(`Sekai Judgment Background ${color}`, solid(hue, 0.12))
+            const edge = mix(hue, '#000000', 0.2)
+            const centre = mix(hue, '#ffffff', 0.3)
+            add(`Sekai Judgment Background ${color}`, solid(mix(hue, judgmentShade, 0.85), 0.55))
             add(
                 `Sekai Judgment Gradient ${color}`,
-                image('judgment-gradient', { color: hue }, { stretch: true }),
+                image('judgment-gradient', { edge, centre }, { stretch: true }),
             )
-            add(`Sekai Judgment Edge ${color}`, solid(hue, 0.8))
-            add(`Sekai Judgment Single Line ${color}`, solid(hue, 0.9))
-            add(
-                `Sekai Judgment Edge Left ${color}`,
-                image('judgment-edge-left', { color: hue }, { stretch: true }),
-            )
-            add(`Sekai Judgment Center ${color}`, solid(hue, 0.25))
+            add(`Sekai Judgment Edge ${color}`, solid(edge))
+            add(`Sekai Judgment Single Line ${color}`, solid(mix(hue, '#ffffff', 0.15)))
+            add(`Sekai Judgment Edge Left ${color}`, solid(edge, 1, 8, 4))
+            add(`Sekai Judgment Center ${color}`, solid(centre))
         }
     })
 
@@ -275,8 +283,8 @@ export function skinSprites() {
             ['Normal', activeColors.normal],
             ['Critical', activeColors.critical],
         ]) {
-            add(`Sekai ${family} Active Slide Connection Normal`, band(color, 0.45))
-            add(`Sekai ${family} Active Slide Connection Active`, band(color, 0.75))
+            add(`Sekai ${family} Active Slide Connection Normal`, band(color))
+            add(`Sekai ${family} Active Slide Connection Active`, activeBand(color))
         }
         for (const [color, family] of [
             ['Green', 'Normal'],
@@ -291,16 +299,16 @@ export function skinSprites() {
                 `Sekai ${family} Active Slide Connection Active`,
             )
         }
-        add('Sekai Damage Slide Connection', band(damageColor, 0.45))
-        add('Sekai Damage Slide Connection Active', band(damageColor, 0.75))
+        add('Sekai Damage Slide Connection', band(damageColor))
+        add('Sekai Damage Slide Connection Active', activeBand(damageColor))
     })
 
     group('Guides', () => {
-        for (const color of colorNames) add(`Sekai Guide ${color}`, solid(guideColor(color), 0.5))
+        for (const color of colorNames) add(`Sekai Guide ${color}`, solid(guideColor(color)))
     })
 
     group('Sim line', () => {
-        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', solid('#ffffff', 0.8))
+        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', solid('#ffffff', 0.9))
     })
 
     group('Standard fallbacks', () => {
@@ -322,9 +330,9 @@ export function skinSprites() {
         add('#DIRECTIONAL_MARKER_RED', image('arrow-up', { accent: arrowColors.normal }))
         add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', { accent: arrowColors.critical }))
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
-            add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color)), 0.5))
+            add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
-            add(`#GRID_${color}`, solid(guideColor(capital(color)), 0.5))
+            add(`#GRID_${color}`, solid(guideColor(capital(color))))
     })
 
     group('Style colours', () => {
@@ -355,17 +363,14 @@ export function skinSprites() {
                         )
             const connection = connectorColor(color)
             for (const family of ['Normal', 'Critical']) {
-                add(
-                    `Sekai ${family} Active Slide Connection Normal ${color}`,
-                    band(connection, 0.45),
-                )
+                add(`Sekai ${family} Active Slide Connection Normal ${color}`, band(connection))
                 add(
                     `Sekai ${family} Active Slide Connection Active ${color}`,
-                    band(connection, 0.75),
+                    activeBand(connection),
                 )
             }
-            add(`Sekai Damage Slide Connection ${color}`, band(connection, 0.45))
-            add(`Sekai Damage Slide Connection Active ${color}`, band(connection, 0.75))
+            add(`Sekai Damage Slide Connection ${color}`, band(connection))
+            add(`Sekai Damage Slide Connection Active ${color}`, activeBand(connection))
         }
     })
 

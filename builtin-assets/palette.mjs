@@ -37,3 +37,13 @@ export const damage = { color: '#a50acc', edge: '#d28ae6' }
 
 /** The editor's stage colours (the preview navy, the stage stroke and the accent). */
 export const stage = { navy: '#292b42', lane: '#1c1e31', stroke: '#b4d6e8', accent: '#77efdc' }
+
+const channels = (hex) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16))
+
+/** The colour t of the way from a to b, as #rrggbb. */
+export const mix = (a, b, t) =>
+    '#' +
+    channels(a)
+        .map((value, i) => Math.round(value + (channels(b)[i] - value) * t))
+        .map((value) => value.toString(16).padStart(2, '0'))
+        .join('')
