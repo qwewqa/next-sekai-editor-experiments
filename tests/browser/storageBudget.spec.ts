@@ -153,7 +153,7 @@ for (const chart of charts) {
         test.setTimeout(120_000)
         await open(page, chart.file, chart.optional === true)
         const figures = await page.evaluate(async () => {
-            const { history, appImport } = window.editorTest
+            const { appImport } = window.editorTest
             const { decodeSnapshot } = await appImport<
                 typeof import('../../src/local/records/snapshot')
             >('/src/local/records/snapshot.ts')
@@ -167,9 +167,14 @@ for (const chart of charts) {
             >('/src/levelData/serialize.ts')
             const worker = window.nseStorageTest!.worker
             const { entries } = (await worker.call('testRows', ['entries'])) as unknown as {
-                entries: { value: { snapshot: Uint8Array } }[]
+                entries: { value: { sessionId: string; seq: number; snapshot: Uint8Array } }[]
             }
-            const hex = [...entries.at(-1)!.value.snapshot]
+            // The imported chart's session: the blank one before it may be stored too.
+            const sessionId = window.nseFlushTest!.flusher.session!.id
+            const own = entries
+                .filter(({ value }) => value.sessionId === sessionId)
+                .sort((a, b) => a.value.seq - b.value.seq)
+            const hex = [...own.at(-1)!.value.snapshot]
                 .map((b) => b.toString(16).padStart(2, '0'))
                 .join('')
             // The stored snapshot, as the worker reads it back.
@@ -213,7 +218,8 @@ for (const chart of charts) {
                     }),
                 )
             }
-            const notes = [...history.state.value.store.slides.note.values()].flat().length
+            // The decoded snapshot's own note count, so a wrong snapshot shows.
+            const notes = (parts.root as unknown[])[3] as number
             return { notes, decode, create, serialize }
         })
         const summary = {
@@ -226,6 +232,7 @@ for (const chart of charts) {
         }
         console.log(JSON.stringify(summary))
         testInfo.annotations.push({ type: 'pipeline', description: JSON.stringify(summary) })
+        expect(summary.notes).toBeGreaterThan(1000)
         expect(summary.createStateMs).toBeGreaterThan(0)
     })
 }
