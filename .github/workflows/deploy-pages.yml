@@ -3,27 +3,30 @@ name: Deploy Pages
 on:
     push:
         branches: ['main']
+        tags: ['v[0-9]+.[0-9]+.[0-9]+']
     pull_request:
         branches: ['main']
-    workflow_dispatch:
 
 permissions:
     contents: read
 
 concurrency:
-    group: pages-${{ github.workflow }}-${{ github.ref }}
+    # all tags share one group, so deploys never overlap
+    group: ${{ startsWith(github.ref, 'refs/tags/v') && 'pages-deploy' || format('pages-{0}', github.ref) }}
     cancel-in-progress: false
 
 jobs:
     check:
         uses: ./.github/workflows/check.yml
         with:
-            skip_browser_checks: ${{ github.event_name == 'push' }}
+            skip_browser_checks: ${{ github.event_name != 'pull_request' }}
 
     build:
         needs: check
         runs-on: ubuntu-latest
         timeout-minutes: 25
+        outputs:
+            deploy: ${{ steps.highest.outputs.deploy }}
         steps:
             - name: Check out source
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,7 +41,7 @@ jobs:
             - name: Install browser
               run: npx playwright install --with-deps chromium
             - run: npm run test:browser
-              if: github.event_name != 'push'
+              if: github.event_name == 'pull_request'
             - run: npm run build:release
               env:
                   PREVIEW_SKIN_URL: ${{ vars.PREVIEW_SKIN_URL }}
@@ -55,15 +58,27 @@ jobs:
                       test-results-production/
                   if-no-files-found: ignore
                   retention-days: 7
+            - name: Check that the tag is the highest
+              # only the highest v* tag deploys
+              id: highest
+              if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'qwewqa/next-sekai-editor-experiments'
+              run: |
+                  highest=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY.git" 'refs/tags/v*' | cut -f2 | sed 's|^refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+                  test -n "$highest"
+                  if [ "$highest" = "$GITHUB_REF_NAME" ]; then
+                      echo "deploy=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "Not deployed: $highest is higher than $GITHUB_REF_NAME."
+                  fi
             - name: Upload checked site
-              if: github.event_name == 'push' && github.repository == 'qwewqa/next-sekai-editor-experiments'
+              if: steps.highest.outputs.deploy == 'true'
               uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
               with:
                   path: dist
                   retention-days: 30
 
     deploy:
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'qwewqa/next-sekai-editor-experiments'
+        if: needs.build.outputs.deploy == 'true'
         needs: build
         runs-on: ubuntu-latest
         timeout-minutes: 15
