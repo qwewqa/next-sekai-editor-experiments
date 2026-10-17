@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DB_NAME } from '../../../src/local/db'
+import { DB_NAME, writeMeta } from '../../../src/local/db'
 import type { FlushResult } from '../../../src/local/flushWrite'
 import { keyText } from '../../../src/local/kv/keys'
 import { MemoryKv } from '../../../src/local/kv/memory'
@@ -154,6 +154,45 @@ test('Try Again’s move racing a flush loses no entry and leaves no dangling re
         )
         assert.deepEqual(checkStored(world.memory), [], `seed ${seed}`)
     }
+})
+
+test('rows Try Again moves in take the database’s day of use, not the memory store’s', async () => {
+    const world = createWorld({ seed: 5 })
+    // A long-used database: 40 days of use, the last long ago.
+    const setup = world.tab('setup')
+    const setupCore = workerCore(world, setup)
+    await setup.run(() => setupCore.start())
+    await setup.run(() =>
+        setupCore.write(['meta'], async (tx) => {
+            await writeMeta(tx, 'daysOfUse', 40)
+            await writeMeta(tx, 'lastUseDate', '2000-01-01')
+        }),
+    )
+    const frozen = world.tab('frozen')
+    const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
+    await frozen.run(() => frozenCore.start())
+    const opening = openSplitPage(world, { flags: { dbVersion: 2 } })
+    await world.clock.run()
+    const page = await opening
+    let state = stateOf(goldenChart())
+    begin(page, state)
+    state = widen(state)
+    edit(page, state)
+    await page.flusher.flush()
+    assert.deepEqual(
+        [...storeRows(page.host.memory, 'entries').values()].map((entry) => entry.day),
+        [1, 1],
+    )
+    frozen.kill()
+    await world.idle()
+    const trying = page.host.call((_, core) => core.tryAgain())
+    await settle(world)
+    assert.deepEqual(await trying, { mode: 'stored' })
+    const today = storeRows(world.memory, 'meta').get('daysOfUse')?.value
+    assert.equal(today, 41)
+    for (const store of ['entries', 'sessions', 'chains', 'nodes', 'chunks'])
+        for (const row of storeRows(world.memory, store).values())
+            assert.equal(row.day, today, store)
 })
 
 test('a batch planned before a memory-mode worker restart is planned again for the new store', async () => {
