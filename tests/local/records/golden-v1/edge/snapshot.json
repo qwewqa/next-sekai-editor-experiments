@@ -1,5 +1,5 @@
 {
-    "root": "46d9b17d53ead63cb3b3fcbb0f1ceb19",
+    "root": "a930199c6aed2a32e539874cbaa06fc6",
     "header": "c4b38fd8fbddd45c796ff17634c74cc5",
     "nodes": [
         {
@@ -20,17 +20,17 @@
         {
             "kind": "bpms",
             "depth": 0,
-            "hash": "7c2907b8922702ccf19921b646fe84a6"
+            "hash": "8f0af2dad1a61ff8e0c72ce5ed7b78eb"
         },
         {
             "kind": "timeScales",
             "depth": 0,
-            "hash": "ee42cd5044366fe96b51269446560a0e"
+            "hash": "b162557b34508271bddcd5a7adc45ff9"
         },
         {
             "kind": "cameraEvents",
             "depth": 0,
-            "hash": "58d14ce0e2213a83115463b7dfab1c15"
+            "hash": "853b5a4924b435cffdd6a91938425d97"
         },
         {
             "kind": "stageMaskEvents",
@@ -163,15 +163,35 @@
         },
         {
             "kind": "bpms",
-            "hash": "dfae3bfba51c98798169670f98bd388b"
+            "hash": "1affa07a3f8fcd4d7edb506eaa5909de"
         },
         {
             "kind": "timeScales",
-            "hash": "dba32a56ef055ae584bf07967f62168a"
+            "hash": "9321c8c7ae2e1cfc134d8687695a4406"
         },
         {
             "kind": "cameraEvents",
             "hash": "48b4f8897c019a8ed84014f68696773a"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "2766e709075759a3961c0f60508186b2"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "30efdae1adf75df72be7c5e59c760810"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "2386b51ba26f690c5ba26ad566a967bd"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "b6d5b6aa39395409fbe664c8dc7094ba"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "fab63748b3d28dd0b24eeb4fa98a1cac"
         },
         {
             "kind": "stageMaskEvents",

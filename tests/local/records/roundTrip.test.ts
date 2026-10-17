@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { addToFolders } from '../../../src/chart/folders'
+import { addToFolders, normalizeFolders } from '../../../src/chart/folders'
 import { addToStages } from '../../../src/chart/stages'
 import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
 import { serializeToLevelData } from '../../../src/levelData/serialize'
@@ -181,9 +181,16 @@ test('records round-trip after scripted edits', () => {
             (s) => {
                 const stages = new Map(s.stages)
                 addToStages(stages, 'Added')
-                const stageFolders = new Map(s.stageFolders)
-                addToFolders(stageFolders, s.groupFolders, 'Stage folder')
-                return { ...s, stages, stageFolders, isDynamicStages: !s.isDynamicStages }
+                const folders = new Map(s.stageFolders)
+                addToFolders(folders, s.groupFolders, 'Stage folder')
+                // Placed in the tree, as the manager's commit does.
+                const { entries, folders: stageFolders } = normalizeFolders(stages, folders)
+                return {
+                    ...s,
+                    stages: entries,
+                    stageFolders,
+                    isDynamicStages: !s.isDynamicStages,
+                }
             },
         ],
         [

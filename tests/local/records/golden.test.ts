@@ -6,7 +6,11 @@ import test from 'node:test'
 import { LEVEL_VERSION } from '../../../src/levelData/levelVersion'
 import { deflateChunk, inflateStrict } from '../../../src/local/chunkVerify'
 import { hash16, hash16Sync, toHex } from '../../../src/local/hash'
-import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
+import {
+    canonicalBytes,
+    canonical as canonicalText,
+    type RecordValue,
+} from '../../../src/local/records/canonical'
 import { extractChart, noteObjectOf } from '../../../src/local/records/extract'
 import { inspectRecord } from '../../../src/local/records/inspect'
 import {
@@ -267,4 +271,38 @@ test('a slide edited after being created changes nothing but its own chunk', () 
     const changed = encodeSnapshot(toRecords(edited.commit([])))
     const old = new Set(encodeSnapshot(toRecords(before)).chunks.map((chunk) => toHex(chunk.hash)))
     assert.equal(changed.chunks.filter((chunk) => !old.has(toHex(chunk.hash))).length, 1)
+})
+
+test('same-beat BPMs, and same-beat time scales on one group, keep their stored order, not byte order', () => {
+    const fixture = edgeChart()
+    const state = stateOf(fixture)
+    const records = toRecords(state)
+    const kind = (s: State, name: string) =>
+        toRecords(s)
+            .kinds.find((item) => item.kind === name)
+            ?.records.map(({ record }) => canonicalText(record))
+    const bpms = kind(state, 'bpms')
+    const timeScales = kind(state, 'timeScales')
+    // Stored order, the reverse of byte order at beat 4 and at beat 5 on group 3.
+    assert.deepEqual(bpms?.slice(1, 3), ['[4,200,4]', '[4,150,3]'])
+    assert.deepEqual(timeScales?.slice(2), [
+        '[3,5,0,3,0,"linear","timeScale",false]',
+        '[3,5,0,1,0,"linear","timeScale",false]',
+    ])
+    const restored = stateFromRecords(records)
+    assert.deepEqual(kind(restored, 'bpms'), bpms)
+    assert.deepEqual(kind(restored, 'timeScales'), timeScales)
+    assert.deepEqual(restored.bpms, state.bpms)
+
+    // In byte order they're another state, with another tempo and another root.
+    const swapped = structuredClone(fixture.chart)
+    swapped.bpms.splice(3, 2, swapped.bpms[4]!, swapped.bpms[3]!)
+    swapped.timeScales.splice(2, 2, swapped.timeScales[3]!, swapped.timeScales[2]!)
+    const other = createState(swapped, fixture.offset, fixture.extras)
+    assert.notDeepEqual(other.bpms, state.bpms)
+    assert.deepEqual(kind(other, 'bpms')?.slice(1, 3), ['[4,150,3]', '[4,200,4]'])
+    assert.notEqual(
+        toHex(encodeSnapshot(toRecords(other)).root.hash),
+        readManifest(join(goldenRoot, 'edge')).root,
+    )
 })
