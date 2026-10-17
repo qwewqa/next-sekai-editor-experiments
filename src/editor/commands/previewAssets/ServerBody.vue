@@ -9,6 +9,7 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import AlsoOptions from './AlsoOptions.vue'
 import AssetGlyph from './AssetGlyph.vue'
 import AssetRow from './AssetRow.vue'
+import ChooserProgress from './ChooserProgress.vue'
 
 // The chooser's From a Server view (Part 2, 2.5.3, 2.6): the address, the server's list with its
 // quick search and More, and the other types' items of the same name. The footer is the chooser's.
@@ -83,6 +84,11 @@ const inputClass =
             {{ strings.connect }}
         </button>
     </form>
+
+    <ChooserProgress
+        v-if="isBusy"
+        :text="phase === 'connecting' ? strings.progress.connecting : strings.progress.downloading"
+    />
 
     <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
         <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />

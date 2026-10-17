@@ -43,15 +43,6 @@ const isBusy = computed(() =>
         ? phase.value === 'reading' || phase.value === 'working'
         : serverPhase.value === 'connecting' || serverPhase.value === 'working',
 )
-const busyText = computed(() =>
-    isFile.value
-        ? phase.value === 'reading'
-            ? strings.value.progress.reading
-            : strings.value.progress.storing
-        : serverPhase.value === 'connecting'
-          ? strings.value.progress.connecting
-          : strings.value.progress.downloading,
-)
 const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
 // What Use needs: an item selected, and nothing under way.
 const canUse = computed(() =>
@@ -161,8 +152,10 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
             >
         </div>
 
-        <div v-if="isBusy" class="px-2" role="status" data-chooser-progress>
-            <p class="text-sm">{{ busyText }}</p>
+        <div v-if="isFile && isBusy" class="px-2" role="status" data-chooser-progress>
+            <p class="text-sm">
+                {{ phase === 'reading' ? strings.progress.reading : strings.progress.storing }}
+            </p>
             <div
                 class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
                 aria-hidden="true"
