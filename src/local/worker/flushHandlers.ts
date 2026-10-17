@@ -168,15 +168,13 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
             // In memory, the page keeps the entries: a restarted worker's store is new (§1.6.5).
             const memory = core.status.mode === 'memory'
             const noDatabase = memory && core.status.reason !== 'olderTabs'
-            const { committed, ...reply } = result
+            const { committed, mediaFailed: refused = [], ...reply } = result
+            for (const hex of refused) core.mediaFailed(hex)
             // Media that reads back wrong never fails the entries: they're committed (§1.6.8.4).
-            const mediaFailed = await readBackMedia(
-                core,
-                result.readBack,
-                prepared.media,
-                waiter,
-                progress,
-            )
+            const mediaFailed = [
+                ...refused,
+                ...(await readBackMedia(core, result.readBack, prepared.media, waiter, progress)),
+            ]
             if (committed) void runFlushHooks(committed)
             return {
                 ...reply,
@@ -199,15 +197,21 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                 throw new FlushBatchError('Media bytes do not hash to their hash')
             const carried = { ...item, sha256: digest }
             const key = hashKey(fromHex16(item.hash))
-            await core.write(
+            const put = await core.write(
                 ['media', 'meta'],
                 async (tx) => {
-                    if ((await tx.getKey('media', key)) !== undefined) return
+                    if ((await tx.getKey('media', key)) !== undefined) return true
                     const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, Date.now())
-                    await tx.put('media', mediaRow(carried, await countDayOfUse(tx, now)), key)
+                    const row = mediaRow(carried, await countDayOfUse(tx, now))
+                    return tx.tryPut('media', row, key)
                 },
                 { durability: 'strict', ...progress },
             )
+            // Refused (WebKit's private windows): storing goes on, and the page tries again later.
+            if (!put) {
+                core.mediaFailed(item.hash)
+                return false
+            }
             const failed = await readBackMedia(
                 core,
                 [item.hash],

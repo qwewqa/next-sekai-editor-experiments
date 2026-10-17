@@ -56,6 +56,20 @@ const wrapTx = (tx: IDBTransaction): KvTx => {
         getAllKeys: (name, query, count) => indexOf(store(name)).getAllKeys(query, count),
         count: (name, query) => indexOf(store(name)).count(query),
         put: (name, value, key) => request(store(name).put(value, key as IDBValidKey | undefined)),
+        tryPut: (name, value, key) => {
+            const req = store(name).put(value, key as IDBValidKey | undefined)
+            return new Promise<boolean>((resolve) => {
+                req.onsuccess = () => {
+                    resolve(true)
+                }
+                req.onerror = (event) => {
+                    // Handled: the transaction goes on without the row.
+                    event.preventDefault()
+                    event.stopPropagation()
+                    resolve(false)
+                }
+            })
+        },
         add: (name, value, key) => request(store(name).add(value, key as IDBValidKey | undefined)),
         delete: (name, query) => request(store(name).delete(toIdbKeyOrRange(query))),
         index: (name, index) => indexOf(store(name).index(index)),

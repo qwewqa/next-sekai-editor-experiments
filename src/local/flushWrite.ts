@@ -166,7 +166,10 @@ export type FlushResult =
           stackWritten: boolean
           /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
           chain: Record<string, unknown>
-          /** Media that didn't read back right: the entries are stored, the media is not (§1.6.8.4). */
+          /**
+           * Media refused by the put or that didn't read back right: the entries are stored, the
+           * media is not (§1.6.8.4).
+           */
           mediaFailed?: string[]
           stats: WriteStats
           /** Stored in memory only (storage unavailable): set by the worker's reply. */
@@ -482,9 +485,14 @@ export const writeFlush = async (
         stats.nodes++
         count('nodes', row, root.hash)
     }
+    // A Blob the browser refuses (WebKit's private windows) never fails the entries (§1.6.8.4).
+    const refused: string[] = []
     for (const item of mediaToPut) {
         const row = mediaRow(item, day)
-        await tx.put('media', row, hashKey(fromHex16(item.hash)))
+        if (!(await tx.tryPut('media', row, hashKey(fromHex16(item.hash))))) {
+            refused.push(item.hash)
+            continue
+        }
         ownBytes += row.size
         count('media', row, item.hash)
     }
@@ -630,7 +638,8 @@ export const writeFlush = async (
         chunks: prepared.chunks.map((chunk) => chunk.hash),
         roots: prepared.roots.map((root) => root.hash),
         lastSeq: newLastSeq,
-        readBack,
+        readBack: readBack.filter((hex) => !refused.includes(hex)),
+        ...(refused.length ? { mediaFailed: refused } : {}),
         stackWritten: stack !== undefined,
         chain: chainValue,
         stats,
@@ -639,7 +648,9 @@ export const writeFlush = async (
             entries: entryRows,
             stackBlocks: blockRows,
             records,
-            media: mediaToPut.map((item) => fromHex16(item.hash)),
+            media: mediaToPut
+                .filter((item) => !refused.includes(item.hash))
+                .map((item) => fromHex16(item.hash)),
             descriptorChanged: !chain,
         },
     }
