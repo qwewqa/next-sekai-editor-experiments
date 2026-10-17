@@ -261,7 +261,10 @@ const onDisk = async (
         },
         close: async () => {
             await context.close().catch(() => undefined)
-            await rm(dir, { recursive: true, force: true })
+            // Windows can hold the closed browser's files a moment longer.
+            await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(
+                () => undefined,
+            )
         },
     }
 }

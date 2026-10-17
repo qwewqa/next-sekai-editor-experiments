@@ -122,6 +122,7 @@ test('a session that never flushed is made from the descriptor, with its ids', a
     const row = rows(world, 'sessions').get(session.id)
     assert.equal(row?.chainId, session.chainId)
     assert.equal(row?.origin, 'new')
+    assert.ok((row?.startedAt as number) <= (row?.updatedAt as number))
     const chain = rows(world, 'chains').get(session.chainId)
     assert.equal(chain?.head, session.id)
     assert.equal(chain?.docId, session.docId)

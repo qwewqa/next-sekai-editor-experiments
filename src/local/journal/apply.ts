@@ -326,7 +326,8 @@ export const writeJournalApply = async (
                   id: sessionId,
                   chainId,
                   ...(descriptor.v === undefined ? {} : { v: descriptor.v }),
-                  startedAt: stamp(descriptor.startedAt),
+                  // Its own start, clamped as times from outside are, never after its entry.
+                  startedAt: Math.min(clampTime(descriptor.startedAt, now), time),
                   origin: descriptor.origin,
                   ...(descriptor.parent ? { parent: descriptor.parent } : {}),
                   ...sessionFields,
