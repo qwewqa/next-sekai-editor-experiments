@@ -1,0 +1,39 @@
+import { enums, kindRecords, records } from './schema'
+
+/**
+ * `fields-v1.json`'s tree (§1.6.11.1): each record form by name (a positional list of
+ * `{ name, type, optional?, minItems?, default? }`, or `{ type, minItems? }` for a record that
+ * is itself an array), `kinds` (each kind's body record) and `enums` (each choice set, value →
+ * the `levelVersion` that added it). The viewer and both checkers read it.
+ */
+export const fieldsTable = () => ({ ...records, kinds: kindRecords, enums })
+
+const inline = (value: unknown) =>
+    JSON.stringify(value)
+        .replace(/^\{/, '{ ')
+        .replace(/\}$/, ' }')
+        .replace(/":/g, '": ')
+        .replace(/,"/g, ', "')
+
+const entries = (value: object, line: (item: unknown) => string) =>
+    `{\n${Object.entries(value)
+        .map(([name, item]) => `        ${JSON.stringify(name)}: ${line(item)}`)
+        .join(',\n')}\n    }`
+
+/** One line per field, kind or choice set, so a diff shows each. */
+const stringify = (table: Record<string, unknown>) => {
+    const items = Object.entries(table).map(([key, value]) => {
+        const text = Array.isArray(value)
+            ? `[\n${value.map((item) => `        ${inline(item)}`).join(',\n')}\n    ]`
+            : Object.hasOwn(value as object, 'type')
+              ? inline(value)
+              : entries(value as object, inline)
+        return `    ${JSON.stringify(key)}: ${text}`
+    })
+    return `{\n${items.join(',\n')}\n}\n`
+}
+
+/** The generated files, by path from the repository root, as `npm run format:gen` writes them. */
+export const formatFiles = (): Record<string, string> => ({
+    'src/local/records/fields-v1.json': stringify(fieldsTable()),
+})

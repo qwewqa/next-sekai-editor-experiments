@@ -1,0 +1,194 @@
+{
+    "root": "46d9b17d53ead63cb3b3fcbb0f1ceb19",
+    "header": "c4b38fd8fbddd45c796ff17634c74cc5",
+    "nodes": [
+        {
+            "kind": "slides",
+            "depth": 0,
+            "hash": "20a19ed6d9f6f83affe0d1dc66e03da8"
+        },
+        {
+            "kind": "slides",
+            "depth": 0,
+            "hash": "0bbdce7cb67a8989af64944954fa3e29"
+        },
+        {
+            "kind": "slides",
+            "depth": 1,
+            "hash": "f9bec8a6c010f271d91d481c82bd7542"
+        },
+        {
+            "kind": "bpms",
+            "depth": 0,
+            "hash": "7c2907b8922702ccf19921b646fe84a6"
+        },
+        {
+            "kind": "timeScales",
+            "depth": 0,
+            "hash": "ee42cd5044366fe96b51269446560a0e"
+        },
+        {
+            "kind": "cameraEvents",
+            "depth": 0,
+            "hash": "58d14ce0e2213a83115463b7dfab1c15"
+        },
+        {
+            "kind": "stageMaskEvents",
+            "depth": 0,
+            "hash": "2abe1a160d1593a2ee921a4156a93126"
+        },
+        {
+            "kind": "stageStyleEvents",
+            "depth": 0,
+            "hash": "f48a64460ed8b3d877821e81d6c93dfd"
+        },
+        {
+            "kind": "stageTransformEvents",
+            "depth": 0,
+            "hash": "ebe2c1f90a93c1b3dbbc455789279b8e"
+        }
+    ],
+    "chunks": [
+        {
+            "kind": "slides",
+            "hash": "5b5c6851905e266c70e4e62597b3398d"
+        },
+        {
+            "kind": "slides",
+            "hash": "3133ff86869aed5058468507592f103d"
+        },
+        {
+            "kind": "slides",
+            "hash": "7c3d912a256419da39337b0968abe494"
+        },
+        {
+            "kind": "slides",
+            "hash": "6c3a76a575abc16b0d1e6c5a9b577c06"
+        },
+        {
+            "kind": "slides",
+            "hash": "aeaf6d9af8e3588acdc923cb07610b6d"
+        },
+        {
+            "kind": "slides",
+            "hash": "5109b1b0d3da30d37f17fb279bcd0aaa"
+        },
+        {
+            "kind": "slides",
+            "hash": "b275bf2747cb05c9a29fd06aa1d4f5b8"
+        },
+        {
+            "kind": "slides",
+            "hash": "908a351431478a06d579bd6229547540"
+        },
+        {
+            "kind": "slides",
+            "hash": "9c9b5df74edec0eab3854512a9ab3a00"
+        },
+        {
+            "kind": "slides",
+            "hash": "4bcde0d2295f773beca2ca324f893442"
+        },
+        {
+            "kind": "slides",
+            "hash": "3c3fe5537779f490149f01ef92b93b5f"
+        },
+        {
+            "kind": "slides",
+            "hash": "8d89f7a4c00168cacfa6878836c20919"
+        },
+        {
+            "kind": "slides",
+            "hash": "6e2578d7e2ec86d2ee009f355ed2149c"
+        },
+        {
+            "kind": "slides",
+            "hash": "26dd72c3443e93832dabbf64c8dcb5ed"
+        },
+        {
+            "kind": "slides",
+            "hash": "ea16e15629662962a0fe492718b61fcc"
+        },
+        {
+            "kind": "slides",
+            "hash": "fe7ba31b212766e42f976721ba0812b8"
+        },
+        {
+            "kind": "slides",
+            "hash": "5f2f71b88fb9465355ad0420cd84a2f4"
+        },
+        {
+            "kind": "slides",
+            "hash": "79a908a23f2ed88532d495d7973be636"
+        },
+        {
+            "kind": "slides",
+            "hash": "b2d5154e33a9d76233aa53c3b0857e63"
+        },
+        {
+            "kind": "slides",
+            "hash": "59cd7dbc7f4eb667dfaff782270be059"
+        },
+        {
+            "kind": "slides",
+            "hash": "a52f71b78c22919073493481eb20e9ed"
+        },
+        {
+            "kind": "slides",
+            "hash": "6f55eebd388ccb8a86825823927bcda1"
+        },
+        {
+            "kind": "slides",
+            "hash": "2d1421c9330893bc304a0d1f6ba35ce0"
+        },
+        {
+            "kind": "slides",
+            "hash": "1ad19fc6d4a7a801d0cdc530e2661733"
+        },
+        {
+            "kind": "slides",
+            "hash": "6e1d6c18a7ecccb236ce81b78b6e51d4"
+        },
+        {
+            "kind": "slides",
+            "hash": "a8c9144b24cdf384c61db9004fdc42d1"
+        },
+        {
+            "kind": "slides",
+            "hash": "b8afaea4bd291459fe0e684083e54b16"
+        },
+        {
+            "kind": "slides",
+            "hash": "d94d7c58cd759999dc6d6d6d678d556f"
+        },
+        {
+            "kind": "bpms",
+            "hash": "dfae3bfba51c98798169670f98bd388b"
+        },
+        {
+            "kind": "timeScales",
+            "hash": "dba32a56ef055ae584bf07967f62168a"
+        },
+        {
+            "kind": "cameraEvents",
+            "hash": "48b4f8897c019a8ed84014f68696773a"
+        },
+        {
+            "kind": "stageMaskEvents",
+            "hash": "1541aa959f2a0fdf0c6d88511e54a5a3"
+        },
+        {
+            "kind": "stageStyleEvents",
+            "hash": "2f8f26ba3184d3cdd70f12db81e81759"
+        },
+        {
+            "kind": "stageTransformEvents",
+            "hash": "61a254feb341e952b48f1ad17c316a4d"
+        }
+    ],
+    "headerVariants": {
+        "rating-unset": "3335001ac48addd08fcb114cb731fdae",
+        "level-info-empty": "b9eba674a2eb4873564b492fb1225a0c",
+        "bgm-with-duration": "96c3199e39dd77e674f3b770cb39b3bb"
+    }
+}
