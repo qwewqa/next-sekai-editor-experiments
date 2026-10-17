@@ -3,6 +3,7 @@ import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
+import type { PlatformOverride } from '../../src/platform/detect'
 import type { Entity } from '../../src/state/entities'
 
 type BriefEntity = { type: string; beat: number; left?: number; size?: number }
@@ -80,6 +81,8 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     for (const setting of ['showPreview', 'showSidebar', 'autoSave']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
     }
+    // The fixture hook: the shown version never depends on the checkout's tags.
+    localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     // Only the explicitly configured historical parity server uses this path.
     // A missing GPU module in the current app must fail rather than silently
     // make its rendering assertions exercise a different implementation.
@@ -99,6 +102,11 @@ export const installCanvasCounters = (legacyCanvas = false) => {
         window.editorRendering = rendering
         window.editorRenderingReady = Promise.resolve(rendering)
     }
+}
+
+/** Seeds the platform override (Part 1 §1.6.10): pass it to addInitScript with the override. */
+export const installTestPlatform = (override: PlatformOverride) => {
+    localStorage.setItem('nse.test.platform', JSON.stringify(override))
 }
 
 // This function is evaluated inside the page. Seed charts through the existing
