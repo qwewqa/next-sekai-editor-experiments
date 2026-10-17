@@ -43,6 +43,12 @@ async function cargoCrates(root) {
     return [...lock.matchAll(/^\[\[package\]\]\r?\nname = "([^"]+)"/gm)].map(([, name]) => name)
 }
 
+/** Whether the notices name the crate as a whole word, so `log` is not found inside `catalog`. */
+export function mentionsCrate(notices, crate) {
+    const escaped = crate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}(?![A-Za-z0-9_-])`).test(notices)
+}
+
 /** The problems with a native build in `directory`; empty when it passes. */
 export async function checkNativeBundle(directory, { root = defaultRoot, full = false } = {}) {
     const problems = []
@@ -131,7 +137,7 @@ export async function checkNativeBundle(directory, { root = defaultRoot, full = 
             problems.push('src-tauri/Cargo.lock is missing')
         else
             for (const crate of await cargoCrates(root))
-                if (!notices.includes(crate))
+                if (!mentionsCrate(notices, crate))
                     problems.push(`THIRD_PARTY_NOTICES.txt lacks the crate ${crate}`)
     }
     return problems

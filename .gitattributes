@@ -1,0 +1,4 @@
+# The built-in sources and outputs are compared byte for byte, so they keep LF under autocrlf.
+builtin-assets/** text eol=lf
+builtin-assets/**/*.png binary
+*.scp binary

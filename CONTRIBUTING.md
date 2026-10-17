@@ -21,7 +21,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | The platform interface and detection | `src/platform/index.ts`, `detect.ts` | Both |
 | The web implementation | `src/platform/web.ts` | Web, through `#platform` |
 | The native implementation | `src/platform/native/` | Native only, through `#platform`'s `native` condition |
-| The mock platform | `src/platform/mock.ts` | Tests |
+| The mock platform | `src/platform/mock.ts`, injected with `setPlatformForTests` | Tests |
 | Native-only features | `src/library/`, `src/projects/` | Native only, loaded through one loader |
 | Asset defaults | `#asset-defaults` | Per build |
 
@@ -37,9 +37,27 @@ The lint enforces the boundary (`npm run check-lint`):
 - `__NATIVE__` and `isTauri` appear only in the build configuration, the native code and the loader.
 - `platform.kind` and `platform.os` appear only in `src/platform/`.
 
+### Adding a capability
+
+1. Add the field to `PlatformCapabilities` in `src/platform/types.ts`, named for what it allows.
+2. Set it in `src/platform/web.ts`, in `src/platform/native/` and in the mock’s defaults (`src/platform/mock.ts`).
+3. Read it as `platform.capabilities.<name>` where behaviour differs. Never branch on `kind` or `os` outside `src/platform/`.
+4. Test the code with both values (see Tests).
+
+### Adding a string variant
+
+A string that must read differently by capability is one keyed variant, picked by one helper, not a forked component. Add both keys to `src/i18n/en/index.json` and to the other six locales (`fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit. Follow the existing strings: terse and plain, no contractions, Title Case buttons.
+
 ### Native-only features
 
 A feature the web can't do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it.
+
+To add one:
+
+1. Put the code in `src/library/` or `src/projects/`. Nothing else imports it, statically or with `import()`; the lint stops that.
+2. Register its commands and views from the native loader, which only the native build includes.
+3. Add a capability only if shared code must know whether the feature exists.
+4. Run `npm run build:native` and `npm run check:native-bundle`.
 
 ## Built-in assets
 
@@ -52,10 +70,20 @@ The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml`
 ## Tests
 
 - `npm run check-type`, `npm run check-lint` and `npm run check-format`.
-- `npm test`: the unit suites, including the pipeline and licensing tests.
+- `npm test`: the unit suites, including the pipeline and licensing tests. Shared code that depends on a capability is tested with both capability sets: inject `createMockPlatform({ capabilities: { ... } })` with `setPlatformForTests` once per set, and restore it afterwards.
+- A native test is needed for anything that touches the native implementation, the filesystem, the OS or the Rust side. Shared tests use the mock platform and need no Rust.
 - `npm run test:release`: the release scripts.
 - `npm run test:browser`: the Playwright specs; run the ones for your area with `npx playwright test <spec> --project=chromium`.
 
 ## Formats
 
-Stored formats change only through the version rules: readers ship before writers. See the notes in the code next to each format.
+Stored formats change only through the version rules (Part 0, 0.11.7):
+
+- Readers before writers. A release that can read format N+1 ships at least one release before the first that writes it, and the writer’s release notes say which version is needed. The level model counts: a new archetype, field or choice value raises `levelVersion`.
+- Never write what you do not understand. A file with content a build does not read opens separately; newer data opens read-only or is refused.
+- Every stored file carries a version, and every new format or field goes into the format table in the same change.
+- Fixtures are committed, one per format version, and every self-test reads them. See the notes in the code next to each format.
+
+## Forks
+
+A fork builds everything unsigned with no setup beyond the Node version: `npm install`, then `npm run build` or `npm run build:native`.
