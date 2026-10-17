@@ -1,4 +1,5 @@
 import type { State } from '../../state'
+import { CHAIN_OWN_FIELDS } from '../chainFields'
 import type { FlushSession, PendingEntry } from '../flush'
 import { toHex } from '../hash'
 import { RECORDS_V } from '../records/version'
@@ -15,9 +16,6 @@ import {
 // the page knows and the chain record the last flush wrote, the whole state, and the stack by
 // reference to what's committed.
 
-/** Chain fields a record keeps for itself, which a fork and a descriptor leave out (§1.6.11.2). */
-const CHAIN_OWN = new Set(['chainId', 'head', 'updatedAt', 'day', 'deleting', 'appVersion'])
-
 const hexOf = (value: unknown) => (value instanceof Uint8Array ? toHex(value) : value)
 
 /** A binding or Export target without its handle, hashes as hex (§1.6.11.3). */
@@ -31,7 +29,7 @@ const withoutHandle = (value: unknown) => {
 export const descriptorChainFields = (record: Record<string, unknown>) => {
     const fields: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(record)) {
-        if (CHAIN_OWN.has(key)) continue
+        if (CHAIN_OWN_FIELDS.includes(key)) continue
         if (key === 'file' || key === 'exportTarget') fields[key] = withoutHandle(value)
         else if (key === 'badChunks') fields[key] = hexOf(value)
         else fields[key] = value

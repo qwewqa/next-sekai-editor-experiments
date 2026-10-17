@@ -9,6 +9,7 @@ import {
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
+import { workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll } from './harness'
@@ -158,4 +159,68 @@ test('a BGM change is journalled with its metadata, and recovers with it', async
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'applied')
     assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a replaced session is committed strictly before it goes, and its journal is cleared', async () => {
+    const world = createWorld({ seed: 9 })
+    const page = await openJournalPage(world, 'a')
+    const released: string[] = []
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a, 'import', { done: () => released.push('first') })
+    await page.flusher.flush({ strict: true })
+    append(page, 'edit', 'Changed note', widen(a))
+    // A hide's journal, then a routine relaxed flush: the key stays for a strict commit.
+    page.writer.write()
+    await page.flusher.flush()
+    assert.ok(journalIn(page.storage, session.id))
+    // New replaces it (§1.3.8): the outgoing session is committed strictly first.
+    beginSession(page, stateOf(goldenChart()), 'new')
+    await page.flusher.flush()
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.deepEqual(released, ['first'])
+})
+
+test('a fork’s journal takes over its old session’s key, with the old chain’s fields', async () => {
+    const world = createWorld({ seed: 10 })
+    const page = await openJournalPage(world, 'a')
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a)
+    await page.flusher.flush({ strict: true })
+    const other = world.tab('other')
+    const core = workerCore(world, other)
+    await other.run(() => core.start())
+    const changeChain = (fields: Record<string, unknown>) =>
+        other.run(() =>
+            core.write(['chains'], async (tx) => {
+                const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+                await tx.put('chains', { ...chain, ...fields })
+            }),
+        )
+    // The chain is named, and holds a field from a newer build; this tab flushes once more.
+    await changeChain({ name: 'Coconut (Master)', future: { kept: 1 } })
+    const b = widen(a)
+    append(page, 'edit', 'Changed note', b)
+    await page.flusher.flush({ strict: true })
+    // Another tab continues the chain; this tab's next edit is journalled, then forks.
+    await changeChain({ head: 'a-continuation' })
+    append(page, 'edit', 'Moved notes', widen(b, 1))
+    assert.equal(page.writer.write(), true)
+    assert.equal(journalIn(page.storage, session.id)?.seq, 3)
+    await page.flusher.flush()
+    const fork = page.flusher.session
+    assert.ok(fork && fork.id !== session.id)
+    // The old key is gone, and the fork's journal carries the old chain's fields from the start.
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    const journal = journalIn(page.storage, fork.id)
+    assert.ok(journal)
+    assert.equal(journal.descriptor.chainId, fork.chainId)
+    assert.equal(journal.descriptor.name, 'Coconut (Master)')
+    assert.deepEqual(journal.descriptor.future, { kept: 1 })
+    assert.deepEqual(journal.descriptor.parent, { id: session.id, uptoSeq: 2 })
+    // The next load makes no recovery chain duplicating the fork.
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.deepEqual(
+        outcomes.map((outcome) => outcome.kind),
+        ['covered'],
+    )
 })

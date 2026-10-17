@@ -335,3 +335,24 @@ test('an apply that fails because storage does is left for the next load', async
     const { outcomes } = await replayAll(world, page.storage, 'later')
     assert.equal(outcomes[0]?.kind, 'applied')
 })
+
+test('a flush that lands after replay leaves the replayed stack alone', async () => {
+    const { world, page, session, states } = await killedAfterEdits(13)
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'applied')
+    // The dead page's flush lands late (§1.6.6), with the entries the journal covered.
+    await page.flusher.flush()
+    assert.equal(page.results.at(-1)?.kind, 'stored')
+    assert.deepEqual(
+        entriesOf(world, session.id).map((entry) => entry.kind),
+        ['init', 'edit', 'recovered'],
+    )
+    // The stored stack is still replay's: the dropped slot stays dropped.
+    assert.deepEqual(checkStored(world.memory), [])
+    const { window, slots } = storedStack(world, session.id)
+    assert.deepEqual(
+        slots?.map((slot) => toHex(slot.snapshot)),
+        [rootOf(states.a), rootOf(states.b), rootOf(states.d)],
+    )
+    assert.equal(window.index, 2)
+})

@@ -1,4 +1,5 @@
 import type { State } from '../state'
+import { forkRecord } from './chainFields'
 import {
     ChunkBatch,
     Extractor,
@@ -277,7 +278,7 @@ export class Flusher {
     /**
      * Starts a session with its first entry (§1.3.6): `init`. A new or blank session is stored
      * from its first own entry; one that brings content in is stored at once. The replaced
-     * session's pending entries are flushed strictly.
+     * session is committed strictly (§1.3.8): its pending entries, or what relaxed flushes stored.
      */
     begin(start: SessionStart): FlushSession {
         const session: FlushSession = {
@@ -303,7 +304,11 @@ export class Flusher {
         this.current = session
         this.sessions.push(session)
         this.add(session, 'init', start.label, start.state, start.dirty)
-        if (previous?.pending.length || this.storesAtOnce(session))
+        if (
+            previous?.pending.length ||
+            (previous && previous.ackedSeq > previous.strictSeq) ||
+            this.storesAtOnce(session)
+        )
             void this.flush({ strict: true })
         else this.retire()
         return session
@@ -353,11 +358,13 @@ export class Flusher {
 
     /**
      * Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4).
-     * A blank start with no edit has nothing to store, so nothing to journal.
+     * A stored session's entries past its strict commit are relaxed, held in memory only (storage
+     * unavailable, §1.6.7) or still to send. A blank start with no edit has nothing to store, so
+     * nothing to journal.
      */
     unflushed(session: FlushSession) {
         if (session.strictSeq >= this.newestSeq(session)) return false
-        return session.ackedSeq > session.strictSeq || this.flushable(session)
+        return session.stored || this.flushable(session)
     }
 
     /** The session's stack with every pending entry replayed: what the tab shows. */
@@ -548,6 +555,8 @@ export class Flusher {
             // may still take it (Try Again).
             if (this.noDatabase) session.memoryOnly.length = 0
             if (session.pending.length || session.memoryOnly.length) continue
+            // Committed relaxed only: kept until a strict commit covers it, so its journal clears.
+            if (this.deps.syncStrict && session.ackedSeq > session.strictSeq) continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             session.done?.()
         }
@@ -786,6 +795,7 @@ export class Flusher {
                         },
                     )
                 else session.stack.unsync()
+                if (result.stackRemoved) session.stack.forget()
                 if (!result.memory) {
                     const seq = Math.max(session.ackedSeq, result.lastSeq)
                     session.ackedSeq = seq
@@ -816,11 +826,19 @@ export class Flusher {
                 })
                 return 'stored'
             }
+            case 'stackWhole':
+                // Blocks the model leaves alone were stored elsewhere: the whole window this time.
+                this.extractor.fail(batch, new Error('The stack is needed whole'))
+                session.stack.unsync()
+                return 'retry'
             case 'missing':
                 // The closure check found windows gone (§1.6.6): forget only those, send them again.
                 this.extractor.fail(batch, new Error('Missing windows'))
                 this.extractor.forgetHashes(new Set(result.chunks), plans)
                 for (const hash of result.media) this.resendMedia.add(hash)
+                // Another store than the stack's: its whole window goes with the next attempt.
+                if (session.stack.at && session.stack.at.db !== result.known.db)
+                    session.stack.unsync()
                 return 'retry'
             case 'notHead':
                 // Another tab continued the chain: further entries go to a fork (§1.3.1, D10).
@@ -908,6 +926,8 @@ export class Flusher {
             ready: lock?.ready ?? Promise.resolve(),
             ...(lock ? { done: lock.done } : {}),
             stack: from.stack.forkedStack(inherited),
+            // Until its own first flush, its journal's descriptor carries the old chain's fields.
+            ...(from.chain ? { chain: forkRecord(from.chain) } : {}),
             ackedSeq: 0,
             strictSeq: 0,
             edited: moving.some((entry) => isEditingKind(entry.kind)),

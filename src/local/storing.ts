@@ -126,6 +126,7 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
             return { ready: lock.granted.catch(() => undefined), done: lock.release }
         },
         onFork: (fork, from) => {
+            journalWriter?.forked(from, fork)
             if (currentSession.value.sessionId === from.id)
                 currentSession.value = {
                     ...currentSession.value,

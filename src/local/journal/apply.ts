@@ -1,8 +1,8 @@
+import { forkRecord } from '../chainFields'
 import { countDayOfUse } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
 import {
     FLUSH_STORES,
-    forkRecord,
     prepareFlush,
     type BatchSnapshot,
     type ChainSummary,
