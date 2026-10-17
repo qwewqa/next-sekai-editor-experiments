@@ -85,7 +85,7 @@ export class StoragePausedError extends Error {
         readonly reason: PauseReason,
         readonly cause: unknown,
     ) {
-        super(`Storing paused: ${reason}`)
+        super(`Storing paused: ${reason} [${cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause)}]`)
         this.name = 'StoragePausedError'
     }
 }

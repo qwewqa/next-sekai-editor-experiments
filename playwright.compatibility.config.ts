@@ -8,6 +8,7 @@ const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? '5211'
 const previewUrl = `http://127.0.0.1:${previewPort}`
 
 const storageSpecs = [
+    'zzDiagIdb.spec.ts',
     'storageHandshake.spec.ts',
     'storageCommitOnUnload.spec.ts',
     'storageWorker.spec.ts',
@@ -16,7 +17,7 @@ const storageSpecs = [
 
 export default defineConfig({
     ...config,
-    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
+    testMatch: ['zzDiagIdb.spec.ts', 'playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,

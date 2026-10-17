@@ -29,4 +29,4 @@ jobs:
             - run: npm ci
             - run: npx playwright install --with-deps webkit
             - run: npm run build
-            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=webkit-storage storageFlush.spec.ts -g 'picked BGM' --reporter=line --retries=0
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=webkit-storage storageFlush.spec.ts zzDiagIdb.spec.ts -g 'picked BGM|diag idb' --reporter=line --retries=0
