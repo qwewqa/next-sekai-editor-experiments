@@ -71,8 +71,9 @@ export type KvTx = {
     count: (store: string, query?: Query) => Promise<number>
     put: (store: string, value: unknown, key?: Key) => Promise<Key>
     /**
-     * A put whose failed request leaves the transaction running, as WebKit's refusal of a Blob in
-     * a private window does: resolves whether the row was stored.
+     * A put that WebKit's refusal of a Blob in a private window (`isBlobRefusal`) leaves the
+     * transaction running after: resolves whether the row was stored. Any other failure fails the
+     * transaction, as a put's does.
      */
     tryPut: (store: string, value: unknown, key?: Key) => Promise<boolean>
     add: (store: string, value: unknown, key?: Key) => Promise<Key>
@@ -138,3 +139,10 @@ export const asError = (error: unknown): Error =>
 
 export const errorName = (error: unknown) =>
     error instanceof Error || error instanceof DOMException ? error.name : undefined
+
+/**
+ * WebKit's refusal to store a Blob in a private window: an `UnknownError` while preparing Blob or
+ * File data. A quota or any other error is not one.
+ */
+export const isBlobRefusal = (error: unknown) =>
+    errorName(error) === 'UnknownError' && (error as Error).message.includes('Blob')

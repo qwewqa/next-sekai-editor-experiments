@@ -3,10 +3,12 @@ import { ChunkBatch, Extractor, runToEnd } from '../chunks'
 import { summaryOf } from '../flush'
 import type { BatchSnapshot } from '../flushWrite'
 import { sessionLock } from '../locks'
+import { RECORDS_V } from '../records/version'
 import type { JournalApplyBatch, JournalApplyResult } from './apply'
 import { journalState } from './content'
 import { readJournal, type JournalV1 } from './format'
 import type { RecoveredBytes } from './handlers'
+import { recoveredId, recoveryIds } from './ids'
 
 // Journal replay at load (Part 1 §1.6.4 #7, §1.11.3's `startupApplyJournals`): every pending
 // `journal.*` key whose session no live tab holds is applied to its session in the database,
@@ -18,7 +20,8 @@ import type { RecoveredBytes } from './handlers'
 /** What the worker does for replay. */
 export type JournalWorker = {
     applyJournal: (batch: JournalApplyBatch) => Promise<JournalApplyResult>
-    keepRecovered: (item: RecoveredBytes) => Promise<void>
+    /** Resolves false when the browser refuses the bytes (WebKit's private windows). */
+    keepRecovered: (item: RecoveredBytes) => Promise<boolean>
 }
 
 export type JournalOutcome =
@@ -41,7 +44,6 @@ export type ReplayDeps = {
     appVersion: string
     /** The `recovered` entry's label, naming the undo steps that weren't kept (§1.6.4 step 4). */
     label: (dropped: number) => string
-    newId?: () => string
     now?: () => number
 }
 
@@ -78,7 +80,6 @@ const planBatch = (
         noteCount: plan.noteCount,
         media: [...plan.media],
     }
-    const newId = deps.newId ?? (() => crypto.randomUUID())
     return {
         sessionId: journal.sessionId,
         seq: journal.seq,
@@ -89,7 +90,7 @@ const planBatch = (
         snapshot,
         summary: summaryOf(state, plan.noteCount),
         label: deps.label(journal.stack.dropped.length),
-        recovery: { chainId: newId(), docId: newId(), sessionId: newId() },
+        recovery: recoveryIds(journal),
         appVersion: deps.appVersion,
         wall: (deps.now ?? Date.now)(),
     }
@@ -105,14 +106,17 @@ export const replayJournal = (found: JournalFound, deps: ReplayDeps): Promise<Jo
             // That tab owns its journal (§1.6.4 step 1).
             if (!held) return { sessionId, kind: 'live' }
             const unreadable = async (why: string): Promise<JournalOutcome> => {
-                await deps.worker.keepRecovered({
-                    id: (deps.newId ?? (() => crypto.randomUUID()))(),
+                const kept = await deps.worker.keepRecovered({
+                    id: await recoveredId(found.from, found.text),
                     source: 'journal',
                     from: found.from,
                     sessionId,
                     text: found.text,
                     appVersion: deps.appVersion,
                 })
+                // Refused: the key stays for a later load, and storing goes on.
+                if (!kept)
+                    return { sessionId, kind: 'failed', error: new Error('Its bytes were refused') }
                 deps.store.remove(found)
                 return { sessionId, kind: 'unreadable', why }
             }
@@ -122,6 +126,14 @@ export const replayJournal = (found: JournalFound, deps: ReplayDeps): Promise<Jo
                 if (reading.kind === 'later') return { sessionId, kind: 'later', why: reading.why }
                 if (reading.kind === 'unreadable') return await unreadable(reading.why)
                 const content = journalState(reading.journal)
+                // Level data this very build wrote and can't read back is a bug, not a newer
+                // build's: its bytes are kept, so it isn't skipped at every load.
+                if (
+                    content.kind === 'later' &&
+                    reading.journal.appVersion === deps.appVersion &&
+                    reading.journal.recordsV === RECORDS_V
+                )
+                    return await unreadable(`its own ${content.why}`)
                 if (content.kind === 'later') return { sessionId, kind: 'later', why: content.why }
                 if (content.kind === 'unreadable') return await unreadable(content.why)
                 const parsed = performance.now()

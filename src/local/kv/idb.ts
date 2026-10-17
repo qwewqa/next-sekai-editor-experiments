@@ -2,6 +2,7 @@ import { runTransaction } from './run'
 import {
     asError,
     domError,
+    isBlobRefusal,
     KeyRange,
     type CursorEntry,
     type KvDatabase,
@@ -58,11 +59,17 @@ const wrapTx = (tx: IDBTransaction): KvTx => {
         put: (name, value, key) => request(store(name).put(value, key as IDBValidKey | undefined)),
         tryPut: (name, value, key) => {
             const req = store(name).put(value, key as IDBValidKey | undefined)
-            return new Promise<boolean>((resolve) => {
+            return new Promise<boolean>((resolve, reject) => {
                 req.onsuccess = () => {
                     resolve(true)
                 }
                 req.onerror = (event) => {
+                    const error = req.error ?? domError('UnknownError')
+                    // Anything but the Blob refusal aborts the transaction, as a put's does.
+                    if (!isBlobRefusal(error)) {
+                        reject(error)
+                        return
+                    }
                     // Handled: the transaction goes on without the row.
                     event.preventDefault()
                     event.stopPropagation()

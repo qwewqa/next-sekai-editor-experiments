@@ -1,5 +1,5 @@
 import type { Command } from '..'
-import { levelDataHandle, setLevelDataHandle } from '../../../history'
+import { levelDataHandle, markSaved, setLevelDataHandle } from '../../../history'
 import { filename } from '../../../history/live'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -96,6 +96,8 @@ export const save: Command = {
                 }
                 if (refused) await refusal(refused)
                 if (result.status === 'cancelled') return
+                // A `save` entry on the live state (§1.3.8).
+                markSaved(result.name, result.status === 'download-started')
 
                 // A download replaces the handle: the next save asks again.
                 const handle =

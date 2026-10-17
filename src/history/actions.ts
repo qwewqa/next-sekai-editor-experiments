@@ -32,8 +32,52 @@ const listeners = new Set<(action: HistoryAction) => void>()
  */
 let early: HistoryAction[] | undefined = []
 
-/** The most early actions kept: the last reset and the newest after it, if storing never starts. */
+/** A slot of the stack the early actions give. */
+type EarlySlot = { state: State; name: () => string; isDirty: boolean }
+
+/** The undo stack the early actions give, so they can be cut down to it. */
+type EarlyStack = { origin: 'new' | 'import'; slots: EarlySlot[]; index: number }
+
+let stack: EarlyStack | undefined
+
+/**
+ * Early actions past this many beyond the stack's own are cut down to the actions that give the
+ * stack as it is: its pushes, then its undos. Their replay is still the stack, so storing can
+ * follow the actions after them; only states a redo branch dropped go (§1.6.4 #6).
+ */
 export const EARLY_LIMIT = 256
+
+/** Follows an action on the early stack; undefined when it can't. */
+const follow = (at: EarlyStack | undefined, action: HistoryAction): EarlyStack | undefined => {
+    if (!at) return
+    switch (action.kind) {
+        case 'edit':
+            at.slots.length = at.index + 1
+            at.slots.push({ state: action.state, name: action.name, isDirty: action.isDirty })
+            at.index++
+            return at
+        case 'undo':
+        case 'redo':
+            at.index += action.kind === 'undo' ? -1 : 1
+            return at.index >= 0 && at.index < at.slots.length ? at : undefined
+        case 'save':
+        case 'export':
+        case 'reset':
+            return at
+    }
+}
+
+/** The actions that give the early stack: a reset, a push per slot, then undos to its index. */
+const actionsOf = ({ origin, slots, index }: EarlyStack): HistoryAction[] => {
+    const actions: HistoryAction[] = slots.map((slot, i) =>
+        i === 0 ? { kind: 'reset', ...slot, origin } : { kind: 'edit', ...slot },
+    )
+    for (let at = slots.length - 1; at > index; at--) {
+        const [landed, undone] = [slots[at - 1], slots[at]]
+        if (landed && undone) actions.push({ kind: 'undo', ...landed, name: undone.name })
+    }
+    return actions
+}
 
 /** Listens to every change of the undo stack; `replay` first delivers those since the last reset. */
 export const onHistoryAction = (
@@ -43,6 +87,7 @@ export const onHistoryAction = (
     if (replay) {
         const actions = early ?? []
         early = undefined
+        stack = undefined
         for (const action of actions) listener(action)
     }
     listeners.add(listener)
@@ -53,10 +98,23 @@ export const onHistoryAction = (
 
 export const emitHistoryAction = (action: HistoryAction) => {
     if (early) {
-        if (action.kind === 'reset') early = []
-        early.push(action)
+        if (action.kind === 'reset') {
+            early = [action]
+            stack = {
+                origin: action.origin,
+                slots: [{ state: action.state, name: action.name, isDirty: action.isDirty }],
+                index: 0,
+            }
+        } else {
+            early.push(action)
+            stack = follow(stack, action)
+        }
         // A start that never comes (a failed import) mustn't hold every state for the page's life.
-        if (early.length > EARLY_LIMIT) early.splice(1, 1)
+        if (early.length > EARLY_LIMIT + (stack?.slots.length ?? 0)) {
+            // Without a stack to cut to, the newest is let go, never one in the middle.
+            if (stack) early = actionsOf(stack)
+            else early.pop()
+        }
     }
     for (const listener of [...listeners]) listener(action)
 }

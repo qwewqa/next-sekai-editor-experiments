@@ -10,6 +10,7 @@ import {
     peek,
     pushState,
     redoState,
+    replaceState,
     resetStates,
     restoreStates,
     setSlotLoader,
@@ -157,6 +158,23 @@ test('restored slots outside the head and its neighbours go back to refs past th
     const loaded = loadedSlotsForTests()
     assert.ok(loaded[0] && loaded[1] && loaded[2])
     // The LRU of 8 plus the head and its neighbours, at most.
+    assert.ok(loaded.filter(Boolean).length <= 8 + 3)
+    assert.equal(loaded[19], false)
+})
+
+test('a restored slot whose selection changed stays in the LRU', async () => {
+    const reads = loads()
+    restore(20, 19)
+    await reads.finish()
+    for (let i = 0; i < 18; i++) {
+        undoState()
+        await reads.finish()
+        await reads.finish()
+        // A click on the slot: its state is replaced, its chart and stored root kept.
+        replaceState({ ...liveState.value })
+    }
+    assert.equal(liveState.value.initialLife, 101)
+    const loaded = loadedSlotsForTests()
     assert.ok(loaded.filter(Boolean).length <= 8 + 3)
     assert.equal(loaded[19], false)
 })

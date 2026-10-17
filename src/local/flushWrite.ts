@@ -1,3 +1,4 @@
+import { forkRecord } from './chainFields'
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
@@ -17,6 +18,8 @@ import {
     type StackWindow,
 } from './timeline'
 import type { FlushCommitted } from './worker/flushHooks'
+
+export { forkRecord } from './chainFields'
 
 // The storage worker's half of a flush (Part 1 §1.6.2's order of work, §1.6.4 step 2): deflate,
 // verify and hash first, then one transaction holding `nse-maint` shared: the epoch and the
@@ -162,8 +165,16 @@ export type FlushResult =
           lastSeq: number
           /** Carried media put now, or found there after an unanswered flush: each read back. */
           readBack: string[]
-          /** False when the stored stack was newer than the batch's, which then left it alone. */
+          /**
+           * False when the batch didn't write the session's last entry (a re-send of stored
+           * entries), which left the stored stack alone, or when its stack couldn't be used.
+           */
           stackWritten: boolean
+          /**
+           * The batch wrote the session's last entry without a stack it could use: the stored
+           * stack was removed rather than left behind `lastSeq` (§1.3.9: replay rebuilds it).
+           */
+          stackRemoved?: boolean
           /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
           chain: Record<string, unknown>
           /**
@@ -186,6 +197,15 @@ export type FlushResult =
           chunks: string[]
           /** Media the tab holds that the store lacks: re-send with the bytes. */
           media: string[]
+      }
+    | {
+          /**
+           * The batch's stack leaves blocks alone that the page knows stored in another store
+           * (after Try Again's move, or a restart): nothing is written, and the page plans the
+           * whole window again.
+           */
+          kind: 'stackWhole'
+          known: KnownAt
       }
     | {
           kind: 'notHead'
@@ -318,21 +338,6 @@ const updated = (row: Row, fields: Row): Row => ({ ...row, ...fields })
 /** Gaps between a session's entries counted as active editing. */
 export const ACTIVE_GAP_MS = 5 * 60 * 1000
 
-const CHAIN_OWN_FIELDS = ['chainId', 'head', 'updatedAt', 'day', 'deleting', 'appVersion']
-const FORK_DROPS = ['file', 'exportTarget', 'exportName', 'edited']
-
-/**
- * A fork's chain record (§1.6.11.2): the old record copied by exclusion, so fields a newer build
- * added carry, without the binding, the Export target, the export name or `edited`.
- */
-export const forkRecord = (old: Row | undefined): Row => {
-    const record: Row = {}
-    if (old)
-        for (const [key, value] of Object.entries(old))
-            if (!CHAIN_OWN_FIELDS.includes(key) && !FORK_DROPS.includes(key)) record[key] = value
-    return record
-}
-
 /**
  * The flush's transaction. Reads first: the epoch, the session and its chain (the head check),
  * the closure check over reused hashes when the epoch moved, and the media; any problem returns
@@ -395,6 +400,26 @@ export const writeFlush = async (
     }
     if (missingChunks.length || missingMedia.length)
         return { kind: 'missing', known, chunks: missingChunks, media: missingMedia }
+
+    // The stack after the batch's last entry (§1.6.4 #6), only when the batch writes the session's
+    // last entry: a re-send of stored entries (a lost reply, or a journal replayed since, §1.6.6)
+    // leaves the stored stack alone.
+    const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
+    const ownsStack = (batch.entries.at(-1)?.seq ?? 0) > lastSeq
+    let stack = ownsStack ? batch.stack : undefined
+    // Slots and blocks the page knows stored elsewhere (a fork's parent, another store) are checked:
+    // a block left alone may not be here, so the page sends the whole window; a stored slot must be.
+    if (stack && stack.at?.db !== known.db) {
+        if (!stack.full) return { kind: 'stackWhole', known }
+        const refs = stack.blocks.flatMap((block) =>
+            block.slots.filter((ref): ref is Uint8Array => typeof ref !== 'number'),
+        )
+        for (const ref of refs)
+            if ((await tx.getKey('nodes', hashKey(ref))) === undefined) {
+                stack = undefined
+                break
+            }
+    }
 
     const forkSource =
         !chain && batch.chain.forkOf !== undefined
@@ -498,7 +523,6 @@ export const writeFlush = async (
     }
 
     // Entries a kill after commit already stored are skipped: re-sends are idempotent.
-    const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
     // A continuation starts after its parent's last entry (§1.6.11.2).
     const parentUpdated =
         isRow(parentRow) && typeof parentRow.updatedAt === 'number' ? parentRow.updatedAt : 0
@@ -538,24 +562,8 @@ export const writeFlush = async (
         if (EDITING_KINDS.includes(entry.kind)) edited = true
     }
 
-    // The stack after the batch's last entry (§1.6.4 #6), unless the session already holds a later
-    // one: a batch planned again after a restart can end before what a lost reply committed.
-    const batchLast = batch.entries.at(-1)?.seq ?? 0
-    let stack = batch.stack && batchLast >= lastSeq ? batch.stack : undefined
-    // Slots and blocks the page knows stored elsewhere (a fork's parent, another store) are checked:
-    // a block left alone may not be here, and a stored slot must be.
-    if (stack && stack.at?.db !== known.db) {
-        const refs = stack.full
-            ? stack.blocks.flatMap((block) => block.slots.filter((ref) => typeof ref !== 'number'))
-            : undefined
-        let whole = refs !== undefined
-        for (const ref of refs ?? [])
-            if ((await tx.getKey('nodes', hashKey(ref))) === undefined) {
-                whole = false
-                break
-            }
-        if (!whole) stack = undefined
-    }
+    // A stack that can't be used leaves none rather than one behind `lastSeq`.
+    const stackRemoved = ownsStack && !stack
     const blockRows: unknown[] = []
     if (stack) {
         const { first, last } = windowBlocks(stack)
@@ -574,6 +582,9 @@ export const writeFlush = async (
         const id = batch.session.id
         await tx.delete('stackBlocks', KeyRange.bound([id, -Infinity], [id, first], false, true))
         await tx.delete('stackBlocks', KeyRange.bound([id, last], [id, Infinity], true, false))
+    } else if (stackRemoved) {
+        const id = batch.session.id
+        await tx.delete('stackBlocks', KeyRange.bound([id, -Infinity], [id, Infinity]))
     }
 
     const sessionFields: Row = {
@@ -588,7 +599,7 @@ export const writeFlush = async (
         // A re-send of stored entries leaves the newer view.
         ...(batch.view && (written || !session) ? { view: batch.view } : {}),
     }
-    const sessionValue = session
+    const sessionValue: Row = session
         ? updated(session, sessionFields)
         : {
               id: batch.session.id,
@@ -598,6 +609,7 @@ export const writeFlush = async (
               ...(batch.session.parent ? { parent: batch.session.parent } : {}),
               ...sessionFields,
           }
+    if (stackRemoved) delete sessionValue.stack
     await tx.put('sessions', sessionValue)
     count('sessions', sessionValue, undefined, !session)
 
@@ -641,6 +653,7 @@ export const writeFlush = async (
         readBack: readBack.filter((hex) => !refused.includes(hex)),
         ...(refused.length ? { mediaFailed: refused } : {}),
         stackWritten: stack !== undefined,
+        ...(stackRemoved ? { stackRemoved } : {}),
         chain: chainValue,
         stats,
         committed: {

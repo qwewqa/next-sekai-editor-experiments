@@ -1793,6 +1793,8 @@
     },
     "entry": {
         "exported": "Exported {0}",
+        "saved": "Saved {0}",
+        "downloaded": "Downloaded {0}",
         "recovered": "Recovered last change",
         "recoveredDropped": "Recovered last change. {0} undo step was not kept.|Recovered last change. {0} undo steps were not kept."
     }

@@ -1793,6 +1793,8 @@
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",
+    "saved": "{0} kaydedildi",
+    "downloaded": "{0} indirildi",
     "recovered": "Son değişiklik kurtarıldı",
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı."
   }

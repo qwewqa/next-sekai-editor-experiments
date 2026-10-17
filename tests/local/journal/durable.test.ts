@@ -69,3 +69,14 @@ test('a failed flush with unflushed entries isn’t durably stored, whatever the
     page.flusher.failed = true
     assert.equal(notDurableReason(inputs(page)), 'flushFailed')
 })
+
+test('the head’s media the store refused leaves the session not durably stored', async () => {
+    const { page, a } = await start(5)
+    append(page, 'edit', 'Changed BGM', widen(a))
+    await page.flusher.flush({ strict: true })
+    const hash = 'ab'.repeat(16)
+    const status = { mode: 'stored' as const, mediaPending: [hash] }
+    assert.equal(notDurableReason({ ...inputs(page), status, media: [hash] }), 'mediaPending')
+    // Media the head no longer holds doesn't count.
+    assert.equal(notDurableReason({ ...inputs(page), status, media: [] }), undefined)
+})

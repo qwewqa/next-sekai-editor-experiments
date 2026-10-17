@@ -1,12 +1,13 @@
 import type { JournalStore } from '../../platform/types'
 import type { State } from '../../state'
-import type { Flusher } from '../flush'
+import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
 
 // The last-chance journal's writer (Part 1 §1.6.4 #7): written synchronously on hide, pagehide,
 // beforeunload and freeze whenever the open session has entries not committed strictly, and
 // verified by reading it back. One key per session, overwritten each time and cleared only once
 // a strict flush covering its `seq` commits; a second trigger for the same `seq` writes nothing.
+// A fork's journal takes over its old session's key (§1.3.1).
 
 export type JournalWriterDeps = {
     store: JournalStore
@@ -36,6 +37,15 @@ export type JournalWrite = {
 export class JournalWriter {
     /** This page's last write per session: its `seq` and whether it verified. */
     private readonly written = new Map<string, { seq: number; verified: boolean }>()
+    /**
+     * Keys of sessions a fork took the entries of, by the fork, with the fork's last moved `seq`:
+     * cleared once the fork's own journal verifies or a strict commit covers what moved, since
+     * the next load would otherwise keep them as a recovery chain duplicating the fork.
+     */
+    private readonly superseded = new Map<
+        string,
+        { keys: { sessionId: string; seq: number }[]; moved: number }
+    >()
 
     constructor(private readonly deps: JournalWriterDeps) {}
 
@@ -71,6 +81,7 @@ export class JournalWriter {
             console.error('The journal could not be written', error)
         }
         this.written.set(session.id, { seq, verified })
+        if (verified) this.dropSuperseded(session.id)
         this.deps.onWrite?.({
             sessionId: session.id,
             seq,
@@ -92,9 +103,34 @@ export class JournalWriter {
      * relaxed one leaves the key for the next strict one, which a power loss can't undo.
      */
     committed(sessionId: string, seq: number, strict: boolean) {
+        if (!strict) return
+        if (seq >= (this.superseded.get(sessionId)?.moved ?? Infinity))
+            this.dropSuperseded(sessionId)
         const last = this.written.get(sessionId)
-        if (!strict || !last || last.seq > seq) return
+        if (!last || last.seq > seq) return
         this.deps.store.clear(sessionId, seq)
         this.written.delete(sessionId)
+    }
+
+    /**
+     * A flush found the session continued elsewhere and moved its entries to a fork (D10): the
+     * fork's journal takes over the old key, written at once when the fork is the open session.
+     */
+    forked(from: FlushSession, fork: FlushSession) {
+        const keys = this.superseded.get(from.id)?.keys ?? []
+        this.superseded.delete(from.id)
+        const last = this.written.get(from.id)
+        this.written.delete(from.id)
+        if (last) keys.push({ sessionId: from.id, seq: last.seq })
+        if (!keys.length) return
+        this.superseded.set(fork.id, { keys, moved: fork.nextSeq - 1 })
+        if (this.deps.flusher()?.session === fork) this.write()
+    }
+
+    private dropSuperseded(sessionId: string) {
+        const old = this.superseded.get(sessionId)
+        if (!old) return
+        this.superseded.delete(sessionId)
+        for (const { sessionId: id, seq } of old.keys) this.deps.store.clear(id, seq)
     }
 }

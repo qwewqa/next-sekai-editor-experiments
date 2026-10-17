@@ -5,7 +5,7 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { isDurablyStoredWith } from './durable'
-import { Flusher, flushTimeoutMs, mediaTimeoutMs, type FlushReport } from './flush'
+import { Flusher, flushTimeoutMs, heldMediaOf, mediaTimeoutMs, type FlushReport } from './flush'
 import { toHex } from './hash'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { inspectSnapshot } from './records/inspect'
@@ -53,7 +53,12 @@ let storingWorker: StorageWorker | undefined
  */
 export const isDurablyStored = () => {
     journalWriter?.write()
-    return isDurablyStoredWith({ status: storingWorker?.status, flusher, journal: journalWriter })
+    return isDurablyStoredWith({
+        status: storingWorker?.status,
+        flusher,
+        journal: journalWriter,
+        media: heldMediaOf(liveState.value).map((item) => item.hash),
+    })
 }
 
 let watching = false
@@ -83,7 +88,17 @@ const whileStalled = async () => {
     while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
-export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
+/**
+ * Starts storing: entries from now on, and the journal on hide. `replayed` is the startup replay
+ * of journals, which every flush waits for (§1.6.4 #7: before any session opens).
+ */
+export const startStoring = (
+    worker: StorageWorker,
+    status: StorageStatus,
+    test: boolean,
+    replayed: Promise<unknown> = Promise.resolve(),
+) => {
+    const afterReplay = replayed.catch(() => undefined)
     const reports: FlushReport[] = []
     const errors: unknown[] = []
     const locks = platform.locks
@@ -126,6 +141,7 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
             return { ready: lock.granted.catch(() => undefined), done: lock.release }
         },
         onFork: (fork, from) => {
+            journalWriter?.forked(from, fork)
             if (currentSession.value.sessionId === from.id)
                 currentSession.value = {
                     ...currentSession.value,
@@ -171,7 +187,7 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                     label: action.name,
                     dirty: action.isDirty,
                     // Without Web Locks (an insecure origin) there's no other tab to keep out.
-                    ready: lock.granted.catch(() => undefined),
+                    ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
                     done: lock.release,
                 })
                 return

@@ -1793,6 +1793,8 @@
   },
   "entry": {
     "exported": "{0} exporté",
+    "saved": "{0} sauvegardé",
+    "downloaded": "{0} téléchargé",
     "recovered": "Dernière modification récupérée",
     "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation n’a pas été conservée.|Dernière modification récupérée. {0} étapes d’annulation n’ont pas été conservées."
   }

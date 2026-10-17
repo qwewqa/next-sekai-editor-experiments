@@ -8,13 +8,14 @@ import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import { platform } from '../platform'
 import { createState, type StateExtras } from '../state'
-import { interpolate } from '../utils/interpolate'
 import { cleanupWaveform } from '../waveform'
 import { resetAutoSave } from './autoSave/index.ts'
+import { setFileEventMessages } from './markers'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
-import { isDirty, markFileEvent, resetStates } from './stack'
+import { isDirty, resetStates } from './stack'
 
+export { markExported, markSaved } from './markers'
 export {
     canUndo,
     isDirty,
@@ -76,13 +77,7 @@ export const isDirtyCompat = () => !isDirty.value
 
 platform.onCloseRequested(isDirtyCompat)
 
-/** Records an export of the live state as an `export` entry, "Exported {0}" (§1.3.8). */
-export const markExported = (fileName: string) => {
-    markFileEvent(
-        'export',
-        interpolate(() => i18n.value.entry.exported, fileName),
-    )
-}
+setFileEventMessages(() => i18n.value)
 
 export const checkState = async () => {
     if (!isDirty.value) return true

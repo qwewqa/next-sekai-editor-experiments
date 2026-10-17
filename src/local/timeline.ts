@@ -432,6 +432,15 @@ export class SessionStack<E> {
         this.synced = false
     }
 
+    /** The worker removed the stored stack: none is stored until the next flush writes it whole. */
+    forget() {
+        this.window = undefined
+        this.blocks.clear()
+        this.synced = false
+        this.durable = false
+        this.at = undefined
+    }
+
     /**
      * A fork's stack: this one as acknowledged, or `inherited` (with slots of entries stored
      * without a reply), which the fork's first flush stores whole.
