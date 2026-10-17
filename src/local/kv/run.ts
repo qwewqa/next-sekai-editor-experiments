@@ -1,4 +1,4 @@
-import { asError, type KvTx } from './types'
+import { asError, errorName, type KvTx } from './types'
 
 /** What both implementations give the shared transaction wrapper. */
 export type RawTransaction = {
@@ -36,7 +36,10 @@ export const runTransaction = <T>(raw: RawTransaction, fn: (tx: KvTx) => Promise
                 reject(asError(outcome.error))
                 return
             }
-            reject(asError(outcome.ok ? finished.error : outcome.error))
+            // Aborted for its own reason (a lost connection, a failed request): that is the cause,
+            // even when fn then failed on a request to the finished transaction.
+            const own = outcome.ok || errorName(finished.error) !== 'AbortError'
+            reject(asError(own ? finished.error : outcome.error))
         }
 
         raw.done.then(
