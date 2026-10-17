@@ -9,6 +9,7 @@ import {
     type FlushResult,
     type PreparedFlush,
 } from '../flushWrite'
+import { prepareForeign, writeForeign, type ForeignBatch, type ForeignResult } from '../foreign'
 import { equalBytes, fromHex16, sha256 } from '../hash'
 import { nodeJsonFromRow, rootJsonFromRow, type NodesRow } from '../records/rows'
 import { directWaiter, type Waiter } from '../scheduler'
@@ -128,6 +129,25 @@ export const flushHandlers = (context: WorkerContext, waiter: Waiter = directWai
             await readBackMedia(core, result.putMedia, prepared, waiter)
             if (committed) void runFlushHooks(committed)
             return reply
+        },
+
+        /** Foreign data with its closure check (§1.6.4 step 4), committed strictly. */
+        importForeign: async (batch: ForeignBatch): Promise<ForeignResult> => {
+            const prepared = await prepareForeign(batch, waiter)
+            return context.core.write(
+                ['nodes', 'chunks', 'media', 'meta'],
+                async (tx) =>
+                    writeForeign(
+                        tx,
+                        prepared,
+                        batch.roots,
+                        await countDayOfUse(
+                            tx,
+                            nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, Date.now()),
+                        ),
+                    ),
+                { durability: 'strict' },
+            )
         },
 
         /** Counts today as a day of use at load (§1.6.8.7). */
