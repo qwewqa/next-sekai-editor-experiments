@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { closeModal, modals, type Modal } from '.'
+import NoticeRegion from '../editor/NoticeRegion.vue'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
 
@@ -130,6 +131,8 @@ const vOpen = {
         @cancel="onCancel"
         @close="closeModal(modal)"
     >
+        <!-- The page behind a dialog is inert, so the top dialog announces notices. -->
+        <NoticeRegion v-if="modal === regularModals.at(-1)" />
         <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
     </dialog>
 </template>

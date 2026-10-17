@@ -43,6 +43,16 @@ watch(
     () => void nextTick(measure),
 )
 
+// A pointer that has not moved never enters a new pill, so its hover is taken here.
+watch(
+    () => notification.value.id,
+    () => {
+        const pill = host.value?.querySelector('.notification-pill')
+        if (pill?.matches(':hover')) holdNotice('hover', true)
+    },
+    { flush: 'post' },
+)
+
 const pause = (source: 'hover' | 'focus', held: boolean) => {
     holdNotice(source, held)
 }

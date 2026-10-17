@@ -1,7 +1,8 @@
 // The apps' frontend page (Part 2, 2.7.1): no web-only tags or icon, and the product name as its title.
+import product from '../src/product.json' with { type: 'json' }
 
-/** The shown product name (Part 4, 4.1). */
-export const productName = 'Next SEKAI Editor'
+/** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
+export const productName = product.name
 
 /** index.html for native mode: without og:* tags and the icon link, titled with the product name. */
 export function nativeIndexHtml(html) {

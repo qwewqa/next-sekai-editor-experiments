@@ -72,21 +72,33 @@ export const redactPaths = (text: string) =>
         .replace(/(?<![\w.])\/Users\/[^/\s"')]+/g, '~')
         .replace(/(?<![\w.])\/home\/[^/\s"')]+/g, '~')
 
+// Decimal units, as every size the editor shows (Part 1 §1.4.7).
 const formatBytes = (bytes: number) => {
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
     let value = bytes
     let unit = 0
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024
+    while (value >= 1000 && unit < units.length - 1) {
+        value /= 1000
         unit++
     }
     return `${unit === 0 ? value : value.toFixed(1)} ${units[unit] ?? ''}`
+}
+
+const storageText = (estimate: DiagnosticFields['estimate']) => {
+    const { usage, quota } = estimate ?? {}
+    if (usage !== undefined && quota !== undefined)
+        return `${formatBytes(usage)} used of about ${formatBytes(quota)}`
+    if (usage !== undefined) return `${formatBytes(usage)} used, quota unknown`
+    if (quota !== undefined) return `about ${formatBytes(quota)} available, usage unknown`
+    return 'unavailable'
 }
 
 export type DiagnosticFields = {
     productName: string
     appVersion: string
     atTag: boolean
+    /** Whether the version names a commit after the release (`X.Y.Z+hash`). */
+    hasCommit: boolean
     site: string
     engine: string
     os: string
@@ -101,15 +113,11 @@ export const formatDiagnostics = (fields: DiagnosticFields) => {
     const { estimate } = fields
     const lines = [
         `${fields.productName} ${fields.appVersion}`,
-        `Build: ${fields.atTag ? 'release' : 'between releases'}${fields.site === 'test' ? ', test site' : ''}`,
+        `Build: ${fields.atTag ? 'release' : fields.hasCommit ? 'between releases' : 'untagged'}${fields.site === 'test' ? ', test site' : ''}`,
         `Engine: ${fields.engine}`,
         `OS: ${fields.os}`,
         `Standalone: ${fields.standalone ? 'yes' : 'no'}`,
-        `Storage: ${
-            estimate && (estimate.usage !== undefined || estimate.quota !== undefined)
-                ? `${estimate.usage === undefined ? 'unknown' : formatBytes(estimate.usage)} used of about ${estimate.quota === undefined ? 'unknown' : formatBytes(estimate.quota)}`
-                : 'unavailable'
-        }`,
+        `Storage: ${storageText(estimate)}`,
         `User agent: ${fields.userAgent}`,
         '',
         `Last ${RING_SIZE} errors and CSP violations: ${fields.entries.length ? '' : 'none'}`.trimEnd(),

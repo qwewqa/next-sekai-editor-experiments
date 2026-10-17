@@ -4,7 +4,8 @@ import { canUndo } from '../history/stack'
 import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
 import { isTextEntry } from './controls/keyboard'
-import { announcementOf, clearNotification, notification } from './notification'
+import NoticeRegion from './NoticeRegion.vue'
+import { dismissNotification, notification } from './notification'
 
 // Where focus was before Alt+N moved it to the notice's button, for Escape to return it.
 let returnTo: HTMLElement | undefined
@@ -16,8 +17,10 @@ const actionButton = () => document.querySelector<HTMLElement>('[data-notice-act
 const onKeydown = (event: KeyboardEvent) => {
     if (event.code !== 'KeyN' || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
         return
-    if (isComposingKey(event) || isTextEntry(event.target) || isTextEntry(document.activeElement))
-        return
+    // A <select> takes the key for type-ahead.
+    const editing = (target: EventTarget | null) =>
+        isTextEntry(target) || target instanceof HTMLSelectElement
+    if (isComposingKey(event) || editing(event.target) || editing(document.activeElement)) return
     if (isBlockingModalOpen.value || !notification.value.action) return
     const button = actionButton()
     if (!button) return
@@ -35,30 +38,37 @@ const onEscape = (event: KeyboardEvent) => {
     if (!event.target.closest('[data-notice-action]')) return
     event.preventDefault()
     event.stopImmediatePropagation()
-    if (returnTo?.isConnected) returnTo.focus()
-    else if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    const back = returnTo
     returnTo = undefined
+    if (back?.isConnected) back.focus()
+    else if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+}
+
+// Focus that left the button another way is not owed back.
+const onFocusOut = (event: FocusEvent) => {
+    if (event.target instanceof Element && event.target.closest('[data-notice-action]'))
+        returnTo = undefined
 }
 
 onMounted(() => {
     window.addEventListener('keydown', onKeydown, true)
     window.addEventListener('keydown', onEscape, true)
+    window.addEventListener('focusout', onFocusOut, true)
 })
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKeydown, true)
     window.removeEventListener('keydown', onEscape, true)
+    window.removeEventListener('focusout', onFocusOut, true)
 })
 
 // The start-up pill with actions goes at the first edit (Part 1 §1.4.3).
 watch(canUndo, (can) => {
-    if (can && notification.value.startup && notification.value.action) clearNotification()
+    if (can && notification.value.startup && notification.value.action) dismissNotification()
 })
 </script>
 
 <template>
     <!-- The page's one polite live region: every notice is read once, however many panes show it.
-    The key makes a repeated message read again. -->
-    <div role="status" class="sr-only" data-notice-region>
-        <span :key="notification.id">{{ announcementOf(notification) }}</span>
-    </div>
+    A blocking dialog makes the page inert, so the top dialog carries the region meanwhile. -->
+    <NoticeRegion v-if="!isBlockingModalOpen" initial />
 </template>

@@ -22,10 +22,15 @@ const ids = useId()
 const described = computed(() => props.buttons.some((button) => button.description))
 
 // Below about 480 px, or when the labels do not fit one row, the safe default goes on top and Cancel last.
-const narrow = ref(false)
+// Decided before the first render, so the focus hook sees the final order.
+const narrow = ref(window.innerWidth < 480)
 const crowded = ref(false)
 const stacked = computed(() => narrow.value || crowded.value || described.value)
-const ordered = computed(() => (stacked.value ? [...props.buttons].reverse() : props.buttons))
+// Each button keeps its place in `buttons` as its key, so a restack moves the same elements.
+const ordered = computed(() => {
+    const items = props.buttons.map((button, index) => ({ button, index }))
+    return stacked.value ? items.reverse() : items
+})
 
 const row = useTemplateRef<HTMLElement>('row')
 // A row's overflow runs off its left edge, which scrollWidth ignores, so the buttons are summed.
@@ -36,11 +41,18 @@ const fits = () => {
     return width + 8 * (buttons.length - 1) <= row.value.clientWidth + 1
 }
 const layout = async () => {
+    // Moving a focused button in the DOM drops its focus; it gets it back.
+    const focused = row.value?.contains(document.activeElement) ? document.activeElement : null
     narrow.value = window.innerWidth < 480
     crowded.value = false
     await nextTick()
     // Measured as a row; a stacked one has no overflow to measure.
-    if (!narrow.value && !described.value && !fits()) crowded.value = true
+    if (!narrow.value && !described.value && !fits()) {
+        crowded.value = true
+        await nextTick()
+    }
+    if (focused instanceof HTMLElement && focused.isConnected && document.activeElement !== focused)
+        focused.focus()
 }
 const onResize = () => {
     void layout()
@@ -88,7 +100,7 @@ const classes = (button: ChoiceButton) =>
             :class="stacked ? 'flex-col' : 'justify-end'"
             @keydown.capture="onKeydown"
         >
-            <template v-for="(button, i) in ordered" :key="i">
+            <template v-for="{ button, index } in ordered" :key="index">
                 <div class="flex shrink-0 flex-col gap-1" :class="{ 'items-stretch': stacked }">
                     <button
                         type="button"
@@ -98,14 +110,14 @@ const classes = (button: ChoiceButton) =>
                         :data-choice="
                             button.cancel ? 'cancel' : button.default ? 'default' : 'other'
                         "
-                        :aria-describedby="button.description ? `${ids}-${i}` : undefined"
+                        :aria-describedby="button.description ? `${ids}-${index}` : undefined"
                         @click="pick(button)"
                     >
                         {{ button.label() }}
                     </button>
                     <div
                         v-if="button.description"
-                        :id="`${ids}-${i}`"
+                        :id="`${ids}-${index}`"
                         class="px-2 text-sm opacity-75"
                     >
                         {{ button.description() }}

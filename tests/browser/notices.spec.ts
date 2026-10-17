@@ -319,3 +319,167 @@ test.describe('the update line', () => {
         )
     })
 })
+
+test.describe('load order', () => {
+    test('stored settings and no lastAppVersion read as an existing user, so the line says Updated', async ({
+        page,
+    }) => {
+        // The fixture stores settings; an earlier version stored no lastAppVersion.
+        await boot(page, () => {
+            localStorage.removeItem('sonolus-next-sekai-editor.lastAppVersion')
+        })
+        await expect(pill(page)).toContainText('Updated to version 0.6.0')
+    })
+})
+
+const clearNow = (page: Page) =>
+    page.evaluate(async () => {
+        const { clearNotification } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        clearNotification()
+    })
+
+test('an unrelated no-op does not clear a notice with an action, but does clear a plain one', async ({
+    page,
+}) => {
+    await boot(page)
+    await notifyWithAction(page, 'Nothing to undo')
+    await expect(pill(page)).toBeVisible()
+    await clearNow(page)
+    await expect(pill(page)).toBeVisible()
+    await page.keyboard.press('a')
+    await expect(page.locator('.notification:not(.notification-pill)')).toHaveCount(1)
+    await clearNow(page)
+    await expect(page.locator('.notification')).toHaveCount(0)
+})
+
+test('the update line survives a no-op tool tap', async ({ page }) => {
+    await boot(page, () => {
+        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.5.22'))
+    })
+    await expect(pill(page)).toContainText('Updated to version 0.6.0')
+    await clearNow(page)
+    await expect(pill(page)).toBeVisible()
+})
+
+test('a new notice under a stationary pointer is held from the start', async ({ page }) => {
+    await boot(page)
+    await page.clock.install()
+    await notifyWithAction(page, 'First')
+    await pill(page).hover()
+    // A second notice appears where the pointer already is; the pointer does not move.
+    await notifyWithAction(page, 'Second')
+    await expect(pill(page)).toContainText('Second')
+    await page.clock.runFor(20_000)
+    await expect(pill(page)).toBeVisible()
+    await page.mouse.move(5, 5)
+    await page.clock.runFor(7_000)
+    await expect(pill(page)).toHaveCount(0)
+})
+
+test('Escape on the button does not return focus to an element from an earlier Alt+N', async ({
+    page,
+}) => {
+    await boot(page)
+    await page.locator('.chart-pane').focus()
+    await notifyWithAction(page, 'Nothing to undo')
+    await page.keyboard.press('Alt+KeyN')
+    const button = pill(page).getByRole('button', { name: 'Open History' })
+    await expect(button).toBeFocused()
+    // Focus leaves another way, to an element elsewhere.
+    await page.evaluate(() => {
+        const input = document.createElement('input')
+        input.id = 'elsewhere'
+        document.body.append(input)
+        input.focus()
+    })
+    // The user comes back to the button by Tab and presses Escape.
+    await button.focus()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.chart-pane')).not.toBeFocused()
+    await expect(button).not.toBeFocused()
+})
+
+test('Alt+N is ignored in a select and while a blocking dialog is open', async ({ page }) => {
+    await boot(page)
+    await notifyWithAction(page, 'Nothing to undo')
+    await expect(pill(page)).toBeVisible()
+    await page.evaluate(() => {
+        const select = document.createElement('select')
+        select.id = 'probe-select'
+        select.innerHTML = '<option>One</option><option>Nine</option>'
+        document.body.append(select)
+    })
+    await page.locator('#probe-select').focus()
+    await page.keyboard.press('Alt+KeyN')
+    await expect(page.locator('#probe-select')).toBeFocused()
+    await page.locator('#probe-select').blur()
+
+    await page.evaluate(async () => {
+        const { showChoice } =
+            await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
+                '/src/modals/choice.ts',
+            )
+        void showChoice({
+            title: () => 'Blocking',
+            choices: [{ value: 'go', label: () => 'Go', default: true }],
+        })
+    })
+    const go = page.getByRole('dialog').getByRole('button', { name: 'Go' })
+    await expect(go).toBeFocused()
+    await page.keyboard.press('Alt+KeyN')
+    await expect(go).toBeFocused()
+})
+
+test('the start-up text is put into the live region after it is mounted', async ({ page }) => {
+    await page.addInitScript(() => {
+        const seen: string[] = []
+        Reflect.set(window, 'regionTexts', seen)
+        const look = () => {
+            const region = document.querySelector('[data-notice-region]')
+            if (!region) return
+            const text = region.textContent
+            if (seen.at(-1) !== text) seen.push(text)
+        }
+        new MutationObserver(look).observe(document, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+        })
+    })
+    await boot(page)
+    await expect(page.getByRole('status')).toHaveText(/Version 0\.6\.0/)
+    const seen = await page.evaluate(() => Reflect.get(window, 'regionTexts') as string[])
+    // First seen empty, as a live region announces changes and not what it starts with.
+    expect(seen[0]).toBe('')
+    expect(seen.at(-1)).toMatch(/Version 0\.6\.0/)
+})
+
+test('a notice raised while a dialog is open is announced by the dialog', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { showChoice } =
+            await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
+                '/src/modals/choice.ts',
+            )
+        void showChoice({
+            title: () => 'Blocking',
+            choices: [{ value: 'go', label: () => 'Go', default: true }],
+        })
+    })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    // Still one region on the page, now inside the dialog and empty until a notice.
+    await expect(page.getByRole('status')).toHaveCount(1)
+    await expect(dialog.getByRole('status')).toHaveText('')
+    await page.evaluate(async () => {
+        const { notify } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        notify(() => 'Saved behind the dialog')
+    })
+    await expect(dialog.getByRole('status')).toHaveText('Saved behind the dialog')
+    await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+    await expect(page.getByRole('status')).toHaveCount(1)
+})

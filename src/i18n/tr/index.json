@@ -768,7 +768,7 @@
       "releaseNotes": "Sürüm Notları",
       "source": "Kaynak Kodu",
       "license": "Lisans",
-      "notices": "Üçüncü Taraf Bildirimleri",
+      "notices": "Üçüncü Taraf Lisansları",
       "privacy": "Gizlilik",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
@@ -980,7 +980,7 @@
   },
   "load": {
     "version": "Sürüm {0}",
-    "updated": "Güncellendi: Sürüm {0}",
+    "updated": "{0} sürümüne güncellendi",
     "whatsNew": "Yenilikler"
   },
   "player": {
