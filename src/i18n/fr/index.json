@@ -1124,6 +1124,18 @@
       "generating": "Génération de l’aperçu…"
     }
   },
+  "startup": {
+    "opening": "Ouverture de \"{0}\"…",
+    "openingBlank": "Ouverture…",
+    "slow": "Cela prend plus de temps que d’habitude.",
+    "error": "L’éditeur n’a pas pu ouvrir votre travail stocké.",
+    "blank": "Démarrer à vide"
+  },
+  "safe": {
+    "bar": "Mode sans échec : rien n’est stocké.",
+    "leave": "Quitter le mode sans échec",
+    "open": "Ouvrir en mode sans échec"
+  },
   "load": {
     "version": "Version {0}",
     "updated": "Mis à jour vers la version {0}",

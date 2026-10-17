@@ -10,6 +10,7 @@ import './themes.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { installSelectLists } from './modals/form/selectLists'
+import { trackStartup } from './startup/gate'
 // After App: settings' import cycle must be entered from App's side.
 import './theme'
 
@@ -21,6 +22,7 @@ createApp(App).mount(root)
 
 // The storage worker and the local-data modules load after first paint (Part 1 §1.6.5), with
 // a timer, not a frame: an unfocused tab schedules no frames.
+// The startup gate lifts when it is done, or shows the error if it throws (Part 1 §1.4.2).
 setTimeout(() => {
-    void import('./local/start').then(({ startStorage }) => startStorage())
+    trackStartup(import('./local/start').then(({ startStorage }) => startStorage()))
 }, 0)

@@ -1,3 +1,8 @@
+// First: safe mode's guard on localStorage and the startup gate's input guard are in place before
+// anything else stores or listens.
+import './safe'
+import './startup/gate'
+
 import { appVersion } from './platform/version'
 import { isInternalKey } from './settings/migrationFlags'
 import { storageGet, storageKey, storageSet } from './storage'
