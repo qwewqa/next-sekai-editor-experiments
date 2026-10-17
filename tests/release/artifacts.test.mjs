@@ -294,6 +294,9 @@ test('every file in public/ is staged by the release build, except the preview p
             )
         return files
     }
-    for (const file of (await walk()).filter((file) => !file.startsWith('resource/')))
+    // The web stages builtin/ with Part 2's A2; the native build stages it already.
+    for (const file of (await walk()).filter(
+        (file) => !file.startsWith('resource/') && !file.startsWith('builtin/'),
+    ))
         assert.ok((await readFile(join(directory, file))).length > 0, `${file} must be staged`)
 })
