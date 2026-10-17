@@ -4,7 +4,7 @@ import { i18n } from '../../i18n'
 import KeyField from '../../modals/form/KeyField.vue'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
-import { commands, type CommandName } from '../commands'
+import { commands, isCommandName, type CommandName } from '../commands'
 import {
     browserShortcutOf,
     commandChordBinding,
@@ -22,8 +22,8 @@ const setKey = (name: CommandName, key: string | undefined) => {
 
 // Commands sharing a binding all run; each row names the others.
 const notes = computed(() => {
-    const bound = (Object.entries(settings.keyboardShortcuts) as [CommandName, string][]).filter(
-        ([, key]) => key,
+    const bound = Object.entries(settings.keyboardShortcuts).filter(
+        (entry): entry is [CommandName, string] => isCommandName(entry[0]) && !!entry[1],
     )
     const users = new Map<string, CommandName[]>()
     for (const [name, key] of bound) {

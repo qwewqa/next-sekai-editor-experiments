@@ -27,7 +27,7 @@ import {
 } from 'vue'
 import { modals } from '../../modals'
 import { settings } from '../../settings'
-import { commands, type CommandName } from '../commands'
+import { commands, isCommandName, type CommandName } from '../commands'
 import { contextMenu } from '../contextMenu'
 import { flyoutEscapes } from '../controls'
 import { repeatsWhenHeld } from '../controls/keyboard'
@@ -42,6 +42,7 @@ import {
     maxShortCoarseToolSize,
     minToolSize,
     shortPaneHeight,
+    registeredGroups,
     toolbarGroups,
     toolbarPadding,
 } from './layout'
@@ -52,7 +53,9 @@ import { runCommand } from '../commands/runCommand'
 
 const props = defineProps<{ pane: ToolModalPane; available?: CommandName[] }>()
 
-const toolbar = computed<CommandName[][]>(() => toolbarGroups(settings.toolbar, props.available))
+const toolbar = computed<CommandName[][]>(() =>
+    toolbarGroups(registeredGroups(settings.toolbar, isCommandName), props.available),
+)
 const keyOf = (toolbar: CommandName[][]) => `${props.pane}:${layoutOf(toolbar)}`
 
 const isPressed = (name: CommandName, index: number) =>

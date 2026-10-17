@@ -3,6 +3,7 @@ import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import ToggleField from '../../../modals/form/ToggleField.vue'
 import { settings } from '../../../settings'
+import { isCommandName } from '../../commands'
 import LevelEditorToolbarTool from '../../toolbar/LevelEditorToolbarTool.vue'
 import SettingsSection from '../SettingsSection.vue'
 import SettingsSelectToolModal from './SettingsSelectToolModal.vue'
@@ -33,15 +34,17 @@ const onAddGroup = async () => {
     <SettingsSection :title="i18n.settings.toolbar.title">
         <!-- Centred pseudo-elements fill each column and half the gaps around it; the faces stay unpositioned. -->
         <div class="flex flex-wrap items-end justify-center gap-1">
+            <!-- Names not registered yet stay in the group but are not shown. -->
             <div v-for="(names, i) in settings.toolbar" :key="i" class="flex flex-col items-center">
                 <SettingsToolbarAddButton @click="onAddToGroup(i)" />
-                <LevelEditorToolbarTool
-                    v-for="(name, j) in names"
-                    :key="j"
-                    class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem] [@media(pointer:coarse)]:before:w-12"
-                    :name
-                    @click="onRemoveFromGroup(i, j)"
-                />
+                <template v-for="(name, j) in names" :key="j">
+                    <LevelEditorToolbarTool
+                        v-if="isCommandName(name)"
+                        class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem] [@media(pointer:coarse)]:before:w-12"
+                        :name
+                        @click="onRemoveFromGroup(i, j)"
+                    />
+                </template>
             </div>
             <SettingsToolbarAddButton @click="onAddGroup" />
         </div>
