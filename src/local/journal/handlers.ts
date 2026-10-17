@@ -141,15 +141,20 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
         /**
          * Commits strictly, so what relaxed flushes stored before it is durable too and their
          * journals can be cleared (§1.6.4: a key is cleared only after a strict commit covers it).
+         * Resolves whether it committed to the database: an in-memory store's commit covers
+         * nothing the database holds.
          */
-        syncStrict: (_: undefined, scope?: CallScope) =>
-            context.core.write(
+        syncStrict: async (_: undefined, scope?: CallScope): Promise<boolean> => {
+            if (context.core.status.mode !== 'stored') return false
+            await context.core.write(
                 ['meta'],
                 async (tx) => {
                     await writeMeta(tx, 'maxSeenTime', (await readMeta(tx, 'maxSeenTime')) ?? 0)
                 },
                 { durability: 'strict', ...scope },
-            ),
+            )
+            return true
+        },
     }
 }
 

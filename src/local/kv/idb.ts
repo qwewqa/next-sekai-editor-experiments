@@ -66,7 +66,7 @@ const wrapTx = (tx: IDBTransaction): KvTx => {
                 req.onerror = (event) => {
                     const error = req.error ?? domError('UnknownError')
                     // Anything but the Blob refusal aborts the transaction, as a put's does.
-                    if (!isBlobRefusal(error)) {
+                    if (!isBlobRefusal(error, value)) {
                         reject(error)
                         return
                     }

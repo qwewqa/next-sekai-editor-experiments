@@ -67,6 +67,9 @@ export const descriptorOf = (session: FlushSession): JournalDescriptor => {
     }
 }
 
+/** The most dropped steps a journal names (§1.6.11.3's `dropped`). */
+export const DROPPED_LABELS = 64
+
 const labelOf = (slot: ModelSlot<PendingEntry> | undefined) =>
     typeof slot?.label === 'function' ? slot.label() : (slot?.label ?? '')
 
@@ -90,14 +93,17 @@ export const journalStack = (
         if (keep <= window.base || keep <= live.first) keep = 0
     }
     const head = live.index < keep ? null : { label: labelOf(live.at(live.index)) }
-    const dropped: string[] = []
+    const slots: number[] = []
     for (let slot = Math.max(keep, live.first); slot < live.end; slot++)
-        if (!(head && slot === live.index)) dropped.push(labelOf(live.at(slot)))
+        if (!(head && slot === live.index)) slots.push(slot)
+    // A long stack journalled with `keep` 0 names only its newest dropped steps, and counts all.
+    const dropped = slots.slice(-DROPPED_LABELS).map((slot) => labelOf(live.at(slot)))
     const lastKept = keep > 0 ? committed.at(keep - 1)?.hash : undefined
     return {
         keep,
         ...(lastKept ? { lastKept: toHex(lastKept) } : {}),
         dropped,
+        ...(slots.length > dropped.length ? { droppedCount: slots.length } : {}),
         head,
         index: head ? keep : live.index,
     }

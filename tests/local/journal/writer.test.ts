@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { DROPPED_LABELS } from '../../../src/local/journal/build'
 import type { JournalV1 } from '../../../src/local/journal/format'
 import {
     JOURNAL_KEY_LIMIT,
@@ -9,7 +10,7 @@ import {
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
-import { workerCore } from '../flush/harness'
+import { rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll } from './harness'
@@ -175,8 +176,49 @@ test('a replaced session is committed strictly before it goes, and its journal i
     assert.ok(journalIn(page.storage, session.id))
     // New replaces it (§1.3.8): the outgoing session is committed strictly first.
     beginSession(page, stateOf(goldenChart()), 'new')
-    await page.flusher.flush()
+    // Its outcome, for Step 4's switch prompt: committed strictly in the database.
+    assert.equal(await page.flusher.outgoing, true)
     assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.deepEqual(released, ['first'])
+})
+
+/** A session committed relaxed after its journal, as a hide then a routine flush leave it. */
+const relaxedAfterJournal = async (seed: number) => {
+    const world = createWorld({ seed })
+    const page = await openJournalPage(world, 'a')
+    const released: string[] = []
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a, 'import', { done: () => released.push('first') })
+    await page.flusher.flush({ strict: true })
+    append(page, 'edit', 'Changed note', widen(a))
+    page.writer.write()
+    await page.flusher.flush()
+    return { world, page, session, released, a }
+}
+
+test('a replaced session whose strict commit fails is kept with its lock and key, and retried', async () => {
+    const { page, session, released, a } = await relaxedAfterJournal(20)
+    page.sync.fails = 1
+    const next = beginSession(page, widen(a, 3), 'new')
+    assert.equal(await page.flusher.outgoing, false)
+    assert.equal(page.flusher.syncFailed, true)
+    assert.deepEqual(released, [])
+    assert.ok(journalIn(page.storage, session.id))
+    // The next strict flush (a hide) commits it, clears its key and lets it go.
+    append(page, 'edit', 'Changed note', widen(a, 4))
+    await page.flusher.flush({ strict: true })
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.deepEqual(released, ['first'])
+    assert.equal(page.flusher.unflushed(next), false)
+})
+
+test('where no database will answer any more, a replaced session is let go', async () => {
+    const { page, released, a } = await relaxedAfterJournal(21)
+    // A newer database opened read-only: no strict commit can land.
+    page.flusher.withoutDatabase()
+    page.sync.fails = Infinity
+    beginSession(page, widen(a, 3), 'new')
+    assert.equal(await page.flusher.outgoing, false)
     assert.deepEqual(released, ['first'])
 })
 
@@ -261,18 +303,43 @@ test('where a strict commit may not be on disk yet (D14), no commit clears a key
         assert.equal(journalIn(page.storage, session.id)?.seq, i + 2)
         assert.equal(page.storage.length, 1)
     }
-    // A second session of the visit leaves its own: one stale key per session.
+    // A second session's newer journal replaces the first's covered key: they don't pile up.
     const next = beginSession(page, stateOf(goldenChart()), 'new')
     append(page, 'edit', 'Changed note', widen(state, 5))
     assert.equal(page.writer.write(), true)
+    assert.equal(journalIn(page.storage, session.id), undefined)
     await page.flusher.flush({ strict: true })
-    assert.equal(page.storage.length, 2)
+    assert.equal(page.storage.length, 1)
     assert.ok(journalIn(page.storage, next.id))
-    // The next load finds both covered by the stored history and deletes them.
+    // The next load finds the last one covered by the stored history and deletes it.
     const { outcomes } = await replayAll(world, page.storage)
     assert.deepEqual(
         outcomes.map((outcome) => outcome.kind),
-        ['covered', 'covered'],
+        ['covered'],
     )
     assert.equal(page.storage.length, 0)
+})
+
+test('a long stack journalled with keep 0 names its newest dropped steps and counts them all', async () => {
+    const world = createWorld({ seed: 22 })
+    const page = await openJournalPage(world, 'a')
+    let state = stateOf(goldenChart())
+    // A session never flushed: its journal keeps nothing.
+    const session = beginSession(page, state, 'new')
+    for (let i = 0; i < 100; i++) {
+        state = { ...state, initialLife: 100 + i }
+        append(page, 'edit', `Edit ${i}`, state)
+    }
+    assert.equal(page.writer.write(), true)
+    const journal = journalIn(page.storage, session.id)
+    assert.equal(journal?.stack.keep, 0)
+    assert.equal(journal?.stack.dropped.length, DROPPED_LABELS)
+    assert.equal(journal?.stack.dropped.at(-1), 'Edit 98')
+    assert.equal(journal?.stack.droppedCount, 100)
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'applied')
+    const [recovered] = [...rows(world, 'entries').values()].filter(
+        (entry) => entry.sessionId === session.id,
+    )
+    assert.equal(recovered?.label, 'Recovered last change. 100 undo steps were not kept.')
 })

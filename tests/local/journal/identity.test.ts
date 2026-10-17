@@ -144,6 +144,12 @@ test('a record with no revision and no file takes a first Save’s binding (D15)
     assert.equal(file.handle, undefined)
 })
 
+test('a journal of a chain never saved leaves no revision or file field on the record', async () => {
+    const { chain } = await replayWith(7, {}, () => undefined)
+    assert.ok(!('revision' in chain))
+    assert.ok(!('file' in chain))
+})
+
 test('a record with no revision and no file still refuses a binding a save picker took over', async () => {
     const { chain } = await replayWith(
         6,

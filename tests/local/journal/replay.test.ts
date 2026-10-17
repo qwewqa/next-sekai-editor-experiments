@@ -404,6 +404,12 @@ test('a kill between a recovery session’s commit and the key’s delete makes 
     assert.equal(first.outcomes[0]?.kind, 'recovery')
     assert.equal(page.storage.length, 1)
     const chains = chainsOf(world).length
+    const kept = first.outcomes[0] && 'result' in first.outcomes[0] && first.outcomes[0].result
+    assert.ok(kept && kept.kind === 'recovery')
+    const before = {
+        chain: rows(world, 'chains').get(kept.chainId),
+        session: rows(world, 'sessions').get(kept.sessionId),
+    }
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'recovery')
     const [a, b] = [first.outcomes[0], outcomes[0]].map((outcome) =>
@@ -414,6 +420,14 @@ test('a kill between a recovery session’s commit and the key’s delete makes 
         b?.kind === 'recovery' && [b.sessionId, b.chainId],
     )
     assert.equal(chainsOf(world).length, chains)
+    // Found, not made again: nothing of it is rewritten (its times included).
+    assert.deepEqual(
+        {
+            chain: rows(world, 'chains').get(kept.chainId),
+            session: rows(world, 'sessions').get(kept.sessionId),
+        },
+        before,
+    )
     assert.equal(page.storage.length, 0)
     assert.deepEqual(checkStored(world.memory), [])
 })
@@ -423,9 +437,12 @@ test('a kill between keeping a damaged key’s bytes and the key’s delete keep
     const key = `nse.journal.${session.id}`
     page.storage.setItem(key, (page.storage.getItem(key) ?? '').slice(0, 500))
     await replayIn(world, world.tab('first'), page.storage, killedBeforeRemove(page.storage))
+    const kept = world.memory.dump(DB_NAME).get('recovered')
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'unreadable')
-    assert.equal(world.memory.dump(DB_NAME).get('recovered')?.length, 1)
+    // The row is found, not put again (its foundAt included).
+    assert.deepEqual(world.memory.dump(DB_NAME).get('recovered'), kept)
+    assert.equal(kept?.length, 1)
     assert.equal(page.storage.length, 0)
 })
 
@@ -459,4 +476,20 @@ test('an apply that fails by a DOMException that recurs is kept as a recovery se
     }
     assert.equal(entriesOf(world, session.id).length, 2)
     assert.equal(page.storage.length, 0)
+})
+
+test('a late flush reaching past a replayed journal leaves no stack that isn’t replay’s', async () => {
+    const { world, page, session, states } = await killedAfterEdits(19)
+    // One more edit after the journal, never journalled; then the tab dies.
+    append(page, 'edit', 'Changed note', widen(states.d, 3))
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'applied')
+    // Its flush lands late: entries up to the journal's are stored already, the last is new.
+    await page.flusher.flush()
+    assert.deepEqual(
+        entriesOf(world, session.id).map((entry) => entry.kind),
+        ['init', 'edit', 'recovered', 'edit'],
+    )
+    assert.equal(rows(world, 'sessions').get(session.id)?.stack, undefined)
+    assert.deepEqual(checkStored(world.memory), [])
 })

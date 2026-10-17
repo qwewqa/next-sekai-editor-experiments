@@ -140,9 +140,15 @@ export const asError = (error: unknown): Error =>
 export const errorName = (error: unknown) =>
     error instanceof Error || error instanceof DOMException ? error.name : undefined
 
+/** Whether a row holds a Blob in one of its fields, as media and recovered rows do. */
+export const holdsBlob = (value: unknown) =>
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).some((field) => typeof Blob !== 'undefined' && field instanceof Blob)
+
 /**
- * WebKit's refusal to store a Blob in a private window: an `UnknownError` while preparing Blob or
- * File data. A quota or any other error is not one.
+ * WebKit's refusal to store a Blob in a private window: an `UnknownError` on a row holding a Blob,
+ * whatever its message says. A quota or any other error is not one.
  */
-export const isBlobRefusal = (error: unknown) =>
-    errorName(error) === 'UnknownError' && (error as Error).message.includes('Blob')
+export const isBlobRefusal = (error: unknown, value: unknown) =>
+    errorName(error) === 'UnknownError' && holdsBlob(value)
