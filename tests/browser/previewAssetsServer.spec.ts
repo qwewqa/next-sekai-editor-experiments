@@ -887,6 +887,11 @@ test.describe('looks', () => {
                         particle: [{ name: 'neon', title: 'Neon Particle' }],
                         effect: [{ name: 'neon', title: 'Neon Sounds' }],
                     }),
+                    // Every search finds nothing.
+                    list: (category, query) =>
+                        category === 'skins' && query.get('keywords')
+                            ? { pageCount: 1, items: [] }
+                            : undefined,
                 })
                 await open(page, 'skin')
                 const name = (state: string) => `server-${state}-${size}-${theme}`

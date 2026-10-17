@@ -43,6 +43,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
 const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
+const hintId = useId()
 const hasDefault = platform.capabilities.defaultAssets
 
 type Row = {
@@ -239,12 +240,13 @@ const isLoading = computed(() => {
             <button
                 type="button"
                 class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                :aria-describedby="hintId"
                 data-asset-choose
                 @click="chooser.show()"
             >
                 {{ strings.choose }}
             </button>
-            <span class="min-w-0 text-sm opacity-75" data-asset-choose-hint>{{
+            <span :id="hintId" class="min-w-0 text-sm opacity-75" data-asset-choose-hint>{{
                 strings.chooseHint
             }}</span>
         </div>
