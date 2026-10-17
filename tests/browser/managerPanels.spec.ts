@@ -550,7 +550,9 @@ test('names rename inline with double click, F2 and the menu', async ({ page }) 
     await expect(input).toHaveCount(0)
     expect((await groupState(page)).names).toEqual(['Default', 'Lead', 'Third'])
     await expect(nameButton(panel, 'Lead')).toBeFocused()
-    await expect(page.getByText('Renamed Other group group to Lead')).toBeVisible()
+    await expect(
+        page.locator('.notification', { hasText: 'Renamed Other group group to Lead' }),
+    ).toBeVisible()
     await page.evaluate(() => window.editorTest.history.undoState())
     expect((await groupState(page)).names).toEqual(['Default', 'Other group', 'Third'])
 
@@ -1629,7 +1631,7 @@ test('Select Objects on a hidden group keeps the selection', async ({ page }) =>
     })
     expect(count).toBe(0)
     expect(await selection()).toBe(selected)
-    await expect(page.getByText('Selected 0 objects')).toHaveCount(0)
+    await expect(page.locator('.notification', { hasText: 'Selected 0 objects' })).toHaveCount(0)
 })
 
 test('Select Objects leaves out objects of hidden types', async ({ page }) => {
@@ -1657,7 +1659,7 @@ test('Select Objects leaves out objects of hidden types', async ({ page }) => {
     await panel.getByRole('button', { name: 'More Actions for Default' }).click()
     await selectObjects.click()
     expect(await selected()).toEqual(['timeScale', 'timeScale'])
-    await expect(page.getByText('Selected 2 objects')).toBeVisible()
+    await expect(page.locator('.notification', { hasText: 'Selected 2 objects' })).toBeVisible()
 
     // With time scales hidden too, there is nothing to select, and the selection stays.
     await page.evaluate(() => {
