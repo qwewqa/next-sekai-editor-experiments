@@ -8,7 +8,11 @@ import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
 import { serializeToLevelData } from '../../../src/levelData/serialize'
 import { toHex } from '../../../src/local/hash'
 import { extractChart } from '../../../src/local/records/extract'
-import { normalisedRecords, normalisedText } from '../../../src/local/records/normalised'
+import {
+    levelDataMatchesState,
+    normalisedRecords,
+    normalisedText,
+} from '../../../src/local/records/normalised'
 import { stateFromRecords, toRecords } from '../../../src/local/records/records'
 import { decodeSnapshot, encodeSnapshot } from '../../../src/local/records/snapshot'
 import { createState, type State } from '../../../src/state'
@@ -132,3 +136,37 @@ test(
         assert.ok(groups > 0)
     },
 )
+
+test('a level.json whose same-beat pair plays in the other order does not match the state', () => {
+    const { bgmOffset, entities } = readLevelData(samplePaths[0]!)
+    const state = createState(parseLevelDataChart(entities), bgmOffset)
+    const saved = levelDataOf(state)
+    const { defaultGuideColors } = serializeEditorMetadata(saved.entities, state.store)
+    assert.ok(levelDataMatchesState(saved.entities, saved.bgmOffset, defaultGuideColors, state))
+
+    // Coconut's two mask changes at beat 129 swap their values, keeping the chain's refs.
+    const swapped = structuredClone(saved.entities)
+    type Entity = (typeof swapped)[number]
+    const atBeat = swapped.filter(
+        (entity) =>
+            entity.archetype === 'StageMaskChange' &&
+            entity.data.some(
+                (data) => data.name === '#BEAT' && 'value' in data && data.value === 129,
+            ),
+    )
+    const next = (entity: Entity) =>
+        entity.data.find((data) => data.name === 'next' && 'ref' in data) as
+            { ref: string } | undefined
+    // The two at beat 129 on one chain: the first's next is the second.
+    const a = atBeat.find((entity) => atBeat.some((other) => other.name === next(entity)?.ref))
+    const b = atBeat.find((entity) => entity.name === (a && next(a)?.ref))
+    assert.ok(a && b)
+    const values = (entity: Entity) => entity.data.filter((data) => data.name !== 'next')
+    const refs = (entity: Entity) => entity.data.filter((data) => data.name === 'next')
+    ;[a.data, b.data] = [
+        [...values(b), ...refs(a)],
+        [...values(a), ...refs(b)],
+    ]
+    assert.deepEqual(playOrderDifferences(playOrder(saved.entities), playOrder(swapped)).length, 1)
+    assert.equal(levelDataMatchesState(swapped, saved.bgmOffset, defaultGuideColors, state), false)
+})

@@ -1,3 +1,4 @@
+import type { StageId } from '../../../src/chart/stages'
 import type { State } from '../../../src/state'
 import { toBpmIntegral } from '../../../src/state/integrals/bpms'
 
@@ -6,14 +7,16 @@ import { toBpmIntegral } from '../../../src/state/integrals/bpms'
 // beat, which the editor's preview player and the selection operations read. D4 needs both to
 // agree, and BPMs' grid order to agree with the tempo integrals.
 
-const stageKinds = [
-    'stageMaskEventJoint',
-    'stagePivotEventJoint',
-    'stageStyleEventJoint',
-    'stageTransformEventJoint',
-] as const
-
 type Joint = { beat: number }
+
+type StageJoint = Joint & { stageId: StageId }
+
+const stageKinds = [
+    ['stageMaskEventJoint', 'stageMaskEventConnection'],
+    ['stagePivotEventJoint', 'stagePivotEventConnection'],
+    ['stageStyleEventJoint', 'stageStyleEventConnection'],
+    ['stageTransformEventJoint', 'stageTransformEventConnection'],
+] as const
 
 const gridEntities = <T>(grid: Map<number, Set<T>>) => {
     const entities = new Set<T>()
@@ -43,9 +46,12 @@ export const stateTracks = (state: State) => {
         chain: chainFrom(globalEventRanges.cameraEventJoint?.min, grid.cameraEventConnection),
         grid: byBeat(gridEntities(grid.cameraEventJoint)),
     })
-    for (const kind of stageKinds) {
-        const connections = grid[kind.replace('Joint', 'Connection') as `${string}Connection`]
-        const joints = gridEntities(grid[kind])
+    for (const [kind, connectionKind] of stageKinds) {
+        const connections = grid[connectionKind] as unknown as Map<
+            number,
+            Set<{ min: Joint; max: Joint }>
+        >
+        const joints = gridEntities(grid[kind] as Map<number, Set<StageJoint>>)
         const stageIds = new Set([
             ...stageEventRanges[kind].keys(),
             ...joints.map((j) => j.stageId),
@@ -54,7 +60,7 @@ export const stateTracks = (state: State) => {
             tracks.set(`${kind}:${stageId}`, {
                 chain: chainFrom(
                     stageEventRanges[kind].get(stageId)?.min as Joint | undefined,
-                    connections as never,
+                    connections,
                 ),
                 grid: byBeat(joints.filter((joint) => joint.stageId === stageId)),
             })
