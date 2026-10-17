@@ -62,9 +62,15 @@ export const storedViolations = (rows: Rows): string[] => {
         if (!chains.has(String(tombstone.chainId)))
             violations.push(`tombstone ${keyText(row.key)}: chain is missing`)
     }
-    for (const row of all('nodes'))
-        for (const hash of packed(record(row.value).refs))
+    for (const row of all('nodes')) {
+        const node = record(row.value)
+        let refs = packed(node.refs)
+        // A root's media may be absent: a state records its BGM whether or not it's held (§1.6.8.4).
+        if (node.t === 'root' && Array.isArray(node.kinds))
+            refs = refs.slice(0, 1 + node.kinds.length)
+        for (const hash of refs)
             if (!has(hash)) violations.push(`node ${keyText(row.key)}: ref ${hex(hash)} is missing`)
+    }
     return violations
 }
 

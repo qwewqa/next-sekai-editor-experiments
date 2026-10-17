@@ -13,4 +13,10 @@ export type Bgm = {
     waveform?: Waveform
     offset: number
     meta?: BgmMeta
+    /**
+     * The original bytes, kept for the life of the states using them (§1.6.8.4): Save's first
+     * source and what the flush stores again when the media row went missing. An `ArrayBuffer`
+     * read at the pick, never a Blob read back from IndexedDB.
+     */
+    source?: ArrayBuffer
 }

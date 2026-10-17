@@ -2,6 +2,7 @@
 import { onBeforeUnmount, shallowReactive, watch } from 'vue'
 import { isPeeking, liveState } from '../../../history'
 import { i18n } from '../../../i18n'
+import { captureMedia, durationMsOf } from '../../../local/media'
 import { showModal } from '../../../modals'
 import FileField from '../../../modals/form/FileField.vue'
 import FormModal from '../../../modals/form/FormModal.vue'
@@ -72,6 +73,9 @@ const onSelect = (file: File) => {
 
                 const data = await file.arrayBuffer()
                 checkCancelled()
+                // Hashed and copied before decoding, which detaches the buffer (§1.6.8.4).
+                const captured = await captureMedia(data, file)
+                checkCancelled()
 
                 yield () => i18n.value.commands.bgm.modal.decoding
 
@@ -90,6 +94,13 @@ const onSelect = (file: File) => {
                 model.filename = getFilename(file)
                 model.buffer = buffer
                 model.waveform = waveform
+                // Every pick records its own metadata and bytes, never the previous BGM's.
+                model.source = captured.source
+                const durationMs = durationMsOf(buffer.duration)
+                model.meta = {
+                    ...captured.meta,
+                    ...(durationMs === undefined ? {} : { durationMs }),
+                }
                 published = true
             } finally {
                 signal.removeEventListener('abort', cancel)

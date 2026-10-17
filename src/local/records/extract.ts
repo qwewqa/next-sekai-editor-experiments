@@ -37,7 +37,7 @@ import {
 // is a function of the record set.
 
 /** Every entity of a grid once, in bucket order; joints sit in one bucket each. */
-const entitiesOf = <T>(grid: Map<number, Set<T>>) => {
+export const entitiesOf = <T>(grid: Map<number, Set<T>>) => {
     const entities = new Set<T>()
     for (const bucket of grid.values()) for (const entity of bucket) entities.add(entity)
     return [...entities]
@@ -47,7 +47,7 @@ const entitiesOf = <T>(grid: Map<number, Set<T>>) => {
  * Joints in chain order, track by track: same-beat joints are ordered by their chain, which
  * playback follows, and buckets don't keep it. A joint no chain reaches still comes out.
  */
-const inChainOrder = <J>(
+export const inChainOrder = <J>(
     joints: Map<number, Set<J>>,
     connections: Map<number, Set<{ min: J; max: J }>>,
     heads: Iterable<J>,
@@ -97,7 +97,7 @@ const events = <T extends { beat: number }>(
         })),
     )
 
-const stageHeads = <J>(ranges: Map<number, { min: J }>) =>
+export const stageHeads = <J>(ranges: Map<number, { min: J }>) =>
     [...ranges.values()].map(({ min }) => min)
 
 /**

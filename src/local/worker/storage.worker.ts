@@ -1,3 +1,4 @@
+import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { serve, type Endpoint } from './rpc'
 
@@ -8,12 +9,11 @@ import { serve, type Endpoint } from './rpc'
 const scope = self as unknown as Endpoint
 
 let emit: (event: string, data?: unknown) => void = () => undefined
-const { handlers: coreHandlers } = createContext((event, data) => {
+const { context, handlers: coreHandlers } = createContext((event, data) => {
     emit(event, data)
 })
 
-// The flush package adds its handlers here, over the same context.
-const handlers = { ...coreHandlers }
+const handlers = { ...coreHandlers, ...flushHandlers(context) }
 
 export type StorageHandlers = typeof handlers
 
