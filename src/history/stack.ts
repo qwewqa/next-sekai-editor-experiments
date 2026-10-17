@@ -1,6 +1,7 @@
 import { computed, ref, shallowReactive, shallowRef } from 'vue'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
+import { freezePublished } from './freeze'
 
 export type HistoryEntry = {
     isDirty: boolean
@@ -33,6 +34,12 @@ export const liveState = computed(() => current.value.state)
 // Vite sets it; Node tests have no import.meta.env.
 const isProduction = () => (import.meta as { env?: { PROD?: boolean } }).env?.PROD === true
 
+/** A state the stack publishes is frozen outside release builds, so no one changes it in place. */
+const publish = (state: State) => {
+    if (!isProduction()) freezePublished(state)
+    return state
+}
+
 /** Replaces the current slot, or only the peeked state, which holds its own selection. */
 export const replaceState = (state: State) => {
     if (peek.value) {
@@ -43,7 +50,7 @@ export const replaceState = (state: State) => {
     states[index.value] = {
         isDirty: current.value.isDirty,
         name: current.value.name,
-        state,
+        state: publish(state),
     }
 }
 
@@ -57,7 +64,7 @@ export const pushState = (name: () => string, state: State) => {
     states.splice(index.value + 1, states.length - index.value - 1, {
         isDirty: true,
         name,
-        state,
+        state: publish(state),
     })
     index.value++
     emitHistoryAction({ kind: 'edit', state, name, isDirty: true })
@@ -86,6 +93,7 @@ export const redoState = () => {
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
     peek.value = undefined
     index.value = 0
+    publish(entry.state)
     states.splice(0, states.length, entry)
     emitHistoryAction({ kind: 'reset', ...entry, origin })
 }

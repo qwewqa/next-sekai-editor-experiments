@@ -1,3 +1,4 @@
+import { freezePublished } from '../../../src/history/freeze'
 import { CHANNEL_NAME } from '../../../src/local/channel'
 import { runToEnd } from '../../../src/local/chunks'
 import { inflateStrict } from '../../../src/local/chunkVerify'
@@ -56,6 +57,20 @@ export type Page = {
     errors: unknown[]
 }
 
+/** States a test hands the flusher are frozen, as the undo stack publishes them. */
+const freezing = (flusher: Flusher) => {
+    const { append, begin } = flusher
+    flusher.append = (kind, label, state, dirty) => {
+        freezePublished(state)
+        append.call(flusher, kind, label, state, dirty)
+    }
+    flusher.begin = (start) => {
+        freezePublished(start.state)
+        return begin.call(flusher, start)
+    }
+    return flusher
+}
+
 /** A tab with its worker started and a flusher posting to it. */
 export const openPage = async (
     world: World,
@@ -72,24 +87,26 @@ export const openPage = async (
     const reports: FlushReport[] = []
     const errors: unknown[] = []
     let clock = 1_000_000
-    const flusher = new Flusher({
-        appVersion: '0.6.0',
-        now: () => (clock += 10),
-        newId: testId,
-        transport: async (batch) => {
-            batches.push(batch)
-            const result = await tab.run(() => handlers.flush(batch))
-            results.push(result)
-            return result
-        },
-        onFlushed: (report) => reports.push(report),
-        onError: (error) => errors.push(error),
-        // Flushes run when a test asks, and extract in one go: a timer is outside the scheduler.
-        runJob: (job) => Promise.resolve(runToEnd(job)),
-        setTimer: () => undefined,
-        clearTimer: () => undefined,
-        ...deps,
-    })
+    const flusher = freezing(
+        new Flusher({
+            appVersion: '0.6.0',
+            now: () => (clock += 10),
+            newId: testId,
+            transport: async (batch) => {
+                batches.push(batch)
+                const result = await tab.run(() => handlers.flush(batch))
+                results.push(result)
+                return result
+            },
+            onFlushed: (report) => reports.push(report),
+            onError: (error) => errors.push(error),
+            // Flushes run when a test asks, and extract in one go: a timer is outside the scheduler.
+            runJob: (job) => Promise.resolve(runToEnd(job)),
+            setTimer: () => undefined,
+            clearTimer: () => undefined,
+            ...deps,
+        }),
+    )
     return { tab, core, handlers, flusher, batches, results, reports, errors }
 }
 
@@ -284,24 +301,26 @@ export const openSplitPage = async (
     const results: FlushResult[] = []
     const reports: FlushReport[] = []
     const errors: unknown[] = []
-    const flusher = new Flusher({
-        appVersion: '0.6.0',
-        now: timers.now,
-        newId: testId,
-        transport: (batch, _transfer, current) =>
-            host.call(async (handlers) => {
-                batches.push(batch)
-                const result = await handlers.flush(batch)
-                results.push(result)
-                return result
-            }, current),
-        onFlushed: (report) => reports.push(report),
-        onError: (error) => errors.push(error),
-        runJob: (job) => Promise.resolve(runToEnd(job)),
-        setTimer: timers.setTimeout,
-        clearTimer: timers.clearTimeout,
-        ...options.flush,
-    })
+    const flusher = freezing(
+        new Flusher({
+            appVersion: '0.6.0',
+            now: timers.now,
+            newId: testId,
+            transport: (batch, _transfer, current) =>
+                host.call(async (handlers) => {
+                    batches.push(batch)
+                    const result = await handlers.flush(batch)
+                    results.push(result)
+                    return result
+                }, current),
+            onFlushed: (report) => reports.push(report),
+            onError: (error) => errors.push(error),
+            runJob: (job) => Promise.resolve(runToEnd(job)),
+            setTimer: timers.setTimeout,
+            clearTimer: timers.clearTimeout,
+            ...options.flush,
+        }),
+    )
     host.onRestart(() => {
         void flusher.restarted()
     })
