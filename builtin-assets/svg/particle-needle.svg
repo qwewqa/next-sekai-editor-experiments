@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 128">
+    <radialGradient id="g">
+        <stop offset="0" stop-color="#fff" stop-opacity="0.4"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <ellipse cx="16" cy="64" rx="15" ry="62" fill="url(#g)"/>
+    <polygon points="16,6 17.6,64 16,122 14.4,64" fill="#fff"/>
+</svg>

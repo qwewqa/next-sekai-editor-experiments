@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 96">
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="96" viewBox="0 0 48 var(--h)" preserveAspectRatio="none">
     <g transform="translate(48 0) scale(-1 1)">
-        <path d="M48 5H22A22 22 0 0 0 0 27V69A22 22 0 0 0 22 91H48Z" fill="var(--edge)"/>
-        <path d="M48 9H22A18 18 0 0 0 4 27V69A18 18 0 0 0 22 87H48Z" fill="var(--color)"/>
+        <path d="var(--rim)" fill="var(--edge)"/>
+        <path d="var(--face)" fill="var(--color)"/>
     </g>
 </svg>

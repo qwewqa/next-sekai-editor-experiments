@@ -2,7 +2,7 @@
     <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
         <stop offset="0" stop-color="#fff"/>
         <stop offset="0.3" stop-color="#fff" stop-opacity="0.5"/>
-        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        <stop offset="0.97" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
     <rect width="64" height="128" fill="url(#g)"/>
 </svg>

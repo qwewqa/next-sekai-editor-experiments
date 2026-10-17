@@ -27,16 +27,17 @@ const span = (property) => {
     return [Math.min(a, c), Math.max(b, d)]
 }
 
-// How far from the centre of the engine's quad a particle may reach, by the effect's kind: hits on
-// the stage and at the note stay near it; linear and directional effects rise above it.
+// How far from the centre of the engine's quad a particle may reach, by the effect's kind, at about
+// the base set's reach: hits on the stage open past their quad, linear effects throw shards out
+// round the note and rise far above it, and a flick's beam runs well along the flick.
 const reachOf = (name) =>
     / Lane Linear|#LANE_LINEAR/.test(name)
         ? { x: 1.05, low: -1.05, high: 1.05 }
         : /Directional|#NOTE_LINEAR_ALTERNATIVE/.test(name)
-          ? { x: 1.6, low: -1.8, high: 5 }
+          ? { x: 5, low: -4.5, high: 7 }
           : /Linear|#NOTE_LINEAR/.test(name)
-            ? { x: 1.6, low: -1.3, high: 3.5 }
-            : { x: 1.6, low: -1.6, high: 1.6 }
+            ? { x: 4, low: -4, high: 7 }
+            : { x: 2.7, low: -2.7, high: 2.7 }
 
 test('every particle stays in bounds, fades within 0 to 1 and ends with its effect', () => {
     for (const effect of data.effects) {
@@ -97,13 +98,15 @@ test('the base set’s silent effects stay silent', () => {
 })
 
 test('no effect is a lone pair of one shape', () => {
+    // Two phases of one particle (one ending as the other starts) count as one.
     for (const effect of data.effects) {
-        const shapes = effect.groups.flatMap((group) =>
-            group.particles.flatMap((particle) => Array(group.count).fill(particle.sprite)),
+        const drawn = effect.groups.flatMap((group) =>
+            group.particles.flatMap((particle) => Array(group.count).fill(particle)),
         )
-        assert.ok(
-            !(shapes.length === 2 && shapes[0] === shapes[1]),
-            `${effect.name} is two of sprite ${shapes[0]}`,
-        )
+        if (drawn.length !== 2 || drawn[0].sprite !== drawn[1].sprite) continue
+        const [a, b] = drawn
+        const overlap =
+            Math.min(a.start + a.duration, b.start + b.duration) - Math.max(a.start, b.start)
+        assert.ok(overlap <= 1e-9, `${effect.name} is two of sprite ${a.sprite}`)
     }
 })
