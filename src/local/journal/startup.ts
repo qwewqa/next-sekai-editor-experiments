@@ -1,8 +1,8 @@
 import { i18n } from '../../i18n'
 import { appVersion, platform } from '../../platform'
-import { interpolateRaw } from '../../utils/interpolate'
 import type { StorageWorker } from '../worker/client'
 import { transfer } from '../worker/rpc'
+import { recoveredLabel } from './label'
 import { startupApplyJournals, type JournalOutcome } from './replay'
 
 // The startup hook for `startupApplyJournals` (Part 1 §1.11.3): after the handshake, before this
@@ -27,11 +27,7 @@ export const applyJournalsAtStart = async (worker: StorageWorker, test: boolean)
             store: platform.journal,
             locks: platform.locks,
             appVersion: appVersion().appVersion,
-            // In the locale at write time (§1.10 #7).
-            label: (dropped) =>
-                dropped
-                    ? interpolateRaw(i18n.value.entry.recoveredDropped, String(dropped))
-                    : i18n.value.entry.recovered,
+            label: (dropped) => recoveredLabel(i18n.value, dropped),
             worker: {
                 applyJournal: (batch) =>
                     worker.call('applyJournal', transfer(batch, [batch.text.buffer]), {

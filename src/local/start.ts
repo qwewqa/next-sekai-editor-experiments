@@ -20,7 +20,11 @@ export const STORAGE_TEST_KEY = 'nse.test.storage'
 /** The fixture hook's no-storage key. */
 export const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
 
-type StorageTestFlags = TestFlags & { rpcTimeoutMs?: number }
+type StorageTestFlags = TestFlags & {
+    rpcTimeoutMs?: number
+    /** Holds journal replay at load this long, for the spec of a hide meanwhile. */
+    holdReplayMs?: number
+}
 
 /** What storing can do in this tab; undefined until the worker answers. */
 export const storageStatus = shallowRef<StorageStatus | undefined>()
@@ -104,7 +108,7 @@ export const startStorage = async () => {
     const { flags, test } = readFlags()
     if (!canStore()) flags.noStorage = true
     const deviceId = storageGet('deviceId', undefined)
-    const { rpcTimeoutMs, ...workerFlags } = flags
+    const { rpcTimeoutMs, holdReplayMs, ...workerFlags } = flags
     const dev = import.meta.env.DEV
     const worker = new StorageWorker(
         { url: storageWorkerUrl, type: dev ? 'module' : 'classic', blobRestart: !dev },
@@ -140,7 +144,15 @@ export const startStorage = async () => {
         // The worker never answered: the client paused storing.
         status = worker.status ?? { mode: 'stored', reason: 'failed' }
     }
-    // Until Step 4's recovery order, pending journals are applied into the database here.
-    if (status.mode === 'stored') await applyJournalsAtStart(worker, test)
-    startStoring(worker, status, test)
+    // Until Step 4's recovery order, pending journals are applied into the database here. Storing
+    // starts first, so a hide meanwhile writes this tab's journal; its flushes wait for replay.
+    const replay = () => applyJournalsAtStart(worker, test)
+    const replayed =
+        status.mode !== 'stored'
+            ? Promise.resolve([])
+            : holdReplayMs
+              ? new Promise((resolve) => setTimeout(resolve, holdReplayMs)).then(replay)
+              : replay()
+    startStoring(worker, status, test, replayed)
+    await replayed
 }

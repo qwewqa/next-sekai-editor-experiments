@@ -1740,6 +1740,8 @@
   },
   "entry": {
     "exported": "已匯出 {0}",
+    "saved": "已儲存 {0}",
+    "downloaded": "已下載 {0}",
     "recovered": "已還原最後的變更",
     "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。"
   }

@@ -224,3 +224,23 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
         ['covered'],
     )
 })
+
+test('the budget counts today’s auto save, and leaves it room to grow to the journal’s size', async () => {
+    const { page, session, a } = await start(11)
+    append(page, 'edit', 'Changed note', widen(a))
+    // Today's auto save holds most of the budget: no journal is written over it.
+    page.storage.setItem('nse.autoSave.levelData', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1000))
+    assert.equal(page.writer.write(), false)
+    page.storage.removeItem('nse.autoSave.levelData')
+    assert.equal(page.writer.write(), true)
+    const size = page.storage.getItem(`nse.journal.${session.id}`)?.length ?? 0
+    // Earlier visits' journals leave room for this one, but not for the auto save beside it.
+    page.storage.setItem('nse.journal.earlier', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1.5 * size))
+    append(page, 'edit', 'Changed note', widen(a, 1))
+    assert.equal(page.writer.write(), false)
+    // With the auto save already that large, it fits.
+    page.storage.removeItem('nse.journal.earlier')
+    page.storage.setItem('nse.autoSave.levelData', 'x'.repeat(size))
+    page.storage.setItem('nse.journal.earlier', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 2.5 * size))
+    assert.equal(page.writer.write(), true)
+})

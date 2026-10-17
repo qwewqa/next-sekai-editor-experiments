@@ -88,7 +88,17 @@ const whileStalled = async () => {
     while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
-export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
+/**
+ * Starts storing: entries from now on, and the journal on hide. `replayed` is the startup replay
+ * of journals, which every flush waits for (§1.6.4 #7: before any session opens).
+ */
+export const startStoring = (
+    worker: StorageWorker,
+    status: StorageStatus,
+    test: boolean,
+    replayed: Promise<unknown> = Promise.resolve(),
+) => {
+    const afterReplay = replayed.catch(() => undefined)
     const reports: FlushReport[] = []
     const errors: unknown[] = []
     const locks = platform.locks
@@ -177,7 +187,7 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                     label: action.name,
                     dirty: action.isDirty,
                     // Without Web Locks (an insecure origin) there's no other tab to keep out.
-                    ready: lock.granted.catch(() => undefined),
+                    ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
                     done: lock.release,
                 })
                 return

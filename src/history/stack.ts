@@ -219,13 +219,18 @@ export const replaceState = (state: State) => {
         return
     }
 
-    states[index.value] = {
-        isDirty: current.value.isDirty,
-        name: current.value.name,
+    const old = current.value
+    const slot: Slot = {
+        isDirty: old.isDirty,
+        name: old.name,
         state: publish(state),
         // A selection change keeps the slot's chart, so its stored root still holds.
-        ...(current.value.snapshot ? { snapshot: current.value.snapshot } : {}),
+        ...(old.snapshot ? { snapshot: old.snapshot } : {}),
     }
+    // A restored slot keeps its place in the LRU, so it can still go back to its ref.
+    const at = loadedRestored.indexOf(old)
+    if (at !== -1) loadedRestored[at] = slot
+    states[index.value] = slot
 }
 
 export const pushState = (name: () => string, state: State) => {
@@ -270,8 +275,11 @@ export const redoState = () => {
 }
 
 /** Records a file event without touching the stack: a `save` or `export` entry (§1.3.8). */
-export const markFileEvent = (kind: 'save' | 'export', name: () => string) => {
-    const { isDirty } = current.value
+export const markFileEvent = (
+    kind: 'save' | 'export',
+    name: () => string,
+    isDirty = current.value.isDirty,
+) => {
     emitHistoryAction({ kind, state: currentState.value, name, isDirty })
 }
 
