@@ -1,6 +1,7 @@
 import { toHex } from '../../../local/hash'
 import type { UserAssetRecord } from '../../../local/userAssets'
 import type { AssetType, LoadContext } from '../types'
+import type { DecodeImage } from './decodeImage'
 import { loadEffectFromParts } from './effect'
 import { AssetImportError, asImportError } from './errors'
 import { checkItem, type CheckedItem } from './item'
@@ -15,6 +16,7 @@ export type ImportContext = {
     /** What the device's textures may be, at most 4096. */
     maxTextureSide: number
     decodeAudio: LoadContext['decodeAudio']
+    decodeImage: DecodeImage
     signal: AbortSignal
     /** The file name, or the server's address */
     origin: string
@@ -37,8 +39,9 @@ export const checkWholeItem = async (
         mode: 'import',
         maxTextureSide: context.maxTextureSide,
         signal: context.signal,
+        decodeImage: context.decodeImage,
     })
-    // The images' headers passed; a clip is only known good once it decodes.
+    // The images decoded; a clip is only known good once it decodes too.
     if (checked.type === 'effect') {
         await loadEffectFromParts(checked.title, checked.parts as never, {
             signal: context.signal,

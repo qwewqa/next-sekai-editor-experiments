@@ -32,6 +32,7 @@ export const serverItemMessage = (
     error: AssetImportError,
     strings: ServerStrings,
     number: (value: number) => string,
+    size: (bytes: number) => string,
 ) =>
     error.code === 'checksum'
         ? strings.server.checksum
@@ -39,6 +40,7 @@ export const serverItemMessage = (
               error,
               { ...strings, import: { ...strings.import, ...strings.serverImport } },
               number,
+              size,
           )
 
 export type ServerErrorText = {

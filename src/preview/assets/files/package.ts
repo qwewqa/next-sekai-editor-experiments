@@ -82,8 +82,11 @@ export type SourcePackage = {
     json: (path: string, type: AssetType, part: ImportPart) => Promise<unknown>
     /** The path an SRL names in this package, if it names one. */
     resolve: (srl: Srl) => string | undefined
-    /** The items of a type: the list, else the details entries. */
-    list: (type: AssetType) => Promise<ListedItem[]>
+    /**
+     * The items of a type: the list, else the details entries, as many as 16 MB of them hold.
+     * The signal stops a long read between entries.
+     */
+    list: (type: AssetType, signal?: AbortSignal) => Promise<ListedItem[]>
     /** One item's details (the item object), or undefined when the package has none by that name. */
     details: (type: AssetType, name: string) => Promise<Record<string, unknown> | undefined>
 }
@@ -110,6 +113,9 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         if (end.zip64Offset !== undefined) throw new AssetImportError('zip64')
         if (end.entryCount > LIMITS.entries)
             throw new AssetImportError('tooManyEntries', { limit: LIMITS.entries })
+        // The directory is read whole: names past 1 KiB, or large extra fields, are not read.
+        if (end.cdSize > LIMITS.entries * (46 + LIMITS.entryName) + 4 * 1024 * 1024)
+            throw new AssetImportError('damaged')
     } catch (error) {
         return mapZipError(error)
     }
@@ -124,7 +130,14 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
     if (reader.recovered) throw new AssetImportError('damaged')
     if (reader.entries.length > LIMITS.entries)
         throw new AssetImportError('tooManyEntries', { limit: LIMITS.entries })
-    if (reader.entries.some((entry) => isBadName(entry.name))) throw new AssetImportError('badName')
+    if (
+        reader.entries.some(
+            (entry) => isBadName(entry.name) || entry.rawName.length > LIMITS.entryName,
+        )
+    )
+        throw new AssetImportError('badName')
+    // ZIP64 sizes or offsets in an entry's extra field, which only ZIP64 needs.
+    if (reader.entries.some((entry) => entry.zip64)) throw new AssetImportError('zip64')
 
     const entry = async (path: string, options: EntryOptions) => {
         const key = path.normalize('NFC')
@@ -195,7 +208,7 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         return
     }
 
-    const list = async (type: AssetType) => {
+    const list = async (type: AssetType, signal?: AbortSignal) => {
         const category = categoryOf[type]
         const raw = await json(`sonolus/${category}/list`, type, 'list')
         if (raw !== undefined) {
@@ -206,9 +219,13 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
                 .map(toListed)
                 .filter((item): item is ListedItem => item !== undefined)
         }
-        // No list: the detail entries are the items.
+        // No list: the detail entries are the items, up to what a budget of their JSON holds.
         const listed: ListedItem[] = []
+        let budget = LIMITS.listing
         for (const name of names(type).slice(0, LIMITS.listed)) {
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+            budget -= reader.get(`sonolus/${category}/${name}`)?.size ?? 0
+            if (budget < 0) break
             const item = toListed(await details(type, name))
             if (item) listed.push(item)
         }
@@ -223,15 +240,16 @@ export const parseDataJson = (
     bytes: Uint8Array,
     type: AssetType,
     part: ImportPart = 'data',
+    maxInflated: number = LIMITS.dataInflated,
 ): unknown => {
     if (bytes.length > LIMITS.dataGzip)
         throw new AssetImportError('tooBig', { type, part, limit: LIMITS.dataGzip })
     let inflated: Uint8Array
     try {
-        inflated = gunzipCapped(bytes, LIMITS.dataInflated)
+        inflated = gunzipCapped(bytes, maxInflated)
     } catch (error) {
         throw error instanceof CapExceeded
-            ? new AssetImportError('tooBig', { type, part, limit: LIMITS.dataInflated })
+            ? new AssetImportError('tooBig', { type, part, limit: maxInflated })
             : new AssetImportError('unreadable', { type, part }, { cause: error })
     }
     try {

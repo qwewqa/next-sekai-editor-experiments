@@ -11,12 +11,13 @@ export const typeNoun = (type: FallbackState['type']) => strings().noun[type]
 /** The type as a tab label ("Skin", "Sound Effects"). */
 export const typeLabel = (type: FallbackState['type']) => strings()[type]
 
+// Default or Built-in by name; a stored item by its title, in the locale's own quotes.
 const usingLabel = (fallback: FallbackState) =>
     fallback.using === 'default'
         ? strings().default
         : fallback.using === 'builtin'
           ? strings().builtin
-          : `"${fallback.usingTitle}"`
+          : fallback.usingTitle
 
 /** The reason sentence, the same in the panel's line and the dialog's row. */
 export const reasonText = (fallback: FallbackState) => {
@@ -26,6 +27,8 @@ export const reasonText = (fallback: FallbackState) => {
         case 'fileGone':
             // Stage 2 adds the on-this-device wording, chosen by the browserStorage capability.
             return interpolateRaw(reason.fileGone, noun)
+        case 'storageUnavailable':
+            return interpolateRaw(reason.storageUnavailable, noun)
         case 'serverFailed':
             return interpolateRaw(reason.serverFailed, noun, displayOrigin(fallback.origin))
         case 'invalid':
@@ -39,12 +42,16 @@ export const reasonText = (fallback: FallbackState) => {
 
 /** "Using Default. The skin file is no longer stored in this browser." under the chosen row. */
 export const rowText = (fallback: FallbackState) =>
-    interpolateRaw(strings().fallback.row, usingLabel(fallback), reasonText(fallback))
+    interpolateRaw(
+        fallback.using === 'stored' ? strings().fallback.rowStored : strings().fallback.row,
+        usingLabel(fallback),
+        reasonText(fallback),
+    )
 
 /** "Skin: using Default. …" in the Preview panel. */
 export const panelText = (fallback: FallbackState) =>
     interpolateRaw(
-        strings().fallback.panel,
+        fallback.using === 'stored' ? strings().fallback.panelStored : strings().fallback.panel,
         typeLabel(fallback.type),
         usingLabel(fallback),
         reasonText(fallback),

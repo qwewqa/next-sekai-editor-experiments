@@ -1,10 +1,12 @@
 import { shallowRef } from 'vue'
 import { assetTypes } from '../choice'
 import type { AlsoOption } from '../files/chooser'
+import type { DecodeImage } from '../files/decodeImage'
 import { AssetImportError } from '../files/errors'
 import { importItem } from '../files/importer'
 import { displayText } from '../files/package'
-import type { UserAssetMeta, UserAssetStore } from '../files/store'
+import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from '../files/store'
+import { rollBack, storeRecords } from '../files/storeRecords'
 import {
     parseServerUrl,
     ServerUrlError,
@@ -38,6 +40,7 @@ export type ServerChooserDeps = {
     store: UserAssetStore
     maxTextureSide: () => number
     decodeAudio: (data: ArrayBuffer) => Promise<AudioBuffer>
+    decodeImage: DecodeImage
     /** Sets the choices a Use made, all together. */
     apply: (choices: Partial<Record<AssetType, AssetChoice>>) => void
     /** The plain message for an item that is refused. */
@@ -83,7 +86,10 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
     const query = shallowRef('')
     const selected = shallowRef<string | undefined>()
     const also = shallowRef<AlsoOption[]>([])
+    /** Why connecting or listing failed: shown under the address. */
     const error = shallowRef<ServerChooserError | undefined>()
+    /** Why Use failed: shown next to Use. */
+    const useError = shallowRef<ServerChooserError | undefined>()
 
     /** The connected server's address, after redirects. */
     let server = ''
@@ -114,6 +120,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         selected.value = undefined
         also.value = []
         error.value = undefined
+        useError.value = undefined
     }
 
     const toError = (failure: unknown): ServerChooserError => {
@@ -302,27 +309,30 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
                 .map((option) => ({ type: option.type, name: option.name })),
         ]
         phase.value = 'working'
-        error.value = undefined
+        useError.value = undefined
         try {
             const source = createServerSource(client, server, signal)
-            const records = []
+            const records: UserAssetRecord[] = []
             for (const entry of wanted)
                 records.push(
                     await importItem(source, entry.type, entry.name, {
                         maxTextureSide: deps.maxTextureSide(),
                         decodeAudio: deps.decodeAudio,
+                        decodeImage: deps.decodeImage,
                         signal,
                         origin: server,
                         now: deps.now ?? Date.now,
                     }),
                 )
-            // Checked all: only now is anything stored, so a bad item stores nothing.
-            const metas: UserAssetMeta[] = []
-            for (const record of records) {
-                if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-                metas.push(await deps.store.put(record))
+            // Checked all: only now is anything stored, all in one transaction and read back, so a
+            // bad item stores nothing.
+            if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+            const { metas, added } = await storeRecords(deps.store, records)
+            // Closed or cancelled while storing: what this Use added goes again.
+            if (mine !== generation) {
+                await rollBack(deps.store, added)
+                return
             }
-            if (mine !== generation) return
             deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, deps.toChoice(meta)])))
             deps.onStored?.(metas)
             reset()
@@ -330,7 +340,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         } catch (failure) {
             if (mine !== generation || isAbort(failure)) return
             phase.value = 'listed'
-            error.value = toError(failure)
+            useError.value = toError(failure)
         }
     }
 
@@ -347,6 +357,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         selected,
         also,
         error,
+        useError,
         /** Switches between the two views. */
         setMode: (value: 'file' | 'server') => {
             mode.value = value

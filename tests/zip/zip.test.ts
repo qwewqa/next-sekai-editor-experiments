@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { deflateRawSync, crc32 as zlibCrc32 } from 'node:zlib'
@@ -519,13 +520,17 @@ test('the parser reads the shipped packages', { skip: !hasShippedPackages() }, (
     }
 })
 
+// The locked packages only: nativeBundle.test.mjs plants a stand-in while it builds.
 function hasShippedPackages() {
-    try {
-        readFileSync('public/resource/skin.scp')
-        return true
-    } catch {
-        return false
-    }
+    const lock = JSON.parse(readFileSync('deployment/preview-assets.lock.json', 'utf8'))
+    return ['skin', 'particle'].every((name) => {
+        try {
+            const bytes = readFileSync(`public/resource/${name}.scp`)
+            return createHash('sha256').update(bytes).digest('hex') === lock[name].sha256
+        } catch {
+            return false
+        }
+    })
 }
 
 /** A Blob that records every slice taken from it. */

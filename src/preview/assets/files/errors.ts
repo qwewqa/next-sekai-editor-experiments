@@ -21,10 +21,14 @@ export type ImportErrorCode =
     | 'spriteOutside'
     | 'tooManySprites'
     | 'tooManyEffects'
+    | 'tooManyParticles'
+    | 'tooManyGroups'
     | 'particleCount'
+    | 'effectGroups'
     | 'noPerfect'
     | 'audioLength'
     | 'packageTooLarge'
+    | 'fileUnreadable'
     | 'storeFailed'
 
 export type ImportDetail = {

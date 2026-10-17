@@ -7,6 +7,12 @@ export const PARTICLE_LAYER = 100
 
 export const LANE_PARTICLE_LAYER = 3
 
+/**
+ * The most groups and particle draws one effect makes (Part 2, 2.5.5's 512), whatever its data
+ * says, so a stored package that passed an older check cannot stall the frame.
+ */
+export const PARTICLE_DRAW_BUDGET = 512
+
 const mulberry32 = (seed: number) => {
     let state = seed | 0
     return () => {
@@ -141,8 +147,14 @@ export const drawParticleEffect = (
         }
     }
 
-    for (const [groupIndex, group] of effect.groups.entries()) {
-        for (let occurrence = 0; occurrence < group.count; occurrence++) {
+    let budget = PARTICLE_DRAW_BUDGET
+    const groups = effect.groups.length > budget ? effect.groups.slice(0, budget) : effect.groups
+    for (const [groupIndex, group] of groups.entries()) {
+        // Every occurrence costs its particles, and at least one.
+        const cost = Math.max(group.particles.length, 1)
+        const count = Math.min(group.count, Math.floor(budget / cost))
+        budget -= count * cost
+        for (let occurrence = 0; occurrence < count; occurrence++) {
             let values: Values | undefined
 
             for (const particle of group.particles) {

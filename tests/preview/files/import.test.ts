@@ -13,17 +13,23 @@ import {
     audioZip,
     backgroundData,
     blobOf,
+    brokenPng,
+    decodeTestAudio,
+    decodeTestImage,
     effectData,
     gz,
     jpegHeader,
     particleData,
+    png,
     pngHeader,
     rawZip,
     scp,
     scpEntries,
     sha1,
+    sizeEn,
     skinData,
     utf8,
+    wav,
     type ScpOptions,
 } from './fixtures'
 
@@ -33,22 +39,17 @@ const en = (
     }
 ).commands.previewAssets
 const importMessage = (error: AssetImportError) =>
-    formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value))
+    formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value), sizeEn)
 
 // Rejection at import (Part 2, 2.5.5, 2.11): each way a package can be wrong is refused with a
 // plain message that names the problem.
 
-/** A clip's "audio" is text: `bad` does not decode, `seconds:N` decodes to N seconds. */
-const decodeAudio = async (data: ArrayBuffer) => {
-    const text = new TextDecoder().decode(data)
-    if (text.startsWith('bad')) throw new Error('Unable to decode audio data')
-    const seconds = /^seconds:(\d+)/.exec(text)?.[1]
-    return { duration: seconds ? Number(seconds) : 1 } as AudioBuffer
-}
+const decodeAudio = decodeTestAudio
 
 const context = (overrides: Partial<ImportContext> = {}): ImportContext => ({
     maxTextureSide: 4096,
     decodeAudio,
+    decodeImage: decodeTestImage,
     signal: new AbortController().signal,
     origin: 'fixture.scp',
     now: () => 1000,
@@ -139,6 +140,21 @@ test('ZIP64 is refused', async () => {
         bytes,
         'zip64',
         'This file uses ZIP64, which the editor cannot read.',
+    )
+})
+
+test('ZIP64 fields in an entry of a ZIP32 file are refused', async () => {
+    const entries = scpEntries('skin').map((entry) =>
+        entry.name.startsWith('sonolus/repository/') ? { ...entry, zip64: true } : entry,
+    )
+    await expectRefused('skin', rawZip(entries), 'zip64')
+})
+
+test('an entry name over 1 KiB is refused', async () => {
+    await expectRefused(
+        'skin',
+        rawZip([...scpEntries('skin'), { name: `long/${'n'.repeat(1100)}`, data: utf8('x') }]),
+        'badName',
     )
 })
 
@@ -312,6 +328,42 @@ test('oversized images are refused from their headers alone', async () => {
     )
 })
 
+test('an image whose body does not decode is refused, and only once its size passed', async () => {
+    await expectRefused(
+        'skin',
+        valid('skin', { resources: { texture: brokenPng(64, 64) } }),
+        'unreadable',
+        'This file’s skin texture could not be read.',
+    )
+    // A header with no body at all.
+    await expectRefused(
+        'particle',
+        valid('particle', { resources: { texture: pngHeader(64, 64) } }),
+        'unreadable',
+    )
+    await expectRefused(
+        'background',
+        valid('background', { resources: { image: brokenPng(160, 90) } }),
+        'unreadable',
+        'This file’s background image could not be read.',
+    )
+    // The size cap comes first: an image over it is never decoded.
+    let decoded = 0
+    await expectRefused(
+        'skin',
+        valid('skin', { resources: { texture: png(8192, 8) } }),
+        'imageSize',
+        undefined,
+        {
+            decodeImage: async (bytes) => {
+                decoded++
+                await decodeTestImage(bytes)
+            },
+        },
+    )
+    assert.equal(decoded, 0)
+})
+
 test('a sprite outside its texture is refused', async () => {
     await expectRefused(
         'skin',
@@ -397,6 +449,102 @@ test('a particle effect over 512 particles is refused', async () => {
     assert.equal((await importItem(pkg, 'particle', 'fixture', context())).type, 'particle')
 })
 
+/** A particle package whose only effect has these groups, and maybe more effects. */
+const particleWith = (groups: unknown[], effects = 1) => {
+    const [effect] = particleData().effects
+    assert.ok(effect)
+    return valid('particle', {
+        resources: {
+            data: gz(
+                particleData({
+                    effects: Array.from({ length: effects }, (_, i) => ({
+                        ...effect,
+                        name: i ? `e${i}` : effect.name,
+                        groups,
+                    })),
+                }),
+            ),
+        },
+    })
+}
+
+test('particle shapes that dodge count × particles are refused', async () => {
+    const [particle] = particleData().effects[0]!.groups[0]!.particles
+    // A huge count with no particles still walks every occurrence.
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 1e15, particles: [] }]),
+        'particleCount',
+        'This file’s particle effect "Sekai Note Tap" has more than 512 particles.',
+    )
+    // A tiny count over many particles: counts are whole numbers, and the particles are capped.
+    await expectRefused(
+        'particle',
+        particleWith([
+            { count: 0.005, particles: Array.from({ length: 100_000 }, () => particle) },
+        ]),
+        'tooManyParticles',
+        'This file’s particle data has more than 32,768 particles.',
+    )
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 0.5, particles: [particle] }]),
+        'unreadable',
+    )
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 1, particles: Array.from({ length: 513 }, () => particle) }]),
+        'particleCount',
+    )
+    // Groups with no count are still walked.
+    await expectRefused(
+        'particle',
+        particleWith(Array.from({ length: 200_000 }, () => ({ count: 0, particles: [] }))),
+        'tooManyGroups',
+        'This file’s particle data has more than 32,768 particle groups.',
+    )
+    await expectRefused(
+        'particle',
+        particleWith(Array.from({ length: 513 }, () => ({ count: 0, particles: [] }))),
+        'effectGroups',
+        'This file’s particle effect "Sekai Note Tap" has more than 512 particle groups.',
+    )
+    // Under the per-effect caps, the totals across effects still apply.
+    await expectRefused(
+        'particle',
+        particleWith(
+            Array.from({ length: 300 }, () => ({ count: 0, particles: [] })),
+            120,
+        ),
+        'tooManyGroups',
+    )
+})
+
+test('an effect name in a message is cut to 200 characters', async () => {
+    const [effect] = particleData().effects
+    assert.ok(effect)
+    const error = await expectRefused(
+        'particle',
+        valid('particle', {
+            resources: {
+                data: gz(
+                    particleData({
+                        effects: [
+                            {
+                                ...effect,
+                                name: 'N'.repeat(5000),
+                                groups: [{ count: 1e6, particles: [] }],
+                            },
+                        ],
+                    }),
+                ),
+            },
+        }),
+        'particleCount',
+    )
+    assert.equal(error.detail.name, 'N'.repeat(200))
+})
+
 test('a particle that names a missing sprite is refused', async () => {
     const [effect] = particleData().effects
     assert.ok(effect)
@@ -421,7 +569,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
         valid('effect', {
             resources: {
                 data: gz(effectData({ clips: [{ name: 'Sekai Tick', filename: 'tick.mp3' }] })),
-                audio: audioZip({ 'tick.mp3': utf8('tick') }),
+                audio: audioZip({ 'tick.mp3': wav(1) }),
             },
         }),
         'noPerfect',
@@ -430,7 +578,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
     // The clip is there but will not decode.
     await expectRefused(
         'effect',
-        valid('effect', { resources: { audio: audioZip({ 'perfect.mp3': utf8('bad data') }) } }),
+        valid('effect', { resources: { audio: audioZip({ 'perfect.mp3': wav(1, true) }) } }),
         'noPerfect',
     )
     // A clip the data names but the audio package lacks.
@@ -455,8 +603,8 @@ test('sound effects longer than 120 seconds in all are refused', async () => {
                     }),
                 ),
                 audio: audioZip({
-                    'perfect.mp3': utf8('seconds:70'),
-                    'tick.mp3': utf8('seconds:70'),
+                    'perfect.mp3': wav(70),
+                    'tick.mp3': wav(70),
                 }),
             },
         }),
@@ -480,9 +628,7 @@ test('the audio package has its own limits', async () => {
 })
 
 test('an item missing a resource, or its details, is refused', async () => {
-    const entries = scpEntries('skin').filter(
-        (entry) => entry.data.length !== pngHeader(64, 64).length,
-    )
+    const entries = scpEntries('skin').filter((entry) => entry.data.length !== png(64, 64).length)
     // Dropping the texture's bytes leaves its SRL pointing nowhere.
     await expectRefused('skin', rawZip(entries), 'missing', 'This file’s skin texture is missing.')
     const pkg = await openSourcePackage(blobOf(valid('skin')))
@@ -521,7 +667,7 @@ test('a file over 2 GiB is refused', async () => {
     const huge = { size: 2 * 1024 ** 3 + 1 } as Blob
     const error = await refuse('skin', huge)
     assert.equal(error.code, 'fileTooLarge')
-    assert.equal(importMessage(error), 'This file is larger than 2 GiB.')
+    assert.equal(importMessage(error), 'This file is larger than 2.1 GB.')
 })
 
 test('a name that appears twice cannot be told apart, so it is refused', async () => {

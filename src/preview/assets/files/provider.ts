@@ -7,6 +7,7 @@ import {
     type LoadContext,
     type LoadedBackground,
 } from '../types'
+import { decodeImageToCheck, type DecodeImage } from './decodeImage'
 import { loadEffectFromParts } from './effect'
 import { asImportError } from './errors'
 import { readImageSize } from './image'
@@ -90,12 +91,15 @@ export type StoredProviderOptions = {
         choice: { key: string; name: string; origin: string },
         context: LoadContext,
     ) => Promise<UserAssetRecord>
+    /** Decodes a background before it shows; a skin's or particle's texture decodes anyway. */
+    decodeImage?: DecodeImage
 }
 
 export const createStoredProviders = ({
     store,
     maxTextureSide,
     redownload,
+    decodeImage = decodeImageToCheck,
 }: StoredProviderOptions): ChoiceProviders => {
     const provider =
         (type: AssetType) =>
@@ -107,7 +111,11 @@ export const createStoredProviders = ({
             try {
                 stored = await store.get(choice.key)
             } catch (error) {
-                throw new AssetError('unavailable', 'The store did not answer', { cause: error })
+                // A server item can still be downloaded when the store cannot be read.
+                if (choice.source !== 'server' || !redownload)
+                    throw new AssetError('unavailable', 'The store did not answer', {
+                        cause: error,
+                    })
             }
             if (!stored && choice.source === 'server' && redownload) {
                 try {
@@ -124,6 +132,8 @@ export const createStoredProviders = ({
                     mode: 'load',
                     maxTextureSide: maxTextureSide(),
                     signal: context.signal,
+                    // A background that will not decode falls back, rather than show only its colour.
+                    ...(type === 'background' ? { decodeImage } : {}),
                 })
                 return (await loadChecked(checked, context)) as never
             } catch (error) {

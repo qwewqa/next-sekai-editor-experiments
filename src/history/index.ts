@@ -8,11 +8,12 @@ import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import { platform } from '../platform'
 import { createState, type StateExtras } from '../state'
+import { interpolate } from '../utils/interpolate'
 import { cleanupWaveform } from '../waveform'
 import { resetAutoSave } from './autoSave/index.ts'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
-import { isDirty, resetStates } from './stack'
+import { isDirty, markFileEvent, resetStates } from './stack'
 
 export {
     canUndo,
@@ -23,6 +24,9 @@ export {
     pushState,
     redoState,
     replaceState,
+    restoreStates,
+    setSlotLoader,
+    slotLoading,
     state,
     undoState,
 } from './stack'
@@ -64,7 +68,21 @@ resetStates({
 
 export let levelDataHandle: FileSystemFileHandle | undefined
 
-platform.onCloseRequested(() => !isDirty.value)
+/**
+ * Named stub until Step 6's close prompts: today's leave prompt, on the current slot's `isDirty`,
+ * which a slot keeps while its state is unloaded (§1.11.3).
+ */
+export const isDirtyCompat = () => !isDirty.value
+
+platform.onCloseRequested(isDirtyCompat)
+
+/** Records an export of the live state as an `export` entry, "Exported {0}" (§1.3.8). */
+export const markExported = (fileName: string) => {
+    markFileEvent(
+        'export',
+        interpolate(() => i18n.value.entry.exported, fileName),
+    )
+}
 
 export const checkState = async () => {
     if (!isDirty.value) return true

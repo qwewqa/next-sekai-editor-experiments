@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 4">
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="var(--color)" stop-opacity="0"/>
-        <stop offset="0.015625" stop-color="var(--color)" stop-opacity="var(--alpha)"/>
-        <stop offset="0.984375" stop-color="var(--color)" stop-opacity="var(--alpha)"/>
-        <stop offset="1" stop-color="var(--color)" stop-opacity="0"/>
+        <stop offset="0" stop-color="var(--light)" stop-opacity="0"/>
+        <stop offset="0.03125" stop-color="var(--light)" stop-opacity="var(--alpha)"/>
+        <stop offset="0.5" stop-color="var(--color)" stop-opacity="var(--alpha)"/>
+        <stop offset="0.96875" stop-color="var(--light)" stop-opacity="var(--alpha)"/>
+        <stop offset="1" stop-color="var(--light)" stop-opacity="0"/>
     </linearGradient>
     <rect width="64" height="4" fill="url(#g)"/>
 </svg>

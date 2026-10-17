@@ -2,6 +2,12 @@ import { DB_NAME } from '../db'
 import { keyText } from '../kv/keys'
 import type { MemoryKv } from '../kv/memory'
 import type { Key } from '../kv/types'
+import {
+    stackViolations,
+    type ReplayEntry,
+    type SessionRows,
+    type StackBlockRow,
+} from '../timeline'
 
 // The stored-data invariants the crash sweep checks after every kill (§1.6.1): no dangling
 // `refs` or hash, no half-deleted chain, every row reachable from its parent. Step 3b adds the
@@ -57,6 +63,22 @@ export const storedViolations = (rows: Rows): string[] => {
             if (!has(hash))
                 violations.push(`stack block ${keyText(row.key)}: ${hex(hash)} is missing`)
     }
+    // Each stored stack is a window of what its entries replay to (§1.3.9).
+    const bySession = new Map<string, SessionRows & { entries: ReplayEntry[] }>()
+    for (const [id, session] of sessions)
+        bySession.set(id, { session, entries: [], blocks: new Map() })
+    for (const row of all('entries')) {
+        const entry = record(row.value)
+        bySession.get(String(entry.sessionId))?.entries.push(entry as unknown as ReplayEntry)
+    }
+    for (const row of all('stackBlocks')) {
+        const block = record(row.value) as unknown as StackBlockRow
+        const blocks = bySession.get(block.sessionId)?.blocks as
+            Map<number, StackBlockRow> | undefined
+        blocks?.set(block.block, block)
+    }
+    for (const rows of bySession.values()) rows.entries.sort((a, b) => a.seq - b.seq)
+    violations.push(...stackViolations(bySession))
     for (const row of all('tombstones')) {
         const tombstone = record(row.value)
         if (!chains.has(String(tombstone.chainId)))

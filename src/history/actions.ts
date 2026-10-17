@@ -2,7 +2,7 @@ import type { State } from '../state'
 
 // What the undo stack did, for the flush's entries (Part 1 §1.3.8, §1.6.4 step 1). A
 // dependency-free registry, as resetHooks is, so the storage modules can listen without the
-// history module importing them. Step 3b's entry hooks build on it.
+// history module importing them: the entry hooks.
 
 export type HistoryAction =
     | {
@@ -14,8 +14,15 @@ export type HistoryAction =
           origin: 'new' | 'import'
       }
     | { kind: 'edit'; state: State; name: () => string; isDirty: boolean }
-    /** The state landed on, and the name of the step undone or redone. */
-    | { kind: 'undo' | 'redo'; state: State; name: () => string; isDirty: boolean }
+    /**
+     * The state landed on, and the name of the step undone or redone. A coalesced move's
+     * intermediate steps land on slots not loaded: their stored root stands for the state.
+     */
+    | ({ kind: 'undo' | 'redo'; name: () => string; isDirty: boolean } & (
+          { state: State; snapshot?: undefined } | { state?: undefined; snapshot: Uint8Array }
+      ))
+    /** A file event: the stack is unchanged (Part 1 §1.3.8). */
+    | { kind: 'save' | 'export'; state: State; name: () => string; isDirty: boolean }
 
 const listeners = new Set<(action: HistoryAction) => void>()
 

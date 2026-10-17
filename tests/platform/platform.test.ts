@@ -19,13 +19,25 @@ test('index.ts exports the build’s platform as a live binding', () => {
     assert.equal(platformModule.platform, buildPlatform)
 })
 
-test('the journal is a named stub until Step 3', () => {
-    for (const platform of [buildPlatform, createMockPlatform()]) {
-        assert.throws(() => platform.journal.read('journal.x'), {
-            message: 'platform.journal is not available before Step 3',
-        })
-        assert.throws(() => platform.journal.write('journal.x', ''), /before Step 3/)
-    }
+test('the mock’s journal writes, reads back, clears what a strict flush covers, and removes', async () => {
+    const { journal } = createMockPlatform()
+    assert.equal(journal.writeWhole({ sessionId: 's', seq: 3 }), true)
+    const [found] = await journal.read()
+    assert.deepEqual(found, {
+        sessionId: 's',
+        text: '{"sessionId":"s","seq":3}',
+        from: 'journal.s',
+    })
+    journal.clear('s', 2)
+    assert.equal((await journal.read()).length, 1)
+    journal.clear('s', 3)
+    assert.equal((await journal.read()).length, 0)
+    assert.equal(journal.writeWhole({ sessionId: 't', seq: 1 }), true)
+    const [kept] = await journal.read()
+    assert.ok(kept)
+    assert.equal(journal.writeWhole({ sessionId: 't', seq: 2 }), true)
+    journal.remove(kept)
+    assert.equal((await journal.read()).length, 1)
 })
 
 test('locks grant in order and list holders and waiters, on the web and in the mock', async () => {

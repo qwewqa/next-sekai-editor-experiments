@@ -37,6 +37,8 @@ const isPlain = (value: object) => {
 /** Freezes what's reachable from value; parts already frozen are shared and skipped. */
 const freezeAll = (value: unknown) => {
     const stack = [value]
+    // This walk's own visits, so a cycle ends; dropped with the walk.
+    const visited = new Set<object>()
     while (stack.length) {
         const next = stack.pop()
         if (typeof next !== 'object' || next === null) continue
@@ -48,11 +50,25 @@ const freezeAll = (value: unknown) => {
             else for (const item of next as Set<unknown>) stack.push(item)
             continue
         }
-        if (!isPlain(next) || Object.isFrozen(next)) continue
+        if (!isPlain(next) || visited.has(next)) continue
+        visited.add(next)
+        const children = Object.values(next)
+        // What this walk froze is frozen all the way down. An object frozen elsewhere may be
+        // frozen shallowly, as a beat grid is: its children are walked when one isn't frozen.
+        // (Marking each object in a WeakSet instead cost several MB in development builds.)
+        if (Object.isFrozen(next) && children.every(isSettled)) continue
         Object.freeze(next)
-        for (const item of Object.values(next)) stack.push(item)
+        for (const item of children) stack.push(item)
     }
 }
+
+/** A value with nothing left to freeze below it as far as one level shows. */
+const isSettled = (value: unknown) =>
+    typeof value !== 'object' ||
+    value === null ||
+    (value instanceof Map || value instanceof Set
+        ? published.has(value)
+        : !isPlain(value) || Object.isFrozen(value))
 
 /** Freezes a state's store as it's published, outside release builds. */
 export const freezePublished = (state: State) => {

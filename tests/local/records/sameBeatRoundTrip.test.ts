@@ -18,7 +18,7 @@ import { decodeSnapshot, encodeSnapshot } from '../../../src/local/records/snaps
 import { createState, type State } from '../../../src/state'
 import { recordsText } from './charts'
 import { allSameBeatGroups, playOrder, playOrderDifferences, sameBeatCounts } from './playOrder'
-import { readLevelData, samplePaths } from './samples'
+import { coconutPath, hasCoconut, readLevelData, samplePaths } from './samples'
 import { stateOrderDifferences } from './stateOrder'
 
 // D4: no round trip changes the order in which same-beat events, BPMs or time-scale changes play.
@@ -112,10 +112,15 @@ export const assertSameBeatRoundTrip = (path: string) => {
 
 test('same-beat events, BPMs and time scales of every sample level play in one order after a round trip', () => {
     for (const path of samplePaths) assertSameBeatRoundTrip(path)
-    // Not vacuous: coconut has a same-beat mask pair, whose byte order is the reverse of its chain.
-    const coconut = assertSameBeatRoundTrip(samplePaths[0]!)
-    assert.ok(coconut.counts.mask, 'coconut has a same-beat mask group')
 })
+
+test(
+    'coconut’s same-beat mask pair, byte order the reverse of its chain, survives a round trip',
+    { skip: !hasCoconut && 'no coconut' },
+    () => {
+        assert.ok(assertSameBeatRoundTrip(coconutPath).counts.mask, 'a same-beat mask group')
+    },
+)
 
 // The step 0 corpus is third-party and never committed; this runs only where it exists.
 const corpus = [3, 4, 5]
@@ -137,36 +142,46 @@ test(
     },
 )
 
-test('a level.json whose same-beat pair plays in the other order does not match the state', () => {
-    const { bgmOffset, entities } = readLevelData(samplePaths[0]!)
-    const state = createState(parseLevelDataChart(entities), bgmOffset)
-    const saved = levelDataOf(state)
-    const { defaultGuideColors } = serializeEditorMetadata(saved.entities, state.store)
-    assert.ok(levelDataMatchesState(saved.entities, saved.bgmOffset, defaultGuideColors, state))
+test(
+    'a level.json whose same-beat pair plays in the other order does not match the state',
+    { skip: !hasCoconut && 'no coconut' },
+    () => {
+        const { bgmOffset, entities } = readLevelData(coconutPath)
+        const state = createState(parseLevelDataChart(entities), bgmOffset)
+        const saved = levelDataOf(state)
+        const { defaultGuideColors } = serializeEditorMetadata(saved.entities, state.store)
+        assert.ok(levelDataMatchesState(saved.entities, saved.bgmOffset, defaultGuideColors, state))
 
-    // Coconut's two mask changes at beat 129 swap their values, keeping the chain's refs.
-    const swapped = structuredClone(saved.entities)
-    type Entity = (typeof swapped)[number]
-    const atBeat = swapped.filter(
-        (entity) =>
-            entity.archetype === 'StageMaskChange' &&
-            entity.data.some(
-                (data) => data.name === '#BEAT' && 'value' in data && data.value === 129,
-            ),
-    )
-    const next = (entity: Entity) =>
-        entity.data.find((data) => data.name === 'next' && 'ref' in data) as
-            { ref: string } | undefined
-    // The two at beat 129 on one chain: the first's next is the second.
-    const a = atBeat.find((entity) => atBeat.some((other) => other.name === next(entity)?.ref))
-    const b = atBeat.find((entity) => entity.name === (a && next(a)?.ref))
-    assert.ok(a && b)
-    const values = (entity: Entity) => entity.data.filter((data) => data.name !== 'next')
-    const refs = (entity: Entity) => entity.data.filter((data) => data.name === 'next')
-    ;[a.data, b.data] = [
-        [...values(b), ...refs(a)],
-        [...values(a), ...refs(b)],
-    ]
-    assert.deepEqual(playOrderDifferences(playOrder(saved.entities), playOrder(swapped)).length, 1)
-    assert.equal(levelDataMatchesState(swapped, saved.bgmOffset, defaultGuideColors, state), false)
-})
+        // Coconut's two mask changes at beat 129 swap their values, keeping the chain's refs.
+        const swapped = structuredClone(saved.entities)
+        type Entity = (typeof swapped)[number]
+        const atBeat = swapped.filter(
+            (entity) =>
+                entity.archetype === 'StageMaskChange' &&
+                entity.data.some(
+                    (data) => data.name === '#BEAT' && 'value' in data && data.value === 129,
+                ),
+        )
+        const next = (entity: Entity) =>
+            entity.data.find((data) => data.name === 'next' && 'ref' in data) as
+                { ref: string } | undefined
+        // The two at beat 129 on one chain: the first's next is the second.
+        const a = atBeat.find((entity) => atBeat.some((other) => other.name === next(entity)?.ref))
+        const b = atBeat.find((entity) => entity.name === (a && next(a)?.ref))
+        assert.ok(a && b)
+        const values = (entity: Entity) => entity.data.filter((data) => data.name !== 'next')
+        const refs = (entity: Entity) => entity.data.filter((data) => data.name === 'next')
+        ;[a.data, b.data] = [
+            [...values(b), ...refs(a)],
+            [...values(a), ...refs(b)],
+        ]
+        assert.deepEqual(
+            playOrderDifferences(playOrder(saved.entities), playOrder(swapped)).length,
+            1,
+        )
+        assert.equal(
+            levelDataMatchesState(swapped, saved.bgmOffset, defaultGuideColors, state),
+            false,
+        )
+    },
+)

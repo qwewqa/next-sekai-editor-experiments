@@ -1,3 +1,4 @@
+import type { DecodeImage } from '../files/decodeImage'
 import { AssetImportError } from '../files/errors'
 import { importItem } from '../files/importer'
 import type { UserAssetRecord, UserAssetStore } from '../files/store'
@@ -14,6 +15,7 @@ export type RedownloadOptions = {
     client: ServerClient
     store: UserAssetStore
     maxTextureSide: () => number
+    decodeImage: DecodeImage
     /** The item came back under another key (the server changed it): the choice follows. */
     replace: (type: AssetType, oldKey: string, record: UserAssetRecord) => void
     allowHttp?: boolean
@@ -21,7 +23,15 @@ export type RedownloadOptions = {
 }
 
 export const createRedownload =
-    ({ client, store, maxTextureSide, replace, allowHttp, now = Date.now }: RedownloadOptions) =>
+    ({
+        client,
+        store,
+        maxTextureSide,
+        decodeImage,
+        replace,
+        allowHttp,
+        now = Date.now,
+    }: RedownloadOptions) =>
     async (
         type: AssetType,
         choice: { key: string; name: string; origin: string },
@@ -43,6 +53,7 @@ export const createRedownload =
                 {
                     maxTextureSide: maxTextureSide(),
                     decodeAudio: context.decodeAudio,
+                    decodeImage,
                     signal: context.signal,
                     origin: info.address,
                     now,

@@ -75,9 +75,11 @@ const setup = (
         }),
         store,
         maxTextureSide: () => 4096,
+        decodeImage: async () => undefined,
         decodeAudio: async () => ({ duration: 1 }) as AudioBuffer,
         apply: (choices) => applied.push(choices),
-        describe: (error: AssetImportError) => serverItemMessage(error, en, number),
+        describe: (error: AssetImportError) =>
+            serverItemMessage(error, en, number, (bytes) => `${bytes} bytes`),
         toChoice: storedChoice,
         recent: () => remembered.slice().reverse(),
         remember: (address) => remembered.push(address),
@@ -232,7 +234,7 @@ test('an item whose checksum does not match is refused with the server’s wordi
     assert.equal(chooser.phase.value, 'listed')
     assert.deepEqual(applied, [])
     assert.deepEqual(await store.list(), [])
-    const error = chooser.error.value
+    const error = chooser.useError.value
     assert.equal(error?.kind, 'item')
     assert.equal(
         error?.kind === 'item' && error.message,
@@ -251,7 +253,7 @@ test('an item the checks refuse says so as an item of the server, not of a file'
     chooser.address.value = server.base
     await chooser.connect()
     await chooser.use()
-    const error = chooser.error.value
+    const error = chooser.useError.value
     assert.equal(
         error?.kind === 'item' && error.message,
         'This item’s skin texture is not a PNG or JPEG image.',
@@ -271,7 +273,7 @@ test('a ticked item that fails stores nothing, not even the selected one', async
     await chooser.use()
     assert.deepEqual(await store.list(), [])
     assert.deepEqual(applied, [])
-    assert.equal(chooser.error.value?.kind, 'item')
+    assert.equal(chooser.useError.value?.kind, 'item')
 })
 
 test('a resource that is missing is the item’s, and one that cannot be fetched is the server’s', async () => {
@@ -283,7 +285,7 @@ test('a resource that is missing is the item’s, and one that cannot be fetched
     await first.connect()
     await first.use()
     assert.equal(
-        first.error.value?.kind === 'item' && first.error.value.message,
+        first.useError.value?.kind === 'item' && first.useError.value.message,
         'This item’s skin data is missing.',
     )
 
@@ -293,7 +295,11 @@ test('a resource that is missing is the item’s, and one that cannot be fetched
     await second.connect()
     dropped.server.state.failing = true
     await second.use()
-    assert.deepEqual(second.error.value, { kind: 'server', code: 'unreachable', status: undefined })
+    assert.deepEqual(second.useError.value, {
+        kind: 'server',
+        code: 'unreachable',
+        status: undefined,
+    })
     assert.equal(second.phase.value, 'listed')
 })
 

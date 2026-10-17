@@ -2,13 +2,20 @@ import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
 import { fromHex16, hash16, sha256, toHex } from './hash'
-import type { KvTx } from './kv/types'
+import { KeyRange, type KvTx } from './kv/types'
 import { putChunk } from './putChunk'
-import { nodeRow, rootRow } from './records/rows'
+import { nodeRow, rootRow, type NodesRow } from './records/rows'
 import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
+import {
+    blockRow,
+    EDITING_KINDS as TIMELINE_EDITING_KINDS,
+    windowBlocks,
+    type ReplaySlot,
+    type StackWindow,
+} from './timeline'
 import type { FlushCommitted } from './worker/flushHooks'
 
 // The storage worker's half of a flush (Part 1 §1.6.2's order of work, §1.6.4 step 2): deflate,
@@ -25,7 +32,7 @@ export type EntryKind =
     'init' | 'continue' | 'edit' | 'undo' | 'redo' | 'restore' | 'save' | 'export' | 'recovered'
 
 /** Entries that make a chain edited (§1.6.11.2's `edited`). */
-export const EDITING_KINDS: readonly EntryKind[] = ['edit', 'undo', 'redo', 'restore', 'recovered']
+export const EDITING_KINDS = TIMELINE_EDITING_KINDS as readonly EntryKind[]
 
 export type SessionView = { scroll: number; zoom: number; group?: number; stage?: number }
 
@@ -56,10 +63,24 @@ export type BatchEntry = {
     wall: number
     kind: EntryKind
     label: string
-    /** Index into the batch's snapshots. */
-    snapshot: number
+    /** Index into the batch's snapshots, or a stored root: an undo or redo onto a slot not loaded. */
+    snapshot: number | Uint8Array
     dirty: boolean
 }
+
+/** A stack block a batch rewrites (§1.6.4 #6): each slot a snapshot of the batch or a stored root. */
+export type BatchBlock = {
+    block: number
+    first: number
+    slots: (number | Uint8Array)[]
+    labels: string[]
+}
+
+/**
+ * The stack after the batch's last entry: its window and the blocks that changed, or with `full`
+ * every block of the window. `at` is where the page's stored slots and blocks were stored.
+ */
+export type BatchStack = StackWindow & { blocks: BatchBlock[]; full: boolean; at?: KnownAt }
 
 export type BatchSnapshot = {
     /** The header chunk's id in this batch. */
@@ -101,7 +122,10 @@ export type FlushBatch = {
     /** Carried media an earlier flush sent without a reply: read back even when found stored. */
     unconfirmed?: string[]
     view?: SessionView
-    summary: ChainSummary
+    /** Absent when the head isn't one of the batch's states (an undo onto a slot not loaded). */
+    summary?: ChainSummary
+    /** The stack after the last entry; absent when the page couldn't follow its entries. */
+    stack?: BatchStack
     durability: 'relaxed' | 'strict'
 }
 
@@ -138,7 +162,14 @@ export type FlushResult =
           lastSeq: number
           /** Carried media put now, or found there after an unanswered flush: each read back. */
           readBack: string[]
-          /** Media that didn't read back right: the entries are stored, the media is not (§1.6.8.4). */
+          /** False when the stored stack was newer than the batch's, which then left it alone. */
+          stackWritten: boolean
+          /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
+          chain: Record<string, unknown>
+          /**
+           * Media refused by the put or that didn't read back right: the entries are stored, the
+           * media is not (§1.6.8.4).
+           */
           mediaFailed?: string[]
           stats: WriteStats
           /** Stored in memory only (storage unavailable): set by the worker's reply. */
@@ -182,6 +213,7 @@ export const FLUSH_STORES = [
     'chains',
     'sessions',
     'entries',
+    'stackBlocks',
     'nodes',
     'chunks',
     'media',
@@ -369,6 +401,23 @@ export const writeFlush = async (
             ? await tx.get('chains', batch.chain.forkOf)
             : undefined
 
+    // Entries landing on a stored slot (an undo or redo onto one not loaded) take its root's count.
+    const storedRoots = new Map<string, { hash: Uint8Array; noteCount: number }>()
+    for (const entry of batch.entries) {
+        if (typeof entry.snapshot === 'number') continue
+        const hex = toHex(entry.snapshot)
+        if (storedRoots.has(hex)) continue
+        const row = (await tx.get('nodes', hashKey(entry.snapshot))) as NodesRow | undefined
+        // Open sessions' stacks are kept data (§1.6.8), so their roots are never removed.
+        if (row?.t !== 'root') throw new FlushBatchError(`No stored root ${hex}`)
+        storedRoots.set(hex, { hash: entry.snapshot.slice(), noteCount: row.noteCount })
+    }
+    const rootOf = (ref: number | Uint8Array) => {
+        const root = typeof ref === 'number' ? prepared.roots[ref] : storedRoots.get(toHex(ref))
+        if (!root) throw new FlushBatchError(`No snapshot ${String(ref)}`)
+        return root
+    }
+
     const nodesToPut: EncodedNode[] = []
     for (const node of prepared.nodes)
         if ((await tx.getKey('nodes', hashKey(node.hash))) === undefined) nodesToPut.push(node)
@@ -436,9 +485,14 @@ export const writeFlush = async (
         stats.nodes++
         count('nodes', row, root.hash)
     }
+    // A Blob the browser refuses (WebKit's private windows) never fails the entries (§1.6.8.4).
+    const refused: string[] = []
     for (const item of mediaToPut) {
         const row = mediaRow(item, day)
-        await tx.put('media', row, hashKey(fromHex16(item.hash)))
+        if (!(await tx.tryPut('media', row, hashKey(fromHex16(item.hash))))) {
+            refused.push(item.hash)
+            continue
+        }
         ownBytes += row.size
         count('media', row, item.hash)
     }
@@ -459,8 +513,7 @@ export const writeFlush = async (
     let edited = false
     for (const entry of batch.entries) {
         if (entry.seq <= newLastSeq) continue
-        const root = prepared.roots[entry.snapshot]
-        if (!root) throw new FlushBatchError(`No snapshot ${entry.snapshot}`)
+        const root = rootOf(entry.snapshot)
         const time = stamp(entry.wall)
         if (written || session) activeMs += Math.min(Math.max(time - updatedAt, 0), ACTIVE_GAP_MS)
         const row = {
@@ -485,10 +538,49 @@ export const writeFlush = async (
         if (EDITING_KINDS.includes(entry.kind)) edited = true
     }
 
+    // The stack after the batch's last entry (§1.6.4 #6), unless the session already holds a later
+    // one: a batch planned again after a restart can end before what a lost reply committed.
+    const batchLast = batch.entries.at(-1)?.seq ?? 0
+    let stack = batch.stack && batchLast >= lastSeq ? batch.stack : undefined
+    // Slots and blocks the page knows stored elsewhere (a fork's parent, another store) are checked:
+    // a block left alone may not be here, and a stored slot must be.
+    if (stack && stack.at?.db !== known.db) {
+        const refs = stack.full
+            ? stack.blocks.flatMap((block) => block.slots.filter((ref) => typeof ref !== 'number'))
+            : undefined
+        let whole = refs !== undefined
+        for (const ref of refs ?? [])
+            if ((await tx.getKey('nodes', hashKey(ref))) === undefined) {
+                whole = false
+                break
+            }
+        if (!whole) stack = undefined
+    }
+    const blockRows: unknown[] = []
+    if (stack) {
+        const { first, last } = windowBlocks(stack)
+        for (const block of stack.blocks) {
+            const slots: ReplaySlot[] = block.slots.map((ref, i) => ({
+                snapshot: typeof ref === 'number' ? rootOf(ref).hash : ref,
+                label: block.labels[i] ?? '',
+            }))
+            const row = blockRow(batch.session.id, block.block, block.first, slots)
+            blockRows.push(row)
+            const added = (await tx.getKey('stackBlocks', [row.sessionId, row.block])) === undefined
+            await tx.put('stackBlocks', row)
+            count('stackBlocks', row, undefined, added)
+        }
+        // Blocks outside the window go: whole blocks past the cap, and the cut redo end.
+        const id = batch.session.id
+        await tx.delete('stackBlocks', KeyRange.bound([id, -Infinity], [id, first], false, true))
+        await tx.delete('stackBlocks', KeyRange.bound([id, last], [id, Infinity], true, false))
+    }
+
     const sessionFields: Row = {
         updatedAt,
         day,
         lastSeq: newLastSeq,
+        ...(stack ? { stack: { base: stack.base, length: stack.length, index: stack.index } } : {}),
         entryCount: (typeof session?.entryCount === 'number' ? session.entryCount : 0) + written,
         activeMs,
         ownBytes: (typeof session?.ownBytes === 'number' ? session.ownBytes : 0) + ownBytes,
@@ -513,8 +605,9 @@ export const writeFlush = async (
     const chainFields: Row = {
         updatedAt,
         day,
-        // A re-send of stored entries leaves the newer head's summary (a kill after commit).
-        ...(written || !chain ? { summary: batch.summary } : {}),
+        // A re-send of stored entries leaves the newer head's summary (a kill after commit); a
+        // batch whose head isn't one of its states has none.
+        ...(batch.summary && (written || !chain) ? { summary: batch.summary } : {}),
         appVersion: batch.appVersion,
         ...(edited ? { edited: true, hasContent: true } : {}),
     }
@@ -545,14 +638,19 @@ export const writeFlush = async (
         chunks: prepared.chunks.map((chunk) => chunk.hash),
         roots: prepared.roots.map((root) => root.hash),
         lastSeq: newLastSeq,
-        readBack,
+        readBack: readBack.filter((hex) => !refused.includes(hex)),
+        ...(refused.length ? { mediaFailed: refused } : {}),
+        stackWritten: stack !== undefined,
+        chain: chainValue,
         stats,
         committed: {
             session: { id: batch.session.id, chainId },
             entries: entryRows,
-            stackBlocks: [],
+            stackBlocks: blockRows,
             records,
-            media: mediaToPut.map((item) => fromHex16(item.hash)),
+            media: mediaToPut
+                .filter((item) => !refused.includes(item.hash))
+                .map((item) => fromHex16(item.hash)),
             descriptorChanged: !chain,
         },
     }

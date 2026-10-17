@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
@@ -241,13 +242,17 @@ test('only the first 64 bytes are read to identify a file', async () => {
     assert.deepEqual(slices, [[0, 64]])
 })
 
+// The locked packages only: nativeBundle.test.mjs plants a stand-in while it builds.
 function hasShipped() {
-    try {
-        readFileSync('public/resource/skin.scp')
-        return true
-    } catch {
-        return false
-    }
+    const lock = JSON.parse(readFileSync('deployment/preview-assets.lock.json', 'utf8'))
+    return ['skin', 'particle'].every((name) => {
+        try {
+            const bytes = readFileSync(`public/resource/${name}.scp`)
+            return createHash('sha256').update(bytes).digest('hex') === lock[name].sha256
+        } catch {
+            return false
+        }
+    })
 }
 
 test('Open tells a ZIP from its first 64 bytes without opening it', async () => {

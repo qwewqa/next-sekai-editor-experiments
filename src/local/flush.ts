@@ -10,6 +10,7 @@ import {
 import type {
     BatchMedia,
     BatchSnapshot,
+    BatchStack,
     ChainSummary,
     EntryKind,
     FlushBatch,
@@ -19,6 +20,7 @@ import type {
     WriteStats,
 } from './flushWrite'
 import { toHex } from './hash'
+import { isEditingKind, SessionStack, type ModelSlot, type StackPlan } from './timeline'
 
 export { onFlushCommitted } from './worker/flushHooks'
 
@@ -38,7 +40,10 @@ export type PendingEntry = {
     readonly kind: EntryKind
     /** Evaluated when flushed, so the stored label is in the locale at write time (§1.10 #7). */
     readonly label: () => string
-    readonly state: State
+    /** The state it produced or landed on; absent for an undo or redo onto a slot not loaded. */
+    readonly state?: State
+    /** That slot's stored root, when there's no state. */
+    readonly snapshot?: Uint8Array
     readonly dirty: boolean
 }
 
@@ -62,6 +67,15 @@ export type FlushSession = {
     readonly memoryOnly: PendingEntry[]
     /** Resolves once this tab holds the session's lock (§1.6.6). */
     readonly ready: Promise<unknown>
+    /** Its stack as acknowledged, which each flush's entries are replayed over (§1.6.4 #6). */
+    readonly stack: SessionStack<PendingEntry>
+    /** The newest entry acknowledged from a database, and the newest committed strictly. */
+    ackedSeq: number
+    strictSeq: number
+    /** Whether it has an entry of an editing kind (§1.6.11.2's `edited`). */
+    edited: boolean
+    /** Its chain record as the last flush wrote it, for the journal's descriptor. */
+    chain?: Record<string, unknown>
     /** Runs once the session is replaced and nothing of it is pending: releases its lock. */
     readonly done?: () => void
 }
@@ -117,6 +131,13 @@ export type FlushDeps = {
      */
     storeMedia?: (item: BatchMedia) => Promise<boolean>
     onFlushed?: (report: FlushReport) => void
+    /** A flush or a strict sync committed a session's entries up to `seq` in a database. */
+    onCommitted?: (session: FlushSession, commit: { seq: number; strict: boolean }) => void
+    /**
+     * Commits strictly what relaxed flushes stored (§1.6.4: a journal is cleared only once a
+     * strict commit covers its `seq`); without it, a hide's flush with nothing new does nothing.
+     */
+    syncStrict?: () => Promise<void>
     onError?: (error: unknown) => void
     /** Runs an extraction in slices; `runSliced` by default. */
     runJob?: typeof runSliced
@@ -273,6 +294,10 @@ export class Flusher {
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
             ...(start.done ? { done: start.done } : {}),
+            stack: new SessionStack(),
+            ackedSeq: 0,
+            strictSeq: 0,
+            edited: false,
         }
         const previous = this.current
         this.current = session
@@ -287,13 +312,14 @@ export class Flusher {
     /**
      * Appends an entry to the current session: synchronous, as push, undo and redo are. A state
      * holding media not yet stored (a pick) flushes at once and strictly: the journal doesn't
-     * carry media (§1.6.4).
+     * carry media (§1.6.4). An undo or redo onto a slot not loaded gives its stored root instead.
      */
-    append(kind: EntryKind, label: () => string, state: State, dirty: boolean) {
+    append(kind: EntryKind, label: () => string, state: State | Uint8Array, dirty: boolean) {
         const session = this.current
         if (!session) return
         this.add(session, kind, label, state, dirty)
         if (
+            !(state instanceof Uint8Array) &&
             heldMediaOf(state).some(
                 (item) => !this.knownMedia.has(item.hash) && !this.failedMedia.has(item.hash),
             )
@@ -306,7 +332,7 @@ export class Flusher {
         session: FlushSession,
         kind: EntryKind,
         label: () => string,
-        state: State,
+        state: State | Uint8Array,
         dirty: boolean,
     ) {
         session.pending.push({
@@ -314,9 +340,34 @@ export class Flusher {
             wall: this.now(),
             kind,
             label,
-            state,
+            ...(state instanceof Uint8Array ? { snapshot: state } : { state }),
             dirty,
         })
+        if (isEditingKind(kind)) session.edited = true
+    }
+
+    /** The newest entry's `seq` in memory; 0 before any. */
+    newestSeq(session: FlushSession) {
+        return session.nextSeq - 1
+    }
+
+    /**
+     * Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4).
+     * A blank start with no edit has nothing to store, so nothing to journal.
+     */
+    unflushed(session: FlushSession) {
+        if (session.strictSeq >= this.newestSeq(session)) return false
+        return session.ackedSeq > session.strictSeq || this.flushable(session)
+    }
+
+    /** The session's stack with every pending entry replayed: what the tab shows. */
+    liveStack(session: FlushSession) {
+        return session.stack.replay(session.pending, (entry) => this.slotOf(entry))?.stack
+    }
+
+    /** The slot an entry pushes. */
+    private slotOf(entry: PendingEntry): ModelSlot<PendingEntry> {
+        return { entry, label: entry.label }
     }
 
     private storesAtOnce(session: FlushSession) {
@@ -385,6 +436,9 @@ export class Flusher {
         for (const session of this.sessions) {
             session.pending.unshift(...session.memoryOnly)
             session.memoryOnly.length = 0
+            // What memory held is sent again, and a reply may have been lost: the stack goes back
+            // to before it, and its blocks are written whole next time.
+            session.stack.rollback()
         }
         // A new worker holds nothing paused: media that failed gets tries afresh.
         if (this.failedMedia.size) {
@@ -456,10 +510,32 @@ export class Flusher {
                 }
             }
             this.retryMs = 0
+            if (active.strict) await this.syncStrict()
             this.retire()
         } finally {
             this.active = undefined
         }
+    }
+
+    /** Commits strictly what relaxed flushes stored, so their journals can be cleared. */
+    private async syncStrict() {
+        const behind = this.sessions.filter((session) => session.strictSeq < session.ackedSeq)
+        if (!behind.length || !this.deps.syncStrict) return
+        const seqs = behind.map((session) => session.ackedSeq)
+        try {
+            await this.deps.syncStrict()
+        } catch (error) {
+            // The journal stays until a later strict commit covers it.
+            this.deps.onError?.(error)
+            return
+        }
+        behind.forEach((session, i) => {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const seq = seqs[i]!
+            if (seq <= session.strictSeq) return
+            session.strictSeq = seq
+            this.deps.onCommitted?.(session, { seq, strict: true })
+        })
     }
 
     /** Sessions replaced and fully stored are let go: their locks released. */
@@ -516,17 +592,22 @@ export class Flusher {
         generation: number,
     ): Promise<'stored' | 'retry'> {
         const slices: number[] = []
-        const plans: SnapshotPlan[] = []
+        // Each entry's plan, or undefined for one landing on a stored slot.
+        const planned: (SnapshotPlan | undefined)[] = []
         const take = session.pending.slice(0, BATCH_ENTRIES)
         for (const entry of take) {
+            if (!entry.state) {
+                planned.push(undefined)
+                continue
+            }
             const job = this.extractor.plan(entry.state, batch)
             if (options.oneGo) {
                 const start = performance.now()
-                plans.push(runToEnd(job))
+                planned.push(runToEnd(job))
                 slices.push(performance.now() - start)
             } else
                 try {
-                    plans.push(
+                    planned.push(
                         await (this.deps.runJob ?? runSliced)(job, {
                             onSlice: (ms) => slices.push(ms),
                             hurry: (finish) => {
@@ -539,7 +620,24 @@ export class Flusher {
                 }
             if (batch.size > BATCH_TEXT) break
         }
-        const entries = take.slice(0, plans.length)
+        const entries = take.slice(0, planned.length)
+        const plans = planned.filter((plan) => plan !== undefined)
+        // Each stateful entry's snapshot in the batch.
+        const snapshotOf = new Map<PendingEntry, number>()
+        entries.forEach((entry, i) => {
+            if (planned[i]) snapshotOf.set(entry, snapshotOf.size)
+        })
+        // Labels evaluated once, in the locale at write time (§1.10 #7).
+        const labels = new Map(entries.map((entry) => [entry, entry.label()]))
+        // A fork's inherited slots stored by a commit whose reply was lost have no known root:
+        // their states go in this batch as snapshots of their own, with no entry.
+        for (const slot of session.stack.replay(entries, (entry) => this.slotOf(entry))?.stack
+            .slots ?? [])
+            if (slot.entry?.state && !snapshotOf.has(slot.entry)) {
+                snapshotOf.set(slot.entry, plans.length)
+                labels.set(slot.entry, slot.entry.label())
+                plans.push(runToEnd(this.extractor.plan(slot.entry.state, batch)))
+            }
 
         // Chunks pending in an earlier batch: wait for their hashes. One that failed is sent again.
         const earlier = new Set<Promise<Uint8Array>>()
@@ -581,7 +679,7 @@ export class Flusher {
         const held: string[] = []
         const sent = new Set<string>()
         for (const entry of entries)
-            for (const item of heldMediaOf(entry.state)) {
+            for (const item of entry.state ? heldMediaOf(entry.state) : []) {
                 if (!referenced.has(item.hash) || sent.has(item.hash)) continue
                 sent.add(item.hash)
                 // Stored alone meanwhile: the root names it, and it reads as not held till then.
@@ -594,8 +692,8 @@ export class Flusher {
         // The last entry's state is the head once this batch is stored.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const last = entries.at(-1)!
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const lastPlan = plans.at(-1)!
+        const lastPlan = planned.at(-1)
+        const stack = this.planStack(session, entries, snapshotOf, labels)
         const isStrict =
             options.strict || media.length > 0 || (!session.stored && this.storesAtOnce(session))
         const view = this.deps.view?.()
@@ -623,19 +721,24 @@ export class Flusher {
                 hash,
                 ...(memo.known ? { known: memo.known } : {}),
             })),
-            entries: entries.map((entry, i) => ({
+            entries: entries.map((entry) => ({
                 seq: entry.seq,
                 wall: entry.wall,
                 kind: entry.kind,
-                label: entry.label(),
-                snapshot: i,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                label: labels.get(entry)!,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
                 dirty: entry.dirty,
             })),
             media,
             held,
             ...(unconfirmed.length ? { unconfirmed } : {}),
             ...(view ? { view } : {}),
-            summary: summaryOf(last.state, lastPlan.noteCount),
+            ...(last.state && lastPlan
+                ? { summary: summaryOf(last.state, lastPlan.noteCount) }
+                : {}),
+            ...(stack ? { stack: stack.wire } : {}),
             durability: isStrict ? 'strict' : 'relaxed',
         }
         const mainMs = slices.reduce((sum, ms) => sum + ms, 0) + performance.now() - start
@@ -656,10 +759,39 @@ export class Flusher {
                 )
                 const acknowledged = session.pending.splice(0, entries.length)
                 this.noDatabase = !!result.noDatabase
-                if (result.memory) session.memoryOnly.push(...acknowledged)
-                // A database holds them now: moved by Try Again, or sent again after a restart.
-                else for (const each of this.sessions) each.memoryOnly.length = 0
+                if (result.memory) {
+                    session.stack.checkpoint()
+                    session.memoryOnly.push(...acknowledged)
+                } else
+                    // A database holds them now: moved by Try Again, or sent again after a restart.
+                    for (const each of this.sessions) {
+                        each.memoryOnly.length = 0
+                        each.stack.release()
+                    }
                 session.stored = true
+                session.chain = result.chain
+                if (stack)
+                    session.stack.commit(
+                        stack.plan,
+                        (entry) => {
+                            const at = snapshotOf.get(entry)
+                            const hash = at === undefined ? undefined : result.roots[at]
+                            const label = labels.get(entry)
+                            return hash && label !== undefined ? { hash, label } : undefined
+                        },
+                        {
+                            written: result.stackWritten,
+                            durable: !result.memory,
+                            at: result.known,
+                        },
+                    )
+                else session.stack.unsync()
+                if (!result.memory) {
+                    const seq = Math.max(session.ackedSeq, result.lastSeq)
+                    session.ackedSeq = seq
+                    if (isStrict) session.strictSeq = Math.max(session.strictSeq, seq)
+                    this.deps.onCommitted?.(session, { seq, strict: isStrict })
+                }
                 const failed = new Set(result.mediaFailed)
                 for (const item of media) {
                     this.unconfirmed.delete(item.hash)
@@ -699,6 +831,52 @@ export class Flusher {
     }
 
     /**
+     * The batch's stack: its entries replayed over the acknowledged stack, with the blocks they
+     * change. Undefined when the model can't follow them: they're stored all the same, and the
+     * blocks are rewritten whole later.
+     */
+    private planStack(
+        session: FlushSession,
+        entries: readonly PendingEntry[],
+        snapshotOf: ReadonlyMap<PendingEntry, number>,
+        labels: ReadonlyMap<PendingEntry, string>,
+    ): { plan: StackPlan<PendingEntry>; wire: BatchStack } | undefined {
+        const replayed = session.stack.replay(entries, (entry) => this.slotOf(entry))
+        if (!replayed) {
+            this.deps.onError?.(new Error('The stack model could not follow the entries'))
+            return
+        }
+        const plan = session.stack.plan(replayed.stack, replayed.changedFrom)
+        const blocks: BatchStack['blocks'] = []
+        for (const { block, first, end } of plan.writes) {
+            const slots: (number | Uint8Array)[] = []
+            const blockLabels: string[] = []
+            for (let slot = first; slot < end; slot++) {
+                const model = plan.stack.at(slot)
+                const entry = model?.entry
+                const ref = entry ? snapshotOf.get(entry) : model?.hash
+                const label = entry ? labels.get(entry) : model?.label
+                if (ref === undefined || typeof label !== 'string') {
+                    this.deps.onError?.(new Error(`Stack slot ${slot} has no snapshot`))
+                    return
+                }
+                slots.push(ref)
+                blockLabels.push(label)
+            }
+            blocks.push({ block, first, slots, labels: blockLabels })
+        }
+        return {
+            plan,
+            wire: {
+                ...plan.window,
+                blocks,
+                full: plan.full,
+                ...(session.stack.at ? { at: session.stack.at } : {}),
+            },
+        }
+    }
+
+    /**
      * Moves a session's pending entries to a new session in a new chain, copied from the old
      * chain's record, whose parent is the stored session (D10). A stored session never changes
      * chain, so the chain that continued it keeps its whole history.
@@ -706,6 +884,9 @@ export class Flusher {
     private fork(from: FlushSession, lastSeq: number | undefined) {
         // Entries a kill after commit already stored stay the stored session's.
         const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
+        // The parent's stack at `uptoSeq`: what's acknowledged, then what was stored unanswered.
+        const stored = from.pending.filter((entry) => lastSeq !== undefined && entry.seq <= lastSeq)
+        const inherited = from.stack.replay(stored, (entry) => this.slotOf(entry))?.stack
         from.pending.length = 0
         const id = this.newId()
         const lock = this.deps.lockSession?.(id)
@@ -726,6 +907,10 @@ export class Flusher {
             memoryOnly: [],
             ready: lock?.ready ?? Promise.resolve(),
             ...(lock ? { done: lock.done } : {}),
+            stack: from.stack.forkedStack(inherited),
+            ackedSeq: 0,
+            strictSeq: 0,
+            edited: moving.some((entry) => isEditingKind(entry.kind)),
         }
         this.sessions.splice(this.sessions.indexOf(from) + 1, 0, fork)
         if (this.current === from) this.current = fork

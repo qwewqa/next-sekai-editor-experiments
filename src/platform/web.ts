@@ -1,4 +1,6 @@
+import { storageJournalStore } from '../local/journal/store'
 import { webLockService } from '../local/locks'
+import { storageKey } from '../storage'
 import { allowsFileSystemAccess, detection, isStandalone, usesOpfsPickers } from './detect'
 import { levelDataDiskState } from './fingerprint'
 import {
@@ -11,7 +13,6 @@ import {
     writeHandle,
 } from './handover'
 import { opfsOpenPicker, opfsSavePicker } from './opfs'
-import { journalStub } from './stubs'
 import type {
     DiskState,
     FileTarget,
@@ -263,7 +264,8 @@ export const platform: Platform = {
     onCloseRequested,
     onLifecycle,
     locks: webLockService,
-    journal: journalStub,
+    // localStorage is read on each call: touched at import time it would break Node tests.
+    journal: storageJournalStore(() => localStorage, storageKey('')),
 
     openExternal,
     fetchServer: (url, init) =>

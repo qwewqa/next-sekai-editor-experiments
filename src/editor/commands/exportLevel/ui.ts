@@ -1,3 +1,4 @@
+import { markExported } from '../../../history'
 import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import type { FileError } from '../../../platform'
@@ -101,6 +102,10 @@ export const exportUi: ExportUi = {
         }),
     exported: (name) => {
         notify(interpolate(() => i18n.value.export.exported, name))
+    },
+    // Called, not referenced: history imports this module's importers at load.
+    markExported: (name) => {
+        markExported(name)
     },
     downloadStarted: (name, size) => {
         notify(

@@ -10,6 +10,7 @@ import Value from 'typebox/value'
 import type { AssetType } from '../types'
 import { AssetImportError } from './errors'
 import { LIMITS } from './limits'
+import { displayText } from './package'
 
 // The schemas and checks for the JSON of untrusted items (Part 2, 2.5.5): extra fields are
 // allowed, every number is finite (TypeBox's Number refuses NaN and Infinity), and what the
@@ -57,7 +58,7 @@ const particleSchema = Type.Object({
             transform: Type.Optional(Type.Record(Type.String(), expression)),
             groups: Type.Array(
                 Type.Object({
-                    count: Type.Number({ minimum: 0 }),
+                    count: Type.Integer({ minimum: 0 }),
                     particles: Type.Array(
                         Type.Object({
                             sprite: Type.Integer({ minimum: 0 }),
@@ -181,6 +182,23 @@ const cleanProperty = (value: Type.Static<typeof property>) => ({
     ease: value.ease !== undefined && eases.test(value.ease) ? value.ease : 'linear',
 })
 
+/** The particles and groups of all effects, counted before the schema walks them. */
+const checkParticleTotals = (effects: unknown) => {
+    if (!Array.isArray(effects)) return
+    let groups = 0
+    let particles = 0
+    for (const effect of effects as unknown[]) {
+        if (!isRecord(effect) || !Array.isArray(effect.groups)) continue
+        groups += effect.groups.length
+        for (const group of effect.groups as unknown[])
+            if (isRecord(group) && Array.isArray(group.particles))
+                particles += group.particles.length
+    }
+    const detail = { type: 'particle' as const, limit: LIMITS.particlesInAll }
+    if (groups > LIMITS.particlesInAll) throw new AssetImportError('tooManyGroups', detail)
+    if (particles > LIMITS.particlesInAll) throw new AssetImportError('tooManyParticles', detail)
+}
+
 export const checkParticleData = (raw: unknown): ParticleData => {
     if (isRecord(raw)) {
         if (Array.isArray(raw.sprites) && raw.sprites.length > LIMITS.particleSprites)
@@ -193,6 +211,7 @@ export const checkParticleData = (raw: unknown): ParticleData => {
                 type: 'particle',
                 limit: LIMITS.particleEffects,
             })
+        checkParticleTotals(raw.effects)
     }
     const data = check(particleSchema, raw, 'particle')
 
@@ -202,17 +221,23 @@ export const checkParticleData = (raw: unknown): ParticleData => {
     }
 
     const effects = data.effects.map((effect) => {
-        // `count × particles` is what an effect can have alive at once.
-        const total = effect.groups.reduce(
-            (sum, group) => sum + group.count * group.particles.length,
-            0,
-        )
-        if (total > LIMITS.particlesPerEffect)
-            throw new AssetImportError('particleCount', {
-                type: 'particle',
-                name: effect.name,
-                limit: LIMITS.particlesPerEffect,
-            })
+        const detail = {
+            type: 'particle' as const,
+            name: displayText(effect.name),
+            limit: LIMITS.particlesPerEffect,
+        }
+        if (effect.groups.length > LIMITS.particlesPerEffect)
+            throw new AssetImportError('effectGroups', detail)
+        // `count × particles` is what an effect can have alive at once; the draw walks every
+        // occurrence of a group, so one with no particles counts as one.
+        let alive = 0
+        let particles = 0
+        for (const group of effect.groups) {
+            alive += group.count * Math.max(group.particles.length, 1)
+            particles += group.particles.length
+        }
+        if (alive > LIMITS.particlesPerEffect || particles > LIMITS.particlesPerEffect)
+            throw new AssetImportError('particleCount', detail)
         return {
             name: effect.name,
             transform: cleanTransform(effect.transform),

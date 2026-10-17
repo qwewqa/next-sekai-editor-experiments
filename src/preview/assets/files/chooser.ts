@@ -1,12 +1,14 @@
 import { shallowRef } from 'vue'
 import { assetTypes } from '../choice'
 import type { AssetChoice, AssetType } from '../types'
+import type { DecodeImage } from './decodeImage'
 import { AssetImportError } from './errors'
 import { readImageSize } from './image'
 import { importItem } from './importer'
 import { LIMITS } from './limits'
 import { openSourcePackage, type ListedItem, type SourcePackage } from './package'
-import type { UserAssetMeta, UserAssetStore } from './store'
+import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from './store'
+import { rollBack, StoreFailed, storeRecords } from './storeRecords'
 
 // The chooser's From a File view (Part 2, 2.5.2, 2.6) without its markup: pick a package, list the
 // items of one type, offer the other types' items of the same name, and on Use check, repack and
@@ -24,6 +26,7 @@ export type ChooserDeps = {
     store: UserAssetStore
     maxTextureSide: () => number
     decodeAudio: (data: ArrayBuffer) => Promise<AudioBuffer>
+    decodeImage: DecodeImage
     /** Sets the choices a Use made, all together. */
     apply: (choices: Partial<Record<AssetType, AssetChoice>>) => void
     /** The plain message for a package that is refused. */
@@ -50,12 +53,16 @@ export const isServerOrigin = (origin: string) => /^https?:\/\//i.test(origin)
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
-    // Whatever went wrong reads as a problem with the package, or with storing it.
+    // Whatever went wrong reads as a problem with the package, with reading the file (moved or
+    // changed since it was picked), or with storing it.
     const describe = (failure: unknown) =>
         deps.describe(
             failure instanceof AssetImportError
                 ? failure
-                : new AssetImportError('storeFailed', { type }),
+                : new AssetImportError(
+                      failure instanceof StoreFailed ? 'storeFailed' : 'fileUnreadable',
+                      { type },
+                  ),
         )
 
     const open = shallowRef(false)
@@ -64,7 +71,10 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     const items = shallowRef<ListedItem[]>([])
     const selected = shallowRef<string | undefined>()
     const also = shallowRef<AlsoOption[]>([])
+    /** Why the picked file could not be listed: shown under Select File…. */
     const error = shallowRef<string | undefined>()
+    /** Why Use failed: shown next to Use. */
+    const useError = shallowRef<string | undefined>()
     /** Object URLs of the listed items' thumbnails, by item name. */
     const thumbnails = shallowRef<ReadonlyMap<string, string>>(new Map())
 
@@ -91,6 +101,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         selected.value = undefined
         also.value = []
         error.value = undefined
+        useError.value = undefined
     }
 
     /** The thumbnails of the first items, as small images checked by their headers. */
@@ -103,7 +114,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                     ? await source.entry(path, {
                           type,
                           part: 'thumbnail',
-                          maxSize: 8 * 1024 * 1024,
+                          maxSize: LIMITS.thumbnail,
                       })
                     : undefined
                 const size = bytes && readImageSize(bytes)
@@ -130,7 +141,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             if (other === type) continue
             try {
                 let list = otherLists.get(other)
-                if (!list) otherLists.set(other, (list = source.list(other)))
+                if (!list) otherLists.set(other, (list = source.list(other, controller.signal)))
                 const match = (await list).find((item) => item.name === name)
                 if (match) found.push({ type: other, name, title: match.title, ticked: false })
             } catch {
@@ -148,15 +159,15 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     }
 
     /** Reads a package and lists its items of this type. */
-    const pick = async (file: Blob, name: string) => {
+    const pick = async (file: Blob, name: string, opened?: SourcePackage) => {
         reset()
         const mine = generation
         open.value = true
         fileName.value = name
         phase.value = 'reading'
         try {
-            const source = await openSourcePackage(file)
-            const listed = await source.list(type)
+            const source = opened ?? (await openSourcePackage(file))
+            const listed = await source.list(type, controller.signal)
             if (mine !== generation) return
             pkg = source
             items.value = listed
@@ -165,7 +176,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // With exactly one item, there is nothing to choose.
             if (listed.length === 1 && listed[0]) select(listed[0].name)
         } catch (failure) {
-            if (mine !== generation) return
+            if (mine !== generation || isAbort(failure)) return
             phase.value = 'idle'
             error.value = describe(failure)
         }
@@ -191,26 +202,29 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                 .map((option) => ({ type: option.type, name: option.name })),
         ]
         phase.value = 'working'
-        error.value = undefined
+        useError.value = undefined
         try {
-            const records = []
+            const records: UserAssetRecord[] = []
             for (const entry of wanted)
                 records.push(
                     await importItem(source, entry.type, entry.name, {
                         maxTextureSide: deps.maxTextureSide(),
                         decodeAudio: deps.decodeAudio,
+                        decodeImage: deps.decodeImage,
                         signal,
                         origin: fileName.value,
                         now: deps.now ?? Date.now,
                     }),
                 )
-            // Checked all: only now is anything stored, so a bad item stores nothing.
-            const metas: UserAssetMeta[] = []
-            for (const record of records) {
-                if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-                metas.push(await deps.store.put(record))
+            // Checked all: only now is anything stored, all in one transaction, so a bad item
+            // stores nothing.
+            if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+            const { metas, added } = await storeRecords(deps.store, records)
+            // Closed or cancelled while storing: what this Use added goes again.
+            if (mine !== generation) {
+                await rollBack(deps.store, added)
+                return
             }
-            if (mine !== generation) return
             deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, storedChoice(meta)])))
             deps.onStored?.(metas)
             reset()
@@ -219,7 +233,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // A cancel or a closed dialog is not a failure.
             if (mine !== generation || isAbort(failure)) return
             phase.value = 'listed'
-            error.value = describe(failure)
+            useError.value = describe(failure)
             // A refused package is the file's doing, and the message says so; the rest is ours.
             if (!(failure instanceof AssetImportError))
                 console.error('Could not store the preview asset:', failure)
@@ -235,6 +249,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         selected,
         also,
         error,
+        useError,
         thumbnails,
         /** Opens the chooser with nothing picked. */
         show: () => {

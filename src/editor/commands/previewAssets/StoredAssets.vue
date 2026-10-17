@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, shallowRef, useId } from 'vue'
 import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import { assetTypes, choiceKey } from '../../../preview/assets/choice'
@@ -8,6 +8,7 @@ import {
     refreshStored,
     storedAssets,
     storedLoaded,
+    storedUnavailable,
     workerStore,
 } from '../../../preview/assets/files/store'
 import { displayOrigin } from '../../../preview/assets/serverUrl'
@@ -39,7 +40,11 @@ const rows = computed(() =>
 
 const label = (type: (typeof assetTypes)[number]) => strings.value[type]
 
+/** The row whose Remove failed, until the next Remove. */
+const failedKey = shallowRef<string>()
+
 const remove = async (row: (typeof rows.value)[number]) => {
+    failedKey.value = undefined
     if (row.users.length) {
         const confirmed = await showChoice({
             title: () => strings.value.remove,
@@ -54,6 +59,7 @@ const remove = async (row: (typeof rows.value)[number]) => {
         await workerStore.remove(row.meta.key)
     } catch (error) {
         console.error('Could not remove the stored preview asset:', error)
+        failedKey.value = row.meta.key
         return
     }
     // The types that used it use Default again.
@@ -68,10 +74,15 @@ const buttonClass =
 </script>
 
 <template>
-    <p v-if="!rows.length && storedLoaded" class="px-3 py-2 opacity-75" data-stored-empty>
+    <p v-if="storedUnavailable" class="relative py-2 pl-10 pr-3" data-stored-unavailable>
+        <AssetGlyph type="warning" class="absolute left-3 top-[0.6875rem]" />{{
+            strings.storedUnavailable
+        }}
+    </p>
+    <p v-else-if="!rows.length && storedLoaded" class="px-3 py-2 opacity-75" data-stored-empty>
         {{ strings.storedEmpty }}
     </p>
-    <ul v-else-if="rows.length" class="flex flex-col" data-stored-list>
+    <ul v-if="rows.length" class="flex flex-col" data-stored-list>
         <li
             v-for="row in rows"
             :key="row.meta.key"
@@ -104,10 +115,12 @@ const buttonClass =
                 <span class="text-sm opacity-75" data-stored-size>{{
                     formatSize(row.meta.size)
                 }}</span>
+                <!-- The pill keeps its place in a row not in use, so the columns line up. -->
                 <span
-                    v-if="row.users.length"
                     class="rounded-full bg-fg/10 px-2 py-0.5 text-sm"
-                    data-stored-in-use
+                    :class="{ invisible: !row.users.length }"
+                    :aria-hidden="!row.users.length"
+                    :data-stored-in-use="row.users.length ? '' : undefined"
                     >{{ strings.inUse }}</span
                 >
                 <button
@@ -120,6 +133,16 @@ const buttonClass =
                     {{ strings.remove }}
                 </button>
             </span>
+            <p
+                v-if="failedKey === row.meta.key"
+                class="relative w-full pl-[3.25rem] text-sm"
+                role="alert"
+                data-stored-remove-failed
+            >
+                <AssetGlyph type="warning" class="absolute left-[1.75rem] top-[0.1875rem]" />{{
+                    strings.removeFailed
+                }}
+            </p>
         </li>
     </ul>
 </template>

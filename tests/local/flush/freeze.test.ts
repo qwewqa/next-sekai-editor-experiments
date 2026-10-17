@@ -42,3 +42,12 @@ test('edits of a published state still work, by copying what they change', () =>
     assert.notEqual(next.store.slides.note, state.store.slides.note)
     assert.equal([...state.store.slides.note.values()].flat()[0]?.size, note.size)
 })
+
+test('a child of an object frozen shallowly elsewhere is frozen too', async () => {
+    const { freezePublished } = await import('../../../src/history/freeze')
+    const child = { size: 1 }
+    // Frozen before publishing, its child not, and reachable only through it.
+    const parent = Object.freeze({ child })
+    freezePublished({ store: { parent } } as never)
+    assert.ok(Object.isFrozen(child))
+})

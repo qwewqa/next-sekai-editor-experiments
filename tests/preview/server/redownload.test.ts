@@ -51,6 +51,7 @@ const chosen = async (title = 'Neon Skin') => {
         client,
         store,
         maxTextureSide: () => 4096,
+        decodeImage: async () => undefined,
         decodeAudio: async () => ({ duration: 1 }) as AudioBuffer,
         apply: (choices) => (choice = choices.skin),
         describe: (error) => error.code,
@@ -76,6 +77,7 @@ const loaderOver = (parts: Awaited<ReturnType<typeof chosen>>, replaced: [string
                 client: parts.client,
                 store: parts.store,
                 maxTextureSide: () => 4096,
+                decodeImage: async () => undefined,
                 replace: (_type, oldKey, record) => replaced.push([oldKey, record.key]),
             }),
         }),
@@ -189,4 +191,19 @@ test('a file choice that is gone is not looked for on a server', async (t) => {
     assert.deepEqual(result?.status, { active: 'default', reason: 'missing' })
     assert.equal(parts.server.requests.length, before)
     await settle()
+})
+
+test('a server item is downloaded again even when the store cannot be read', async () => {
+    const parts = await chosen()
+    const unreadable = {
+        ...parts.store,
+        get: () => Promise.reject(new Error('The storage worker did not start')),
+    }
+    const result = await loaderOver({ ...parts, store: unreadable }).load(
+        'skin',
+        parts.choice,
+        context(),
+    )
+    assert.deepEqual(result?.status, { active: 'chosen' })
+    assert.equal(result?.value.title, 'Neon Skin')
 })

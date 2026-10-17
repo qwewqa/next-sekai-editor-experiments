@@ -474,6 +474,7 @@
       "resetDefault": "Varsayılana Sıfırla",
       "stored": "Saklanan: {0} öğe, {1}",
       "storedEmpty": "Saklanan öğe yok",
+      "storedUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan öğeler okunamıyor.",
       "noun": {
         "skin": "görünüm",
         "particle": "parçacık",
@@ -482,10 +483,13 @@
       },
       "fallback": {
         "panel": "{0}: {1} kullanılıyor. {2}",
-        "row": "{0} kullanılıyor. {1}"
+        "panelStored": "{0}: \"{1}\" kullanılıyor. {2}",
+        "row": "{0} kullanılıyor. {1}",
+        "rowStored": "\"{0}\" kullanılıyor. {1}"
       },
       "reason": {
         "fileGone": "{0} dosyası artık bu tarayıcıda saklanmıyor.",
+        "storageUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan {0} okunamıyor.",
         "serverFailed": "{0}, {1} adresinden yeniden indirilemedi.",
         "invalid": "Saklanan {0} okunamadı.",
         "defaultFailed": "Varsayılan yüklenemedi.",
@@ -502,7 +506,8 @@
       "alsoFile": "Bu dosyadaki \"{1}\" öğesini ({0}) de kullan",
       "remove": "Kaldır",
       "inUse": "Kullanımda",
-      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine varsayılan kullanılır.",
+      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine Varsayılan kullanılır.",
+      "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Yeniden Seç",
       "noneInFile": "Bu dosyada {0} yok.",
       "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",
@@ -524,6 +529,7 @@
       },
       "import": {
         "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
+        "fileUnreadable": "Bu dosya okunamadı.",
         "zip64": "Bu dosya, düzenleyicinin okuyamadığı ZIP64 biçimini kullanıyor.",
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
@@ -536,9 +542,12 @@
         "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
         "checksum": "Bu dosyadaki {1} ({0}) sağlama toplamıyla eşleşmiyor.",
         "spriteOutside": "Bu dosyadaki veride ({0}) dokunun dışında kalan bir sprite var.",
-        "tooManySprites": "Bu dosyadaki veride ({0}) {1} spriteten fazlası var.",
+        "tooManySprites": "Bu dosyadaki veride ({0}) {1} sprite’tan fazlası var.",
         "tooManyEffects": "Bu dosyadaki veride ({0}) {1} efektten fazlası var.",
+        "tooManyParticles": "Bu dosyadaki veride ({0}) {1} parçacıktan fazlası var.",
+        "tooManyGroups": "Bu dosyadaki veride ({0}) {1} parçacık grubundan fazlası var.",
         "particleCount": "Bu dosyadaki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
+        "effectGroups": "Bu dosyadaki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var.",
         "noPerfect": "Bu dosyadaki ses ({0}) kullanılabilir bir #PERFECT klibi içermiyor.",
         "audioLength": "Bu dosyadaki ses ({0}) toplamda {1} saniyeden uzun.",
         "packageTooLarge": "Bu öğe saklandığında {0} sınırından büyük oluyor.",
@@ -580,7 +589,10 @@
         "tooManyEffects": "Bu öğedeki veride ({0}) {1} efektten fazlası var.",
         "particleCount": "Bu öğedeki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
         "noPerfect": "Bu öğedeki ses ({0}) kullanılabilir bir #PERFECT klibi içermiyor.",
-        "audioLength": "Bu öğedeki ses ({0}) toplamda {1} saniyeden uzun."
+        "audioLength": "Bu öğedeki ses ({0}) toplamda {1} saniyeden uzun.",
+        "tooManyParticles": "Bu öğedeki veride ({0}) {1} parçacıktan fazlası var.",
+        "tooManyGroups": "Bu öğedeki veride ({0}) {1} parçacık grubundan fazlası var.",
+        "effectGroups": "Bu öğedeki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var."
       }
     }
   },
@@ -1778,5 +1790,10 @@
   },
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç’ı kullanın."
+  },
+  "entry": {
+    "exported": "{0} dışa aktarıldı",
+    "recovered": "Son değişiklik kurtarıldı",
+    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı."
   }
 }

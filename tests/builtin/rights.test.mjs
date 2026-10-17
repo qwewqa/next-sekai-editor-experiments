@@ -46,9 +46,13 @@ test('the web-only list matches the files and locks it names', () => {
         else if (file.source.startsWith('deployment/')) {
             const type = file.source.split('#')[1]
             assert.equal(lock[type].sha256, file.sha256, file.source)
-        } else if (existsSync(new URL(`../../${file.source.split(':')[0]}`, import.meta.url))) {
+        } else {
+            // Only the locked package: nativeBundle.test.mjs plants a stand-in while it builds.
             const [path, part] = file.source.split(':')
-            assert.equal(sha256(readZip(read(path)).get(part)), file.sha256, file.source)
+            const type = path.match(/(\w+)\.scp$/)[1]
+            const bytes = existsSync(new URL(`../../${path}`, import.meta.url)) && read(path)
+            if (bytes && sha256(bytes) === lock[type].sha256)
+                assert.equal(sha256(readZip(bytes).get(part)), file.sha256, file.source)
         }
     }
     const patterns = list.references.map((r) => r.text ?? r.regex)

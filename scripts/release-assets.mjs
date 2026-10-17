@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { crc32, gunzipSync } from 'node:zlib'
+import { itemDetailsUrl } from '../src/preview/assets/serverUrl.ts'
 
 const defaults = {
     skin: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-1',
@@ -12,16 +13,8 @@ const lockFile = 'deployment/preview-assets.lock.json'
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
-export function itemDetailsUrl(source, category) {
-    const url = new URL(source)
-    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password)
-        throw new Error('Preview item URL must use HTTP or HTTPS without credentials')
-    const match = url.pathname.match(/^(.*?)(?:\/sonolus)?\/(skins|particles)\/([^/]+)\/?$/)
-    if (!match || match[2] !== category) throw new Error(`Expected a ${category} item URL`)
-    url.pathname = `${match[1]}/sonolus/${category}/${match[3]}`
-    url.hash = ''
-    return url.href
-}
+// Shared with the editor, so the script and the chooser read item links alike.
+export { itemDetailsUrl }
 
 async function download(url) {
     const response = await fetch(url, { signal: AbortSignal.timeout(30_000) })

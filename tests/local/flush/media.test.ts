@@ -234,6 +234,42 @@ test('a BGM that never reads back right blocks no history, and later flushes don
     }
 })
 
+test('a Blob the database refuses, as WebKit’s private windows do, blocks no history and pauses nothing', async () => {
+    const world = createWorld({ seed: 40 })
+    const page = await openPage(world, world.tab('a'))
+    const statuses: StorageStatus[] = []
+    page.core.onStatus((status) => statuses.push(status))
+    world.memory.faults.refuseBlobs = true
+    const picked = await withSong(stateOf(goldenChart()), 40)
+    const hash = picked.bgm.meta!.hash
+    begin(page, picked)
+    page.flusher.append('edit', () => 'Changed', { ...picked, initialLife: 900 }, true)
+    await page.flusher.flush()
+    // The entries are stored; the root names a BGM not held, pending beside a stored status.
+    assert.equal(page.flusher.hasPending, false)
+    assert.equal(page.flusher.failed, false)
+    assert.equal(rows(world, 'entries').size, 2)
+    assert.equal(rows(world, 'media').size, 0)
+    assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [hash] })
+    assert.ok(statuses.every((status) => status.mode === 'stored' && !status.reason))
+    assert.deepEqual(checkStored(world.memory), [])
+    // Stored alone, it's refused again without pausing, and later flushes don't carry it.
+    await page.flusher.retryMedia()
+    assert.equal(rows(world, 'media').size, 0)
+    assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [hash] })
+    page.flusher.append('edit', () => 'Changed', { ...picked, initialLife: 901 }, true)
+    await page.flusher.flush()
+    assert.equal(page.batches.at(-1)?.media.length, 0)
+    assert.equal(rows(world, 'entries').size, 3)
+    assert.ok(statuses.every((status) => status.mode === 'stored' && !status.reason))
+    // Once the database takes Blobs, the retry stores it.
+    world.memory.faults.refuseBlobs = false
+    await page.flusher.retryMedia()
+    assert.deepEqual(page.core.status, { mode: 'stored' })
+    assert.equal(rows(world, 'media').size, 1)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
 test('a media row that can’t be read is kept, and read back again later', async () => {
     const world = createWorld({ seed: 11 })
     const page = await openPage(world, world.tab('a'))

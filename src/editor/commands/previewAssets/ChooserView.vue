@@ -5,6 +5,7 @@ import type { AssetType } from '../../../preview/assets'
 import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { AssetChooser } from '../../../preview/assets/files/chooser'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
+import { serverFailureText } from '../../../preview/assets/server/liveText'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { pickFile } from '../../../utils/file'
 import AssetGlyph from './AssetGlyph.vue'
@@ -13,7 +14,10 @@ import ChooserModeSwitch from './ChooserModeSwitch.vue'
 import ServerBody from './ServerBody.vue'
 
 // The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or From a
-// Server, by the switch under the title. The server's view is ServerBody's.
+// Server, by the switch under the title (the server's view is ServerBody's). Reading the file and
+// its errors show under Select File…, connecting and its errors under the address; storing or
+// downloading and a failed Use show next to Use, which stays in view at the bottom of the tab
+// while the dialog's own footer is inactive.
 const props = defineProps<{
     type: AssetType
     chooser: AssetChooser
@@ -34,16 +38,29 @@ const titles = computed(
         })[props.type],
 )
 
-const { phase, items, selected, also, error, fileName, thumbnails } = props.chooser
+const { phase, items, selected, also, error, useError, fileName, thumbnails } = props.chooser
+const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
+
 const mode = props.server.mode
 const isFile = computed(() => mode.value === 'file')
 const serverPhase = props.server.phase
+// Under way: reading or storing a file, connecting to a server or downloading from it.
 const isBusy = computed(() =>
     isFile.value
         ? phase.value === 'reading' || phase.value === 'working'
         : serverPhase.value === 'connecting' || serverPhase.value === 'working',
 )
-const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
+const isWorking = computed(() =>
+    isFile.value ? phase.value === 'working' : serverPhase.value === 'working',
+)
+const workingText = computed(() =>
+    isFile.value ? strings.value.progress.storing : strings.value.progress.downloading,
+)
+const failure = computed(() =>
+    isFile.value
+        ? useError.value
+        : props.server.useError.value && serverFailureText(props.server.useError.value).text,
+)
 // What Use needs: an item selected, and nothing under way.
 const canUse = computed(() =>
     isFile.value
@@ -152,10 +169,8 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
             >
         </div>
 
-        <div v-if="isFile && isBusy" class="px-2" role="status" data-chooser-progress>
-            <p class="text-sm">
-                {{ phase === 'reading' ? strings.progress.reading : strings.progress.storing }}
-            </p>
+        <div v-if="isFile && phase === 'reading'" class="px-2" role="status" data-chooser-progress>
+            <p class="text-sm">{{ strings.progress.reading }}</p>
             <div
                 class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
                 aria-hidden="true"
@@ -166,7 +181,6 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
 
         <p
             v-if="isFile && error"
-            :id="errorId"
             class="relative pl-8 pr-2 text-sm"
             aria-live="polite"
             data-chooser-error
@@ -196,6 +210,7 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
                     :image="thumbnails.get(item.name)"
                     :checked="item.name === selected"
                     :group="groupName"
+                    :disabled="phase === 'working'"
                     :data-chooser-item="item.name"
                     @select="chooser.select(item.name)"
                 />
@@ -231,20 +246,54 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
 
         <p class="px-2 text-sm opacity-75" data-chooser-rights>{{ strings.rights }}</p>
 
-        <div class="flex justify-end gap-2 px-2">
-            <button type="button" :class="buttonClass" data-chooser-cancel @click="cancel">
-                {{ i18n.modals.confirm.cancel }}
-            </button>
-            <button
-                ref="useButton"
-                type="button"
-                :class="canUse ? primaryClass : buttonClass"
-                :disabled="!canUse"
-                data-chooser-use
-                @click="use"
+        <div
+            class="sticky -bottom-2 -mx-1 -mb-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-fg/25 bg-modal px-3 py-3 max-[440px]:flex-col max-[440px]:items-stretch"
+            data-chooser-actions
+        >
+            <div
+                v-if="isWorking"
+                class="min-w-0 flex-1 basis-40"
+                role="status"
+                data-chooser-progress
             >
-                {{ strings.use }}
-            </button>
+                <p class="text-sm">{{ workingText }}</p>
+                <div
+                    class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
+                    aria-hidden="true"
+                >
+                    <div class="chooser-bar-fill h-full w-1/3 rounded-full bg-fg" />
+                </div>
+            </div>
+            <p
+                v-else-if="failure"
+                :id="errorId"
+                class="relative min-w-0 flex-1 basis-40 pl-6 text-sm"
+                aria-live="polite"
+                data-chooser-error
+            >
+                <AssetGlyph type="warning" class="absolute left-0 top-[0.1875rem]" />{{ failure }}
+            </p>
+            <div class="flex gap-2 max-[440px]:flex-col">
+                <button
+                    type="button"
+                    :class="[buttonClass, 'max-[440px]:w-full']"
+                    data-chooser-cancel
+                    @click="cancel"
+                >
+                    {{ i18n.modals.confirm.cancel }}
+                </button>
+                <button
+                    ref="useButton"
+                    type="button"
+                    :class="[canUse ? primaryClass : buttonClass, 'max-[440px]:w-full']"
+                    :disabled="!canUse"
+                    :aria-describedby="failure ? errorId : undefined"
+                    data-chooser-use
+                    @click="use"
+                >
+                    {{ strings.use }}
+                </button>
+            </div>
         </div>
     </section>
 </template>

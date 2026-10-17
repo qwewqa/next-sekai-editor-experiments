@@ -1,6 +1,7 @@
-import { settings } from '../../../settings'
 import { assetTypes } from '../choice'
-import type { AssetType, ChoiceProviders } from '../types'
+import { AssetError, type AssetType, type ChoiceProviders } from '../types'
+import { decodeImageToCheck } from './decodeImage'
+import type { StoredProviderOptions } from './provider'
 import { workerStore } from './store'
 import { maxTextureSide } from './textureLimit'
 
@@ -8,38 +9,48 @@ import { maxTextureSide } from './textureLimit'
  * The providers of stored choices, loaded when the first one is needed: the ZIP reader and the
  * schemas stay out of the main bundle for the many pages that use Default or Built-in.
  */
-export const lazyStoredProviders = (): ChoiceProviders => {
+export const lazyStoredProviders = (
+    importProvider: () => Promise<typeof import('./provider')> = () => import('./provider'),
+): ChoiceProviders => {
     let providers: Promise<ChoiceProviders> | undefined
-    const load = () =>
-        (providers ??= Promise.all([
-            import('./provider'),
+    // The server code loads on the first server choice whose package is gone.
+    let redownload: Promise<NonNullable<StoredProviderOptions['redownload']>> | undefined
+    const redownloader = () =>
+        (redownload ??= Promise.all([
             import('../server/redownload'),
             import('../server/live'),
-        ]).then(([{ createStoredProviders }, { createRedownload }, { createLiveServerClient }]) =>
-            createStoredProviders({
-                store: workerStore,
-                maxTextureSide,
-                redownload: createRedownload({
+        ]).then(
+            ([{ createRedownload }, { createLiveServerClient, followRedownload }]) =>
+                createRedownload({
                     client: createLiveServerClient(),
                     store: workerStore,
                     maxTextureSide,
-                    replace: (type, oldKey, record) => {
-                        // Only if the choice still names the item that was downloaded again.
-                        const current = settings.previewAssets[type]
-                        if (current.source === 'server' && current.key === oldKey)
-                            settings.previewAssets = {
-                                ...settings.previewAssets,
-                                [type]: {
-                                    ...current,
-                                    key: record.key,
-                                    title: record.title,
-                                    author: record.author,
-                                    origin: record.origin,
-                                },
-                            }
-                    },
+                    decodeImage: decodeImageToCheck,
+                    replace: followRedownload,
                 }),
-            }),
+            (error: unknown) => {
+                redownload = undefined
+                throw new AssetError('unavailable', 'The server reader did not load', {
+                    cause: error,
+                })
+            },
+        ))
+    // A chunk that failed to load (offline, or gone after a deploy) is tried again next time.
+    const load = () =>
+        (providers ??= importProvider().then(
+            ({ createStoredProviders }) =>
+                createStoredProviders({
+                    store: workerStore,
+                    maxTextureSide,
+                    redownload: async (type, choice, context) =>
+                        (await redownloader())(type, choice, context),
+                }),
+            (error: unknown) => {
+                providers = undefined
+                throw new AssetError('unavailable', 'The stored-item reader did not load', {
+                    cause: error,
+                })
+            },
         ))
     return Object.fromEntries(
         assetTypes.map((type: AssetType) => [

@@ -85,10 +85,7 @@ const inputClass =
         </button>
     </form>
 
-    <ChooserProgress
-        v-if="isBusy"
-        :text="phase === 'connecting' ? strings.progress.connecting : strings.progress.downloading"
-    />
+    <ChooserProgress v-if="phase === 'connecting'" :text="strings.progress.connecting" />
 
     <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
         <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />
@@ -149,6 +146,7 @@ const inputClass =
                 :image="item.thumbnail"
                 :checked="item.name === selected"
                 :group="groupName"
+                :disabled="phase === 'working'"
                 :data-chooser-item="item.name"
                 @select="server.select(item.name)"
             />

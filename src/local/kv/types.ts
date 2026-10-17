@@ -70,6 +70,11 @@ export type KvTx = {
     getAllKeys: (store: string, query?: Query, count?: number) => Promise<Key[]>
     count: (store: string, query?: Query) => Promise<number>
     put: (store: string, value: unknown, key?: Key) => Promise<Key>
+    /**
+     * A put whose failed request leaves the transaction running, as WebKit's refusal of a Blob in
+     * a private window does: resolves whether the row was stored.
+     */
+    tryPut: (store: string, value: unknown, key?: Key) => Promise<boolean>
     add: (store: string, value: unknown, key?: Key) => Promise<Key>
     delete: (store: string, query: Query) => Promise<void>
     index: (store: string, name: string) => KvIndex

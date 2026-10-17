@@ -17,7 +17,7 @@ test('the undo stack reports resets, edits, undos and redos, and replays those s
     const seen: HistoryAction[] = []
     const stop = onHistoryAction((action) => seen.push(action), { replay: true })
     assert.deepEqual(
-        seen.map(({ kind, state }) => [kind, state.initialLife]),
+        seen.map(({ kind, state }) => [kind, state?.initialLife]),
         [
             ['reset', a.initialLife],
             ['edit', 900],
@@ -31,7 +31,7 @@ test('the undo stack reports resets, edits, undos and redos, and replays those s
     resetStates({ isDirty: true, name: () => 'Initialize', state: a }, 'import')
     stop()
     assert.deepEqual(
-        seen.slice(2).map((action) => [action.kind, action.name(), action.state.initialLife]),
+        seen.slice(2).map((action) => [action.kind, action.name(), action.state?.initialLife]),
         [
             ['edit', 'C', 800],
             ['undo', 'C', 900],

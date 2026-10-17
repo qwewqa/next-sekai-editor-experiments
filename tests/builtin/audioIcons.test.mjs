@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { iconOutputs } from '../../builtin-assets/build.mjs'
 import { clipFiles } from '../../builtin-assets/manifest.mjs'
-import { createRandom, loudness, offsets, renderDemoBgm } from '../../builtin-assets/sfx.mjs'
+import { createRandom, loudness, renderDemoBgm, targets } from '../../builtin-assets/sfx.mjs'
 import { readZip } from '../../builtin-assets/zip.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
@@ -42,15 +42,16 @@ test('every clip peaks at or below -3 dBFS', () => {
     }
 })
 
-test('the clips are loudness matched, less their offsets', () => {
-    const levels = Object.entries(clipFiles).map(([name, file]) => {
+test('the clips sit at their targets, matched to the web’s Default clips', () => {
+    for (const [name, file] of Object.entries(clipFiles)) {
         const samples = Float64Array.from(samplesOf(clips().get(file)), (sample) => sample / 32768)
-        return { name, level: loudness(samples) - (offsets[name] ?? 0) }
-    })
-    const mean = levels.reduce((sum, { level }) => sum + level, 0) / levels.length
-    for (const { name, level } of levels)
-        assert.ok(Math.abs(level - mean) < 0.3, `${name} is ${(level - mean).toFixed(2)} LU off`)
-    assert.ok(mean > -30 && mean < -18, `the level is ${mean.toFixed(1)} LUFS`)
+        const level = loudness(samples)
+        assert.ok(Math.abs(level - targets[name]) < 0.2, `${name} is at ${level.toFixed(2)} LUFS`)
+    }
+    // Criticals sit over their normal clips, and the judgments step down.
+    assert.ok(targets['Sekai Critical Tap'] > targets['#PERFECT'])
+    assert.ok(targets['Sekai Critical Flick'] > targets['#PERFECT_ALTERNATIVE'])
+    assert.ok(targets['#PERFECT'] > targets['#GREAT'] && targets['#GREAT'] > targets['#GOOD'])
 })
 
 test('the hold loops are seamless', () => {
