@@ -16,6 +16,7 @@ import { assetTypes } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
 import { createAssetChooser } from '../../../preview/assets/files/chooser'
+import type { SourcePackage } from '../../../preview/assets/files/package'
 import { decodeToCheck } from '../../../preview/assets/files/audio'
 import { decodeImageToCheck } from '../../../preview/assets/files/decodeImage'
 import { importMessage } from '../../../preview/assets/files/importText'
@@ -35,6 +36,8 @@ const props = defineProps<{
     tab: PreviewAssetsTab
     /** A package picked elsewhere (Open File…): its chooser opens with the items already listed. */
     file?: File
+    /** That package, already opened. */
+    source?: SourcePackage
 }>()
 
 const emit = defineEmits<{
@@ -68,7 +71,7 @@ onMounted(() => {
     void refreshStored()
     if (props.file && isAssetTab(active.value)) {
         const file = props.file
-        void choosers[active.value].pick(file, file.name)
+        void choosers[active.value].pick(file, file.name, props.source)
     }
 })
 onBeforeUnmount(() => {

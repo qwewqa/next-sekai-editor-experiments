@@ -24,7 +24,11 @@ export const showPreviewAssets = async (tab?: PreviewAssetsTab, options?: { file
             : undefined
         void showModal(
             PreviewAssetsModal,
-            { tab: held ?? tab ?? fallbacks.value[0]?.type ?? 'skin', file },
+            {
+                tab: held?.type ?? tab ?? fallbacks.value[0]?.type ?? 'skin',
+                file,
+                source: held?.source,
+            },
             { size: 'large' },
         ).finally(() => (isOpen = false))
     } catch (error) {

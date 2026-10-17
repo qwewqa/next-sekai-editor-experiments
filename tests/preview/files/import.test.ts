@@ -143,6 +143,21 @@ test('ZIP64 is refused', async () => {
     )
 })
 
+test('ZIP64 fields in an entry of a ZIP32 file are refused', async () => {
+    const entries = scpEntries('skin').map((entry) =>
+        entry.name.startsWith('sonolus/repository/') ? { ...entry, zip64: true } : entry,
+    )
+    await expectRefused('skin', rawZip(entries), 'zip64')
+})
+
+test('an entry name over 1 KiB is refused', async () => {
+    await expectRefused(
+        'skin',
+        rawZip([...scpEntries('skin'), { name: `long/${'n'.repeat(1100)}`, data: utf8('x') }]),
+        'badName',
+    )
+})
+
 test('a ratio bomb is refused before anything inflates', async () => {
     // 30 MB of zeros deflate to about 30 kB: more than 200 to 1.
     const zeros = new Uint8Array(30_000_000)

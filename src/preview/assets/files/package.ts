@@ -113,6 +113,9 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         if (end.zip64Offset !== undefined) throw new AssetImportError('zip64')
         if (end.entryCount > LIMITS.entries)
             throw new AssetImportError('tooManyEntries', { limit: LIMITS.entries })
+        // The directory is read whole: names past 1 KiB, or large extra fields, are not read.
+        if (end.cdSize > LIMITS.entries * (46 + LIMITS.entryName) + 4 * 1024 * 1024)
+            throw new AssetImportError('damaged')
     } catch (error) {
         return mapZipError(error)
     }
@@ -127,7 +130,14 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
     if (reader.recovered) throw new AssetImportError('damaged')
     if (reader.entries.length > LIMITS.entries)
         throw new AssetImportError('tooManyEntries', { limit: LIMITS.entries })
-    if (reader.entries.some((entry) => isBadName(entry.name))) throw new AssetImportError('badName')
+    if (
+        reader.entries.some(
+            (entry) => isBadName(entry.name) || entry.rawName.length > LIMITS.entryName,
+        )
+    )
+        throw new AssetImportError('badName')
+    // ZIP64 sizes or offsets in an entry's extra field, which only ZIP64 needs.
+    if (reader.entries.some((entry) => entry.zip64)) throw new AssetImportError('zip64')
 
     const entry = async (path: string, options: EntryOptions) => {
         const key = path.normalize('NFC')

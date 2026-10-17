@@ -34,6 +34,8 @@ export type ZipEntry = {
     size: number
     localOffset: number
     isDirectory: boolean
+    /** Set when a size or the offset came from the ZIP64 extra field. */
+    zip64?: true
 }
 
 export type ZipEnd = {
@@ -133,7 +135,9 @@ export const parseCentralRecord = (bytes: Uint8Array, index: number): ZipEntry =
     let size = v.getUint32(24, true)
     let compressedSize = v.getUint32(20, true)
     let localOffset = v.getUint32(42, true)
-    if (size === SENTINEL_32 || compressedSize === SENTINEL_32 || localOffset === SENTINEL_32) {
+    const zip64 =
+        size === SENTINEL_32 || compressedSize === SENTINEL_32 || localOffset === SENTINEL_32
+    if (zip64) {
         const field = findExtra(bytes.subarray(extraAt, extraAt + extraLength), 1)
         if (!field) throw new ZipError('directory', 'ZIP64 extra')
         const f = view(field)
@@ -165,6 +169,7 @@ export const parseCentralRecord = (bytes: Uint8Array, index: number): ZipEntry =
         size,
         localOffset,
         isDirectory: name.endsWith('/'),
+        ...(zip64 ? { zip64: true as const } : {}),
     }
 }
 
