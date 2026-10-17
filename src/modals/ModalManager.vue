@@ -102,11 +102,9 @@ const vOpen = {
         // showModal lands on the first button, the close ×, so the default takes focus in the same
         // task, before a key can reach the ×.
         focusDefault()
-        const opened = document.activeElement
         setTimeout(() => {
-            // Focus moved since opening, by a click or key, stays there; one lost to a moved node is restored.
-            const active = document.activeElement
-            if (active === opened || active === document.body) focusDefault()
+            // Focus lost to a node that moved is restored; one moved by a click or key stays.
+            if (document.activeElement === document.body) focusDefault()
         }, 0)
     },
     // Closing first returns focus to the opener, as Escape does.
