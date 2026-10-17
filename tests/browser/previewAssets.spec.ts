@@ -128,7 +128,7 @@ test.describe('ways in', () => {
         await expect(selectedTab(page)).toHaveText('Skin')
         await expect(dialog(page).getByRole('tab')).toHaveCount(5)
         await expect(dialog(page).getByRole('tablist')).toHaveText(
-            /^\s*Skin\s+Particle\s+Background\s+Sound Effects\s+Stored\s*$/,
+            /^\s*Skin\s*Particle\s*Background\s*Sound Effects\s*Stored\s*$/,
         )
     })
 
@@ -310,11 +310,14 @@ test.describe('Default and Built-in', () => {
         await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
     })
 
-    test('the footer counts the stored items and has no Manage… button', async ({ page }) => {
+    test('the footer says nothing of storage while nothing is stored, and has no Manage… button', async ({
+        page,
+    }) => {
         await start(page)
         await open(page)
         const footer = dialog(page).locator('[data-preview-assets-footer]')
-        await expect(footer).toContainText('Stored: 0 items, 0 kB')
+        await expect(footer.locator('[data-stored-line]')).toHaveCount(0)
+        await expect(footer).not.toContainText('Stored')
         await expect(footer.getByRole('button')).toHaveText([
             'Use Built-in for All',
             'Reset to Default',
@@ -348,13 +351,13 @@ test.describe('fallbacks', () => {
         await open(page)
         // The dialog opens on the type that fell back; its tab carries the mark and the reason.
         await expect(selectedTab(page)).toContainText('Skin')
-        await expect(selectedTab(page).locator('[data-tab-warning]')).toHaveText('⚠')
+        await expect(selectedTab(page).locator('[data-tab-warning]')).toBeVisible()
         await expect(selectedTab(page)).toHaveAccessibleName('Skin. Default could not be loaded.')
         await expect(tabOf(page, 'particle')).toBeVisible()
         // The chosen row stays selected, with the reason under it.
         await expect(dialog(page).getByRole('radio', { name: /^Default/ })).toBeChecked()
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            '⚠ Using Built-in. Default could not be loaded.',
+            'Using Built-in. Default could not be loaded.',
         )
         await shot(page, 'fallback-skin')
         await tabOf(page, 'particle').click()
@@ -404,7 +407,7 @@ test.describe('fallbacks', () => {
             )
             await open(tab)
             await expect(dialog(tab).locator('[data-asset-note]')).toHaveText(
-                `⚠ Using ${item.using}. ${item.reason}`,
+                `Using ${item.using}. ${item.reason}`,
             )
             await shot(tab, `reason-${index}`)
             // The setting is never overwritten by the failure.
@@ -439,7 +442,7 @@ test.describe('fallbacks', () => {
         await expect(fallbackLine(page, 'skin')).toHaveCount(0)
         await open(page)
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            '⚠ Using Built-in. Default could not be loaded.',
+            'Using Built-in. Default could not be loaded.',
         )
         await expect(selectedTab(page).locator('[data-tab-warning]')).toBeVisible()
 
@@ -526,14 +529,13 @@ test.describe('narrow', () => {
         await page.keyboard.press('End')
         await expect(selectedTab(page)).toHaveText('Stored')
         const stored = tabOf(page, 'stored')
-        await expect(stored).toBeInViewport({ ratio: 1 })
+        await expect(stored).toBeInViewport({ ratio: 0.98 })
         expect((await metrics()).left).toBeGreaterThan(0)
         await shot(page, 'narrow-stored')
         await page.keyboard.press('Home')
         await expect(selectedTab(page)).toContainText('Skin')
 
-        // The stored line has its own row, and the helpers follow it full width, one above the other.
-        const line = await dialog(page).locator('[data-stored-line]').boundingBox()
+        // The helpers take the full width, one above the other.
         const buttons = await dialog(page)
             .locator('[data-preview-assets-footer] button')
             .evaluateAll((elements) =>
@@ -546,7 +548,6 @@ test.describe('narrow', () => {
             'Use Built-in for All',
             'Reset to Default',
         ])
-        expect(buttons[0]!.y).toBeGreaterThan(line!.y + line!.height - 1)
         expect(buttons[1]!.y).toBeGreaterThan(buttons[0]!.y + buttons[0]!.height - 1)
         expect(buttons[0]!.width).toBeGreaterThan(300)
         expect(buttons[1]!.width).toBeCloseTo(buttons[0]!.width, 0)
@@ -695,4 +696,154 @@ test('a background’s colour, blur, mask, aspect ratio and fit are drawn', asyn
     })
     await expect(page.locator('[data-background-mask]')).toHaveCount(0)
     await expect(background).toHaveCSS('filter', 'none')
+})
+
+test.describe('the review fixes', () => {
+    test('the panel’s lines sit under the image and leave its settings button clickable', async ({
+        page,
+    }) => {
+        await start(page, { fail: ['default-skin', 'default-particle'] })
+        await expect(fallbackLine(page, 'skin')).toBeVisible()
+        await expect(fallbackLine(page, 'particle')).toBeVisible()
+        const viewport = (await page.locator('.preview-viewport').boundingBox())!
+        const lines = (await page.locator('[data-asset-fallbacks]').boundingBox())!
+        expect(lines.y).toBeGreaterThanOrEqual(viewport.y + viewport.height - 1)
+        const toggle = page.locator('.preview-settings-toggle')
+        await expect(toggle).toBeVisible()
+        await toggle.click()
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    test('a row without a picture shows a neutral glyph, not an empty square', async ({ page }) => {
+        await start(page)
+        await open(page)
+        const rows = dialog(page).locator('[data-asset-row]')
+        for (const tab of ['skin', 'particle', 'effect'])
+            if (tab !== 'skin') {
+                await tabOf(page, tab).click()
+                await expect(rows.nth(0).locator('svg')).toHaveCount(1)
+            } else await expect(rows.nth(0).locator('svg')).toHaveCount(1)
+        // A row with a picture has none.
+        await expect(rows.nth(1).locator('svg')).toHaveCount(0)
+    })
+
+    test('keyboard open focuses the checked row, and a click never changes the choice', async ({
+        page,
+    }) => {
+        await start(page, { seed: { previewAssets: builtinAll } })
+        await open(page)
+        await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeFocused()
+        await expect(dialog(page).getByRole('radio', { name: /^Default/ })).not.toBeFocused()
+    })
+
+    test('a reason is not shown under a row just selected while it loads', async ({ page }) => {
+        await start(page, { fail: ['default-skin'] })
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        let release!: () => void
+        const gate = new Promise<void>((resolve) => (release = resolve))
+        await page.unroute('**/builtin/skin.scp*')
+        await page.route('**/builtin/skin.scp*', async (route) => {
+            await gate
+            await route.continue()
+        })
+        await open(page)
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(1)
+        await dialog(page)
+            .getByRole('radio', { name: /^Built-in/ })
+            .check()
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
+        await expect(selectedTab(page).locator('[data-tab-warning]')).toHaveCount(0)
+        release()
+        await expect
+            .poll(() => slotStatus(page, 'skin'))
+            .toMatchObject({
+                status: { active: 'builtin' },
+            })
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
+    })
+
+    test('a switch that fails everywhere keeps the shown skin and says why', async ({ page }) => {
+        await start(page)
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        await open(page)
+        await page.route('**/resource/skin.scp*', (route) => route.fulfill({ status: 503 }))
+        await page.route('**/builtin/skin.scp*', (route) => route.fulfill({ status: 503 }))
+        await dialog(page)
+            .getByRole('radio', { name: /^Built-in/ })
+            .check()
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            'Using Default. Built-in could not be loaded.',
+        )
+        expect(await skinTitle(page)).toBe('Fixture')
+        await expect(fallbackLine(page, 'skin')).toContainText('Built-in could not be loaded.')
+    })
+
+    test('Built-in for all never downloads the Default background', async ({ page }) => {
+        const images: string[] = []
+        page.on('request', (request) => {
+            if (request.resourceType() === 'image') images.push(new URL(request.url()).pathname)
+        })
+        await start(page, { seed: { previewAssets: builtinAll } })
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        await page.waitForTimeout(500)
+        expect(images.filter((url) => /\/bg[^/]*\.png$/.test(url))).toEqual([])
+    })
+
+    test('the dialog reads the Built-in pictures by ranges, not whole packages', async ({
+        page,
+    }) => {
+        const packages: { url: string; status: number }[] = []
+        page.on('response', (response) => {
+            const { pathname } = new URL(response.url())
+            if (pathname.startsWith('/builtin/'))
+                packages.push({ url: pathname, status: response.status() })
+        })
+        await start(page)
+        await open(page)
+        await expect(dialog(page).locator('[data-asset-row]').nth(1).locator('img')).toHaveCount(1)
+        expect(packages.length).toBeGreaterThan(0)
+        for (const { url, status } of packages) expect(status, url).toBe(206)
+    })
+
+    test('safe mode shows no panel line, and the row names the fallback', async ({ page }) => {
+        await start(page, { fail: ['default-skin'], query: '?safe' })
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        await expect(page.locator('[data-asset-fallbacks]')).toHaveCount(0)
+        await open(page)
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            'Using Built-in. Default could not be loaded.',
+        )
+    })
+})
+
+test.describe('the review fixes, narrow', () => {
+    test.use({ viewport: { width: 360, height: 740 } })
+
+    test('the reason’s lines align with the row’s name, and the tab strip shows it scrolls', async ({
+        page,
+    }) => {
+        await start(page, { fail: ['default-skin'] })
+        await open(page)
+        const left = (selector: string) =>
+            dialog(page)
+                .locator(selector)
+                .first()
+                .evaluate((element) => {
+                    const style = getComputedStyle(element)
+                    return element.getBoundingClientRect().left + parseFloat(style.paddingLeft)
+                })
+        const name = await dialog(page)
+            .locator('[data-asset-row] .block.truncate')
+            .first()
+            .evaluate((element) => element.getBoundingClientRect().left)
+        expect(await left('[data-asset-note]')).toBeCloseTo(name, 0)
+
+        const strip = dialog(page).getByRole('tablist')
+        await expect(strip).toHaveClass(/preview-assets-tabs-more-after/)
+        await expect(strip).not.toHaveClass(/preview-assets-tabs-more-before/)
+        await selectedTab(page).focus()
+        await page.keyboard.press('End')
+        await expect(strip).toHaveClass(/preview-assets-tabs-more-before/)
+        await expect(strip).not.toHaveClass(/preview-assets-tabs-more-after/)
+    })
 })

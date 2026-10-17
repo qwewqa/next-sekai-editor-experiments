@@ -7,7 +7,7 @@ import { parseScp } from '../../src/preview/scp'
 const file = readFileSync(new URL('../../public/builtin/effect.scp', import.meta.url))
 
 // A server that answers ranges, or ignores them, and counts what it sends.
-const serve = (t: test.TestContext, ranges: boolean) => {
+const serve = (t: test.TestContext, ranges: boolean, misreadsSuffix = false) => {
     const served = { bytes: 0, requests: 0 }
     t.mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
         const range = new Headers(init?.headers).get('Range')
@@ -17,8 +17,14 @@ const serve = (t: test.TestContext, ranges: boolean) => {
             served.bytes += file.length
             return new Response(file)
         }
-        const start = match[1] ? Math.max(0, file.length - Number(match[2])) : Number(match[2])
-        const end = match[1] ? file.length : Number(match[3]) + 1
+        // Some servers read a suffix range as the first bytes, with the right size.
+        const suffix = match[1] && !misreadsSuffix
+        const start = suffix
+            ? Math.max(0, file.length - Number(match[2]))
+            : match[1]
+              ? 0
+              : Number(match[2])
+        const end = suffix ? file.length : match[1] ? Number(match[2]) + 1 : Number(match[3]) + 1
         served.bytes += end - start
         return new Response(file.subarray(start, end), {
             status: 206,
@@ -52,4 +58,13 @@ test('a server that ignores ranges sends the whole package, which reads the same
 test('a missing package resolves undefined', async (t) => {
     t.mock.method(globalThis, 'fetch', async () => new Response(null, { status: 404 }))
     assert.equal(await openRangedScp('/builtin/none.scp', new AbortController().signal), undefined)
+})
+
+test('a server that misreads a suffix range is asked for the tail by position', async (t) => {
+    const served = serve(t, true, true)
+    const whole = parseScp(file.buffer.slice(file.byteOffset, file.byteOffset + file.length))
+    const archive = await openRangedScp('/builtin/effect.scp', new AbortController().signal)
+    assert.ok(archive)
+    for (const path of paths) assert.deepEqual(await archive.get(path), whole.get(path))
+    assert.ok(served.bytes < file.length / 2, `${served.bytes} of ${file.length} bytes`)
 })

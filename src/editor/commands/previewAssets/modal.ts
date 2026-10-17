@@ -14,12 +14,13 @@ export const showPreviewAssets = async (tab?: PreviewAssetsTab) => {
     isOpen = true
     try {
         const { default: PreviewAssetsModal } = await import('./PreviewAssetsModal.vue')
-        await showModal(
+        void showModal(
             PreviewAssetsModal,
             { tab: tab ?? fallbacks.value[0]?.type ?? 'skin' },
             { size: 'large' },
-        )
-    } finally {
+        ).finally(() => (isOpen = false))
+    } catch (error) {
         isOpen = false
+        throw error
     }
 }

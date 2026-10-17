@@ -41,11 +41,29 @@ export const openRangedScp = async (
         return wholeScp(await response.arrayBuffer())
     }
 
-    const tail = await request(`bytes=-${TAIL_SIZE}`)
+    // The range a response covers, and the file's size; some servers misread a suffix range.
+    const covered = (read: NonNullable<Awaited<ReturnType<typeof request>>>) => {
+        const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
+            read.response.headers.get('Content-Range') ?? '',
+        )
+        const [start, end, total] = (match?.slice(1) ?? []).map(Number)
+        return read.response.status === 206 && start !== undefined
+            ? { start, end: end!, total: total! }
+            : undefined
+    }
+    let tail = await request(`bytes=-${TAIL_SIZE}`)
     if (signal.aborted || !tail) return
-    const total = Number(/\/(\d+)$/.exec(tail.response.headers.get('Content-Range') ?? '')?.[1])
-    if (tail.response.status !== 206 || !Number.isSafeInteger(total) || total < tail.body.length)
-        return whole(tail)
+    let range = covered(tail)
+    if (!range) return whole(tail)
+    if (range.end !== range.total - 1) {
+        // The size is right even where the bytes are not: ask for the tail by position.
+        tail = await request(`bytes=${Math.max(0, range.total - TAIL_SIZE)}-${range.total - 1}`)
+        if (signal.aborted || !tail) return
+        range = covered(tail)
+        if (!range || range.end !== range.total - 1) return whole(tail)
+    }
+    const { total } = range
+    if (tail.body.length !== range.end - range.start + 1) return whole()
 
     // The file's size, with only the parts read so far filled in.
     const bytes = new Uint8Array(total)
