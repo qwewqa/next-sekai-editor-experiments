@@ -11,9 +11,4 @@
     </defs>
     <rect width="1920" height="1080" fill="url(#base)"/>
     <rect width="1920" height="1080" fill="url(#glow)"/>
-    <g fill="#b4d6e8" fill-opacity="0.03">
-        <rect x="140" y="130" width="420" height="180" rx="40"/>
-        <rect x="1400" y="620" width="360" height="160" rx="36"/>
-        <polygon points="1500,120 1640,290 1500,350 1360,290"/>
-    </g>
 </svg>
