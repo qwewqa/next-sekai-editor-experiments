@@ -126,10 +126,7 @@ for (const chart of charts) {
             perEditWrittenBytes: median(singles.map((report) => report.stats.bytes)),
             perEditRows: median(singles.map((report) => report.stats.rows)),
             perEditByStore: Object.fromEntries(
-                ['chunks', 'nodes', 'entries'].map((store) => [
-                    store,
-                    perStore(store),
-                ]),
+                ['chunks', 'nodes', 'entries'].map((store) => [store, perStore(store)]),
             ),
             singleMainMs: median(singles.map((report) => report.mainMs)),
             wholeBytes: Math.max(...wholes.map((report) => report.stats.growth)),
@@ -169,7 +166,7 @@ for (const chart of charts) {
                 typeof import('../../src/levelData/serialize')
             >('/src/levelData/serialize.ts')
             const worker = window.nseStorageTest!.worker
-            const { entries } = (await worker.call('testRows', ['entries'])) as {
+            const { entries } = (await worker.call('testRows', ['entries'])) as unknown as {
                 entries: { value: { snapshot: Uint8Array } }[]
             }
             const hex = [...entries.at(-1)!.value.snapshot]

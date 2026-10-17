@@ -80,14 +80,16 @@ const settled = (page: Page) =>
         )
         .toBe(true)
 
-const storedRows = (page: Page, stores: string[]) =>
+type Row = { key: unknown; value: Record<string, unknown> }
+
+const storedRows = <S extends string>(page: Page, stores: S[]) =>
     page.evaluate(
         (stores) =>
             window.nseStorageTest!.worker.call('testRows', stores) as Promise<
-                Record<string, { key: unknown; value: Record<string, unknown> }[]>
+                Record<string, Row[]>
             >,
         stores,
-    )
+    ) as Promise<Record<S, Row[]>>
 
 test('edits are stored: the session, its chain record and an entry per change', async ({
     page,
@@ -167,7 +169,7 @@ test('a worker killed mid-flush keeps the session lock on the page, and the rest
     const lockName = `nse-session:${sessionId}`
     const held = await page.evaluate(async (name) => {
         const { held } = await navigator.locks.query()
-        return held.some((lock) => lock.name === name)
+        return (held ?? []).some((lock) => lock.name === name)
     }, lockName)
     expect(held).toBe(true)
     const other = await context.newPage()
@@ -230,7 +232,9 @@ test('a picked BGM is stored with its change, read back whole, and named in the 
     expect(meta).toMatchObject({ filename: 'pick.wav', size: file.length, type: 'audio/wav' })
     expect(meta!.durationMs).toBe(500)
     const stored = await page.evaluate(async (hash) => {
-        const { media } = (await window.nseStorageTest!.worker.call('testRows', ['media'])) as {
+        const { media } = (await window.nseStorageTest!.worker.call('testRows', [
+            'media',
+        ])) as unknown as {
             media: {
                 value: { blob: Blob; sha256: Uint8Array; size: number; type: string; kind: string }
             }[]

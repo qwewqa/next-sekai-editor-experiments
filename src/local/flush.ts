@@ -108,6 +108,9 @@ export const FLUSH_DELAY_MS = 1000
 /** Entries in one batch at most, and about this much new text, so one transaction stays short. */
 export const BATCH_ENTRIES = 64
 export const BATCH_TEXT = 2 * 1024 * 1024
+/** After a failed flush, the next try waits this long, doubling up to the maximum. */
+export const RETRY_MS = 5000
+export const RETRY_MAX_MS = 60_000
 /** Attempts of one batch: missing windows re-sent, a fork made, before it counts as failed. */
 const ATTEMPTS = 4
 
@@ -171,8 +174,9 @@ export class Flusher {
     private readonly newId: () => string
     private readonly setTimer: (fn: () => void, ms: number) => unknown
     private readonly clearTimer: (handle: unknown) => void
-    /** Whether the last flush failed: storing is paused, and the next change retries. */
+    /** Whether the last flush failed: storing is paused, and it retries later. */
     failed = false
+    private retryMs = 0
 
     constructor(private readonly deps: FlushDeps) {
         this.now = deps.now ?? Date.now
@@ -306,10 +310,14 @@ export class Flusher {
                 const stored = await this.flushBatch(session, options)
                 if (!stored) {
                     this.retire()
+                    // Storing is paused or the worker failed: try again later, less often.
+                    this.retryMs = Math.min(Math.max(this.retryMs * 2, RETRY_MS), RETRY_MAX_MS)
+                    this.schedule(this.retryMs)
                     return
                 }
             }
         }
+        this.retryMs = 0
         this.retire()
     }
 

@@ -79,7 +79,8 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                     state: action.state,
                     label: action.name,
                     dirty: action.isDirty,
-                    ready: lock.granted,
+                    // Without Web Locks (an insecure origin) there's no other tab to keep out.
+                    ready: lock.granted.catch(() => undefined),
                     done: lock.release,
                 })
                 return

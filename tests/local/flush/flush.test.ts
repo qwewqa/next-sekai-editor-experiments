@@ -504,3 +504,30 @@ test('a kill at every await of two flushes leaves no dangling refs and no half-w
     })
     assert.ok(result.every(({ points }) => points > 10))
 })
+
+test('a failed flush is tried again later, less often each time, and pending entries wait', async () => {
+    const world = createWorld({ seed: 14 })
+    const timers: number[] = []
+    let failing = true
+    const ref: { page?: Page } = {}
+    const page = await openPage(world, world.tab('a'), {
+        setTimer: (_, ms) => timers.push(ms),
+        transport: async (batch) => {
+            if (failing) throw new Error('Storing paused: full')
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const page = ref.page!
+            return page.tab.run(() => page.handlers.flush(batch))
+        },
+    })
+    ref.page = page
+    begin(page, stateOf(goldenChart()), 'import')
+    await page.flusher.flush()
+    await page.flusher.flush()
+    // Three tries: the import at once, then two asked for.
+    assert.deepEqual(timers, [5000, 10000, 20000])
+    assert.equal(page.flusher.hasPending, true)
+    failing = false
+    await page.flusher.flush()
+    assert.equal(page.flusher.hasPending, false)
+    assert.equal(rows(world, 'sessions').size, 1)
+})
