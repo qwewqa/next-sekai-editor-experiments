@@ -18,3 +18,10 @@ installSelectLists()
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('Missing editor root element')
 createApp(App).mount(root)
+
+// The storage worker and the local-data modules load after first paint (Part 1 §1.6.5).
+requestAnimationFrame(() => {
+    setTimeout(() => {
+        void import('./local/start').then(({ startStorage }) => startStorage())
+    }, 0)
+})

@@ -60,16 +60,17 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
         }"
     >
         <div
-            v-if="notification.message && !notification.action"
+            v-if="notification.message && !notification.action && !notification.held"
             :key="notification.id"
             class="notification whitespace-break-spaces rounded-full px-6 py-2 text-center"
         >
             {{ notification.message() }}
         </div>
         <div
-            v-else-if="notification.message && notification.action"
+            v-else-if="notification.message"
             :key="notification.id"
-            class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 pr-2 shadow-md"
+            class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 shadow-md"
+            :class="notification.action ? 'pr-2' : 'pr-5 text-center'"
             @pointerenter="pause('hover', true)"
             @pointerleave="pause('hover', false)"
             @focusin="pause('focus', true)"
@@ -77,6 +78,7 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
         >
             <span class="min-w-0 whitespace-break-spaces py-1">{{ notification.message() }}</span>
             <button
+                v-if="notification.action"
                 type="button"
                 data-notice-action
                 class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"

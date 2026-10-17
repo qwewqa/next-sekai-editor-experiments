@@ -981,7 +981,13 @@
   "load": {
     "version": "Sürüm {0}",
     "updated": "Güncellendi: Sürüm {0}",
-    "whatsNew": "Yenilikler"
+    "whatsNew": "Yenilikler",
+    "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
+    "olderVersion": "Bu sürüm verilerinizden daha eski. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
+    "tryAgain": "Tekrar Dene"
+  },
+  "storage": {
+    "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin."
   },
   "player": {
     "started": "Oynatmaya başlandı",

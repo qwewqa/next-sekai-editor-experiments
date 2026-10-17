@@ -58,6 +58,7 @@ export type CoreDeps = {
     flags?: TestFlags
     timers?: Timers
     blockedMs?: number
+    upgradeMs?: number
     maintWaitMs?: number
     /** Ends the worker as a crash would, for test points. */
     crash?: (point: string) => void
@@ -100,6 +101,7 @@ export class StorageCore {
     private lost = false
     private retryBlocked: (() => Promise<Opened>) | undefined
     private upgradeAnswer: { onMessage: (message: unknown) => void } | undefined
+    private trying: Promise<StorageStatus> | undefined
     private readonly listeners = new Set<(status: StorageStatus) => void>()
     private readonly timers: Timers
     private readonly flags: TestFlags
@@ -158,6 +160,7 @@ export class StorageCore {
             upgrade: this.upgrade,
             timers: this.timers,
             blockedMs: this.deps.blockedMs,
+            upgradeMs: this.deps.upgradeMs,
         })
     }
 
@@ -321,6 +324,7 @@ export class StorageCore {
             upgrade: this.upgrade,
             timers: this.timers,
             blockedMs: this.deps.blockedMs,
+            upgradeMs: this.deps.upgradeMs,
         })
         if (opened.kind === 'stored') this.adopt(opened.db)
         else if (opened.kind === 'readOnly') {
@@ -345,7 +349,14 @@ export class StorageCore {
      * Try Again: behind a blocked upgrade, asks again and on success moves what this tab stored
      * in memory into the database; otherwise reopens a dropped connection.
      */
-    async tryAgain(): Promise<StorageStatus> {
+    tryAgain(): Promise<StorageStatus> {
+        this.trying ??= this.askAgain().finally(() => {
+            this.trying = undefined
+        })
+        return this.trying
+    }
+
+    private async askAgain(): Promise<StorageStatus> {
         if (this.current.mode === 'memory' && this.current.reason === 'olderTabs') {
             const retry = this.retryBlocked ?? (() => this.handshake())
             const opened = await retry()

@@ -2,8 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { instrumentRendering } from './fixtures'
 
-// The release build under its exact policy (Part 0 §0.9.2). The storage worker's cases come with
-// Step 3 and the server fetch with A4.
+// The release build under its exact policy (Part 0 §0.9.2). The server fetch comes with A4.
 
 type Violation = { directive: string; blocked: string }
 type Watch = { violations: Violation[]; hooked: Violation[]; wasm: string[] }
@@ -112,6 +111,45 @@ test('Pixi starts, the Lyon wasm runs and the preview packages load without a vi
     await expect
         .poll(() => page.evaluate(() => window.productionSmoke.uploads))
         .toBe(manifest.previewAssets.length)
+
+    expect((await read(page)).violations).toEqual([])
+    expect((await read(page)).hooked).toEqual([])
+    expect(errors).toEqual([])
+})
+
+test('the storage worker runs as a classic worker and restarts from its Blob copy', async ({
+    page,
+}) => {
+    const errors = await watch(page)
+    await page.addInitScript(() => {
+        sessionStorage.setItem('nse.test.storage', '{}')
+    })
+    await page.goto('/')
+    const status = () => page.evaluate(() => window.nseStorageTest?.status())
+    const started = () => page.evaluate(() => [...window.nseStorageTest!.worker.started])
+    await expect.poll(status).toEqual({ mode: 'stored' })
+    const [script] = await started()
+    expect(script).toMatch(/\/assets\/storage\.worker-[\w-]+\.js$/)
+    // Emitted as iife, so Firefox 105 can run it: no module syntax at its top level.
+    const source = await (await page.request.get(script!)).text()
+    expect(source.startsWith('(function(){')).toBe(true)
+    expect(source).not.toMatch(/^\s*(import|export)\s/m)
+
+    // A later deploy has removed the script; a crash restarts from the copy kept at startup.
+    await page.route('**/assets/storage.worker-*.js', (route) => route.fulfill({ status: 404 }))
+    await page.evaluate(() => window.nseStorageTest!.worker.call('testCrash'))
+    await expect.poll(async () => (await started()).length).toBe(2)
+    expect((await started())[1]).toMatch(/^blob:/)
+    await expect.poll(status).toEqual({ mode: 'stored' })
+    expect(await page.evaluate(() => window.nseStorageTest!.worker.call('testLocation'))).toMatch(
+        /^blob:/,
+    )
+    await page.evaluate(() =>
+        window.nseStorageTest!.worker.call('testPut', { key: 'afterRestart', value: 1 }),
+    )
+    expect(
+        await page.evaluate(() => window.nseStorageTest!.worker.call('testGet', 'afterRestart')),
+    ).toBe(1)
 
     expect((await read(page)).violations).toEqual([])
     expect((await read(page)).hooked).toEqual([])

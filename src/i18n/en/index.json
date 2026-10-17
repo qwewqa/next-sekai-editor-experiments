@@ -981,7 +981,13 @@
     "load": {
         "version": "Version {0}",
         "updated": "Updated to version {0}",
-        "whatsNew": "What’s New"
+        "whatsNew": "What’s New",
+        "upgradeBlocked": "Close other {0} tabs to open your stored work.",
+        "olderVersion": "This version is older than your data. Reload, or save your work to files.",
+        "tryAgain": "Try Again"
+    },
+    "storage": {
+        "reload": "Reload to keep storing changes."
     },
     "player": {
         "started": "Started playing",

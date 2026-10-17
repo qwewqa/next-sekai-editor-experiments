@@ -981,7 +981,13 @@
   "load": {
     "version": "Version {0}",
     "updated": "Mise à jour vers la version {0}",
-    "whatsNew": "Nouveautés"
+    "whatsNew": "Nouveautés",
+    "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
+    "olderVersion": "Cette version est plus ancienne que vos données. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
+    "tryAgain": "Réessayer"
+  },
+  "storage": {
+    "reload": "Rechargez la page pour continuer à stocker les modifications."
   },
   "player": {
     "started": "Lecture démarrée",

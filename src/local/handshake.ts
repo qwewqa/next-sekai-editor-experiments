@@ -24,7 +24,7 @@ export const isUpgradeWanted = (message: unknown): message is UpgradeWanted =>
 /** How long a blocked upgrade waits before the tab runs with storage unavailable. */
 export const BLOCKED_MS = 3000
 /** The longest an upgrade waits even without a blocked event. */
-export const UPGRADE_MS = 10_000
+export const UPGRADE_MS = 8000
 
 export type HandshakeDeps = {
     factory: KvFactory
@@ -47,14 +47,57 @@ export type Opened =
     | { kind: 'blocked'; retry: () => Promise<Opened> }
     | { kind: 'failed'; error: unknown }
 
+/** A connection that arrived after giving up, then closed for a newer tab: open afresh. */
+const CLOSED_LATE = new Error('Closed for a newer version')
+
 /** Opens `nse-local-data` the versionless way, upgrading through the handshake when it's older. */
-export const openWithHandshake = async (deps: HandshakeDeps): Promise<Opened> => {
-    let db: KvDatabase
-    try {
-        db = await deps.factory.open(DB_NAME, undefined, { upgrade: deps.upgrade })
-    } catch (error) {
-        return { kind: 'failed', error }
-    }
+export const openWithHandshake = (deps: HandshakeDeps): Promise<Opened> => {
+    const timers = deps.timers ?? realTimers
+    // The versionless open waits in the connection queue behind another tab's pending upgrade,
+    // so it too gives up in time, and Try Again waits for the same request again.
+    let late: { db: KvDatabase } | { error: unknown } | undefined
+    let gaveUp = false
+    const opening = deps.factory.open(DB_NAME, undefined, { upgrade: deps.upgrade }).then(
+        (db) => {
+            late = { db }
+            if (gaveUp)
+                db.onversionchange = () => {
+                    db.close()
+                    late = { error: CLOSED_LATE }
+                }
+        },
+        (error: unknown) => {
+            late = { error }
+        },
+    )
+    const attempt = (ms: number) =>
+        new Promise<Opened>((resolve) => {
+            let timedOut = false
+            const timer = timers.setTimeout(() => {
+                timedOut = true
+                gaveUp = true
+                resolve({ kind: 'blocked', retry: () => attempt(deps.blockedMs ?? BLOCKED_MS) })
+            }, ms)
+            void opening.then(() => {
+                if (timedOut) return
+                timers.clearTimeout(timer)
+                gaveUp = false
+                resolve(afterOpen(deps, late))
+            })
+        })
+    return attempt(deps.upgradeMs ?? UPGRADE_MS)
+}
+
+const afterOpen = (
+    deps: HandshakeDeps,
+    opened: { db: KvDatabase } | { error: unknown } | undefined,
+): Promise<Opened> | Opened => {
+    if (!opened || !('db' in opened))
+        return opened?.error === CLOSED_LATE
+            ? openWithHandshake(deps)
+            : { kind: 'failed', error: opened?.error }
+    const { db } = opened
+    db.onversionchange = undefined
     if (db.version === deps.version) return { kind: 'stored', db }
     if (db.version > deps.version) return { kind: 'readOnly', db }
     db.close()
@@ -90,7 +133,7 @@ class UpgradeAttempt {
                     if (this.gaveUp)
                         db.onversionchange = () => {
                             db.close()
-                            this.outcome = { error: new Error('Closed for a newer version') }
+                            this.outcome = { error: CLOSED_LATE }
                         }
                     this.wake?.()
                 },

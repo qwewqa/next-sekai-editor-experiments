@@ -35,6 +35,7 @@ const core = (
         randomId: () => `id-${ids++}`,
         flags,
         blockedMs: 40,
+        upgradeMs: 80,
         maintWaitMs: 40,
         ...deps,
     })
@@ -211,6 +212,29 @@ test('a frozen tab leaves a v2 tab with storage unavailable after about 3 s; Try
         stored.map((row) => row.key),
         ['kept'],
     )
+    await world.idle()
+})
+
+test('a v1 tab loading behind a blocked upgrade gives up in time too, and opens once it clears', async () => {
+    const world = createWorld({ seed: 13 })
+    const frozen = world.tab('frozen')
+    const frozenStore = core(world, frozen, { ignoreVersionChange: true })
+    await frozen.run(() => frozenStore.start())
+    const next = world.tab('next')
+    const nextStore = core(world, next, { dbVersion: 2 })
+    await next.run(() => nextStore.start())
+    // Its versionless open waits in the queue behind the pending upgrade.
+    const late = world.tab('late')
+    const lateStore = core(world, late)
+    assert.deepEqual(await late.run(() => lateStore.start()), {
+        mode: 'memory',
+        reason: 'olderTabs',
+    })
+    frozen.kill()
+    await world.scheduler.idle()
+    // The upgrade went through meanwhile: this build is now older than the database.
+    assert.deepEqual(await late.run(() => lateStore.tryAgain()), { mode: 'readOnly' })
+    assert.deepEqual(await next.run(() => nextStore.tryAgain()), { mode: 'stored' })
     await world.idle()
 })
 

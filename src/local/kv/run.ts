@@ -38,8 +38,9 @@ export const runTransaction = <T>(raw: RawTransaction, fn: (tx: KvTx) => Promise
             }
             // Aborted for its own reason (a lost connection, a failed request): that is the cause,
             // even when fn then failed on a request to the finished transaction.
-            const own = outcome.ok || errorName(finished.error) !== 'AbortError'
-            reject(asError(own ? finished.error : outcome.error))
+            if (outcome.ok || errorName(finished.error) !== 'AbortError')
+                reject(asError(finished.error))
+            else reject(asError(outcome.error))
         }
 
         raw.done.then(

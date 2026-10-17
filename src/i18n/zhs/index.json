@@ -981,7 +981,13 @@
   "load": {
     "version": "版本 {0}",
     "updated": "已更新到版本 {0}",
-    "whatsNew": "新功能"
+    "whatsNew": "新功能",
+    "upgradeBlocked": "请关闭其他 {0} 标签页，以打开已存储的内容。",
+    "olderVersion": "此版本早于数据的版本。请重新加载，或将内容保存为文件。",
+    "tryAgain": "重试"
+  },
+  "storage": {
+    "reload": "请重新加载以继续存储更改。"
   },
   "player": {
     "started": "开始播放",
