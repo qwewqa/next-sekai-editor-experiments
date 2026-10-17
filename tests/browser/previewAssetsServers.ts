@@ -1,9 +1,10 @@
-import type { Page, Route } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { ZipReader } from '../../src/zip'
 
-// Fake Sonolus servers for the From a Server specs: an SCP's entries served at the layout of a
-// static server, with CORS headers like GitHub Pages sends, and knobs for each way a server can
-// fail. The page's own fetch goes through the browser's real CORS check.
+// Fake Sonolus servers for the From a Server specs. The web build fetches no servers, so the
+// page gets the apps' capability through a test platform whose `fetchServer` asks these servers,
+// in Node, by an exposed function: no request leaves the page, and the web policy is unchanged.
+// Knobs cover each way a server can fail.
 
 export const ORIGIN = 'https://server.test'
 export const BASE = `${ORIGIN}/api`
@@ -28,61 +29,114 @@ export type ServerOptions = {
     files?: Files
     /** Answers a list request itself (the fields: category, query). */
     list?: (category: string, query: URLSearchParams) => unknown
-    /** Delays answers whose path matches, in ms. */
-    delay?: (path: string) => number
+    /** Delays answers whose path (and query) matches, in ms. */
+    delay?: (path: string, query: URLSearchParams) => number
     /** Answers whose path matches fail with this status. */
     status?: (path: string) => number | undefined
 }
 
 export type ServerState = {
-    /**
-     * A server that sends no CORS headers: the page’s own requests fail as the browser’s check
-     * would fail them (Playwright adds the headers to what it fulfils), and a `no-cors` request
-     * still gets its opaque answer.
-     */
-    blocked: boolean
-    /** Every request aborted, as an unreachable host does. */
+    /** Every request fails, as an unreachable host does. */
     down: boolean
     requests: string[]
 }
 
-const json = (value: unknown) => Buffer.from(JSON.stringify(value))
+/** What the page's `fetchServer` gets back: an answer, or a failed request. */
+type Answer = { status: number; body: string; url: string } | { failed: true }
+type Handler = (url: URL) => Promise<Answer>
 
-/** Serves the files of a server at the page's `https://server.test/api`. */
+const handlers = new WeakMap<Page, Map<string, Handler>>()
+
+const json = (value: unknown) => Buffer.from(JSON.stringify(value))
+const answer = (url: URL, status: number, body: Uint8Array = new Uint8Array()): Answer => ({
+    status,
+    body: Buffer.from(body).toString('base64'),
+    url: url.href,
+})
+
+/** Gives the page the apps' server capability, its fetch answered by the servers served here. */
+export const installServers = async (page: Page) => {
+    await page.evaluate(async () => {
+        const module =
+            await window.editorTest.appImport<typeof import('../../src/platform')>(
+                '/src/platform/index.ts',
+            )
+        const ask = (window as unknown as { nseServerFetch: (url: string) => Promise<Answer> })
+            .nseServerFetch
+        const base = module.platform
+        module.setPlatformForTests(
+            Object.create(base, {
+                capabilities: { value: { ...base.capabilities, serverFetch: true } },
+                fetchServer: {
+                    value: (url: string, init?: { signal?: AbortSignal | null }) =>
+                        new Promise<Response>((resolve, reject) => {
+                            const signal = init?.signal
+                            const abort = () =>
+                                reject(new DOMException('The request was aborted', 'AbortError'))
+                            if (signal?.aborted) return abort()
+                            signal?.addEventListener('abort', abort, { once: true })
+                            void ask(url).then((result) => {
+                                if (signal?.aborted) return
+                                if ('failed' in result)
+                                    return reject(new TypeError('Failed to fetch'))
+                                const bytes = Uint8Array.from(atob(result.body), (c) =>
+                                    c.charCodeAt(0),
+                                )
+                                const response = new Response(
+                                    result.status === 204 ? null : bytes,
+                                    { status: result.status },
+                                )
+                                Object.defineProperty(response, 'url', { value: result.url })
+                                resolve(response)
+                            })
+                        }),
+                },
+            }) as typeof base,
+        )
+    })
+}
+
+/** Serves the files of a server at `https://server.test/api`, and lets the page fetch it. */
 export const serve = async (page: Page, options: ServerOptions = {}) => {
     const origin = options.origin ?? ORIGIN
     const path = options.path ?? '/api'
     const files = options.files ?? new Map()
-    const state: ServerState = { blocked: false, down: false, requests: [] }
+    const state: ServerState = { down: false, requests: [] }
 
-    const handle = async (route: Route) => {
-        const request = route.request()
-        const url = new URL(request.url())
+    const handle: Handler = async (url) => {
         state.requests.push(`${url.pathname}${url.search}`)
-        if (state.down) return route.abort('connectionrefused')
-        // A cross-origin `cors` request carries the page’s Origin; a `no-cors` GET does not.
-        if (state.blocked && (await request.allHeaders()).origin) return route.abort('failed')
-        const cors = { 'access-control-allow-origin': '*' }
-        const rest = url.pathname.startsWith(path) ? url.pathname.slice(path.length) : undefined
-        const delay = options.delay?.(url.pathname) ?? 0
+        const delay = options.delay?.(url.pathname, url.searchParams) ?? 0
         if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
+        if (state.down) return { failed: true }
         const status = options.status?.(url.pathname)
-        if (status) return route.fulfill({ status, headers: cors, body: '' })
-        if (rest === undefined) return route.fulfill({ status: 404, headers: cors, body: '' })
+        if (status) return answer(url, status)
+        const rest = url.pathname.startsWith(path) ? url.pathname.slice(path.length) : undefined
+        if (rest === undefined) return answer(url, 404)
         if (rest === '/sonolus/info')
-            return route.fulfill({
-                headers: cors,
-                body: json({ title: options.title ?? 'Test Server', buttons: [] }),
-            })
+            return answer(url, 200, json({ title: options.title ?? 'Test Server', buttons: [] }))
         const listing = /^\/sonolus\/(\w+)\/list$/.exec(rest)
         if (listing && options.list) {
             const body = options.list(listing[1]!, url.searchParams)
-            if (body !== undefined) return route.fulfill({ headers: cors, body: json(body) })
+            if (body !== undefined) return answer(url, 200, json(body))
         }
         const bytes = files.get(rest.slice(1)) ?? files.get(decodeURIComponent(rest.slice(1)))
-        if (!bytes) return route.fulfill({ status: 404, headers: cors, body: '' })
-        return route.fulfill({ headers: cors, body: Buffer.from(bytes) })
+        return bytes ? answer(url, 200, bytes) : answer(url, 404)
     }
-    await page.route(`${origin}/**`, handle)
+
+    let servers = handlers.get(page)
+    if (!servers) {
+        const registered = new Map<string, Handler>()
+        servers = registered
+        handlers.set(page, registered)
+        await page.exposeFunction('nseServerFetch', async (address: string) => {
+            const url = new URL(address)
+            const handler = registered.get(url.origin)
+            // A host nobody serves cannot be reached.
+            return handler ? handler(url) : { failed: true }
+        })
+    }
+    // A later server at the same origin takes its place.
+    servers.set(origin, handle)
+    await installServers(page)
     return { state, files, origin, base: `${origin}${path}` }
 }
