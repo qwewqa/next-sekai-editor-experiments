@@ -43,3 +43,11 @@ test('the Built-in server lists one skin and serves what it names', async ({ req
             .digest('hex'),
     ).toBe(list.items[0]!.texture.hash)
 })
+
+test('a Built-in package answers a range, so the dialog can read its picture alone', async ({
+    request,
+}) => {
+    const response = await request.get('/builtin/effect.scp', { headers: { Range: 'bytes=0-1' } })
+    expect(response.status()).toBe(206)
+    expect((await response.body()).toString()).toBe('PK')
+})
