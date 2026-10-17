@@ -602,7 +602,8 @@
         "ctrl": "Ctrlキーを押しながら操作すると、選択にオブジェクトを追加できます。",
         "properties": "ステージ変形イベントツールを再選択するとデフォルトの設定を変更できます。"
       }
-    }
+    },
+    "altN": "Alt+N (macOSではOption+N) を押すと、最新の通知のボタンにフォーカスが移ります。"
   },
   "elevation": {
     "edit": "高さを編集",
@@ -760,6 +761,20 @@
     },
     "panels": {
       "title": "パネル"
+    },
+    "about": {
+      "title": "バージョン情報",
+      "version": "バージョン {0}",
+      "releaseNotes": "リリースノート",
+      "source": "ソースコード",
+      "license": "ライセンス",
+      "notices": "サードパーティの通知",
+      "privacy": "プライバシー",
+      "diagnostics": "診断情報をコピー…",
+      "diagnosticsTitle": "診断情報",
+      "diagnosticsNote": "エラーメッセージにファイル名やフォルダー名が含まれる場合があります。公開する前に内容を確認してください。",
+      "copy": "コピー",
+      "copied": "コピーしました"
     }
   },
   "sidebars": {
@@ -963,8 +978,10 @@
       "generating": "プレビューを生成中…"
     }
   },
-  "notification": {
-    "title": "Sonolus Next SEKAI Editor\nバージョン {0}"
+  "load": {
+    "version": "バージョン {0}",
+    "updated": "バージョン {0} に更新しました",
+    "whatsNew": "新機能"
   },
   "player": {
     "started": "再生しました",

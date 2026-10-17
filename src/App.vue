@@ -2,6 +2,7 @@
 import { useTemplateRef, watch } from 'vue'
 import { contextMenu } from './editor/contextMenu'
 import LevelEditor from './editor/LevelEditor.vue'
+import NoticeHost from './editor/NoticeHost.vue'
 import {
     autoShape,
     drawerSide,
@@ -126,5 +127,6 @@ watch(root, (element, _, onCleanup) => {
         <WorkspaceDock side="right" />
     </div>
 
+    <NoticeHost />
     <ModalManager />
 </template>

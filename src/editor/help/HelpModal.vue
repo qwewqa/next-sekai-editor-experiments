@@ -32,6 +32,7 @@ import HelpSection from './HelpSection.vue'
         <HelpSection :title="i18n.help.modal.keyboard.title">
             <li>{{ i18n.help.modal.keyboard.single }}</li>
             <li>{{ i18n.help.modal.keyboard.multiple }}</li>
+            <li>{{ i18n.help.altN }}</li>
         </HelpSection>
 
         <HelpSection :title="i18n.help.modal.selectTool.title" command="select">

@@ -1,5 +1,7 @@
 import 'pixi.js/unsafe-eval'
 import './csp'
+// Before anything imports the settings: it snapshots the stored keys (Part 1 §1.7.3).
+import './launch'
 
 import './index.css'
 import './selectLists.css'

@@ -602,7 +602,8 @@
         "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
-    }
+    },
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification."
   },
   "elevation": {
     "edit": "Modifier les élévations",
@@ -760,6 +761,20 @@
     },
     "panels": {
       "title": "Panneaux"
+    },
+    "about": {
+      "title": "À propos",
+      "version": "Version {0}",
+      "releaseNotes": "Notes de version",
+      "source": "Code source",
+      "license": "Licence",
+      "notices": "Mentions des composants tiers",
+      "privacy": "Confidentialité",
+      "diagnostics": "Copier les informations de diagnostic…",
+      "diagnosticsTitle": "Informations de diagnostic",
+      "diagnosticsNote": "Les messages d’erreur qu’il contient peuvent inclure des noms de fichiers et de dossiers. Relisez-le avant de le publier.",
+      "copy": "Copier",
+      "copied": "Copié"
     }
   },
   "sidebars": {
@@ -963,8 +978,10 @@
       "generating": "Génération de l’aperçu…"
     }
   },
-  "notification": {
-    "title": "Éditeur Sonolus Next SEKAI\nVersion {0}"
+  "load": {
+    "version": "Version {0}",
+    "updated": "Mise à jour vers la version {0}",
+    "whatsNew": "Nouveautés"
   },
   "player": {
     "started": "Lecture démarrée",

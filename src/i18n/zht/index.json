@@ -602,7 +602,8 @@
         "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "properties": "再次切換到舞台變換事件工具以變更預設屬性。"
       }
-    }
+    },
+    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知的按鈕。"
   },
   "elevation": {
     "edit": "編輯高度",
@@ -760,6 +761,20 @@
     },
     "panels": {
       "title": "面板"
+    },
+    "about": {
+      "title": "關於",
+      "version": "版本 {0}",
+      "releaseNotes": "發行說明",
+      "source": "原始碼",
+      "license": "授權條款",
+      "notices": "第三方聲明",
+      "privacy": "隱私",
+      "diagnostics": "複製診斷資訊…",
+      "diagnosticsTitle": "診斷資訊",
+      "diagnosticsNote": "其中的錯誤訊息可能包含檔案名稱與資料夾名稱。公開張貼前請先檢查。",
+      "copy": "複製",
+      "copied": "已複製"
     }
   },
   "sidebars": {
@@ -963,8 +978,10 @@
       "generating": "正在生成預覽…"
     }
   },
-  "notification": {
-    "title": "Sonolus Next SEKAI Editor\n版本 {0}"
+  "load": {
+    "version": "版本 {0}",
+    "updated": "已更新至版本 {0}",
+    "whatsNew": "新功能"
   },
   "player": {
     "started": "開始播放",

@@ -602,7 +602,8 @@
         "ctrl": "Ctrl 키를 누른 채 객체를 선택하면 선택 항목에 추가됩니다.",
         "properties": "기본 속성을 변경하려면 스테이지 변형 이벤트 도구를 다시 선택합니다."
       }
-    }
+    },
+    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림의 버튼으로 포커스가 이동합니다."
   },
   "elevation": {
     "edit": "높이 편집",
@@ -760,6 +761,20 @@
     },
     "panels": {
       "title": "패널"
+    },
+    "about": {
+      "title": "정보",
+      "version": "버전 {0}",
+      "releaseNotes": "릴리스 노트",
+      "source": "소스 코드",
+      "license": "라이선스",
+      "notices": "타사 고지 사항",
+      "privacy": "개인정보 보호",
+      "diagnostics": "진단 정보 복사…",
+      "diagnosticsTitle": "진단 정보",
+      "diagnosticsNote": "오류 메시지에 파일 이름이나 폴더 이름이 포함될 수 있습니다. 공개적으로 게시하기 전에 확인하세요.",
+      "copy": "복사",
+      "copied": "복사됨"
     }
   },
   "sidebars": {
@@ -963,8 +978,10 @@
       "generating": "미리보기 생성 중…"
     }
   },
-  "notification": {
-    "title": "Sonolus Next SEKAI 편집기\n버전 {0}"
+  "load": {
+    "version": "버전 {0}",
+    "updated": "업데이트됨: 버전 {0}",
+    "whatsNew": "새로운 기능"
   },
   "player": {
     "started": "플레이 시작됨",

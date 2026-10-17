@@ -2,6 +2,7 @@
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { resetKeybinds, resetSettings } from '../../settings'
+import SettingsAbout from './SettingsAbout.vue'
 import SettingsEditor from './SettingsEditor.vue'
 import SettingsKeyboardShortcuts from './SettingsKeyboardShortcuts.vue'
 import SettingsMouse from './SettingsMouse.vue'
@@ -46,5 +47,7 @@ import SettingsToolbar from './toolbar/SettingsToolbar.vue'
         <SettingsMouse />
 
         <SettingsKeyboardShortcuts />
+
+        <SettingsAbout />
     </BaseModal>
 </template>

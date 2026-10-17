@@ -1,4 +1,6 @@
-// Logs Content Security Policy violations and calls the test hook (Step 1b adds the diagnostics ring).
+// Logs Content Security Policy violations, records them in the diagnostics ring and calls the test hook.
+import { recordDiagnostic } from './diagnostics'
+
 export type CspViolation = {
     directive: string
     blocked: string
@@ -18,6 +20,10 @@ document.addEventListener(
             line: event.lineNumber,
         }
         console.error('Content Security Policy violation', violation)
+        recordDiagnostic(
+            'csp',
+            `${violation.directive} blocked ${violation.blocked}${violation.source ? ` at ${violation.source}:${violation.line}` : ''}`,
+        )
         // Tests set this to fail on a violation.
         const hook = Reflect.get(window, 'nseCspViolationHook') as unknown
         if (typeof hook === 'function') Reflect.apply(hook, window, [violation])

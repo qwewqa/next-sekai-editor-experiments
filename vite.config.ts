@@ -1,11 +1,13 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defineConfig } from 'vite'
 import { devPolicy, injectPolicy, webPolicy } from './scripts/csp.mjs'
 import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
 import { appVersion } from './scripts/version.mjs'
+import { PRODUCT_NAME } from './src/product'
 import { storageKey } from './src/storage'
 import { themes } from './src/themes'
 
@@ -39,6 +41,15 @@ export default defineConfig({
             },
         },
         {
+            // The page title and share metadata take the product name from the one constant.
+            name: 'product-name',
+            transformIndexHtml: {
+                // Before Vite's own %NAME% substitution, which would warn about this one.
+                order: 'pre',
+                handler: (html) => html.replaceAll('%PRODUCT_NAME%', PRODUCT_NAME),
+            },
+        },
+        {
             // NSE_SITE=test: the test site is not indexed and its title says so.
             name: 'test-site',
             apply: () => siteFromEnv() === 'test',
@@ -56,6 +67,13 @@ export default defineConfig({
         },
     ],
     define: {
+        __GITHUB_REPOSITORY__: JSON.stringify(
+            process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments',
+        ),
+        __NSE_SITE__: JSON.stringify(siteFromEnv()),
+        __HAS_PRIVACY_PAGE__: JSON.stringify(
+            existsSync(fileURLToPath(new URL('privacy/index.html', import.meta.url))),
+        ),
         __APP_VERSION__: JSON.stringify(
             appVersion({ cwd: fileURLToPath(new URL('.', import.meta.url)) }).appVersion,
         ),

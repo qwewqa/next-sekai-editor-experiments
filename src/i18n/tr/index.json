@@ -602,7 +602,8 @@
         "ctrl": "Seçime nesne eklemek için Ctrl tuşunu kullanın.",
         "properties": "Varsayılan Özellikleri değiştirmek için tekrar Sahne Dönüşüm Olayı aracına geçin."
       }
-    }
+    },
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",
@@ -760,6 +761,20 @@
     },
     "panels": {
       "title": "Paneller"
+    },
+    "about": {
+      "title": "Hakkında",
+      "version": "Sürüm {0}",
+      "releaseNotes": "Sürüm Notları",
+      "source": "Kaynak Kodu",
+      "license": "Lisans",
+      "notices": "Üçüncü Taraf Bildirimleri",
+      "privacy": "Gizlilik",
+      "diagnostics": "Tanılama Bilgilerini Kopyala…",
+      "diagnosticsTitle": "Tanılama Bilgileri",
+      "diagnosticsNote": "Hata iletileri dosya ve klasör adlarını içerebilir. Herkese açık paylaşmadan önce kontrol edin.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı"
     }
   },
   "sidebars": {
@@ -963,8 +978,10 @@
       "generating": "Önizleme oluşturuluyor…"
     }
   },
-  "notification": {
-    "title": "Sonolus Next SEKAI Editörü\nSürüm {0}"
+  "load": {
+    "version": "Sürüm {0}",
+    "updated": "Güncellendi: Sürüm {0}",
+    "whatsNew": "Yenilikler"
   },
   "player": {
     "started": "Oynatmaya başlandı",

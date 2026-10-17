@@ -319,8 +319,8 @@ test.describe('status bar on a phone', () => {
 
 test('notifications are announced from one live region', async ({ page }) => {
     await boot(page)
-    // The region is there before a notice, so its arrival is announced.
-    const region = page.locator('.notification').locator('..')
+    // The region is there before a notice, so its arrival is announced; there is one per page.
+    const region = page.getByRole('status')
     for (const sideBySide of [undefined, 'allow', 'disallow'] as const) {
         if (sideBySide) {
             await page.evaluate((sideBySide) => {
@@ -332,8 +332,8 @@ test('notifications are announced from one live region', async ({ page }) => {
         await page.keyboard.press('a')
         const text = (await page.locator('.notification').textContent())!.trim()
         expect(text).not.toBe('')
-        await expect(page.getByRole('status').filter({ hasText: text })).toHaveCount(1)
-        await expect(region).toHaveAttribute('role', 'status')
+        await expect(region).toHaveCount(1)
+        await expect(region).toHaveText(text)
     }
 })
 

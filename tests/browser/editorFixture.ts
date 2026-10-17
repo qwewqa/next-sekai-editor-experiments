@@ -83,6 +83,9 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     }
     // The fixture hook: the shown version never depends on the checkout's tags.
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
+    // Seeded settings make every profile an existing user, who would see "Updated to version" with
+    // an action over the canvas; the last version seen is the override's, so specs see "Version X".
+    localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     // Only the explicitly configured historical parity server uses this path.
     // A missing GPU module in the current app must fail rather than silently
     // make its rendering assertions exercise a different implementation.

@@ -3,7 +3,8 @@
   "include": [
     "*.config.ts",
     "src/themes.ts",
-    "src/storage.ts"
+    "src/storage.ts",
+    "src/product.ts"
   ],
   "compilerOptions": {
     "composite": true,

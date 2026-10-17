@@ -602,7 +602,8 @@
                 "ctrl": "Use Ctrl key to add objects to selection.",
                 "properties": "Switch to Stage Transform Event Tool again to change default properties."
             }
-        }
+        },
+        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice’s button."
     },
     "elevation": {
         "edit": "Edit Elevations",
@@ -760,6 +761,20 @@
         },
         "panels": {
             "title": "Panels"
+        },
+        "about": {
+            "title": "About",
+            "version": "Version {0}",
+            "releaseNotes": "Release Notes",
+            "source": "Source Code",
+            "license": "License",
+            "notices": "Third-Party Notices",
+            "privacy": "Privacy",
+            "diagnostics": "Copy Diagnostic Info…",
+            "diagnosticsTitle": "Diagnostic Info",
+            "diagnosticsNote": "Error messages in it can include file and folder names. Check it before posting it publicly.",
+            "copy": "Copy",
+            "copied": "Copied"
         }
     },
     "sidebars": {
@@ -963,8 +978,10 @@
             "generating": "Generating preview…"
         }
     },
-    "notification": {
-        "title": "Sonolus Next SEKAI Editor\nVersion {0}"
+    "load": {
+        "version": "Version {0}",
+        "updated": "Updated to version {0}",
+        "whatsNew": "What’s New"
     },
     "player": {
         "started": "Started playing",

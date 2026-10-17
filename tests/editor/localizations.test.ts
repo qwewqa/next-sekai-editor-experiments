@@ -226,9 +226,233 @@ test('Preview Editor units stay on the line of the word before them', () => {
                 assert.doesNotMatch(text, / [(（]/, `${locale} ${key}`)
 })
 
-test('the version line is translated where the script differs from English', () => {
-    for (const locale of ['ja', 'ko', 'zhs', 'zht'])
-        assert.doesNotMatch(read(locale)['notification.title']!, /Version/, locale)
+// Values that read the same as English on purpose: names, symbols, "BGM" and the like. Seeded from the
+// values identical when this test was added; a new entry needs a reason.
+const identicalToEnglish: Record<string, string[]> = {
+    fr: [
+        'commands.bpm.title',
+        'commands.divisions.custom.modal.division',
+        'commands.events.title',
+        'commands.laneDivisions.custom.modal.division',
+        'commands.note.title.default',
+        'commands.note.title.preset',
+        'commands.slide.title.default',
+        'commands.slide.title.preset',
+        'commands.visibilities.toggle.types.bpm',
+        'commands.visibilities.toggle.types.note',
+        'elevation.auto',
+        'load.version',
+        'modals.form.bpm.label',
+        'modals.form.cameraRotation.label',
+        'modals.form.cameraZoom.label',
+        'modals.form.colors.cyan',
+        'modals.form.connectorType.active',
+        'modals.form.connectorType.guide',
+        'modals.form.connectorType.label',
+        'modals.form.judgmentLineColor.cyan',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.tab',
+        'modals.form.listJoin',
+        'modals.form.noteType.trace',
+        'modals.form.rotation.label',
+        'modals.form.sentenceJoin',
+        'modals.form.sfx.normalFlick',
+        'modals.form.sfx.normalTap',
+        'modals.form.sfx.normalTick',
+        'modals.form.sfx.normalTrace',
+        'modals.form.timeScaleTransition.label',
+        'modals.form.unset.auto',
+        'modals.info.ok',
+        'settings.about.version',
+        'settings.editor.waveformVisualization.fft',
+        'settings.editor.waveformVisualization.volume',
+        'settings.preview.controls.auto',
+        'settings.preview.position.auto',
+        'settings.preview.position.title',
+        'settings.preview.transport.auto',
+        'sidebars.view.division',
+        'tools.bpm.title',
+        'tools.brush.kinds.note',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+        'workspace.properties.kinds.note',
+    ],
+    ja: [
+        'commands.bgm.title',
+        'commands.bpm.title',
+        'commands.events.title',
+        'commands.toggleVolume.type.bgm',
+        'commands.visibilities.toggle.types.bpm',
+        'modals.form.bpm.label',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.backspace',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.delete',
+        'modals.form.key.names.end',
+        'modals.form.key.names.enter',
+        'modals.form.key.names.escape',
+        'modals.form.key.names.home',
+        'modals.form.key.names.insert',
+        'modals.form.key.names.pageDown',
+        'modals.form.key.names.pageUp',
+        'modals.form.key.names.shift',
+        'modals.form.key.names.space',
+        'modals.form.key.names.tab',
+        'modals.info.ok',
+        'settings.editor.waveformVisualization.fft',
+        'tools.bpm.title',
+        'utilities.previewEditor.bgm',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+    ],
+    ko: [
+        'commands.bpm.title',
+        'commands.events.title',
+        'commands.visibilities.toggle.types.bpm',
+        'modals.form.bpm.label',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.backspace',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.delete',
+        'modals.form.key.names.end',
+        'modals.form.key.names.enter',
+        'modals.form.key.names.escape',
+        'modals.form.key.names.home',
+        'modals.form.key.names.insert',
+        'modals.form.key.names.pageDown',
+        'modals.form.key.names.pageUp',
+        'modals.form.key.names.shift',
+        'modals.form.key.names.space',
+        'modals.form.key.names.tab',
+        'modals.form.listJoin',
+        'modals.form.sentenceJoin',
+        'settings.editor.waveformVisualization.fft',
+        'tools.bpm.title',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+    ],
+    tr: [
+        'commands.bpm.title',
+        'commands.events.title',
+        'commands.visibilities.toggle.types.bpm',
+        'modals.form.bpm.label',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.backspace',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.delete',
+        'modals.form.key.names.end',
+        'modals.form.key.names.enter',
+        'modals.form.key.names.escape',
+        'modals.form.key.names.home',
+        'modals.form.key.names.insert',
+        'modals.form.key.names.pageDown',
+        'modals.form.key.names.pageUp',
+        'modals.form.key.names.shift',
+        'modals.form.key.names.space',
+        'modals.form.key.names.tab',
+        'modals.form.listJoin',
+        'modals.form.sentenceJoin',
+        'settings.editor.waveformVisualization.fft',
+        'tools.bpm.title',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+    ],
+    zhs: [
+        'commands.bpm.title',
+        'commands.events.title',
+        'commands.visibilities.toggle.types.bpm',
+        'modals.form.bpm.label',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.backspace',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.delete',
+        'modals.form.key.names.end',
+        'modals.form.key.names.enter',
+        'modals.form.key.names.escape',
+        'modals.form.key.names.home',
+        'modals.form.key.names.insert',
+        'modals.form.key.names.pageDown',
+        'modals.form.key.names.pageUp',
+        'modals.form.key.names.shift',
+        'modals.form.key.names.space',
+        'modals.form.key.names.tab',
+        'tools.bpm.title',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+    ],
+    zht: [
+        'commands.bgm.title',
+        'commands.bpm.title',
+        'commands.events.title',
+        'commands.toggleVolume.type.bgm',
+        'commands.visibilities.toggle.types.bpm',
+        'modals.form.bpm.label',
+        'modals.form.key.names.alt',
+        'modals.form.key.names.backspace',
+        'modals.form.key.names.ctrl',
+        'modals.form.key.names.delete',
+        'modals.form.key.names.end',
+        'modals.form.key.names.enter',
+        'modals.form.key.names.escape',
+        'modals.form.key.names.home',
+        'modals.form.key.names.insert',
+        'modals.form.key.names.pageDown',
+        'modals.form.key.names.pageUp',
+        'modals.form.key.names.shift',
+        'modals.form.key.names.space',
+        'modals.form.key.names.tab',
+        'settings.editor.waveformVisualization.fft',
+        'tools.bpm.title',
+        'utilities.previewEditor.bgm',
+        'workspace.folders.path',
+        'workspace.manager.copyName',
+        'workspace.properties.kinds.bpm',
+    ],
+}
+
+test('a non-English value is not identical to English, except where it is allowed', () => {
+    for (const locale of Object.keys(identicalToEnglish)) {
+        const allowed = new Set(identicalToEnglish[locale])
+        const messages = read(locale)
+        for (const [key, text] of Object.entries(messages))
+            if (text === english[key])
+                assert.ok(allowed.has(key), `${locale} ${key} is identical to English`)
+        // A stale entry would hide a later copy.
+        for (const key of allowed)
+            assert.equal(messages[key], english[key], `${locale} ${key} is allowed but differs`)
+    }
+})
+
+// Web strings never say draft, document or project, except "project file" (Part 0 section 0.11.3).
+// App-only keys, their prefixes and the "App" suffix are exempt; Stage 1 has none.
+const APP_ONLY_KEYS: string[] = []
+const APP_ONLY_PREFIXES: string[] = []
+
+test('English web strings do not say draft, document or project', () => {
+    const exempt = (key: string) =>
+        APP_ONLY_KEYS.includes(key) ||
+        APP_ONLY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+        key.endsWith('App')
+    for (const [key, text] of Object.entries(english)) {
+        if (exempt(key)) continue
+        assert.doesNotMatch(
+            text.replace(/project files?/gi, ''),
+            /\b(draft|document|project)s?\b/i,
+            key,
+        )
+    }
+})
+
+test('notification.title is gone from every locale', () => {
+    for (const locale of Object.keys(identicalToEnglish))
+        assert.ok(!('notification.title' in read(locale)), locale)
+    assert.ok(!('notification.title' in english))
 })
 
 test('shortcut refusal notes end in a full stop, as in English', () => {
