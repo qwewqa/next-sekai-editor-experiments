@@ -14,6 +14,7 @@ import {
     stage,
     styleColors,
     traceColors,
+    vivid,
 } from './palette.mjs'
 
 /** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
@@ -37,8 +38,13 @@ const solid = (color, alpha = 1, w = 4, h = 4) =>
 const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
     image('band', { color, light, alpha }, { stretch: true })
 const activeBand = (color) => band(mix(color, '#ffffff', 0.2), 0.8, mix(color, '#ffffff', 0.6))
+// Slot glows in the vivid effect colour, as the particles use.
 const glow = (color) =>
-    image('slot-glow', { color, light: mix(color, '#ffffff', 0.5) }, { stretch: true })
+    image(
+        'slot-glow',
+        { color: vivid(color), light: mix(vivid(color), '#ffffff', 0.5) },
+        { stretch: true },
+    )
 const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
 
 // The dark base of the judgment band.
