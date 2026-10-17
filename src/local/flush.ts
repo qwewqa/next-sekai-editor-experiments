@@ -110,6 +110,11 @@ export type FlushDeps = {
     lockSession?: (id: string) => { ready: Promise<unknown>; done: () => void }
     /** A session's chain was continued elsewhere: its further entries went to this fork (D10). */
     onFork?: (fork: FlushSession, from: FlushSession) => void
+    /**
+     * Stores a media item alone, after its flush's read-back failed (§1.6.8.4): resolves whether
+     * it's stored right now. Without it the item is left not held in storage.
+     */
+    storeMedia?: (item: BatchMedia) => Promise<boolean>
     onFlushed?: (report: FlushReport) => void
     onError?: (error: unknown) => void
     /** Runs an extraction in slices; `runSliced` by default. */
@@ -128,17 +133,22 @@ export const RETRY_MS = 5000
 export const RETRY_MAX_MS = 60_000
 /** Attempts of one batch: missing windows re-sent, before it counts as failed. */
 const ATTEMPTS = 4
+/** Tries at storing a media item alone, with the flush's backoff, before it's left not held. */
+export const MEDIA_ATTEMPTS = 6
 
 type FlushOptions = { strict?: boolean; oneGo?: boolean }
 
 /**
- * A flush call's timeout (§1.6.5): the usual 10 s, and a second more per MB it carries, since a
- * large BGM is hashed, stored and read back in it.
+ * A call's timeout by the bytes it carries (§1.6.5): the usual 10 s, and a second more per MB,
+ * since a large BGM is hashed, stored and read back in it.
  */
+export const mediaTimeoutMs = (bytes: number) => 10_000 + bytes / 1000
+
+/** A flush call's timeout, by its text and media. */
 export const flushTimeoutMs = (batch: FlushBatch) =>
-    10_000 +
-    (batch.text.byteLength + batch.media.reduce((sum, item) => sum + item.bytes.byteLength, 0)) /
-        1000
+    mediaTimeoutMs(
+        batch.text.byteLength + batch.media.reduce((sum, item) => sum + item.bytes.byteLength, 0),
+    )
 
 /** A media item a state holds the bytes of: the BGM's `Bgm.source` (§1.6.8.4). */
 export const heldMediaOf = (state: State): BatchMedia[] => {
@@ -202,6 +212,16 @@ export class Flusher {
     private readonly knownMedia = new Set<string>()
     /** Media the worker found missing: sent again with their bytes. */
     private readonly resendMedia = new Set<string>()
+    /** Media sent in a flush not yet answered: read back even if found stored (§1.6.8.4). */
+    private readonly unconfirmed = new Set<string>()
+    /**
+     * Media whose read-back failed: stored again alone, with backoff, and left out of flushes
+     * meanwhile, so it never holds back the history (§1.6.8.4).
+     */
+    private readonly failedMedia = new Map<string, BatchMedia>()
+    private mediaTimer: unknown
+    private mediaRetryMs = 0
+    private mediaAttempts = 0
     private readonly now: () => number
     private readonly newId: () => string
     private readonly setTimer: (fn: () => void, ms: number) => unknown
@@ -270,7 +290,11 @@ export class Flusher {
         const session = this.current
         if (!session) return
         this.add(session, kind, label, state, dirty)
-        if (heldMediaOf(state).some((item) => !this.knownMedia.has(item.hash)))
+        if (
+            heldMediaOf(state).some(
+                (item) => !this.knownMedia.has(item.hash) && !this.failedMedia.has(item.hash),
+            )
+        )
             void this.flush({ strict: true })
         else this.schedule()
     }
@@ -352,7 +376,56 @@ export class Flusher {
             session.pending.unshift(...session.memoryOnly)
             session.memoryOnly.length = 0
         }
+        // A new worker holds nothing paused: media that failed gets tries afresh.
+        if (this.failedMedia.size) {
+            this.mediaAttempts = 0
+            this.mediaRetryMs = 0
+            this.scheduleMedia(0)
+        }
         return this.flush()
+    }
+
+    private scheduleMedia(delay: number) {
+        if (!this.deps.storeMedia) return
+        if (this.mediaTimer !== undefined) this.clearTimer(this.mediaTimer)
+        this.mediaTimer = this.setTimer(() => {
+            this.mediaTimer = undefined
+            void this.retryMedia()
+        }, delay)
+    }
+
+    /**
+     * Stores each media item whose read-back failed again, alone, in turn with the flushes. Still
+     * failing, it tries again later, less often, up to `MEDIA_ATTEMPTS`; the history goes on.
+     */
+    retryMedia(): Promise<void> {
+        if (this.mediaTimer !== undefined) {
+            this.clearTimer(this.mediaTimer)
+            this.mediaTimer = undefined
+        }
+        const storeMedia = this.deps.storeMedia
+        const run = this.running.then(async () => {
+            if (!storeMedia || !this.failedMedia.size) return
+            for (const [hash, item] of [...this.failedMedia]) {
+                const stored = await storeMedia(item).catch((error: unknown) => {
+                    this.deps.onError?.(error)
+                    return false
+                })
+                if (!stored) continue
+                this.failedMedia.delete(hash)
+                this.knownMedia.add(hash)
+            }
+            if (!this.failedMedia.size) {
+                this.mediaAttempts = 0
+                this.mediaRetryMs = 0
+                return
+            }
+            if (++this.mediaAttempts >= MEDIA_ATTEMPTS) return
+            this.mediaRetryMs = Math.min(Math.max(this.mediaRetryMs * 2, RETRY_MS), RETRY_MAX_MS)
+            this.scheduleMedia(this.mediaRetryMs)
+        })
+        this.running = run
+        return run
     }
 
     private async drain(options: FlushOptions) {
@@ -499,6 +572,8 @@ export class Flusher {
             for (const item of heldMediaOf(entry.state)) {
                 if (!referenced.has(item.hash) || sent.has(item.hash)) continue
                 sent.add(item.hash)
+                // Stored alone meanwhile: the root names it, and it reads as not held till then.
+                if (this.failedMedia.has(item.hash)) continue
                 if (this.knownMedia.has(item.hash) && !this.resendMedia.has(item.hash))
                     held.push(item.hash)
                 else media.push(item)
@@ -512,6 +587,8 @@ export class Flusher {
         const isStrict =
             options.strict || media.length > 0 || (!session.stored && this.storesAtOnce(session))
         const view = this.deps.view?.()
+        const unconfirmed = media.map((item) => item.hash).filter((h) => this.unconfirmed.has(h))
+        for (const item of media) this.unconfirmed.add(item.hash)
         const wire: FlushBatch = {
             session: {
                 id: session.id,
@@ -544,6 +621,7 @@ export class Flusher {
             })),
             media,
             held,
+            ...(unconfirmed.length ? { unconfirmed } : {}),
             ...(view ? { view } : {}),
             summary: summaryOf(last.state, lastPlan.noteCount),
             durability: isStrict ? 'strict' : 'relaxed',
@@ -569,9 +647,18 @@ export class Flusher {
                 // A database holds them now: moved by Try Again, or sent again after a restart.
                 else for (const each of this.sessions) each.memoryOnly.length = 0
                 session.stored = true
-                for (const item of media) this.knownMedia.add(item.hash)
+                const failed = new Set(result.mediaFailed)
+                for (const item of media) {
+                    this.unconfirmed.delete(item.hash)
+                    if (failed.has(item.hash)) this.failedMedia.set(item.hash, item)
+                    else this.knownMedia.add(item.hash)
+                }
                 for (const hash of [...media.map((item) => item.hash), ...held])
                     this.resendMedia.delete(hash)
+                if (failed.size && this.mediaTimer === undefined) {
+                    this.mediaAttempts = 0
+                    this.scheduleMedia(Math.max(this.mediaRetryMs, RETRY_MS))
+                }
                 this.deps.onFlushed?.({
                     sessionId: session.id,
                     entries: entries.length,

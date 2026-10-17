@@ -3,20 +3,21 @@ import test from 'node:test'
 import { flushTimeoutMs } from '../../../src/local/flush'
 import type { FlushBatch } from '../../../src/local/flushWrite'
 import { StorageWorker } from '../../../src/local/worker/client'
-import { serve, type Endpoint, type Handlers } from '../../../src/local/worker/rpc'
+import { serve, type CallScope, type Endpoint, type Handlers } from '../../../src/local/worker/rpc'
 
-// The page's watchdog over the storage worker (§1.6.5): an unanswered call pings the worker; one
-// that answers with progress is slow, not hung, and is waited for, so a long write is never cut
-// off. One that makes no progress, or doesn't answer, is restarted. Real timers, kept short.
+// The page's watchdog over the storage worker (§1.6.5): an unanswered call pings the worker for
+// that call's progress; one that has moved is slow, not hung, and is waited for, so a long write
+// is never cut off. One that makes no progress, whatever other calls do, or doesn't answer, is
+// restarted. Real timers, kept short.
 
-type Behaviour = { progress: number; frozen: boolean }
+type Behaviour = { frozen: boolean }
 
 /** A dedicated worker in the same thread: messages cross in later tasks, as postMessage's do. */
 class FakeWorker {
     static readonly created: FakeWorker[] = []
     onmessage: ((event: MessageEvent) => void) | null = null
     terminated = false
-    readonly state: Behaviour = { progress: 0, frozen: false }
+    readonly state: Behaviour = { frozen: false }
     private readonly inside: Endpoint
 
     constructor() {
@@ -56,12 +57,11 @@ const sleep = (ms: number) =>
 
 const handlers = (state: Behaviour): Handlers => ({
     init: () => ({ mode: 'stored' }),
-    ping: () => state.progress,
     /** Long work that keeps moving: a large BGM's write, Try Again's move. */
-    slow: async (ms: number) => {
+    slow: async (ms: number, scope: CallScope) => {
         for (let spent = 0; spent < ms; spent += 10) {
             await sleep(10)
-            state.progress++
+            scope.tick()
         }
         return 'done'
     },
@@ -103,6 +103,18 @@ test('a call that makes no progress restarts the worker', async () => {
     await sleep(20)
     assert.equal(FakeWorker.created.length, 2)
     assert.equal(FakeWorker.created[0]?.terminated, true)
+})
+
+test('a hung call is restarted within about its timeout while another call keeps moving', async () => {
+    const { call } = await start()
+    const busy = call('slow', 1000).catch((error: unknown) => error)
+    const began = Date.now()
+    await assert.rejects(call('stuck'), { name: 'TimeoutError' })
+    // The first ping already finds no progress: the timeout (60 ms) and a ping, not two timeouts.
+    assert.ok(Date.now() - began < 115, `${Date.now() - began} ms`)
+    assert.equal(((await busy) as Error).name, 'WorkerRestartedError')
+    await sleep(20)
+    assert.equal(FakeWorker.created.length, 2)
 })
 
 test('a worker that doesn’t answer the ping is restarted', async () => {

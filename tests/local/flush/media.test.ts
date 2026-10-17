@@ -167,7 +167,7 @@ test('a media row that reads back wrong is written again from memory', async () 
     assert.equal(rows(world, 'media').size, 1)
 })
 
-test('a media row that reads back wrong twice is removed, and storing stays paused until it’s stored right', async () => {
+test('a media row that reads back wrong twice is removed and held paused, and the history is stored', async () => {
     const world = createWorld({ seed: 5 })
     const page = await openPage(world, world.tab('a'))
     setMediaReadBackHookForTests((bytes) => bytes.slice(1))
@@ -178,18 +178,96 @@ test('a media row that reads back wrong twice is removed, and storing stays paus
         setMediaReadBackHookForTests(undefined)
     }
     assert.equal(page.core.status.reason, 'failed')
-    // The bad row went, and the entries stay pending, so the next try stores it again.
+    // The bad row went, and the entries are stored all the same: the root names a BGM not held.
     assert.equal(rows(world, 'media').size, 0)
-    assert.equal(page.flusher.hasPending, true)
-    // Another write that succeeds doesn't resume storing.
-    await page.tab.run(() => page.handlers.countDay())
-    assert.equal(page.core.status.reason, 'failed')
-    await page.flusher.flush()
-    assert.equal(page.core.status.reason, undefined)
-    assert.equal(rows(world, 'media').size, 1)
     assert.equal(page.flusher.hasPending, false)
     assert.equal(rows(world, 'entries').size, 1)
     assert.deepEqual(checkStored(world.memory), [])
+    // Another write that succeeds doesn't resume storing.
+    await page.tab.run(() => page.handlers.countDay())
+    assert.equal(page.core.status.reason, 'failed')
+    // The media is stored again on its own, from the page's bytes.
+    await page.flusher.retryMedia()
+    assert.equal(page.core.status.reason, undefined)
+    assert.equal(rows(world, 'media').size, 1)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a BGM that never reads back right blocks no history, and later flushes don’t carry it', async () => {
+    const world = createWorld({ seed: 10 })
+    const page = await openPage(world, world.tab('a'))
+    let reads = 0
+    setMediaReadBackHookForTests((bytes) => {
+        reads++
+        return bytes.slice(1)
+    })
+    try {
+        const base = await withSong(stateOf(goldenChart()), 10)
+        begin(page, base)
+        for (let i = 0; i < 100; i++)
+            page.flusher.append('edit', () => 'Changed', { ...base, initialLife: 1000 + i }, true)
+        for (let i = 0; i < 5; i++) await page.flusher.flush()
+        assert.equal(rows(world, 'entries').size, 101)
+        assert.equal(page.flusher.hasPending, false)
+        // Read back twice once; no later flush carried the bytes again, or named them held.
+        assert.equal(reads, 2)
+        assert.equal(page.batches.filter((batch) => batch.media.length > 0).length, 1)
+        assert.ok(page.batches.every((batch) => batch.held.length === 0))
+        assert.equal(rows(world, 'meta').get('epoch')?.value ?? 0, 0)
+        // A retry of the media alone writes it once and reads it back twice, no more.
+        await page.flusher.retryMedia()
+        assert.equal(reads, 4)
+        assert.equal(rows(world, 'media').size, 0)
+        assert.equal(page.core.status.reason, 'failed')
+        assert.equal(rows(world, 'meta').get('epoch')?.value ?? 0, 0)
+        assert.deepEqual(checkStored(world.memory), [])
+    } finally {
+        setMediaReadBackHookForTests(undefined)
+    }
+})
+
+test('a media row that can’t be read is kept, and read back again later', async () => {
+    const world = createWorld({ seed: 11 })
+    const page = await openPage(world, world.tab('a'))
+    setMediaReadBackHookForTests(() => {
+        throw new DOMException('Unreadable', 'NotReadableError')
+    })
+    try {
+        begin(page, await withSong(stateOf(goldenChart()), 11))
+        await page.flusher.flush()
+    } finally {
+        setMediaReadBackHookForTests(undefined)
+    }
+    assert.equal(rows(world, 'media').size, 1)
+    assert.equal(page.core.status.reason, 'failed')
+    assert.equal(page.flusher.hasPending, false)
+    await page.flusher.retryMedia()
+    assert.equal(page.core.status.reason, undefined)
+    assert.equal(rows(world, 'media').size, 1)
+})
+
+test('a BGM an earlier load stored and read back is not read back again', async () => {
+    const world = createWorld({ seed: 12 })
+    const picked = await withSong(stateOf(goldenChart()), 12)
+    const first = await openPage(world, world.tab('a'))
+    begin(first, picked)
+    await first.flusher.flush()
+    let reads = 0
+    setMediaReadBackHookForTests((bytes) => {
+        reads++
+        return bytes
+    })
+    try {
+        // A reload: a new worker and page, the BGM held again and found stored.
+        const second = await openPage(world, world.tab('b'))
+        begin(second, picked)
+        await second.flusher.flush()
+        assert.equal(second.batches.at(-1)?.media.length, 1)
+        assert.equal(second.results.at(-1)?.kind, 'stored')
+    } finally {
+        setMediaReadBackHookForTests(undefined)
+    }
+    assert.equal(reads, 0)
 })
 
 test('a worker killed between a media flush’s commit and its read-back reads it back once restarted', async () => {

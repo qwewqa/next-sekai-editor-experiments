@@ -1,35 +1,34 @@
 import { inflateStrict } from '../chunkVerify'
 import { countDayOfUse } from '../days'
-import { bumpEpoch, hashKey, readMeta } from '../db'
+import { hashKey, readMeta } from '../db'
 import {
     FLUSH_STORES,
+    FlushBatchError,
+    mediaRow,
     prepareFlush,
     writeFlush,
+    type BatchMedia,
     type FlushBatch,
     type FlushResult,
     type PreparedFlush,
 } from '../flushWrite'
 import { prepareForeign, writeForeign, type ForeignBatch, type ForeignResult } from '../foreign'
-import { equalBytes, fromHex16, sha256 } from '../hash'
+import { equalBytes, fromHex16, sha256, toHex } from '../hash'
 import { nodeJsonFromRow, rootJsonFromRow, type NodesRow } from '../records/rows'
 import { directWaiter, type Waiter } from '../scheduler'
 import { nextTime } from '../time'
-import type { StorageCore } from './core'
+import type { Progress, StorageCore } from './core'
 import { runFlushHooks } from './flushHooks'
 import type { WorkerContext } from './handlers'
+import type { CallScope } from './rpc'
 
 // The storage worker's flush methods (Part 1 §1.6.4, §1.6.8.4): the flush itself, media read
 // back once after it is sent, the day of use at load, and the dev console's snapshot reader.
 
-/**
- * A media row read back did not hash to its key, twice: the row is removed and storing stays
- * paused until a flush stores it right (§1.6.8.4). The flush fails, so its entries stay pending.
- */
-export class MediaReadBackError extends Error {
-    override name = 'MediaReadBackError'
-}
-
 type MediaRow = { blob: Blob; sha256: Uint8Array } & Record<string, unknown>
+
+/** Carried media by hash, with the full SHA-256 of its bytes. */
+type CarriedMedia = ReadonlyMap<string, BatchMedia & { sha256: Uint8Array }>
 
 let readBackHook: ((bytes: Uint8Array, attempt: number) => Uint8Array) | undefined
 
@@ -39,56 +38,68 @@ export const setMediaReadBackHookForTests = (hook: typeof readBackHook) => {
 }
 
 /**
- * Reads back each media row a flush carried the bytes of, put now or found there, and re-hashes
- * it (§1.6.8.4): on a mismatch it's written again from memory. A second mismatch removes the row,
- * so the next flush stores it again from the tab's bytes, and holds storing paused until a read
- * back of it succeeds. Returns the hashes that failed.
+ * Reads back each media row just written and re-hashes it (§1.6.8.4). On a mismatch it's written
+ * again from memory; a second mismatch removes the row, which reads as not held. A row that can't
+ * be read is kept: the error may pass. Either way storing is held paused for that item alone
+ * until a read-back of it succeeds, and the page stores it again on its own. Returns the hashes
+ * that failed.
  */
 export const readBackMedia = async (
     core: Pick<StorageCore, 'read' | 'write' | 'hold' | 'release'>,
     hashes: readonly string[],
-    prepared: PreparedFlush,
+    media: CarriedMedia,
     waiter: Waiter = directWaiter,
+    progress: Progress = {},
 ): Promise<string[]> => {
     const failed: string[] = []
     for (const hex of hashes) {
         const key = hashKey(fromHex16(hex))
-        const item = prepared.media.get(hex)
+        const item = media.get(hex)
         const hold = `media:${hex}`
         for (let attempt = 0; ; attempt++) {
-            const row = (await core.read(['media'], (tx) => tx.get('media', key))) as
-                MediaRow | undefined
-            let intact = false
-            if (row) {
-                try {
+            let outcome: 'intact' | 'wrong' | 'unread' = 'unread'
+            let row: MediaRow | undefined
+            try {
+                row = (await core.read(['media'], (tx) => tx.get('media', key), progress)) as
+                    MediaRow | undefined
+                if (row) {
                     let bytes: Uint8Array = new Uint8Array(
                         await waiter.wait(row.blob.arrayBuffer()),
                     )
                     if (readBackHook) bytes = readBackHook(bytes, attempt)
-                    intact = equalBytes(await waiter.wait(sha256(bytes)), row.sha256)
-                } catch {
-                    intact = false
+                    const digest = await waiter.wait(sha256(bytes))
+                    outcome = equalBytes(digest, row.sha256) ? 'intact' : 'wrong'
                 }
+            } catch {
+                outcome = 'unread'
             }
-            if (intact) {
+            if (outcome === 'intact') {
                 core.release(hold)
                 break
             }
-            if (attempt >= 1 || !item || !row) {
-                await core
-                    .write(['media', 'meta'], async (tx) => {
-                        await tx.delete('media', key)
-                        await bumpEpoch(tx)
+            if (outcome === 'wrong' && row && item && attempt === 0) {
+                const blob = new Blob([item.bytes], item.type ? { type: item.type } : {})
+                const rewritten = { ...row, blob }
+                const written = await core
+                    .write(['media'], (tx) => tx.put('media', rewritten, key), {
+                        durability: 'strict',
+                        ...progress,
                     })
+                    .then(
+                        () => true,
+                        () => false,
+                    )
+                if (written) continue
+            } else if (outcome === 'wrong') {
+                // Only bytes read and found wrong are removed. No epoch bump: every flush checks
+                // the media it names by key, and the epoch guards only the chunk memo (§1.6.6).
+                await core
+                    .write(['media'], (tx) => tx.delete('media', key), progress)
                     .catch(() => undefined)
-                core.hold(hold, 'failed')
-                failed.push(hex)
-                break
             }
-            const blob = new Blob([item.bytes], item.type ? { type: item.type } : {})
-            await core.write(['media'], (tx) => tx.put('media', { ...row, blob }, key), {
-                durability: 'strict',
-            })
+            core.hold(hold, 'failed')
+            failed.push(hex)
+            break
         }
     }
     return failed
@@ -113,23 +124,25 @@ const decoder = new TextDecoder()
 
 export const flushHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
     let armed: string | undefined
-    // Each wait outside IndexedDB (hashing, a Blob read) counts as progress (§1.6.5).
-    const waiter: Waiter = {
+    // Each wait outside IndexedDB (hashing, a Blob read) counts as the call's progress (§1.6.5).
+    const waiterOf = (progress: Progress): Waiter => ({
         wait: async (promise) => {
             try {
                 return await outside.wait(promise)
             } finally {
-                context.core.tick()
+                progress.tick?.()
             }
         },
-    }
+    })
     const testOnly = () => {
         if (!context.test) throw new Error('Test hooks need a test flag')
     }
     return {
         /** One flush: prepared first, then one transaction; the reply is the acknowledgement. */
-        flush: async (batch: FlushBatch): Promise<FlushResult> => {
+        flush: async (batch: FlushBatch, scope?: CallScope): Promise<FlushResult> => {
             const core = context.core
+            const progress: Progress = scope ?? {}
+            const waiter = waiterOf(progress)
             let prepared: PreparedFlush
             try {
                 prepared = await prepareFlush(batch, waiter)
@@ -150,21 +163,64 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                             core.testPoint(name)
                         },
                     }),
-                { durability: batch.durability },
+                { durability: batch.durability, ...progress },
             )
             if (result.kind !== 'stored') return result
             // In memory, the page keeps the entries: a restarted worker's store is new (§1.6.5).
             const memory = core.status.mode === 'memory'
             const { committed, ...reply } = result
-            const failed = await readBackMedia(core, result.readBack, prepared, waiter)
+            // Media that reads back wrong never fails the entries: they're committed (§1.6.8.4).
+            const mediaFailed = await readBackMedia(
+                core,
+                result.readBack,
+                prepared.media,
+                waiter,
+                progress,
+            )
             if (committed) void runFlushHooks(committed)
-            if (failed.length) throw new MediaReadBackError(failed.join(' '))
-            return memory ? { ...reply, memory } : reply
+            return {
+                ...reply,
+                ...(mediaFailed.length ? { mediaFailed } : {}),
+                ...(memory ? { memory } : {}),
+            }
+        },
+
+        /**
+         * A media item stored on its own, after its flush's read-back failed (§1.6.8.4): put
+         * when it's missing, then read back. Resolves whether it's stored right now.
+         */
+        storeMedia: async (item: BatchMedia, scope?: CallScope): Promise<boolean> => {
+            const core = context.core
+            const progress: Progress = scope ?? {}
+            const waiter = waiterOf(progress)
+            const digest = await waiter.wait(sha256(new Uint8Array(item.bytes)))
+            if (toHex(digest.subarray(0, 16)) !== item.hash)
+                throw new FlushBatchError('Media bytes do not hash to their hash')
+            const carried = { ...item, sha256: digest }
+            const key = hashKey(fromHex16(item.hash))
+            await core.write(
+                ['media', 'meta'],
+                async (tx) => {
+                    if ((await tx.getKey('media', key)) !== undefined) return
+                    const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, Date.now())
+                    await tx.put('media', mediaRow(carried, await countDayOfUse(tx, now)), key)
+                },
+                { durability: 'strict', ...progress },
+            )
+            const failed = await readBackMedia(
+                core,
+                [item.hash],
+                new Map([[item.hash, carried]]),
+                waiter,
+                progress,
+            )
+            return failed.length === 0
         },
 
         /** Foreign data with its closure check (§1.6.4 step 4), committed strictly. */
-        importForeign: async (batch: ForeignBatch): Promise<ForeignResult> => {
-            const prepared = await prepareForeign(batch, waiter)
+        importForeign: async (batch: ForeignBatch, scope?: CallScope): Promise<ForeignResult> => {
+            const progress: Progress = scope ?? {}
+            const prepared = await prepareForeign(batch, waiterOf(progress))
             return context.core.write(
                 ['nodes', 'chunks', 'media', 'meta'],
                 async (tx) =>
@@ -177,7 +233,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                             nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, Date.now()),
                         ),
                     ),
-                { durability: 'strict' },
+                { durability: 'strict', ...progress },
             )
         },
 

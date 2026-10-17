@@ -95,7 +95,10 @@ export const isLowSpace = ({ usage, quota }: { usage?: number; quota?: number })
 const isConnectionError = (error: unknown) =>
     ['InvalidStateError', 'UnknownError'].includes(errorName(error) ?? '')
 
-export type WriteOptions = { durability?: Durability }
+/** A call's progress count (§1.6.5): bumped by each step of work done for it. */
+export type Progress = { tick?: () => void }
+
+export type WriteOptions = { durability?: Durability } & Progress
 
 export class StorageCore {
     private db: KvDatabase | undefined
@@ -109,8 +112,8 @@ export class StorageCore {
     private readonly memoryWrites = new Set<Promise<unknown>>()
     /** Pauses that last until their cause is put right, such as a media row that read back wrong. */
     private readonly holds = new Map<string, PauseReason>()
-    /** Counts steps of work done, so a slow worker can be told from a hung one (§1.6.5). */
-    progress = 0
+    /** The progress of calls waiting on Try Again's move: the move's steps count as theirs. */
+    private readonly behindMove = new Set<() => void>()
     private readonly listeners = new Set<(status: StorageStatus) => void>()
     private readonly timers: Timers
     private readonly flags: TestFlags
@@ -132,11 +135,6 @@ export class StorageCore {
     onStatus(listener: (status: StorageStatus) => void) {
         this.listeners.add(listener)
         return () => this.listeners.delete(listener)
-    }
-
-    /** Bumps the progress count. */
-    tick() {
-        this.progress++
     }
 
     /** Keeps storing paused under a key until `release`, whatever later writes do. */
@@ -248,8 +246,12 @@ export class StorageCore {
     }
 
     /** A read: the stored, read-only or in-memory database alike. */
-    async read<T>(stores: readonly string[], fn: (tx: KvTx) => Promise<T>): Promise<T> {
-        this.tick()
+    async read<T>(
+        stores: readonly string[],
+        fn: (tx: KvTx) => Promise<T>,
+        { tick }: Progress = {},
+    ): Promise<T> {
+        tick?.()
         if (this.lost) await this.reopen()
         const db = this.db
         if (!db) throw new StorageRefusedError(this.current.reason ?? 'failed')
@@ -261,7 +263,7 @@ export class StorageCore {
             if (!this.db) throw error
             return await this.db.transaction(stores, 'readonly', fn)
         } finally {
-            this.tick()
+            tick?.()
         }
     }
 
@@ -275,9 +277,10 @@ export class StorageCore {
         fn: (tx: KvTx) => Promise<T>,
         options: WriteOptions = {},
     ): Promise<T> {
-        this.tick()
+        const { tick } = options
+        tick?.()
         // Try Again's move holds writes until it has switched, so none lands in memory behind it.
-        while (this.moving) await this.moving
+        while (this.moving) await this.behind(this.moving, tick)
         const { mode, reason } = this.current
         if (mode === 'readOnly') throw new StorageRefusedError('readOnly')
         if (reason === 'upgrading') throw new StorageRefusedError('upgrading')
@@ -288,7 +291,7 @@ export class StorageCore {
             this.memoryWrites.add(writing)
             const done = () => {
                 this.memoryWrites.delete(writing)
-                this.tick()
+                tick?.()
             }
             writing.then(done, done)
             return writing
@@ -312,7 +315,7 @@ export class StorageCore {
         }
         if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
             this.setStatus(storedStatus(this.heldReason()))
-        this.tick()
+        tick?.()
         return result
     }
 
@@ -398,14 +401,31 @@ export class StorageCore {
      * Try Again: behind a blocked upgrade, asks again and on success moves what this tab stored
      * in memory into the database; otherwise reopens a dropped connection.
      */
-    tryAgain(): Promise<StorageStatus> {
-        this.trying ??= this.askAgain().finally(() => {
+    tryAgain({ tick }: Progress = {}): Promise<StorageStatus> {
+        if (this.trying) return this.behind(this.trying, tick)
+        this.trying = this.askAgain(tick).finally(() => {
             this.trying = undefined
         })
         return this.trying
     }
 
-    private async askAgain(): Promise<StorageStatus> {
+    /** Waits on Try Again's work, its steps counting as the waiting call's progress. */
+    private async behind<T>(work: Promise<T>, tick: (() => void) | undefined): Promise<T> {
+        if (!tick) return work
+        this.behindMove.add(tick)
+        try {
+            return await work
+        } finally {
+            this.behindMove.delete(tick)
+        }
+    }
+
+    private moveTick(tick: (() => void) | undefined) {
+        tick?.()
+        for (const each of this.behindMove) each()
+    }
+
+    private async askAgain(tick: (() => void) | undefined): Promise<StorageStatus> {
         if (this.current.mode === 'memory' && this.current.reason === 'olderTabs') {
             const retry = this.retryBlocked ?? (() => this.handshake())
             const opened = await retry()
@@ -416,7 +436,7 @@ export class StorageCore {
             this.retryBlocked = undefined
             if (opened.kind === 'stored') {
                 try {
-                    await this.moveIntoStorage(opened.db)
+                    await this.moveIntoStorage(opened.db, tick)
                 } catch (error) {
                     // Still in memory; the next Try Again opens afresh.
                     opened.db.close()
@@ -435,7 +455,7 @@ export class StorageCore {
      * Copies the in-memory rows into the database in one strict transaction, then switches. Writes
      * wait meanwhile, so an acknowledged flush can't land in memory behind the copy.
      */
-    private async moveIntoStorage(target: KvDatabase) {
+    private async moveIntoStorage(target: KvDatabase, tick: (() => void) | undefined) {
         let release!: () => void
         this.moving = new Promise<void>((resolve) => {
             release = resolve
@@ -446,7 +466,7 @@ export class StorageCore {
             asked.aside = true
         })
         try {
-            await this.copyIntoStorage(target)
+            await this.copyIntoStorage(target, tick)
             if (asked.aside) {
                 this.db = undefined
                 this.upgradeAnswer = undefined
@@ -464,9 +484,10 @@ export class StorageCore {
         }
     }
 
-    private async copyIntoStorage(target: KvDatabase) {
+    private async copyIntoStorage(target: KvDatabase, tick: (() => void) | undefined) {
         // Writes already sent to memory commit first; the gate holds any later one.
         await Promise.allSettled([...this.memoryWrites])
+        this.moveTick(tick)
         const source = this.db
         const rows = new Map<string, { key: unknown; value: unknown }[]>()
         if (source)
@@ -495,7 +516,7 @@ export class StorageCore {
                     for (const [store, list] of rows) {
                         const inline = tx.describe(store).keyPath !== null
                         for (const { key, value } of list) {
-                            this.tick()
+                            this.moveTick(tick)
                             const moved = withDay(value, day)
                             if (inline) {
                                 await tx.put(store, moved)
