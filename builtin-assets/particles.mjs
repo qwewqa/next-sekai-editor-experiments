@@ -296,10 +296,10 @@ export const kinds = {
     ],
     criticalCircular: (color) => [
         once(
-            bloom(color, 0.55, 1, { duration: 0.6 }),
+            bloom(color, 0.5, 0.9, { duration: 0.55, alpha: 0.85 }),
             core(0.34, 0.46, { duration: 0.22 }),
             frame(color, 0.3, 0.9, { start: 0.08, duration: 0.45 }),
-            frame(color, 0.35, 1.2, { start: 0.15, duration: 0.45, alpha: 0.5 }),
+            frame(color, 0.35, 1.2, { start: 0.15, duration: 0.45, alpha: 0.4 }),
         ),
         group(
             4,
@@ -343,7 +343,7 @@ export const kinds = {
     ],
     criticalLinear: (color) => [
         once(
-            shaft(color, { width: 0.34, from: 0.4, to: 1.9, alpha: 0.75, duration: 0.7 }),
+            shaft(color, { width: 0.3, from: 0.4, to: 1.9, alpha: 0.65, duration: 0.7 }),
             shaft(white, { width: 0.13, from: 0.3, to: 1.4, alpha: 0.7, duration: 0.45 }),
         ),
         rising(white, 6, {
@@ -381,7 +381,7 @@ export const kinds = {
         }),
     criticalDirectional: (color) =>
         sweep(color, {
-            scale: 1.12,
+            scale: 1.06,
             motes: rising(white, 6, {
                 shape: sprite.star,
                 spread: 0.6,
@@ -412,8 +412,8 @@ export const kinds = {
                 a: prop(0.12, 0, 'outQuad'),
             }),
             ...[
-                [color, 1, 0.22, 0.85],
-                [white, 0.5, 0.16, 1],
+                [color, 1, 0.2, 0.6],
+                [white, 0.5, 0.16, 0.85],
             ].map(([tint, width, height, alpha]) =>
                 particle({
                     sprite: sprite.streak,
