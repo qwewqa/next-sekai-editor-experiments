@@ -6,44 +6,44 @@
     },
     "files": {
         "builtin-assets/out/icon/app-icon-1024.png": {
-            "sha256": "05ecf5fdcd4e49b6a92cccfd02024aee3998bcc8480540f9b143245688554939",
-            "bytes": 22301
+            "sha256": "171dca59ed7f1625081c568df6a764d3e95992a8af0c5d7ac8043571ca91009f",
+            "bytes": 55185
         },
         "builtin-assets/out/icon/app-icon-16.png": {
-            "sha256": "c5f6abfd7e9cb1c03525aa8dd6abf2e18a6fba395bd0518dfbf110056e56dbb7",
-            "bytes": 212
+            "sha256": "b4bb1191d36fedbae79cf2060fbb822454646efa390d73eddaacab5130db6d6c",
+            "bytes": 291
         },
         "builtin-assets/out/icon/app-icon-180.png": {
-            "sha256": "0aa9f2c31b643bc99c0085fada0d1ff3e5a621b9c28ac6b81c42bf558e7c5dfc",
-            "bytes": 3947
+            "sha256": "5ca43cd5a2803bb4562f655588d59610cee8faff50df4aedc74ea17c4e15816a",
+            "bytes": 7352
         },
         "builtin-assets/out/icon/app-icon-32.png": {
-            "sha256": "706d57f7c1ea1740ebbcdf5363ede52dc70205aeebfe3b4256fd29e180099c8e",
-            "bytes": 310
+            "sha256": "76904cc60188ed45f8e7918efe6c0f239e1fc6edaabf86ab9a23a98294ce92b3",
+            "bytes": 482
         },
         "builtin-assets/out/icon/app-icon-512.png": {
-            "sha256": "3e775822492cb2df312bad793507c9736e511f3ba5d15151bddefe35a1cc4f12",
-            "bytes": 10542
+            "sha256": "97aa80c9c5b25bfd942a537ebdb9fa42b3d47cf737c0713eed461640b75bdd2e",
+            "bytes": 25070
         },
         "builtin-assets/out/icon/app-icon-background.txt": {
             "sha256": "63a537d78454cb5d8d109b53a523988a3a8d57b38f1ecedf231e214d8a615dcd",
             "bytes": 8
         },
         "builtin-assets/out/icon/app-icon-foreground-1024.png": {
-            "sha256": "9d4ec008bddd7869d4877c36d47b73926ab1bd6bbfc57572aebe18d213d4db95",
-            "bytes": 8103
+            "sha256": "28253daa84caa7180c223ebcb5e9dc92e4b4dca360c21b2300d2c06952965645",
+            "bytes": 8955
         },
         "builtin-assets/out/icon/app-icon-macos-1024.png": {
-            "sha256": "8646a541a3c97057230ef45177499f1af4a5ccf5c970c8b9991b3944ca67253c",
-            "bytes": 38634
+            "sha256": "3be1cf71e0abebfe0b4fddde3d54ee66f18868d9b1e7a80a5486c2aa72d3b7a3",
+            "bytes": 65518
         },
         "builtin-assets/out/icon/app-icon-monochrome-1024.png": {
-            "sha256": "62d40435af4b7861e1290589c726690b2b4d6b2e413e372da2a27d7212693a8e",
-            "bytes": 5876
+            "sha256": "7c12125c827763c12619c673ae66e6536426e6cb527d46ba16903df9a37396e1",
+            "bytes": 7321
         },
         "builtin-assets/out/icon/social-card.png": {
-            "sha256": "bad133525c16ecb196461c67a133999a0e07b521662977d6dda95e3d0a8b426a",
-            "bytes": 22917
+            "sha256": "6ddb941112523fa5185cd241c3c4194194f3f63e68e67cad50a7ecbcb5a36a18",
+            "bytes": 46109
         },
         "public/builtin/background.scp": {
             "sha256": "8e50e041986eff9b6f174c349da039fa84b11a59f6c0409ff3e7c13658d5cd52",

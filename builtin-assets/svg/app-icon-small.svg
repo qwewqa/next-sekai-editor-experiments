@@ -2,12 +2,14 @@
     <defs>
         <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#232539"/>
-            <stop offset="1" stop-color="#292b42"/>
+            <stop offset="1" stop-color="#2c2e49"/>
         </linearGradient>
     </defs>
     <rect width="1024" height="1024" fill="url(#plate)"/>
-    <rect x="96" y="680" width="832" height="56" fill="#77efdc"/>
-    <rect x="96" y="696" width="832" height="24" fill="#fff"/>
-    <rect x="176" y="440" width="672" height="240" rx="56" fill="#aabfff"/>
-    <rect x="236" y="500" width="552" height="120" rx="32" fill="#e6edff"/>
+    <rect x="40" y="484" width="944" height="136" fill="#77efdc"/>
+    <rect x="40" y="522" width="944" height="60" fill="#fff"/>
+    <rect x="196" y="388" width="632" height="328" rx="88" fill="#aabfff"/>
+    <rect x="270" y="462" width="484" height="180" rx="48" fill="#e6edff"/>
+    <rect x="318" y="508" width="88" height="88" fill="#8394f6"/>
+    <rect x="618" y="508" width="88" height="88" fill="#8394f6"/>
 </svg>

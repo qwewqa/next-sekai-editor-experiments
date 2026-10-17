@@ -1,8 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-    <rect x="280" y="572" width="464" height="16" fill="#fff"/>
-    <rect x="322" y="520" width="380" height="120" rx="20" fill="#aabfff"/>
-    <rect x="342" y="540" width="340" height="80" rx="14" fill="#e6edff"/>
-    <rect x="356" y="566" width="30" height="30" fill="#8394f6"/>
-    <rect x="638" y="566" width="30" height="30" fill="#8394f6"/>
-    <polygon points="422,455 422,414 512,365 602,414 602,455 512,406" fill="#ec7cb4" stroke="#fff" stroke-width="10" stroke-linejoin="miter"/>
+    <defs>
+        <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#77efdc" stop-opacity="0"/>
+            <stop offset="0.12" stop-color="#77efdc"/>
+            <stop offset="0.88" stop-color="#77efdc"/>
+            <stop offset="1" stop-color="#77efdc" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+    <rect x="236" y="560" width="552" height="34" fill="url(#beam)"/>
+    <rect x="256" y="569" width="512" height="16" fill="#fff"/>
+    <rect x="277" y="502" width="470" height="150" rx="36" fill="#aabfff"/>
+    <rect x="302.5" y="527.5" width="419" height="99" rx="20.7" fill="#e6edff"/>
+    <rect x="320.5" y="557.5" width="39" height="39" fill="#8394f6"/>
+    <rect x="664.5" y="557.5" width="39" height="39" fill="#8394f6"/>
+    <polygon points="387.2,462.4 387.2,412.5 512,337.6 636.8,412.5 636.8,462.4 512,387.5" fill="#ec7cb4" stroke="#fff" stroke-width="11" stroke-linejoin="miter" stroke-miterlimit="4"/>
 </svg>
