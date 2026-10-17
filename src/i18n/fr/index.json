@@ -1132,7 +1132,7 @@
     "blank": "Démarrer à vide"
   },
   "safe": {
-    "bar": "Mode sans échec : rien n’est stocké.",
+    "bar": "Mode sans échec : rien n’est stocké.",
     "leave": "Quitter le mode sans échec",
     "open": "Ouvrir en mode sans échec"
   },

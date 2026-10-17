@@ -9,8 +9,10 @@ export const SAFE_PARAM = 'safe'
 
 const search = () => (typeof location === 'undefined' ? '' : location.search)
 
-/** Whether this page was opened with `?safe`. */
-export const isSafeMode = new URLSearchParams(search()).has(SAFE_PARAM)
+const safe = new URLSearchParams(search()).has(SAFE_PARAM)
+
+/** Whether this page was opened with `?safe`; fixed for the page's life. */
+export const isSafeMode = () => safe
 
 const settingKeys = new Set<string>()
 
@@ -55,7 +57,7 @@ const guardLocalStorage = () => {
     }
 }
 
-if (isSafeMode) guardLocalStorage()
+if (safe) guardLocalStorage()
 
 /** This page's address with `?safe` added or removed, other parameters and the hash kept. */
 export const safeModeUrl = (safe: boolean, href = location.href) => {

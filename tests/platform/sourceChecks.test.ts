@@ -32,7 +32,8 @@ test('navigator.share and canShare appear nowhere in src/', () => {
 test('nothing in src/ navigates the app context', () => {
     // Assigning location, or its assign and replace, would navigate the editor's own tab.
     assert.deepEqual(matching(/\blocation\s*=[^=]|\blocation\.href\s*=[^=]/), [])
-    assert.deepEqual(matching(/\blocation\.(assign|replace)\s*\(/), [])
+    // Entering and leaving safe mode (`?safe`, web only) reload the tab on purpose.
+    assert.deepEqual(matching(/\blocation\.(assign|replace)\s*\(/), ['src/safe.ts'])
     // window.open is openExternal's, which refuses Blob and data: URLs, and the hand-over's
     // fallback, which opens a new context.
     assert.deepEqual(matching(/\bwindow\.open\s*\(|(^|[^.\w])open\s*\(\s*['"`]/m), [

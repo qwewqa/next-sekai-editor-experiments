@@ -115,12 +115,12 @@ watch(root, (element, _, onCleanup) => {
 </script>
 
 <template>
-    <SafeModeBar v-if="isSafeMode" />
+    <SafeModeBar v-if="isSafeMode()" />
     <div
         ref="root"
         class="flex h-screen w-screen overflow-hidden"
         :class="
-            isSafeMode &&
+            isSafeMode() &&
             'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(100vh_-_var(--safe-bar-height,2.5rem))]'
         "
     >
