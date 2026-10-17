@@ -56,7 +56,7 @@ const read = (folder: string) =>
 test('the schema-v1 vectors: accepted ones pass, rejected ones fail', () => {
     const accepted = read('accepted')
     const rejected = read('rejected')
-    assert.ok(accepted.length >= 14 && rejected.length >= 38)
+    assert.ok(accepted.length >= 15 && rejected.length >= 42)
     for (const { name, record, value } of accepted)
         assert.doesNotThrow(() => check(record, value), name)
     for (const { name, record, value } of rejected)

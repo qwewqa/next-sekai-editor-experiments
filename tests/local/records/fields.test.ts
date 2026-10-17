@@ -304,4 +304,12 @@ test('the ids a record names are refs to their header maps (D9)', () => {
         'stageStyleEvent.stageId→stages',
         'stageTransformEvent.stageId→stages',
     ])
+    const acyclic = Object.entries(table).flatMap(([name, form]) =>
+        Array.isArray(form)
+            ? form
+                  .filter((field) => (field as Entry & { acyclic?: boolean }).acyclic)
+                  .map((field) => `${name}.${field.name}`)
+            : [],
+    )
+    assert.deepEqual(acyclic, ['folder.folderId'])
 })

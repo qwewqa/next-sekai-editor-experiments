@@ -43,7 +43,7 @@
         { "name": "id", "type": "id" },
         { "name": "name", "type": "string" },
         { "name": "index", "type": "uint" },
-        { "name": "folderId", "type": "id", "optional": true, "ref": "folders" }
+        { "name": "folderId", "type": "id", "optional": true, "ref": "folders", "acyclic": true }
     ],
     "levelInfo": [
         { "name": "title", "type": "string" },

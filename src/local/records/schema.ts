@@ -166,6 +166,8 @@ export type Field<N extends string = string> = {
     readonly type: FieldType
     /** An `id` that must name an entry of this header map. */
     readonly ref?: RefTarget
+    /** A `ref` within its own map whose links never loop: no record is its own ancestor. */
+    readonly acyclic?: true
     /** Only trailing fields; an unset one is left off. */
     readonly optional?: true
     readonly minItems?: number
@@ -228,7 +230,7 @@ export const records = {
         f('id', 'id'),
         f('name', 'string'),
         f('index', 'uint'),
-        f('folderId', 'id', folderLink('folders')),
+        f('folderId', 'id', { ...folderLink('folders'), acyclic: true }),
     ],
     levelInfo: [
         f('title', 'string'),
@@ -564,10 +566,26 @@ export const checkRefs = (
     }
 }
 
+/** Checks that a folder map's parent links never loop, a folder its own parent included (D9). */
+const checkAcyclic = (folders: readonly RecordValue[][], path: string) => {
+    const at = (records.folder as readonly Field[]).findIndex((field) => field.acyclic)
+    const parents = new Map(folders.map((folder) => [folder[0], folder[at]]))
+    for (const [i, folder] of folders.entries()) {
+        const seen = new Set<unknown>()
+        for (let id: unknown = folder[0]; id !== undefined; id = parents.get(id)) {
+            if (seen.has(id))
+                throw new SchemaError(`${path}[${i}].folderId`, `folder ${String(id)} loops`)
+            seen.add(id)
+        }
+    }
+}
+
 /** A header chunk, checked whole: its form, the id rules, then its own folder links. */
 export const checkHeader = (value: unknown) => {
     checkRecord('header', value)
     const header = value as RecordValue[]
     checkHeaderIds(header)
     checkRefs('header', header, headerIds(header))
+    checkAcyclic(header[5] as RecordValue[][], 'header.groupFolders')
+    checkAcyclic(header[6] as RecordValue[][], 'header.stageFolders')
 }

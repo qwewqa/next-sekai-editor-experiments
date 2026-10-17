@@ -2,7 +2,7 @@ import { enums, kindNames, kindRecords, records } from './schema'
 
 /**
  * `fields-v1.json`'s tree (§1.6.11.1): each record form by name (a positional list of
- * `{ name, type, ref?, optional?, minItems?, default? }`, or `{ type, minItems? }` for a record
+ * `{ name, type, ref?, acyclic?, optional?, minItems?, default? }`, or `{ type, minItems? }` for a record
  * that is itself an array), `kinds` (each kind's body record), `kindOrder` (the v1 kind order,
  * the one place it's carried: object key order means nothing) and `enums` (each choice set,
  * value → the `levelVersion` that added it). The viewer and both checkers read it.
