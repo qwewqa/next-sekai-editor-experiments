@@ -38,7 +38,6 @@ jobs:
 
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
         # About 2.5 min of tests with one worker (a 4-vCPU runner's) on a fast desktop.
         timeout-minutes: 25
@@ -65,7 +64,6 @@ jobs:
 
     compatibility-storage:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
         # About 1 min of tests in Firefox with one worker on a fast desktop; WebKit runs them on Linux.
         timeout-minutes: 25
