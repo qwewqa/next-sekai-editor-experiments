@@ -740,7 +740,7 @@ for (const { label, stored, file } of [
         const bytes = readFileSync((await download.path())!)
         if (file.gzip) expect(JSON.parse(gunzipSync(bytes).toString())).toEqual(futureLevel)
         else expect(bytes.toString()).toBe(stored)
-        await expect(dialog.getByRole('status')).toHaveText('Download started.')
+        await expect(dialog.locator('p[role="status"]')).toHaveText('Download started.')
         expect((await stores()).aside).toBe(stored)
         await dialog.getByRole('button', { name: 'OK' }).click()
         await expect(dialog).toHaveCount(0)
@@ -874,7 +874,11 @@ const reloadWith = async (page: Page, stored: { recovery?: string; aside?: strin
 test('a set-aside recovery this build can open is restored and moved back', async ({ page }) => {
     const earlier = readableRecovery('earlier-chart', 150)
     await reloadWith(page, { aside: earlier })
-    await expect(page.getByText('Restored the unsaved chart from an earlier session')).toBeVisible()
+    await expect(
+        page.locator('.notification', {
+            hasText: 'Restored the unsaved chart from an earlier session',
+        }),
+    ).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await openChart(page)).toEqual({ filename: 'earlier-chart', bpm: 150 })
     // Kept as the normal recovery now, so the slot aside is free.
