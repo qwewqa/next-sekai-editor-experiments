@@ -11,17 +11,16 @@ import { loadParticleFromScp } from '../particle'
 import { loadPreviewResource } from '../resource'
 import { parseGzippedJson, parseScp } from '../scp'
 import { loadSkinFromScp } from '../skin'
+import { decodeEffectClips } from './effectClips'
 import { readItem } from './scpItem'
 import { openRangedScp, type RangedScp } from './scpRange'
 import {
     AssetError,
-    sfxSlots,
     type AssetDefaults,
     type AssetType,
     type LoadContext,
     type LoadedBackground,
     type LoadedEffect,
-    type SfxSlot,
 } from './types'
 
 export const builtinUrl = (name: string) => `${import.meta.env.BASE_URL}builtin/${name}.scp`
@@ -64,20 +63,6 @@ const loadBackground = async ({ signal }: LoadContext): Promise<LoadedBackground
     }
 }
 
-// The clip of each player slot, then its fallbacks (Part 2, 2.4.3).
-const slotClips: Record<SfxSlot, string[]> = {
-    normalTap: ['#PERFECT'],
-    normalFlick: ['#PERFECT_ALTERNATIVE', '#PERFECT'],
-    normalActive: ['#HOLD'],
-    normalTick: ['Sekai Tick', '#PERFECT'],
-    normalTrace: ['Sekai Trace', '#PERFECT'],
-    criticalTap: ['Sekai Critical Tap', '#PERFECT'],
-    criticalFlick: ['Sekai Critical Flick', '#PERFECT_ALTERNATIVE'],
-    criticalTrace: ['Sekai Critical Trace', '#PERFECT'],
-    criticalTick: ['Sekai Critical Tick', '#PERFECT'],
-    criticalActive: ['Sekai Critical Hold', '#HOLD'],
-}
-
 const loadEffect = async ({
     signal,
     decodeAudio,
@@ -92,34 +77,15 @@ const loadEffect = async ({
     if (!dataRaw || !audioRaw) throw new AssetError('corrupt', 'Built-in effect is incomplete')
 
     const audio = parseScp(new Uint8Array(audioRaw).buffer)
-    const files = new Map(
-        parseGzippedJson<EffectData>(dataRaw).clips.map((c) => [c.name, c.filename]),
-    )
-    const decoded = new Map<string, Promise<AudioBuffer | undefined>>()
-    const decode = (clip: string) => {
-        let result = decoded.get(clip)
-        if (!result) {
-            const file = files.get(clip)
-            const bytes = file === undefined ? undefined : audio.get(file)
-            result = bytes
-                ? decodeAudio(new Uint8Array(bytes).buffer).catch(() => undefined)
-                : Promise.resolve(undefined)
-            decoded.set(clip, result)
-        }
-        return result
-    }
-
-    const buffers = {} as LoadedEffect['buffers']
-    for (const slot of sfxSlots) {
-        buffers[slot] = undefined
-        for (const clip of slotClips[slot]) {
-            buffers[slot] = await decode(clip)
-            if (buffers[slot]) break
-        }
-    }
-    if (signal.aborted) return
-    if (!buffers.normalTap) throw new AssetError('corrupt', 'Built-in effect has no #PERFECT')
-    return { title: item.title, buffers }
+    return decodeEffectClips({
+        title: item.title,
+        files: new Map(
+            parseGzippedJson<EffectData>(dataRaw).clips.map((c) => [c.name, c.filename]),
+        ),
+        getFile: (filename) => Promise.resolve(audio.get(filename)),
+        decodeAudio,
+        signal,
+    })
 }
 
 /** The Built-in set: four ordinary static files (Part 2, 2.5.6), read when chosen or needed. */

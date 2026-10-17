@@ -492,7 +492,56 @@
         "builtinFailed": "无法加载内置项。"
       },
       "offline": "您已离线。",
-      "safeMode": "安全模式使用默认项。"
+      "safeMode": "安全模式使用默认项。",
+      "choose": "选择…",
+      "chooseSkin": "选择皮肤",
+      "chooseParticle": "选择粒子",
+      "chooseBackground": "选择背景",
+      "chooseEffect": "选择音效",
+      "use": "使用",
+      "alsoFile": "同时使用此文件中的{0}“{1}”",
+      "remove": "移除",
+      "inUse": "使用中",
+      "removeInUse": "移除“{0}”？将改用默认项。",
+      "chooseAgain": "重新选择",
+      "noneInFile": "此文件中没有{0}。",
+      "rights": "您加载的项目仅存储在此浏览器中。请只使用您有权使用的项目。",
+      "progress": {
+        "reading": "正在读取文件…",
+        "storing": "正在存储…"
+      },
+      "part": {
+        "list": "列表",
+        "details": "详情",
+        "data": "数据",
+        "texture": "纹理",
+        "image": "图像",
+        "configuration": "配置",
+        "audio": "音频",
+        "thumbnail": "缩略图"
+      },
+      "import": {
+        "damaged": "此文件已损坏，或不是 Sonolus 包。",
+        "zip64": "此文件使用 ZIP64，编辑器无法读取。",
+        "fileTooLarge": "此文件超过 {0}。",
+        "tooManyEntries": "此文件的条目超过 {0} 个。",
+        "badName": "此文件包含不允许的条目名称。",
+        "ratio": "此文件的{0}{1}解压后超过其大小的 {2} 倍。",
+        "tooBig": "此文件的{0}{1}超过 {2}。",
+        "unreadable": "无法读取此文件的{0}{1}。",
+        "missing": "此文件缺少{0}{1}。",
+        "notImage": "此文件的{0}{1}不是 PNG 或 JPEG 图像。",
+        "imageSize": "此文件的{0}{1}为 {2} × {3}，上限为 {4} × {4}。",
+        "checksum": "此文件的{0}{1}与其校验和不符。",
+        "spriteOutside": "此文件的{0}数据中有位于纹理之外的精灵。",
+        "tooManySprites": "此文件的{0}数据中的精灵超过 {1} 个。",
+        "tooManyEffects": "此文件的{0}数据中的效果超过 {1} 个。",
+        "particleCount": "此文件的{0}效果“{1}”的粒子超过 {2} 个。",
+        "noPerfect": "此文件的{0}音频中没有可用的 #PERFECT 片段。",
+        "audioLength": "此文件的{0}音频总长超过 {1} 秒。",
+        "packageTooLarge": "此项目存储后超过 {0}。",
+        "storeFailed": "无法存储此项目。"
+      }
     }
   },
   "help": {

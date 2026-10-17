@@ -56,6 +56,15 @@ export const loadSkin = async (
 
     const textureRaw = getResource(skinItem.texture)
     if (!textureRaw) throw new Error('Missing skin texture in scp file')
+    return buildSkin(skinItem.title, data, textureRaw)
+}
+
+/** A skin from data that is already read (and, for a package from outside, checked). */
+export const buildSkin = async (
+    title: string,
+    data: SkinData,
+    textureRaw: Uint8Array,
+): Promise<LoadedSkin> => {
     const sprites = new Map<string, Sprite>()
     for (const sprite of data.sprites) {
         if (sprites.has(sprite.name)) continue
@@ -74,7 +83,7 @@ export const loadSkin = async (
     })
 
     return {
-        title: skinItem.title,
+        title,
         interpolation: data.interpolation,
         texture,
         skin,

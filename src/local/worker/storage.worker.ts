@@ -1,6 +1,7 @@
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { serve, type Endpoint } from './rpc'
+import { userAssetHandlers } from './userAssets'
 
 // The storage worker's entry (Part 1 §1.6.5): one dedicated worker per tab, written as a module
 // worker and built as iife, so the build emits a classic worker (Firefox 105 has no module
@@ -13,7 +14,7 @@ const { context, handlers: coreHandlers } = createContext((event, data) => {
     emit(event, data)
 })
 
-const handlers = { ...coreHandlers, ...flushHandlers(context) }
+const handlers = { ...coreHandlers, ...flushHandlers(context), ...userAssetHandlers(context) }
 
 export type StorageHandlers = typeof handlers
 

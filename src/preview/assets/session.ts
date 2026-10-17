@@ -62,10 +62,13 @@ export const createAssetSession = (options: {
                 console.error(`Failed to load the ${type}:`, error)
                 // The old asset keeps showing, reported as a fallback from the failed choice.
                 const shown = slot.value.status?.active
+                const title = (slot.value.value as { title?: string }).title
                 const status: AssetStatus | undefined =
                     shown === 'default' || shown === 'builtin'
                         ? { active: shown, reason: reasonOf(error) }
-                        : slot.value.status
+                        : shown === 'chosen'
+                          ? { active: shown, reason: reasonOf(error), usingTitle: title }
+                          : slot.value.status
                 slot.value = { ...slot.value, state: 'ready', status, choice, stale: true }
                 return
             }

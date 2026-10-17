@@ -11,7 +11,11 @@ export const typeNoun = (type: FallbackState['type']) => strings().noun[type]
 export const typeLabel = (type: FallbackState['type']) => strings()[type]
 
 const usingLabel = (fallback: FallbackState) =>
-    fallback.using === 'default' ? strings().default : strings().builtin
+    fallback.using === 'default'
+        ? strings().default
+        : fallback.using === 'builtin'
+          ? strings().builtin
+          : `"${fallback.usingTitle}"`
 
 /** The reason sentence, the same in the panel's line and the dialog's row. */
 export const reasonText = (fallback: FallbackState) => {
