@@ -37,6 +37,7 @@ test('Help marks each tool section with its toolbar icon', async ({ page }) => {
         'Stage Pivot Event Tool',
         'Stage Style Event Tool',
         'Stage Transform Event Tool',
+        'Preview Assets',
     ])
     // Wide glyphs such as BPM fit the chip, so every iconed title starts at one edge.
     const starts = await headings.evaluateAll((elements) =>

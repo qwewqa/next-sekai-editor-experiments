@@ -379,7 +379,7 @@ test.describe('fallbacks', () => {
                         skin: { ...fileChoice, source: 'server', origin: 'https://example.com' },
                     },
                 },
-                reason: 'The skin could not be downloaded again from https://example.com.',
+                reason: 'The skin could not be downloaded again from example.com.',
                 using: 'Default',
             },
             {
@@ -397,6 +397,8 @@ test.describe('fallbacks', () => {
         ]
         for (const [index, item] of cases.entries()) {
             const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
+            // A server choice is downloaded again at load: the server is not there.
+            await context.route('https://example.com/**', (route) => route.abort('failed'))
             const tab = await context.newPage()
             await start(tab, { seed: item.seed, fail: item.fail })
             const line = fallbackLine(tab, 'skin')
