@@ -146,12 +146,22 @@ export type LockService = {
     query: () => Promise<LockSnapshot>
 }
 
-/** The last-chance journal (Part 1 §1.6.4, §1.6.11.3; Step 3). */
+/** A pending journal as found: its session, its text, and where it was (the key without prefix). */
+export type JournalFound = { sessionId: string; text: string; from: string }
+
+/** What `writeWhole` needs of a journal; it stores the JSON text of the whole object. */
+export type JournalLike = { readonly sessionId: string; readonly seq: number }
+
+/** The last-chance journal (Part 1 §1.6.4, §1.6.11.3), shaped for both platforms. */
 export type JournalStore = {
-    keys: () => string[]
-    read: (key: string) => string | undefined
-    write: (key: string, value: string) => void
-    remove: (key: string) => void
+    /** Synchronous; true only when written within the size limits and read back intact. */
+    writeWhole: (journal: JournalLike) => boolean
+    /** Every pending journal. */
+    read: () => Promise<JournalFound[]>
+    /** Drops a session's journal once a strict committed flush covers its `seq`. */
+    clear: (sessionId: string, coveredSeq: number) => void
+    /** Drops a journal once it's applied or kept elsewhere, only if it's still the text found. */
+    remove: (found: JournalFound) => void
 }
 
 /** The apps' library (Part 3). */

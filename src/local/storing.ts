@@ -2,10 +2,12 @@ import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
-import { setSlotLoader } from '../history/stack'
+import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
+import { isDurablyStoredWith } from './durable'
 import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
 import { toHex } from './hash'
+import { JournalWriter, type JournalWrite } from './journal/writer'
 import { inspectSnapshot } from './records/inspect'
 import { stateFromRecords } from './records/records'
 import { decodeSnapshot } from './records/snapshot'
@@ -25,12 +27,31 @@ declare global {
         /** The dev console's tools (§1.6.11.1's debug viewer). */
         nse?: { inspectSnapshot: (hash: string) => Promise<unknown> }
         /** The flusher for specs, when a storage test flag is seeded. */
-        nseFlushTest?: { flusher: Flusher; reports: FlushReport[]; errors: unknown[] }
+        nseFlushTest?: {
+            flusher: Flusher
+            reports: FlushReport[]
+            errors: unknown[]
+            journal: { writer: JournalWriter; writes: JournalWrite[] }
+        }
     }
 }
 
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
+
+/** This tab's journal writer (§1.6.4 #7), once storing started. */
+export let journalWriter: JournalWriter | undefined
+
+let storingWorker: StorageWorker | undefined
+
+/**
+ * Whether leaving the open session can lose it (§1.6.7's predicate). The journal is written
+ * first when it's due, as the leave and switch triggers do; its verification decides.
+ */
+export const isDurablyStored = () => {
+    journalWriter?.write()
+    return isDurablyStoredWith({ status: storingWorker?.status, flusher, journal: journalWriter })
+}
 
 let watching = false
 
@@ -42,8 +63,15 @@ export const watchLifecycle = () => {
     if (watching) return
     watching = true
     platform.onLifecycle((event) => {
-        if (event === 'hide' || event === 'freeze')
-            void flusher?.flush({ strict: true, oneGo: true })
+        if (event !== 'hide' && event !== 'freeze') return
+        // The journal first, synchronously: the flush may not finish before the page goes.
+        journalWriter?.write()
+        void flusher?.flush({ strict: true, oneGo: true })
+    })
+    // beforeunload too (§1.6.4 #7); it never keeps the page itself.
+    platform.onCloseRequested(() => {
+        journalWriter?.write()
+        return true
     })
 }
 
@@ -61,8 +89,14 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         return
     }
 
+    const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
+        // A strict commit clears the journal it covers (§1.6.4 #7).
+        onCommitted: (session, { seq, strict }) => {
+            journalWriter?.committed(session.id, seq, strict)
+        },
+        syncStrict: () => worker.call('syncStrict'),
         transport: (batch, list, current) =>
             worker.call('flush', transfer(batch, list), {
                 timeoutMs: flushTimeoutMs(batch),
@@ -96,6 +130,17 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         },
     })
     flusher = instance
+    storingWorker = worker
+    journalWriter = new JournalWriter({
+        store: platform.journal,
+        flusher: () => flusher,
+        state: () => liveState.value,
+        pausedForSpace: () => worker.status?.reason === 'full',
+        appVersion: appVersion().appVersion,
+        onWrite: (write) => {
+            if (test) writes.push(write)
+        },
+    })
 
     onHistoryAction(
         (action) => {
@@ -152,6 +197,12 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
             })
         },
     }
-    if (test) window.nseFlushTest = { flusher: instance, reports, errors }
+    if (test)
+        window.nseFlushTest = {
+            flusher: instance,
+            reports,
+            errors,
+            journal: { writer: journalWriter, writes },
+        }
     void worker.call('countDay').catch(() => undefined)
 }

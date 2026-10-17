@@ -5,6 +5,7 @@ import { appVersion } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { storageGet } from '../storage'
 import { interpolate } from '../utils/interpolate'
+import { applyJournalsAtStart } from './journal/startup'
 import { startStoring, watchLifecycle } from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
@@ -139,5 +140,7 @@ export const startStorage = async () => {
         // The worker never answered: the client paused storing.
         status = worker.status ?? { mode: 'stored', reason: 'failed' }
     }
+    // Until Step 4's recovery order, pending journals are applied into the database here.
+    if (status.mode === 'stored') await applyJournalsAtStart(worker, test)
     startStoring(worker, status, test)
 }

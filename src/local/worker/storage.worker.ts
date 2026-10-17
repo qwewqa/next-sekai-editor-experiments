@@ -1,3 +1,4 @@
+import { journalHandlers } from '../journal/handlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { serve, type Endpoint } from './rpc'
@@ -13,7 +14,7 @@ const { context, handlers: coreHandlers } = createContext((event, data) => {
     emit(event, data)
 })
 
-const handlers = { ...coreHandlers, ...flushHandlers(context) }
+const handlers = { ...coreHandlers, ...flushHandlers(context), ...journalHandlers(context) }
 
 export type StorageHandlers = typeof handlers
 

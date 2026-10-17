@@ -326,9 +326,13 @@ export class Flusher {
         return session.nextSeq - 1
     }
 
-    /** Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4). */
+    /**
+     * Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4).
+     * A blank start with no edit has nothing to store, so nothing to journal.
+     */
     unflushed(session: FlushSession) {
-        return session.strictSeq < this.newestSeq(session)
+        if (session.strictSeq >= this.newestSeq(session)) return false
+        return session.ackedSeq > session.strictSeq || this.flushable(session)
     }
 
     /** The session's stack with every pending entry replayed: what the tab shows. */

@@ -1,6 +1,7 @@
+import { MemoryStorage, storageJournalStore, type JournalStorage } from '../local/journal/store'
 import { FakeLockManager } from '../local/testing/locks'
 import { levelDataDiskState, sameContent } from './fingerprint'
-import { journalStub, notYet } from './stubs'
+import { notYet } from './stubs'
 import {
     FileError,
     type DiagnosticInfo,
@@ -30,6 +31,8 @@ export type MockPlatformOptions = {
     fetch?: (url: string, init?: ServerFetchInit) => Promise<Response>
     /** A lock client from a shared FakeLockManager, for tests with several tabs. */
     locks?: LockService
+    /** The journal's storage; a fresh in-memory one by default. */
+    journalStorage?: JournalStorage
 }
 
 export type MockPlatform = Platform & {
@@ -109,6 +112,7 @@ const mockLocks = () => {
 
 export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatform => {
     const kind = options.kind ?? 'web'
+    const journalStorage = options.journalStorage ?? new MemoryStorage()
     const os = options.os ?? 'windows'
     const capabilities = Object.freeze({ ...defaults(kind), ...options.capabilities })
     const files = new Map<string, Blob>()
@@ -285,7 +289,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             return () => lifecycleHandlers.delete(handler)
         },
         locks: options.locks ?? mockLocks(),
-        journal: journalStub,
+        journal: storageJournalStore(() => journalStorage, 'mock.'),
 
         openExternal: (url) => {
             external.push(url)

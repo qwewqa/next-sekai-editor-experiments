@@ -32,9 +32,9 @@ export const platform = {
     onLifecycle: notImplemented,
     locks: { request: notImplemented, query: notImplemented },
     journal: {
-        keys: notImplemented,
+        writeWhole: notImplemented,
         read: notImplemented,
-        write: notImplemented,
+        clear: notImplemented,
         remove: notImplemented,
     },
 
