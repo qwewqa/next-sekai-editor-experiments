@@ -1688,5 +1688,10 @@
   },
   "notice": {
     "useOpenFile": "파일을 열려면 열기를 사용하세요."
+  },
+  "entry": {
+    "exported": "{0} 내보냄",
+    "recovered": "마지막 변경 복구됨",
+    "recoveredDropped": "마지막 변경 복구됨. 되돌리기 단계 {0}개가 유지되지 않았습니다."
   }
 }

@@ -1688,5 +1688,10 @@
   },
   "notice": {
     "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir."
+  },
+  "entry": {
+    "exported": "{0} exporté",
+    "recovered": "Dernière modification récupérée",
+    "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation n’a pas été conservée.|Dernière modification récupérée. {0} étapes d’annulation n’ont pas été conservées."
   }
 }

@@ -115,3 +115,22 @@ test('a 20,000-step stack’s flush rewrites only the block it touches', async (
     assert.equal(blocks(), 0)
     assertStack(world, session.id)
 })
+
+test('an undo onto a slot not loaded is stored by its root, with the stack', async () => {
+    const world = createWorld({ seed: 6 })
+    const page = await openPage(world, world.tab('a'))
+    const [a, b] = states()
+    const session = begin(page, a)
+    page.flusher.append('edit', () => 'B', b, true)
+    page.flusher.append('edit', () => 'A', a, true)
+    await page.flusher.flush()
+    const [first, second] = replayed(world, session.id).slots
+    page.flusher.append('undo', () => 'A', second!.snapshot, true)
+    page.flusher.append('undo', () => 'B', a, true)
+    page.flusher.append('redo', () => 'B', second!.snapshot, true)
+    await page.flusher.flush()
+    assert.deepEqual(page.errors, [])
+    assertStack(world, session.id)
+    assert.equal(replayed(world, session.id).index, 1)
+    assert.ok(first)
+})

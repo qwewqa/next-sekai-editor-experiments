@@ -1688,5 +1688,10 @@
   },
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç’ı kullanın."
+  },
+  "entry": {
+    "exported": "{0} dışa aktarıldı",
+    "recovered": "Son değişiklik kurtarıldı",
+    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı."
   }
 }

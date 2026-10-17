@@ -1688,5 +1688,10 @@
   },
   "notice": {
     "useOpenFile": "要打开文件，请使用“打开”。"
+  },
+  "entry": {
+    "exported": "已导出 {0}",
+    "recovered": "已恢复最后的更改",
+    "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤未保留。"
   }
 }

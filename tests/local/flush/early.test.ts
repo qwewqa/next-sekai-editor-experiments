@@ -16,6 +16,6 @@ test('early actions keep the last reset and the newest edits, at most EARLY_LIMI
     onHistoryAction((action) => seen.push(action), { replay: true })()
     assert.equal(seen.length, EARLY_LIMIT)
     assert.equal(seen[0]?.kind, 'reset')
-    assert.equal(seen[1]?.state.initialLife, 51)
-    assert.equal(seen.at(-1)?.state.initialLife, EARLY_LIMIT + 49)
+    assert.equal(seen[1]?.state?.initialLife, 51)
+    assert.equal(seen.at(-1)?.state?.initialLife, EARLY_LIMIT + 49)
 })

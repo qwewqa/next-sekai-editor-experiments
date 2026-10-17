@@ -32,6 +32,8 @@ export type ExportUi = {
     failed: (name: string, error: FileError) => Promise<'chooseAnother' | undefined>
     exported: (name: string) => void
     downloadStarted: (name: string, size: number) => void
+    /** Records the export in the session's timeline (Part 1 §1.3.8). */
+    markExported?: (name: string) => void
 }
 
 export type ExportContext = {
@@ -92,6 +94,7 @@ const saved = (ctx: ExportContext, result: SaveResult & { status: 'saved' }) => 
         disk: result.disk,
         exported: true,
     })
+    ctx.ui.markExported?.(result.name)
     ctx.ui.exported(result.name)
 }
 
@@ -274,6 +277,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
         case 'download-started':
         case 'exported':
             if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
+            ctx.ui.markExported?.(result.name)
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'
         case 'cancelled':

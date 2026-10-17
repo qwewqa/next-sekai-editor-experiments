@@ -2,9 +2,13 @@ import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
+import { setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
+import { toHex } from './hash'
 import { inspectSnapshot } from './records/inspect'
+import { stateFromRecords } from './records/records'
+import { decodeSnapshot } from './records/snapshot'
 import { holdSessionLock, TabClient } from './sessions'
 import type { StorageWorker } from './worker/client'
 import type { StorageStatus } from './worker/core'
@@ -114,13 +118,28 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                 })
                 return
             }
-            instance.append(action.kind, action.name, action.state, action.isDirty)
+            instance.append(
+                action.kind,
+                action.name,
+                action.state ?? action.snapshot,
+                action.isDirty,
+            )
         },
         { replay: true },
     )
 
     worker.onRestart(() => {
         void instance.restarted()
+    })
+
+    // A restored undo slot is built from its stored records when Undo or Redo reaches it.
+    setSlotLoader(async (snapshot) => {
+        const parts = await worker.call('readSnapshot', toHex(snapshot))
+        const records = decodeSnapshot(parts.root, {
+            node: (hex) => parts.nodes[hex],
+            chunk: (hex) => parts.chunks[hex],
+        })
+        return stateFromRecords(records)
     })
 
     window.nse = {
