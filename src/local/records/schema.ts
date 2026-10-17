@@ -569,12 +569,16 @@ export const checkRefs = (
 /** Checks that a folder map's parent links never loop, a folder its own parent included (D9). */
 const checkAcyclic = (folders: readonly RecordValue[][], path: string) => {
     const at = (records.folder as readonly Field[]).findIndex((field) => field.acyclic)
-    const parents = new Map(folders.map((folder) => [folder[0], folder[at]]))
+    // Ids and links are safe integers once the form and refs are checked.
+    const parents = new Map(folders.map((folder) => [folder[0] as number, folder[at] as number]))
     for (const [i, folder] of folders.entries()) {
-        const seen = new Set<unknown>()
-        for (let id: unknown = folder[0]; id !== undefined; id = parents.get(id)) {
-            if (seen.has(id))
-                throw new SchemaError(`${path}[${i}].folderId`, `folder ${String(id)} loops`)
+        const seen = new Set<number>()
+        for (
+            let id: number | undefined = folder[0] as number;
+            id !== undefined;
+            id = parents.get(id)
+        ) {
+            if (seen.has(id)) throw new SchemaError(`${path}[${i}].folderId`, `folder ${id} loops`)
             seen.add(id)
         }
     }
