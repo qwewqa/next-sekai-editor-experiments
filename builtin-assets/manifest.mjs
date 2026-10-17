@@ -44,6 +44,23 @@ const kite = (color, width) => image('kite', { color }, { width })
 // The dark base of the judgment band.
 const judgmentShade = '#0b0c16'
 
+// The engine draws an arrow in a square half the note's width; narrow notes get theirs enlarged,
+// about the middle of its base, so the arrow stays readable: 1.6 times at width 1 down to 1.1 at 6.
+const arrowScale = (width) => 1 + 0.6 / width
+const arrowTransform = (k) => {
+    const near = (1 + k) / 2
+    const far = (1 - k) / 2
+    const base = (axis) => ({
+        [`${axis}1`]: { [`${axis}1`]: near, [`${axis}4`]: far },
+        [`${axis}2`]: { [`${axis}2`]: k, [`${axis}1`]: far, [`${axis}4`]: far },
+        [`${axis}3`]: { [`${axis}3`]: k, [`${axis}1`]: far, [`${axis}4`]: far },
+        [`${axis}4`]: { [`${axis}4`]: near, [`${axis}1`]: far },
+    })
+    return { ...base('x'), ...base('y') }
+}
+const arrow = (template, accent, width) =>
+    image(template, { accent }, { transform: arrowTransform(arrowScale(width)) })
+
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
 const parts = ['Left', 'Middle', 'Right']
@@ -235,7 +252,7 @@ export function skinSprites() {
                 for (let width = 1; width <= 6; width++)
                     add(
                         `Sekai ${family} Arrow ${direction} ${width}`,
-                        image(template, { accent: color }),
+                        arrow(template, color, width),
                     )
         for (const [color, family] of [
             ['Red', 'Flick'],
@@ -359,7 +376,7 @@ export function skinSprites() {
                     for (let width = 1; width <= 6; width++)
                         add(
                             `Sekai ${family} Arrow ${direction} ${width} ${color}`,
-                            image(template, { accent }),
+                            arrow(template, accent, width),
                         )
             const connection = connectorColor(color)
             for (const family of ['Normal', 'Critical']) {
