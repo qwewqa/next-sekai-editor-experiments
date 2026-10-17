@@ -452,6 +452,47 @@
     },
     "exportLevel": {
       "title": "Exporter les données de niveau…"
+    },
+    "previewAssets": {
+      "title": "Ressources d’aperçu…",
+      "modal": {
+        "title": "Ressources d’aperçu"
+      },
+      "skin": "Skin",
+      "particle": "Particules",
+      "background": "Arrière-plan",
+      "effect": "Effets sonores",
+      "storedTab": "Stockés",
+      "effectHint": "Utilisés pour l’aperçu et la lecture.",
+      "default": "Par défaut",
+      "defaultSkin": "Par défaut : Next SEKAI 01",
+      "defaultParticle": "Par défaut : Next SEKAI",
+      "builtin": "Intégré",
+      "storedFile": "{0} (fichier)",
+      "storedServer": "{0} (serveur)",
+      "useBuiltinAll": "Tout passer en intégré",
+      "resetDefault": "Rétablir par défaut",
+      "stored": "Stocké : {0} élément, {1}|Stocké : {0} éléments, {1}",
+      "storedEmpty": "Aucun élément stocké",
+      "noun": {
+        "skin": "skin",
+        "particle": "particule",
+        "background": "arrière-plan",
+        "effect": "effets sonores"
+      },
+      "fallback": {
+        "panel": "{0} : utilisation de {1}. {2}",
+        "row": "Utilisation de {0}. {1}"
+      },
+      "reason": {
+        "fileGone": "Le fichier {0} n’est plus stocké dans ce navigateur.",
+        "serverFailed": "Impossible de télécharger à nouveau l’élément ({0}) depuis {1}.",
+        "invalid": "L’élément stocké ({0}) n’a pas pu être lu.",
+        "defaultFailed": "L’élément par défaut n’a pas pu être chargé.",
+        "builtinFailed": "L’élément intégré n’a pas pu être chargé."
+      },
+      "offline": "Vous êtes hors ligne.",
+      "safeMode": "Le mode sans échec utilise l’élément par défaut."
     }
   },
   "help": {
@@ -714,6 +755,8 @@
     },
     "preview": {
       "title": "Aperçu",
+      "assets": "Ressources",
+      "assetsHint": "Skin, particules, arrière-plan et effets sonores pour l’aperçu et la lecture.",
       "position": {
         "title": "Position",
         "auto": "Auto",

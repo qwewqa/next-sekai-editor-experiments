@@ -452,6 +452,47 @@
     },
     "exportLevel": {
       "title": "레벨 데이터 내보내기…"
+    },
+    "previewAssets": {
+      "title": "미리보기 에셋…",
+      "modal": {
+        "title": "미리보기 에셋"
+      },
+      "skin": "스킨",
+      "particle": "파티클",
+      "background": "배경",
+      "effect": "효과음",
+      "storedTab": "저장됨",
+      "effectHint": "미리보기와 재생에 사용됩니다.",
+      "default": "기본",
+      "defaultSkin": "기본: Next SEKAI 01",
+      "defaultParticle": "기본: Next SEKAI",
+      "builtin": "내장",
+      "storedFile": "{0} (파일)",
+      "storedServer": "{0} (서버)",
+      "useBuiltinAll": "모두 내장 사용",
+      "resetDefault": "기본으로 되돌리기",
+      "stored": "저장됨: {0}개, {1}",
+      "storedEmpty": "저장된 항목 없음",
+      "noun": {
+        "skin": "스킨",
+        "particle": "파티클",
+        "background": "배경",
+        "effect": "효과음"
+      },
+      "fallback": {
+        "panel": "{0}: {1} 사용 중. {2}",
+        "row": "{0} 사용 중. {1}"
+      },
+      "reason": {
+        "fileGone": "{0} 파일이 더 이상 이 브라우저에 저장되어 있지 않습니다.",
+        "serverFailed": "{1}에서 {0}을(를) 다시 다운로드하지 못했습니다.",
+        "invalid": "저장된 {0}을(를) 읽을 수 없습니다.",
+        "defaultFailed": "기본 항목을 불러오지 못했습니다.",
+        "builtinFailed": "내장 항목을 불러오지 못했습니다."
+      },
+      "offline": "오프라인 상태입니다.",
+      "safeMode": "안전 모드에서는 기본 항목을 사용합니다."
     }
   },
   "help": {
@@ -714,6 +755,8 @@
     },
     "preview": {
       "title": "미리보기",
+      "assets": "에셋",
+      "assetsHint": "미리보기와 재생에 사용하는 스킨, 파티클, 배경, 효과음.",
       "position": {
         "title": "위치",
         "auto": "자동",

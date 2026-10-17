@@ -33,6 +33,7 @@ export const usePreviewRendering = (
     {
         skin,
         particle,
+        background: loadedBackground,
         setGraphicsError,
         clearGraphicsError,
     }: ReturnType<typeof usePreviewResources>,
@@ -213,6 +214,12 @@ export const usePreviewRendering = (
 
             const getChart = chartRequest.value
             const backgroundElement = background.value
+            const backgroundLayout = loadedBackground.value
+                ? {
+                      aspectRatio: loadedBackground.value.aspectRatio,
+                      fit: loadedBackground.value.fit,
+                  }
+                : undefined
             const selected = settings.previewHighlightSelection
                 ? getPreviewState(state.value).selectedEntities
                 : []
@@ -270,6 +277,7 @@ export const usePreviewRendering = (
                         : undefined,
                     leftLimit,
                     showHitboxes,
+                    backgroundLayout,
                 )
                 const edges = outline.edges()
                 // Once empty, the overlay stays transparent. Avoid creating or

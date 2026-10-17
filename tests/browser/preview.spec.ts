@@ -252,6 +252,8 @@ for (const failure of [
         // Decoded skins are cached for the page, so start a fresh page whose
         // first download fails.
         await page.route('**/resource/skin.scp*', (route) => route.fulfill(failure))
+        // Built-in is the last resort, so it fails too for the missing screen.
+        await page.route('**/builtin/skin.scp*', (route) => route.fulfill(failure))
         await page.reload()
         await page.evaluate(installEditorFixture)
         await page.evaluate(() => {
@@ -2163,7 +2165,7 @@ test('preview options share persisted settings with the main options menu', asyn
     await expect(preview.getByRole('combobox', { name: 'Position', exact: true })).toHaveValue(
         'auto',
     )
-    // Both entry points list the shared options in the same order.
+    // Both entry points list the shared options in the same order; Settings adds the Assets row.
     const order = [
         'Note Speed',
         'Highlight Selection',
@@ -2208,7 +2210,7 @@ test('preview options share persisted settings with the main options menu', asyn
             .evaluateAll((labels) =>
                 labels.map((label) => label.firstElementChild?.textContent?.trim()),
             ),
-    ).toEqual([...order, 'Preview Settings Panel'])
+    ).toEqual(['Assets', ...order, 'Preview Settings Panel'])
     const transport = dialog.getByRole('combobox', { name: 'Playback Controls', exact: true })
     await expect(transport).toHaveValue('overlay')
     await transport.selectOption('below')

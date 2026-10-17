@@ -452,6 +452,47 @@
         },
         "exportLevel": {
             "title": "Export Level Data…"
+        },
+        "previewAssets": {
+            "title": "Preview Assets…",
+            "modal": {
+                "title": "Preview Assets"
+            },
+            "skin": "Skin",
+            "particle": "Particle",
+            "background": "Background",
+            "effect": "Sound Effects",
+            "storedTab": "Stored",
+            "effectHint": "Used by the preview and playback.",
+            "default": "Default",
+            "defaultSkin": "Default: Next SEKAI 01",
+            "defaultParticle": "Default: Next SEKAI",
+            "builtin": "Built-in",
+            "storedFile": "{0} (File)",
+            "storedServer": "{0} (Server)",
+            "useBuiltinAll": "Use Built-in for All",
+            "resetDefault": "Reset to Default",
+            "stored": "Stored: {0} item, {1}|Stored: {0} items, {1}",
+            "storedEmpty": "No stored items",
+            "noun": {
+                "skin": "skin",
+                "particle": "particle",
+                "background": "background",
+                "effect": "sound effects"
+            },
+            "fallback": {
+                "panel": "{0}: using {1}. {2}",
+                "row": "Using {0}. {1}"
+            },
+            "reason": {
+                "fileGone": "The {0} file is no longer stored in this browser.",
+                "serverFailed": "The {0} could not be downloaded again from {1}.",
+                "invalid": "The stored {0} could not be read.",
+                "defaultFailed": "Default could not be loaded.",
+                "builtinFailed": "Built-in could not be loaded."
+            },
+            "offline": "You are offline.",
+            "safeMode": "Safe mode uses Default."
         }
     },
     "help": {
@@ -714,6 +755,8 @@
         },
         "preview": {
             "title": "Preview",
+            "assets": "Assets",
+            "assetsHint": "Skin, particle, background and sound effects for the preview and playback.",
             "position": {
                 "title": "Position",
                 "auto": "Auto",

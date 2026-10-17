@@ -452,6 +452,47 @@
     },
     "exportLevel": {
       "title": "匯出關卡資料…"
+    },
+    "previewAssets": {
+      "title": "預覽資源…",
+      "modal": {
+        "title": "預覽資源"
+      },
+      "skin": "外觀",
+      "particle": "粒子",
+      "background": "背景",
+      "effect": "音效",
+      "storedTab": "已儲存",
+      "effectHint": "用於預覽和播放。",
+      "default": "預設",
+      "defaultSkin": "預設：Next SEKAI 01",
+      "defaultParticle": "預設：Next SEKAI",
+      "builtin": "內建",
+      "storedFile": "{0}（檔案）",
+      "storedServer": "{0}（伺服器）",
+      "useBuiltinAll": "全部使用內建",
+      "resetDefault": "重設為預設",
+      "stored": "已儲存：{0} 項，{1}",
+      "storedEmpty": "沒有已儲存的項目",
+      "noun": {
+        "skin": "外觀",
+        "particle": "粒子",
+        "background": "背景",
+        "effect": "音效"
+      },
+      "fallback": {
+        "panel": "{0}：正在使用{1}。{2}",
+        "row": "正在使用{0}。{1}"
+      },
+      "reason": {
+        "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
+        "serverFailed": "無法從 {1} 重新下載{0}。",
+        "invalid": "無法讀取已儲存的{0}。",
+        "defaultFailed": "無法載入預設項。",
+        "builtinFailed": "無法載入內建項。"
+      },
+      "offline": "您已離線。",
+      "safeMode": "安全模式使用預設項。"
     }
   },
   "help": {
@@ -714,6 +755,8 @@
     },
     "preview": {
       "title": "預覽",
+      "assets": "資源",
+      "assetsHint": "用於預覽和播放的外觀、粒子、背景和音效。",
       "position": {
         "title": "位置",
         "auto": "自動",

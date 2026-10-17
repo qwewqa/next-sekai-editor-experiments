@@ -8,6 +8,9 @@ import {
 } from './layout'
 import { easeOvershoot, rotateVec, vec, type Quad } from './math'
 
+/** How the image fits the screen before camera motion (Sonolus' background `fit`). */
+export type BackgroundFit = 'cover' | 'contain' | 'width' | 'height'
+
 // Compiled camera arrays are immutable. Scanning the whole chart for overscan
 // belongs to chart changes, not each playback frame or seek.
 const rotationLimits = new WeakMap<readonly CameraChange[], number>()
@@ -30,17 +33,26 @@ const rotationLimit = (cameras: readonly CameraChange[]) => {
 }
 
 // Matches sekai/lib/layout.py: background_camera_zoom and apply_camera_zoom.
-// The bundled background is 16:9; fit the complete image before camera motion
+// The default background is 16:9, covered; fit the complete image before camera motion
 // so wider/taller viewports retain the same crop and rotation coverage as game.
 export const layoutBackground = (
     viewport: PreviewViewport,
     cameras: readonly CameraChange[],
     camera: CameraInfo,
     imageAspectRatio = TARGET_ASPECT_RATIO,
+    fit: BackgroundFit = 'cover',
 ): Quad => {
     const a = viewport.screenW / 2
     const b = viewport.screenH / 2
-    let halfWidth = Math.max(a, b * imageAspectRatio)
+    const byHeight = b * imageAspectRatio
+    let halfWidth =
+        fit === 'contain'
+            ? Math.min(a, byHeight)
+            : fit === 'width'
+              ? a
+              : fit === 'height'
+                ? byHeight
+                : Math.max(a, byHeight)
     let halfHeight = halfWidth / imageAspectRatio
 
     if (cameras.length) {

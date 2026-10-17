@@ -53,7 +53,7 @@ test('the web-only list matches the files and locks it names', () => {
     }
     const patterns = list.references.map((r) => r.text ?? r.regex)
     for (const reference of [
-        'thumbnail',
+        'thumbnail.png',
         'favicon.ico',
         'se_live',
         'resource/',

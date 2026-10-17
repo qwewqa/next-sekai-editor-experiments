@@ -73,6 +73,7 @@ path = [
     "src/editor/commands/noteSizes/NoteSizeIcon.vue",
     "src/editor/commands/offset/OffsetIcon.vue",
     "src/editor/commands/open/OpenIcon.vue",
+    "src/editor/commands/previewAssets/PreviewAssetsIcon.vue",
     "src/editor/commands/paste/PasteIcon.vue",
     "src/editor/commands/play/PlayIcon.vue",
     "src/editor/commands/properties/PropertiesIcon.vue",

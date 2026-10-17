@@ -1,0 +1,278 @@
+<script setup lang="ts">
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    shallowRef,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
+import { i18n } from '../../../i18n'
+import BaseModal from '../../../modals/BaseModal.vue'
+import { platform } from '../../../platform'
+import { assetTypes } from '../../../preview/assets/choice'
+import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
+import { fallbacks } from '../../../preview/assets/active'
+import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
+import { settings } from '../../../settings'
+import { formatSize } from '../exportLevel/format'
+import AssetGlyph from './AssetGlyph.vue'
+import AssetSources from './AssetSources.vue'
+import { isAssetTab, previewAssetsTabs, type PreviewAssetsTab } from './tabs'
+
+const props = defineProps<{
+    tab: PreviewAssetsTab
+}>()
+
+const emit = defineEmits<{
+    close: []
+}>()
+
+const strings = computed(() => i18n.value.commands.previewAssets)
+const active = shallowRef(props.tab)
+const hasDefault = platform.capabilities.defaultAssets
+
+const uid = useId()
+const tabId = (tab: PreviewAssetsTab) => `${uid}-${tab}-tab`
+const panelId = `${uid}-panel`
+const tablist = useTemplateRef<HTMLElement>('tablist')
+
+const label = (tab: PreviewAssetsTab) =>
+    isAssetTab(tab) ? typeLabel(tab) : strings.value.storedTab
+const fallbackOf = (tab: PreviewAssetsTab) =>
+    isAssetTab(tab) ? fallbacks.value.find((fallback) => fallback.type === tab) : undefined
+// The mark is for sighted users; the reason is in the tab's name.
+const tabName = (tab: PreviewAssetsTab) => {
+    const fallback = fallbackOf(tab)
+    return fallback ? `${label(tab)}. ${reasonText(fallback)}` : label(tab)
+}
+
+// The strip scrolls sideways where its tabs do not fit, keeping the shown tab in view.
+const showActive = () =>
+    void nextTick(() => {
+        const strip = tablist.value
+        const tab = strip?.querySelector<HTMLElement>(`#${CSS.escape(tabId(active.value))}`)
+        if (!strip || !tab) return
+        // Centred, so its neighbours show part of themselves.
+        if (
+            tab.offsetLeft < strip.scrollLeft ||
+            tab.offsetLeft + tab.offsetWidth > strip.scrollLeft + strip.clientWidth
+        )
+            strip.scrollLeft = tab.offsetLeft + (tab.offsetWidth - strip.clientWidth) / 2
+        updateEdges()
+    })
+watch(active, showActive)
+
+// The strip fades at an edge that has more tabs beyond it.
+const atStart = shallowRef(true)
+const atEnd = shallowRef(true)
+const updateEdges = () => {
+    const strip = tablist.value
+    if (!strip) return
+    atStart.value = strip.scrollLeft <= 1
+    atEnd.value = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1
+}
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+    showActive()
+    if (tablist.value && typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(updateEdges)
+        resizeObserver.observe(tablist.value)
+    }
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
+
+const onTab = (event: MouseEvent, tab: PreviewAssetsTab) => {
+    active.value = tab
+    // Pointer clicks leave no focus ring behind.
+    if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
+}
+
+const onTabKeydown = (event: KeyboardEvent) => {
+    const tabs = previewAssetsTabs
+    const index = tabs.indexOf(active.value)
+    const next = {
+        ArrowLeft: tabs[(index + tabs.length - 1) % tabs.length],
+        ArrowRight: tabs[(index + 1) % tabs.length],
+        Home: tabs[0],
+        End: tabs[tabs.length - 1],
+    }[event.key]
+    if (!next) return
+    event.preventDefault()
+    active.value = next
+    tablist.value?.querySelector<HTMLElement>(`#${CSS.escape(tabId(next))}`)?.focus()
+}
+
+// The one-click helpers set every type at once.
+const setAll = (source: 'default' | 'builtin') => {
+    settings.previewAssets = Object.fromEntries(
+        assetTypes.map((type) => [type, { source }]),
+    ) as typeof settings.previewAssets
+}
+// In the apps Default is Built-in, so the choice that means Built-in is Default.
+const builtinSource = hasDefault ? 'builtin' : 'default'
+const allBuiltin = computed(() =>
+    assetTypes.every((type) => {
+        const { source } = settings.previewAssets[type]
+        return source === builtinSource || (!hasDefault && source === 'builtin')
+    }),
+)
+const allDefault = computed(() =>
+    assetTypes.every((type) => settings.previewAssets[type].source === 'default'),
+)
+
+// Nothing is stored yet; once A3 stores packages the footer counts them, and says nothing before.
+const summary = computed<StoredSummary>(() => ({ count: 0, bytes: 0 }))
+const storedText = computed(() => storedLine(strings.value.stored, summary.value, formatSize))
+
+const buttonClass =
+    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 [@media(pointer:coarse)]:h-11'
+</script>
+
+<template>
+    <BaseModal :title="strings.modal.title" fill @close="emit('close')">
+        <template #header>
+            <div
+                ref="tablist"
+                class="preview-assets-tabs relative flex h-full min-w-0 self-stretch overflow-x-auto text-base"
+                :class="{
+                    'preview-assets-tabs-more-before': !atStart,
+                    'preview-assets-tabs-more-after': !atEnd,
+                }"
+                role="tablist"
+                @scroll.passive="updateEdges"
+            >
+                <button
+                    v-for="item in previewAssetsTabs"
+                    :id="tabId(item)"
+                    :key="item"
+                    type="button"
+                    role="tab"
+                    class="preview-assets-tab group flex shrink-0 items-center focus-visible:outline-none"
+                    :class="{ 'preview-assets-tab-active': item === active }"
+                    :data-preview-assets-tab="item"
+                    :aria-label="tabName(item)"
+                    :aria-selected="item === active"
+                    :aria-controls="item === active ? panelId : undefined"
+                    :tabindex="item === active ? 0 : -1"
+                    @click="onTab($event, item)"
+                    @keydown="onTabKeydown"
+                >
+                    <!-- The band's height is the hit area; the pill carries hover, press and focus. -->
+                    <span
+                        class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-fg group-active:bg-accent group-active:text-on-accent"
+                    >
+                        <span class="preview-assets-tab-label relative whitespace-nowrap">
+                            <AssetGlyph
+                                v-if="fallbackOf(item)"
+                                type="warning"
+                                class="mr-1 inline align-[-0.1em]"
+                                data-tab-warning
+                            />{{ label(item) }}
+                        </span>
+                    </span>
+                </button>
+            </div>
+        </template>
+        <div
+            :id="panelId"
+            class="flex min-h-0 flex-1 flex-col border-t border-fg/25"
+            role="tabpanel"
+            :aria-labelledby="tabId(active)"
+        >
+            <div class="min-h-0 flex-1 overflow-y-auto p-2">
+                <AssetSources v-if="isAssetTab(active)" :key="active" :type="active" />
+                <p v-else class="px-3 py-2 opacity-75" data-stored-empty>
+                    {{ strings.storedEmpty }}
+                </p>
+            </div>
+
+            <div
+                class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-fg/25 p-3"
+                data-preview-assets-footer
+            >
+                <p v-if="summary.count > 0" class="min-w-0 max-[440px]:w-full" data-stored-line>
+                    {{ storedText }}
+                </p>
+                <div
+                    class="ml-auto flex gap-2 max-[440px]:ml-0 max-[440px]:w-full max-[440px]:flex-col"
+                >
+                    <button
+                        type="button"
+                        :class="[buttonClass, 'max-[440px]:w-full']"
+                        :disabled="allBuiltin"
+                        data-use-builtin-all
+                        @click="setAll(builtinSource)"
+                    >
+                        {{ strings.useBuiltinAll }}
+                    </button>
+                    <button
+                        v-if="hasDefault"
+                        type="button"
+                        :class="[buttonClass, 'max-[440px]:w-full']"
+                        :disabled="allDefault"
+                        data-reset-default
+                        @click="setAll('default')"
+                    >
+                        {{ strings.resetDefault }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </BaseModal>
+</template>
+
+<style scoped>
+.preview-assets-tabs {
+    scrollbar-width: none;
+}
+
+.preview-assets-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.preview-assets-tabs-more-before {
+    mask-image: linear-gradient(to right, transparent 0, #000 1.5rem);
+}
+
+.preview-assets-tabs-more-after {
+    mask-image: linear-gradient(to left, transparent 0, #000 1.5rem);
+}
+
+.preview-assets-tabs-more-before.preview-assets-tabs-more-after {
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 1.5rem,
+        #000 calc(100% - 1.5rem),
+        transparent 100%
+    );
+}
+
+/* The shown tab's bar sits on the header's lower edge, as in the manager. */
+.preview-assets-tab-active .preview-assets-tab-label::after {
+    content: '';
+    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+}
+
+@media (forced-colors: active) {
+    .preview-assets-tab-active .preview-assets-tab-label::after {
+        background-color: CanvasText;
+    }
+}
+
+@media (hover: hover) {
+    .preview-assets-tab:not(.preview-assets-tab-active):not(:active):hover
+        .preview-assets-tab-pill {
+        @apply bg-header-hover;
+    }
+}
+
+@media (pointer: coarse) {
+    .preview-assets-tab-active .preview-assets-tab-label::after {
+        @apply -bottom-3.5;
+    }
+}
+</style>

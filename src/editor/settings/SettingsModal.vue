@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { provide } from 'vue'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { resetKeybinds, resetSettings } from '../../settings'
+import { closeSettingsKey } from './closeSettings'
 import SettingsAbout from './SettingsAbout.vue'
 import SettingsEditor from './SettingsEditor.vue'
 import SettingsKeyboardShortcuts from './SettingsKeyboardShortcuts.vue'
@@ -11,10 +13,17 @@ import SettingsPlay from './SettingsPlay.vue'
 import SettingsPreview from './SettingsPreview.vue'
 import SettingsTouch from './SettingsTouch.vue'
 import SettingsToolbar from './toolbar/SettingsToolbar.vue'
+
+const emit = defineEmits<{
+    close: []
+}>()
+provide(closeSettingsKey, () => {
+    emit('close')
+})
 </script>
 
 <template>
-    <BaseModal :title="i18n.settings.title">
+    <BaseModal :title="i18n.settings.title" @close="emit('close')">
         <div class="flex flex-wrap gap-2">
             <button
                 type="button"

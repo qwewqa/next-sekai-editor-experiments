@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
+import { readZip } from '../builtin-assets/zip.mjs'
 import { inlineScripts, metaIsFirst, pageMetaPolicy, webPolicy } from './csp.mjs'
 import { isTestSitePage } from './site.mjs'
 
@@ -34,6 +35,11 @@ export const lyonNoticeFiles = [...lyonNoticeHashes.keys()]
 // The extension point for files copied from public/: a step that adds one lists it here (or in a list
 // beside this one, staged below), and in validateFileNames and tests/release/artifacts.test.mjs.
 export const staticFiles = ['favicon.ico', 'thumbnail.png']
+export const builtinTypes = ['skin', 'particle', 'background', 'effect']
+// The four Built-in packages (Part 2, 2.5.7), and the Sonolus server folder made from them.
+export const builtinFiles = builtinTypes.map((type) => `builtin/${type}.scp`)
+const builtinServerFile =
+    /^builtin-server\/sonolus\/(?:info|(?:skins|particles|backgrounds|effects)\/(?:info|list|nse-builtin)|repository\/[0-9a-f]{40})$/
 export const noticeFiles = [
     ...lyonNoticeFiles,
     'LICENSE.txt',
@@ -165,11 +171,49 @@ async function dependencyNotices(root, kind) {
     return sections.join('\n') + '\n'
 }
 
-/** The web-only static files (Part 2, 2.7.1). */
+/**
+ * The static Sonolus server the four Built-in packages make (Part 2, 2.5.7): every entry of every
+ * package, and one merged sonolus/info. Takes the packages' bytes by type; returns bytes by path.
+ */
+export function builtinServerFiles(packages) {
+    const files = new Map()
+    let title
+    const buttons = []
+    for (const type of builtinTypes) {
+        for (const [name, data] of readZip(packages.get(type))) {
+            if (name !== 'sonolus/info') {
+                files.set(`builtin-server/${name}`, data)
+                continue
+            }
+            const info = JSON.parse(data.toString('utf8'))
+            title ??= info.title
+            buttons.push(...info.buttons)
+        }
+    }
+    files.set(
+        'builtin-server/sonolus/info',
+        Buffer.from(JSON.stringify({ title, buttons, configuration: { options: [] } })),
+    )
+    return files
+}
+
+/** The web-only static files (Part 2, 2.7.1), the Built-in packages and the server folder made from them. */
 export async function stageWebStatic(root, destination) {
     await mkdir(destination, { recursive: true })
     for (const file of staticFiles) {
         await writeFile(join(destination, file), await regularFile(join(root, 'public', file)))
+    }
+    const packages = new Map()
+    for (const [index, file] of builtinFiles.entries()) {
+        const bytes = await regularFile(join(root, 'public', file))
+        packages.set(builtinTypes[index], bytes)
+        await mkdir(join(destination, 'builtin'), { recursive: true })
+        await writeFile(join(destination, file), bytes)
+    }
+    for (const [file, bytes] of builtinServerFiles(packages)) {
+        const target = containedPath(destination, file)
+        await mkdir(resolve(target, '..'), { recursive: true })
+        await writeFile(target, bytes)
     }
 }
 
@@ -230,11 +274,13 @@ function validateFileNames(files, assets) {
         'release-manifest.json',
         ...staticFiles,
         ...noticeFiles,
+        ...builtinFiles,
         ...assets.map((asset) => asset.file),
     ])
     for (const file of files) {
         if (
             !exact.has(file) &&
+            !builtinServerFile.test(file) &&
             !/^assets\/lyon-[\w-]{8,}\.wasm$/.test(file) &&
             !/^assets\/[\w.-]+-[\w-]{8,}\.(?:js|css|png|mp3|svg|woff2?)$/.test(file)
         ) {
@@ -250,6 +296,32 @@ function validateFileNames(files, assets) {
         throw new Error('Release contains no JavaScript bundle')
     if (!files.some((file) => /^assets\/.+\.css$/.test(file)))
         throw new Error('Release contains no stylesheet')
+}
+
+// The packages are the locked ones, and the server folder is exactly what they unpack to.
+async function checkBuiltinRelease(directory, files) {
+    const lock = JSON.parse(
+        readFileSync(
+            new URL('../builtin-assets/builtin-assets.lock.json', import.meta.url),
+            'utf8',
+        ),
+    )
+    const packages = new Map()
+    for (const [index, file] of builtinFiles.entries()) {
+        if (!files.includes(file)) throw new Error(`Missing release file: ${file}`)
+        const bytes = await regularFile(containedPath(directory, file))
+        if (sha256(bytes) !== lock.files[`public/${file}`]?.sha256)
+            throw new Error(`Built-in package differs from builtin-assets.lock.json: ${file}`)
+        packages.set(builtinTypes[index], bytes)
+    }
+    const expected = builtinServerFiles(packages)
+    for (const [file, bytes] of expected) {
+        if (!files.includes(file)) throw new Error(`Missing release file: ${file}`)
+        if (!(await regularFile(containedPath(directory, file))).equals(bytes))
+            throw new Error(`Built-in server file differs from the packages: ${file}`)
+    }
+    for (const file of files.filter((file) => file.startsWith('builtin-server/')))
+        if (!expected.has(file)) throw new Error(`Unexpected release file: ${file}`)
 }
 
 async function checkLyonRelease(directory, files) {
@@ -269,6 +341,7 @@ export async function writeReleaseManifest(directory, metadata, assets) {
     const files = (await listFiles(directory)).filter((file) => file !== 'release-manifest.json')
     validateFileNames(files, assets)
     await checkLyonRelease(directory, files)
+    await checkBuiltinRelease(directory, files)
     const hashes = {}
     for (const file of files) hashes[file] = sha256(await regularFile(join(directory, file)))
     const manifest = {
@@ -336,6 +409,7 @@ export async function checkRelease(directory, expected = {}) {
     const files = await listFiles(directory)
     validateFileNames(files, assets)
     await checkLyonRelease(directory, files)
+    await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
     await checkBundles(directory, files)
     const recorded = Object.keys(manifest.files).sort()

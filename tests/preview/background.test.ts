@@ -165,3 +165,31 @@ test('camera lane and size do not independently pan or stretch the background', 
         layoutBackground(viewport, cameras, base),
     )
 })
+
+test('a background’s aspect ratio and fit place its image before camera motion', () => {
+    const half = (quad: ReturnType<typeof layoutBackground>) => ({
+        width: quad.tr.x,
+        height: quad.tr.y,
+    })
+    // A 1600 x 900 screen is 16:9; a 4:3 image on it.
+    const screen = createViewport(1600, 900)
+    const place = (fit: 'cover' | 'contain' | 'width' | 'height', ratio = 4 / 3) =>
+        half(layoutBackground(screen, [], defaultCameraInfo(), ratio, fit))
+    // Cover fills the screen: the image is as wide as it, and taller.
+    close(place('cover').width, 16 / 9)
+    close(place('cover').height, 16 / 9 / (4 / 3))
+    // Contain fits inside: as tall as the screen, and narrower.
+    close(place('contain').height, 1)
+    close(place('contain').width, 4 / 3)
+    // Width and height match one side exactly, whatever the other does.
+    close(place('width').width, 16 / 9)
+    close(place('height').height, 1)
+    close(place('height').width, 4 / 3)
+    // A 21:9 image on 16:9: contain is as wide as the screen.
+    close(place('contain', 21 / 9).width, 16 / 9)
+    close(place('contain', 21 / 9).height, 16 / 9 / (21 / 9))
+    // The defaults are the bundled 16:9 cover.
+    const plain = half(layoutBackground(screen, [], defaultCameraInfo()))
+    close(plain.width, place('cover', 16 / 9).width)
+    close(plain.height, place('cover', 16 / 9).height)
+})

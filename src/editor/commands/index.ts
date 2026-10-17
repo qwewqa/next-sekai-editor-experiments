@@ -41,6 +41,7 @@ import { offset } from './offset'
 import { open } from './open'
 import { paste } from './paste'
 import { play } from './play'
+import { previewAssets } from './previewAssets'
 import { properties } from './properties'
 import { redo } from './redo'
 import { reset } from './reset'
@@ -113,6 +114,7 @@ const builtInCommands = {
     toggleSfxVolume,
     bgm,
     offset,
+    previewAssets,
 
     select,
     deselect,

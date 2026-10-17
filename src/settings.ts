@@ -9,6 +9,7 @@ import { migrateToolbar } from './editor/toolbar/migrate'
 import { isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
+import { DISMISSED_NOTICE_LIMIT, previewAssetsSchema } from './preview/assets/choice'
 import {
     previewAspectRatios,
     previewNoteSpeed,
@@ -16,6 +17,7 @@ import {
     previewTransportPositions,
 } from './preview/options'
 import { insertExportLevel } from './settings/toolbarExport'
+import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
 import { storedBindings, storedNames } from './settingsCodecs'
 import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
@@ -191,6 +193,12 @@ const settingsProperties = {
     previewHighlightSelection: Type.Boolean({ default: true }),
     previewShowHitboxes: Type.Boolean(),
     previewAntialias: Type.Boolean({ default: true }),
+    // The skin, particle, background and sound effects this device previews with (Part 2, 2.5.4).
+    previewAssets: previewAssetsSchema,
+    // Fallback notices already dismissed, as type, choice and reason; the newest 20.
+    dismissedAssetNotices: Type.Codec(Type.Array(Type.String(), { default: [] }))
+        .Decode((value) => value.slice(-DISMISSED_NOTICE_LIMIT))
+        .Encode((value) => value),
     previewAspectRatio: Type.Union([
         Type.Literal(previewAspectRatios[0][1]),
         Type.Literal(previewAspectRatios[1][1]),
@@ -275,6 +283,7 @@ const settingsProperties = {
             default: [
                 ['utilities', 'properties', 'reset', 'exportLevel', 'save', 'open'],
                 [
+                    'previewAssets',
                     'offset',
                     'bgm',
                     'toggleSfxVolume',
@@ -592,6 +601,7 @@ const loadSetting = (key: string, defaultValue: unknown) => {
         const steps = [
             ['toolbarEditorLayoutMigrated', migrateToolbar],
             ['toolbarExportMigrated', insertExportLevel],
+            ['toolbarPreviewAssetsMigrated', insertPreviewAssets],
         ] as const
         const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)
