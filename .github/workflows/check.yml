@@ -15,32 +15,8 @@ permissions:
     contents: read
 
 jobs:
-    check:
+    diag:
         runs-on: ubuntu-latest
-        timeout-minutes: 15
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  persist-credentials: false
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-              with:
-                  node-version-file: .node-version
-                  cache: npm
-            - run: npm ci
-            - run: npm run check-type
-            - run: npm run check-lint
-            - run: npm run check-format
-            - run: npm test
-            - run: npm run test:release
-            - run: npm run check:builtin-assets
-            - run: npm run build:native
-            - run: npm run check:native-bundle
-
-    compatibility:
-        if: ${{ !inputs.skip_browser_checks }}
-        needs: check
-        runs-on: ubuntu-latest
-        # About 2.5 min of tests with one worker (a 4-vCPU runner's) on a fast desktop.
         timeout-minutes: 25
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,47 +27,6 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: npx playwright install --with-deps firefox webkit
-            # The default preview skin and particle, hash-locked, as build:release stages them.
-            - name: Fetch the preview assets
-              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright install --with-deps webkit
             - run: npm run build
-            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=firefox --project=firefox-chrome --project=firefox-production --project=webkit --project=webkit-production --project=mobile-webkit-production
-            - name: Upload browser failure details
-              if: failure()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: compatibility-failures
-                  path: test-results-compatibility/
-                  if-no-files-found: ignore
-                  retention-days: 7
-
-    compatibility-storage:
-        if: ${{ !inputs.skip_browser_checks }}
-        needs: check
-        runs-on: ubuntu-latest
-        # About 1 min of tests in Firefox with one worker on a fast desktop; WebKit runs them on Linux.
-        timeout-minutes: 25
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  persist-credentials: false
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-              with:
-                  node-version-file: .node-version
-                  cache: npm
-            - run: npm ci
-            - run: npx playwright install --with-deps firefox webkit
-            # The default preview skin and particle, hash-locked, as build:release stages them.
-            - name: Fetch the preview assets
-              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
-            - run: npm run build
-            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project='*-storage'
-            - name: Upload browser failure details
-              if: failure()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: compatibility-storage-failures
-                  path: test-results-compatibility/
-                  if-no-files-found: ignore
-                  retention-days: 7
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=webkit-storage storageFlush.spec.ts -g 'picked BGM' --reporter=line --retries=0

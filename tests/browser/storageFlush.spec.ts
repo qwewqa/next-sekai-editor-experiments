@@ -13,6 +13,9 @@ test.skip(
 )
 
 const boot = async (page: Page, flags: object = {}) => {
+    page.on('console', (m) => console.log('CONSOLE', m.type(), m.text()))
+    page.on('pageerror', (e) => console.log('PAGEERROR', e.message))
+    page.on('worker', (w) => console.log('WORKER', w.url()))
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript((text) => {
         sessionStorage.setItem('nse.test.storage', text)
@@ -233,6 +236,29 @@ test('a picked BGM is stored with its change, read back whole, and named in the 
     await expect
         .poll(() => page.evaluate(() => window.nseFlushTest!.reports.at(-1)?.strict))
         .toBe(true)
+    for (let i = 0; i < 6; i++) {
+        await page.waitForTimeout(1000)
+        console.log(
+            'DIAG',
+            await page.evaluate(() => {
+                const t = window.nseFlushTest!
+                const f = t.flusher as unknown as Record<string, unknown>
+                return JSON.stringify({
+                    failed: t.flusher.failed,
+                    hasPending: t.flusher.hasPending,
+                    errors: t.errors.map((e) =>
+                        e instanceof Error ? `${e.name}: ${e.message}
+${e.stack}` : String(e),
+                    ),
+                    reports: t.reports,
+                    failedMedia: [...((f.failedMedia as Map<string, unknown>) ?? new Map()).keys()],
+                    sessions: (f.sessions as { pending: unknown[]; stored: boolean; origin: string }[]).map(
+                        (s) => ({ pending: s.pending.length, stored: s.stored, origin: s.origin }),
+                    ),
+                })
+            }),
+        )
+    }
     await settled(page)
 
     const meta = await page.evaluate(() => window.editorTest.history.liveState.value.bgm.meta)
