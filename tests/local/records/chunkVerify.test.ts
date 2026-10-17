@@ -35,7 +35,7 @@ test('the deflate-v1 vectors: valid streams inflate, damaged ones are refused', 
         const verified = await verifyChunk({ hash, stored: read(name) })
         assert.equal(verified.size, canonical.length)
     }
-    assert.equal(damage.length, 4)
+    assert.equal(damage.length, 10)
     for (const name of damage) {
         assert.throws(() => inflateStrict(read(name)), DeflateError, name)
         await assert.rejects(verifyChunk({ hash, stored: read(name) }), DeflateError, name)
