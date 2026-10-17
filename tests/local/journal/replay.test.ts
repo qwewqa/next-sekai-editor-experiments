@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DB_NAME } from '../../../src/local/db'
+import type { FlushSession } from '../../../src/local/flush'
 import { toHex } from '../../../src/local/hash'
 import { setJournalApplyHookForTests } from '../../../src/local/journal/apply'
 import { readJournal, type JournalV1 } from '../../../src/local/journal/format'
-import { MemoryStorage } from '../../../src/local/journal/store'
+import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { sessionLock } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
@@ -12,7 +13,7 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
-import { rows } from '../flush/harness'
+import { rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { replayed, storedStack, widen } from '../timeline/helpers'
@@ -134,10 +135,9 @@ test('a session that never flushed is made from the descriptor, with its ids', a
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a deleted session’s journal becomes a recovery session in a new chain', async () => {
-    const { world, page, session } = await killedAfterEdits(5)
+/** Another tab removes the session under storage pressure: its tombstone. */
+const tombstone = async (world: World, session: FlushSession) => {
     const other = world.tab('sweeper')
-    const { workerCore } = await import('../flush/harness')
     const core = workerCore(world, other)
     await other.run(() => core.start())
     await other.run(() =>
@@ -151,6 +151,11 @@ test('a deleted session’s journal becomes a recovery session in a new chain', 
             }),
         ),
     )
+}
+
+test('a deleted session’s journal becomes a recovery session in a new chain', async () => {
+    const { world, page, session } = await killedAfterEdits(5)
+    await tombstone(world, session)
     const { outcomes } = await replayAll(world, page.storage)
     const outcome = outcomes[0]
     assert.equal(outcome?.kind, 'recovery')
@@ -170,7 +175,6 @@ test('a deleted session’s journal becomes a recovery session in a new chain', 
 test('a continued session’s journal is never appended to it: a recovery chain', async () => {
     const { world, page, session } = await killedAfterEdits(6)
     const other = world.tab('other')
-    const { workerCore } = await import('../flush/harness')
     const core = workerCore(world, other)
     await other.run(() => core.start())
     await other.run(() =>
@@ -214,21 +218,45 @@ for (const [name, change] of [
         assert.equal(page.storage.length, 1)
     })
 
-test('a journal whose level data holds an unknown archetype is left in place', async () => {
-    const { world, page, session } = await killedAfterEdits(8)
+/** Adds an archetype this build doesn't read to the journal's level data. */
+const withFutureArchetype = async (journal: Record<string, unknown>) => {
     const { gzip, ungzip } = await import('pako')
-    rewrite(page.storage, session.id, (journal) => {
-        const text = new TextDecoder().decode(
-            ungzip(Uint8Array.from(atob(journal.levelDataGz as string), (c) => c.charCodeAt(0))),
-        )
-        const levelData = JSON.parse(text) as { entities: unknown[] }
-        levelData.entities.push({ archetype: 'FutureThing', data: [] })
-        const bytes = gzip(JSON.stringify(levelData))
-        journal.levelDataGz = btoa(String.fromCharCode(...bytes))
-    })
+    const text = new TextDecoder().decode(
+        ungzip(Uint8Array.from(atob(journal.levelDataGz as string), (c) => c.charCodeAt(0))),
+    )
+    const levelData = JSON.parse(text) as { entities: unknown[] }
+    levelData.entities.push({ archetype: 'FutureThing', data: [] })
+    const bytes = gzip(JSON.stringify(levelData))
+    journal.levelDataGz = btoa(String.fromCharCode(...bytes))
+}
+
+test('a newer build’s journal whose level data holds an unknown archetype is left in place', async () => {
+    const { world, page, session } = await killedAfterEdits(8)
+    const key = `nse.journal.${session.id}`
+    const journal = JSON.parse(page.storage.getItem(key) ?? '') as Record<string, unknown>
+    await withFutureArchetype(journal)
+    journal.appVersion = '0.7.0'
+    page.storage.setItem(key, JSON.stringify(journal))
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'later')
     assert.equal(entriesOf(world, session.id).length, 2)
+    assert.equal(page.storage.length, 1)
+})
+
+test('this build’s own journal whose level data its parser reports keeps its bytes, never left for later', async () => {
+    const { world, page, session } = await killedAfterEdits(14)
+    const key = `nse.journal.${session.id}`
+    const journal = JSON.parse(page.storage.getItem(key) ?? '') as Record<string, unknown>
+    await withFutureArchetype(journal)
+    const text = JSON.stringify(journal)
+    page.storage.setItem(key, text)
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'unreadable')
+    const [row] = (world.memory.dump(DB_NAME).get('recovered') ?? []).map(
+        (item) => item.value as Record<string, unknown>,
+    )
+    assert.equal(await (row?.bytes as Blob).text(), text)
+    assert.equal(page.storage.length, 0)
 })
 
 test('a damaged key’s bytes land in the recovered store, and the key goes', async () => {
@@ -355,4 +383,80 @@ test('a flush that lands after replay leaves the replayed stack alone', async ()
         [rootOf(states.a), rootOf(states.b), rootOf(states.d)],
     )
     assert.equal(window.index, 2)
+})
+
+/** A store whose `remove` does nothing: a kill between replay's commit and the key's delete. */
+const killedBeforeRemove = (storage: MemoryStorage) => ({
+    store: { ...storageJournalStore(() => storage, 'nse.'), remove: () => undefined },
+})
+
+const chainsOf = (world: World) => [...rows(world, 'chains').values()]
+
+test('a kill between a recovery session’s commit and the key’s delete makes no second one', async () => {
+    const { world, page, session } = await killedAfterEdits(15)
+    await tombstone(world, session)
+    const first = await replayIn(
+        world,
+        world.tab('first'),
+        page.storage,
+        killedBeforeRemove(page.storage),
+    )
+    assert.equal(first.outcomes[0]?.kind, 'recovery')
+    assert.equal(page.storage.length, 1)
+    const chains = chainsOf(world).length
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'recovery')
+    const [a, b] = [first.outcomes[0], outcomes[0]].map((outcome) =>
+        outcome && 'result' in outcome ? outcome.result : undefined,
+    )
+    assert.deepEqual(
+        a?.kind === 'recovery' && [a.sessionId, a.chainId],
+        b?.kind === 'recovery' && [b.sessionId, b.chainId],
+    )
+    assert.equal(chainsOf(world).length, chains)
+    assert.equal(page.storage.length, 0)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a kill between keeping a damaged key’s bytes and the key’s delete keeps one row', async () => {
+    const { world, page, session } = await killedAfterEdits(16)
+    const key = `nse.journal.${session.id}`
+    page.storage.setItem(key, (page.storage.getItem(key) ?? '').slice(0, 500))
+    await replayIn(world, world.tab('first'), page.storage, killedBeforeRemove(page.storage))
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'unreadable')
+    assert.equal(world.memory.dump(DB_NAME).get('recovered')?.length, 1)
+    assert.equal(page.storage.length, 0)
+})
+
+test('a damaged key whose bytes the browser refuses stays, and storing goes on', async () => {
+    const { world, page, session } = await killedAfterEdits(17)
+    const key = `nse.journal.${session.id}`
+    const damaged = (page.storage.getItem(key) ?? '').slice(0, 500)
+    page.storage.setItem(key, damaged)
+    world.memory.faults.refuseBlobs = true
+    const refused = await replayAll(world, page.storage)
+    world.memory.faults.refuseBlobs = false
+    assert.equal(refused.outcomes[0]?.kind, 'failed')
+    assert.deepEqual(refused.core.status, { mode: 'stored' })
+    assert.equal(page.storage.getItem(key), damaged)
+    // A later load whose database takes Blobs keeps them.
+    const { outcomes } = await replayAll(world, page.storage, 'later')
+    assert.equal(outcomes[0]?.kind, 'unreadable')
+    assert.equal(page.storage.length, 0)
+})
+
+test('an apply that fails by a DOMException that recurs is kept as a recovery session', async () => {
+    const { world, page, session } = await killedAfterEdits(18)
+    setJournalApplyHookForTests((force) => {
+        if (!force) throw new DOMException('A bad key', 'DataError')
+    })
+    try {
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'recovery')
+    } finally {
+        setJournalApplyHookForTests(undefined)
+    }
+    assert.equal(entriesOf(world, session.id).length, 2)
+    assert.equal(page.storage.length, 0)
 })

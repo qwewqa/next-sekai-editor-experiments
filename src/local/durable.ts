@@ -11,10 +11,12 @@ export type DurabilityInputs = {
     status: StorageStatus | undefined
     flusher: Flusher | undefined
     journal: JournalWriter | undefined
+    /** The media whose bytes the head holds (`heldMediaOf`), as hex. */
+    media?: readonly string[]
 }
 
 /** Why the open session isn't durably stored, or undefined when it is. */
-export const notDurableReason = ({ status, flusher, journal }: DurabilityInputs) => {
+export const notDurableReason = ({ status, flusher, journal, media = [] }: DurabilityInputs) => {
     // Storage unavailable: no IndexedDB, a blocked private mode, an insecure origin, a failed
     // open, or a newer database this build only reads.
     if (status?.mode !== 'stored') return 'unavailable'
@@ -25,6 +27,9 @@ export const notDurableReason = ({ status, flusher, journal }: DurabilityInputs)
     if (!flusher || !session) return 'unavailable'
     // An edit made before the first flush finished.
     if (!session.stored) return 'notWritten'
+    // A picked file is always stored (§1.6.8.4), and the journal doesn't carry media (§1.6.4):
+    // the head's media the store refused or didn't read back is in this tab's memory only.
+    if (media.some((hash) => status.mediaPending?.includes(hash))) return 'mediaPending'
     if (!flusher.unflushed(session)) return
     // The last flush failed, and so did any strict flush since.
     if (flusher.failed) return 'flushFailed'

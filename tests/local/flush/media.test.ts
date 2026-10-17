@@ -380,3 +380,42 @@ test('a kill at every await of a flush with a picked BGM stores the BGM with its
     })
     assert.ok(result.every(({ points }) => points > 10))
 })
+
+test('a media put that fails by anything but the Blob refusal fails the flush, which stores nothing', async () => {
+    const world = createWorld({ seed: 41 })
+    const page = await openPage(world, world.tab('a'))
+    const picked = await withSong(stateOf(goldenChart()), 41)
+    // A quota reported on the request, as an engine may instead of on the commit.
+    world.memory.faults.put = (store) =>
+        store === 'media' ? new DOMException('Full', 'QuotaExceededError') : undefined
+    begin(page, picked)
+    await page.flusher.flush()
+    assert.equal(page.flusher.failed, true)
+    assert.equal(page.flusher.hasPending, true)
+    assert.equal(rows(world, 'entries').size, 0)
+    assert.deepEqual(page.core.status, { mode: 'stored', reason: 'full' })
+    // Stored once the put goes through: the entry with its BGM.
+    world.memory.faults.put = undefined
+    await page.flusher.flush()
+    assert.equal(page.flusher.failed, false)
+    assert.equal(rows(world, 'entries').size, 1)
+    assert.equal(rows(world, 'media').size, 1)
+    assert.deepEqual(page.core.status, { mode: 'stored' })
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a media item stored alone that fails by anything but the Blob refusal pauses storing', async () => {
+    const world = createWorld({ seed: 42 })
+    const page = await openPage(world, world.tab('a'))
+    const picked = await withSong(stateOf(goldenChart()), 42)
+    world.memory.faults.refuseBlobs = true
+    begin(page, picked)
+    await page.flusher.flush()
+    assert.equal(rows(world, 'media').size, 0)
+    world.memory.faults.refuseBlobs = false
+    world.memory.faults.put = (store) =>
+        store === 'media' ? new DOMException('Bad', 'DataError') : undefined
+    await page.flusher.retryMedia()
+    assert.equal(page.core.status.reason, 'failed')
+    world.memory.faults.put = undefined
+})

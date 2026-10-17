@@ -46,7 +46,7 @@ export type JournalApplyBatch = {
     summary: ChainSummary
     /** The `recovered` entry's label: "Recovered last change", with the dropped steps. */
     label: string
-    /** Fresh ids for a recovery chain and session, used only when one is made. */
+    /** A recovery chain's and session's ids, derived from the journal: used if one is made. */
     recovery: { chainId: string; docId: string; sessionId: string }
     appVersion: string
     wall: number
@@ -95,6 +95,13 @@ const chainFieldsOf = (descriptor: JournalDescriptor): Row => {
 const descends = (next: unknown, base: unknown) => {
     if (!isRow(next) || !isRow(base) || typeof base.id !== 'string') return false
     return Array.isArray(next.ancestors) && next.ancestors.includes(base.id)
+}
+
+/** The record has no `replaced`, or the binding's `at` is above `replaced.at` (D5). */
+const afterReplaced = (file: unknown, replaced: unknown) => {
+    if (replaced === undefined) return true
+    if (!isRow(file) || !isRow(replaced)) return false
+    return typeof file.at === 'number' && typeof replaced.at === 'number' && file.at > replaced.at
 }
 
 /** Reads the snapshot's work before the transaction: chunks verified, nodes and root hashed. */
@@ -168,6 +175,18 @@ export const writeJournalApply = async (
     const chainId = typeof session?.chainId === 'string' ? session.chainId : descriptor.chainId
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
+    // Kept as a recovery session by an earlier load killed before the key went: it's there.
+    const { recovery } = batch
+    if (
+        (await tx.getKey('sessions', recovery.sessionId)) !== undefined ||
+        (await tx.getKey('tombstones', recovery.sessionId)) !== undefined
+    )
+        return {
+            kind: 'recovery',
+            sessionId: recovery.sessionId,
+            chainId: recovery.chainId,
+            why: 'kept at an earlier load',
+        }
 
     // Never a recovered entry in a chain this build can't fully read (§1.6.4 step 2).
     if (session && !isReadableSessionVersion(session.v))
@@ -367,8 +386,13 @@ export const writeJournalApply = async (
     } else {
         const fields: Row = { ...common }
         // The identity fields only as one unit, and only when safe (§1.6.4 step 4): a write-back
-        // whose binding flush the tab didn't live to commit.
-        if (descriptor.docId === chain.docId && descends(descriptor.revision, chain.revision)) {
+        // whose binding flush the tab didn't live to commit, never over a binding a save picker
+        // took over since (D5).
+        if (
+            descriptor.docId === chain.docId &&
+            descends(descriptor.revision, chain.revision) &&
+            afterReplaced(descriptor.file, chain.replaced)
+        ) {
             const own = chainFieldsOf(descriptor)
             const handle = isRow(chain.file) ? chain.file.handle : undefined
             fields.revision = own.revision

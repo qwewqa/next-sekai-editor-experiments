@@ -34,12 +34,26 @@ export class JournalUnappliableError extends Error {
     override name = 'JournalUnappliableError'
 }
 
+/**
+ * IndexedDB's errors for storage being unavailable, full or busy, which a later load may not
+ * meet. Others (`DataError`, `ConstraintError`, `DataCloneError`…) come back at every load.
+ */
+const TRANSIENT = new Set([
+    'QuotaExceededError',
+    'UnknownError',
+    'AbortError',
+    'InvalidStateError',
+    'TransactionInactiveError',
+    'TimeoutError',
+    'NotReadableError',
+])
+
 /** Whether a failure is storage's (unavailable, full, busy), which a later load may not meet. */
 export const isStorageFailure = (error: unknown) => {
     if (error instanceof StorageRefusedError || error instanceof MaintTimeoutError) return true
     const cause = error instanceof StoragePausedError ? error.cause : error
     return (
-        cause instanceof DOMException ||
+        (cause instanceof DOMException && TRANSIENT.has(cause.name)) ||
         cause instanceof MaintTimeoutError ||
         cause instanceof StorageRefusedError
     )
@@ -93,17 +107,22 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
             }
         },
 
-        /** Moves an unreadable journal's bytes into the `recovered` store, strictly. */
+        /**
+         * Moves an unreadable journal's bytes into the `recovered` store, strictly. Its id comes
+         * from the bytes, so a second run finds the row. Resolves false when the browser refuses
+         * the Blob (WebKit's private windows): the key stays, and storing isn't paused.
+         */
         keepRecovered: (item: RecoveredBytes, scope?: CallScope) =>
             context.core.write(
                 ['recovered', 'meta'],
                 async (tx) => {
+                    if ((await tx.getKey('recovered', item.id)) !== undefined) return true
                     const foundAt = Math.max(
                         Date.now(),
                         ((await readMeta(tx, 'maxSeenTime')) ?? 0) + 1,
                     )
                     const bytes = new Blob([item.text], { type: 'text/plain;charset=utf-8' })
-                    await tx.put('recovered', {
+                    const put = await tx.tryPut('recovered', {
                         id: item.id,
                         source: item.source,
                         from: item.from,
@@ -113,7 +132,8 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
                         foundAt,
                         appVersion: item.appVersion,
                     })
-                    await writeMeta(tx, 'maxSeenTime', foundAt)
+                    if (put) await writeMeta(tx, 'maxSeenTime', foundAt)
+                    return put
                 },
                 { durability: 'strict', ...scope },
             ),

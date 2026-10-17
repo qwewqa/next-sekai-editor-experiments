@@ -5,7 +5,7 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { isDurablyStoredWith } from './durable'
-import { Flusher, flushTimeoutMs, mediaTimeoutMs, type FlushReport } from './flush'
+import { Flusher, flushTimeoutMs, heldMediaOf, mediaTimeoutMs, type FlushReport } from './flush'
 import { toHex } from './hash'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { inspectSnapshot } from './records/inspect'
@@ -53,7 +53,12 @@ let storingWorker: StorageWorker | undefined
  */
 export const isDurablyStored = () => {
     journalWriter?.write()
-    return isDurablyStoredWith({ status: storingWorker?.status, flusher, journal: journalWriter })
+    return isDurablyStoredWith({
+        status: storingWorker?.status,
+        flusher,
+        journal: journalWriter,
+        media: heldMediaOf(liveState.value).map((item) => item.hash),
+    })
 }
 
 let watching = false
