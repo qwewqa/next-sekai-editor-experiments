@@ -1,3 +1,4 @@
+import { toWellFormed } from '../local/records/wellFormed'
 import { numberedName, type FolderId } from './folders'
 
 export type Stages = Map<StageId, StageObject>
@@ -33,6 +34,7 @@ export const addToStages = (
     const id = i++ as StageId
     // A blank name, e.g. from level data, gets a default like a missing one.
     if (!name?.trim()) name = undefined
+    else name = toWellFormed(name)
     name ??= numberedName([...stages.values()].map(({ name }) => name))
 
     stages.set(id, {

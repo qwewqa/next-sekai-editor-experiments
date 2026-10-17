@@ -11,6 +11,8 @@
  * previous, paste mapping) sees the order the tree shows.
  */
 
+import { toWellFormed } from '../local/records/wellFormed'
+
 /** Level data archetypes of folder entities, which the engine never declares. */
 export const groupFolderArchetype = 'EditorGroupFolder'
 export const stageFolderArchetype = 'EditorStageFolder'
@@ -381,7 +383,7 @@ export const addToFolders = (
 ) => {
     while (folders.has(i as FolderId) || other.has(i as FolderId)) i++
     const id = i++ as FolderId
-    folders.set(id, { name, index })
+    folders.set(id, { name: toWellFormed(name), index })
     return id
 }
 

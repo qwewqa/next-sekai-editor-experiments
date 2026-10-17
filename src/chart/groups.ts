@@ -1,4 +1,5 @@
 import en from '../i18n/en/index.json'
+import { toWellFormed } from '../local/records/wellFormed'
 import { numberedName, type FolderId } from './folders'
 
 export type Groups = Map<GroupId, GroupObject>
@@ -33,6 +34,7 @@ export const addToGroups = (
     const id = i++ as GroupId
     // A blank name, e.g. from level data, gets a default like a missing one.
     if (!name?.trim()) name = undefined
+    else name = toWellFormed(name)
     name ??= groups.size
         ? numberedName([...groups.values()].map(({ name }) => name))
         : defaultName()

@@ -89,11 +89,14 @@ export const resetState = (
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = createSessionDescriptor(descriptor)
-    resetStates({
-        isDirty,
-        name: () => i18n.value.history.initialize,
-        state: createState(chart ?? createDefaultChart(), offset ?? 0, extras),
-    })
+    resetStates(
+        {
+            isDirty,
+            name: () => i18n.value.history.initialize,
+            state: createState(chart ?? createDefaultChart(), offset ?? 0, extras),
+        },
+        chart ? 'import' : 'new',
+    )
     setLevelDataHandle(undefined)
 
     resetAutoSave()

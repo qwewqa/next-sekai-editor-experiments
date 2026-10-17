@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -10,15 +10,41 @@ import {
     wholeChartEditCount,
 } from './memoryBaseline'
 
-// Chromium only: the heap comes from CDP. Step 3a adds the "within 10% of today" assertion.
+// Chromium only: the heap comes from CDP. Memory after the edits, with storing on and every entry
+// flushed, stays within 10% of Step 0's baseline (§1.9.1, §1.9.3): 133.1 MB on the generated
+// chart and 131.8 MB on coconut, measured on `main` before any Step 3 code.
+const MB = 1_000_000
 const charts = [
-    { name: 'generated large chart', file: join('tests', 'fixtures', 'generated-large.json') },
+    {
+        name: 'generated large chart',
+        file: join('tests', 'fixtures', 'generated-large.json'),
+        baselineMb: 133.1,
+    },
     {
         name: 'coconut',
         file: join('test_level_data', 'coconut-next-sekai-24887.json'),
         optional: true,
+        baselineMb: 131.8,
     },
 ]
+
+/** Waits until storing has flushed every entry. */
+const flushed = (page: Page) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const { flusher } =
+                        await window.editorTest.appImport<typeof import('../../src/local/storing')>(
+                            '/src/local/storing.ts',
+                        )
+                    if (!flusher) return false
+                    await flusher.flush()
+                    return !flusher.hasPending && !flusher.failed
+                }),
+            { timeout: 120_000 },
+        )
+        .toBe(true)
 
 for (const chart of charts) {
     test(`memory after ${editCount} edits including ${wholeChartEditCount} whole-chart edits on the ${chart.name}`, async ({
@@ -37,10 +63,12 @@ for (const chart of charts) {
         )
         expect(notes).toBeGreaterThan(1000)
 
+        await flushed(page)
         const imported = await measureHeap(page)
         const edits = await makeEdits(page)
         expect(edits.whole).toBe(wholeChartEditCount)
         expect(edits.single).toBe(editCount - wholeChartEditCount)
+        await flushed(page)
         const heap = await measureHeap(page)
 
         const figure = { chart: chart.name, importedBytes: imported, afterEditsBytes: heap }
@@ -52,6 +80,8 @@ for (const chart of charts) {
             body: JSON.stringify({ ...figure, editsMs: edits.ms }),
             contentType: 'application/json',
         })
-        expect(heap).toBeGreaterThan(0)
+        // Within 10% of today (§1.9.3): 119.8–146.4 MB on the generated chart.
+        expect(heap / MB).toBeGreaterThanOrEqual(chart.baselineMb * 0.9)
+        expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.1)
     })
 }
