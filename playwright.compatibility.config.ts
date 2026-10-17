@@ -7,7 +7,7 @@ const previewUrl = `http://127.0.0.1:${previewPort}`
 
 export default defineConfig({
     ...config,
-    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts'],
+    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,

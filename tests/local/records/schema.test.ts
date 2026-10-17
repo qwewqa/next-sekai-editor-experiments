@@ -13,7 +13,8 @@ import {
     type RecordName,
 } from '../../../src/local/records/schema'
 import { checkNode, checkRoot, encodeSnapshot } from '../../../src/local/records/snapshot'
-import { edgeChart, goldenChart, samplePaths, sampleState, stateOf } from './charts'
+import { edgeChart, goldenChart, stateOf } from './charts'
+import { samplePaths, sampleState } from './samples'
 
 const vectors = join(import.meta.dirname, 'schema-v1')
 

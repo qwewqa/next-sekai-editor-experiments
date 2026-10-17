@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { gunzipSync } from 'node:zlib'
 import type { Chart } from '../../../src/chart'
 import type { CameraEventObject } from '../../../src/chart/events/camera'
 import type { StageMaskEventObject } from '../../../src/chart/events/stage/mask'
@@ -7,7 +5,6 @@ import type { StageStyleEventObject } from '../../../src/chart/events/stage/styl
 import type { FolderId } from '../../../src/chart/folders'
 import type { GroupId } from '../../../src/chart/groups'
 import type { NoteObject } from '../../../src/chart/note'
-import { parseLevelDataChart } from '../../../src/chart/parse/levelData'
 import type { StageId } from '../../../src/chart/stages'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { canonical } from '../../../src/local/records/canonical'
@@ -16,7 +13,7 @@ import { createState, type State, type StateExtras } from '../../../src/state'
 import type { BgmMeta } from '../../../src/state/bgm'
 import type { LevelInfo } from '../../../src/state/levelInfo'
 
-// The record tests' charts: the samples, and the golden and edge charts that freeze with v1
+// The record tests' golden and edge charts, which also load in the browser specs: they that freeze with v1
 // (§1.6.11.1). Changing the golden or edge chart changes frozen vectors: never after v0.6.0.
 
 export const group = (id: number) => id as GroupId
@@ -381,29 +378,6 @@ export const edgeHeaderVariants = (): { name: string; levelInfo: LevelInfo; bgm?
         },
     },
 ]
-
-/** Level data from a file: plain, gzipped, or a legacy auto save holding it. */
-export const readLevelData = (path: string): { bgmOffset: number; entities: never[] } => {
-    const bytes = readFileSync(path)
-    const text = bytes[0] === 0x1f ? gunzipSync(bytes).toString('utf8') : bytes.toString('utf8')
-    const data = JSON.parse(text) as Record<string, unknown>
-    const autoSave = data.autoSave as { levelData?: string } | undefined
-    if (typeof autoSave?.levelData === 'string')
-        return JSON.parse(gunzipSync(Buffer.from(autoSave.levelData, 'base64')).toString('utf8'))
-    return data as never
-}
-
-/** The sample levels every round trip runs over. */
-export const samplePaths = [
-    'test_level_data/coconut-next-sekai-24887.json',
-    'tests/fixtures/generated-large.json',
-    'tests/browser/fixtures/legacy-colors.json',
-]
-
-export const sampleState = (path: string): State => {
-    const { bgmOffset, entities } = readLevelData(path)
-    return createState(parseLevelDataChart(entities), bgmOffset)
-}
 
 /** Records as one canonical text, so a difference shows where it is. */
 export const recordsText = ({ header, kinds }: SnapshotRecords) =>

@@ -11,7 +11,8 @@ import { createSlideId } from '../../../src/state/entities/slides'
 import { addNote } from '../../../src/state/mutations/slides/note'
 import { createStore } from '../../../src/state/store/creates'
 import { createTransaction } from '../../../src/state/transaction'
-import { goldenChart, note, readLevelData, samplePaths, stateOf } from './charts'
+import { goldenChart, note, stateOf } from './charts'
+import { readLevelData, samplePaths } from './samples'
 
 const serialize = (state: State) => {
     const data = serializeToLevelData(

@@ -104,10 +104,12 @@ test('all note colors and connector families survive level data round trips and 
             previewStyles: preview.connectors.map((connector) => connector.style),
         }
     })
-    expect(result.actual).toEqual(result.expected)
+    // Level data lists slides in the records' order (§1.6.11.6), not the source's.
+    const sorted = (list: unknown[]) => list.map((item) => JSON.stringify(item)).sort()
+    expect(sorted(result.actual)).toEqual(sorted(result.expected))
     expect(result.second).toEqual(result.first)
     expect(result.legacyDefault).toBe(true)
-    expect(result.previewStyles).toEqual(result.expected.map((note) => note.connectorStyle))
+    expect(result.previewStyles).toEqual(result.actual.map((note) => note.connectorStyle))
 })
 
 test('color controls commit, undo, and persist in creation presets', async ({ page }) => {
@@ -374,12 +376,14 @@ for (const command of ['copy', 'cut'] as const) {
             .poll(() =>
                 page.evaluate(async () => {
                     const { clipboardEntry } = await import('/src/clipboard/index.ts')
+                    // In the records' order (§1.6.11.6), so sorted here.
                     return clipboardEntry.value?.data?.chart.slides
                         .flat()
                         .map((note) => note.connectorStyle)
+                        .sort()
                 }),
             )
-            .toEqual(['default', 'default', 'green', 'green', 'blue', 'blue'])
+            .toEqual(['blue', 'blue', 'default', 'default', 'green', 'green'])
         const clipboard = await page.evaluate(
             async () =>
                 JSON.parse(await navigator.clipboard.readText()) as {

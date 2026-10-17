@@ -26,10 +26,9 @@ import {
     mediaHash,
     note,
     recordsText,
-    samplePaths,
-    sampleState,
     stateOf,
 } from './charts'
+import { samplePaths, sampleState } from './samples'
 
 /** A state's level data and editor metadata, as Export and the auto save write them. */
 const levelData = (state: State) => {
