@@ -474,6 +474,7 @@
       "resetDefault": "重置为默认",
       "stored": "已存储：{0} 项，{1}",
       "storedEmpty": "没有已存储的项目",
+      "storedUnavailable": "无法打开此浏览器的存储空间，因此无法读取已存储的项目。",
       "noun": {
         "skin": "皮肤",
         "particle": "粒子",
@@ -486,6 +487,7 @@
       },
       "reason": {
         "fileGone": "{0}文件已不再存储在此浏览器中。",
+        "storageUnavailable": "无法打开此浏览器的存储空间，因此无法读取已存储的{0}。",
         "serverFailed": "无法从 {1} 重新下载{0}。",
         "invalid": "无法读取已存储的{0}。",
         "defaultFailed": "无法加载默认项。",
@@ -503,6 +505,7 @@
       "remove": "移除",
       "inUse": "使用中",
       "removeInUse": "移除“{0}”？将改用默认项。",
+      "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择",
       "noneInFile": "此文件中没有{0}。",
       "rights": "您加载的项目仅存储在此浏览器中。请只使用您有权使用的项目。",

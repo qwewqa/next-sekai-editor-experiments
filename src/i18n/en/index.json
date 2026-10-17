@@ -474,6 +474,7 @@
             "resetDefault": "Reset to Default",
             "stored": "Stored: {0} item, {1}|Stored: {0} items, {1}",
             "storedEmpty": "No stored items",
+            "storedUnavailable": "Stored items cannot be read while this browser’s storage cannot be opened.",
             "noun": {
                 "skin": "skin",
                 "particle": "particle",
@@ -486,6 +487,7 @@
             },
             "reason": {
                 "fileGone": "The {0} file is no longer stored in this browser.",
+                "storageUnavailable": "The stored {0} cannot be read while this browser’s storage cannot be opened.",
                 "serverFailed": "The {0} could not be downloaded again from {1}.",
                 "invalid": "The stored {0} could not be read.",
                 "defaultFailed": "Default could not be loaded.",
@@ -503,6 +505,7 @@
             "remove": "Remove",
             "inUse": "In use",
             "removeInUse": "Remove \"{0}\"? Default is used instead.",
+            "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again",
             "noneInFile": "This file has no {0}.",
             "rights": "Items you load are stored in this browser only. Use only items you are allowed to use.",

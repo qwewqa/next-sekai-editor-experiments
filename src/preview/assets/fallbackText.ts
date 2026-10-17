@@ -25,6 +25,8 @@ export const reasonText = (fallback: FallbackState) => {
         case 'fileGone':
             // Stage 2 adds the on-this-device wording, chosen by the browserStorage capability.
             return interpolateRaw(reason.fileGone, noun)
+        case 'storageUnavailable':
+            return interpolateRaw(reason.storageUnavailable, noun)
         case 'serverFailed':
             return interpolateRaw(reason.serverFailed, noun, fallback.origin)
         case 'invalid':

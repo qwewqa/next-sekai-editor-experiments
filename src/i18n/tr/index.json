@@ -474,6 +474,7 @@
       "resetDefault": "Varsayılana Sıfırla",
       "stored": "Saklanan: {0} öğe, {1}",
       "storedEmpty": "Saklanan öğe yok",
+      "storedUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan öğeler okunamıyor.",
       "noun": {
         "skin": "görünüm",
         "particle": "parçacık",
@@ -486,6 +487,7 @@
       },
       "reason": {
         "fileGone": "{0} dosyası artık bu tarayıcıda saklanmıyor.",
+        "storageUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan {0} okunamıyor.",
         "serverFailed": "{0}, {1} adresinden yeniden indirilemedi.",
         "invalid": "Saklanan {0} okunamadı.",
         "defaultFailed": "Varsayılan yüklenemedi.",
@@ -503,6 +505,7 @@
       "remove": "Kaldır",
       "inUse": "Kullanımda",
       "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine varsayılan kullanılır.",
+      "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Yeniden Seç",
       "noneInFile": "Bu dosyada {0} yok.",
       "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",

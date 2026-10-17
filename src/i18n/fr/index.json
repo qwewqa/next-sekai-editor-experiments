@@ -474,6 +474,7 @@
       "resetDefault": "Rétablir par défaut",
       "stored": "Stocké : {0} élément, {1}|Stocké : {0} éléments, {1}",
       "storedEmpty": "Aucun élément stocké",
+      "storedUnavailable": "Les éléments stockés ne peuvent pas être lus tant que le stockage du navigateur ne peut pas être ouvert.",
       "noun": {
         "skin": "skin",
         "particle": "particule",
@@ -486,6 +487,7 @@
       },
       "reason": {
         "fileGone": "Le fichier {0} n’est plus stocké dans ce navigateur.",
+        "storageUnavailable": "L’élément stocké ({0}) ne peut pas être lu tant que le stockage du navigateur ne peut pas être ouvert.",
         "serverFailed": "Impossible de télécharger à nouveau l’élément ({0}) depuis {1}.",
         "invalid": "L’élément stocké ({0}) n’a pas pu être lu.",
         "defaultFailed": "L’élément par défaut n’a pas pu être chargé.",
@@ -503,6 +505,7 @@
       "remove": "Retirer",
       "inUse": "Utilisé",
       "removeInUse": "Retirer \"{0}\" ? L’élément par défaut est utilisé à la place.",
+      "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
       "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur. N’utilisez que des éléments que vous avez le droit d’utiliser.",

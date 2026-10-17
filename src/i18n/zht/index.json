@@ -474,6 +474,7 @@
       "resetDefault": "重設為預設",
       "stored": "已儲存：{0} 項，{1}",
       "storedEmpty": "沒有已儲存的項目",
+      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的項目。",
       "noun": {
         "skin": "外觀",
         "particle": "粒子",
@@ -486,6 +487,7 @@
       },
       "reason": {
         "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
+        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已儲存的{0}。",
         "defaultFailed": "無法載入預設項。",
@@ -503,6 +505,7 @@
       "remove": "移除",
       "inUse": "使用中",
       "removeInUse": "移除 \"{0}\"？將改用預設項。",
+      "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
       "rights": "您載入的項目僅儲存在此瀏覽器中。請只使用您有權使用的項目。",
