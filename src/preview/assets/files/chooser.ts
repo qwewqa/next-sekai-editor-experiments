@@ -4,10 +4,10 @@ import type { AssetChoice, AssetType } from '../types'
 import type { DecodeImage } from './decodeImage'
 import { AssetImportError } from './errors'
 import { readImageSize } from './image'
-import { importItem } from './importer'
+import { importItem, sha256Hex } from './importer'
 import { LIMITS } from './limits'
 import { openSourcePackage, type ListedItem, type SourcePackage } from './package'
-import type { UserAssetMeta, UserAssetStore } from './store'
+import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from './store'
 
 // The chooser's From a File view (Part 2, 2.5.2, 2.6) without its markup: pick a package, list the
 // items of one type, offer the other types' items of the same name, and on Use check, repack and
@@ -51,13 +51,22 @@ export const isServerOrigin = (origin: string) => /^https?:\/\//i.test(origin)
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
+/** Storing failed, or what was stored did not read back as written. */
+class StoreFailed extends Error {
+    override name = 'StoreFailed'
+}
+
 export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
-    // Whatever went wrong reads as a problem with the package, or with storing it.
+    // Whatever went wrong reads as a problem with the package, with reading the file (moved or
+    // changed since it was picked), or with storing it.
     const describe = (failure: unknown) =>
         deps.describe(
             failure instanceof AssetImportError
                 ? failure
-                : new AssetImportError('storeFailed', { type }),
+                : new AssetImportError(
+                      failure instanceof StoreFailed ? 'storeFailed' : 'fileUnreadable',
+                      { type },
+                  ),
         )
 
     const open = shallowRef(false)
@@ -66,7 +75,10 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     const items = shallowRef<ListedItem[]>([])
     const selected = shallowRef<string | undefined>()
     const also = shallowRef<AlsoOption[]>([])
+    /** Why the picked file could not be listed: shown under Select File…. */
     const error = shallowRef<string | undefined>()
+    /** Why Use failed: shown next to Use. */
+    const useError = shallowRef<string | undefined>()
     /** Object URLs of the listed items' thumbnails, by item name. */
     const thumbnails = shallowRef<ReadonlyMap<string, string>>(new Map())
 
@@ -93,6 +105,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         selected.value = undefined
         also.value = []
         error.value = undefined
+        useError.value = undefined
     }
 
     /** The thumbnails of the first items, as small images checked by their headers. */
@@ -132,7 +145,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             if (other === type) continue
             try {
                 let list = otherLists.get(other)
-                if (!list) otherLists.set(other, (list = source.list(other)))
+                if (!list) otherLists.set(other, (list = source.list(other, controller.signal)))
                 const match = (await list).find((item) => item.name === name)
                 if (match) found.push({ type: other, name, title: match.title, ticked: false })
             } catch {
@@ -158,7 +171,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         phase.value = 'reading'
         try {
             const source = await openSourcePackage(file)
-            const listed = await source.list(type)
+            const listed = await source.list(type, controller.signal)
             if (mine !== generation) return
             pkg = source
             items.value = listed
@@ -167,10 +180,39 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // With exactly one item, there is nothing to choose.
             if (listed.length === 1 && listed[0]) select(listed[0].name)
         } catch (failure) {
-            if (mine !== generation) return
+            if (mine !== generation || isAbort(failure)) return
             phase.value = 'idle'
             error.value = describe(failure)
         }
+    }
+
+    /** Removes what a Use newly stored, when it is not to be used after all. */
+    const rollBack = async (keys: string[]) => {
+        await Promise.allSettled(keys.map((key) => deps.store.remove(key)))
+    }
+
+    /** Stores the records together and reads each back, as media is, before it is used. */
+    const store = async (records: UserAssetRecord[]) => {
+        let stored
+        try {
+            stored = await deps.store.putMany(records)
+        } catch (error) {
+            throw new StoreFailed('The packages could not be stored', { cause: error })
+        }
+        try {
+            for (const record of records) {
+                const back = await deps.store.get(record.key)
+                if (
+                    back?.bytes.size !== record.size ||
+                    (await sha256Hex(back.bytes)) !== record.key
+                )
+                    throw new Error(`The package ${record.key} did not read back as written`)
+            }
+        } catch (error) {
+            await rollBack(stored.added)
+            throw new StoreFailed('The packages did not read back', { cause: error })
+        }
+        return stored
     }
 
     const toggle = (other: AssetType, ticked: boolean) => {
@@ -193,9 +235,9 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                 .map((option) => ({ type: option.type, name: option.name })),
         ]
         phase.value = 'working'
-        error.value = undefined
+        useError.value = undefined
         try {
-            const records = []
+            const records: UserAssetRecord[] = []
             for (const entry of wanted)
                 records.push(
                     await importItem(source, entry.type, entry.name, {
@@ -207,13 +249,15 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                         now: deps.now ?? Date.now,
                     }),
                 )
-            // Checked all: only now is anything stored, so a bad item stores nothing.
-            const metas: UserAssetMeta[] = []
-            for (const record of records) {
-                if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-                metas.push(await deps.store.put(record))
+            // Checked all: only now is anything stored, all in one transaction, so a bad item
+            // stores nothing.
+            if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+            const { metas, added } = await store(records)
+            // Closed or cancelled while storing: what this Use added goes again.
+            if (mine !== generation) {
+                await rollBack(added)
+                return
             }
-            if (mine !== generation) return
             deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, storedChoice(meta)])))
             deps.onStored?.(metas)
             reset()
@@ -222,7 +266,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // A cancel or a closed dialog is not a failure.
             if (mine !== generation || isAbort(failure)) return
             phase.value = 'listed'
-            error.value = describe(failure)
+            useError.value = describe(failure)
             // A refused package is the file's doing, and the message says so; the rest is ours.
             if (!(failure instanceof AssetImportError))
                 console.error('Could not store the preview asset:', failure)
@@ -238,6 +282,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         selected,
         also,
         error,
+        useError,
         thumbnails,
         /** Opens the chooser with nothing picked. */
         show: () => {

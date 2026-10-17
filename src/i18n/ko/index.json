@@ -525,6 +525,7 @@
       },
       "import": {
         "damaged": "이 파일이 손상되었거나 Sonolus 패키지가 아닙니다.",
+        "fileUnreadable": "이 파일을 읽을 수 없습니다.",
         "zip64": "이 파일은 ZIP64를 사용하며 편집기에서 읽을 수 없습니다.",
         "fileTooLarge": "이 파일이 {0}보다 큽니다.",
         "tooManyEntries": "이 파일에 항목이 {0}개를 넘습니다.",

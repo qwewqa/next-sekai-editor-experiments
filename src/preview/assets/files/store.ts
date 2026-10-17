@@ -1,14 +1,21 @@
 import { shallowRef } from 'vue'
-import { metaOf, type UserAssetMeta, type UserAssetRecord } from '../../../local/userAssets'
+import {
+    metaOf,
+    type UserAssetMeta,
+    type UserAssetRecord,
+    type UserAssetsPut,
+} from '../../../local/userAssets'
 import type { StorageStatus } from '../../../local/worker/core'
 
-export type { UserAssetMeta, UserAssetRecord }
+export type { UserAssetMeta, UserAssetRecord, UserAssetsPut }
 
 /** The stored preview packages (`userAssets`, Part 1 §1.5.8): the storage worker's, or a fake. */
 export type UserAssetStore = {
     list: () => Promise<UserAssetMeta[]>
     get: (key: string) => Promise<UserAssetRecord | undefined>
     put: (record: UserAssetRecord) => Promise<UserAssetMeta>
+    /** Stores several packages together: all of them, or none. */
+    putMany: (records: UserAssetRecord[]) => Promise<UserAssetsPut>
     /** Marks a package as used now. */
     touch: (key: string) => Promise<void>
     remove: (key: string) => Promise<void>
@@ -24,15 +31,22 @@ export class StoreUnavailableError extends Error {
 /** A store in memory, for tests and for a page whose storage did not start. */
 export const createMemoryStore = (now: () => number = Date.now): UserAssetStore => {
     const rows = new Map<string, UserAssetRecord>()
+    const putOne = (record: UserAssetRecord) => {
+        const existing = rows.get(record.key)
+        const row = existing ? { ...record, addedAt: existing.addedAt } : record
+        rows.set(row.key, row)
+        return metaOf(row)
+    }
     return {
         list: () =>
             Promise.resolve([...rows.values()].map(metaOf).sort((a, b) => b.addedAt - a.addedAt)),
         get: (key) => Promise.resolve(rows.get(key)),
-        put: (record) => {
-            const existing = rows.get(record.key)
-            const row = existing ? { ...record, addedAt: existing.addedAt } : record
-            rows.set(row.key, row)
-            return Promise.resolve(metaOf(row))
+        put: (record) => Promise.resolve(putOne(record)),
+        putMany: (records) => {
+            const added = [
+                ...new Set(records.map((record) => record.key).filter((key) => !rows.has(key))),
+            ]
+            return Promise.resolve({ metas: records.map(putOne), added })
         },
         touch: (key) => {
             const row = rows.get(key)
@@ -75,6 +89,7 @@ export const createWorkerStore = (worker: () => Promise<StoreWorker>): UserAsset
         },
         // A large package may take a while to reach the disk.
         put: (record) => call<UserAssetMeta>('userAssetPut', record, { bulk: true }),
+        putMany: (records) => call<UserAssetsPut>('userAssetPutMany', records, { bulk: true }),
         touch: async (key) => {
             await call('userAssetTouch', { key, time: Date.now() })
         },

@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { CHANNEL_NAME } from '../../src/local/channel'
+import { MemoryKv } from '../../src/local/kv/memory'
 import { openLocalData } from '../../src/local/testing/db'
 import { createWorld } from '../../src/local/testing/world'
 import {
     getUserAsset,
     listUserAssets,
     putUserAsset,
+    putUserAssets,
     removeUserAsset,
     touchUserAsset,
     USER_ASSETS,
     type UserAssetRecord,
 } from '../../src/local/userAssets'
+import { StorageCore, type TestFlags } from '../../src/local/worker/core'
+import { userAssetHandlers } from '../../src/local/worker/userAssets'
 
 // The stored preview packages (Part 1 §1.5.8): put, list without bytes, get with bytes, touch, remove.
 
@@ -87,5 +92,53 @@ test('touch marks a package used; remove deletes it', async () => {
     assert.deepEqual(await run('readonly', listUserAssets), [])
     // Removing what is not there is not an error.
     await run('readwrite', (tx) => removeUserAsset(tx, 'a'))
+    await world.idle()
+})
+
+test('several packages are stored in one write, and say which are new', async () => {
+    const { world, run } = await setup()
+    await run('readwrite', (tx) => putUserAsset(tx, record('a')))
+    const put = await run('readwrite', (tx) =>
+        putUserAssets(tx, [record('a'), record('b'), record('b')]),
+    )
+    assert.deepEqual(put.added, ['b'])
+    assert.equal(put.metas.length, 3)
+    // A failure partway leaves none of them: the write is one transaction.
+    await assert.rejects(
+        run('readwrite', async (tx) => {
+            await putUserAssets(tx, [record('c')])
+            throw new Error('The second package did not fit')
+        }),
+    )
+    assert.deepEqual((await run('readonly', listUserAssets)).map((item) => item.key).sort(), [
+        'a',
+        'b',
+    ])
+    await world.idle()
+})
+
+test('a package that does not fit does not pause storing for the history', async () => {
+    const world = createWorld({ seed: 2 })
+    const tab = world.tab('a')
+    const flags: TestFlags = {}
+    const fallback = new MemoryKv(world.scheduler)
+    const core = new StorageCore({
+        factory: tab.kv,
+        memory: () => fallback.factory(tab.actor),
+        channel: tab.channel(CHANNEL_NAME),
+        locks: tab.locks,
+        appVersion: '0.6.0',
+        randomId: () => 'id',
+        flags,
+        blockedMs: 40,
+        upgradeMs: 80,
+        maintWaitMs: 40,
+    })
+    await tab.run(() => core.start())
+    const handlers = userAssetHandlers({ core, test: true, emit: () => undefined })
+    flags.forceQuota = true
+    await assert.rejects(tab.run(() => handlers.userAssetPutMany([record('a')])))
+    await assert.rejects(tab.run(() => handlers.userAssetPut(record('a'))))
+    assert.deepEqual(core.status, { mode: 'stored' })
     await world.idle()
 })

@@ -525,6 +525,7 @@
       },
       "import": {
         "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
+        "fileUnreadable": "Bu dosya okunamadı.",
         "zip64": "Bu dosya, düzenleyicinin okuyamadığı ZIP64 biçimini kullanıyor.",
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",

@@ -36,6 +36,7 @@ export const formatImportMessage = (
         case 'damaged':
         case 'zip64':
         case 'badName':
+        case 'fileUnreadable':
         case 'storeFailed':
             return text[code]
         case 'fileTooLarge':

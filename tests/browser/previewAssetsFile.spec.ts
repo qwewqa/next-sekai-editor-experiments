@@ -79,7 +79,8 @@ const choices = (page: Page) =>
 
 const shot = async (page: Page, name: string, target?: Locator) => {
     if (!shotsDir) return
-    // Let the thumbnails and the fonts settle.
+    // Let the thumbnails and the fonts settle, with no hover left on what was clicked.
+    await page.mouse.move(0, 0)
     await page.waitForTimeout(400)
     await (target ?? page).screenshot({ path: `${shotsDir}/${name}.png` })
 }
@@ -184,6 +185,15 @@ const fileChoice = {
     title: 'Neon Skin',
     author: 'Someone',
     origin: 'neon.scp',
+}
+
+/** A background choice whose package is not stored. */
+const nightSky = {
+    ...fileChoice,
+    key: 'def',
+    name: 'night',
+    title: 'Night Sky',
+    origin: 'night.scp',
 }
 
 const jsonOf = <T>(gz: Uint8Array) => JSON.parse(gunzipSync(gz).toString()) as T
@@ -572,6 +582,30 @@ test.describe('a stored item that is gone', () => {
     })
 })
 
+test.describe('storage that cannot be opened', () => {
+    test('a stored choice cannot be read, which is not gone: no Choose Again, and the setting stays', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => localStorage.setItem('nse.test.noStorage', '1'))
+        await start(page, { previewAssets: { skin: fileChoice } })
+        const reason =
+            'The stored skin cannot be read while this browser’s storage cannot be opened.'
+        await expect(fallbackLine(page, 'skin')).toContainText(`Skin: using Default. ${reason}`)
+        await open(page, 'skin')
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            `Using Default. ${reason}`,
+        )
+        await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
+        expect((await choices(page)).skin).toEqual(fileChoice)
+
+        await tabOf(page, 'stored').click()
+        await expect(dialog(page).locator('[data-stored-unavailable]')).toHaveText(
+            'Stored items cannot be read while this browser’s storage cannot be opened.',
+        )
+        await expect(dialog(page).locator('[data-stored-empty]')).toHaveCount(0)
+    })
+})
+
 test.describe('the Stored tab', () => {
     test('lists the items with their sizes, marks one in use, and removes after asking', async ({
         page,
@@ -897,7 +931,7 @@ test.describe('looks', () => {
             test(`the chooser and the lists, ${size}, in the ${theme} theme`, async ({ page }) => {
                 test.setTimeout(90_000)
                 await page.setViewportSize(viewport)
-                await start(page, { previewAssets: { background: fileChoice } })
+                await start(page)
                 await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
                 await open(page, 'skin')
                 const name = (state: string) => `${state}-${size}-${theme}`
@@ -906,6 +940,28 @@ test.describe('looks', () => {
                 await shot(page, name('sources-start'), frame)
                 await choose(page)
                 await shot(page, name('chooser-empty'), frame)
+
+                // Reading a file, held so the progress shows.
+                await page.evaluate(() => {
+                    const original = Blob.prototype.arrayBuffer
+                    Blob.prototype.arrayBuffer = async function (this: Blob) {
+                        await new Promise((resolve) => setTimeout(resolve, 60_000))
+                        return original.call(this)
+                    }
+                    ;(window as unknown as { restoreBlob: () => void }).restoreBlob = () => {
+                        Blob.prototype.arrayBuffer = original
+                    }
+                })
+                await pick(page, 'slow.scp', await variants('skin', [{ name: 'slow' }]))
+                await expect(chooser(page).locator('[data-chooser-progress]')).toHaveText(
+                    /Reading file…/,
+                )
+                await shot(page, name('chooser-reading'), frame)
+                await page.evaluate(() =>
+                    (window as unknown as { restoreBlob: () => void }).restoreBlob(),
+                )
+                await chooser(page).locator('[data-chooser-cancel]').click()
+                await choose(page)
 
                 // A lone item with the other types of its name offered.
                 await pick(
@@ -941,6 +997,11 @@ test.describe('looks', () => {
                 )
                 await expect(chooser(page).locator('[data-chooser-item]')).toHaveCount(3)
                 await shot(page, name('chooser-listed-many'), frame)
+                // Using the first leaves Neon Skin stored but not in use.
+                await chooser(page).locator('[data-chooser-item="a"]').click()
+                await chooser(page).locator('[data-chooser-use]').click()
+                await expect(chooser(page)).toHaveCount(0)
+                await choose(page)
 
                 await pick(page, 'particles.scp', builtinBytes('particle'))
                 await expect(chooser(page).locator('[data-chooser-empty]')).toBeVisible()
@@ -975,20 +1036,27 @@ test.describe('looks', () => {
                 await chooser(page).locator('[data-chooser-cancel]').click()
 
                 // A gone file under its row, with Choose Again.
+                await page.evaluate((choice) => {
+                    const settings = window.editorTest.settings
+                    settings.previewAssets = {
+                        ...settings.previewAssets,
+                        background: choice as unknown as typeof settings.previewAssets.background,
+                    }
+                }, nightSky)
                 await tabOf(page, 'background').click()
                 await expect(dialog(page).locator('[data-asset-choose-again]')).toBeVisible()
                 await shot(page, name('sources-file-gone'), frame)
 
                 await tabOf(page, 'stored').click()
-                await expect(dialog(page).locator('[data-stored-item]')).toHaveCount(2)
+                await expect(dialog(page).locator('[data-stored-item]')).toHaveCount(3)
                 await shot(page, name('stored'), frame)
                 await dialog(page)
                     .locator('[data-stored-item]')
-                    .filter({ hasText: 'Neon Skin' })
+                    .filter({ hasText: 'First Skin' })
                     .locator('[data-stored-remove]')
                     .click()
                 await expect(page.locator('dialog[open]').last()).toContainText(
-                    'Remove "Neon Skin"?',
+                    'Remove "First Skin"?',
                 )
                 await shot(page, name('stored-remove'), page.locator('dialog[open]').last())
             })

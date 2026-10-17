@@ -525,6 +525,7 @@
       },
       "import": {
         "damaged": "此檔案已損毀，或不是 Sonolus 套件。",
+        "fileUnreadable": "無法讀取此檔案。",
         "zip64": "此檔案使用 ZIP64，編輯器無法讀取。",
         "fileTooLarge": "此檔案超過 {0}。",
         "tooManyEntries": "此檔案的條目超過 {0} 個。",

@@ -7,6 +7,8 @@ import {
     formatImportMessage,
     type ImportStrings,
 } from '../../../src/preview/assets/files/importMessage'
+import { importItem } from '../../../src/preview/assets/files/importer'
+import { openSourcePackage } from '../../../src/preview/assets/files/package'
 import { createMemoryStore } from '../../../src/preview/assets/files/store'
 import type { AssetChoice, AssetType } from '../../../src/preview/assets/types'
 import {
@@ -49,6 +51,17 @@ const setup = () => {
 }
 
 const named = (name: string, title: string) => ({ name, title })
+
+/** The record an import of a package's item makes. */
+const recordOf = async (bytes: Uint8Array) =>
+    importItem(await openSourcePackage(blobOf(bytes)), 'background', 'fixture', {
+        maxTextureSide: 4096,
+        decodeAudio: decodeTestAudio,
+        decodeImage: decodeTestImage,
+        signal: new AbortController().signal,
+        origin: 'before.scp',
+        now: () => 1,
+    })
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 
 const collection = () =>
@@ -208,9 +221,10 @@ test('a ticked item that fails stores nothing, and the chooser says why and stay
     assert.equal(chooser.open.value, true)
     assert.equal(chooser.phase.value, 'listed')
     assert.equal(
-        chooser.error.value,
+        chooser.useError.value,
         'This file’s sound effects audio has no usable #PERFECT clip.',
     )
+    assert.equal(chooser.error.value, undefined)
 })
 
 test('a file that is not a package says so and lists nothing', async () => {
@@ -223,26 +237,142 @@ test('a file that is not a package says so and lists nothing', async () => {
 })
 
 test('cancelling while Use is working stores and applies nothing', async () => {
-    const { store, applied, deps } = setup()
+    const { applied, deps } = setup()
     const slow = createMemoryStore()
+    let cancel = () => {}
     const chooser = createAssetChooser('skin', {
         ...deps,
         store: {
             ...slow,
-            put: async (record) => {
+            // The dialog closes while the packages are being written: they are written anyway.
+            putMany: async (records) => {
+                cancel()
                 await new Promise((resolve) => setTimeout(resolve, 30))
-                return slow.put(record)
+                return slow.putMany(records)
+            },
+        },
+    })
+    cancel = () => chooser.cancel()
+    await chooser.pick(blobOf(collection()), 'neon.scp')
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+    assert.equal(chooser.open.value, false)
+    assert.deepEqual(applied, [])
+    // What this Use wrote is removed again.
+    assert.deepEqual(await slow.list(), [])
+})
+
+test('Use stores the ticked items in one write, so a failure stores none of them', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const { applied, deps } = setup()
+    const memory = createMemoryStore()
+    let writes = 0
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        store: {
+            ...memory,
+            put: () => Promise.reject(new Error('one at a time is not all or nothing')),
+            putMany: (records) => {
+                writes++
+                assert.equal(records.length, 2)
+                return Promise.reject(new DOMException('Quota exceeded', 'QuotaExceededError'))
             },
         },
     })
     await chooser.pick(blobOf(collection()), 'neon.scp')
-    const using = chooser.use()
-    assert.equal(chooser.phase.value, 'working')
-    chooser.cancel()
-    await using
-    assert.equal(chooser.open.value, false)
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+    assert.equal(writes, 1)
+    assert.deepEqual(await memory.list(), [])
     assert.deepEqual(applied, [])
-    assert.deepEqual(await store.list(), [])
+    assert.equal(chooser.useError.value, 'This item could not be stored.')
+})
+
+test('a package that does not read back as written is not used, and is removed', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const { applied, deps } = setup()
+    const memory = createMemoryStore()
+    // A store that loses the end of what it writes.
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        store: {
+            ...memory,
+            putMany: (records) =>
+                memory.putMany(
+                    records.map((record) => ({ ...record, bytes: record.bytes.slice(0, 10) })),
+                ),
+        },
+    })
+    // A package already stored before this Use stays.
+    const before = await recordOf(scp('background'))
+    await memory.putMany([before])
+    await chooser.pick(blobOf(collection()), 'neon.scp')
+    await settle()
+    chooser.toggle('particle', true)
+    await chooser.use()
+    assert.deepEqual(applied, [])
+    assert.equal(chooser.useError.value, 'This item could not be stored.')
+    assert.deepEqual(
+        (await memory.list()).map((meta) => meta.key),
+        [before.key],
+    )
+})
+
+test('a file that cannot be read says so, not that storing failed', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const { deps } = setup()
+    const chooser = createAssetChooser('skin', deps)
+    const bytes = collection()
+    // A file moved or rewritten after it was picked.
+    const unreadable = {
+        size: bytes.length,
+        slice: () => ({
+            arrayBuffer: () =>
+                Promise.reject(new DOMException('The file could not be read', 'NotReadableError')),
+        }),
+    } as unknown as Blob
+    await chooser.pick(unreadable, 'neon.scp')
+    assert.equal(chooser.error.value, 'This file could not be read.')
+
+    // And at Use, once it was listed.
+    let readable = true
+    const changing = blobOf(bytes)
+    const flaky = {
+        size: changing.size,
+        slice: (start?: number, end?: number) =>
+            readable
+                ? changing.slice(start, end)
+                : {
+                      arrayBuffer: () =>
+                          Promise.reject(new DOMException('Changed', 'NotReadableError')),
+                  },
+    } as unknown as Blob
+    await chooser.pick(flaky, 'neon.scp')
+    readable = false
+    await chooser.use()
+    assert.equal(chooser.useError.value, 'This file could not be read.')
+})
+
+test('listing a package without a list stops at a budget, and when the chooser closes', async () => {
+    const { deps } = setup()
+    // 40 items whose details entries are 1 MB each: more than the 16 MB read to list them.
+    const padding = 'x'.repeat(1_000_000)
+    const entries = Array.from({ length: 40 }, (_, i) => ({
+        name: `sonolus/skins/item${i}`,
+        data: utf8(JSON.stringify({ item: { name: `item${i}`, title: `Item ${i}` }, padding })),
+    }))
+    const bytes = rawZip(entries)
+    const chooser = createAssetChooser('skin', deps)
+    await chooser.pick(blobOf(bytes), 'big.scp')
+    assert.ok(chooser.items.value.length < 20, `${chooser.items.value.length} listed`)
+
+    // Closing stops the read between entries.
+    const pkg = await openSourcePackage(blobOf(bytes))
+    const controller = new AbortController()
+    controller.abort()
+    await assert.rejects(pkg.list('skin', controller.signal), { name: 'AbortError' })
 })
 
 test('a store that refuses is reported as a store problem', async (t) => {
@@ -252,11 +382,11 @@ test('a store that refuses is reported as a store problem', async (t) => {
         ...deps,
         store: {
             ...createMemoryStore(),
-            put: () => Promise.reject(new Error('Storing is read-only')),
+            putMany: () => Promise.reject(new Error('Storing is read-only')),
         },
     })
     await chooser.pick(blobOf(collection()), 'neon.scp')
     await chooser.use()
-    assert.equal(chooser.error.value, 'This item could not be stored.')
+    assert.equal(chooser.useError.value, 'This item could not be stored.')
     assert.equal(chooser.phase.value, 'listed')
 })

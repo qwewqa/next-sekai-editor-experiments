@@ -82,8 +82,11 @@ export type SourcePackage = {
     json: (path: string, type: AssetType, part: ImportPart) => Promise<unknown>
     /** The path an SRL names in this package, if it names one. */
     resolve: (srl: Srl) => string | undefined
-    /** The items of a type: the list, else the details entries. */
-    list: (type: AssetType) => Promise<ListedItem[]>
+    /**
+     * The items of a type: the list, else the details entries, as many as 16 MB of them hold.
+     * The signal stops a long read between entries.
+     */
+    list: (type: AssetType, signal?: AbortSignal) => Promise<ListedItem[]>
     /** One item's details (the item object), or undefined when the package has none by that name. */
     details: (type: AssetType, name: string) => Promise<Record<string, unknown> | undefined>
 }
@@ -195,7 +198,7 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         return
     }
 
-    const list = async (type: AssetType) => {
+    const list = async (type: AssetType, signal?: AbortSignal) => {
         const category = categoryOf[type]
         const raw = await json(`sonolus/${category}/list`, type, 'list')
         if (raw !== undefined) {
@@ -206,9 +209,13 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
                 .map(toListed)
                 .filter((item): item is ListedItem => item !== undefined)
         }
-        // No list: the detail entries are the items.
+        // No list: the detail entries are the items, up to what a budget of their JSON holds.
         const listed: ListedItem[] = []
+        let budget = LIMITS.listing
         for (const name of names(type).slice(0, LIMITS.listed)) {
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+            budget -= reader.get(`sonolus/${category}/${name}`)?.size ?? 0
+            if (budget < 0) break
             const item = toListed(await details(type, name))
             if (item) listed.push(item)
         }

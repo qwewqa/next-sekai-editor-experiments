@@ -28,6 +28,7 @@ export type ImportErrorCode =
     | 'noPerfect'
     | 'audioLength'
     | 'packageTooLarge'
+    | 'fileUnreadable'
     | 'storeFailed'
 
 export type ImportDetail = {
