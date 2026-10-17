@@ -1,0 +1,24 @@
+import { choiceKey } from './choice'
+import type { AssetChoice, AssetStatus, AssetType } from './types'
+
+/** The reason sentence a fallback gets (Part 2, 2.6's `reason.*`): the panel and the dialog share it. */
+export type ReasonKey = 'fileGone' | 'serverFailed' | 'invalid' | 'defaultFailed' | 'builtinFailed'
+
+/** Why the chosen source was not used, or undefined when it was. */
+export const reasonKey = (choice: AssetChoice, status: AssetStatus): ReasonKey | undefined => {
+    if (!status.reason) return
+    switch (choice.source) {
+        case 'default':
+            return 'defaultFailed'
+        case 'builtin':
+            return 'builtinFailed'
+        case 'file':
+            return status.reason === 'corrupt' ? 'invalid' : 'fileGone'
+        case 'server':
+            return status.reason === 'corrupt' ? 'invalid' : 'serverFailed'
+    }
+}
+
+/** What a dismissed fallback notice is remembered by: the type, the choice and the reason. */
+export const noticeKey = (type: AssetType, choice: AssetChoice, reason: ReasonKey) =>
+    `${type}|${choiceKey(choice)}|${reason}`

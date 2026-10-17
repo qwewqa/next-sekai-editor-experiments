@@ -6,6 +6,9 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { injectPolicy, webPolicy } from '../../scripts/csp.mjs'
 import {
+    builtinFiles,
+    builtinServerFiles,
+    builtinTypes,
     checkRelease,
     lyonNoticeFiles,
     noticeFiles,
@@ -55,6 +58,19 @@ async function write(directory, file, content) {
     await writeFile(target, content)
 }
 
+// The Built-in packages and the server folder the release makes from them.
+async function builtinRelease() {
+    const packages = new Map()
+    const files = new Map()
+    for (const [index, file] of builtinFiles.entries()) {
+        const bytes = await readFile(join(root, 'public', file))
+        packages.set(builtinTypes[index], bytes)
+        files.set(file, bytes)
+    }
+    for (const [file, bytes] of builtinServerFiles(packages)) files.set(file, bytes)
+    return files
+}
+
 async function releaseFixture(t) {
     const directory = await temporary(t)
     const assets = ['skin', 'particle'].map((name) => {
@@ -78,6 +94,7 @@ async function releaseFixture(t) {
     await write(directory, 'privacy/index.html', withPolicy(page))
     for (const file of lyonNoticeFiles)
         await write(directory, file, await readFile(join(root, 'public', file)))
+    for (const [file, bytes] of await builtinRelease()) await write(directory, file, bytes)
     await write(
         directory,
         'assets/lyon-12345678.wasm',
@@ -315,9 +332,114 @@ test('every file in public/ is staged by the release build, except the preview p
             )
         return files
     }
-    // The web stages builtin/ with Part 2's A2; the native build stages it already.
-    for (const file of (await walk()).filter(
-        (file) => !file.startsWith('resource/') && !file.startsWith('builtin/'),
-    ))
+    for (const file of (await walk()).filter((file) => !file.startsWith('resource/')))
         assert.ok((await readFile(join(directory, file))).length > 0, `${file} must be staged`)
+})
+
+test('staging puts the four Built-in packages and their static server in the release', async (t) => {
+    const directory = await temporary(t)
+    await stageReleasePublic(root, directory)
+    for (const file of builtinFiles)
+        assert.deepEqual(
+            await readFile(join(directory, file)),
+            await readFile(join(root, 'public', file)),
+        )
+    // The server folder is the packages' entries, byte for byte, and one merged sonolus/info.
+    for (const [file, bytes] of await builtinRelease())
+        assert.deepEqual(await readFile(join(directory, file)), bytes, file)
+    const info = JSON.parse(await readFile(join(directory, 'builtin-server/sonolus/info'), 'utf8'))
+    assert.equal(info.title, 'Built-in Items')
+    assert.deepEqual(
+        info.buttons.map((button) => button.type),
+        builtinTypes,
+    )
+    for (const category of ['skins', 'particles', 'backgrounds', 'effects']) {
+        const list = JSON.parse(
+            await readFile(join(directory, `builtin-server/sonolus/${category}/list`), 'utf8'),
+        )
+        assert.equal(list.pageCount, 1)
+        assert.equal(list.items.length, 1)
+        assert.equal(list.items[0].name, 'nse-builtin')
+        await readFile(join(directory, `builtin-server/sonolus/${category}/nse-builtin`))
+        // Each resource the item names is in the server's repository.
+        for (const [key, value] of Object.entries(list.items[0]))
+            if (value && typeof value === 'object' && 'url' in value && key !== 'author')
+                await readFile(join(directory, 'builtin-server', value.url))
+    }
+    // Nothing else is written there.
+    const walk = async (folder) => {
+        const files = []
+        for (const entry of await readdir(join(directory, folder), { withFileTypes: true }))
+            files.push(
+                ...(entry.isDirectory()
+                    ? await walk(`${folder}/${entry.name}`)
+                    : [`${folder}/${entry.name}`]),
+            )
+        return files
+    }
+    assert.deepEqual(
+        (await walk('builtin-server')).sort(),
+        [...(await builtinRelease()).keys()]
+            .filter((file) => file.startsWith('builtin-server/'))
+            .sort(),
+    )
+})
+
+test('the release must hold the locked Built-in packages and exactly their server folder', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    await checkRelease(directory, metadata)
+
+    // A package other than the locked one, even with the manifest recomputed.
+    const skin = await readFile(join(directory, 'builtin/skin.scp'))
+    await write(directory, 'builtin/skin.scp', Buffer.concat([skin, Buffer.from('x')]))
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Built-in package differs from builtin-assets\.lock\.json: builtin\/skin\.scp/,
+    )
+    await write(directory, 'builtin/skin.scp', skin)
+
+    // A server file that is not what the packages unpack to.
+    const list = 'builtin-server/sonolus/skins/list'
+    const original = await readFile(join(directory, list))
+    await write(directory, list, 'changed')
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Built-in server file differs from the packages: builtin-server\/sonolus\/skins\/list/,
+    )
+    await write(directory, list, original)
+
+    // A missing one, and an extra one under the allowed pattern.
+    await rm(join(directory, 'builtin-server/sonolus/info'))
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Missing release file: builtin-server\/sonolus\/info/,
+    )
+    await write(
+        directory,
+        'builtin-server/sonolus/info',
+        (await builtinRelease()).get('builtin-server/sonolus/info'),
+    )
+    await write(directory, `builtin-server/sonolus/repository/${'a'.repeat(40)}`, 'extra')
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Unexpected release file: builtin-server\/sonolus\/repository/,
+    )
+    await rm(join(directory, `builtin-server/sonolus/repository/${'a'.repeat(40)}`))
+
+    // Anything else in the folders is refused by name.
+    await write(directory, 'builtin/extra.scp', 'extra')
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Unexpected release file/,
+    )
+    await rm(join(directory, 'builtin/extra.scp'))
+    await write(directory, 'builtin-server/sonolus/other', 'extra')
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Unexpected release file/,
+    )
+    await rm(join(directory, 'builtin-server/sonolus/other'))
+
+    await writeReleaseManifest(directory, metadata, assets)
+    await checkRelease(directory, metadata)
 })

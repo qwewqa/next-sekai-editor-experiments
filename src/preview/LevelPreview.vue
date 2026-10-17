@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
 import { i18n } from '../i18n'
 import { isPlaying } from '../player'
 import { settings } from '../settings'
 import { firstPaintBackgroundUrl } from './assets'
+import AssetFallbackLine from './AssetFallbackLine.vue'
 import PreviewSettings from './PreviewSettings.vue'
 import PreviewTransport from './PreviewTransport.vue'
 import { usePreviewRendering } from './usePreviewRendering'
@@ -17,14 +18,32 @@ const background = useTemplateRef<HTMLDivElement>('background')
 const selectionCanvas = useTemplateRef<HTMLCanvasElement>('selection')
 const resources = usePreviewResources()
 const { status, errorDetail, loadVersion, reload } = resources
+// The image, blurred as its configuration says; the quad it fills is set per frame.
 const backgroundStyle = computed(() => {
     const background = resources.background.value
     return background
         ? {
               backgroundImage: `url("${background.url}")`,
-              backgroundColor: background.color,
+              filter: background.blur > 0 ? `blur(${background.blur}px)` : undefined,
           }
         : firstPaintBackgroundUrl && { backgroundImage: `url("${firstPaintBackgroundUrl}")` }
+})
+// Behind the image, where a contained or narrower one leaves the screen bare.
+const backgroundColor = computed(() => {
+    const color = resources.background.value?.color
+    return color && color !== 'transparent' ? color : undefined
+})
+const backgroundMask = computed(() => resources.background.value?.mask)
+// A load that fails while the browser reports no network says so.
+const offline = ref(!navigator.onLine)
+const updateOnline = () => (offline.value = !navigator.onLine)
+onMounted(() => {
+    window.addEventListener('online', updateOnline)
+    window.addEventListener('offline', updateOnline)
+})
+onBeforeUnmount(() => {
+    window.removeEventListener('online', updateOnline)
+    window.removeEventListener('offline', updateOnline)
 })
 const viewport = usePreviewViewport(container)
 const {
@@ -51,13 +70,20 @@ const isErrorDetailOpen = ref(false)
         <div
             class="preview-viewport absolute overflow-hidden bg-black"
             :class="{ 'inset-0': status !== 'ready' }"
-            :style="status === 'ready' ? canvasStyle : undefined"
+            :style="[status === 'ready' ? canvasStyle : undefined, { backgroundColor }]"
         >
             <div
                 ref="background"
                 class="preview-background pointer-events-none absolute inset-0 origin-top-left"
                 :style="backgroundStyle"
                 aria-hidden="true"
+            />
+            <div
+                v-if="backgroundMask"
+                class="pointer-events-none absolute inset-0"
+                :style="{ backgroundColor: backgroundMask }"
+                aria-hidden="true"
+                data-background-mask
             />
             <canvas
                 ref="canvas"
@@ -87,6 +113,9 @@ const isErrorDetailOpen = ref(false)
                             }}
                         </p>
                         <p v-if="status === 'error'">{{ i18n.preview.graphicsHelp }}</p>
+                        <p v-if="status === 'missing' && offline">
+                            {{ i18n.commands.previewAssets.offline }}
+                        </p>
                         <details
                             v-if="errorDetail"
                             class="max-h-32 max-w-full overflow-auto break-words"
@@ -112,6 +141,8 @@ const isErrorDetailOpen = ref(false)
                 </div>
             </div>
         </div>
+
+        <AssetFallbackLine />
 
         <PreviewTransport
             v-if="status === 'ready'"

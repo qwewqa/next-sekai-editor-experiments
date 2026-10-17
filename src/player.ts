@@ -11,7 +11,7 @@ import {
     type PlayerAudio,
 } from './playerAudio'
 import { shownBeatRanges, spacedTimes, type HideChange } from './playerSections'
-import { assets, sfxSlots } from './preview/assets'
+import { assetSession, setAudioDecoder, sfxSlots } from './preview/assets'
 import { settings } from './settings'
 import { createSlideInfoLookup } from './state/entities/slides/lookup'
 import { getActiveNoteRole } from './state/entities/slides/semantics'
@@ -497,36 +497,24 @@ const schedule = (
     audio.start(startTime, Math.max(0, offset))
 }
 
-const sfxController = new AbortController()
-
+// The sound effects the preview and playback use; a choice change loads them again in place.
 const loadSfx = () => {
-    // Choosing an effect arrives with the Preview Assets dialog; until then Default is used.
-    void assets
-        .load(
-            'effect',
-            { source: 'default' },
-            {
-                signal: sfxController.signal,
-                decodeAudio: (data) => context.decodeAudioData(data),
-            },
-        )
-        .then((loaded) => {
-            if (!loaded) return
-            for (const slot of sfxSlots) sfxBuffers[slot] = loaded.value.buffers[slot]
-        })
-        .catch((error: unknown) => {
-            console.error('Failed to load sound effects:', error)
-        })
-        .finally(() => {
-            areSfxReady = true
-        })
+    setAudioDecoder((data) => context.decodeAudioData(data))
+    watch(
+        assetSession.slots.effect,
+        ({ state, value }) => {
+            if (value) for (const slot of sfxSlots) sfxBuffers[slot] = value.buffers[slot]
+            if (state === 'ready' || state === 'failed') areSfxReady = true
+        },
+        { immediate: true },
+    )
+    assetSession.ensure('effect')
 }
 
 loadSfx()
 
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
-        sfxController.abort()
         stopPlayer()
         stopPreviewPlayer()
         context.removeEventListener('statechange', updateScheduler)

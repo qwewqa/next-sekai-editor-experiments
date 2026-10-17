@@ -1,3 +1,4 @@
+import type { BackgroundFit } from '../engine/background'
 import type { LoadedParticle } from '../particle'
 import type { LoadedSkin } from '../skin'
 
@@ -17,7 +18,7 @@ export type AssetChoice =
           origin: string
       }
 
-export type BackgroundFit = 'cover' | 'contain' | 'width' | 'height'
+export type { BackgroundFit }
 
 export type LoadedBackground = {
     /** Object URL or asset URL */
@@ -29,6 +30,8 @@ export type LoadedBackground = {
     blur: number
     /** CSS colour of an overlay, if any */
     mask: string | undefined
+    /** Releases an object URL when the background is replaced. */
+    dispose?: () => void
 }
 
 export const sfxSlots = [

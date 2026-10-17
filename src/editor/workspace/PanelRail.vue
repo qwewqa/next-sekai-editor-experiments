@@ -2,6 +2,8 @@
 import { computed, nextTick, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../i18n'
 import { modals } from '../../modals'
+import PreviewAssetsIcon from '../commands/previewAssets/PreviewAssetsIcon.vue'
+import { showPreviewAssets } from '../commands/previewAssets/modal'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import {
@@ -146,12 +148,20 @@ const menuItems = computed((): ManagerMenuItem[] => {
         label: strings.dock[value],
         checked: position === value,
     }))
+    // How the preview looks has a dialog of its own, one tap from its tab.
+    if (id === 'preview')
+        items.push({
+            key: 'previewAssets',
+            label: i18n.value.commands.previewAssets.title,
+            icon: PreviewAssetsIcon,
+            separated: true,
+        })
     if (props.dock.open.includes(id))
         items.push({
             key: 'close',
             label: interpolateRaw(strings.closePanel, panelTitle(id)),
             icon: CloseIcon,
-            separated: true,
+            separated: id !== 'preview',
         })
     return items
 })
@@ -193,6 +203,10 @@ const onMenuSelect = async (key: string, keyboard: boolean) => {
     const { id } = current
     if (key === 'close') {
         closePanel(id)
+        return
+    }
+    if (key === 'previewAssets') {
+        void showPreviewAssets()
         return
     }
     const position = dockPositions.find((value) => value === key)

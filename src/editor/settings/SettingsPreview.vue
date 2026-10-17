@@ -1,18 +1,40 @@
 <script setup lang="ts">
+import { inject } from 'vue'
 import { i18n } from '../../i18n'
+import BaseField from '../../modals/form/BaseField.vue'
 import NumberField from '../../modals/form/NumberField.vue'
 import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from '../../preview/options'
 import { previewControlOptions, previewTransportOptions } from '../../preview/settingsOptions'
 import { settings } from '../../settings'
+import { showPreviewAssets } from '../commands/previewAssets/modal'
+import { closeSettingsKey } from './closeSettings'
 import SettingsSection from './SettingsSection.vue'
 
 // Same order and labels as the preview's own settings form. Placement is under Panels.
+const closeSettings = inject(closeSettingsKey, undefined)
+const openAssets = () => {
+    closeSettings?.()
+    void showPreviewAssets()
+}
 </script>
 
 <template>
     <SettingsSection :title="i18n.settings.preview.title">
+        <!-- Choosing the skin and the rest has a dialog of its own. -->
+        <BaseField
+            :label="i18n.settings.preview.assets"
+            :notes="[i18n.settings.preview.assetsHint]"
+        >
+            <input
+                class="w-full rounded-full bg-button px-4 py-1 text-left shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                type="button"
+                data-settings-assets
+                :value="i18n.commands.previewAssets.title"
+                @click="openAssets"
+            />
+        </BaseField>
         <NumberField
             v-model="settings.previewNoteSpeed"
             :label="i18n.settings.preview.noteSpeed"

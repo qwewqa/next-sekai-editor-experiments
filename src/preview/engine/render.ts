@@ -3,7 +3,7 @@ import type { NoteParticleSet, PreviewParticle } from '../particle'
 import { getStyledParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
 import { getStyledSkin } from '../skin'
-import { layoutBackground } from './background'
+import { layoutBackground, type BackgroundFit } from './background'
 import { attachEasedFrac, attachFrac } from './chart'
 import {
     ConnectorVisualState,
@@ -199,6 +199,7 @@ export const renderPreviewFrame = (
     },
     leftLimit = false,
     showHitboxes = false,
+    background?: { aspectRatio: number; fit: BackgroundFit },
 ) => {
     const hasReached = (target: number) => (leftLimit ? now > target : now >= target)
     const viewport = createViewport(displayWidth, displayHeight)
@@ -1410,5 +1411,11 @@ export const renderPreviewFrame = (
     if (showHitboxes) drawHitboxes(draw, skin, chart, viewport, now, leftLimit)
 
     renderer.flush()
-    return layoutBackground(viewport, chart.isDynamicStages ? chart.cameras : [], camera)
+    return layoutBackground(
+        viewport,
+        chart.isDynamicStages ? chart.cameras : [],
+        camera,
+        background?.aspectRatio,
+        background?.fit,
+    )
 }
