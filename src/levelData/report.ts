@@ -1,6 +1,7 @@
 import type { LevelDataEntity } from '@sonolus/core'
 import { ImportRefusal } from '../chart/refusal'
 import { ignoredArchetypes, ignoredFields, knownArchetypes } from './known'
+import { LEVEL_VERSION } from './levelVersion'
 import { getLevelDataRevision, LATEST_REVISION } from './revision'
 
 /** Content this build does not read, found in level data. */
@@ -60,20 +61,28 @@ export class LevelDataReport {
     }
 }
 
-// Field names per archetype that the parser reads or reads past on purpose.
+// Field names per archetype that the parser reads or reads past on purpose, as of this build.
 let allowed: Map<string, Set<string>> | undefined
+
+const current = (since?: number) => (since ?? 1) <= LEVEL_VERSION
 
 const allowedFields = () =>
     (allowed ??= new Map(
-        Object.entries(knownArchetypes).map(([archetype, { fields }]) => [
-            archetype,
-            new Set([
-                ...Object.keys(fields),
-                ...(Object.hasOwn(ignoredFields, archetype)
-                    ? Object.keys(ignoredFields[archetype] ?? {})
-                    : []),
+        Object.entries(knownArchetypes)
+            .filter(([, archetype]) => current(archetype.since))
+            .map(([archetype, { fields }]) => [
+                archetype,
+                new Set([
+                    ...Object.entries(fields)
+                        .filter(([, field]) => current(field.since) && !field.unconsumed)
+                        .map(([name]) => name),
+                    ...(Object.hasOwn(ignoredFields, archetype)
+                        ? Object.entries(ignoredFields[archetype] ?? {})
+                              .filter(([, ignored]) => current(ignored.since))
+                              .map(([name]) => name)
+                        : []),
+                ]),
             ]),
-        ]),
     ))
 
 /** Reports the unknown archetypes and fields, and a newer engine revision, against the declared table. */
@@ -83,7 +92,11 @@ export const reportLevelDataEntities = (
 ) => {
     const fieldsOf = allowedFields()
     for (const { archetype, data } of entities) {
-        if (Object.hasOwn(ignoredArchetypes, archetype)) continue
+        if (
+            Object.hasOwn(ignoredArchetypes, archetype) &&
+            current(ignoredArchetypes[archetype]?.since)
+        )
+            continue
 
         const fields = fieldsOf.get(archetype)
         if (!fields) {
@@ -91,7 +104,19 @@ export const reportLevelDataEntities = (
             continue
         }
 
-        for (const { name } of data) if (!fields.has(name)) report.addField(archetype, name)
+        const declared = knownArchetypes[archetype]?.fields ?? {}
+        const seen = new Set<string>()
+        for (const entry of data) {
+            const { name } = entry
+            if (!fields.has(name)) {
+                report.addField(archetype, name)
+                continue
+            }
+            // A field the parser reads from a ref or a value, but not the other kind, or twice.
+            const kind = Object.hasOwn(declared, name) ? declared[name]?.kind : undefined
+            if (kind && (seen.has(name) || !(kind in entry))) report.addField(archetype, name)
+            seen.add(name)
+        }
     }
 
     const revision = getLevelDataRevision(entities)

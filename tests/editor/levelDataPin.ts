@@ -132,7 +132,7 @@ export const pinned: Record<number, ReturnType<typeof tableAt>> = {
                 fields: [
                     'editorName ref optional',
                     'editorIndex value optional',
-                    'editorFolder ref optional',
+                    'editorFolder ref optional unconsumed',
                 ],
             },
             {

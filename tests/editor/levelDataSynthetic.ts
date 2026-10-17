@@ -10,7 +10,7 @@ export const entity = (archetype: string, data: Data, name?: string): LevelDataE
     ),
 })
 
-const ref = (name: string) => ({ ref: name })
+export const ref = (name: string) => ({ ref: name })
 
 /** The fields of a note, each one the parser reads. */
 export const noteData = (extra: Data = {}): Data => ({
@@ -51,6 +51,14 @@ export const minimalLevel = (): LevelDataEntity[] => [
     }),
 ]
 
+/** A folder nested in the full level's first folder, which the parser flattens and reports. */
+export const nestedFolder = (): LevelDataEntity =>
+    entity(
+        'EditorGroupFolder',
+        { editorName: ref('Inner'), editorIndex: 1, editorFolder: ref('gf0') },
+        'gf1',
+    )
+
 /**
  * A level with dynamic stages that uses every archetype and field the table declares, and the
  * archetypes and fields it reads past on purpose.
@@ -59,11 +67,6 @@ export const fullLevel = (): LevelDataEntity[] => [
     entity('Initialization', { initialLife: 800, revision: 2, firstCamera: ref('cam0') }),
     entity('#BPM_CHANGE', { '#BEAT': 0, '#BPM': 120, meter: 3 }),
     entity('EditorGroupFolder', { editorName: ref('Folder'), editorIndex: 0 }, 'gf0'),
-    entity(
-        'EditorGroupFolder',
-        { editorName: ref('Inner'), editorIndex: 1, editorFolder: ref('gf0') },
-        'gf1',
-    ),
     entity(
         '#TIMESCALE_GROUP',
         {
