@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver'
 import { ref, provide, onUnmounted } from 'vue'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -7,6 +6,7 @@ import BaseModal from '../../../modals/BaseModal.vue'
 import FileField from '../../../modals/form/FileField.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
+import { platform } from '../../../platform'
 import { CoverExporter } from '../../../rendering/coverExport'
 import { timeout } from '../../../utils/promise'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
@@ -81,7 +81,11 @@ const onGenerate = () => {
 
             const blob = await exporter.createBlob(image.value, size.value, signal)
             signal.throwIfAborted()
-            saveAs(blob, 'cover.png')
+            await platform.saveFile({
+                kind: 'image',
+                suggestedName: 'cover.png',
+                build: () => Promise.resolve(blob),
+            })
         },
     })
 }

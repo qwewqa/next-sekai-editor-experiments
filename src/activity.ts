@@ -1,5 +1,6 @@
 import { computed, readonly, ref, watch } from 'vue'
 import { isBlockingModalOpen } from './modals'
+import { platform } from './platform'
 
 const active = ref(document.visibilityState !== 'hidden' && document.hasFocus())
 
@@ -27,13 +28,15 @@ const blur = () => {
 
 window.addEventListener('focus', update)
 window.addEventListener('blur', blur)
-document.addEventListener('visibilitychange', update)
+const stopLifecycle = platform.onLifecycle((e) => {
+    if (e !== 'freeze') update()
+})
 
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         stop()
         window.removeEventListener('focus', update)
         window.removeEventListener('blur', blur)
-        document.removeEventListener('visibilitychange', update)
+        stopLifecycle()
     })
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver'
 import { computed, ref } from 'vue'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import { platform } from '../../platform'
 import { toRecoveryFile, type UnreadableRecovery } from './unreadable'
 
 const props = defineProps<{
@@ -31,9 +31,13 @@ const paragraphs = computed(() => {
     }
 })
 
-const download = () => {
+const download = async () => {
     const { blob, name } = toRecoveryFile(props.text)
-    saveAs(blob, name)
+    await platform.saveFile({
+        kind: 'recovery',
+        suggestedName: name,
+        build: () => Promise.resolve(blob),
+    })
     downloaded.value = true
 }
 </script>
