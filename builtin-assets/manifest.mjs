@@ -1,20 +1,18 @@
 // Sprite names -> template and parameters, the particle table, the clip table and the item metadata.
 import product from '../src/product.json' with { type: 'json' }
+import { arrowSprite } from './arrows.mjs'
 import {
-    activeColors,
     arrowColors,
+    baseColors,
     bodyColors,
     colorNames,
-    connectorColor,
     damage,
-    damageColor,
     diamondColors,
     guideColor,
     mix,
     stage,
     styleColors,
     traceColors,
-    vivid,
 } from './palette.mjs'
 
 /** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
@@ -37,14 +35,10 @@ const solid = (color, alpha = 1, w = 4, h = 4) =>
 // A connector band: feathered sides, lighter towards them.
 const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
     image('band', { color, light, alpha }, { stretch: true })
-const activeBand = (color) => band(mix(color, '#ffffff', 0.2), 0.8, mix(color, '#ffffff', 0.6))
-// Slot glows in the vivid effect colour, as the particles use.
-const glow = (color) =>
-    image(
-        'slot-glow',
-        { color: vivid(color), light: mix(vivid(color), '#ffffff', 0.5) },
-        { stretch: true },
-    )
+// A connector at rest and held, in the base set's colours: [rest, held].
+const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
+// Slot glows in the base set's glow colours: [at the note, middle, top].
+const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, { stretch: true })
 const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
 
 // The dark base of the judgment band.
@@ -53,9 +47,11 @@ const judgmentShade = '#0b0c16'
 /**
  * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
  * quad (0 to 1 from its bottom-left corner), so the art lands where the base skin's does on screen.
+ * Each corner is a bilinear mix of the quad's four, so the box follows a perspective quad's slanted
+ * edges and neighbouring slices still share their corners.
  */
 export function box(u0, u1, v0, v1) {
-    const corner = (u, v) => ({ 1: 1 - u - v, 4: u, 2: v })
+    const corner = (u, v) => ({ 1: (1 - u) * (1 - v), 2: (1 - u) * v, 3: u * v, 4: u * (1 - v) })
     const corners = [corner(u0, v0), corner(u0, v1), corner(u1, v1), corner(u1, v0)]
     const out = {}
     for (const axis of ['x', 'y'])
@@ -69,70 +65,26 @@ export function box(u0, u1, v0, v1) {
     return out
 }
 
-// The box for art that fills its frame but for a margin m on each side.
-const fit = (u0, u1, v0, v1, m) => {
-    const w = (u1 - u0) / (1 - 2 * m)
-    const h = (v1 - v0) / (1 - 2 * m)
-    return box(u0 - m * w, u0 - m * w + w, v0 - m * h, v0 - m * h + h)
+// Arrows: the base's pink (or gold) fill, lighter towards the tip, inside a light rim of the same
+// hue, so they keep their colour at the engine's reduced alpha.
+const arrowTint = (accent) => ({
+    accent,
+    tip: mix(accent, '#ffffff', 0.3),
+    rim: mix(accent, '#ffffff', 0.7),
+})
+const arrow = (direction, accent, width) => {
+    const { vars, width: pixels, frame } = arrowSprite(direction, width, arrowTint(accent))
+    return image('arrow', vars, { width: pixels, transform: box(...frame) })
 }
 
-// Where the base skin's flick arrows land in the engine's arrow square, by direction and width
-// (1 to 6): [u0, u1, v0, v1]. Narrow notes get large, tall arrows; wide notes flat ones.
-const arrowBoxes = {
-    up: [
-        [-0.14, 1.14, 0.25, 1.61],
-        [-0.09, 1.09, 0.17, 1.21],
-        [-0.07, 1.07, 0.11, 0.94],
-        [-0.05, 1.05, 0.09, 0.79],
-        [-0.04, 1.04, 0.07, 0.7],
-        [-0.03, 1.03, 0.06, 0.64],
-    ],
-    upLeft: [
-        [-0.32, 1.32, 0.27, 1.66],
-        [-0.24, 1.21, 0.2, 1.27],
-        [-0.19, 1.15, 0.15, 1.03],
-        [-0.17, 1.12, 0.11, 0.89],
-        [-0.15, 1.1, 0.08, 0.81],
-        [-0.13, 1.09, 0.07, 0.75],
-    ],
-    down: [
-        [-0.14, 1.14, 0.18, 1.55],
-        [-0.09, 1.09, 0.11, 1.15],
-        [-0.07, 1.07, 0.07, 0.9],
-        [-0.05, 1.05, 0.05, 0.76],
-        [-0.04, 1.04, 0.04, 0.67],
-        [-0.03, 1.03, 0.04, 0.62],
-    ],
-    downLeft: [
-        [-0.32, 1.32, 0.16, 1.55],
-        [-0.24, 1.21, 0.11, 1.18],
-        [-0.19, 1.15, 0.07, 0.96],
-        [-0.17, 1.12, 0.05, 0.84],
-        [-0.15, 1.1, 0.04, 0.77],
-        [-0.13, 1.09, 0.04, 0.72],
-    ],
-}
-const arrowKeys = {
-    'arrow-up': 'up',
-    'arrow-up-left': 'upLeft',
-    'arrow-down': 'down',
-    'arrow-down-left': 'downLeft',
-}
-// Arrows run from a light tint at the tip to the arrow colour, inside a white outline.
-const arrowTint = (accent) => ({ accent, light: mix(accent, '#ffffff', 0.65) })
-const arrow = (template, accent, width) =>
-    image(template, arrowTint(accent), {
-        transform: fit(...arrowBoxes[arrowKeys[template]][width - 1], 0.03),
-    })
-
-// Note bodies sit 6% over and under their quad and their ends reach 0.14 of a slice past the note,
-// as the base skin's do; slim traces keep their own height in the art.
+// Note bodies sit 6% over and under their quad, as the base skin's do; their ends stop 0.02 of a
+// lane inside the note, so notes side by side keep a gap. Slim traces keep their height in the art.
 const bodyBox = {
-    Left: box(-0.14, 1, -0.06, 1.06),
+    Left: box(0.08, 1, -0.06, 1.06),
     Middle: box(0, 1, -0.06, 1.06),
-    Right: box(0, 1.14, -0.06, 1.06),
+    Right: box(0, 0.92, -0.06, 1.06),
 }
-const slimBox = { Left: box(-0.14, 1, 0, 1), Middle: undefined, Right: box(0, 1.14, 0, 1) }
+const slimBox = { Left: box(0.16, 1, 0, 1), Middle: undefined, Right: box(0, 0.84, 0, 1) }
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 // Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
 const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
@@ -201,20 +153,20 @@ const diamondFamilies = [
     ['Critical Trace Down Flick Diamond', 'yellow', 44],
 ]
 const slotFamilies = [
-    ['Normal', 'tap'],
-    ['Slide', 'slide'],
-    ['Flick', 'flick'],
-    ['Down Flick', 'flick'],
-    ['Critical', 'critical'],
-    ['Critical Slide', 'critical'],
-    ['Critical Flick', 'critical'],
-    ['Critical Down Flick', 'critical'],
+    ['Normal', 'tap', 'Cyan'],
+    ['Slide', 'slide', 'Green'],
+    ['Flick', 'flick', 'Red'],
+    ['Down Flick', 'flick', 'Red'],
+    ['Critical', 'critical', 'Yellow'],
+    ['Critical Slide', 'critical', 'Yellow Slider Tap'],
+    ['Critical Flick', 'critical', 'Yellow Flick'],
+    ['Critical Down Flick', 'critical', 'Yellow Flick'],
 ]
 const directions = [
-    ['Up', 'arrow-up'],
-    ['Up Left', 'arrow-up-left'],
-    ['Down', 'arrow-down'],
-    ['Down Left', 'arrow-down-left'],
+    ['Up', 'up'],
+    ['Up Left', 'upLeft'],
+    ['Down', 'down'],
+    ['Down Left', 'downLeft'],
 ]
 
 /** Every skin sprite name with its image: { template, vars, stretch, width? }, plus counts by group. */
@@ -247,7 +199,8 @@ export function skinSprites() {
     })
 
     group('Stage, Sekai', () => {
-        add('Sekai Lane Background', solid(stage.lane, 0.8, 4, 64))
+        // Lane effects draw under the lane, so it lets them through, like the base's (0.40).
+        add('Sekai Lane Background', solid(stage.lane, 0.55, 4, 64))
         add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
         add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
         for (const name of ['Lane Background', 'Lane Divider', 'Stage Border'])
@@ -346,12 +299,9 @@ export function skinSprites() {
             ['Flick', arrowColors.normal],
             ['Critical Flick', arrowColors.critical],
         ])
-            for (const [direction, template] of directions)
+            for (const [direction, key] of directions)
                 for (let width = 1; width <= 6; width++)
-                    add(
-                        `Sekai ${family} Arrow ${direction} ${width}`,
-                        arrow(template, color, width),
-                    )
+                    add(`Sekai ${family} Arrow ${direction} ${width}`, arrow(key, color, width))
         for (const [color, family] of [
             ['Red', 'Flick'],
             ['Yellow', 'Critical Flick'],
@@ -365,9 +315,9 @@ export function skinSprites() {
     })
 
     group('Slots and slot glows', () => {
-        for (const [family, key] of slotFamilies) {
+        for (const [family, key, base] of slotFamilies) {
             add(`Sekai Slot ${family}`, image('slot', { color: bodyColors[key][2] }))
-            add(`Sekai Slot Glow ${family}`, glow(bodyColors[key][2]))
+            add(`Sekai Slot Glow ${family}`, glow(baseColors.slotGlow[base]))
         }
         for (const [color, key] of [
             ['Cyan', 'tap'],
@@ -378,28 +328,20 @@ export function skinSprites() {
             ['Yellow Slider', 'critical'],
         ])
             add(`Sekai Slot ${color}`, image('slot', { color: bodyColors[key][2] }))
-        for (const [color, key] of [
-            ['Cyan', 'tap'],
-            ['Green', 'slide'],
-            ['Red', 'flick'],
-            ['Yellow', 'critical'],
-            ['Yellow Flick', 'critical'],
-            ['Green Slider Hold', 'slide'],
-            ['Yellow Slider Hold', 'critical'],
-            ['Yellow Slider Tap', 'critical'],
-        ])
-            add(`Sekai Slot Glow ${color}`, glow(bodyColors[key][2]))
-        add('Sekai Normal Slide Slot Glow', glow(bodyColors.slide[2]))
-        add('Sekai Critical Slide Slot Glow', glow(bodyColors.critical[2]))
+        for (const [color, value] of Object.entries(baseColors.slotGlow))
+            add(`Sekai Slot Glow ${color}`, glow(value))
+        add('Sekai Normal Slide Slot Glow', glow(baseColors.slotGlow['Green Slider Hold']))
+        add('Sekai Critical Slide Slot Glow', glow(baseColors.slotGlow['Yellow Slider Hold']))
     })
 
     group('Connectors', () => {
-        for (const [family, color] of [
-            ['Normal', activeColors.normal],
-            ['Critical', activeColors.critical],
+        for (const [family, colors] of [
+            ['Normal', baseColors.connector.normal],
+            ['Critical', baseColors.connector.critical],
         ]) {
-            add(`Sekai ${family} Active Slide Connection Normal`, band(color))
-            add(`Sekai ${family} Active Slide Connection Active`, activeBand(color))
+            const [rest, held] = bands(colors)
+            add(`Sekai ${family} Active Slide Connection Normal`, rest)
+            add(`Sekai ${family} Active Slide Connection Active`, held)
         }
         for (const [color, family] of [
             ['Green', 'Normal'],
@@ -414,8 +356,9 @@ export function skinSprites() {
                 `Sekai ${family} Active Slide Connection Active`,
             )
         }
-        add('Sekai Damage Slide Connection', band(damageColor))
-        add('Sekai Damage Slide Connection Active', activeBand(damageColor))
+        const [rest, held] = bands(baseColors.connector.damage)
+        add('Sekai Damage Slide Connection', rest)
+        add('Sekai Damage Slide Connection Active', held)
     })
 
     group('Guides', () => {
@@ -449,8 +392,14 @@ export function skinSprites() {
         }
         for (const key of ['green', 'red', 'yellow'])
             add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
-        add('#DIRECTIONAL_MARKER_RED', image('arrow-up', arrowTint(arrowColors.normal)))
-        add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', arrowTint(arrowColors.critical)))
+        // The fallback marker fills its quad.
+        for (const [color, accent] of [
+            ['RED', arrowColors.normal],
+            ['YELLOW', arrowColors.critical],
+        ]) {
+            const { vars, width } = arrowSprite('up', 1, arrowTint(accent))
+            add(`#DIRECTIONAL_MARKER_${color}`, image('arrow', vars, { width }))
+        }
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
@@ -470,29 +419,39 @@ export function skinSprites() {
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
             for (const [family, , width] of diamondFamilies)
                 add(`Sekai ${family} ${color}`, kite(inner, width))
+            const [rest, held, criticalRest, criticalHeld, damaged, , , tint] =
+                baseColors.style[color]
+            const [slotGlow, criticalGlow] = baseColors.styleGlow[color]
             for (const [family] of slotFamilies) {
                 add(`Sekai Slot ${family} ${color}`, image('slot', { color: accent }))
-                add(`Sekai Slot Glow ${family} ${color}`, glow(accent))
+                add(
+                    `Sekai Slot Glow ${family} ${color}`,
+                    glow(family.startsWith('Critical') ? criticalGlow : slotGlow),
+                )
             }
             for (const family of ['Normal', 'Critical'])
-                add(`Sekai ${family} Slide Slot Glow ${color}`, glow(accent))
+                add(
+                    `Sekai ${family} Slide Slot Glow ${color}`,
+                    glow(family === 'Critical' ? criticalGlow : slotGlow),
+                )
             for (const family of ['Flick', 'Critical Flick'])
-                for (const [direction, template] of directions)
+                for (const [direction, key] of directions)
                     for (let width = 1; width <= 6; width++)
                         add(
                             `Sekai ${family} Arrow ${direction} ${width} ${color}`,
-                            arrow(template, accent, width),
+                            arrow(key, tint, width),
                         )
-            const connection = connectorColor(color)
-            for (const family of ['Normal', 'Critical']) {
-                add(`Sekai ${family} Active Slide Connection Normal ${color}`, band(connection))
-                add(
-                    `Sekai ${family} Active Slide Connection Active ${color}`,
-                    activeBand(connection),
-                )
+            for (const [family, colors] of [
+                ['Normal', [rest, held]],
+                ['Critical', [criticalRest, criticalHeld]],
+            ]) {
+                const [bandRest, bandHeld] = bands(colors)
+                add(`Sekai ${family} Active Slide Connection Normal ${color}`, bandRest)
+                add(`Sekai ${family} Active Slide Connection Active ${color}`, bandHeld)
             }
-            add(`Sekai Damage Slide Connection ${color}`, band(connection))
-            add(`Sekai Damage Slide Connection Active ${color}`, activeBand(connection))
+            const [damageRest, damageHeld] = bands([damaged, damaged])
+            add(`Sekai Damage Slide Connection ${color}`, damageRest)
+            add(`Sekai Damage Slide Connection Active ${color}`, damageHeld)
         }
     })
 
@@ -510,6 +469,10 @@ export const particleSprites = [
     ['flash', 'particle-flash'],
     ['mote', 'particle-circle'],
     ['diamond', 'particle-diamond'],
+    ['thin', 'particle-frame-thin'],
+    ['line', 'particle-frame-line'],
+    ['beam', 'particle-beam'],
+    ['streak', 'particle-streak'],
 ].map(([name, template]) => ({ name, spec: image(template, {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */

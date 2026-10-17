@@ -170,8 +170,8 @@ test('stretch sprites extrude their edges into the gutter and the others have a 
 test('the textures and files stay within their budgets', () => {
     const skinData = skin.json('data')
     assert.ok(skinData.width <= 2048 && skinData.height <= 2048)
-    // The 128 px arrow images are counted in.
-    assert.ok(skinData.sprites.some((sprite) => sprite.w === 128 && sprite.h === 128))
+    // The arrow images, one per direction and width, are counted in.
+    assert.ok(skinData.sprites.some((sprite) => sprite.name === 'Sekai Flick Arrow Up Left 6'))
     const particle = readBuiltinItem('particle').json('data')
     assert.ok(particle.width <= 512 && particle.height <= 512)
     const background = readBuiltinItem('background')

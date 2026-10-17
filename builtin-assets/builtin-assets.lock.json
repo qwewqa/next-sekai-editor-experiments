@@ -50,16 +50,16 @@
             "bytes": 44376
         },
         "public/builtin/effect.scp": {
-            "sha256": "ca80b1618011d61a2943bc30c4c9f331f26e0fe0f6624f744dcecc64c248b615",
-            "bytes": 482082
+            "sha256": "3151e64d8842f7099f8afe025a4698bca67043a2de8247de791405cb0ff0dfb4",
+            "bytes": 356959
         },
         "public/builtin/particle.scp": {
-            "sha256": "d8443ee8e87474bd9a4448dc501e051f28e658c4ebc8c547b08060d4ec5446a0",
-            "bytes": 33374
+            "sha256": "e97e58b8f81a36cf01a775b84df7769dd11346b3845c6f40fe4b17e590e306fa",
+            "bytes": 41256
         },
         "public/builtin/skin.scp": {
-            "sha256": "fa0b4f1c1a4fb462402345ac5f5384bf776ce5ea57404da300466b719b84c578",
-            "bytes": 200449
+            "sha256": "b5275d479ebfcabea3cfe13b7dec2f93b3ad356b5cd0187b2acb8a334004fd59",
+            "bytes": 944913
         }
     },
     "resources": {
@@ -70,14 +70,14 @@
                 "bytes": 1986
             },
             "data": {
-                "sha1": "389f583361084ed984b95fb4bb13c47f9990ba46",
-                "sha256": "8c6f306b1a61fe9ce6d889a08b02224799395c84f971f1064eb4fe3d9091c759",
-                "bytes": 17012
+                "sha1": "5d470f7bce35a42cd80be285475604e67058e0a8",
+                "sha256": "497e7fe30ed7e6b03cbb5c0f3be0d72e51bd1ca974cf75b53aa527888f2a50ea",
+                "bytes": 23277
             },
             "texture": {
-                "sha1": "417b357bbdb6f6fadf482353ef0569f15a8dc706",
-                "sha256": "c80bb3a8839ce1094d9391fc31a65af36098f9dbcacb32c017ad5d0e656a5711",
-                "bytes": 179441
+                "sha1": "6aeff03e7f34c3d0254f5da97aa5dc239b612a21",
+                "sha256": "e8374d5345f7f61a78aee3e4958d1a1e6a6d7ddbeaaa01978257122626947a2c",
+                "bytes": 917639
             }
         },
         "particle": {
@@ -87,14 +87,14 @@
                 "bytes": 5039
             },
             "data": {
-                "sha1": "eb6e0aaf317c54f7afabc60eb21b8c39dad17a65",
-                "sha256": "db72f42843ec7d69e8eb8272e95ca4762ee7d1cd5b252a4798b9d4fbc545bbbc",
-                "bytes": 15678
+                "sha1": "d59b57ab9a8d4ce128f995abcf75ea53b739d831",
+                "sha256": "33287b9880e8e727e0ebfea21bcebfea69701a06f0388510c9c839a29df37f74",
+                "bytes": 18457
             },
             "texture": {
-                "sha1": "889c58092524b0e8e1d28844be9454cb06ffac5c",
-                "sha256": "6004ad70518609700f63b7a2eef4d71d3b076e567051bebdb82345058901b4d7",
-                "bytes": 10613
+                "sha1": "fe38325b5d2e6e4a51fb8c2e63e5da1c56eec8de",
+                "sha256": "70f6b6e9b21fa95a16259d481dc51f8833efd350b1a707a732ddd51519beb47b",
+                "bytes": 15719
             }
         },
         "background": {
@@ -131,9 +131,9 @@
                 "bytes": 238
             },
             "audio": {
-                "sha1": "ed1b2bb992eadf197cef9af2c187240df60f0f61",
-                "sha256": "0499740281a848c541f52f96d7f961eb5521640fedd33bc1e1e427c3a9853ce9",
-                "bytes": 477021
+                "sha1": "f4274ca7f5e14e2ab6d2b7b16769d30d356d462a",
+                "sha256": "d5b1082c5fa1861704d08ce4fcbb1b4dc99a2028fd210217b8bd03f30018acc4",
+                "bytes": 351900
             }
         }
     },
@@ -149,7 +149,7 @@
     },
     "counts": {
         "skinNames": 1323,
-        "skinImages": 263,
+        "skinImages": 399,
         "particleEffects": 505,
         "clips": 15
     }

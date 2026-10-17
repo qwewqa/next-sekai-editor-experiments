@@ -24,15 +24,24 @@ const translucent = [
     { pattern: /Slot Glow/, floor: 0.9 },
     // The base's slots are a translucent lit fill inside an opaque outline.
     { pattern: /^Sekai Slot (?!Glow)/, floor: 1 },
+    // The base's flick arrows glow softly round an opaque arrowhead: inside the glow (alpha under
+    // core), the arrowhead itself is opaque.
+    { pattern: /Arrow|^#DIRECTIONAL_MARKER/, floor: 1, opaque: 0.99, core: 0.5 },
 ]
 
 const opaqueShare = (alphas) => alphas.filter((alpha) => alpha === 255).length / alphas.length
 
 const allowance = (name) => translucent.find(({ pattern }) => pattern.test(name))
 
-/** The alphas of a sprite's interior: covered pixels at least edgeBand from clear pixels and the border. */
-function interior(texture, { x, y, w, h }) {
-    const alpha = (column, row) => pixelAt(texture, x + column, y + row)[3]
+/**
+ * The alphas of a sprite's interior: covered pixels at least edgeBand from clear pixels and the
+ * border, where pixels under core count as clear.
+ */
+function interior(texture, { x, y, w, h }, core = 0) {
+    const alpha = (column, row) => {
+        const value = pixelAt(texture, x + column, y + row)[3]
+        return value < core * 255 ? 0 : value
+    }
     // Small stretch sprites (4 px solids) keep at least their middle.
     const band = Math.min(edgeBand, Math.floor((Math.min(w, h) - 1) / 2))
     const out = []
@@ -53,9 +62,9 @@ test('skin sprites have opaque interiors unless the base skin’s same sprite is
     const failures = []
     const used = new Set()
     for (const sprite of skin.json('data').sprites) {
-        const alphas = interior(texture, sprite)
-        assert.ok(alphas.length > 0, `${sprite.name} has no interior to measure`)
         const allowed = allowance(sprite.name)
+        const alphas = interior(texture, sprite, allowed?.core)
+        assert.ok(alphas.length > 0, `${sprite.name} has no interior to measure`)
         if (allowed) {
             used.add(allowed)
             const peak = Math.max(...alphas) / 255

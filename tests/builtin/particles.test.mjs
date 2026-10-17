@@ -95,3 +95,15 @@ test('the base set’s silent effects stay silent', () => {
     for (const name of ['Sekai Critical Flick Lane Linear', 'Sekai Note Lane Linear'])
         assert.ok(!empty.includes(name), name)
 })
+
+test('no effect is a lone pair of one shape', () => {
+    for (const effect of data.effects) {
+        const shapes = effect.groups.flatMap((group) =>
+            group.particles.flatMap((particle) => Array(group.count).fill(particle.sprite)),
+        )
+        assert.ok(
+            !(shapes.length === 2 && shapes[0] === shapes[1]),
+            `${effect.name} is two of sprite ${shapes[0]}`,
+        )
+    }
+})

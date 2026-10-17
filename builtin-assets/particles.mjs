@@ -5,7 +5,16 @@
 // one, and effect colours are the note colours made vivid for the dark stage.
 // Weights follow the base set's ordering (work/assets/a1b2-design.md): critical flicks most, then
 // critical taps, flicks, taps and slide ends, traces, slide ticks; no effect where it plays none.
-import { bodyColors, colorNames, damageColor, styleColors, vivid } from './palette.mjs'
+// Flick and trace effects take the base set's hues, sampled from captures (magenta, sky blue).
+import {
+    baseColors,
+    bodyColors,
+    colorNames,
+    damageColor,
+    mix,
+    styleColors,
+    vivid,
+} from './palette.mjs'
 
 const sprite = {
     glow: 0,
@@ -17,6 +26,10 @@ const sprite = {
     flash: 6,
     mote: 7,
     diamond: 8,
+    thin: 9,
+    line: 10,
+    beam: 11,
+    streak: 12,
 }
 
 const white = '#ffffff'
@@ -60,15 +73,31 @@ const bloom = (color, from, to, { y = 0, start = 0, duration = 1, alpha = 1 } = 
         a: prop(alpha, 0, 'inQuad'),
     })
 
-// A diamond frame spreading flat on the stage.
-const frame = (color, from, to, { start = 0, duration = 1, alpha = 1 } = {}) =>
+// A diamond frame spreading flat on the stage, its alpha spent early (ease out), so it fades to a
+// ghost rather than outlasting the hit. Paler than its colour, so neighbouring frames don't chain.
+const frame = (
+    color,
+    from,
+    to,
+    { start = 0, duration = 1, alpha = 0.65, shape = sprite.thin, pale = 0.35 } = {},
+) =>
     particle({
-        sprite: sprite.frame,
-        color,
+        sprite: shape,
+        color: mix(color, white, pale),
         start,
         duration,
         ...size(from, to, 'outCubic'),
-        a: prop(alpha, 0, 'inQuad'),
+        a: prop(alpha, 0, 'outQuad'),
+    })
+
+// The white-hot start of a hit: a bright core at full alpha for about 0.1 s, then gone.
+const core = (from, to, { duration = 0.2 } = {}) =>
+    particle({
+        sprite: sprite.glow,
+        color: white,
+        duration,
+        ...size(from, to, 'outQuad'),
+        a: prop(1, 0, 'inCubic'),
     })
 
 // A four-point glint at the centre, turning a little as it shrinks.
@@ -155,10 +184,12 @@ const comet = (
         length = 0.5,
         width = 0.1,
         alpha = 1,
+        fade = 'inQuad',
+        shape = sprite.comet,
     } = {},
 ) =>
     particle({
-        sprite: sprite.comet,
+        sprite: shape,
         color,
         start,
         duration,
@@ -167,7 +198,7 @@ const comet = (
         w: prop(width, width * 0.6),
         h: prop(length * 0.5, length, 'outQuad'),
         r: prop(r),
-        a: prop(alpha, 0, 'inQuad'),
+        a: prop(alpha, 0, fade),
     })
 
 // The lane column: a short flash that collapses towards the judge line.
@@ -191,51 +222,100 @@ const pulse = (base, from, to) =>
         [to, from],
     ].map(([a, b], half) => particle({ ...base(a, b), start: half / 2, duration: 0.5 }))
 
+// The directional part of a flick, scaled for criticals: a white-hot fan of short comets opening
+// off the note (peaking at about 0.1 s), then two thick beams, white in a coloured edge, thrown
+// well past the square (strongest at 0.1 to 0.15 s), and motes.
+const sweep = (color, { scale, motes: tail }) => [
+    once(
+        ...[-1.1, -0.55, 0, 0.55, 1.1].flatMap((r) =>
+            [
+                [color, 0.26, 0.8],
+                [white, 0.13, 1],
+            ].map(([tint, width, alpha]) =>
+                comet(tint, {
+                    r,
+                    start: 0.08,
+                    duration: 0.3,
+                    from: -0.85,
+                    to: r === 0 ? 0.05 : -0.35,
+                    length: (r === 0 ? 0.8 : 0.65) * scale,
+                    width: width * scale,
+                    alpha,
+                }),
+            ),
+        ),
+        ...[
+            [-0.25, 0.08, 0.24],
+            [0.25, -0.08, 0.3],
+        ].flatMap(([x, r, start]) =>
+            [
+                [color, 0.6],
+                [white, 0.26],
+            ].map(([tint, width]) =>
+                comet(tint, {
+                    x,
+                    r,
+                    start,
+                    duration: 0.38,
+                    from: 0,
+                    to: 1.5 * scale,
+                    length: 1.7 * scale,
+                    width: width * scale,
+                    fade: 'inCubic',
+                    shape: sprite.beam,
+                }),
+            ),
+        ),
+    ),
+    tail,
+]
+
 /** The groups of each kind of effect for one colour. */
 export const kinds = {
     none: () => [],
 
-    // Hits on the stage plane (3.5 lanes wide): a glow with a white core, a diamond frame spreading
-    // flat, and white motes that stay clear of the frame.
+    // Hits on the stage plane (3.5 lanes wide, 0.6 s): a white-hot core for the first 0.1 s over
+    // a glow, then a thin pale diamond frame from 0.05 s, spreading flat and gone by about 0.3 s,
+    // and white motes that stay clear of the frame.
     tapCircular: (color) => [
         once(
-            bloom(color, 0.5, 0.85, { duration: 0.55, alpha: 0.85 }),
-            bloom(white, 0.24, 0.34, { duration: 0.3 }),
-            frame(color, 0.3, 0.85, { duration: 0.65 }),
+            bloom(color, 0.45, 0.8, { duration: 0.45, alpha: 0.8 }),
+            core(0.3, 0.4),
+            frame(color, 0.3, 0.8, { start: 0.08, duration: 0.42 }),
         ),
-        motes(white, 6, { from: 0.3, to: 0.75, duration: 0.7 }),
+        motes(white, 6, { from: 0.3, to: 0.75, duration: 0.6 }),
     ],
     slideCircular: (color) => [
         once(
-            bloom(color, 0.5, 0.85, { duration: 0.55, alpha: 0.85 }),
-            bloom(white, 0.24, 0.34, { duration: 0.3 }),
-            frame(color, 0.3, 0.85, { duration: 0.65 }),
+            bloom(color, 0.45, 0.8, { duration: 0.45, alpha: 0.8 }),
+            core(0.3, 0.4),
+            frame(color, 0.3, 0.8, { start: 0.08, duration: 0.42 }),
         ),
-        motes(white, 4, { from: 0.3, to: 0.75, duration: 0.6 }),
+        motes(white, 4, { from: 0.3, to: 0.75, duration: 0.55 }),
     ],
+    // Flicks carry their weight in the directional part; here a tap's hit with a flat glint.
     flickCircular: (color) => [
         once(
-            bloom(color, 0.55, 0.95, { duration: 0.6 }),
-            bloom(white, 0.26, 0.36, { duration: 0.3 }),
-            frame(color, 0.3, 0.9, { duration: 0.65 }),
-            frame(color, 0.2, 0.65, { start: 0.12, duration: 0.6, alpha: 0.8 }),
-            glint(white, 0.45, { duration: 0.4 }),
+            bloom(color, 0.5, 0.85, { duration: 0.5, alpha: 0.85 }),
+            core(0.32, 0.42),
+            frame(color, 0.3, 0.85, { start: 0.08, duration: 0.42 }),
+            glint(white, 0.45, { duration: 0.35 }),
         ),
-        motes(white, 6, { from: 0.3, to: 0.8, duration: 0.7 }),
+        motes(white, 6, { from: 0.3, to: 0.8, duration: 0.6 }),
     ],
     criticalCircular: (color) => [
         once(
-            bloom(color, 0.55, 1, { duration: 0.65 }),
-            bloom(white, 0.3, 0.42, { duration: 0.35 }),
-            frame(color, 0.3, 0.95, { duration: 0.7 }),
-            frame(color, 0.35, 1.25, { start: 0.15, duration: 0.85, alpha: 0.8 }),
+            bloom(color, 0.5, 0.9, { duration: 0.55, alpha: 0.85 }),
+            core(0.34, 0.46, { duration: 0.22 }),
+            frame(color, 0.3, 0.9, { start: 0.08, duration: 0.45 }),
+            frame(color, 0.35, 1.2, { start: 0.15, duration: 0.45, alpha: 0.4 }),
         ),
         group(
             4,
             particle({
                 sprite: sprite.star,
                 color: white,
-                duration: 0.75,
+                duration: 0.7,
                 x: prop({ cosr1: 0.6 }),
                 y: prop({ sinr1: 0.6 }),
                 ...size(0.14, 0.03, 'inQuad'),
@@ -243,16 +323,17 @@ export const kinds = {
                 a: prop(1, 0, 'inQuad'),
             }),
         ),
-        motes(white, 8, { from: 0.3, to: 0.95, duration: 0.8 }),
+        motes(white, 8, { from: 0.3, to: 0.95, duration: 0.75 }),
     ],
-    // Critical slide ends: the critical glow and one frame, lighter than a critical tap.
+    // Critical slide ends: a tap's hit in gold, so with the critical shaft above it they sit
+    // between a tap and a flick.
     criticalSlideCircular: (color) => [
         once(
-            bloom(color, 0.55, 0.95, { duration: 0.6 }),
-            bloom(white, 0.28, 0.38, { duration: 0.3 }),
-            frame(color, 0.3, 0.9, { duration: 0.7 }),
+            bloom(color, 0.45, 0.8, { duration: 0.45, alpha: 0.8 }),
+            core(0.3, 0.4),
+            frame(color, 0.3, 0.8, { start: 0.08, duration: 0.42 }),
         ),
-        motes(white, 4, { from: 0.3, to: 0.8, duration: 0.7 }),
+        motes(white, 4, { from: 0.3, to: 0.75, duration: 0.55 }),
     ],
 
     // Above the note (2 lanes wide): next to nothing for a tap, needles for a flick, and for every
@@ -271,8 +352,8 @@ export const kinds = {
     ],
     criticalLinear: (color) => [
         once(
-            shaft(color, { width: 0.42, from: 0.4, to: 1.9, alpha: 0.85, duration: 0.8 }),
-            shaft(white, { width: 0.16, from: 0.3, to: 1.4, alpha: 0.7, duration: 0.5 }),
+            shaft(color, { width: 0.3, from: 0.4, to: 1.9, alpha: 0.65, duration: 0.7 }),
+            shaft(white, { width: 0.13, from: 0.3, to: 1.4, alpha: 0.7, duration: 0.45 }),
         ),
         rising(white, 6, {
             shape: sprite.star,
@@ -299,119 +380,80 @@ export const kinds = {
         }),
     ],
 
-    // Flicks, in the linear square turned to the flick (y runs in the flick direction): one broad
-    // comet sweeping off the note, then long beams thrown well past the square, and motes.
-    directional: (color) => [
-        once(
-            bloom(color, 0.55, 0.85, { y: -0.85, duration: 0.55, alpha: 0.85 }),
-            comet(color, {
-                start: 0.05,
-                duration: 0.6,
-                from: -0.8,
-                to: 0.5,
-                length: 1,
-                width: 0.36,
-            }),
-            comet(white, {
-                start: 0.05,
-                duration: 0.45,
-                from: -0.8,
-                to: 0.4,
-                length: 0.6,
-                width: 0.14,
-            }),
-            ...[
-                [-0.3, 0.1, 0.25],
-                [0.3, -0.1, 0.32],
-            ].flatMap(([x, r, start]) =>
-                [
-                    [color, 0.2],
-                    [white, 0.07],
-                ].map(([tint, width]) =>
-                    comet(tint, {
-                        x,
-                        r,
-                        start,
-                        duration: 1 - start,
-                        from: -0.3,
-                        to: 2.6,
-                        length: 1.6,
-                        width,
-                    }),
-                ),
-            ),
-        ),
-        rising(white, 4, { spread: 0.5, height: 1.6, duration: 0.8 }),
-    ],
-    criticalDirectional: (color) => [
-        once(
-            bloom(color, 0.6, 0.95, { y: -0.85, duration: 0.6 }),
-            comet(color, {
-                start: 0.05,
-                duration: 0.6,
-                from: -0.8,
-                to: 0.55,
-                length: 1.1,
-                width: 0.42,
-            }),
-            comet(white, {
-                start: 0.05,
-                duration: 0.45,
-                from: -0.8,
-                to: 0.45,
-                length: 0.7,
-                width: 0.16,
-            }),
-            ...[
-                [-0.4, 0.14, 0.22],
-                [0, 0, 0.27],
-                [0.4, -0.14, 0.32],
-            ].flatMap(([x, r, start]) =>
-                [
-                    [color, 0.22],
-                    [white, 0.08],
-                ].map(([tint, width]) =>
-                    comet(tint, {
-                        x,
-                        r,
-                        start,
-                        duration: 1 - start,
-                        from: -0.3,
-                        to: 2.8,
-                        length: 1.8,
-                        width,
-                    }),
-                ),
-            ),
-        ),
-        rising(white, 6, {
-            shape: sprite.star,
-            spread: 0.6,
-            height: 1.8,
-            radius: 0.08,
-            duration: 0.85,
-            spin: 1.5,
+    // Flicks, in the linear square turned to the flick (y runs in the flick direction, 0.32 s): a
+    // comet with a white-hot core sweeping off the note and a white fan either side of it, then
+    // two thick white-cored beams thrown well past the square (the peak, 80 to 150 ms), and motes.
+    directional: (color) =>
+        sweep(color, {
+            scale: 1,
+            motes: rising(white, 4, { spread: 0.5, height: 1.6, duration: 0.8 }),
         }),
-        rising(color, 4, { spread: 0.5, height: 1.6, duration: 0.8 }),
-    ],
+    criticalDirectional: (color) =>
+        sweep(color, {
+            scale: 1.06,
+            motes: rising(white, 6, {
+                shape: sprite.star,
+                spread: 0.6,
+                height: 1.8,
+                radius: 0.08,
+                duration: 0.85,
+                spin: 1.5,
+            }),
+        }),
     // Lane columns (the lane quad, 1 s): a short flash collapsing to the line.
     lane: (color) => [
         once(
-            ...laneFlash(color, 0.2, 0.1, 0.1),
-            particle({ sprite: sprite.flash, color: white, duration: 0.1, a: prop(0.1, 0) }),
+            ...laneFlash(color, 0.12, 0.1, 0.1),
+            particle({ sprite: sprite.flash, color: white, duration: 0.1, a: prop(0.06, 0) }),
         ),
     ],
-    criticalFlickLane: (color) => [once(...laneFlash(color, 0.15, 0.1, 0.25))],
+    // Critical flicks (and critical trace flicks, which share it). The engine plays it over the
+    // lane from the judge line up (not below it) for 1 s: a gold flash, then a bright streak
+    // shooting up the lane to its far end, its white head leading, the base set's convention.
+    criticalFlickLane: (color) => [
+        once(
+            particle({ sprite: sprite.flash, color, duration: 0.06, a: prop(0.3, 0.12) }),
+            particle({
+                sprite: sprite.flash,
+                color,
+                start: 0.06,
+                duration: 0.14,
+                a: prop(0.12, 0, 'outQuad'),
+            }),
+            ...[
+                [color, 1, 0.2, 0.6],
+                [white, 0.5, 0.16, 0.85],
+            ].map(([tint, width, height, alpha]) =>
+                particle({
+                    sprite: sprite.streak,
+                    color: tint,
+                    start: 0.05,
+                    duration: 0.55,
+                    y: prop(-0.8, 0.88, 'outSine'),
+                    w: prop(width),
+                    h: prop(height, height * 0.35),
+                    a: prop(alpha, 0),
+                }),
+            ),
+        ),
+    ],
     // The standard lane effect (0.3 s).
     laneBasic: (color) => [once(particle({ sprite: sprite.flash, color, a: prop(0.35, 0) }))],
 
-    // Traces, at the note (a square about ten lanes across): a white glint, a thin frame spreading
-    // wide at low alpha, and a little confetti; above it, a soft low column and a few motes.
+    // Traces, at the note (a square about four lanes across): a white glint, a hairline frame at
+    // low alpha no wider than the note and gone by 0.25 s, and a little confetti; above it, a soft
+    // low column and a few motes.
     traceTick: (color) => [
         once(
             bloom(color, 0.14, 0.24, { duration: 0.45, alpha: 0.8 }),
             glint(white, 0.18, { duration: 0.35 }),
-            frame(color, 0.12, 0.6, { start: 0.08, duration: 0.6, alpha: 0.3 }),
+            frame(color, 0.1, 0.32, {
+                start: 0.05,
+                duration: 0.37,
+                alpha: 0.35,
+                shape: sprite.line,
+                pale: 0.2,
+            }),
         ),
         group(
             6,
@@ -427,14 +469,14 @@ export const kinds = {
         ),
     ],
     traceLinear: (color) => [
-        once(shaft(color, { width: 0.55, from: 0.25, to: 1.2, alpha: 0.6, duration: 0.8 })),
+        once(shaft(color, { width: 0.45, from: 0.25, to: 1.1, alpha: 0.5, duration: 0.65 })),
         rising(white, 6, { spread: 0.4, height: 1.2, radius: 0.02, duration: 0.8 }),
     ],
     // Slide ticks, the quietest hit: a small glint and a small frame.
     slideTick: (color) => [
         once(
             glint(white, 0.14, { duration: 0.35 }),
-            frame(color, 0.06, 0.3, { duration: 0.6, alpha: 0.7 }),
+            frame(color, 0.06, 0.3, { duration: 0.5, alpha: 0.6 }),
         ),
     ],
 
@@ -481,27 +523,50 @@ export const kinds = {
         ),
         rising(white, 2, { spread: 0.3, height: 1, radius: 0.015, start: 0.1, duration: 0.6 }),
     ],
-    trail: (color) => [rising(color, 2, { spread: 0.4, height: 0.9 })],
-    holdSlot: () => [rising(white, 2, { spread: 0.3, height: 0.5, radius: 0.012, duration: 0.8 })],
+    // Trails: a small burst of motes of a few sizes; slot motes: one soft glint rising.
+    trail: (color) => [
+        rising(color, 3, { spread: 0.4, height: 0.9, radius: 0.025 }),
+        rising(white, 3, { spread: 0.3, height: 0.7, radius: 0.012, duration: 0.8 }),
+    ],
+    holdSlot: () => [
+        once(
+            particle({
+                sprite: sprite.glow,
+                color: white,
+                duration: 0.8,
+                y: prop(-0.9, -0.4, 'outCubic'),
+                ...size(0.08, 0.04),
+                a: prop(0.6, 0, 'inQuad'),
+            }),
+        ),
+    ],
 }
 
 const accents = {
-    tap: bodyColors.tap[2],
+    tap: baseColors.effect.tap,
     slide: bodyColors.slide[2],
-    flick: bodyColors.flick[2],
+    flick: baseColors.effect.flick,
     critical: bodyColors.critical[2],
+    trace: baseColors.effect.trace,
     damage: damageColor,
     purple: styleColors('Purple')[2],
 }
 
-/** A style colour's effect colour; black uses its lighter grey so it stays visible. */
-const styleEffectColor = (name) => styleColors(name)[name === 'Black' ? 1 : 2]
+// Colours sampled from the base set are used as they are; the others are made vivid.
+const sampled = new Set([
+    ...Object.values(baseColors.effect),
+    ...Object.values(baseColors.style).map((colors) => colors[5]),
+])
+
+/** A style colour's effect colour: the base set's slot glow colour for that style. */
+const styleEffectColor = (name) => baseColors.style[name][5]
 
 const plainColor = (name) => {
     if (name.includes('Damage')) return accents.damage
     if (name.includes('Critical')) return accents.critical
     if (name.includes('Flick')) return accents.flick
-    if (name.includes('Slide') || name.includes('Trace')) return accents.slide
+    if (name.includes('Trace')) return accents.trace
+    if (name.includes('Slide')) return accents.slide
     return accents.tap
 }
 
@@ -547,7 +612,7 @@ export function particleEffects() {
     const add = (name, kind, color) => {
         if (names.has(name)) throw new Error(`Duplicate particle effect name: ${name}`)
         names.add(name)
-        effects.push({ name, kind, color: vivid(color) })
+        effects.push({ name, kind, color: sampled.has(color) ? color : vivid(color) })
     }
     // The plain name with the plain colour, and then one per style colour.
     const family = (name, kind, { plain = true } = {}) => {
@@ -578,11 +643,11 @@ export function particleEffects() {
     family('Sekai Normal Trace Note Linear', 'traceLinear', { plain: false })
     family('Sekai Critical Trace Note Circular', 'traceTick')
     family('Sekai Critical Trace Note Linear', 'traceLinear')
-    add('Sekai Trace Note Circular', 'traceTick', accents.slide)
-    add('Sekai Trace Note Circular Green', 'traceTick', accents.slide)
+    add('Sekai Trace Note Circular', 'traceTick', accents.trace)
+    add('Sekai Trace Note Circular Green', 'traceTick', accents.trace)
     add('Sekai Trace Note Circular Yellow', 'traceTick', accents.critical)
-    add('Sekai Trace Note Linear', 'traceLinear', accents.slide)
-    add('Sekai Trace Note Linear Green', 'traceLinear', accents.slide)
+    add('Sekai Trace Note Linear', 'traceLinear', accents.trace)
+    add('Sekai Trace Note Linear Green', 'traceLinear', accents.trace)
     add('Sekai Trace Note Linear Yellow', 'traceLinear', accents.critical)
     for (const name of ['Normal', 'Critical']) {
         family(`Sekai ${name} Slide Connector Circular`, 'holdCircular')
