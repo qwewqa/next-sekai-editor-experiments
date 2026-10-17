@@ -108,12 +108,16 @@ export type SaveResult =
 
 export type FileErrorCode = 'conflict' | 'not-found' | 'denied' | 'not-local' | 'no-space' | 'io'
 
+/** Which step failed, where the code alone does not tell the user. */
+export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download'
+
 /** How a file operation fails. */
 export class FileError extends Error {
     constructor(
         readonly code: FileErrorCode,
         message: string,
         readonly disk?: DiskState,
+        readonly step?: FileErrorStep,
     ) {
         super(message)
         this.name = 'FileError'

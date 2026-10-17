@@ -62,7 +62,8 @@ export const verifyBuilt = async (kind: SaveRequest['kind'], blob: Blob) => {
         parsed = undefined
     }
     const entities = (parsed as { entities?: unknown } | undefined)?.entities
-    if (!Array.isArray(entities)) throw new FileError('io', 'The built level data did not verify')
+    if (!Array.isArray(entities))
+        throw new FileError('io', 'The built level data did not verify', undefined, 'build')
 }
 
 type PermissionHandle = FileSystemFileHandle & {
@@ -84,14 +85,36 @@ export const requestWrite = (handle: FileSystemFileHandle): Promise<PermissionSt
     }
 }
 
-const readDisk = async (handle: FileSystemFileHandle) => {
+/**
+ * The file as it is now, measured against `expected`: `disk` is undefined when the file differs
+ * in size or exists where none should, since a change needs no hash and a large file no read.
+ */
+const readDisk = async (handle: FileSystemFileHandle, expected: DiskState | 'absent') => {
     try {
         const file = await handle.getFile()
+        if (expected === 'absent' || file.size !== expected.size) return { file, disk: undefined }
         return { file, disk: await levelDataDiskState(file) }
     } catch (error) {
         if (errorName(error) === 'NotFoundError') return
         throw fileErrorOf(error)
     }
+}
+
+/** Whether the file found still matches `expected`. */
+const matches = (
+    found: Awaited<ReturnType<typeof readDisk>>,
+    expected: DiskState | 'absent',
+): boolean => (expected === 'absent' ? !found : !!found?.disk && sameContent(found.disk, expected))
+
+const changedError = (
+    handle: FileSystemFileHandle,
+    found: Awaited<ReturnType<typeof readDisk>>,
+    expected: DiskState | 'absent',
+) => {
+    if (!found) return new FileError('not-found', `${handle.name} cannot be found`)
+    const message =
+        expected === 'absent' ? `${handle.name} exists` : `${handle.name} changed on disk`
+    return new FileError('conflict', message, found.disk)
 }
 
 /**
@@ -118,16 +141,10 @@ export const writeHandle = async (
 
     const sources: PinnedSource[] = []
     if (expected !== undefined) {
-        const found = await readDisk(handle)
+        const found = await readDisk(handle, expected)
         signal?.throwIfAborted()
-        if (expected === 'absent') {
-            if (found) throw new FileError('conflict', `${handle.name} exists`, found.disk)
-        } else if (!found) {
-            throw new FileError('not-found', `${handle.name} cannot be found`)
-        } else if (!sameContent(found.disk, expected)) {
-            throw new FileError('conflict', `${handle.name} changed on disk`, found.disk)
-        }
-        if (found) sources.push({ target, file: found.file, disk: found.disk })
+        if (!matches(found, expected)) throw changedError(handle, found, expected)
+        if (found?.disk) sources.push({ target, file: found.file, disk: found.disk })
     }
 
     let blob: Blob
@@ -151,16 +168,9 @@ export const writeHandle = async (
         signal?.throwIfAborted()
         if (expected !== undefined) {
             // Checked again just before the commit (Part 0 §0.9.6).
-            const found = await readDisk(handle)
+            const found = await readDisk(handle, expected)
             signal?.throwIfAborted()
-            const changed =
-                expected === 'absent'
-                    ? found !== undefined
-                    : !found || !sameContent(found.disk, expected)
-            if (changed)
-                throw found
-                    ? new FileError('conflict', `${handle.name} changed on disk`, found.disk)
-                    : new FileError('not-found', `${handle.name} cannot be found`)
+            if (!matches(found, expected)) throw changedError(handle, found, expected)
         }
         await writable.close()
         writable = undefined
@@ -179,7 +189,12 @@ export const writeHandle = async (
         throw fileErrorOf(error)
     }
     if (disk.fingerprint !== `sha256:${written}`)
-        throw new FileError('io', `${handle.name} did not read back as written`)
+        throw new FileError(
+            'io',
+            `${handle.name} did not read back as written`,
+            undefined,
+            'readBack',
+        )
     return { status: 'saved', target, name: handle.name, disk }
 }
 
@@ -191,13 +206,13 @@ const mayNavigateOnDownload = () => detection().os === 'ios' || isStandalone()
 const anchorDownloads = () =>
     typeof HTMLAnchorElement === 'undefined' || 'download' in HTMLAnchorElement.prototype
 
-const clickLink = (href: string, name: string) => {
+const clickLink = (href: string, name: string, newContext: boolean) => {
     const link = document.createElement('a')
     link.href = href
     link.download = name
     link.rel = 'noopener'
     // Never this browsing context: an ignored download opens a new one (§1.5.6).
-    if (mayNavigateOnDownload()) link.target = '_blank'
+    if (newContext) link.target = '_blank'
     document.body.append(link)
     link.click()
     link.remove()
@@ -211,23 +226,49 @@ const dataUrlOf = async (blob: Blob) => {
     return `data:application/octet-stream;base64,${btoa(binary)}`
 }
 
+/** How long a download's Blob URL is kept: iOS may ask "Download?" long after the tap. */
+const BLOB_URL_MS = 10 * 60_000
+
+const blobUrls = new Set<string>()
+let releasesOnHide = false
+
+const release = (url: string) => {
+    if (blobUrls.delete(url)) URL.revokeObjectURL(url)
+}
+
+/** A Blob URL kept until the page hides, or for BLOB_URL_MS. */
+const keptBlobUrl = (blob: Blob) => {
+    const url = URL.createObjectURL(blob)
+    blobUrls.add(url)
+    setTimeout(() => {
+        release(url)
+    }, BLOB_URL_MS)
+    if (!releasesOnHide) {
+        releasesOnHide = true
+        window.addEventListener('pagehide', () => {
+            for (const kept of [...blobUrls]) release(kept)
+        })
+    }
+    return url
+}
+
 /**
  * Hands a Blob to the browser: an anchor download, else a new context with window.open,
  * else a data: URL below 1 MB. Never navigates the app's own context. Synchronous once
  * the data: URL, when one may be needed, is ready, so the tap keeps its activation.
+ * False when no path was taken.
  */
 const startDownload = (blob: Blob, name: string, dataUrl: string | undefined) => {
-    const url = URL.createObjectURL(blob)
-    // The browser may still be reading the Blob, so the URL is released later.
-    setTimeout(() => {
-        URL.revokeObjectURL(url)
-    }, 40_000)
+    const url = keptBlobUrl(blob)
     if (anchorDownloads()) {
-        clickLink(url, name)
-        return
+        clickLink(url, name, mayNavigateOnDownload())
+        return true
     }
-    if (window.open(url, '_blank')) return
-    if (dataUrl) clickLink(dataUrl, name)
+    if (window.open(url, '_blank')) return true
+    if (!dataUrl) return false
+    // Anchors here ignore download, so the link always opens a new context.
+    clickLink(dataUrl, name, true)
+    return true
 }
 
 /**
@@ -252,6 +293,7 @@ export const handOver = async (
         : performance.now() - startedAt > GESTURE_MS
     if (expired && ready && !(await ready({ name, size: file.size })))
         return { status: 'cancelled' }
-    startDownload(file, name, dataUrl)
+    if (!startDownload(file, name, dataUrl))
+        throw new FileError('io', `${name} could not be downloaded`, undefined, 'download')
     return { status: 'download-started', name }
 }

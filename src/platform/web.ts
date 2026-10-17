@@ -137,11 +137,14 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
             if (isAbort(error)) return { status: 'cancelled' }
             throw error
         }
-        signal?.throwIfAborted()
     }
 
-    if (!handle) return handOver(blob, req.suggestedName, startedAt, req.ready)
+    if (!handle) {
+        signal?.throwIfAborted()
+        return handOver(blob, req.suggestedName, startedAt, req.ready)
+    }
 
+    // Checked before a cancel is honoured, so a refused file the picker emptied is put back.
     const target: FileTarget = { kind: 'handle', handle }
     if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
     signal?.throwIfAborted()

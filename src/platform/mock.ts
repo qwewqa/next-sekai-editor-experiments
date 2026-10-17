@@ -51,9 +51,16 @@ export type MockPlatform = Platform & {
     requestClose: () => Promise<boolean>
     emitLifecycle: (e: LifecycleEvent) => Promise<void>
     /** A handle whose writes land in files. */
-    createHandle: (name: string) => FileSystemFileHandle
+    createHandle: (name: string, options?: MockHandleOptions) => FileSystemFileHandle
     /** Writes a file as another program would. */
     writeFile: (name: string, blob: Blob) => void
+}
+
+export type MockHandleOptions = {
+    /** What requestPermission answers, asked on each call; granted by default. */
+    permission?: () => PermissionState
+    /** Read when requestPermission is called, as the gesture's activation; recorded in the call. */
+    activation?: () => boolean
 }
 
 const defaults = (kind: PlatformKind): PlatformCapabilities =>
@@ -125,13 +132,15 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         return blob && new File([blob], name, { type: blob.type, lastModified: modified.get(name) })
     }
 
-    const createHandle = (name: string): FileSystemFileHandle => {
+    const createHandle = (name: string, options: MockHandleOptions = {}): FileSystemFileHandle => {
         const handle = {
             kind: 'file',
             name,
             requestPermission: () => {
-                calls.push(`requestPermission:${name}`)
-                return Promise.resolve('granted')
+                const { activation, permission } = options
+                const active = activation ? `:${activation() ? 'active' : 'expired'}` : ''
+                calls.push(`requestPermission:${name}${active}`)
+                return Promise.resolve(permission?.() ?? 'granted')
             },
             isSameEntry: (other: FileSystemHandle) => Promise.resolve(other.name === name),
             getFile: () => {

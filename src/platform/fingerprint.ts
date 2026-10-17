@@ -9,12 +9,19 @@ const hex = (bytes: ArrayBuffer) =>
 export const sha256Hex = async (blob: Blob) =>
     hex(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))
 
-/** A level data file's disk state: its sha256, size and time. */
-export const levelDataDiskState = async (file: File): Promise<DiskState> => ({
-    fingerprint: `sha256:${await sha256Hex(file)}`,
-    size: file.size,
-    lastModified: Math.trunc(file.lastModified),
+/** A level data file's disk state from bytes already read from it, so no second read differs. */
+export const diskStateOfBytes = async (
+    bytes: ArrayBuffer,
+    lastModified: number,
+): Promise<DiskState> => ({
+    fingerprint: `sha256:${hex(await crypto.subtle.digest('SHA-256', bytes))}`,
+    size: bytes.byteLength,
+    lastModified: Math.trunc(lastModified),
 })
+
+/** A level data file's disk state: its sha256, size and time. */
+export const levelDataDiskState = async (file: File): Promise<DiskState> =>
+    diskStateOfBytes(await file.arrayBuffer(), file.lastModified)
 
 /** Two disk states describe the same file content. */
 export const sameContent = (a: DiskState, b: DiskState) =>

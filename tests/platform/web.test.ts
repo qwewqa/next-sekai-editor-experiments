@@ -159,6 +159,62 @@ test('a change just before close() aborts the write and leaves the target untouc
     assert.deepEqual(await parsed(await handle.getFile()), { bgmOffset: 0, entities: [{ n: 5 }] })
 })
 
+test('a precondition on a file of another size is a conflict found without hashing', async () => {
+    const events: string[] = []
+    const handle = recordingHandle(events, { initial: levelBlob(0) })
+    const expected = await levelDataDiskState(await handle.getFile())
+    handle.setContent(new Blob([new Uint8Array(expected.size + 100)]))
+    const digest = crypto.subtle.digest.bind(crypto.subtle)
+    let hashed = 0
+    crypto.subtle.digest = (...args: Parameters<SubtleCrypto['digest']>) => {
+        hashed++
+        return digest(...args)
+    }
+    try {
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'chart',
+                target: { kind: 'handle', handle },
+                expected,
+                build: levelData(events, 1),
+            }),
+            (error: unknown) =>
+                error instanceof FileError && error.code === 'conflict' && !error.disk,
+        )
+    } finally {
+        crypto.subtle.digest = digest
+    }
+    assert.equal(hashed, 0)
+})
+
+test('a download’s Blob URL outlasts a late iOS prompt, until the page hides', async () => {
+    browser.downloads.length = 0
+    const revoked: string[] = []
+    const revoke = URL.revokeObjectURL.bind(URL)
+    URL.revokeObjectURL = (url) => {
+        revoked.push(url)
+        revoke(url)
+    }
+    const timer = globalThis.setTimeout
+    const delays: number[] = []
+    globalThis.setTimeout = ((handler: () => void, delay?: number) => {
+        delays.push(delay ?? 0)
+        return timer(handler, delay)
+    }) as typeof setTimeout
+    try {
+        await platform.saveFile({ kind: 'nsld', suggestedName: 'LevelData', build: levelData([]) })
+    } finally {
+        globalThis.setTimeout = timer
+    }
+    const { href } = browser.downloads[0]!
+    assert.ok(delays.every((delay) => delay >= 5 * 60_000))
+    assert.deepEqual(revoked, [])
+    browser.window.dispatchEvent(new Event('pagehide'))
+    assert.deepEqual(revoked, [href])
+    URL.revokeObjectURL = revoke
+})
+
 test('a write that does not read back as written fails', async () => {
     const events: string[] = []
     const handle = recordingHandle(events, {
@@ -174,7 +230,7 @@ test('a write that does not read back as written fails', async () => {
             expected,
             build: levelData(events, 1),
         }),
-        { code: 'io' },
+        { code: 'io', step: 'readBack' },
     )
 })
 
@@ -353,18 +409,24 @@ test('without anchor downloads, a new context opens, then a data: URL below 1 MB
         assert.equal(browser.opened[0]![1], '_blank')
         assert.equal(browser.downloads.length, 0)
 
-        // A blocked window falls back to a data: URL, still in a new context on iOS.
+        // A blocked window falls back to a data: URL, always in a new context.
         browser.window.open = () => null
         await platform.saveFile({ kind: 'nsld', suggestedName: 'b', build: levelData([]) })
         assert.equal(browser.downloads.length, 1)
         assert.match(browser.downloads[0]!.href, /^data:application\/octet-stream;base64,/)
+        assert.equal(browser.downloads[0]!.target, '_blank')
 
+        // With no path left, it fails rather than saying the download started.
         browser.downloads.length = 0
-        await platform.saveFile({
-            kind: 'image',
-            suggestedName: 'big.png',
-            build: () => Promise.resolve(new Blob([new Uint8Array(DATA_URL_LIMIT)])),
-        })
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'image',
+                suggestedName: 'big.png',
+                build: () => Promise.resolve(new Blob([new Uint8Array(DATA_URL_LIMIT)])),
+            }),
+            (error: unknown) =>
+                error instanceof FileError && error.code === 'io' && error.step === 'download',
+        )
         assert.equal(browser.downloads.length, 0)
     } finally {
         browser.window.open = open

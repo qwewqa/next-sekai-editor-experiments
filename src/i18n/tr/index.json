@@ -1604,7 +1604,8 @@
     "export": "Dışa Aktar",
     "exported": "{0} dosyasına dışa aktarıldı",
     "notLevelData": "\"{0}\" seviye verisi değil.",
-    "fileType": "Next SEKAI seviye verisi"
+    "fileType": "Next SEKAI seviye verisi",
+    "unsupportedParts": "\"{0}\", editörün bu sürümünün desteklemediği kısımlar içeriyor."
   },
   "peek": {
     "exportsCurrent": "Güncel sürümü dışa aktarır."
@@ -1618,13 +1619,21 @@
     "notFoundNote": "Taşıdıysanız veya yeniden adlandırdıysanız sonraki adımda seçip onaylayın.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
-    "download": "İndir"
+    "download": "İndir",
+    "buildFailed": "\"{0}\" hazırlanamadı.",
+    "readFailed": "\"{0}\" okunamadı.",
+    "changedWhileWriting": "\"{0}\" yazılırken değişti.",
+    "downloadFailed": "\"{0}\" indirilemedi.",
+    "notLocal": "\"{0}\" henüz bu cihazda değil.",
+    "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
+    "writeFailed": "\"{0}\" yazılamadı.",
+    "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi."
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
     "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
     "exportBodyOpened": "\"{0}\", burada açtığınızdan bu yana değişti.",
-    "replace": "Değiştir"
+    "replace": "Üzerine Yaz"
   },
   "name": {
     "invalidChar": "Ad {0} içeremez",
