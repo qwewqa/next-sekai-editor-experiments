@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="What %PRODUCT_NAME% collects, what it sends and how to delete your data."
+        />
+        <meta name="theme-color" content="#77efdc" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#232539" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" type="image/png" href="/builtin-assets/out/icon/app-icon-32.png" />
+        <link rel="apple-touch-icon" href="/builtin-assets/out/icon/app-icon-180.png" />
+        <link rel="canonical" href="https://nse.qwewqa.dev/privacy/" />
+        <link rel="stylesheet" href="/src/landing/landing.css" />
+        <title>Privacy – %PRODUCT_NAME%</title>
+        <script>
+            // The theme before first paint, from the editor's stored choice.
+            {
+                let theme = 'system'
+                try {
+                    theme = JSON.parse(localStorage.getItem(THEME_KEY)) ?? theme
+                } catch {}
+                document.documentElement.dataset.theme = THEMES.includes(theme)
+                    ? theme
+                    : matchMedia('(prefers-color-scheme: dark)').matches
+                      ? 'dark'
+                      : 'light'
+            }
+        </script>
+    </head>
+    <body class="bg-bg text-fg">
+        <div class="flex min-h-screen flex-col sm:px-4 sm:py-8">
+            <div
+                class="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden bg-modal sm:flex-none sm:rounded-xl sm:shadow-xl"
+            >
+                <header
+                    class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pl-4 pr-1.5 [@media(pointer:coarse)]:h-[52px]"
+                >
+                    <div class="flex min-w-0 items-center gap-2 text-lg font-bold">
+                        <img
+                            src="/builtin-assets/out/icon/app-icon-32.png"
+                            alt=""
+                            width="24"
+                            height="24"
+                            class="size-6 shrink-0"
+                        />
+                        <span class="truncate">%PRODUCT_NAME%</span>
+                    </div>
+                    <a href="/" class="band-button">
+                        <span class="max-sm:hidden">Open the Web Editor</span>
+                        <span class="sm:hidden">Web Editor</span>
+                    </a>
+                </header>
+
+                <main class="flex flex-col gap-8 p-4 sm:p-6">
+                    <div class="flex flex-col gap-1">
+                        <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">Privacy</h1>
+                        <p class="text-sm text-fg/80">
+                            Last updated:
+                            <time datetime="2026-10-17">October 17, 2026</time>
+                        </p>
+                    </div>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="who">
+                        <h2 id="who" class="text-lg font-bold text-fg-strong">Who Runs This</h2>
+                        <p>
+                            %PRODUCT_NAME% is an editor for the Next SEKAI engine in Sonolus. It is
+                            an open-source project by qwewqa.
+                        </p>
+                        <p>
+                            Contact:
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>. Report
+                            bugs on the
+                            <a
+                                href="https://github.com/%GITHUB_REPOSITORY%/issues"
+                                class="link"
+                                target="_blank"
+                                rel="noopener"
+                                >GitHub issues page</a
+                            >. Send privacy questions and requests by email.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="summary">
+                        <h2 id="summary" class="text-lg font-bold text-fg-strong">
+                            The Short Version
+                        </h2>
+                        <p>
+                            The web editor does not collect anything about you. There are no
+                            accounts, no analytics, no cookies and no crash reports, and we run no
+                            server that receives your data: the site is static files on GitHub
+                            Pages.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="web">
+                        <h2 id="web" class="text-lg font-bold text-fg-strong">The Web Editor</h2>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                Your editing sessions and their history, settings and stored assets
+                                stay in this browser’s storage. Files go only where you save them.
+                            </li>
+                            <li>
+                                Audio you choose (BGM, preview audio) and covers are stored with the
+                                sessions that use them. A BGM you replace is kept only as a cache,
+                                which is removed first when space runs low.
+                            </li>
+                        </ul>
+                        <h3 class="mt-2 font-bold text-fg-strong">Requests It Makes</h3>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                Loading the site from nse.qwewqa.dev, hosted by GitHub Pages. GitHub
+                                may log requests, including your IP address. See
+                                <a
+                                    href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                                    class="link"
+                                    target="_blank"
+                                    rel="noopener"
+                                    >GitHub’s privacy statement</a
+                                >.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Sonolus servers you enter</strong>
+                                in Preview Assets: requests go to that server only. Each carries
+                                your IP address, your browser’s user agent and the editor’s language
+                                (in the
+                                <code class="rounded-sm bg-recess px-1 font-mono text-sm"
+                                    >localization</code
+                                >
+                                parameter). No cookies are sent, and thumbnails are loaded without a
+                                referrer.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Automatic re-download:</strong> if
+                                you chose an item from a server and the browser has since cleared
+                                it, the editor downloads it again from that server when it starts,
+                                with the same contents as above.
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="content">
+                        <h2 id="content" class="text-lg font-bold text-fg-strong">
+                            Content from Servers and Files
+                        </h2>
+                        <p>
+                            Items you load from a server or a file are stored on your device only.
+                            The content stays under its server operator’s or author’s terms.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="keep">
+                        <h2 id="keep" class="text-lg font-bold text-fg-strong">
+                            What We Keep, and Deleting Your Data
+                        </h2>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                <strong class="text-fg-strong">We keep nothing.</strong> GitHub’s
+                                request logs are kept under GitHub’s policy. Questions go to
+                                <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Files you send us.</strong> If you
+                                send us a file to fix a problem (a project, or a raw data export
+                                from Settings › Local Data › Recovery), we use it only for that and
+                                delete it when the problem is fixed. Send it by email, not in a
+                                public issue: it holds your charts and audio.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">On the web:</strong> Settings › Local
+                                Data › Delete Sessions…, Preview Assets › Stored for stored assets,
+                                or clearing the site’s data in your browser.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Your choices:</strong> enter only the
+                                servers you want contacted.
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="changes">
+                        <h2 id="changes" class="text-lg font-bold text-fg-strong">Changes</h2>
+                        <p>
+                            The date at the top of this page shows its last change, and the
+                            <a
+                                href="https://github.com/%GITHUB_REPOSITORY%/blob/main/CHANGELOG.md"
+                                class="link"
+                                target="_blank"
+                                rel="noopener"
+                                >changelog</a
+                            >
+                            lists each release. A change in what is sent, for example adding crash
+                            reporting, would be announced in the release notes.
+                        </p>
+                    </section>
+                </main>
+
+                <footer class="mt-auto border-t border-fg/15 px-4 py-4 text-sm text-fg/80 sm:px-6">
+                    <p>
+                        Open source under the
+                        <a href="/LICENSE.txt" class="link" target="_blank" rel="noopener"
+                            >MIT License</a
+                        >.
+                    </p>
+                    <p class="mt-1 flex flex-wrap gap-x-2">
+                        <a
+                            href="https://github.com/%GITHUB_REPOSITORY%"
+                            class="link"
+                            target="_blank"
+                            rel="noopener"
+                            >Source Code</a
+                        >
+                        <span aria-hidden="true">·</span>
+                        <a
+                            href="/THIRD_PARTY_NOTICES.txt"
+                            class="link"
+                            target="_blank"
+                            rel="noopener"
+                            >Third-Party Notices</a
+                        >
+                    </p>
+                </footer>
+            </div>
+        </div>
+    </body>
+</html>

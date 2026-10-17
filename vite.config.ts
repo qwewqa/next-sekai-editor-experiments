@@ -1,6 +1,7 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
 import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
@@ -11,6 +12,17 @@ import { appVersion } from './scripts/version.mjs'
 import { PRODUCT_NAME } from './src/product'
 import { storageKey } from './src/storage'
 import { themes } from './src/themes'
+
+const repository = process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments'
+const root = fileURLToPath(new URL('.', import.meta.url))
+
+// The Vite entries (Part 5, 5.1.3); the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
+const pages = (mode: string) => ({
+    index: resolve(root, 'index.html'),
+    ...(mode !== 'native' && existsSync(resolve(root, 'privacy/index.html'))
+        ? { privacy: resolve(root, 'privacy/index.html') }
+        : {}),
+})
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -23,6 +35,7 @@ export default defineConfig(({ mode }) => ({
     },
     build: {
         target: ['chrome106', 'edge106', 'firefox105', 'safari16', 'ios16'],
+        rolldownOptions: { input: pages(mode) },
     },
     css: {
         postcss: {
@@ -46,12 +59,16 @@ export default defineConfig(({ mode }) => ({
             },
         },
         {
-            // The page title and share metadata take the product name from the one constant.
+            // The page title and share metadata take the product name from the one constant, and the
+            // landing pages' links take the repository.
             name: 'product-name',
             transformIndexHtml: {
                 // Before Vite's own %NAME% substitution, which would warn about this one.
                 order: 'pre',
-                handler: (html) => html.replaceAll('%PRODUCT_NAME%', PRODUCT_NAME),
+                handler: (html) =>
+                    html
+                        .replaceAll('%PRODUCT_NAME%', PRODUCT_NAME)
+                        .replaceAll('%GITHUB_REPOSITORY%', repository),
             },
         },
         {
@@ -82,16 +99,10 @@ export default defineConfig(({ mode }) => ({
         },
     ],
     define: {
-        __GITHUB_REPOSITORY__: JSON.stringify(
-            process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments',
-        ),
+        __GITHUB_REPOSITORY__: JSON.stringify(repository),
         __NSE_SITE__: JSON.stringify(siteFromEnv()),
-        __HAS_PRIVACY_PAGE__: JSON.stringify(
-            existsSync(fileURLToPath(new URL('privacy/index.html', import.meta.url))),
-        ),
+        __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
-        __APP_VERSION__: JSON.stringify(
-            appVersion({ cwd: fileURLToPath(new URL('.', import.meta.url)) }).appVersion,
-        ),
+        __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),
     },
 }))

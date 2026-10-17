@@ -35,12 +35,13 @@ test('About is the last section, with the name, the version and the links in ord
         await links.evaluateAll((all) =>
             all.map((link) => link.textContent.replace('↗', '').trim()),
         ),
-    ).toEqual(['Release Notes', 'Source Code', 'License', 'Third-Party Notices'])
+    ).toEqual(['Release Notes', 'Source Code', 'License', 'Third-Party Notices', 'Privacy'])
     expect(await links.evaluateAll((all) => all.map((link) => link.getAttribute('href')))).toEqual([
         `https://github.com/${REPOSITORY}/blob/main/CHANGELOG.md`,
         `https://github.com/${REPOSITORY}`,
         '/LICENSE.txt',
         '/THIRD_PARTY_NOTICES.txt',
+        '/privacy/',
     ])
     for (const link of await links.all()) {
         await expect(link).toHaveAttribute('target', '_blank')

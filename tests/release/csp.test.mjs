@@ -111,7 +111,7 @@ test('the meta tag is the first child of head, with or without attributes', () =
 })
 
 test('every inline script of every entry gets a hash, and nothing else does', () => {
-    const entries = ['index.html']
+    const entries = ['index.html', 'privacy/index.html']
     for (const file of entries) {
         const html = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')
         const scripts = inlineScripts(html)

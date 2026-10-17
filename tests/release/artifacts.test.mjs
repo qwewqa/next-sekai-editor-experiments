@@ -75,6 +75,7 @@ async function releaseFixture(t) {
     for (const file of [...staticFiles, ...noticeFiles])
         await write(directory, file, `test ${file}`)
     await write(directory, 'index.html', withPolicy(page))
+    await write(directory, 'privacy/index.html', withPolicy(page))
     for (const file of lyonNoticeFiles)
         await write(directory, file, await readFile(join(root, 'public', file)))
     await write(
@@ -260,6 +261,26 @@ test('every page carries the web policy as its first head child, hashing its inl
             await writeReleaseManifest(directory, metadata, assets)
             await assert.rejects(checkRelease(directory), /Content Security Policy differs/)
         })
+})
+
+test('the privacy page is a required entry with the web policy and its own hashed scripts', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    await checkRelease(directory, metadata)
+    await rm(join(directory, 'privacy/index.html'))
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Missing release file: privacy\/index\.html/,
+    )
+    await write(directory, 'privacy/index.html', page)
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /Content Security Policy differs.*privacy/)
+    await write(
+        directory,
+        'privacy/index.html',
+        withPolicy(page).replace('<title>', '<script>alert(1)</script><title>'),
+    )
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /Content Security Policy differs.*privacy/)
 })
 
 test('the test site build must be the one that is marked as such', async (t) => {
