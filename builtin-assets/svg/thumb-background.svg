@@ -11,10 +11,6 @@
     </defs>
     <rect width="256" height="256" fill="url(#base)"/>
     <rect width="256" height="256" fill="url(#glow)"/>
-    <g stroke="#b4d6e8" stroke-opacity="0.2" stroke-width="2">
-        <line x1="128" y1="60" x2="20" y2="256"/>
-        <line x1="128" y1="60" x2="128" y2="256"/>
-        <line x1="128" y1="60" x2="236" y2="256"/>
-    </g>
-    <polygon points="190,40 214,72 190,84 166,72" fill="#b4d6e8" fill-opacity="0.2"/>
+    <rect x="24" y="36" width="96" height="42" rx="10" fill="#b4d6e8" fill-opacity="0.12"/>
+    <polygon points="190,40 214,72 190,84 166,72" fill="#b4d6e8" fill-opacity="0.12"/>
 </svg>
