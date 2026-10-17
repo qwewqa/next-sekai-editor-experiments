@@ -199,6 +199,8 @@ export class StorageWorker {
     /** Replaces a crashed or hung worker, once per crash. */
     private restart(generation: number) {
         if (generation !== this.generation || this.dead) return
+        // Later reports of the same crash (an error, a timeout) find it handled.
+        this.generation++
         this.worker?.terminate()
         this.client?.fail(new RpcError('WorkerRestartedError', 'The storage worker restarted'))
         this.worker = undefined

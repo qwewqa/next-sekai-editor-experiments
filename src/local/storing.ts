@@ -3,8 +3,7 @@ import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
 import { appVersion, platform } from '../platform'
-import { Flusher, type FlushReport } from './flush'
-import type { FlushBatch } from './flushWrite'
+import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
 import type { StorageWorker } from './worker/client'
@@ -43,11 +42,6 @@ export const watchLifecycle = () => {
             void flusher?.flush({ strict: true, oneGo: true })
     })
 }
-
-/** A flush's timeout: the default, and a second per MB it carries, as a large BGM needs. */
-export const flushTimeoutMs = (batch: FlushBatch) =>
-    10_000 +
-    (batch.text.byteLength + batch.media.reduce((n, m) => n + m.bytes.byteLength, 0)) / 1000
 
 export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
     const reports: FlushReport[] = []

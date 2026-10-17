@@ -131,6 +131,15 @@ const ATTEMPTS = 4
 
 type FlushOptions = { strict?: boolean; oneGo?: boolean }
 
+/**
+ * A flush call's timeout (§1.6.5): the usual 10 s, and a second more per MB it carries, since a
+ * large BGM is hashed, stored and read back in it.
+ */
+export const flushTimeoutMs = (batch: FlushBatch) =>
+    10_000 +
+    (batch.text.byteLength + batch.media.reduce((sum, item) => sum + item.bytes.byteLength, 0)) /
+        1000
+
 /** A media item a state holds the bytes of: the BGM's `Bgm.source` (§1.6.8.4). */
 export const heldMediaOf = (state: State): BatchMedia[] => {
     const { meta, source } = state.bgm
