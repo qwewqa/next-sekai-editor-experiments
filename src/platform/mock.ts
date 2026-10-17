@@ -1,8 +1,10 @@
-import { journalStub, locksStub, notYet } from './stubs'
+import { FakeLockManager } from '../local/testing/locks'
+import { journalStub, notYet } from './stubs'
 import type {
     DiagnosticInfo,
     FileTarget,
     LifecycleEvent,
+    LockService,
     OpenedFile,
     Platform,
     PlatformCapabilities,
@@ -22,6 +24,8 @@ export type MockPlatformOptions = {
     os?: PlatformOs
     capabilities?: Partial<PlatformCapabilities>
     fetch?: (url: string, init?: ServerFetchInit) => Promise<Response>
+    /** A lock client from a shared FakeLockManager, for tests with several tabs. */
+    locks?: LockService
 }
 
 export type MockPlatform = Platform & {
@@ -76,6 +80,12 @@ const targetKey = (target: FileTarget) => {
         case 'uri':
             return target.uri
     }
+}
+
+/** This mock's own FIFO lock manager, as one tab sees it. */
+const mockLocks = () => {
+    const manager = new FakeLockManager()
+    return manager.client(manager.scheduler.main)
 }
 
 export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatform => {
@@ -166,7 +176,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             lifecycleHandlers.add(handler)
             return () => lifecycleHandlers.delete(handler)
         },
-        locks: locksStub,
+        locks: options.locks ?? mockLocks(),
         journal: journalStub,
 
         openExternal: (url) => {

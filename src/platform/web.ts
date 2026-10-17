@@ -1,5 +1,6 @@
+import { webLockService } from '../local/locks'
 import { allowsFileSystemAccess, detection, isStandalone } from './detect'
-import { journalStub, locksStub, notYet } from './stubs'
+import { journalStub, notYet } from './stubs'
 import type {
     FileBody,
     LifecycleEvent,
@@ -205,7 +206,7 @@ export const platform: Platform = {
 
     onCloseRequested,
     onLifecycle,
-    locks: locksStub,
+    locks: webLockService,
     journal: journalStub,
 
     openExternal,

@@ -102,13 +102,22 @@ export class FileError extends Error {
 
 export type LifecycleEvent = 'hide' | 'show' | 'freeze'
 
+export type LockMode = 'exclusive' | 'shared'
+
+/** A lock or a request for one, as navigator.locks.query() lists it. */
+export type LockInfo = { name: string; mode: LockMode; clientId?: string }
+
+export type LockSnapshot = { held: LockInfo[]; pending: LockInfo[] }
+
 /** navigator.locks on the web (Step 3). */
 export type LockService = {
+    /** The callback gets false when ifAvailable finds the lock taken; the lock goes when it settles. */
     request: <T>(
         name: string,
-        options: { mode?: 'exclusive' | 'shared'; ifAvailable?: boolean; signal?: AbortSignal },
+        options: { mode?: LockMode; ifAvailable?: boolean; signal?: AbortSignal },
         callback: (held: boolean) => Promise<T>,
     ) => Promise<T>
+    query: () => Promise<LockSnapshot>
 }
 
 /** The last-chance journal (Part 1 §1.6.4, §1.6.11.3; Step 3). */

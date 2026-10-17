@@ -19,16 +19,42 @@ test('index.ts exports the build’s platform as a live binding', () => {
     assert.equal(platformModule.platform, buildPlatform)
 })
 
-test('journal and locks are named stubs until Step 3', async () => {
+test('the journal is a named stub until Step 3', () => {
     for (const platform of [buildPlatform, createMockPlatform()]) {
         assert.throws(() => platform.journal.read('journal.x'), {
             message: 'platform.journal is not available before Step 3',
         })
         assert.throws(() => platform.journal.write('journal.x', ''), /before Step 3/)
-        await assert.rejects(
-            platform.locks.request('nse', {}, () => Promise.resolve()),
-            { message: 'platform.locks is not available before Step 3' },
+    }
+})
+
+test('locks grant in order and list holders and waiters, on the web and in the mock', async () => {
+    for (const platform of [buildPlatform, createMockPlatform()]) {
+        const order: string[] = []
+        let release!: () => void
+        const first = platform.locks.request('nse-test', {}, async (held) => {
+            order.push(`first ${String(held)}`)
+            await new Promise<void>((resolve) => (release = resolve))
+        })
+        const busy = await platform.locks.request('nse-test', { ifAvailable: true }, (held) =>
+            Promise.resolve(held),
         )
+        const second = platform.locks.request('nse-test', { mode: 'shared' }, async (held) => {
+            order.push(`second ${String(held)}`)
+        })
+        const snapshot = await platform.locks.query()
+        assert.deepEqual(
+            snapshot.held.filter((lock) => lock.name === 'nse-test').map((lock) => lock.mode),
+            ['exclusive'],
+        )
+        assert.deepEqual(
+            snapshot.pending.filter((lock) => lock.name === 'nse-test').map((lock) => lock.mode),
+            ['shared'],
+        )
+        assert.equal(busy, false)
+        release()
+        await Promise.all([first, second])
+        assert.deepEqual(order, ['first true', 'second true'])
     }
 })
 
