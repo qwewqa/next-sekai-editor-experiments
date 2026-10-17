@@ -143,7 +143,29 @@ test('a stored package that is missing falls back to Default and says it is miss
     assert.deepEqual(result?.status, { active: 'default', reason: 'missing' })
 })
 
+/** A particle package whose only effect has these groups. */
+const particleWith = (groups: unknown[]) =>
+    scp('particle', {
+        resources: {
+            data: gz(particleData({ effects: [{ ...particleData().effects[0], groups }] })),
+        },
+    })
+const oneParticle = particleData().effects[0]!.groups[0]!.particles[0]
+
 const broken: [string, AssetType, Uint8Array][] = [
+    ['a huge count with no particles', 'particle', particleWith([{ count: 1e15, particles: [] }])],
+    [
+        'a tiny count over many particles',
+        'particle',
+        particleWith([
+            { count: 0.005, particles: Array.from({ length: 100_000 }, () => oneParticle) },
+        ]),
+    ],
+    [
+        'many groups with no count',
+        'particle',
+        particleWith(Array.from({ length: 200_000 }, () => ({ count: 0, particles: [] }))),
+    ],
     ['a bad end record', 'skin', scp('skin').slice(0, -10)],
     ['ZIP64', 'skin', rawZip(scpEntries('skin'), { zip64End: true })],
     [

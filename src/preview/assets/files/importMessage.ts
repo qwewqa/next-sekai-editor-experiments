@@ -70,10 +70,13 @@ export const formatImportMessage = (
             return interpolateRaw(text[code], noun)
         case 'tooManySprites':
         case 'tooManyEffects':
+        case 'tooManyParticles':
+        case 'tooManyGroups':
         case 'audioLength':
             return interpolateRaw(text[code], noun, number(limit))
         case 'particleCount':
-            return interpolateRaw(text.particleCount, noun, detail.name ?? '', number(limit))
+        case 'effectGroups':
+            return interpolateRaw(text[code], noun, detail.name ?? '', number(limit))
         case 'packageTooLarge':
             return interpolateRaw(text.packageTooLarge, size(limit, number))
     }

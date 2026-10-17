@@ -397,6 +397,102 @@ test('a particle effect over 512 particles is refused', async () => {
     assert.equal((await importItem(pkg, 'particle', 'fixture', context())).type, 'particle')
 })
 
+/** A particle package whose only effect has these groups, and maybe more effects. */
+const particleWith = (groups: unknown[], effects = 1) => {
+    const [effect] = particleData().effects
+    assert.ok(effect)
+    return valid('particle', {
+        resources: {
+            data: gz(
+                particleData({
+                    effects: Array.from({ length: effects }, (_, i) => ({
+                        ...effect,
+                        name: i ? `e${i}` : effect.name,
+                        groups,
+                    })),
+                }),
+            ),
+        },
+    })
+}
+
+test('particle shapes that dodge count × particles are refused', async () => {
+    const [particle] = particleData().effects[0]!.groups[0]!.particles
+    // A huge count with no particles still walks every occurrence.
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 1e15, particles: [] }]),
+        'particleCount',
+        'This file’s particle effect "Sekai Note Tap" has more than 512 particles.',
+    )
+    // A tiny count over many particles: counts are whole numbers, and the particles are capped.
+    await expectRefused(
+        'particle',
+        particleWith([
+            { count: 0.005, particles: Array.from({ length: 100_000 }, () => particle) },
+        ]),
+        'tooManyParticles',
+        'This file’s particle data has more than 32,768 particles.',
+    )
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 0.5, particles: [particle] }]),
+        'unreadable',
+    )
+    await expectRefused(
+        'particle',
+        particleWith([{ count: 1, particles: Array.from({ length: 513 }, () => particle) }]),
+        'particleCount',
+    )
+    // Groups with no count are still walked.
+    await expectRefused(
+        'particle',
+        particleWith(Array.from({ length: 200_000 }, () => ({ count: 0, particles: [] }))),
+        'tooManyGroups',
+        'This file’s particle data has more than 32,768 particle groups.',
+    )
+    await expectRefused(
+        'particle',
+        particleWith(Array.from({ length: 513 }, () => ({ count: 0, particles: [] }))),
+        'effectGroups',
+        'This file’s particle effect "Sekai Note Tap" has more than 512 particle groups.',
+    )
+    // Under the per-effect caps, the totals across effects still apply.
+    await expectRefused(
+        'particle',
+        particleWith(
+            Array.from({ length: 300 }, () => ({ count: 0, particles: [] })),
+            120,
+        ),
+        'tooManyGroups',
+    )
+})
+
+test('an effect name in a message is cut to 200 characters', async () => {
+    const [effect] = particleData().effects
+    assert.ok(effect)
+    const error = await expectRefused(
+        'particle',
+        valid('particle', {
+            resources: {
+                data: gz(
+                    particleData({
+                        effects: [
+                            {
+                                ...effect,
+                                name: 'N'.repeat(5000),
+                                groups: [{ count: 1e6, particles: [] }],
+                            },
+                        ],
+                    }),
+                ),
+            },
+        }),
+        'particleCount',
+    )
+    assert.equal(error.detail.name, 'N'.repeat(200))
+})
+
 test('a particle that names a missing sprite is refused', async () => {
     const [effect] = particleData().effects
     assert.ok(effect)
