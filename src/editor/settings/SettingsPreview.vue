@@ -28,7 +28,7 @@ const openAssets = () => {
             :notes="[i18n.settings.preview.assetsHint]"
         >
             <input
-                class="w-full rounded-full bg-button px-4 py-1 text-left shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="h-9 max-w-full rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
                 type="button"
                 data-settings-assets
                 :value="i18n.commands.previewAssets.title"

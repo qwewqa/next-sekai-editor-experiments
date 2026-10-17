@@ -161,7 +161,7 @@ const menuItems = computed((): ManagerMenuItem[] => {
             key: 'close',
             label: interpolateRaw(strings.closePanel, panelTitle(id)),
             icon: CloseIcon,
-            separated: id !== 'preview',
+            separated: true,
         })
     return items
 })

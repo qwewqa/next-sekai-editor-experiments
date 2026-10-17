@@ -847,3 +847,84 @@ test.describe('the review fixes, narrow', () => {
         await expect(strip).not.toHaveClass(/preview-assets-tabs-more-after/)
     })
 })
+
+test.describe('native mode', () => {
+    test('the apps have one Built-in row, store it as Default, and have no Reset', async ({
+        page,
+    }) => {
+        await start(page, { seed: { previewAssets: { skin: { ...fileChoice } } } })
+        // The apps' capabilities: Default is Built-in, and nothing lives in the browser.
+        await page.evaluate(async () => {
+            const module =
+                await window.editorTest.appImport<typeof import('../../src/platform')>(
+                    '/src/platform/index.ts',
+                )
+            const { platform } = module
+            module.setPlatformForTests(
+                Object.create(platform, {
+                    capabilities: {
+                        value: {
+                            ...platform.capabilities,
+                            defaultAssets: false,
+                            browserStorage: false,
+                        },
+                    },
+                }) as typeof platform,
+            )
+        })
+        await open(page)
+        const rows = dialog(page).locator('[data-asset-row]')
+        await expect(rows).toHaveCount(2)
+        await expect(rows.nth(0)).toContainText('Built-in')
+        await expect(rows.nth(0)).not.toContainText('Default')
+        await expect(rows.nth(1)).toContainText('Neon Skin (File)')
+        const footer = dialog(page).locator('[data-preview-assets-footer]')
+        await expect(footer.getByRole('button')).toHaveText(['Use Built-in for All'])
+        await expect(dialog(page).locator('[data-reset-default]')).toHaveCount(0)
+
+        await footer.getByRole('button', { name: 'Use Built-in for All' }).click()
+        expect(await setting(page, 'previewAssets')).toEqual({
+            skin: { source: 'default' },
+            particle: { source: 'default' },
+            background: { source: 'default' },
+            effect: { source: 'default' },
+        })
+        await expect(rows).toHaveCount(1)
+        await expect(rows.nth(0).getByRole('radio')).toBeChecked()
+        await expect(footer.getByRole('button', { name: 'Use Built-in for All' })).toBeDisabled()
+    })
+})
+
+test.describe('the Settings row and the Preview tab menu', () => {
+    for (const theme of ['light', 'dark'] as const)
+        test(`look right in the ${theme} theme`, async ({ page }) => {
+            await start(page)
+            await page.evaluate((theme) => (window.editorTest.settings.theme = theme), theme)
+            await page.locator('[data-panel-tab="preview"]').click({ button: 'right' })
+            const menu = page.getByRole('menu')
+            await expect(menu).toBeVisible()
+            // Close Preview stays in its own group, after Preview Assets….
+            const items = await menu
+                .locator('[role="menuitem"], [role="separator"], hr')
+                .evaluateAll((elements) =>
+                    elements.map((element) => element.getAttribute('role') ?? element.tagName),
+                )
+            expect(items.at(-2)).toBe('separator')
+            await shot(page, `preview-menu-${theme}`)
+            await page.keyboard.press('Escape')
+            await expect(menu).toHaveCount(0)
+
+            await run(page, 'settings')
+            const row = dialog(page).locator('[data-settings-assets]')
+            await expect(row).toBeVisible()
+            // A button at its own width, not a select pill across the row.
+            const box = (await row.boundingBox())!
+            const field = (await row
+                .locator('xpath=ancestor::*[contains(@class,"form-field")][1]')
+                .boundingBox())!
+            expect(box.width).toBeLessThan(field.width - 40)
+            expect(box.height).toBeGreaterThanOrEqual(36)
+            await row.scrollIntoViewIfNeeded()
+            await shot(page, `settings-row-${theme}`, dialog(page))
+        })
+})
