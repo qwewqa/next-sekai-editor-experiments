@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     displayOrigin,
+    isLocalHost,
     itemDetailsUrl,
     parseServerUrl,
     ServerUrlError,
@@ -87,6 +88,89 @@ test('a sonolus:// deep link is rewritten to https', () => {
         item: { category: 'particles', name: 'spark' },
     })
     assert.deepEqual(parseServerUrl('SONOLUS://example.com'), { base: 'https://example.com' })
+})
+
+test('a level’s link, another type’s item and a list page name the server only', () => {
+    for (const path of [
+        'levels/abc',
+        'sonolus/levels/abc',
+        'engines/pjsekai',
+        'playlists/p1',
+        'posts/news',
+        'replays/r',
+        'rooms/x',
+        'skins/list',
+        'levels/list',
+        'sonolus/levels/list',
+    ])
+        assert.deepEqual(parseServerUrl(`https://example.com/server/${path}?keywords=a`), {
+            base: 'https://example.com/server',
+        })
+})
+
+test('a Sonolus share link at open.sonolus.com names the server after it', () => {
+    assert.deepEqual(parseServerUrl('https://open.sonolus.com/example.com/server/skins/neon'), {
+        base: 'https://example.com/server',
+        item: { category: 'skins', name: 'neon' },
+    })
+    assert.deepEqual(parseServerUrl('open.sonolus.com/example.com/server/levels/abc'), {
+        base: 'https://example.com/server',
+    })
+    assert.deepEqual(parseServerUrl('https://open.sonolus.com/example.com'), {
+        base: 'https://example.com',
+    })
+    failsWith('https://open.sonolus.com/', 'invalid')
+    failsWith('https://open.sonolus.com/open.sonolus.com/x', 'invalid')
+    failsWith('https://open.sonolus.com/user:pw@example.com', 'invalid')
+})
+
+test('local hosts and addresses are told from public ones', () => {
+    for (const host of [
+        'localhost',
+        'LOCALHOST.',
+        'dev.localhost',
+        'printer.local',
+        '127.0.0.1',
+        '10.1.2.3',
+        '172.16.0.1',
+        '172.31.255.255',
+        '192.168.1.1',
+        '169.254.0.1',
+        '0.0.0.0',
+        '[::1]',
+        '::',
+        '[fc00::1]',
+        '[fd12:3456::1]',
+        '[fe80::1]',
+        '[febf::1]',
+        '[::ffff:127.0.0.1]',
+        '[::ffff:7f00:1]',
+        '[::ffff:c0a8:101]',
+        '[::ffff:10.0.0.1]',
+        '[0:0:0:0:0:0:0:1]',
+        '[fe80::1%25eth0]',
+    ])
+        assert.equal(isLocalHost(host), true, host)
+    for (const host of [
+        'example.com',
+        'local.example.com',
+        'localhost.example.com',
+        '8.8.8.8',
+        '172.32.0.1',
+        '192.169.0.1',
+        '[2001:db8::1]',
+        '[::ffff:8.8.8.8]',
+        '[fec0::1]',
+    ])
+        assert.equal(isLocalHost(host), false, host)
+    // What a URL makes of the other ways to write an address.
+    for (const url of [
+        'https://2130706433/',
+        'https://0x7f.1/',
+        'https://[::ffff:192.168.0.1]/',
+        'https://[0::1]/',
+    ])
+        assert.equal(isLocalHost(new URL(url).hostname), true, url)
 })
 
 test('an http address is refused on the web and taken where it is allowed', () => {
