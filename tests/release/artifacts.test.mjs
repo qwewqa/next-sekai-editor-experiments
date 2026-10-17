@@ -40,6 +40,8 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
+// The editor's page loads the support gate, a classic script, ahead of the bundle (Part 1 §1.6.10).
+const indexPage = page.replace('<title>', '<script src="/gate.js"></script><title>')
 const withPolicy = (html) => injectPolicy(html, webPolicy)
 
 async function temporary(t) {
@@ -90,7 +92,7 @@ async function releaseFixture(t) {
         )
     for (const file of [...staticFiles, ...noticeFiles])
         await write(directory, file, `test ${file}`)
-    await write(directory, 'index.html', withPolicy(page))
+    await write(directory, 'index.html', withPolicy(indexPage))
     await write(directory, 'privacy/index.html', withPolicy(page))
     for (const file of lyonNoticeFiles)
         await write(directory, file, await readFile(join(root, 'public', file)))
@@ -300,12 +302,51 @@ test('the privacy page is a required entry with the web policy and its own hashe
     await assert.rejects(checkRelease(directory), /Content Security Policy differs.*privacy/)
 })
 
+test('gate.js is staged as it is in public/, and the release must hold it', async (t) => {
+    const staged = await temporary(t)
+    await stageReleasePublic(root, staged)
+    assert.deepEqual(
+        await readFile(join(staged, 'gate.js')),
+        await readFile(join(root, 'public/gate.js')),
+    )
+    assert.ok(staticFiles.includes('gate.js'))
+    const { directory, assets } = await releaseFixture(t)
+    await rm(join(directory, 'gate.js'))
+    await assert.rejects(
+        writeReleaseManifest(directory, metadata, assets),
+        /Missing release file: gate.js/,
+    )
+})
+
+test('index.html must load gate.js, a classic script, before the bundle', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const bundle = '<script type="module" src="/assets/index-12345678.js"></script>'
+    const gate = '<script src="/gate.js"></script>'
+    const cases = {
+        'no gate': indexPage.replace(gate, ''),
+        'the gate after the bundle': indexPage
+            .replace(gate, '')
+            .replace('</body>', gate + '</body>'),
+        'a deferred gate': indexPage.replace(gate, '<script defer src="/gate.js"></script>'),
+        'no bundle': indexPage.replace(bundle, ''),
+    }
+    for (const [name, html] of Object.entries(cases))
+        await t.test(name, async () => {
+            await write(directory, 'index.html', withPolicy(html))
+            await writeReleaseManifest(directory, metadata, assets)
+            await assert.rejects(checkRelease(directory), /does not load gate.js before the bundle/)
+        })
+    await write(directory, 'index.html', withPolicy(indexPage))
+    await writeReleaseManifest(directory, metadata, assets)
+    await checkRelease(directory, metadata)
+})
+
 test('the test site build must be the one that is marked as such', async (t) => {
     const { directory, assets } = await releaseFixture(t)
     const testMetadata = { ...metadata, site: 'test' }
     await writeReleaseManifest(directory, testMetadata, assets)
     await assert.rejects(checkRelease(directory), /index.html does not match the site: test/)
-    await write(directory, 'index.html', withPolicy(applyTestSite(page)))
+    await write(directory, 'index.html', withPolicy(applyTestSite(indexPage)))
     await writeReleaseManifest(directory, testMetadata, assets)
     await checkRelease(directory, { site: 'test' })
     await writeReleaseManifest(directory, metadata, assets)
