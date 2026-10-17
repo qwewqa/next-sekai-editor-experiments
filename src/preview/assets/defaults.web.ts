@@ -22,6 +22,9 @@ declare const __APP_VERSION__: string
 const resourceUrl = (name: string) =>
     `${import.meta.env.BASE_URL}resource/${name}.scp?v=${encodeURIComponent(__APP_VERSION__)}`
 
+/** Shown from the first frame, before the background provider resolves. */
+export const firstPaintBackgroundUrl: string | undefined = backgroundUrl
+
 /** The web's Default: today's resource/*.scp, bg.png and the se_live_* clips. */
 export default {
     skin: ({ signal }) => loadPreviewResource(resourceUrl('skin'), loadSkinFromScp, signal),
