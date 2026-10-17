@@ -199,36 +199,36 @@ export const kinds = {
     // flat, and white motes that stay clear of the frame.
     tapCircular: (color) => [
         once(
-            bloom(color, 0.3, 0.5, { duration: 0.6, alpha: 0.9 }),
-            bloom(white, 0.18, 0.26, { duration: 0.35 }),
-            frame(color, 0.2, 0.62, { duration: 0.65 }),
+            bloom(color, 0.5, 0.85, { duration: 0.55, alpha: 0.85 }),
+            bloom(white, 0.24, 0.34, { duration: 0.3 }),
+            frame(color, 0.3, 0.85, { duration: 0.65 }),
         ),
-        motes(white, 6, { duration: 0.7 }),
+        motes(white, 6, { from: 0.3, to: 0.75, duration: 0.7 }),
     ],
     slideCircular: (color) => [
         once(
-            bloom(color, 0.3, 0.5, { duration: 0.6, alpha: 0.9 }),
-            bloom(white, 0.18, 0.26, { duration: 0.35 }),
-            frame(color, 0.2, 0.62, { duration: 0.65 }),
+            bloom(color, 0.5, 0.85, { duration: 0.55, alpha: 0.85 }),
+            bloom(white, 0.24, 0.34, { duration: 0.3 }),
+            frame(color, 0.3, 0.85, { duration: 0.65 }),
         ),
-        motes(white, 4, { duration: 0.6 }),
+        motes(white, 4, { from: 0.3, to: 0.75, duration: 0.6 }),
     ],
     flickCircular: (color) => [
         once(
-            bloom(color, 0.32, 0.55, { duration: 0.6, alpha: 0.9 }),
-            bloom(white, 0.2, 0.28, { duration: 0.35 }),
-            frame(color, 0.2, 0.62, { duration: 0.65 }),
-            frame(color, 0.12, 0.42, { start: 0.12, duration: 0.6, alpha: 0.8 }),
-            glint(white, 0.32, { duration: 0.4 }),
+            bloom(color, 0.55, 0.95, { duration: 0.6 }),
+            bloom(white, 0.26, 0.36, { duration: 0.3 }),
+            frame(color, 0.3, 0.9, { duration: 0.65 }),
+            frame(color, 0.2, 0.65, { start: 0.12, duration: 0.6, alpha: 0.8 }),
+            glint(white, 0.45, { duration: 0.4 }),
         ),
-        motes(white, 6, { duration: 0.7 }),
+        motes(white, 6, { from: 0.3, to: 0.8, duration: 0.7 }),
     ],
     criticalCircular: (color) => [
         once(
-            bloom(color, 0.4, 0.72, { duration: 0.75 }),
-            bloom(white, 0.24, 0.34, { duration: 0.4 }),
-            frame(color, 0.22, 0.72, { duration: 0.7 }),
-            frame(color, 0.25, 0.98, { start: 0.15, duration: 0.85, alpha: 0.8 }),
+            bloom(color, 0.55, 1, { duration: 0.65 }),
+            bloom(white, 0.3, 0.42, { duration: 0.35 }),
+            frame(color, 0.3, 0.95, { duration: 0.7 }),
+            frame(color, 0.35, 1.25, { start: 0.15, duration: 0.85, alpha: 0.8 }),
         ),
         group(
             4,
@@ -236,40 +236,49 @@ export const kinds = {
                 sprite: sprite.star,
                 color: white,
                 duration: 0.75,
-                x: prop({ cosr1: 0.45 }),
-                y: prop({ sinr1: 0.45 }),
-                ...size(0.1, 0.02, 'inQuad'),
+                x: prop({ cosr1: 0.6 }),
+                y: prop({ sinr1: 0.6 }),
+                ...size(0.14, 0.03, 'inQuad'),
                 r: prop(0, 1),
                 a: prop(1, 0, 'inQuad'),
             }),
         ),
-        motes(white, 8, { to: 0.65, duration: 0.8 }),
+        motes(white, 8, { from: 0.3, to: 0.95, duration: 0.8 }),
+    ],
+    // Critical slide ends: the critical glow and one frame, lighter than a critical tap.
+    criticalSlideCircular: (color) => [
+        once(
+            bloom(color, 0.55, 0.95, { duration: 0.6 }),
+            bloom(white, 0.28, 0.38, { duration: 0.3 }),
+            frame(color, 0.3, 0.9, { duration: 0.7 }),
+        ),
+        motes(white, 4, { from: 0.3, to: 0.8, duration: 0.7 }),
     ],
 
     // Above the note (2 lanes wide): next to nothing for a tap, needles for a flick, and for every
     // critical a tall shaft with stars rising far above it.
     tapLinear: () => [rising(white, 3, { spread: 0.4, height: 0.7, duration: 0.7 })],
     flickLinear: (color) => [
-        once(shaft(color, { width: 0.14, to: 0.5, alpha: 0.6, duration: 0.6 })),
-        rising(color, 4, {
+        once(shaft(color, { width: 0.3, to: 1.1, alpha: 0.75, duration: 0.65 })),
+        rising(color, 6, {
             shape: sprite.spark,
             spread: 0.5,
-            height: 1.2,
-            radius: 0.03,
+            height: 1.4,
+            radius: 0.045,
             duration: 0.7,
         }),
         rising(white, 2, { spread: 0.4, height: 0.9, duration: 0.7 }),
     ],
     criticalLinear: (color) => [
         once(
-            shaft(color, { width: 0.26, from: 0.3, to: 1.6, alpha: 0.85, duration: 0.8 }),
-            shaft(white, { width: 0.1, from: 0.2, to: 1.2, alpha: 0.7, duration: 0.5 }),
+            shaft(color, { width: 0.42, from: 0.4, to: 1.9, alpha: 0.85, duration: 0.8 }),
+            shaft(white, { width: 0.16, from: 0.3, to: 1.4, alpha: 0.7, duration: 0.5 }),
         ),
         rising(white, 6, {
             shape: sprite.star,
             spread: 0.7,
             height: 2.6,
-            radius: 0.07,
+            radius: 0.1,
             duration: 0.9,
             spin: 1.5,
         }),
@@ -277,7 +286,7 @@ export const kinds = {
             shape: sprite.star,
             spread: 0.6,
             height: 2.2,
-            radius: 0.06,
+            radius: 0.085,
             duration: 0.8,
             spin: -1.5,
         }),
@@ -290,113 +299,109 @@ export const kinds = {
         }),
     ],
 
-    // Flicks, in the linear square turned to the flick: a narrow fan of comets, then long beams thrown
-    // past the square, and motes along the way.
+    // Flicks, in the linear square turned to the flick (y runs in the flick direction): one broad
+    // comet sweeping off the note, then long beams thrown well past the square, and motes.
     directional: (color) => [
         once(
-            bloom(color, 0.3, 0.45, { y: -0.85, duration: 0.5, alpha: 0.8 }),
-            ...[-0.3, 0, 0.3].map((r) =>
-                comet(color, {
-                    r,
-                    start: 0.05,
-                    duration: 0.6,
-                    from: -0.7,
-                    to: 0.4,
-                    length: 0.5,
-                    width: 0.12,
-                }),
-            ),
+            bloom(color, 0.55, 0.85, { y: -0.85, duration: 0.55, alpha: 0.85 }),
+            comet(color, {
+                start: 0.05,
+                duration: 0.6,
+                from: -0.8,
+                to: 0.5,
+                length: 1,
+                width: 0.36,
+            }),
             comet(white, {
                 start: 0.05,
-                duration: 0.5,
-                from: -0.7,
-                to: 0.3,
-                length: 0.35,
-                width: 0.06,
+                duration: 0.45,
+                from: -0.8,
+                to: 0.4,
+                length: 0.6,
+                width: 0.14,
             }),
-            comet(color, {
-                x: -0.3,
-                r: 0.12,
-                start: 0.3,
-                duration: 0.7,
-                from: -0.2,
-                to: 1,
-                length: 0.9,
-                width: 0.07,
-                alpha: 0.9,
-            }),
-            comet(white, {
-                x: 0.25,
-                r: -0.08,
-                start: 0.35,
-                duration: 0.65,
-                from: -0.2,
-                to: 1,
-                length: 0.8,
-                width: 0.04,
-                alpha: 0.9,
-            }),
+            ...[
+                [-0.3, 0.1, 0.25],
+                [0.3, -0.1, 0.32],
+            ].flatMap(([x, r, start]) =>
+                [
+                    [color, 0.2],
+                    [white, 0.07],
+                ].map(([tint, width]) =>
+                    comet(tint, {
+                        x,
+                        r,
+                        start,
+                        duration: 1 - start,
+                        from: -0.3,
+                        to: 2.6,
+                        length: 1.6,
+                        width,
+                    }),
+                ),
+            ),
         ),
         rising(white, 4, { spread: 0.5, height: 1.6, duration: 0.8 }),
     ],
     criticalDirectional: (color) => [
         once(
-            bloom(color, 0.35, 0.55, { y: -0.85, duration: 0.55 }),
-            ...[-0.35, 0, 0.35].map((r) =>
-                comet(color, {
-                    r,
-                    start: 0.05,
-                    duration: 0.6,
-                    from: -0.7,
-                    to: 0.45,
-                    length: 0.6,
-                    width: 0.14,
-                }),
-            ),
+            bloom(color, 0.6, 0.95, { y: -0.85, duration: 0.6 }),
+            comet(color, {
+                start: 0.05,
+                duration: 0.6,
+                from: -0.8,
+                to: 0.55,
+                length: 1.1,
+                width: 0.42,
+            }),
             comet(white, {
                 start: 0.05,
-                duration: 0.5,
-                from: -0.7,
-                to: 0.35,
-                length: 0.4,
-                width: 0.07,
+                duration: 0.45,
+                from: -0.8,
+                to: 0.45,
+                length: 0.7,
+                width: 0.16,
             }),
             ...[
-                [-0.4, 0.14],
-                [0, 0],
-                [0.35, -0.12],
-            ].map(([x, r], i) =>
-                comet(i === 1 ? white : color, {
-                    x,
-                    r,
-                    start: 0.28 + 0.05 * i,
-                    duration: 0.7 - 0.05 * i,
-                    from: -0.2,
-                    to: 1,
-                    length: 1,
-                    width: i === 1 ? 0.05 : 0.08,
-                }),
+                [-0.4, 0.14, 0.22],
+                [0, 0, 0.27],
+                [0.4, -0.14, 0.32],
+            ].flatMap(([x, r, start]) =>
+                [
+                    [color, 0.22],
+                    [white, 0.08],
+                ].map(([tint, width]) =>
+                    comet(tint, {
+                        x,
+                        r,
+                        start,
+                        duration: 1 - start,
+                        from: -0.3,
+                        to: 2.8,
+                        length: 1.8,
+                        width,
+                    }),
+                ),
             ),
         ),
         rising(white, 6, {
             shape: sprite.star,
             spread: 0.6,
             height: 1.8,
-            radius: 0.06,
+            radius: 0.08,
             duration: 0.85,
             spin: 1.5,
         }),
         rising(color, 4, { spread: 0.5, height: 1.6, duration: 0.8 }),
     ],
-
     // Lane columns (the lane quad, 1 s): a short flash collapsing to the line.
     lane: (color) => [
         once(
-            ...laneFlash(color, 0.35, 0.1, 0.1),
-            particle({ sprite: sprite.flash, color: white, duration: 0.1, a: prop(0.2, 0) }),
+            ...laneFlash(color, 0.2, 0.1, 0.1),
+            particle({ sprite: sprite.flash, color: white, duration: 0.1, a: prop(0.1, 0) }),
         ),
     ],
-    criticalFlickLane: (color) => [once(...laneFlash(color, 0.3, 0.15, 0.45))],
+    criticalFlickLane: (color) => [once(...laneFlash(color, 0.15, 0.1, 0.25))],
     // The standard lane effect (0.3 s).
     laneBasic: (color) => [once(particle({ sprite: sprite.flash, color, a: prop(0.35, 0) }))],
 
@@ -404,32 +409,32 @@ export const kinds = {
     // wide at low alpha, and a little confetti; above it, a soft low column and a few motes.
     traceTick: (color) => [
         once(
-            bloom(color, 0.08, 0.13, { duration: 0.4, alpha: 0.8 }),
-            glint(white, 0.12, { duration: 0.35 }),
-            frame(color, 0.06, 0.32, { start: 0.08, duration: 0.7, alpha: 0.55 }),
+            bloom(color, 0.14, 0.24, { duration: 0.45, alpha: 0.8 }),
+            glint(white, 0.18, { duration: 0.35 }),
+            frame(color, 0.12, 0.6, { start: 0.08, duration: 0.6, alpha: 0.3 }),
         ),
         group(
-            5,
+            6,
             particle({
                 sprite: sprite.diamond,
                 color,
                 duration: 0.8,
-                x: prop({ cosr1: 0.08 }, { cosr1: 0.25 }, 'outCubic'),
-                y: prop({ sinr1: 0.08 }, { sinr1: 0.25, c: 0.05 }, 'outCubic'),
-                ...size(0.012),
+                x: prop({ cosr1: 0.12 }, { cosr1: 0.4 }, 'outCubic'),
+                y: prop({ sinr1: 0.12 }, { sinr1: 0.4, c: 0.08 }, 'outCubic'),
+                ...size(0.02),
                 a: prop(0.9, 0, 'inQuad'),
             }),
         ),
     ],
     traceLinear: (color) => [
-        once(shaft(color, { width: 0.18, from: 0.15, to: 0.5, alpha: 0.45, duration: 0.7 })),
-        rising(white, 4, { spread: 0.3, height: 0.8, radius: 0.015, duration: 0.8 }),
+        once(shaft(color, { width: 0.55, from: 0.25, to: 1.2, alpha: 0.6, duration: 0.8 })),
+        rising(white, 6, { spread: 0.4, height: 1.2, radius: 0.02, duration: 0.8 }),
     ],
     // Slide ticks, the quietest hit: a small glint and a small frame.
     slideTick: (color) => [
         once(
-            glint(white, 0.07, { duration: 0.3 }),
-            frame(color, 0.03, 0.12, { duration: 0.5, alpha: 0.7 }),
+            glint(white, 0.14, { duration: 0.35 }),
+            frame(color, 0.06, 0.3, { duration: 0.6, alpha: 0.7 }),
         ),
     ],
 
@@ -441,8 +446,8 @@ export const kinds = {
                 (a, b) => ({
                     sprite: sprite.glow,
                     color,
-                    ...size(0.1 + 0.03 * a, 0.1 + 0.03 * b, 'inOutSine'),
-                    a: prop(0.55 + 0.2 * a, 0.55 + 0.2 * b, 'inOutSine'),
+                    ...size(0.34 + 0.08 * a, 0.34 + 0.08 * b, 'inOutSine'),
+                    a: prop(0.6 + 0.2 * a, 0.6 + 0.2 * b, 'inOutSine'),
                 }),
                 0,
                 1,
@@ -451,13 +456,13 @@ export const kinds = {
                 (a, b) => ({
                     sprite: sprite.frame,
                     color,
-                    ...size(0.08 + 0.03 * a, 0.08 + 0.03 * b, 'inOutSine'),
-                    a: prop(0.5 + 0.2 * a, 0.5 + 0.2 * b, 'inOutSine'),
+                    ...size(0.22 + 0.06 * a, 0.22 + 0.06 * b, 'inOutSine'),
+                    a: prop(0.55 + 0.25 * a, 0.55 + 0.25 * b, 'inOutSine'),
                 }),
                 0,
                 1,
             ),
-            particle({ sprite: sprite.glow, color: white, ...size(0.05), a: prop(0.6) }),
+            particle({ sprite: sprite.glow, color: white, ...size(0.1), a: prop(0.6) }),
         ),
     ],
     holdLinear: (color) => [
@@ -465,14 +470,14 @@ export const kinds = {
             particle({
                 sprite: sprite.bar,
                 color,
-                y: prop(-0.45),
-                w: prop(0.16),
-                h: prop(0.55),
-                a: prop(0.4),
+                y: prop(-0.3),
+                w: prop(0.4),
+                h: prop(0.8),
+                a: prop(0.5),
             }),
         ),
         ...[0, 0.25, 0.5].map((start) =>
-            rising(color, 2, { spread: 0.4, height: 1.2, start, duration: 0.5 }),
+            rising(color, 3, { spread: 0.5, height: 1.4, radius: 0.03, start, duration: 0.5 }),
         ),
         rising(white, 2, { spread: 0.3, height: 1, radius: 0.015, start: 0.1, duration: 0.6 }),
     ],
@@ -513,13 +518,15 @@ const hitFamilies = [
 const laneFamilies = hitFamilies.map((family) => (family === 'Normal' ? 'Note' : family))
 
 const circularOf = (family) =>
-    family.startsWith('Critical')
-        ? 'criticalCircular'
-        : family.includes('Flick')
-          ? 'flickCircular'
-          : family === 'Slide'
-            ? 'slideCircular'
-            : 'tapCircular'
+    family === 'Critical Slide'
+        ? 'criticalSlideCircular'
+        : family.startsWith('Critical')
+          ? 'criticalCircular'
+          : family.includes('Flick')
+            ? 'flickCircular'
+            : family === 'Slide'
+              ? 'slideCircular'
+              : 'tapCircular'
 const linearOf = (family) =>
     family.startsWith('Critical')
         ? 'criticalLinear'
@@ -588,7 +595,7 @@ export function particleEffects() {
     // Older names the engine still declares.
     add('Sekai Critical Flick Circular Yellow', 'criticalCircular', accents.critical)
     add('Sekai Critical Flick Linear Yellow', 'criticalLinear', accents.critical)
-    add('Sekai Critical Slide Circular Yellow', 'criticalCircular', accents.critical)
+    add('Sekai Critical Slide Circular Yellow', 'criticalSlideCircular', accents.critical)
     add('Sekai Critical Slide Linear Yellow', 'criticalLinear', accents.critical)
     for (const [name, color, kind] of [
         ['Alternative Red', accents.flick, 'none'],
