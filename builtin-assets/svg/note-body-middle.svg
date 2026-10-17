@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 96">
+    <rect width="16" height="96" fill="var(--outer)"/>
+    <rect y="16" width="16" height="64" fill="var(--inner)"/>
+</svg>

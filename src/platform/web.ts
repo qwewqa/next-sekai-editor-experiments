@@ -72,10 +72,20 @@ const toBlob = (body: FileBody) => {
     throw notYet('Write plans', 'Step 6')
 }
 
-const download = async (blob: Blob, name: string): Promise<SaveResult> => {
-    // Step 1c replaces this hand-over.
-    const { default: saveAs } = await import('file-saver')
-    saveAs(blob, name)
+const download = (blob: Blob, name: string): SaveResult => {
+    // Step 1c replaces this hand-over; synchronous, so the click keeps its user activation.
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = name
+    link.rel = 'noopener'
+    document.body.append(link)
+    link.click()
+    link.remove()
+    // The browser may still be reading the Blob, so the URL is released later.
+    setTimeout(() => {
+        URL.revokeObjectURL(url)
+    }, 40_000)
     return { status: 'download-started', name }
 }
 
@@ -83,6 +93,10 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     const { signal } = req
     if (req.expected !== undefined) throw notYet('Save preconditions', 'Step 1c')
     if (req.target && req.target.kind !== 'handle') throw new Error('No file paths on the web')
+
+    // The picker empties the file it returns, so the body is built before it.
+    const blob = toBlob(await req.build([]))
+    signal?.throwIfAborted()
 
     let handle = req.target?.handle
     if (!handle && req.kind === 'nsld') {
@@ -95,8 +109,6 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         signal?.throwIfAborted()
     }
 
-    const blob = toBlob(await req.build([]))
-    signal?.throwIfAborted()
     if (!handle) return download(blob, req.suggestedName)
 
     let writable: FileSystemWritableFileStream | undefined

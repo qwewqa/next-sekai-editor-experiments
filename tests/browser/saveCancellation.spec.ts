@@ -32,14 +32,13 @@ test.beforeEach(async ({ page }) => {
             downloads: [],
             notificationId: 0,
         }
-        // FileSaver uses an existing saveAs implementation when available. Keep
-        // production save logic, but record downloads without touching disk.
-        Object.defineProperty(window, 'saveAs', {
-            writable: true,
-            value: (blob: Blob, name: string) => {
-                window.saveReview.downloads.push({ name, size: blob.size })
-            },
-        })
+        // Record downloads without touching disk.
+        HTMLAnchorElement.prototype.click = function () {
+            const name = this.download
+            void fetch(this.href)
+                .then((response) => response.blob())
+                .then((blob) => window.saveReview.downloads.push({ name, size: blob.size }))
+        }
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

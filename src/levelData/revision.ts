@@ -21,7 +21,7 @@ const hasElevation = (chart: Chart) =>
     chart.stageTransformEvents.some((event) => event.elevation !== 0)
 
 /** The engine revision level data was saved for; missing means revision 1. */
-export const getLevelDataRevision = ([entity]: LevelDataEntity[]) => {
+export const getLevelDataRevision = ([entity]: readonly LevelDataEntity[]) => {
     // Read as the level data parser reads optional values, without loading the parser.
     if (entity?.archetype !== 'Initialization') return 1
     const data = entity.data.find((data) => data.name === 'revision')

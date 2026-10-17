@@ -1,16 +1,21 @@
 import { crc32 } from './crc32'
 import {
+    CENTRAL_HEADER_SIZE,
     END_TAIL_SIZE,
+    ENTRY_CAP,
     LOCAL_HEADER_SIZE,
     LOCAL_SIGNATURE,
+    SENTINEL_32,
     ZIP64_END_SIZE,
+    centralRecordSize,
     decodeName,
     findAmbiguities,
     findEnd,
     localHeaderSize,
-    parseCentralDirectory,
+    parseCentralRecord,
     parseLocalHeader,
     parseZip64End,
+    view,
     type LocalHeader,
     type ZipEntry,
 } from './directory'
@@ -19,8 +24,14 @@ import { inflateExact } from './inflate'
 
 export type ReadOptions = {
     /** A cap on the entry's inflated size; an entry that declares more is refused before it is read. */
-    maxSize?: number
+    maxSize: number
 }
+
+/** How much a scan or a central-directory read takes from the file at once. */
+const WINDOW_SIZE = 1024 * 1024
+
+/** The most a local header's name and extra field can add to an entry's least range. */
+const MAX_HEADER_SLACK = 2 * 0xffff
 
 /**
  * A ZIP read lazily from a Blob or File: the central directory first, and when
@@ -30,6 +41,9 @@ export type ReadOptions = {
  */
 export class ZipReader {
     private readonly byKey = new Map<string, ZipEntry>()
+    /** Files by local offset, with the furthest least reach so far, for the overlap check on read. */
+    private readonly byOffset: { entry: ZipEntry; reach: number }[]
+    private readonly headerSizes = new Map<ZipEntry, number>()
 
     private constructor(
         readonly source: Blob,
@@ -44,6 +58,15 @@ export class ZipReader {
         for (const entry of entries) {
             if (!this.ambiguous.has(entry.key)) this.byKey.set(entry.key, entry)
         }
+
+        let reach = 0
+        this.byOffset = entries
+            .filter((entry) => !entry.isDirectory)
+            .sort((a, b) => a.localOffset - b.localOffset)
+            .map((entry) => {
+                reach = Math.max(reach, leastEnd(entry))
+                return { entry, reach }
+            })
     }
 
     readonly ambiguous: ReadonlySet<string>
@@ -54,6 +77,8 @@ export class ZipReader {
         try {
             return new ZipReader(source, await readFromDirectory(source), false)
         } catch (error) {
+            // Past the entry cap is damage the scan must not get around.
+            if (error instanceof ZipError && error.code === 'limit') throw error
             if (!(error instanceof ZipError || error instanceof RangeError)) throw error
         }
         return new ZipReader(source, await scanLocalHeaders(source), true)
@@ -81,50 +106,123 @@ export class ZipReader {
         if (!sameBytes(header.rawName, entry.rawName) || header.method !== entry.method) {
             throw new ZipError('header', `${entry.name}: local header`)
         }
-        // With a data descriptor, the local header's CRC and sizes are not filled in.
+        // With a data descriptor, the local header's CRC and sizes may be left zero; filled-in ones must agree.
+        const differs = (local: number, central: number) =>
+            local !== central && (!(header.flags & 8) || (local !== 0 && local !== SENTINEL_32))
         if (
-            !(header.flags & 8) &&
-            (header.crc32 !== entry.crc32 ||
-                header.compressedSize !== entry.compressedSize ||
-                header.size !== entry.size)
+            differs(header.crc32, entry.crc32) ||
+            differs(header.compressedSize, entry.compressedSize) ||
+            differs(header.size, entry.size)
         ) {
             throw new ZipError('header', `${entry.name}: local header`)
         }
+        this.headerSizes.set(entry, total)
 
         const start = entry.localOffset + total
         const end = start + entry.compressedSize
         if (end > source.size) throw new ZipError('truncated', entry.name)
+        if (!entry.isDirectory) await this.checkOverlap(entry, end)
         return source.slice(start, end)
     }
 
+    /**
+     * Refuses an entry whose real range (with its local extra field) holds another
+     * entry's start, or starts inside an earlier entry's real range (§1.6.11.4).
+     */
+    private async checkOverlap(entry: ZipEntry, end: number) {
+        const { byOffset } = this
+        let after = 0
+        let before = byOffset.length
+        while (after < before) {
+            const mid = (after + before) >> 1
+            if ((byOffset[mid]?.entry.localOffset ?? Infinity) <= entry.localOffset) after = mid + 1
+            else before = mid
+        }
+        const overlap = () => new ZipError('ambiguous', `${entry.name}: overlapping data`)
+        if ((byOffset[after]?.entry.localOffset ?? Infinity) < end) throw overlap()
+
+        // An earlier entry reaches at most `MAX_HEADER_SLACK` past its least end, so the walk stops there.
+        for (let i = after - 1; i >= 0; i--) {
+            const { entry: other, reach } = byOffset[i] ?? { entry, reach: 0 }
+            if (reach + MAX_HEADER_SLACK <= entry.localOffset) break
+            if (other === entry) continue
+            const total = this.headerSizes.get(other) ?? (await this.headerSize(other))
+            if (other.localOffset + total + other.compressedSize > entry.localOffset)
+                throw overlap()
+        }
+    }
+
+    /** The whole size of another entry's local header, read once. */
+    private async headerSize(entry: ZipEntry) {
+        const { localOffset } = entry
+        const fixed = await bytesOf(this.source, localOffset, localOffset + LOCAL_HEADER_SIZE)
+        let total = 0
+        try {
+            total = localHeaderSize(fixed)
+        } catch (error) {
+            // A header that cannot be read is that entry's damage, found when it is read.
+            if (!(error instanceof ZipError)) throw error
+        }
+        this.headerSizes.set(entry, total)
+        return total
+    }
+
     /** The entry's uncompressed bytes, with its CRC and declared size verified. */
-    async read(entry: ZipEntry, options: ReadOptions = {}) {
+    async read(entry: ZipEntry, { maxSize }: ReadOptions) {
         if (entry.flags & 1) throw new ZipError('unsupported', `${entry.name}: encrypted`)
         if (entry.method !== 0 && entry.method !== 8) {
             throw new ZipError('unsupported', `${entry.name}: method ${entry.method}`)
         }
-        if (options.maxSize !== undefined && entry.size > options.maxSize) {
-            throw new ZipError('too-large', entry.name)
+        if (entry.size > maxSize) throw new ZipError('too-large', entry.name)
+        // The stored size is checked before it is read, so a small entry cannot make a large read.
+        if (
+            entry.method === 0
+                ? entry.compressedSize !== entry.size
+                : entry.compressedSize > deflateBound(entry.size)
+        ) {
+            throw new ZipError('size', entry.name)
         }
 
         const stored = new Uint8Array(await (await this.stored(entry)).arrayBuffer())
-        let data: Uint8Array
-        if (entry.method === 0) {
-            if (stored.length !== entry.size) throw new ZipError('size', entry.name)
-            data = stored
-        } else {
-            data = inflateExact(stored, entry.size)
-        }
+        const data = entry.method === 0 ? stored : inflateExact(stored, entry.size)
         if (crc32(data) !== entry.crc32) throw new ZipError('crc', entry.name)
         return data
     }
 }
+
+/** A generous bound on the DEFLATE stream of `size` bytes: past it, the stored size is damage. */
+const deflateBound = (size: number) => size * 2 + 1024
+
+/** Where an entry's range ends at least: the fixed header, the name and the stored data. */
+const leastEnd = (entry: ZipEntry) =>
+    entry.localOffset + LOCAL_HEADER_SIZE + entry.rawName.length + entry.compressedSize
 
 const bytesOf = async (source: Blob, start: number, end: number) =>
     new Uint8Array(await source.slice(start, end).arrayBuffer())
 
 const sameBytes = (a: Uint8Array, b: Uint8Array) =>
     a.length === b.length && a.every((byte, i) => byte === b[i])
+
+/** Reads a Blob up to `limit` through a window, so many small reads take few slices. */
+class Window {
+    private start = 0
+    private bytes = new Uint8Array(0)
+
+    constructor(
+        private readonly source: Blob,
+        private readonly limit = source.size,
+    ) {}
+
+    /** The bytes from `start` to `end`, fewer when `end` is past the limit. */
+    async get(start: number, end: number) {
+        if (start < this.start || end > this.start + this.bytes.length) {
+            const to = Math.min(this.limit, Math.max(end, start + WINDOW_SIZE))
+            this.bytes = await bytesOf(this.source, start, Math.max(start, to))
+            this.start = start
+        }
+        return this.bytes.subarray(start - this.start, end - this.start)
+    }
+}
 
 const readFromDirectory = async (source: Blob) => {
     const { size } = source
@@ -138,17 +236,24 @@ const readFromDirectory = async (source: Blob) => {
             ),
         )
     }
-    if (end.cdOffset + end.cdSize > size) throw new ZipError('directory', 'central directory')
+    if (end.entryCount > ENTRY_CAP) throw new ZipError('limit', 'entries')
+    const cdEnd = end.cdOffset + end.cdSize
+    if (cdEnd > size || end.entryCount * CENTRAL_HEADER_SIZE > end.cdSize) {
+        throw new ZipError('directory', 'central directory')
+    }
 
-    const entries = parseCentralDirectory(
-        await bytesOf(source, end.cdOffset, end.cdOffset + end.cdSize),
-        end.entryCount,
-    )
-    // An entry that reaches past the file means the file was cut, so the directory cannot be trusted.
-    for (const entry of entries) {
-        const reach =
-            entry.localOffset + LOCAL_HEADER_SIZE + entry.rawName.length + entry.compressedSize
-        if (reach > size) throw new ZipError('truncated', entry.name)
+    // Read record by record through a window, so a directory that claims the whole file is not read at once.
+    const window = new Window(source, cdEnd)
+    const entries: ZipEntry[] = []
+    let at = end.cdOffset
+    for (let index = 0; index < end.entryCount; index++) {
+        const next = at + centralRecordSize(await window.get(at, at + CENTRAL_HEADER_SIZE))
+        if (next > cdEnd) throw new ZipError('directory', 'central directory')
+        const entry = parseCentralRecord(await window.get(at, next), index)
+        // An entry that reaches past the file means the file was cut, so the directory cannot be trusted.
+        if (leastEnd(entry) > size) throw new ZipError('truncated', entry.name)
+        entries.push(entry)
+        at = next
     }
     return entries
 }
@@ -173,30 +278,51 @@ const entryFromLocal = (header: LocalHeader, offset: number, index: number): Zip
     }
 }
 
+const DESCRIPTOR_SIGNATURE = 0x08074b50
+
+/** The length of the data descriptor at `at` that matches `header`, or 0 when there is none. */
+const descriptorLength = async (window: Window, at: number, header: LocalHeader) => {
+    const bytes = await window.get(at, at + 24)
+    const v = view(bytes)
+    const signed = bytes.length >= 4 && v.getUint32(0, true) === DESCRIPTOR_SIGNATURE ? 4 : 0
+    for (const wide of [false, true]) {
+        const length = signed + (wide ? 20 : 12)
+        if (bytes.length < length || v.getUint32(signed, true) !== header.crc32) continue
+        const [compressedSize, size] = wide
+            ? [Number(v.getBigUint64(signed + 4, true)), Number(v.getBigUint64(signed + 12, true))]
+            : [v.getUint32(signed + 4, true), v.getUint32(signed + 8, true)]
+        if (compressedSize === header.compressedSize && size === header.size) return length
+    }
+    return 0
+}
+
 /** Walks local headers from the start, keeping every entry whose data is wholly there. */
 const scanLocalHeaders = async (source: Blob) => {
     const { size } = source
+    const window = new Window(source)
     const entries: ZipEntry[] = []
     let at = 0
     while (at + LOCAL_HEADER_SIZE <= size) {
-        const fixed = await bytesOf(source, at, at + LOCAL_HEADER_SIZE)
-        if (new DataView(fixed.buffer).getUint32(0, true) !== LOCAL_SIGNATURE) break
+        const fixed = await window.get(at, at + LOCAL_HEADER_SIZE)
+        if (view(fixed).getUint32(0, true) !== LOCAL_SIGNATURE) break
         const total = localHeaderSize(fixed)
         if (at + total > size) break
 
-        const header = parseLocalHeader(await bytesOf(source, at, at + total))
-        // A deflated entry with a data descriptor has no size here, so the scan cannot go past it.
-        if (header.flags & 8 && header.compressedSize === 0 && header.method !== 0) break
-        const next = at + total + header.compressedSize
+        const header = parseLocalHeader(await window.get(at, at + total))
+        // With a data descriptor and no sizes here, the data's end is unknown, so the scan stops.
+        if (header.flags & 8 && header.compressedSize === 0) break
+        let next = at + total + header.compressedSize
         if (next > size) break
 
+        if (entries.length === ENTRY_CAP) throw new ZipError('limit', 'entries')
         entries.push(entryFromLocal(header, at, entries.length))
+        if (header.flags & 8) next += await descriptorLength(window, next, header)
         at = next
     }
     if (entries.length === 0) {
         const head = await bytesOf(source, 0, Math.min(4, size))
         throw new ZipError(
-            head.length === 4 && new DataView(head.buffer).getUint32(0, true) === LOCAL_SIGNATURE
+            head.length === 4 && view(head).getUint32(0, true) === LOCAL_SIGNATURE
                 ? 'truncated'
                 : 'not-zip',
         )

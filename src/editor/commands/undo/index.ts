@@ -12,8 +12,6 @@ export const undo: Command = {
         is: UndoIcon,
     },
 
-    readOnly: true,
-
     execute() {
         const name = undoState()
         if (name) {

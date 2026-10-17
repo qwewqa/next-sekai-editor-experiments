@@ -64,7 +64,7 @@ async function regularFile(path) {
     return readFile(path)
 }
 
-async function dependencyNotices(root) {
+async function dependencyNotices(root, kind) {
     const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
     const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'))
     if (
@@ -108,6 +108,13 @@ async function dependencyNotices(root) {
         'Full LGPL-3.0 and GPL-3.0 texts are included in notices/.',
         'The published package LICENSE excerpt is also preserved below.',
         '',
+        'Built-in preview assets and app icon: original, CC0 1.0.',
+        'UI icons: Font Awesome Free by Fonticons, Inc. (https://fontawesome.com), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).',
+        ...(kind === 'web'
+            ? [
+                  'Default preview skin and particle: "Next SEKAI 01" by Burrito, from coconut.sonolus.com, under its author’s terms.',
+              ]
+            : []),
         'Font Awesome icon attribution: notices/Font-Awesome.txt',
         'Lyon 1.0.22/Rust kernel: full notices and source revisions in third-party/lyon/sources.json.',
         'Vendored libtess.js: notices/libtess.txt (SGI Free Software License B).',
@@ -158,11 +165,17 @@ async function dependencyNotices(root) {
     return sections.join('\n') + '\n'
 }
 
-export async function stageReleasePublic(root, destination) {
+/** The web-only static files (Part 2, 2.7.1). */
+export async function stageWebStatic(root, destination) {
     await mkdir(destination, { recursive: true })
     for (const file of staticFiles) {
         await writeFile(join(destination, file), await regularFile(join(root, 'public', file)))
     }
+}
+
+/** The licence, the notice files and the generated notices of a target, 'web' or 'native'. */
+export async function stageNotices(root, destination, kind = 'web') {
+    await mkdir(destination, { recursive: true })
     await writeFile(join(destination, 'LICENSE.txt'), await regularFile(join(root, 'LICENSE.txt')))
     await mkdir(join(destination, 'notices'), { recursive: true })
     for (const file of noticeFiles.filter((file) => file.startsWith('notices/'))) {
@@ -173,7 +186,15 @@ export async function stageReleasePublic(root, destination) {
         await mkdir(resolve(target, '..'), { recursive: true })
         await writeFile(target, await regularFile(containedPath(join(root, 'public'), file)))
     }
-    await writeFile(join(destination, 'THIRD_PARTY_NOTICES.txt'), await dependencyNotices(root))
+    await writeFile(
+        join(destination, 'THIRD_PARTY_NOTICES.txt'),
+        await dependencyNotices(root, kind),
+    )
+}
+
+export async function stageReleasePublic(root, destination) {
+    await stageWebStatic(root, destination)
+    await stageNotices(root, destination, 'web')
 }
 
 async function listFiles(directory, prefix = '') {

@@ -13,6 +13,19 @@ Local preview requires `public/resource/skin.scp`; `public/resource/particle.scp
 
 `npm run build:release` builds `dist` with preview assets.
 
+## Built-in assets and the native build
+
+`public/builtin/` holds the Built-in preview set, made by `npm run build:builtin-assets` from
+`builtin-assets/` and committed. `npm run check:builtin-assets` rebuilds it and compares the bytes.
+`npm run build:native` builds `dist-native/`, the apps' frontend, from an allowlisted public folder, and
+`npm run check:native-bundle` checks that no web-only file or reference is in it. Neither needs Rust.
+
+## Licensing
+
+- The code is MIT (`LICENSE.txt`).
+- The Built-in art and the app icon are CC0 1.0 (`builtin-assets/LICENSE.txt`).
+- Every other file is covered as `REUSE.toml` says.
+
 ## Browser compatibility
 
 The production build targets Chrome/Edge 106, Firefox 105, and Safari/iOS 16

@@ -11,17 +11,19 @@ const git = (cwd, ...args) =>
 export function appVersion({ cwd = process.cwd() } = {}) {
     cwd = resolve(cwd)
     try {
-        // A long form always has the distance; the exclude drops tags like v1.2.3-rc.1.
+        // Exact vX.Y.Z tags only; a glob would also take v1.2.3.4.
+        const tags = git(cwd, 'tag', '--merged', 'HEAD')
+            .split('\n')
+            .filter((tag) => versionTag.test(tag))
+        if (!tags.length) throw new Error('No version tags')
+        // A long form always has the distance.
         const described = git(
             cwd,
             'describe',
             '--tags',
             '--long',
             '--abbrev=8',
-            '--match',
-            'v[0-9]*.[0-9]*.[0-9]*',
-            '--exclude',
-            '*[!0-9.v]*',
+            ...tags.flatMap((tag) => ['--match', tag]),
         )
         const match = /^(v\d+\.\d+\.\d+)-(\d+)-g[0-9a-f]+$/.exec(described)
         if (match && versionTag.test(match[1])) {

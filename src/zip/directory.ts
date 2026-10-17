@@ -9,11 +9,14 @@ const ZIP64_END_SIGNATURE = 0x06064b50
 const ZIP64_LOCATOR_SIGNATURE = 0x07064b50
 
 export const LOCAL_HEADER_SIZE = 30
+export const CENTRAL_HEADER_SIZE = 46
+/** The most entries a reader accepts (§1.6.11.4): more is damage. */
+export const ENTRY_CAP = 0xffff
 export const ZIP64_END_SIZE = 56
 /** How much of a file's end holds the end record, a comment and the ZIP64 locator. */
 export const END_TAIL_SIZE = 0xffff + 22 + 20
 
-const SENTINEL_32 = 0xffffffff
+export const SENTINEL_32 = 0xffffffff
 
 export type ZipEntry = {
     index: number
@@ -41,7 +44,8 @@ export type ZipEnd = {
     zip64Offset?: number
 }
 
-const view = (bytes: Uint8Array) => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+export const view = (bytes: Uint8Array) =>
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 
 const u64 = (v: DataView, offset: number) => {
     const value = v.getBigUint64(offset, true)
@@ -104,61 +108,75 @@ export const decodeName = (raw: Uint8Array, flags: number) => {
     }
 }
 
+/** The whole size of a central-directory record, from its first 46 bytes. */
+export const centralRecordSize = (fixed: Uint8Array) => {
+    const v = view(fixed)
+    if (fixed.length < CENTRAL_HEADER_SIZE || v.getUint32(0, true) !== CENTRAL_SIGNATURE) {
+        throw new ZipError('directory', 'central directory')
+    }
+    return (
+        CENTRAL_HEADER_SIZE + v.getUint16(28, true) + v.getUint16(30, true) + v.getUint16(32, true)
+    )
+}
+
+/** Parses one central-directory record from `centralRecordSize` bytes. */
+export const parseCentralRecord = (bytes: Uint8Array, index: number): ZipEntry => {
+    const total = centralRecordSize(bytes)
+    if (bytes.length < total) throw new ZipError('directory', 'central directory')
+    const v = view(bytes)
+    const flags = v.getUint16(8, true)
+    const nameLength = v.getUint16(28, true)
+    const extraLength = v.getUint16(30, true)
+    const nameAt = CENTRAL_HEADER_SIZE
+    const extraAt = nameAt + nameLength
+
+    let size = v.getUint32(24, true)
+    let compressedSize = v.getUint32(20, true)
+    let localOffset = v.getUint32(42, true)
+    if (size === SENTINEL_32 || compressedSize === SENTINEL_32 || localOffset === SENTINEL_32) {
+        const field = findExtra(bytes.subarray(extraAt, extraAt + extraLength), 1)
+        if (!field) throw new ZipError('directory', 'ZIP64 extra')
+        const f = view(field)
+        let p = 0
+        const take = () => {
+            if (p + 8 > field.length) throw new ZipError('directory', 'ZIP64 extra')
+            const value = u64(f, p)
+            p += 8
+            return value
+        }
+        if (size === SENTINEL_32) size = take()
+        if (compressedSize === SENTINEL_32) compressedSize = take()
+        if (localOffset === SENTINEL_32) localOffset = take()
+    }
+
+    const rawName = bytes.slice(nameAt, extraAt)
+    const name = decodeName(rawName, flags)
+    return {
+        index,
+        name,
+        key: name.normalize('NFC'),
+        rawName,
+        flags,
+        method: v.getUint16(10, true),
+        dosTime: v.getUint16(12, true),
+        dosDate: v.getUint16(14, true),
+        crc32: v.getUint32(16, true),
+        compressedSize,
+        size,
+        localOffset,
+        isDirectory: name.endsWith('/'),
+    }
+}
+
 /** Parses a central directory (`bytes` starts at its first record) of `entryCount` entries. */
 export const parseCentralDirectory = (bytes: Uint8Array, entryCount: number): ZipEntry[] => {
-    const v = view(bytes)
+    if (entryCount > ENTRY_CAP) throw new ZipError('limit', 'entries')
     const entries: ZipEntry[] = []
     let at = 0
     for (let index = 0; index < entryCount; index++) {
-        if (at + 46 > bytes.length || v.getUint32(at, true) !== CENTRAL_SIGNATURE) {
-            throw new ZipError('directory', 'central directory')
-        }
-
-        const flags = v.getUint16(at + 8, true)
-        const nameLength = v.getUint16(at + 28, true)
-        const extraLength = v.getUint16(at + 30, true)
-        const commentLength = v.getUint16(at + 32, true)
-        const nameAt = at + 46
-        const extraAt = nameAt + nameLength
-        const next = extraAt + extraLength + commentLength
+        const next = at + centralRecordSize(bytes.subarray(at))
         if (next > bytes.length) throw new ZipError('directory', 'central directory')
-
-        let size = v.getUint32(at + 24, true)
-        let compressedSize = v.getUint32(at + 20, true)
-        let localOffset = v.getUint32(at + 42, true)
-        if (size === SENTINEL_32 || compressedSize === SENTINEL_32 || localOffset === SENTINEL_32) {
-            const field = findExtra(bytes.subarray(extraAt, extraAt + extraLength), 1)
-            if (!field) throw new ZipError('directory', 'ZIP64 extra')
-            const f = view(field)
-            let p = 0
-            const take = () => {
-                if (p + 8 > field.length) throw new ZipError('directory', 'ZIP64 extra')
-                const value = u64(f, p)
-                p += 8
-                return value
-            }
-            if (size === SENTINEL_32) size = take()
-            if (compressedSize === SENTINEL_32) compressedSize = take()
-            if (localOffset === SENTINEL_32) localOffset = take()
-        }
-
-        const rawName = bytes.slice(nameAt, extraAt)
-        const name = decodeName(rawName, flags)
-        entries.push({
-            index,
-            name,
-            key: name.normalize('NFC'),
-            rawName,
-            flags,
-            method: v.getUint16(at + 10, true),
-            dosTime: v.getUint16(at + 12, true),
-            dosDate: v.getUint16(at + 14, true),
-            crc32: v.getUint32(at + 16, true),
-            compressedSize,
-            size,
-            localOffset,
-            isDirectory: name.endsWith('/'),
-        })
+        entries.push(parseCentralRecord(bytes.subarray(at, next), index))
         at = next
     }
     return entries
@@ -254,7 +272,8 @@ export const findAmbiguities = (entries: readonly ZipEntry[]): Ambiguity => {
         seen.add(entry.key)
     }
 
-    // The least a range can cover is the fixed header, the name and the stored data.
+    // The least a range can cover is the fixed header, the name and the stored data; the reader
+    // checks the real range, with the local extra field, when it reads an entry.
     const ranges = entries
         .filter((entry) => !entry.isDirectory)
         .map((entry) => ({

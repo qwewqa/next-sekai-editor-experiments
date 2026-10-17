@@ -1,0 +1,156 @@
+{
+    "version": 1,
+    "set": {
+        "name": "nse-builtin",
+        "version": 1
+    },
+    "files": {
+        "builtin-assets/out/icon/app-icon-1024.png": {
+            "sha256": "05ecf5fdcd4e49b6a92cccfd02024aee3998bcc8480540f9b143245688554939",
+            "bytes": 22301
+        },
+        "builtin-assets/out/icon/app-icon-16.png": {
+            "sha256": "c5f6abfd7e9cb1c03525aa8dd6abf2e18a6fba395bd0518dfbf110056e56dbb7",
+            "bytes": 212
+        },
+        "builtin-assets/out/icon/app-icon-180.png": {
+            "sha256": "0aa9f2c31b643bc99c0085fada0d1ff3e5a621b9c28ac6b81c42bf558e7c5dfc",
+            "bytes": 3947
+        },
+        "builtin-assets/out/icon/app-icon-32.png": {
+            "sha256": "706d57f7c1ea1740ebbcdf5363ede52dc70205aeebfe3b4256fd29e180099c8e",
+            "bytes": 310
+        },
+        "builtin-assets/out/icon/app-icon-512.png": {
+            "sha256": "3e775822492cb2df312bad793507c9736e511f3ba5d15151bddefe35a1cc4f12",
+            "bytes": 10542
+        },
+        "builtin-assets/out/icon/app-icon-background.txt": {
+            "sha256": "63a537d78454cb5d8d109b53a523988a3a8d57b38f1ecedf231e214d8a615dcd",
+            "bytes": 8
+        },
+        "builtin-assets/out/icon/app-icon-foreground-1024.png": {
+            "sha256": "9d4ec008bddd7869d4877c36d47b73926ab1bd6bbfc57572aebe18d213d4db95",
+            "bytes": 8103
+        },
+        "builtin-assets/out/icon/app-icon-macos-1024.png": {
+            "sha256": "8646a541a3c97057230ef45177499f1af4a5ccf5c970c8b9991b3944ca67253c",
+            "bytes": 38634
+        },
+        "builtin-assets/out/icon/app-icon-monochrome-1024.png": {
+            "sha256": "62d40435af4b7861e1290589c726690b2b4d6b2e413e372da2a27d7212693a8e",
+            "bytes": 5876
+        },
+        "builtin-assets/out/icon/social-card.png": {
+            "sha256": "bad133525c16ecb196461c67a133999a0e07b521662977d6dda95e3d0a8b426a",
+            "bytes": 22917
+        },
+        "public/builtin/background.scp": {
+            "sha256": "8e50e041986eff9b6f174c349da039fa84b11a59f6c0409ff3e7c13658d5cd52",
+            "bytes": 105377
+        },
+        "public/builtin/effect.scp": {
+            "sha256": "89c94e08a5e403430e275b7bf7ef78a68b2498b857af90b539e916f4bf178be9",
+            "bytes": 226609
+        },
+        "public/builtin/particle.scp": {
+            "sha256": "beecf4686bd8a64d8042e22637cc9fc4409712c7053a455c8ffbadf841ed3816",
+            "bytes": 22151
+        },
+        "public/builtin/skin.scp": {
+            "sha256": "351365456953db029300a241db11e96c8ba25a42f021a6892663fa8ac9253aea",
+            "bytes": 123766
+        }
+    },
+    "resources": {
+        "skin": {
+            "thumbnail": {
+                "sha1": "ebe69cf1cc9b1df64732ca9c3da26002723a803d",
+                "sha256": "d362d99a47037775c9a67255fa3394e67fb0b0d65254ecdafcef2feb2b6c3687",
+                "bytes": 1986
+            },
+            "data": {
+                "sha1": "36df73459e0a4808d2e6a83f4beca52cc4944ba5",
+                "sha256": "6fd072e4a6af5bd25fc64c26ba71c8a158662b381a883a4c46c2a085b43e5ed2",
+                "bytes": 7116
+            },
+            "texture": {
+                "sha1": "0d0ec8a2e291cfd3138bc607097148371767051b",
+                "sha256": "1bfcd7e8c52f2d37357efeea614f0394a0d18413ec13883494a9f858097c6902",
+                "bytes": 112651
+            }
+        },
+        "particle": {
+            "thumbnail": {
+                "sha1": "b860643605146d2d257a005c61f228334c9e72e4",
+                "sha256": "81c648439313fac22c9ca60dbadff8607bd3dfdbbd3a48a085dedce0fc638761",
+                "bytes": 5039
+            },
+            "data": {
+                "sha1": "490e326df2aa834663b6a99bf281e15104a4e728",
+                "sha256": "92ecd927e26fe7e7919fca3a53475bca7f03cfd376aaf7bffdf10fe6b07b3578",
+                "bytes": 7669
+            },
+            "texture": {
+                "sha1": "4570d6aff2baa07c268a4965b7831c6c8c23539c",
+                "sha256": "4704c0ca9984291f9f314e738ae91bfe9136a4212965e73d06243965aef32fe1",
+                "bytes": 7401
+            }
+        },
+        "background": {
+            "thumbnail": {
+                "sha1": "b6eba8d85a4f621f1f198a35e14592fec88b2b10",
+                "sha256": "8882622aaeed3317f409ec8bc2dcb522e081db4865fc09f8f4aa0e9410d3ef9c",
+                "bytes": 11962
+            },
+            "data": {
+                "sha1": "9ba748732f31016e3420d953533d889a3ba944f4",
+                "sha256": "c8d56bcce2f994b6f015cd96f095f1e9c83fe917056421c6a385f47e46669cda",
+                "bytes": 72
+            },
+            "image": {
+                "sha1": "814eb061fee7701d9c91aca990e0d98b91ef09ff",
+                "sha256": "0bde959474b46b3687c3cbf0e7f561934566487f664a658243da61b36858ec09",
+                "bytes": 90918
+            },
+            "configuration": {
+                "sha1": "a3a808b95010ae835742c00d71202eee725caed3",
+                "sha256": "4511b4b0e84e02e7d500b4afa2fb511fffc4487aef9fa55014afa5dd164489c2",
+                "bytes": 43
+            }
+        },
+        "effect": {
+            "thumbnail": {
+                "sha1": "5108ca6d9c67376104dbdacdb6e3b94be726b377",
+                "sha256": "f5e600048990ff15595971ac9c828bbdfec9f96a2ecfe0c28834e1274eebdb98",
+                "bytes": 2798
+            },
+            "data": {
+                "sha1": "bfaa2638e12b01735eda3d56d5636910584c123e",
+                "sha256": "c677907847c061c324bae571875725f52c2ed5fcff0c253d1e2eef18d8453293",
+                "bytes": 238
+            },
+            "audio": {
+                "sha1": "58ee8c1a723bf9fca50e77d9a39b15a1186a7b23",
+                "sha256": "a83a605da72bbea2a47ff576410100b0af59c9b0ee652a145427ab3c726e96e9",
+                "bytes": 221552
+            }
+        }
+    },
+    "textures": {
+        "skin": {
+            "width": 2048,
+            "height": 2048
+        },
+        "particle": {
+            "width": 512,
+            "height": 512
+        }
+    },
+    "counts": {
+        "skinNames": 1323,
+        "skinImages": 271,
+        "particleEffects": 505,
+        "clips": 15
+    }
+}

@@ -1,0 +1,126 @@
+{
+    "version": 1,
+    "files": [
+        {
+            "name": "se_live_connect.mp3",
+            "source": "src/assets/se_live_connect.mp3",
+            "sha256": "024d5f148bd5c7d7cfe156c2d8941fad853af796a194615db1a3d50a561f1063"
+        },
+        {
+            "name": "se_live_connect_critical.mp3",
+            "source": "src/assets/se_live_connect_critical.mp3",
+            "sha256": "4f2a9e42d7e2c664bdffe2dfbf297073ef5820f3aa283b3e5d29372b46b570aa"
+        },
+        {
+            "name": "se_live_critical.mp3",
+            "source": "src/assets/se_live_critical.mp3",
+            "sha256": "69dce310b8be9ac7cf2ca9c36be0846bbd4ca251bad4c2a8c7483dc7de515600"
+        },
+        {
+            "name": "se_live_flick.mp3",
+            "source": "src/assets/se_live_flick.mp3",
+            "sha256": "7394b0374322ea1645f175f2d12784d7263029b30cacfd4e126e619c5027413f"
+        },
+        {
+            "name": "se_live_flick_critical.mp3",
+            "source": "src/assets/se_live_flick_critical.mp3",
+            "sha256": "8ccdfee6e28d12b94bcf417943f76402df2fd86dde7fc921093f82401f71c3b4"
+        },
+        {
+            "name": "se_live_long.mp3",
+            "source": "src/assets/se_live_long.mp3",
+            "sha256": "f6eee1669d2e652880f53c9d88d0879b87467d5afc19f3c7052b76cd11bed3e4"
+        },
+        {
+            "name": "se_live_long_critical.mp3",
+            "source": "src/assets/se_live_long_critical.mp3",
+            "sha256": "810023ec45326e660e28a8cecca52f16a375027b71b4651eabf23bd12b230aac"
+        },
+        {
+            "name": "se_live_perfect.mp3",
+            "source": "src/assets/se_live_perfect.mp3",
+            "sha256": "7d1abbdb41b381fbba1500669da5be458c15855fa33d6e62ccfe837885bbd151"
+        },
+        {
+            "name": "se_live_trace.mp3",
+            "source": "src/assets/se_live_trace.mp3",
+            "sha256": "71ea96bd178d90d200fa24807de9ced133d035153751b0d9bda6c0c0accbe1c3"
+        },
+        {
+            "name": "se_live_trace_critical.mp3",
+            "source": "src/assets/se_live_trace_critical.mp3",
+            "sha256": "92377fbcb5aa1ce406000c422c3e1210ea941f351e935697daac220ac09316ba"
+        },
+        {
+            "name": "bg.png",
+            "source": "src/preview/bg.png",
+            "sha256": "1812f1bb90e1ec25ad0ea3a358f1233b611b6bd42307c787bb3f0b6a3814f71f"
+        },
+        {
+            "name": "thumbnail.png",
+            "source": "public/thumbnail.png",
+            "sha256": "062aaa8809bc91f5ec10cf495749893e046829323740ea355a004ea9deb90610"
+        },
+        {
+            "name": "favicon.ico",
+            "source": "public/favicon.ico",
+            "sha256": "a4c83f58df921e2c23b4ea7be8b291eceb5a765d24c65e207cf6d335441050d7"
+        },
+        {
+            "name": "skin.scp",
+            "source": "deployment/preview-assets.lock.json#skin",
+            "sha256": "7d68b1440513e08808eb161e9684f05f74df807e023e86b25351ff463abe06ab"
+        },
+        {
+            "name": "skin data",
+            "source": "public/resource/skin.scp:data",
+            "sha256": "f63db45842bf6da43fe1012110746cc7b64c95444cf19380d00d5ae1b0a2ba88"
+        },
+        {
+            "name": "skin texture",
+            "source": "public/resource/skin.scp:texture",
+            "sha256": "c0e1f7271f7c86ad21752fe7d175d4f11d7d0d60ce06df0e74b46e29e98161b3"
+        },
+        {
+            "name": "particle.scp",
+            "source": "deployment/preview-assets.lock.json#particle",
+            "sha256": "1b36367b6ac82d7b5b067f18223a1e1e79e0734981ba7e529860d0b6d764e53d"
+        },
+        {
+            "name": "particle data",
+            "source": "public/resource/particle.scp:data",
+            "sha256": "c35d6bf9ca84c1465716ee965b5883a8f435c771733d8aa1d19069df508da3b7"
+        },
+        {
+            "name": "particle texture",
+            "source": "public/resource/particle.scp:texture",
+            "sha256": "40b087da052ce71e1cb0107f8afe70ea67ea8c148520f1a36c3fdcab40cb4887"
+        }
+    ],
+    "references": [
+        {
+            "text": "thumbnail"
+        },
+        {
+            "text": "favicon.ico"
+        },
+        {
+            "regex": "bg-[A-Za-z0-9_-]{8}.png"
+        },
+        {
+            "text": "se_live"
+        },
+        {
+            "text": "resource/"
+        },
+        {
+            "text": "coconut"
+        },
+        {
+            "text": "og:image"
+        },
+        {
+            "text": "og:site_name"
+        }
+    ]
+}

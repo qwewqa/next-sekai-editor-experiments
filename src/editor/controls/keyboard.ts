@@ -109,8 +109,14 @@ const onKeydown = (event: KeyboardEvent) => {
 
     const commandChord = isCommandChord(event) && isCharacter(event.key)
     const active = document.activeElement
-    const matched = matchBindings(settings.keyboardShortcuts, event, isApple)
-    // Bindings naming commands not registered yet wait for them.
+    // Bindings naming commands not registered yet wait for them, and never mask others.
+    const matched = matchBindings(
+        Object.fromEntries(
+            Object.entries(settings.keyboardShortcuts).filter(([name]) => isCommandName(name)),
+        ),
+        event,
+        isApple,
+    )
     const names = matched.names.filter(isCommandName)
     const { exact } = matched
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This

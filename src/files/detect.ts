@@ -90,12 +90,20 @@ export const detectZip = async (file: Blob): Promise<ZipKind> => {
     return classifyZipNames(kept.map((entry) => entry.key))
 }
 
-/** Classifies a picked file by its content. The file's MIME type counts for audio, as it always has. */
-export const detectContent = async (file: Blob): Promise<Detection> => {
-    if (file.type.startsWith('audio/')) return { kind: 'audio' }
-
+/**
+ * What a picked file is from its first 64 bytes: the ZIP signature, then audio
+ * magic numbers, then an audio MIME type as a last fallback (§1.5.2). A ZIP is
+ * not opened here, so this stays quick whatever the file holds.
+ */
+export const detectHead = async (file: Blob): Promise<Detection['kind']> => {
     const head = new Uint8Array(await file.slice(0, HEAD_SIZE).arrayBuffer())
-    if (isZipHead(head)) return { kind: 'zip', zip: await detectZip(file) }
-    if (isAudioHead(head)) return { kind: 'audio' }
-    return { kind: 'data' }
+    if (isZipHead(head)) return 'zip'
+    if (isAudioHead(head) || file.type.startsWith('audio/')) return 'audio'
+    return 'data'
+}
+
+/** Classifies a picked file by its content, opening a ZIP to tell what it holds. */
+export const detectContent = async (file: Blob): Promise<Detection> => {
+    const kind = await detectHead(file)
+    return kind === 'zip' ? { kind, zip: await detectZip(file) } : { kind }
 }
