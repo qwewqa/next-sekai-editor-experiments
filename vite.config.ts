@@ -37,6 +37,11 @@ export default defineConfig(({ mode }) => ({
         target: ['chrome106', 'edge106', 'firefox105', 'safari16', 'ios16'],
         rolldownOptions: { input: pages(mode) },
     },
+    // The storage worker is written as a module worker and emitted as a classic one: Firefox 105
+    // has no module workers, and an iife build can't split (Part 1 §1.6.5).
+    worker: {
+        format: 'iife',
+    },
     css: {
         postcss: {
             plugins: [tailwind(), autoprefixer()],

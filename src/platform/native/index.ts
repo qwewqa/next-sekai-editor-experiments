@@ -30,7 +30,7 @@ export const platform = {
 
     onCloseRequested: notImplemented,
     onLifecycle: notImplemented,
-    locks: { request: notImplemented },
+    locks: { request: notImplemented, query: notImplemented },
     journal: {
         keys: notImplemented,
         read: notImplemented,

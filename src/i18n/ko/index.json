@@ -985,7 +985,13 @@
   "load": {
     "version": "버전 {0}",
     "updated": "업데이트됨: 버전 {0}",
-    "whatsNew": "새로운 기능"
+    "whatsNew": "새로운 기능",
+    "upgradeBlocked": "저장된 작업을 열려면 다른 {0} 탭을 닫아 주세요.",
+    "olderVersion": "이 버전은 데이터보다 오래되었습니다. 새로고침하거나 작업을 파일로 저장해 주세요.",
+    "tryAgain": "다시 시도"
+  },
+  "storage": {
+    "reload": "변경 사항을 계속 저장하려면 새로고침해 주세요."
   },
   "player": {
     "started": "플레이 시작됨",

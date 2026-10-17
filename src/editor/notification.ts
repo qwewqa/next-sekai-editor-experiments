@@ -17,6 +17,8 @@ export type Notice = {
     announcement?: () => string
     /** The start-up pill, which stays a little longer. */
     startup?: boolean
+    /** A pill with load notices: it stays and times out as an action notice does, button or not. */
+    held?: boolean
 }
 
 /** How long a notice with an action stays (Part 1 §1.4.1, §1.4.3). */
@@ -77,10 +79,34 @@ const startTimer = (ms: number) => {
 const track = () => {
     holds.clear()
     stopTimer()
-    if (notification.value.action)
+    if (notification.value.action || notification.value.held)
         startTimer(notification.value.startup ? STARTUP_NOTICE_MS : NOTICE_MS)
 }
 track()
+
+/** This page load's load notices, for Settings › Local Data › Recovery's "At this load:". */
+export const loadNotices: { message: () => string; action?: NoticeAction }[] = []
+
+/**
+ * Adds a load notice (Part 1 §1.4.3): a line on the start-up pill while it still shows, which then
+ * stays about 8 s. Once the pill has gone (an edit, another notice), the line is only kept, since
+ * nothing appears at an arbitrary time. A load notice's action takes the pill's one button.
+ */
+export const addLoadNotice = (message: () => string, action?: NoticeAction) => {
+    loadNotices.push({ message, action })
+    const current = notification.value
+    if (!current.startup || !current.message) return
+    const previous = current.message
+    notification.value = {
+        id: id++,
+        startup: true,
+        held: true,
+        message: () => `${previous()}
+${message()}`,
+        action: action ?? current.action,
+    }
+    track()
+}
 
 /**
  * Shows a notice. With an action it is a pill with a button that stays about 6 s, pausing while
@@ -116,7 +142,7 @@ export const clearNotification = () => {
 
 /** Pauses the notice's timeout while the pointer or focus is on it. */
 export const holdNotice = (source: 'hover' | 'focus', held: boolean) => {
-    if (!notification.value.action) return
+    if (!notification.value.action && !notification.value.held) return
     if (held) {
         if (!holds.size && timer !== undefined) {
             stopTimer()

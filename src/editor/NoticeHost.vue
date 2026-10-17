@@ -63,7 +63,8 @@ onBeforeUnmount(() => {
 
 // The start-up pill with actions goes at the first edit (Part 1 §1.4.3).
 watch(canUndo, (can) => {
-    if (can && notification.value.startup && notification.value.action) dismissNotification()
+    if (can && notification.value.startup && (notification.value.action || notification.value.held))
+        dismissNotification()
 })
 </script>
 

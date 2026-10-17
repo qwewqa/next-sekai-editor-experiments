@@ -1,4 +1,4 @@
-import type { JournalStore, LockService } from './types'
+import type { JournalStore } from './types'
 
 /** The error a member gives before the step that builds it. */
 export const notYet = (member: string, step: string) =>
@@ -6,11 +6,6 @@ export const notYet = (member: string, step: string) =>
 
 const throws = (member: string, step: string) => (): never => {
     throw notYet(member, step)
-}
-
-/** Named stub until Step 3. */
-export const locksStub: LockService = {
-    request: () => Promise.reject(notYet('platform.locks', 'Step 3')),
 }
 
 /** Named stub until Step 3. */

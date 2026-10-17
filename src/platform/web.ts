@@ -1,3 +1,4 @@
+import { webLockService } from '../local/locks'
 import { allowsFileSystemAccess, detection, isStandalone, usesOpfsPickers } from './detect'
 import { levelDataDiskState } from './fingerprint'
 import {
@@ -10,7 +11,7 @@ import {
     writeHandle,
 } from './handover'
 import { opfsOpenPicker, opfsSavePicker } from './opfs'
-import { journalStub, locksStub } from './stubs'
+import { journalStub } from './stubs'
 import type {
     DiskState,
     FileTarget,
@@ -259,7 +260,7 @@ export const platform: Platform = {
 
     onCloseRequested,
     onLifecycle,
-    locks: locksStub,
+    locks: webLockService,
     journal: journalStub,
 
     openExternal,
