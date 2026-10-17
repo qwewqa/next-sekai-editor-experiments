@@ -65,15 +65,11 @@ const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
 const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
-    image(
-        `note-body-${part.toLowerCase()}`,
-        { outer, inner, accent },
-        { stretch: part === 'Middle' },
-    )
+    image(`note-body-${part.toLowerCase()}`, { outer, inner, accent }, { stretch: true })
 const slimImage = (part, accent) =>
-    image(`note-slim-${part.toLowerCase()}`, { accent }, { stretch: part === 'Middle' })
+    image(`note-slim-${part.toLowerCase()}`, { accent }, { stretch: true })
 const damageImage = (part, color, edge) =>
-    image(`note-damage-${part.toLowerCase()}`, { color, edge }, { stretch: part === 'Middle' })
+    image(`note-damage-${part.toLowerCase()}`, { color, edge }, { stretch: true })
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -325,7 +321,8 @@ export function skinSprites() {
     })
 
     group('Sim line', () => {
-        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', solid('#ffffff', 0.9))
+        // A thin line across the middle of the note height, as the engine stretches it between notes.
+        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', image('sim-line', {}, { stretch: true }))
     })
 
     group('Standard fallbacks', () => {

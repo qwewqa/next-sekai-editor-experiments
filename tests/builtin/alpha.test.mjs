@@ -20,8 +20,6 @@ const translucent = [
     { pattern: /^#JUDGMENT_LINE$/, floor: 1, opaque: 0.25 },
     // The base's slide, damage and standard connections are at 0.8 with feathered sides.
     { pattern: /Slide Connection|^#NOTE_CONNECTION_/, floor: 0.78 },
-    // The base's sim line is white at 0.9.
-    { pattern: /^#SIMULTANEOUS_CONNECTION_NEUTRAL$/, floor: 0.88 },
     // The base's slot glows run from 0.98 at the note to clear.
     { pattern: /Slot Glow/, floor: 0.9 },
     // The base's slots are a translucent lit fill inside an opaque outline.
