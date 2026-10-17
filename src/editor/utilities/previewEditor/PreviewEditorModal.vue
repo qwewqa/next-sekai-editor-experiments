@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver'
 import { computed, ref, provide, useTemplateRef } from 'vue'
 import { bgm } from '../../../history/bgm'
 import { i18n } from '../../../i18n'
@@ -8,6 +7,7 @@ import BaseModal from '../../../modals/BaseModal.vue'
 import FileField from '../../../modals/form/FileField.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
+import { platform } from '../../../platform'
 import { loadBgm } from '../../../player'
 import { formatTime } from '../../../utils/format'
 import { remap, unlerp } from '../../../utils/math'
@@ -152,7 +152,11 @@ const onGenerate = () => {
             const blob = new Blob(buffers, {
                 type: 'audio/mp3',
             })
-            saveAs(blob, 'preview.mp3')
+            await platform.saveFile({
+                kind: 'audio',
+                suggestedName: 'preview.mp3',
+                build: () => Promise.resolve(blob),
+            })
         },
     })
 }

@@ -467,6 +467,10 @@ export const stopPreviewPlayer = () => {
 }
 
 const startContext = () => {
+    // On iOS, play through the silent switch (Audio Session API, Safari 16.4+).
+    const { audioSession } = navigator as Navigator & { audioSession?: { type: string } }
+    if (audioSession) audioSession.type = 'playback'
+
     if (context.state !== 'running' && !resuming) {
         resuming = context
             .resume()

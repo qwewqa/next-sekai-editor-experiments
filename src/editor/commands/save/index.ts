@@ -1,4 +1,3 @@
-import { saveAs } from 'file-saver'
 import { gzip } from 'pako'
 import type { Command } from '..'
 import { levelDataHandle, setLevelDataHandle } from '../../../history'
@@ -17,7 +16,7 @@ import { i18n } from '../../../i18n'
 import { serializeToLevelData } from '../../../levelData/serialize'
 import { showModal } from '../../../modals'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import { pickFileForSave } from '../../../utils/file'
+import { platform } from '../../../platform'
 import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
 import SaveIcon from './SaveIcon.vue'
@@ -38,51 +37,40 @@ export const save: Command = {
 
                 const name = filename.value ?? 'LevelData'
 
-                const levelData = serializeToLevelData(
-                    initialLife.value,
-                    isDynamicStages.value,
-                    bgm.value.offset,
-                    store.value,
-                    groups.value,
-                    stages.value,
-                    { groups: groupFolders.value, stages: stageFolders.value },
+                const result = await platform.saveFile({
+                    kind: 'nsld',
+                    suggestedName: name,
+                    target: levelDataHandle && { kind: 'handle', handle: levelDataHandle },
+                    signal,
+                    build: () => {
+                        const levelData = serializeToLevelData(
+                            initialLife.value,
+                            isDynamicStages.value,
+                            bgm.value.offset,
+                            store.value,
+                            groups.value,
+                            stages.value,
+                            { groups: groupFolders.value, stages: stageFolders.value },
+                        )
+
+                        const file = gzip(JSON.stringify(levelData), {
+                            level: 9,
+                        })
+                        return Promise.resolve(
+                            new Blob([file], {
+                                type: 'application/octet-stream',
+                            }),
+                        )
+                    },
+                })
+                if (result.status === 'cancelled') return
+
+                // A download replaces the handle: the next save asks again.
+                setLevelDataHandle(
+                    result.status === 'saved' && result.target.kind === 'handle'
+                        ? result.target.handle
+                        : undefined,
                 )
-
-                const file = gzip(JSON.stringify(levelData), {
-                    level: 9,
-                })
-                const blob = new Blob([file], {
-                    type: 'application/octet-stream',
-                })
-
-                const handle = levelDataHandle ?? (await pickFileForSave('levelData', name))
-                signal.throwIfAborted()
-                if (handle) {
-                    let writable: FileSystemWritableFileStream | undefined
-                    try {
-                        writable = await handle.createWritable()
-                        signal.throwIfAborted()
-                        await writable.write(blob)
-                        signal.throwIfAborted()
-                        await writable.close()
-                        signal.throwIfAborted()
-
-                        setLevelDataHandle(handle)
-                    } catch (error) {
-                        // Before close(), writes remain pending. Release the
-                        // stream on cancellation/failure without committing it.
-                        await writable?.abort().catch(() => undefined)
-                        signal.throwIfAborted()
-                        if (error instanceof DOMException && error.name === 'AbortError') {
-                            throw error
-                        }
-                        saveAs(blob, name)
-
-                        setLevelDataHandle(undefined)
-                    }
-                } else {
-                    saveAs(blob, name)
-                }
 
                 notify(() => i18n.value.commands.save.saved)
             },

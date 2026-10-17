@@ -6,6 +6,7 @@ import { switchToolTo } from '../editor/tools'
 import { i18n } from '../i18n'
 import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
+import { platform } from '../platform'
 import { createState } from '../state'
 import { cleanupWaveform } from '../waveform'
 import { resetAutoSave } from './autoSave/index.ts'
@@ -62,9 +63,7 @@ resetStates({
 
 export let levelDataHandle: FileSystemFileHandle | undefined
 
-addEventListener('beforeunload', (event) => {
-    if (isDirty.value) event.preventDefault()
-})
+platform.onCloseRequested(() => !isDirty.value)
 
 export const checkState = async () => {
     if (!isDirty.value) return true

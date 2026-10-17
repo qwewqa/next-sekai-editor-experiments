@@ -15,6 +15,7 @@ import { serializeToLevelData } from '../../levelData/serialize'
 import { showModal } from '../../modals'
 import InfoModal from '../../modals/InfoModal.vue'
 import LoadingModal from '../../modals/LoadingModal.vue'
+import { platform } from '../../platform'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { hasSameChartData } from '../../state/data'
@@ -117,26 +118,26 @@ export const useAutoSave = () => {
         },
     )
 
-    const onVisibilityChange = () => {
-        if (document.visibilityState === 'hidden') flush()
-    }
     // Another tab removed this tab's recovery: write it back. Replacements wait, so tabs never trade writes.
     const onStorage = (event: StorageEvent) => {
         if (event.key === storageKey(key) && event.newValue === null && written !== undefined)
             flush()
     }
     window.addEventListener('storage', onStorage)
-    window.addEventListener('beforeunload', flush)
-    window.addEventListener('pagehide', flush)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    const stopClose = platform.onCloseRequested(() => {
+        flush()
+        return true
+    })
+    const stopLifecycle = platform.onLifecycle((e) => {
+        if (e === 'hide') flush()
+    })
     if (getCurrentScope())
         onScopeDispose(() => {
             flush()
             stop()
-            window.removeEventListener('beforeunload', flush)
-            window.removeEventListener('pagehide', flush)
+            stopClose()
+            stopLifecycle()
             window.removeEventListener('storage', onStorage)
-            document.removeEventListener('visibilitychange', onVisibilityChange)
         })
 
     /** Offers an unreadable recovery; true once it is discarded. */
