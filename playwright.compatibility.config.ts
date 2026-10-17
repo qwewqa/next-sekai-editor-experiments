@@ -24,8 +24,9 @@ export default defineConfig({
         launchOptions: {},
     },
     projects: [
-        { name: 'firefox', use: { browserName: 'firefox' } },
-        { name: 'webkit', use: { browserName: 'webkit' } },
+        // The storage specs boot the editor in two tabs, slower here than in Chromium.
+        { name: 'firefox', timeout: 60_000, use: { browserName: 'firefox' } },
+        { name: 'webkit', timeout: 60_000, use: { browserName: 'webkit' } },
         // Firefox-specific keyboard defaults such as quick find and Backspace.
         {
             name: 'firefox-chrome',

@@ -5,6 +5,13 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 // Storing alongside today's auto save (Part 1 §1.11.3, §1.6.4): every change is an entry, and the
 // flush stores the session, its chain record and the snapshots in IndexedDB.
 
+// Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
+// in WebKit on Linux CI.
+test.skip(
+    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
+    'Playwright WebKit on Windows does not provide Web Audio',
+)
+
 const boot = async (page: Page, flags: object = {}) => {
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript((text) => {

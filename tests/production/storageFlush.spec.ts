@@ -5,6 +5,13 @@ import { chart, instrumentRendering, stereoWav } from './fixtures'
 // hashes and stores an import at once and a BGM pick with its bytes, under the web policy, and
 // goes on storing after a restart from its Blob copy.
 
+// Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
+// in WebKit on Linux CI.
+test.skip(
+    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
+    'Playwright WebKit on Windows does not provide Web Audio',
+)
+
 type Row = { key: unknown; value: Record<string, unknown> }
 
 const rows = (page: Page, stores: string[]) =>

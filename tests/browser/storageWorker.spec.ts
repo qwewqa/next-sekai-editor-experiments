@@ -6,6 +6,13 @@ import { installCanvasCounters } from './editorFixture'
 // its URL, since a module worker can't import from a blob: base; the production config checks the
 // Blob copy (tests/production/csp.spec.ts).
 
+// Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
+// in WebKit on Linux CI.
+test.skip(
+    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
+    'Playwright WebKit on Windows does not provide Web Audio',
+)
+
 const boot = async (page: Page, flags: object) => {
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript((text) => {

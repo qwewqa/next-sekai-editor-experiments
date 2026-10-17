@@ -119,7 +119,12 @@ test('Pixi starts, the Lyon wasm runs and the preview packages load without a vi
 
 test('the storage worker runs as a classic worker and restarts from its Blob copy', async ({
     page,
+    browserName,
 }) => {
+    test.skip(
+        browserName === 'webkit' && process.platform === 'win32',
+        'Playwright WebKit on Windows does not provide Web Audio',
+    )
     const errors = await watch(page)
     await page.addInitScript(() => {
         sessionStorage.setItem('nse.test.storage', '{}')

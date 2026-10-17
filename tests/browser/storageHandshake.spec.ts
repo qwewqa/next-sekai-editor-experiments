@@ -6,6 +6,13 @@ import { installCanvasCounters } from './editorFixture'
 // simulated v2 tab is the build with the test flag `dbVersion: 2`, a frozen tab the flag
 // `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 
+// Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
+// in WebKit on Linux CI.
+test.skip(
+    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
+    'Playwright WebKit on Windows does not provide Web Audio',
+)
+
 const boot = async (page: Page, flags: TestFlags = {}) => {
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript((text) => {
