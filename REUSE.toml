@@ -25,6 +25,12 @@ path = [
 SPDX-FileCopyrightText = "Next SEKAI Editor contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
+# Test clips: a generated sine tone in each audio container, made for the clip-length tests.
+[[annotations]]
+path = "tests/preview/files/audio/**"
+SPDX-FileCopyrightText = "Next SEKAI Editor contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
 # The generators are code.
 [[annotations]]
 path = [
