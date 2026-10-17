@@ -133,7 +133,7 @@ async function buildSkin(report) {
             y: r.y,
             w: r.w,
             h: r.h,
-            transform: identity(),
+            transform: sprites.get(name).transform ?? identity(),
         })),
     }
     report.skin = {

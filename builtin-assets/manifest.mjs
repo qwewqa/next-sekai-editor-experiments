@@ -10,9 +10,11 @@ import {
     damageColor,
     diamondColors,
     guideColor,
+    mix,
     stage,
     styleColors,
     traceColors,
+    vivid,
 } from './palette.mjs'
 
 /** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
@@ -32,9 +34,108 @@ const image = (template, vars = {}, options = {}) => ({
 })
 const solid = (color, alpha = 1, w = 4, h = 4) =>
     image('solid', { color, alpha, w, h }, { stretch: true })
-const band = (color, alpha) => image('band', { color, alpha }, { stretch: true })
-const glow = (color) => image('slot-glow', { color }, { stretch: true })
-const kite = (color, width) => image('kite', { color }, { width })
+// A connector band: feathered sides, lighter towards them.
+const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
+    image('band', { color, light, alpha }, { stretch: true })
+const activeBand = (color) => band(mix(color, '#ffffff', 0.2), 0.8, mix(color, '#ffffff', 0.6))
+// Slot glows in the vivid effect colour, as the particles use.
+const glow = (color) =>
+    image(
+        'slot-glow',
+        { color: vivid(color), light: mix(vivid(color), '#ffffff', 0.5) },
+        { stretch: true },
+    )
+const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
+
+// The dark base of the judgment band.
+const judgmentShade = '#0b0c16'
+
+/**
+ * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
+ * quad (0 to 1 from its bottom-left corner), so the art lands where the base skin's does on screen.
+ */
+export function box(u0, u1, v0, v1) {
+    const corner = (u, v) => ({ 1: 1 - u - v, 4: u, 2: v })
+    const corners = [corner(u0, v0), corner(u0, v1), corner(u1, v1), corner(u1, v0)]
+    const out = {}
+    for (const axis of ['x', 'y'])
+        corners.forEach((weights, i) => {
+            out[`${axis}${i + 1}`] = Object.fromEntries(
+                Object.entries(weights)
+                    .filter(([, weight]) => Math.abs(weight) > 1e-9)
+                    .map(([k, weight]) => [`${axis}${k}`, Math.round(weight * 1e6) / 1e6]),
+            )
+        })
+    return out
+}
+
+// The box for art that fills its frame but for a margin m on each side.
+const fit = (u0, u1, v0, v1, m) => {
+    const w = (u1 - u0) / (1 - 2 * m)
+    const h = (v1 - v0) / (1 - 2 * m)
+    return box(u0 - m * w, u0 - m * w + w, v0 - m * h, v0 - m * h + h)
+}
+
+// Where the base skin's flick arrows land in the engine's arrow square, by direction and width
+// (1 to 6): [u0, u1, v0, v1]. Narrow notes get large, tall arrows; wide notes flat ones.
+const arrowBoxes = {
+    up: [
+        [-0.14, 1.14, 0.25, 1.61],
+        [-0.09, 1.09, 0.17, 1.21],
+        [-0.07, 1.07, 0.11, 0.94],
+        [-0.05, 1.05, 0.09, 0.79],
+        [-0.04, 1.04, 0.07, 0.7],
+        [-0.03, 1.03, 0.06, 0.64],
+    ],
+    upLeft: [
+        [-0.32, 1.32, 0.27, 1.66],
+        [-0.24, 1.21, 0.2, 1.27],
+        [-0.19, 1.15, 0.15, 1.03],
+        [-0.17, 1.12, 0.11, 0.89],
+        [-0.15, 1.1, 0.08, 0.81],
+        [-0.13, 1.09, 0.07, 0.75],
+    ],
+    down: [
+        [-0.14, 1.14, 0.18, 1.55],
+        [-0.09, 1.09, 0.11, 1.15],
+        [-0.07, 1.07, 0.07, 0.9],
+        [-0.05, 1.05, 0.05, 0.76],
+        [-0.04, 1.04, 0.04, 0.67],
+        [-0.03, 1.03, 0.04, 0.62],
+    ],
+    downLeft: [
+        [-0.32, 1.32, 0.16, 1.55],
+        [-0.24, 1.21, 0.11, 1.18],
+        [-0.19, 1.15, 0.07, 0.96],
+        [-0.17, 1.12, 0.05, 0.84],
+        [-0.15, 1.1, 0.04, 0.77],
+        [-0.13, 1.09, 0.04, 0.72],
+    ],
+}
+const arrowKeys = {
+    'arrow-up': 'up',
+    'arrow-up-left': 'upLeft',
+    'arrow-down': 'down',
+    'arrow-down-left': 'downLeft',
+}
+// Arrows run from a light tint at the tip to the arrow colour, inside a white outline.
+const arrowTint = (accent) => ({ accent, light: mix(accent, '#ffffff', 0.65) })
+const arrow = (template, accent, width) =>
+    image(template, arrowTint(accent), {
+        transform: fit(...arrowBoxes[arrowKeys[template]][width - 1], 0.03),
+    })
+
+// Note bodies sit 6% over and under their quad and their ends reach 0.14 of a slice past the note,
+// as the base skin's do; slim traces keep their own height in the art.
+const bodyBox = {
+    Left: box(-0.14, 1, -0.06, 1.06),
+    Middle: box(0, 1, -0.06, 1.06),
+    Right: box(0, 1.14, -0.06, 1.06),
+}
+const slimBox = { Left: box(-0.14, 1, 0, 1), Middle: undefined, Right: box(0, 1.14, 0, 1) }
+const basicBox = box(-0.02, 1.02, -0.06, 1.06)
+// Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
+const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
 
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
@@ -43,12 +144,20 @@ const bodyImage = (part, [outer, inner, accent]) =>
     image(
         `note-body-${part.toLowerCase()}`,
         { outer, inner, accent },
-        { stretch: part === 'Middle' },
+        { stretch: true, transform: bodyBox[part] },
     )
 const slimImage = (part, accent) =>
-    image(`note-slim-${part.toLowerCase()}`, { accent }, { stretch: part === 'Middle' })
+    image(
+        `note-slim-${part.toLowerCase()}`,
+        { accent },
+        { stretch: true, transform: slimBox[part] },
+    )
 const damageImage = (part, color, edge) =>
-    image(`note-damage-${part.toLowerCase()}`, { color, edge }, { stretch: part === 'Middle' })
+    image(
+        `note-damage-${part.toLowerCase()}`,
+        { color, edge },
+        { stretch: true, transform: slimBox[part] },
+    )
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -145,22 +254,22 @@ export function skinSprites() {
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
     })
 
+    // Opaque strips and dividers: darker at the stage edges, lighter at the centre, over a dark band.
     group('Judgment', () => {
-        add('Sekai Judgment Background', solid('#ffffff', 0.1))
+        add('Sekai Judgment Background', solid(judgmentShade, 0.55))
         for (const color of colorNames) {
             const hue = guideColor(color)
-            add(`Sekai Judgment Background ${color}`, solid(hue, 0.12))
+            const edge = mix(hue, '#000000', 0.2)
+            const centre = mix(hue, '#ffffff', 0.3)
+            add(`Sekai Judgment Background ${color}`, solid(mix(hue, judgmentShade, 0.85), 0.55))
             add(
                 `Sekai Judgment Gradient ${color}`,
-                image('judgment-gradient', { color: hue }, { stretch: true }),
+                image('judgment-gradient', { edge, centre }, { stretch: true }),
             )
-            add(`Sekai Judgment Edge ${color}`, solid(hue, 0.8))
-            add(`Sekai Judgment Single Line ${color}`, solid(hue, 0.9))
-            add(
-                `Sekai Judgment Edge Left ${color}`,
-                image('judgment-edge-left', { color: hue }, { stretch: true }),
-            )
-            add(`Sekai Judgment Center ${color}`, solid(hue, 0.25))
+            add(`Sekai Judgment Edge ${color}`, solid(edge))
+            add(`Sekai Judgment Single Line ${color}`, solid(mix(hue, '#ffffff', 0.15)))
+            add(`Sekai Judgment Edge Left ${color}`, solid(edge, 1, 8, 4))
+            add(`Sekai Judgment Center ${color}`, solid(centre))
         }
     })
 
@@ -202,10 +311,24 @@ export function skinSprites() {
             const name = `Sekai ${family} Note Basic`
             if (kind === 'body') {
                 const [outer, inner, accent] = bodyColors[key]
-                add(name, image('note-body-basic', { outer, inner, accent }))
+                add(
+                    name,
+                    image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+                )
             } else if (kind === 'damage')
-                add(name, image('note-damage-basic', { color: damage.color, edge: damage.edge }))
-            else add(name, image('note-slim-basic', { accent: traceColors[key] }))
+                add(
+                    name,
+                    image(
+                        'note-damage-basic',
+                        { color: damage.color, edge: damage.edge },
+                        { transform: basicBox },
+                    ),
+                )
+            else
+                add(
+                    name,
+                    image('note-slim-basic', { accent: traceColors[key] }, { transform: basicBox }),
+                )
         }
     })
 
@@ -227,7 +350,7 @@ export function skinSprites() {
                 for (let width = 1; width <= 6; width++)
                     add(
                         `Sekai ${family} Arrow ${direction} ${width}`,
-                        image(template, { accent: color }),
+                        arrow(template, color, width),
                     )
         for (const [color, family] of [
             ['Red', 'Flick'],
@@ -275,8 +398,8 @@ export function skinSprites() {
             ['Normal', activeColors.normal],
             ['Critical', activeColors.critical],
         ]) {
-            add(`Sekai ${family} Active Slide Connection Normal`, band(color, 0.45))
-            add(`Sekai ${family} Active Slide Connection Active`, band(color, 0.75))
+            add(`Sekai ${family} Active Slide Connection Normal`, band(color))
+            add(`Sekai ${family} Active Slide Connection Active`, activeBand(color))
         }
         for (const [color, family] of [
             ['Green', 'Normal'],
@@ -291,16 +414,17 @@ export function skinSprites() {
                 `Sekai ${family} Active Slide Connection Active`,
             )
         }
-        add('Sekai Damage Slide Connection', band(damageColor, 0.45))
-        add('Sekai Damage Slide Connection Active', band(damageColor, 0.75))
+        add('Sekai Damage Slide Connection', band(damageColor))
+        add('Sekai Damage Slide Connection Active', activeBand(damageColor))
     })
 
     group('Guides', () => {
-        for (const color of colorNames) add(`Sekai Guide ${color}`, solid(guideColor(color), 0.5))
+        for (const color of colorNames) add(`Sekai Guide ${color}`, solid(guideColor(color)))
     })
 
     group('Sim line', () => {
-        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', solid('#ffffff', 0.8))
+        // A thin line across the middle of the note height, as the engine stretches it between notes.
+        add('#SIMULTANEOUS_CONNECTION_NEUTRAL', image('sim-line', {}, { stretch: true }))
     })
 
     group('Standard fallbacks', () => {
@@ -311,20 +435,26 @@ export function skinSprites() {
             ['YELLOW', 'critical'],
         ]) {
             const [outer, inner, accent] = bodyColors[key]
-            add(`#NOTE_HEAD_${color}`, image('note-body-basic', { outer, inner, accent }))
+            add(
+                `#NOTE_HEAD_${color}`,
+                image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+            )
         }
         {
             const [outer, inner, accent] = styleColors('Purple')
-            add('#NOTE_HEAD_PURPLE', image('note-body-basic', { outer, inner, accent }))
+            add(
+                '#NOTE_HEAD_PURPLE',
+                image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+            )
         }
         for (const key of ['green', 'red', 'yellow'])
             add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
-        add('#DIRECTIONAL_MARKER_RED', image('arrow-up', { accent: arrowColors.normal }))
-        add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', { accent: arrowColors.critical }))
+        add('#DIRECTIONAL_MARKER_RED', image('arrow-up', arrowTint(arrowColors.normal)))
+        add('#DIRECTIONAL_MARKER_YELLOW', image('arrow-up', arrowTint(arrowColors.critical)))
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
-            add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color)), 0.5))
+            add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
-            add(`#GRID_${color}`, solid(guideColor(capital(color)), 0.5))
+            add(`#GRID_${color}`, solid(guideColor(capital(color))))
     })
 
     group('Style colours', () => {
@@ -351,37 +481,35 @@ export function skinSprites() {
                     for (let width = 1; width <= 6; width++)
                         add(
                             `Sekai ${family} Arrow ${direction} ${width} ${color}`,
-                            image(template, { accent }),
+                            arrow(template, accent, width),
                         )
             const connection = connectorColor(color)
             for (const family of ['Normal', 'Critical']) {
-                add(
-                    `Sekai ${family} Active Slide Connection Normal ${color}`,
-                    band(connection, 0.45),
-                )
+                add(`Sekai ${family} Active Slide Connection Normal ${color}`, band(connection))
                 add(
                     `Sekai ${family} Active Slide Connection Active ${color}`,
-                    band(connection, 0.75),
+                    activeBand(connection),
                 )
             }
-            add(`Sekai Damage Slide Connection ${color}`, band(connection, 0.45))
-            add(`Sekai Damage Slide Connection Active ${color}`, band(connection, 0.75))
+            add(`Sekai Damage Slide Connection ${color}`, band(connection))
+            add(`Sekai Damage Slide Connection Active ${color}`, activeBand(connection))
         }
     })
 
     return { sprites, groups }
 }
 
-/** The 8 particle sprites, in the order the effects index them. */
+/** The particle sprites, in the order the effects index them (sprite in particles.mjs). */
 export const particleSprites = [
-    ['ring', 'particle-ring'],
-    ['circle', 'particle-circle'],
-    ['square', 'particle-square'],
-    ['diamond', 'particle-diamond'],
-    ['chevron', 'particle-chevron'],
+    ['glow', 'particle-glow'],
+    ['frame', 'particle-frame'],
+    ['star', 'particle-star'],
+    ['spark', 'particle-spark'],
+    ['comet', 'particle-comet'],
     ['bar', 'particle-bar'],
-    ['streak', 'particle-streak'],
     ['flash', 'particle-flash'],
+    ['mote', 'particle-circle'],
+    ['diamond', 'particle-diamond'],
 ].map(([name, template]) => ({ name, spec: image(template, {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */
