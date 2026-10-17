@@ -474,6 +474,7 @@
             "resetDefault": "Reset to Default",
             "stored": "Stored: {0} item, {1}|Stored: {0} items, {1}",
             "storedEmpty": "No stored items",
+            "storedUnavailable": "Stored items cannot be read while this browser’s storage cannot be opened.",
             "noun": {
                 "skin": "skin",
                 "particle": "particle",
@@ -482,10 +483,13 @@
             },
             "fallback": {
                 "panel": "{0}: using {1}. {2}",
-                "row": "Using {0}. {1}"
+                "panelStored": "{0}: using \"{1}\". {2}",
+                "row": "Using {0}. {1}",
+                "rowStored": "Using \"{0}\". {1}"
             },
             "reason": {
                 "fileGone": "The {0} file is no longer stored in this browser.",
+                "storageUnavailable": "The stored {0} cannot be read while this browser’s storage cannot be opened.",
                 "serverFailed": "The {0} could not be downloaded again from {1}.",
                 "invalid": "The stored {0} could not be read.",
                 "defaultFailed": "Default could not be loaded.",
@@ -503,6 +507,7 @@
             "remove": "Remove",
             "inUse": "In use",
             "removeInUse": "Remove \"{0}\"? Default is used instead.",
+            "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again",
             "noneInFile": "This file has no {0}.",
             "rights": "Items you load are stored in this browser only. Use only items you are allowed to use.",
@@ -512,7 +517,7 @@
             },
             "part": {
                 "list": "list",
-                "details": "details",
+                "details": "detail entry",
                 "data": "data",
                 "texture": "texture",
                 "image": "image",
@@ -522,6 +527,7 @@
             },
             "import": {
                 "damaged": "This file is damaged or is not a Sonolus package.",
+                "fileUnreadable": "This file could not be read.",
                 "zip64": "This file uses ZIP64, which the editor cannot read.",
                 "fileTooLarge": "This file is larger than {0}.",
                 "tooManyEntries": "This file has more than {0} entries.",
@@ -536,7 +542,10 @@
                 "spriteOutside": "This file’s {0} data has a sprite outside its texture.",
                 "tooManySprites": "This file’s {0} data has more than {1} sprites.",
                 "tooManyEffects": "This file’s {0} data has more than {1} effects.",
+                "tooManyParticles": "This file’s {0} data has more than {1} particles.",
+                "tooManyGroups": "This file’s {0} data has more than {1} particle groups.",
                 "particleCount": "This file’s {0} effect \"{1}\" has more than {2} particles.",
+                "effectGroups": "This file’s {0} effect \"{1}\" has more than {2} particle groups.",
                 "noPerfect": "This file’s {0} audio has no usable #PERFECT clip.",
                 "audioLength": "This file’s {0} audio is longer than {1} seconds in all.",
                 "packageTooLarge": "This item is larger than {0} once stored.",

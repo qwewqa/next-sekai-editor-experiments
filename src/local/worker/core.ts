@@ -103,7 +103,11 @@ const isConnectionError = (error: unknown) =>
 /** A call's progress count (§1.6.5): bumped by each step of work done for it. */
 export type Progress = { tick?: () => void }
 
-export type WriteOptions = { durability?: Durability } & Progress
+export type WriteOptions = {
+    durability?: Durability
+    /** False for a write whose failure its caller reports: storing goes on as it was. */
+    pauseOnFailure?: boolean
+} & Progress
 
 export class StorageCore {
     private db: KvDatabase | undefined
@@ -316,7 +320,8 @@ export class StorageCore {
                 },
             )
         } catch (error) {
-            if (error instanceof StorageRefusedError) throw error
+            if (error instanceof StorageRefusedError || options.pauseOnFailure === false)
+                throw error
             const paused = await this.pauseReason(error)
             if (this.current.reason !== 'upgrading')
                 this.setStatus({ mode: 'stored', reason: paused })

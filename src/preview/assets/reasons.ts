@@ -2,7 +2,13 @@ import { choiceKey } from './choice'
 import type { AssetChoice, AssetStatus, AssetType } from './types'
 
 /** The reason sentence a fallback gets (Part 2, 2.6's `reason.*`): the panel and the dialog share it. */
-export type ReasonKey = 'fileGone' | 'serverFailed' | 'invalid' | 'defaultFailed' | 'builtinFailed'
+export type ReasonKey =
+    | 'fileGone'
+    | 'storageUnavailable'
+    | 'serverFailed'
+    | 'invalid'
+    | 'defaultFailed'
+    | 'builtinFailed'
 
 /** Why the chosen source was not used, or undefined when it was. */
 export const reasonKey = (choice: AssetChoice, status: AssetStatus): ReasonKey | undefined => {
@@ -13,7 +19,12 @@ export const reasonKey = (choice: AssetChoice, status: AssetStatus): ReasonKey |
         case 'builtin':
             return 'builtinFailed'
         case 'file':
-            return status.reason === 'corrupt' ? 'invalid' : 'fileGone'
+            // Storage that cannot be opened may still hold the file: it is not gone.
+            return status.reason === 'corrupt'
+                ? 'invalid'
+                : status.reason === 'unavailable'
+                  ? 'storageUnavailable'
+                  : 'fileGone'
         case 'server':
             return status.reason === 'corrupt' ? 'invalid' : 'serverFailed'
     }

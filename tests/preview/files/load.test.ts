@@ -19,15 +19,19 @@ import {
 import {
     audioZip,
     backgroundData,
+    concat,
+    decodeTestAudio,
     effectData,
     gz,
     particleData,
+    png,
     pngHeader,
     rawZip,
     scp,
     scpEntries,
     skinData,
     utf8,
+    wav,
 } from './fixtures'
 
 // Fallback at load (Part 2, 2.4.2, 2.5.5): a stored package is checked again under the same
@@ -48,11 +52,7 @@ Object.defineProperty(globalThis, 'createImageBitmap', {
     value: async () => bitmap(),
 })
 
-const decodeAudio = async (data: ArrayBuffer) => {
-    const text = new TextDecoder().decode(data)
-    if (text.startsWith('bad')) throw new Error('Unable to decode audio data')
-    return { duration: 1 } as AudioBuffer
-}
+const decodeAudio = decodeTestAudio
 const context = (signal = new AbortController().signal): LoadContext => ({ signal, decodeAudio })
 
 const defaults: AssetDefaults = {
@@ -70,6 +70,14 @@ const choiceFor = (key: string, name = 'fixture'): AssetChoice => ({
     author: 'Author',
     origin: 'fixture.scp',
 })
+
+/** Waits for a condition, however busy the machine is. */
+const until = async (condition: () => boolean) => {
+    for (let waited = 0; !condition(); waited += 5) {
+        if (waited > 10_000) assert.fail('timed out')
+        await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+}
 
 let counter = 0
 /** Puts bytes into the store as a stored package would be, whatever they hold. */
@@ -143,16 +151,42 @@ test('a stored package that is missing falls back to Default and says it is miss
     assert.deepEqual(result?.status, { active: 'default', reason: 'missing' })
 })
 
+/** A particle package whose only effect has these groups. */
+const particleWith = (groups: unknown[]) =>
+    scp('particle', {
+        resources: {
+            data: gz(particleData({ effects: [{ ...particleData().effects[0], groups }] })),
+        },
+    })
+const oneParticle = particleData().effects[0]!.groups[0]!.particles[0]
+
+const ratioTexture = concat(png(64, 64), new Uint8Array(30_000_000))
+
 const broken: [string, AssetType, Uint8Array][] = [
+    ['a huge count with no particles', 'particle', particleWith([{ count: 1e15, particles: [] }])],
+    [
+        'a tiny count over many particles',
+        'particle',
+        particleWith([
+            { count: 0.005, particles: Array.from({ length: 100_000 }, () => oneParticle) },
+        ]),
+    ],
+    [
+        'many groups with no count',
+        'particle',
+        particleWith(Array.from({ length: 200_000 }, () => ({ count: 0, particles: [] }))),
+    ],
     ['a bad end record', 'skin', scp('skin').slice(0, -10)],
     ['ZIP64', 'skin', rawZip(scpEntries('skin'), { zip64End: true })],
     [
         'a ratio bomb',
         'skin',
         rawZip(
-            scpEntries('skin', { resources: { texture: new Uint8Array(30_000_000) } }).map(
-                (entry) =>
-                    entry.data.length === 30_000_000 ? { ...entry, method: 8 as const } : entry,
+            // A texture whose header passes, so only the ratio refuses it.
+            scpEntries('skin', { resources: { texture: ratioTexture } }).map((entry) =>
+                entry.data.length === ratioTexture.length
+                    ? { ...entry, method: 8 as const }
+                    : entry,
             ),
         ),
     ],
@@ -218,21 +252,19 @@ const broken: [string, AssetType, Uint8Array][] = [
         scp('effect', {
             resources: {
                 data: gz(effectData({ clips: [{ name: 'Sekai Tick', filename: 'tick.mp3' }] })),
-                audio: audioZip({ 'tick.mp3': utf8('tick') }),
+                audio: audioZip({ 'tick.mp3': wav(1) }),
             },
         }),
     ],
     [
         'a clip that will not decode',
         'effect',
-        scp('effect', { resources: { audio: audioZip({ 'perfect.mp3': utf8('bad data') }) } }),
+        scp('effect', { resources: { audio: audioZip({ 'perfect.mp3': wav(1, true) }) } }),
     ],
     [
         'a missing resource',
         'skin',
-        rawZip(
-            scpEntries('skin').filter((entry) => entry.data.length !== pngHeader(64, 64).length),
-        ),
+        rawZip(scpEntries('skin').filter((entry) => entry.data.length !== png(64, 64).length)),
     ],
     [
         'a name that climbs out',
@@ -260,6 +292,26 @@ test('a stored package that cannot be decoded falls back as unreadable', async (
     })
     try {
         const result = await load('skin', scp('skin'))
+        assert.deepEqual(result?.status, { active: 'default', reason: 'corrupt' })
+    } finally {
+        Object.defineProperty(globalThis, 'createImageBitmap', {
+            configurable: true,
+            value: decoder,
+        })
+    }
+})
+
+test('a stored background whose image does not decode falls back as unreadable', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const decoder = globalThis.createImageBitmap
+    Object.defineProperty(globalThis, 'createImageBitmap', {
+        configurable: true,
+        value: async () => {
+            throw new Error('The source image could not be decoded')
+        },
+    })
+    try {
+        const result = await load('background', scp('background'))
         assert.deepEqual(result?.status, { active: 'default', reason: 'corrupt' })
     } finally {
         Object.defineProperty(globalThis, 'createImageBitmap', {
@@ -345,7 +397,7 @@ test('a missing stored package leaves the choice as it was, with the reason show
         decodeAudio,
     })
     session.ensure('skin')
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(() => session.slots.skin.value.state === 'ready')
     const slot = session.slots.skin.value
     assert.equal(slot.state, 'ready')
     assert.deepEqual(slot.status, { active: 'default', reason: 'missing' })
@@ -380,11 +432,15 @@ test('when a switch fails everywhere, a stored item that was showing keeps showi
         decodeAudio,
     })
     session.ensure('skin')
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(() => session.slots.skin.value.state === 'ready')
     assert.equal(session.slots.skin.value.status?.active, 'chosen')
 
     choices.value = { ...choices.value, skin: choiceFor('gone') }
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await until(
+        () =>
+            session.slots.skin.value.state === 'ready' &&
+            JSON.stringify(session.slots.skin.value.choice) === JSON.stringify(choiceFor('gone')),
+    )
     const slot = session.slots.skin.value
     assert.equal(slot.state, 'ready')
     assert.equal(slot.value?.title, 'Neon Skin')

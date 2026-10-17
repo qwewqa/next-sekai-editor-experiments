@@ -16,7 +16,9 @@ import { assetTypes } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
 import { createAssetChooser } from '../../../preview/assets/files/chooser'
+import type { SourcePackage } from '../../../preview/assets/files/package'
 import { decodeToCheck } from '../../../preview/assets/files/audio'
+import { decodeImageToCheck } from '../../../preview/assets/files/decodeImage'
 import { importMessage } from '../../../preview/assets/files/importText'
 import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
 import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
@@ -34,6 +36,8 @@ const props = defineProps<{
     tab: PreviewAssetsTab
     /** A package picked elsewhere (Open File…): its chooser opens with the items already listed. */
     file?: File
+    /** That package, already opened. */
+    source?: SourcePackage
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +57,7 @@ const choosers = Object.fromEntries(
             store: workerStore,
             maxTextureSide,
             decodeAudio: decodeToCheck,
+            decodeImage: decodeImageToCheck,
             describe: importMessage,
             apply: (choices) => {
                 settings.previewAssets = { ...settings.previewAssets, ...choices }
@@ -66,7 +71,7 @@ onMounted(() => {
     void refreshStored()
     if (props.file && isAssetTab(active.value)) {
         const file = props.file
-        void choosers[active.value].pick(file, file.name)
+        void choosers[active.value].pick(file, file.name, props.source)
     }
 })
 onBeforeUnmount(() => {
@@ -170,6 +175,9 @@ const summary = computed<StoredSummary>(() => ({
 }))
 const storedText = computed(() => storedLine(strings.value.stored, summary.value, formatSize))
 
+// While the shown tab's chooser is open, its Cancel and Use are the actions: the helpers rest.
+const choosing = computed(() => isAssetTab(active.value) && choosers[active.value].open.value)
+
 const buttonClass =
     'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 [@media(pointer:coarse)]:h-11'
 </script>
@@ -248,7 +256,7 @@ const buttonClass =
                     <button
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
-                        :disabled="allBuiltin"
+                        :disabled="allBuiltin || choosing"
                         data-use-builtin-all
                         @click="setAll(builtinSource)"
                     >
@@ -258,7 +266,7 @@ const buttonClass =
                         v-if="hasDefault"
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
-                        :disabled="allDefault"
+                        :disabled="allDefault || choosing"
                         data-reset-default
                         @click="setAll('default')"
                     >

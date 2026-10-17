@@ -474,6 +474,7 @@
       "resetDefault": "重設為預設",
       "stored": "已儲存：{0} 項，{1}",
       "storedEmpty": "沒有已儲存的項目",
+      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的項目。",
       "noun": {
         "skin": "外觀",
         "particle": "粒子",
@@ -482,10 +483,13 @@
       },
       "fallback": {
         "panel": "{0}：正在使用{1}。{2}",
-        "row": "正在使用{0}。{1}"
+        "panelStored": "{0}：正在使用 \"{1}\"。{2}",
+        "row": "正在使用{0}。{1}",
+        "rowStored": "正在使用 \"{0}\"。{1}"
       },
       "reason": {
         "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
+        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已儲存的{0}。",
         "defaultFailed": "無法載入預設項。",
@@ -503,6 +507,7 @@
       "remove": "移除",
       "inUse": "使用中",
       "removeInUse": "移除 \"{0}\"？將改用預設項。",
+      "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
       "rights": "您載入的項目僅儲存在此瀏覽器中。請只使用您有權使用的項目。",
@@ -522,6 +527,7 @@
       },
       "import": {
         "damaged": "此檔案已損毀，或不是 Sonolus 套件。",
+        "fileUnreadable": "無法讀取此檔案。",
         "zip64": "此檔案使用 ZIP64，編輯器無法讀取。",
         "fileTooLarge": "此檔案超過 {0}。",
         "tooManyEntries": "此檔案的條目超過 {0} 個。",
@@ -536,7 +542,10 @@
         "spriteOutside": "此檔案的{0}資料中有位於紋理之外的精靈。",
         "tooManySprites": "此檔案的{0}資料中的精靈超過 {1} 個。",
         "tooManyEffects": "此檔案的{0}資料中的效果超過 {1} 個。",
+        "tooManyParticles": "此檔案的{0}資料中的粒子超過 {1} 個。",
+        "tooManyGroups": "此檔案的{0}資料中的粒子組超過 {1} 個。",
         "particleCount": "此檔案的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
+        "effectGroups": "此檔案的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
         "noPerfect": "此檔案的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
         "packageTooLarge": "此項目儲存後超過 {0}。",

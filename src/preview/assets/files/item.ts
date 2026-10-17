@@ -6,6 +6,7 @@ import type {
     SkinData,
 } from '@sonolus/core'
 import type { AssetType } from '../types'
+import type { DecodeImage } from './decodeImage'
 import { AssetImportError, type ImportPart } from './errors'
 import { readImageSize, type ImageSize } from './image'
 import {
@@ -56,6 +57,8 @@ export type CheckContext = {
     /** The largest texture side the device takes (`gl.MAX_TEXTURE_SIZE`), at most 4096. */
     maxTextureSide: number
     signal?: AbortSignal
+    /** Decodes the texture or the background image once its header passed: import's check. */
+    decodeImage?: DecodeImage
 }
 
 const fields: Record<AssetType, ResourceField[]> = {
@@ -77,7 +80,7 @@ const maxSizeOf = (field: ResourceField) => {
         case 'configuration':
             return LIMITS.json
         case 'thumbnail':
-            return 8 * 1024 * 1024
+            return LIMITS.thumbnail
         case 'texture':
         case 'image':
             return LIMITS.package
@@ -179,6 +182,19 @@ export const checkItem = async <T extends AssetType>(
     const data = () => parseDataJson(get('data'), type)
     const size = (field: ResourceField) =>
         checkImage(get(field), type, field, imageLimit(type, field, context.maxTextureSide))
+    // The body decodes only after the header's size passed, so nothing large is decoded.
+    const decoded = async (field: ResourceField, imageSize: ImageSize) => {
+        try {
+            await context.decodeImage?.(get(field), imageSize.format)
+        } catch (error) {
+            throw new AssetImportError(
+                'unreadable',
+                { type, part: partOf(field) },
+                { cause: error },
+            )
+        }
+        return imageSize
+    }
 
     let parts: CheckedParts[AssetType]
     switch (type) {
@@ -186,23 +202,28 @@ export const checkItem = async <T extends AssetType>(
             parts = {
                 data: checkSkinData(data(), context.mode),
                 texture: get('texture'),
-                size: size('texture'),
+                size: await decoded('texture', size('texture')),
             }
             break
         case 'particle':
             parts = {
                 data: checkParticleData(data()),
                 texture: get('texture'),
-                size: size('texture'),
+                size: await decoded('texture', size('texture')),
             }
             break
         case 'background': {
-            const configuration = parseDataJson(get('configuration'), type, 'configuration')
+            const configuration = parseDataJson(
+                get('configuration'),
+                type,
+                'configuration',
+                LIMITS.json,
+            )
             parts = {
                 data: checkBackgroundData(data()),
                 configuration: checkBackgroundConfiguration(configuration),
                 image: get('image'),
-                size: size('image'),
+                size: await decoded('image', size('image')),
             }
             break
         }

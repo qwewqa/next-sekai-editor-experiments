@@ -7,6 +7,7 @@ import {
     type LoadContext,
     type LoadedBackground,
 } from '../types'
+import { decodeImageToCheck, type DecodeImage } from './decodeImage'
 import { loadEffectFromParts } from './effect'
 import { asImportError } from './errors'
 import { readImageSize } from './image'
@@ -84,11 +85,14 @@ export type StoredProviderOptions = {
     store: UserAssetStore
     /** The device's texture limit, read when the first skin or particle loads. */
     maxTextureSide: () => number
+    /** Decodes a background before it shows; a skin's or particle's texture decodes anyway. */
+    decodeImage?: DecodeImage
 }
 
 export const createStoredProviders = ({
     store,
     maxTextureSide,
+    decodeImage = decodeImageToCheck,
 }: StoredProviderOptions): ChoiceProviders => {
     const provider =
         (type: AssetType) =>
@@ -107,6 +111,8 @@ export const createStoredProviders = ({
                     mode: 'load',
                     maxTextureSide: maxTextureSide(),
                     signal: context.signal,
+                    // A background that will not decode falls back, rather than show only its colour.
+                    ...(type === 'background' ? { decodeImage } : {}),
                 })
                 return (await loadChecked(checked, context)) as never
             } catch (error) {

@@ -44,6 +44,24 @@ export const putUserAsset = async (tx: KvTx, record: UserAssetRecord): Promise<U
     return metaOf(row)
 }
 
+/** What a put of several packages stored, and which of them were not stored before. */
+export type UserAssetsPut = { metas: UserAssetMeta[]; added: string[] }
+
+/** Stores several packages in the one transaction, so either all are stored or none. */
+export const putUserAssets = async (
+    tx: KvTx,
+    records: UserAssetRecord[],
+): Promise<UserAssetsPut> => {
+    const metas: UserAssetMeta[] = []
+    const added: string[] = []
+    for (const record of records) {
+        if (!(await tx.get(USER_ASSETS, record.key)) && !added.includes(record.key))
+            added.push(record.key)
+        metas.push(await putUserAsset(tx, record))
+    }
+    return { metas, added }
+}
+
 /** Every record without its bytes, newest first. */
 export const listUserAssets = async (tx: KvTx): Promise<UserAssetMeta[]> =>
     ((await tx.getAll(USER_ASSETS)) as UserAssetRecord[])

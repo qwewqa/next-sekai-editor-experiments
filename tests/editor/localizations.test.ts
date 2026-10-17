@@ -238,11 +238,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.note.title.preset',
         // French writes "skin", as in its preview strings.
         'commands.previewAssets.noun.skin',
-        // French spells these parts the same.
-        'commands.previewAssets.part.audio',
-        'commands.previewAssets.part.configuration',
-        'commands.previewAssets.part.image',
-        'commands.previewAssets.part.texture',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
         'commands.slide.title.preset',
