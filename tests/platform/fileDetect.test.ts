@@ -271,3 +271,16 @@ test('Open is refused while peeking, since its audio branch changes the BGM', ()
     assert.ok(source.includes('changeBgm(file)'))
     assert.ok(!/readOnly:\s*true/.test(source))
 })
+
+test('Open sniffs the head only, never the whole content', () => {
+    const source = readFileSync('src/editor/commands/open/index.ts', 'utf8')
+    assert.ok(/\bdetectHead\b/.test(source))
+    assert.ok(!/\bdetectContent\b/.test(source))
+})
+
+test('undo, redo and properties stay available while peeking until Step 5 adds its behavior', () => {
+    for (const name of ['undo', 'redo', 'properties']) {
+        const source = readFileSync(`src/editor/commands/${name}/index.ts`, 'utf8')
+        assert.ok(!/readOnly:\s*true/.test(source), name)
+    }
+})
