@@ -108,6 +108,15 @@ export const loadParticle = async (
 
     const textureRaw = getResource(particleItem.texture)
     if (!textureRaw) throw new Error('Missing particle texture in scp file')
+    return buildParticle(particleItem.title, data, textureRaw)
+}
+
+/** A particle from data that is already read (and, for a package from outside, checked). */
+export const buildParticle = async (
+    title: string,
+    data: ParticleData,
+    textureRaw: Uint8Array,
+): Promise<LoadedParticle> => {
     const sprites = data.sprites.map((sprite): Sprite => ({
         ...toSpriteUv(sprite.x, sprite.y, sprite.w, sprite.h, data.width, data.height),
         texture: 1,
@@ -128,7 +137,7 @@ export const loadParticle = async (
     })
 
     return {
-        title: particleItem.title,
+        title,
         interpolation: data.interpolation,
         texture,
         particle,
