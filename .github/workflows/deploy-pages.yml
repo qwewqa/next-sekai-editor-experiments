@@ -31,6 +31,7 @@ jobs:
             - name: Check out source
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
+                  fetch-depth: 0
                   persist-credentials: false
             - name: Set up Node
               uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -62,14 +63,7 @@ jobs:
               # only the highest v* tag deploys
               id: highest
               if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'qwewqa/next-sekai-editor-experiments'
-              run: |
-                  highest=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY.git" 'refs/tags/v*' | cut -f2 | sed 's|^refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-                  test -n "$highest"
-                  if [ "$highest" = "$GITHUB_REF_NAME" ]; then
-                      echo "deploy=true" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "Not deployed: $highest is higher than $GITHUB_REF_NAME."
-                  fi
+              run: git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY.git" 'refs/tags/v*' | cut -f2 | node scripts/highest-tag.mjs "$GITHUB_REF_NAME"
             - name: Upload checked site
               if: steps.highest.outputs.deploy == 'true'
               uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
