@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "postinstall": "node scripts/patch-pixi-default-batcher.mjs",
+        "fixtures:generated-large": "node scripts/generate-large-chart.mjs",
         "test": "tsx --test tests/preview/*.test.ts tests/editor/*.test.ts",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",
