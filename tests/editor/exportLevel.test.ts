@@ -45,6 +45,9 @@ const scriptedUi = (answers: unknown[]) => {
 
 let mock: MockPlatform
 
+// Read through a call, so an assertion does not narrow it for later reads.
+const remembered = () => exportMemory.target
+
 beforeEach(() => {
     mock = createMockPlatform()
     setPlatformForTests(mock)
@@ -178,11 +181,11 @@ test('a dismissed picker goes back to the dialog; a picked file becomes the targ
     const { ui, feedback } = scriptedUi([])
     mock.saveTargets.push('cancel')
     assert.equal(await exportByPicker(context(ui, 1, { exportName: 'Coconut' })), 'back')
-    assert.equal(exportMemory.target, undefined)
+    assert.equal(remembered(), undefined)
 
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
     assert.equal(await exportByPicker(context(ui, 1, { exportName: 'Coconut' })), 'done')
-    assert.equal(exportMemory.target?.name, 'Coconut.nsld')
+    assert.equal(remembered()?.name, 'Coconut.nsld')
     assert.equal(exportMemory.exportName, 'Coconut')
     assert.deepEqual(feedback, ['exported:Coconut.nsld'])
 })

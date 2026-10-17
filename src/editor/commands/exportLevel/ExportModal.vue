@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
-import BaseField from '../../../modals/form/BaseField.vue'
 import type { ReadyPrompt } from '../../../platform'
 import { interpolate } from '../../../utils/interpolate'
 import { buildLevelData } from './build'
@@ -186,12 +185,13 @@ const buttonClass =
                     data-export-target
                 >
                     <span class="shrink-0 opacity-75">{{ i18n.export.to }}</span>
-                    <span class="min-w-0 flex-1 break-words font-medium" data-export-target-name>{{
+                    <span class="min-w-40 flex-1 break-words font-medium" data-export-target-name>{{
                         targetLabel
                     }}</span>
+                    <!-- Wrapped below a long name, it keeps to the right. -->
                     <button
                         type="button"
-                        class="bg-button active:bg-accent active:text-on-accent"
+                        class="ml-auto bg-button active:bg-accent active:text-on-accent"
                         :class="buttonClass"
                         :disabled="busy"
                         @click="chooseAnother"
@@ -200,8 +200,10 @@ const buttonClass =
                     </button>
                 </div>
                 <div v-else class="flex flex-col gap-1">
-                    <BaseField :label="i18n.save.fileName">
-                        <span class="flex min-w-0 items-center gap-1.5">
+                    <!-- Label and field share a row while the field keeps about 12rem. -->
+                    <label class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span class="shrink-0">{{ i18n.save.fileName }}</span>
+                        <span class="flex min-w-48 flex-1 items-center gap-1.5">
                             <input
                                 ref="field"
                                 v-model="value"
@@ -221,7 +223,7 @@ const buttonClass =
                                 >.nsld</span
                             >
                         </span>
-                    </BaseField>
+                    </label>
                     <p
                         v-if="shownProblem"
                         :id="`${ids}-problem`"
