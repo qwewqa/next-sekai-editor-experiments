@@ -119,6 +119,8 @@ export type FlushBatch = {
     media: BatchMedia[]
     /** Media this tab holds but didn't send (§1.6.8.4's "held"), as hex. */
     held: string[]
+    /** Carried media an earlier flush sent without a reply: read back even when found stored. */
+    unconfirmed?: string[]
     view?: SessionView
     /** Absent when the head isn't one of the batch's states (an undo onto a slot not loaded). */
     summary?: ChainSummary
@@ -158,15 +160,19 @@ export type FlushResult =
           /** Each snapshot's root. */
           roots: Uint8Array[]
           lastSeq: number
-          /** The media this batch carried, put now or found there: each is read back once. */
+          /** Carried media put now, or found there after an unanswered flush: each read back. */
           readBack: string[]
           /** False when the stored stack was newer than the batch's, which then left it alone. */
           stackWritten: boolean
           /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
           chain: Record<string, unknown>
+          /** Media that didn't read back right: the entries are stored, the media is not (§1.6.8.4). */
+          mediaFailed?: string[]
           stats: WriteStats
           /** Stored in memory only (storage unavailable): set by the worker's reply. */
           memory?: boolean
+          /** In memory, and no database will answer in this tab: Try Again has nothing to ask. */
+          noDatabase?: boolean
           /** For the post-flush hook, in the worker only: stripped before the reply. */
           committed?: FlushCommitted
       }
@@ -267,6 +273,17 @@ export const prepareFlush = async (
     return { chunks, nodes: [...nodes.values()], roots, media }
 }
 
+/** A media row (§1.6.11.2): a new Blob of the bytes, never a `File`. */
+export const mediaRow = (item: BatchMedia & { sha256: Uint8Array }, day: number) => ({
+    blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
+    sha256: item.sha256,
+    size: item.bytes.byteLength,
+    type: item.type,
+    ...(item.filename === undefined ? {} : { filename: item.filename }),
+    kind: item.kind,
+    day,
+})
+
 /** Rough bytes of a stored value: its strings, byte arrays, numbers and field names. */
 export const rowBytes = (value: unknown): number => {
     if (value === null || value === undefined) return 1
@@ -361,10 +378,15 @@ export const writeFlush = async (
     const referenced = new Set(prepared.roots.flatMap((root) => root.media.map(toHex)))
     for (const hex of referenced) {
         const carried = prepared.media.get(hex)
-        // Carried bytes are read back even when the row is there: a kill may have skipped it.
-        if (carried) readBack.push(hex)
-        if ((await tx.getKey('media', hashKey(fromHex16(hex)))) !== undefined) continue
-        if (carried) mediaToPut.push(carried)
+        if ((await tx.getKey('media', hashKey(fromHex16(hex)))) !== undefined) {
+            // Found there after a flush with no reply: a kill may have skipped its read-back.
+            if (carried && batch.unconfirmed?.includes(hex)) readBack.push(hex)
+            continue
+        }
+        if (carried) {
+            mediaToPut.push(carried)
+            readBack.push(hex)
+        }
         // Held but not sent: the head's media went missing, so it's stored again (§1.6.4).
         else if (batch.held.includes(hex)) missingMedia.push(hex)
     }
@@ -461,15 +483,7 @@ export const writeFlush = async (
         count('nodes', row, root.hash)
     }
     for (const item of mediaToPut) {
-        const row = {
-            blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
-            sha256: item.sha256,
-            size: item.bytes.byteLength,
-            type: item.type,
-            ...(item.filename === undefined ? {} : { filename: item.filename }),
-            kind: item.kind,
-            day,
-        }
+        const row = mediaRow(item, day)
         await tx.put('media', row, hashKey(fromHex16(item.hash)))
         ownBytes += row.size
         count('media', row, item.hash)
@@ -563,7 +577,8 @@ export const writeFlush = async (
         activeMs,
         ownBytes: (typeof session?.ownBytes === 'number' ? session.ownBytes : 0) + ownBytes,
         appVersion: batch.appVersion,
-        ...(batch.view ? { view: batch.view } : {}),
+        // A re-send of stored entries leaves the newer view.
+        ...(batch.view && (written || !session) ? { view: batch.view } : {}),
     }
     const sessionValue = session
         ? updated(session, sessionFields)
@@ -582,7 +597,9 @@ export const writeFlush = async (
     const chainFields: Row = {
         updatedAt,
         day,
-        ...(batch.summary ? { summary: batch.summary } : {}),
+        // A re-send of stored entries leaves the newer head's summary (a kill after commit); a
+        // batch whose head isn't one of its states has none.
+        ...(batch.summary && (written || !chain) ? { summary: batch.summary } : {}),
         appVersion: batch.appVersion,
         ...(edited ? { edited: true, hasContent: true } : {}),
     }

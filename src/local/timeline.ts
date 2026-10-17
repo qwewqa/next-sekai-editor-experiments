@@ -432,10 +432,13 @@ export class SessionStack<E> {
         this.synced = false
     }
 
-    /** A fork's stack: this one as acknowledged, which its own first flush stores whole. */
-    forkedStack() {
+    /**
+     * A fork's stack: this one as acknowledged, or `inherited` (with slots of entries stored
+     * without a reply), which the fork's first flush stores whole.
+     */
+    forkedStack(inherited?: SlotStack<ModelSlot<E>>) {
         const fork = new SessionStack<E>()
-        fork.committed = this.committed.clone()
+        fork.committed = (inherited ?? this.committed).clone()
         return fork
     }
 

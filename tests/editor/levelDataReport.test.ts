@@ -86,25 +86,25 @@ test('the committed levels report nothing', () => {
 test('an unknown archetype is reported with its count, and the level still parses', () => {
     const entities = [
         ...minimalLevel(),
-        entity('Skill', { '#BEAT': 1, effect: 1, level: 1 }),
-        entity('Skill', { '#BEAT': 2, effect: 1, level: 1 }),
+        entity('Unheard', { '#BEAT': 1, effect: 1, level: 1 }),
+        entity('Unheard', { '#BEAT': 2, effect: 1, level: 1 }),
         entity('SomethingNew', { a: 1 }),
     ]
     const { chart, report } = parse(entities)
     assert.deepEqual(report.entries, [
-        { kind: 'archetype', archetype: 'Skill', count: 2 },
+        { kind: 'archetype', archetype: 'Unheard', count: 2 },
         { kind: 'archetype', archetype: 'SomethingNew', count: 1 },
     ])
     assert.equal(chart.slides.length, 1)
 })
 
-test('Skill, FeverChance and FeverStart are unknown archetypes, not ignored', () => {
+test('Skill, FeverChance and FeverStart are dropped silently, as before (D2)', () => {
     for (const archetype of ['Skill', 'FeverChance', 'FeverStart']) {
         assert.ok(!Object.hasOwn(knownArchetypes, archetype))
-        assert.ok(!Object.hasOwn(ignoredArchetypes, archetype))
+        assert.equal(ignoredArchetypes[archetype]?.reason, 'dropped')
         const report = new LevelDataReport()
         reportLevelDataEntities([entity(archetype, { '#BEAT': 1 })], report)
-        assert.deepEqual(report.entries, [{ kind: 'archetype', archetype, count: 1 }])
+        assert.deepEqual(report.entries, [])
     }
 })
 

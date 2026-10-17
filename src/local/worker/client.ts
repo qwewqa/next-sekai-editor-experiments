@@ -1,12 +1,13 @@
 import type { StorageStatus } from './core'
 import type { InitOptions } from './handlers'
-import { connect, RpcError, type CallOptions, type Client } from './rpc'
+import { connect, PING, RpcError, type CallOptions, type Client } from './rpc'
 import type { StorageHandlers } from './storage.worker'
 
 // The page's end of the storage worker (Part 1 §1.6.5). It watches onerror and unanswered calls
 // (10 s, non-bulk, longer for calls that carry more work) and restarts the worker from a Blob URL
 // of its script fetched at startup, so a later deploy can't 404 it. An unanswered call first
-// pings the worker: one that answers and has made progress is slow, not hung, and is waited for.
+// pings the worker for that call's own progress: one that has moved is slow, not hung, and is
+// waited for.
 // The session locks live on the page, so a restart loses none; the flush re-sends its pending
 // entries on `restarted`. A restart that fails pauses storing.
 
@@ -48,6 +49,7 @@ export class StorageWorker {
     constructor(
         private readonly script: WorkerScript,
         private readonly init: InitOptions,
+        /** `timeoutMs`: a test's timeout for every call, a flush's and Try Again's included. */
         private readonly options: { timeoutMs?: number } = {},
     ) {}
 
@@ -98,36 +100,52 @@ export class StorageWorker {
             options?: CallOptions,
         ) => Promise<Awaited<ReturnType<StorageHandlers[K]>>>
         if (options?.bulk) return call(method, arg, { bulk: true })
+        let id = -1
+        const reply = call(method, arg, {
+            bulk: true,
+            sent: (sent) => {
+                id = sent
+            },
+        })
         return this.watch(
-            call(method, arg, { bulk: true }),
-            options?.timeoutMs ?? this.options.timeoutMs ?? CALL_TIMEOUT_MS,
+            reply,
+            id,
+            this.options.timeoutMs ?? options?.timeoutMs ?? CALL_TIMEOUT_MS,
             client,
         )
     }
 
     /**
-     * A call's watchdog: unanswered within its timeout, the worker is pinged for its progress
-     * count. Answering with progress since the last ping, it's slow, not hung, and is waited for
-     * again (the first ping only has to answer); otherwise it's restarted. So a long write that
-     * keeps moving is never cut off.
+     * A call's watchdog: unanswered within its timeout, the worker is pinged for that call's
+     * progress count. Moved since the call began or the last ping, it's slow, not hung, and is
+     * waited for again; otherwise it's restarted. So a long write that keeps moving is never cut
+     * off, and a hung call is found within about its own timeout, whatever other calls do.
      */
-    private watch<T>(reply: Promise<T>, ms: number, client: Client<StorageHandlers>): Promise<T> {
+    private watch<T>(
+        reply: Promise<T>,
+        id: number,
+        ms: number,
+        client: Client<StorageHandlers>,
+    ): Promise<T> {
         const generation = this.generation
+        const ping = client.call as unknown as (
+            method: string,
+            arg: number,
+            options: CallOptions,
+        ) => Promise<number | undefined>
         return new Promise<T>((resolve, reject) => {
             let done = false
             let timer: ReturnType<typeof setTimeout> | undefined
-            let last: number | undefined
+            let last = 0
             const check = async () => {
                 let progress: number | undefined
                 try {
-                    progress = await client.call('ping', undefined, {
-                        timeoutMs: Math.min(PROBE_MS, ms),
-                    })
+                    progress = await ping(PING, id, { timeoutMs: Math.min(PROBE_MS, ms) })
                 } catch {
                     progress = undefined
                 }
                 if (done) return
-                if (progress !== undefined && progress !== last) {
+                if (progress !== undefined && progress > last) {
                     last = progress
                     timer = setTimeout(() => void check(), ms)
                     return

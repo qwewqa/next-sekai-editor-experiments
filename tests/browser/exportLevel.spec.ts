@@ -275,7 +275,7 @@ test('Export refuses to write over a .nxsp in its target’s place', async ({ pa
 
 /** Opens level data with parts this build does not read, through its report dialog. */
 const openPartial = async (page: Page, name: string) => {
-    await writeFile(page, name, { archetype: 'Skill' })
+    await writeFile(page, name, { archetype: 'Unheard' })
     await queuePicks(page, [name])
     await page.keyboard.press('o')
     // The dialog follows the open, in place of its notice.
@@ -311,9 +311,9 @@ test('level data with an unknown archetype gets no Export target', async ({ page
     await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(notice(page)).toHaveText('Exported to LevelData (2).nsld')
-    // The original, with its Skill entity, is untouched.
+    // The original, with its unknown entity, is untouched.
     expect(await opfsNames(page)).toEqual(['LevelData', 'LevelData (2).nsld'])
-    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+    expect(await archetypes(page, 'LevelData')).toContain('Unheard')
 })
 
 test('a partial level picked anyway is refused and put back, through Export and p', async ({
@@ -328,7 +328,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await expect(dialog(page)).toContainText(
         '"LevelData" has parts this version of the editor does not support.',
     )
-    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+    expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     await page.waitForTimeout(350)
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
@@ -344,7 +344,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
         id: 'levelData',
         suggestedName: 'LevelData (2)',
     })
-    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+    expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
 

@@ -125,9 +125,23 @@ export const replayJournal = (found: JournalFound, deps: ReplayDeps): Promise<Jo
                 if (content.kind === 'later') return { sessionId, kind: 'later', why: content.why }
                 if (content.kind === 'unreadable') return await unreadable(content.why)
                 const parsed = performance.now()
-                const batch = planBatch(reading.journal, content.state, deps)
+                let batch: JournalApplyBatch
+                try {
+                    batch = planBatch(reading.journal, content.state, deps)
+                } catch (error) {
+                    // Records of this state can't be made: that recurs on every load.
+                    return await unreadable(`its records: ${String(error)}`)
+                }
                 const planned = performance.now()
-                const result = await deps.worker.applyJournal(batch)
+                let result: JournalApplyResult
+                try {
+                    result = await deps.worker.applyJournal(batch)
+                } catch (error) {
+                    // Neither applied nor kept as a recovery session, by an error that recurs.
+                    if (error instanceof Error && error.name === 'JournalUnappliableError')
+                        return await unreadable(error.message)
+                    throw error
+                }
                 // Its transaction committed: the key goes, unless it changed meanwhile.
                 if (result.kind !== 'later') deps.store.remove(found)
                 const ms = {
@@ -137,7 +151,7 @@ export const replayJournal = (found: JournalFound, deps: ReplayDeps): Promise<Jo
                 }
                 return { sessionId, kind: result.kind, result, ms }
             } catch (error) {
-                // Left in place for the next load.
+                // Storage unavailable, full or busy: left in place for the next load.
                 return { sessionId, kind: 'failed', error }
             }
         },

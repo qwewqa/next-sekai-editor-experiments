@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DB_NAME } from '../../../src/local/db'
 import { toHex } from '../../../src/local/hash'
+import { setJournalApplyHookForTests } from '../../../src/local/journal/apply'
 import { readJournal, type JournalV1 } from '../../../src/local/journal/format'
 import { MemoryStorage } from '../../../src/local/journal/store'
 import { sessionLock } from '../../../src/local/locks'
@@ -278,4 +279,59 @@ test('replay killed at every await applies the journal once, whole or not at all
         },
     })
     assert.ok(result.every(({ points }) => points > 5))
+})
+
+test('an apply that fails by an error that recurs is kept as a recovery session', async () => {
+    const { world, page, session } = await killedAfterEdits(10)
+    setJournalApplyHookForTests((force) => {
+        if (!force) throw new TypeError('A bug in the apply')
+    })
+    try {
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'recovery')
+    } finally {
+        setJournalApplyHookForTests(undefined)
+    }
+    // Nothing of the failed apply was written; the key went with the recovery session.
+    assert.equal(entriesOf(world, session.id).length, 2)
+    assert.equal(page.storage.length, 0)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a journal that can be neither applied nor kept as a session lands in the recovered store', async () => {
+    const { world, page, session } = await killedAfterEdits(11)
+    const text = page.storage.getItem(`nse.journal.${session.id}`)
+    setJournalApplyHookForTests(() => {
+        throw new TypeError('A bug in the apply')
+    })
+    try {
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'unreadable')
+    } finally {
+        setJournalApplyHookForTests(undefined)
+    }
+    const [row] = (world.memory.dump(DB_NAME).get('recovered') ?? []).map(
+        (item) => item.value as Record<string, unknown>,
+    )
+    assert.equal(await (row?.bytes as Blob).text(), text)
+    assert.equal(page.storage.length, 0)
+    // A second load finds nothing to replay: no journal fails every load.
+    assert.deepEqual((await replayAll(world, page.storage, 'third')).outcomes, [])
+})
+
+test('an apply that fails because storage does is left for the next load', async () => {
+    const { world, page, session } = await killedAfterEdits(12)
+    setJournalApplyHookForTests(() => {
+        throw new DOMException('The disk failed', 'UnknownError')
+    })
+    try {
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'failed')
+    } finally {
+        setJournalApplyHookForTests(undefined)
+    }
+    assert.equal(page.storage.length, 1)
+    assert.equal(entriesOf(world, session.id).length, 2)
+    const { outcomes } = await replayAll(world, page.storage, 'later')
+    assert.equal(outcomes[0]?.kind, 'applied')
 })

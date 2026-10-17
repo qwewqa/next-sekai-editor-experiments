@@ -35,7 +35,7 @@ export const openJournalPage = async (
                     core: page.core,
                     test: true,
                     emit: () => undefined,
-                }).syncStrict(),
+                }).syncStrict(undefined),
             )
         },
     })

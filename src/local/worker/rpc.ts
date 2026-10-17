@@ -7,7 +7,10 @@ export type Endpoint = {
     onmessage: ((event: MessageEvent) => void) | null
 }
 
-type Handler = (arg: never) => unknown
+/** A call as its handler sees it: work done for it counts as its progress (§1.6.5). */
+export type CallScope = { readonly id: number; readonly tick: () => void }
+
+type Handler = (arg: never, scope: CallScope) => unknown
 export type Handlers = Record<string, Handler>
 
 type Call = { id: number; method: string; arg: unknown }
@@ -36,22 +39,41 @@ export class RpcError extends Error {
     }
 }
 
+/** The built-in method that answers a call's progress count, or undefined once it's done. */
+export const PING = 'ping'
+
 /** Serves handlers on the worker's end; returns emit for events. */
 export const serve = (endpoint: Endpoint, handlers: Handlers) => {
+    // Each running call's own progress, so another busy call can't keep a hung one alive.
+    const progress = new Map<number, number>()
     endpoint.onmessage = (event) => {
         const { id, method, arg } = event.data as Call
+        if (method === PING) {
+            endpoint.postMessage({ id, ok: true, value: progress.get(arg as number) }, [])
+            return
+        }
+        progress.set(id, 0)
+        const scope: CallScope = {
+            id,
+            tick: () => {
+                const count = progress.get(id)
+                if (count !== undefined) progress.set(id, count + 1)
+            },
+        }
         void (async () => {
             let reply: Reply
             let list: Transferable[] = []
             try {
                 const handler = handlers[method]
                 if (!handler) throw new RpcError('NotFoundError', `No method ${method}`)
-                const [value, transferList] = unmark(await handler(arg as never))
+                const [value, transferList] = unmark(await handler(arg as never, scope))
                 reply = { id, ok: true, value }
                 list = transferList
             } catch (error) {
                 const { name, message } = error instanceof Error ? error : new Error(String(error))
                 reply = { id, ok: false, error: { name, message } }
+            } finally {
+                progress.delete(id)
             }
             endpoint.postMessage(reply, list)
         })()
@@ -67,11 +89,13 @@ export type CallOptions = {
     bulk?: boolean
     /** Another timeout than the client's. */
     timeoutMs?: number
+    /** Called with the call's id once it is posted, for its watchdog's pings. */
+    sent?: (id: number) => void
 }
 
 /** A handler's argument, optional when it takes none. */
 type Args<F extends Handler> =
-    Parameters<F> extends []
+    Parameters<F> extends [] | [arg: undefined, scope: CallScope]
         ? [arg?: undefined, options?: CallOptions]
         : [arg: Parameters<F>[0], options?: CallOptions]
 
@@ -128,6 +152,7 @@ export const connect = <H extends Handlers>(
                 pending.set(id, entry)
                 const [value, list] = unmark(arg)
                 endpoint.postMessage({ id, method, arg: value } satisfies Call, list)
+                options?.sent?.(id)
             }),
         on: (event, listener) => {
             let set = listeners.get(event)

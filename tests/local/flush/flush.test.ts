@@ -628,3 +628,110 @@ test('a failed flush is tried again later, less often each time, and pending ent
     assert.equal(page.flusher.hasPending, false)
     assert.equal(rows(world, 'sessions').size, 1)
 })
+
+test('a fork after a reply lost to a kill keeps the entries already stored out of the fork', async () => {
+    const world = createWorld({ seed: 11 })
+    const tab = world.tab('a')
+    const forks: FlushSession[] = []
+    let loseReply = false
+    const ref: { page?: Page } = {}
+    const page = await openPage(world, tab, {
+        onFork: (fork) => forks.push(fork),
+        // The worker commits, then dies before its reply: the page sees only an error.
+        transport: async (batch) => {
+            const result = await tab.run(() => ref.page!.handlers.flush(batch))
+            ref.page!.results.push(result)
+            if (!loseReply) return result
+            loseReply = false
+            const error = new Error('The storage worker restarted')
+            error.name = 'WorkerRestartedError'
+            throw error
+        },
+    })
+    ref.page = page
+    let state = stateOf(goldenChart())
+    const session = begin(page, state, 'import')
+    await page.flusher.flush()
+    state = widen(state)
+    page.flusher.append('edit', () => 'Changed note', state, true)
+    loseReply = true
+    await page.flusher.flush()
+    assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
+    assert.equal(page.flusher.hasPending, true)
+
+    // Another tab continues the chain before the re-send.
+    const other = world.tab('other')
+    const otherCore = workerCore(world, other)
+    await other.run(() => otherCore.start())
+    await other.run(() =>
+        otherCore.write(['sessions', 'chains'], async (tx) => {
+            const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+            await tx.put('sessions', { id: 'continuation', chainId: session.chainId })
+            await tx.put('chains', { ...chain, head: 'continuation' })
+        }),
+    )
+    state = widen(state, 1)
+    page.flusher.append('edit', () => 'Changed note', state, true)
+    await page.flusher.flush()
+    assert.equal(forks.length, 1)
+    const fork = forks[0]!
+    const entries = [...rows(world, 'entries').values()]
+    assert.deepEqual(
+        entries.map(({ sessionId, seq }) => `${String(sessionId)} ${String(seq)}`).sort(),
+        [`${session.id} 1`, `${session.id} 2`, `${fork.id} 1`].sort(),
+    )
+    assert.deepEqual(rows(world, 'sessions').get(fork.id)?.parent, { id: session.id, uptoSeq: 2 })
+    assert.equal(page.flusher.hasPending, false)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a fork starts after its parent’s last entry, even one stamped past the stored clock', async () => {
+    const world = createWorld({ seed: 12 })
+    const forks: FlushSession[] = []
+    const page = await openPage(world, world.tab('a'), { onFork: (fork) => forks.push(fork) })
+    let state = stateOf(goldenChart())
+    const session = begin(page, state, 'import')
+    await page.flusher.flush()
+    // Another tab continues the chain, and the stored session's time is ahead of maxSeenTime.
+    const ahead = Date.now() + 60 * 60 * 1000
+    const other = world.tab('other')
+    const otherCore = workerCore(world, other)
+    await other.run(() => otherCore.start())
+    await other.run(() =>
+        otherCore.write(['sessions', 'chains'], async (tx) => {
+            const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+            const stored = (await tx.get('sessions', session.id)) as Record<string, unknown>
+            await tx.put('sessions', { ...stored, updatedAt: ahead })
+            await tx.put('sessions', { id: 'continuation', chainId: session.chainId })
+            await tx.put('chains', { ...chain, head: 'continuation' })
+        }),
+    )
+    state = widen(state)
+    page.flusher.append('edit', () => 'Changed note', state, true)
+    await page.flusher.flush()
+    const fork = forks[0]!
+    const startedAt = rows(world, 'sessions').get(fork.id)?.startedAt as number
+    assert.ok(startedAt > ahead, `${startedAt} after ${ahead}`)
+})
+
+test('a batch sent again after a later one leaves the newer summary and view', async () => {
+    const world = createWorld({ seed: 13 })
+    let scroll = 1
+    const page = await openPage(world, world.tab('a'), { view: () => ({ scroll, zoom: 1 }) })
+    const state = stateOf(goldenChart())
+    const session = begin(page, state)
+    page.flusher.append('edit', () => 'Changed note', widen(state), true)
+    await page.flusher.flush()
+    const [first] = page.batches
+    assert.ok(first)
+    scroll = 2
+    const later = { ...widen(state), levelInfo: { ...state.levelInfo, title: 'Later' } }
+    page.flusher.append('edit', () => 'Changed title', later, true)
+    await page.flusher.flush()
+    const chain = () => rows(world, 'chains').get(session.chainId)
+    assert.equal((chain()?.summary as { title?: string }).title, 'Later')
+    const result = await page.tab.run(() => page.handlers.flush(first))
+    assert.equal(result.kind, 'stored')
+    assert.equal((chain()?.summary as { title?: string }).title, 'Later')
+    assert.deepEqual(rows(world, 'sessions').get(session.id)?.view, { scroll: 2, zoom: 1 })
+})

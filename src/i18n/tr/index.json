@@ -492,7 +492,56 @@
         "builtinFailed": "Yerleşik yüklenemedi."
       },
       "offline": "Çevrimdışısınız.",
-      "safeMode": "Güvenli mod varsayılanı kullanır."
+      "safeMode": "Güvenli mod varsayılanı kullanır.",
+      "choose": "Seç…",
+      "chooseSkin": "Görünüm Seç",
+      "chooseParticle": "Parçacık Seç",
+      "chooseBackground": "Arka Plan Seç",
+      "chooseEffect": "Ses Efektleri Seç",
+      "use": "Kullan",
+      "alsoFile": "Bu dosyadaki \"{1}\" öğesini ({0}) de kullan",
+      "remove": "Kaldır",
+      "inUse": "Kullanımda",
+      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine varsayılan kullanılır.",
+      "chooseAgain": "Yeniden Seç",
+      "noneInFile": "Bu dosyada {0} yok.",
+      "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",
+      "progress": {
+        "reading": "Dosya okunuyor…",
+        "storing": "Saklanıyor…"
+      },
+      "part": {
+        "list": "liste",
+        "details": "ayrıntılar",
+        "data": "veri",
+        "texture": "doku",
+        "image": "görsel",
+        "configuration": "yapılandırma",
+        "audio": "ses",
+        "thumbnail": "küçük resim"
+      },
+      "import": {
+        "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
+        "zip64": "Bu dosya, düzenleyicinin okuyamadığı ZIP64 biçimini kullanıyor.",
+        "fileTooLarge": "Bu dosya {0} sınırından büyük.",
+        "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
+        "badName": "Bu dosyada izin verilmeyen bir girdi adı var.",
+        "ratio": "Bu dosyadaki {1} ({0}) açıldığında boyutunun {2} katından fazlasına ulaşıyor.",
+        "tooBig": "Bu dosyadaki {1} ({0}), {2} sınırından büyük.",
+        "unreadable": "Bu dosyadaki {1} ({0}) okunamadı.",
+        "missing": "Bu dosyadaki {1} ({0}) eksik.",
+        "notImage": "Bu dosyadaki {1} ({0}) PNG veya JPEG görseli değil.",
+        "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
+        "checksum": "Bu dosyadaki {1} ({0}) sağlama toplamıyla eşleşmiyor.",
+        "spriteOutside": "Bu dosyadaki veride ({0}) dokunun dışında kalan bir sprite var.",
+        "tooManySprites": "Bu dosyadaki veride ({0}) {1} spriteten fazlası var.",
+        "tooManyEffects": "Bu dosyadaki veride ({0}) {1} efektten fazlası var.",
+        "particleCount": "Bu dosyadaki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
+        "noPerfect": "Bu dosyadaki ses ({0}) kullanılabilir bir #PERFECT klibi içermiyor.",
+        "audioLength": "Bu dosyadaki ses ({0}) toplamda {1} saniyeden uzun.",
+        "packageTooLarge": "Bu öğe saklandığında {0} sınırından büyük oluyor.",
+        "storeFailed": "Bu öğe saklanamadı."
+      }
     }
   },
   "help": {

@@ -143,10 +143,19 @@ const readSlots = async (tx: KvTx, sessionId: string, first: number, end: number
     return slots
 }
 
+let applyHook: ((force: string | undefined) => void) | undefined
+
+/** A test hook run in the apply's write phase: it can throw, as a bug or a disk would. */
+export const setJournalApplyHookForTests = (hook: typeof applyHook) => {
+    applyHook = hook
+}
+
 export const writeJournalApply = async (
     tx: KvTx,
     batch: JournalApplyBatch,
     prepared: PreparedFlush,
+    /** Why an apply failed: then it's kept as a recovery session (§1.6.4). */
+    { force }: { force?: string } = {},
 ): Promise<JournalApplyResult> => {
     const { sessionId, seq, descriptor, stack } = batch
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -184,6 +193,7 @@ export const writeJournalApply = async (
     if (tombstone !== undefined) recoveryWhy = 'its session was removed'
     else if (chain && chain.head !== sessionId) recoveryWhy = 'its session was continued'
     else if (session && !chain) recoveryWhy = 'its chain is missing'
+    else if (force) recoveryWhy = force
     else recoveryWhy = await stackProblem(tx, sessionId, session, stack)
 
     // The stored slots an applied stack keeps in the block it changes.
@@ -220,6 +230,7 @@ export const writeJournalApply = async (
         ownBytes += row.size
     }
     const time = stamp(now)
+    applyHook?.(force)
     const headLabel = stack.head?.label ?? batch.label
 
     if (recoveryWhy) {

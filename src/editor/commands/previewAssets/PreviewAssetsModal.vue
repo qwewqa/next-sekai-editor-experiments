@@ -15,15 +15,25 @@ import { platform } from '../../../platform'
 import { assetTypes } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
+import { createAssetChooser } from '../../../preview/assets/files/chooser'
+import { decodeToCheck } from '../../../preview/assets/files/audio'
+import { importMessage } from '../../../preview/assets/files/importText'
+import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
+import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
 import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
+import type { AssetType } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { formatSize } from '../exportLevel/format'
 import AssetGlyph from './AssetGlyph.vue'
 import AssetSources from './AssetSources.vue'
+import StoredAssets from './StoredAssets.vue'
+import { clearStoredThumbnails } from './storedThumbnails'
 import { isAssetTab, previewAssetsTabs, type PreviewAssetsTab } from './tabs'
 
 const props = defineProps<{
     tab: PreviewAssetsTab
+    /** A package picked elsewhere (Open File…): its chooser opens with the items already listed. */
+    file?: File
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +43,36 @@ const emit = defineEmits<{
 const strings = computed(() => i18n.value.commands.previewAssets)
 const active = shallowRef(props.tab)
 const hasDefault = platform.capabilities.defaultAssets
+
+// One chooser per type, kept for as long as the dialog is open: switching tabs leaves a chooser
+// open as it was, and closing the dialog stops what any of them is doing.
+const choosers = Object.fromEntries(
+    assetTypes.map((type) => [
+        type,
+        createAssetChooser(type, {
+            store: workerStore,
+            maxTextureSide,
+            decodeAudio: decodeToCheck,
+            describe: importMessage,
+            apply: (choices) => {
+                settings.previewAssets = { ...settings.previewAssets, ...choices }
+            },
+            onStored: () => void refreshStored(),
+        }),
+    ]),
+) as Record<AssetType, ReturnType<typeof createAssetChooser>>
+
+onMounted(() => {
+    void refreshStored()
+    if (props.file && isAssetTab(active.value)) {
+        const file = props.file
+        void choosers[active.value].pick(file, file.name)
+    }
+})
+onBeforeUnmount(() => {
+    for (const chooser of Object.values(choosers)) chooser.dispose()
+    clearStoredThumbnails()
+})
 
 const uid = useId()
 const tabId = (tab: PreviewAssetsTab) => `${uid}-${tab}-tab`
@@ -123,8 +163,11 @@ const allDefault = computed(() =>
     assetTypes.every((type) => settings.previewAssets[type].source === 'default'),
 )
 
-// Nothing is stored yet; once A3 stores packages the footer counts them, and says nothing before.
-const summary = computed<StoredSummary>(() => ({ count: 0, bytes: 0 }))
+// The footer counts the stored packages, and says nothing while there are none.
+const summary = computed<StoredSummary>(() => ({
+    count: storedAssets.value.length,
+    bytes: storedAssets.value.reduce((sum, item) => sum + item.size, 0),
+}))
 const storedText = computed(() => storedLine(strings.value.stored, summary.value, formatSize))
 
 const buttonClass =
@@ -183,10 +226,13 @@ const buttonClass =
             :aria-labelledby="tabId(active)"
         >
             <div class="min-h-0 flex-1 overflow-y-auto p-2">
-                <AssetSources v-if="isAssetTab(active)" :key="active" :type="active" />
-                <p v-else class="px-3 py-2 opacity-75" data-stored-empty>
-                    {{ strings.storedEmpty }}
-                </p>
+                <AssetSources
+                    v-if="isAssetTab(active)"
+                    :key="active"
+                    :type="active"
+                    :chooser="choosers[active]"
+                />
+                <StoredAssets v-else />
             </div>
 
             <div

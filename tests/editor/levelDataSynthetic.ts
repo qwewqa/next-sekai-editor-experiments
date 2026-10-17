@@ -222,4 +222,7 @@ export const fullLevel = (): LevelDataEntity[] => [
     entity('SimLine', { left: ref('n0'), right: ref('n1') }),
     entity('TransientHiddenTickNote', { '#BEAT': 1.5, isAttached: 1 }),
     entity('TransientHiddenDamageTickNote', { '#BEAT': 1.5, isAttached: 1 }),
+    entity('Skill', { '#BEAT': 2, effect: 1, level: 1 }),
+    entity('FeverChance', { '#BEAT': 3 }),
+    entity('FeverStart', { '#BEAT': 4 }),
 ]

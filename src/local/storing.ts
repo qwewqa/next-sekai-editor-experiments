@@ -5,7 +5,7 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { isDurablyStoredWith } from './durable'
-import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
+import { Flusher, flushTimeoutMs, mediaTimeoutMs, type FlushReport } from './flush'
 import { toHex } from './hash'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { inspectSnapshot } from './records/inspect'
@@ -113,6 +113,8 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
                     current,
                 }),
             ),
+        storeMedia: (item) =>
+            worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
@@ -183,6 +185,11 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         },
         { replay: true },
     )
+
+    // A newer database opened by Try Again: nothing this tab holds will be stored.
+    worker.onStatus((next) => {
+        if (next.mode === 'readOnly') instance.withoutDatabase()
+    })
 
     worker.onRestart(() => {
         void instance.restarted()

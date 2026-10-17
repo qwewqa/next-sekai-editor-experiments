@@ -492,7 +492,56 @@
         "builtinFailed": "L’élément intégré n’a pas pu être chargé."
       },
       "offline": "Vous êtes hors ligne.",
-      "safeMode": "Le mode sans échec utilise l’élément par défaut."
+      "safeMode": "Le mode sans échec utilise l’élément par défaut.",
+      "choose": "Choisir…",
+      "chooseSkin": "Choisir un skin",
+      "chooseParticle": "Choisir une particule",
+      "chooseBackground": "Choisir un arrière-plan",
+      "chooseEffect": "Choisir des effets sonores",
+      "use": "Utiliser",
+      "alsoFile": "Utiliser aussi \"{1}\" ({0}) de ce fichier",
+      "remove": "Retirer",
+      "inUse": "Utilisé",
+      "removeInUse": "Retirer \"{0}\" ? L’élément par défaut est utilisé à la place.",
+      "chooseAgain": "Choisir à nouveau",
+      "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
+      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur. N’utilisez que des éléments que vous avez le droit d’utiliser.",
+      "progress": {
+        "reading": "Lecture du fichier…",
+        "storing": "Stockage…"
+      },
+      "part": {
+        "list": "liste",
+        "details": "détails",
+        "data": "données",
+        "texture": "texture",
+        "image": "image",
+        "configuration": "configuration",
+        "audio": "audio",
+        "thumbnail": "miniature"
+      },
+      "import": {
+        "damaged": "Ce fichier est endommagé ou n’est pas un paquet Sonolus.",
+        "zip64": "Ce fichier utilise ZIP64, que l’éditeur ne peut pas lire.",
+        "fileTooLarge": "Ce fichier dépasse {0}.",
+        "tooManyEntries": "Ce fichier contient plus de {0} entrées.",
+        "badName": "Ce fichier contient un nom d’entrée non autorisé.",
+        "ratio": "Dans ce fichier, {1} ({0}) se décompresse en plus de {2} fois sa taille.",
+        "tooBig": "Dans ce fichier, {1} ({0}) dépasse {2}.",
+        "unreadable": "Impossible de lire {1} ({0}) dans ce fichier.",
+        "missing": "Dans ce fichier, {1} ({0}) manque.",
+        "notImage": "Dans ce fichier, {1} ({0}) doit être une image PNG ou JPEG.",
+        "imageSize": "Dans ce fichier, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
+        "checksum": "Dans ce fichier, {1} ({0}) ne correspond pas à sa somme de contrôle.",
+        "spriteOutside": "Dans ce fichier, les données ({0}) contiennent un sprite hors de la texture.",
+        "tooManySprites": "Dans ce fichier, les données ({0}) contiennent plus de {1} sprites.",
+        "tooManyEffects": "Dans ce fichier, les données ({0}) contiennent plus de {1} effets.",
+        "particleCount": "Dans ce fichier, l’effet \"{1}\" ({0}) utilise plus de {2} particules.",
+        "noPerfect": "Dans ce fichier, l’audio ({0}) n’a pas de clip #PERFECT utilisable.",
+        "audioLength": "Dans ce fichier, l’audio ({0}) dépasse {1} secondes au total.",
+        "packageTooLarge": "Cet élément dépasse {0} une fois stocké.",
+        "storeFailed": "Cet élément n’a pas pu être stocké."
+      }
     }
   },
   "help": {
