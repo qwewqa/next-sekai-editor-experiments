@@ -5,6 +5,7 @@ import { readMeta } from '../../../src/local/db'
 import { sessionLock } from '../../../src/local/locks'
 import { holdParentLock, holdSessionLock, TabClient } from '../../../src/local/sessions'
 import { createWorld } from '../../../src/local/testing/world'
+import type { LockInfo, LockService } from '../../../src/platform/types'
 import { workerCore } from './harness'
 
 // Session locks on the main thread, this tab's client id, parent locks for unstored
@@ -67,6 +68,25 @@ test('this tab’s client id is read from its own nse-client lock', async () => 
     const own = await a.run(() => holdSessionLock(a.locks, 's3'))
     await a.run(() => own.granted)
     assert.equal(await a.run(() => client.heldElsewhere(sessionLock('s3'))), false)
+})
+
+test('without client ids, a lock this tab holds still counts as held elsewhere', async () => {
+    const world = createWorld({ seed: 6 })
+    const a = world.tab('a')
+    // An engine whose query() gives no clientId.
+    const locks: LockService = {
+        request: a.locks.request,
+        query: async () => {
+            const { held, pending } = await a.locks.query()
+            const strip = ({ name, mode }: LockInfo) => ({ name, mode })
+            return { held: held.map(strip), pending: pending.map(strip) }
+        },
+    }
+    const client = await a.run(() => new TabClient(locks, 'r1'))
+    const own = await a.run(() => holdSessionLock(locks, 's1'))
+    await a.run(() => own.granted)
+    assert.equal(await a.run(() => client.heldElsewhere(sessionLock('s1'))), true)
+    assert.equal(await a.run(() => client.heldElsewhere(sessionLock('s2'))), false)
 })
 
 test('days of use go up once per calendar day, and never for a clock set back', async () => {

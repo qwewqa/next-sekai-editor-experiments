@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { runToEnd } from '../../../src/local/chunks'
 import { setDeflateHookForTests } from '../../../src/local/chunkVerify'
 import { bumpEpoch, hashKey } from '../../../src/local/db'
 import type { FlushSession } from '../../../src/local/flush'
@@ -444,6 +445,79 @@ test('a worker restart resets the memo and sends every pending entry again', asy
     assert.equal(page.batches.at(-1)?.ends.length, page.batches[0]?.ends.length)
     assert.equal(rows(world, 'entries').size, 2)
 })
+
+for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
+    test(`a chain whose first editing entry is ${kind} is marked edited`, async () => {
+        const world = createWorld({ seed: 15 })
+        const page = await openPage(world, world.tab('a'))
+        const blank = stateOf(goldenChart())
+        const session = begin(page, blank)
+        page.flusher.append(kind, () => 'Changed note', widen(blank), true)
+        await page.flusher.flush()
+        const chain = rows(world, 'chains').get(session.chainId)
+        assert.equal(chain?.edited, true)
+        assert.equal(chain?.hasContent, true)
+    })
+
+test('entry times stay strictly increasing across flushes and tabs, with the clock held still', async () => {
+    const world = createWorld({ seed: 16 })
+    const a = await openPage(world, world.tab('a'), { now: () => 5000 })
+    const b = await openPage(world, world.tab('b'), { now: () => 5000 })
+    let stateA = stateOf(goldenChart())
+    let stateB = stateOf(goldenChart())
+    begin(a, stateA)
+    begin(b, stateB)
+    for (let i = 0; i < 3; i++) {
+        stateA = widen(stateA, i)
+        a.flusher.append('edit', () => 'Changed note', stateA, true)
+        await a.flusher.flush()
+        stateB = widen(stateB, i)
+        b.flusher.append('edit', () => 'Changed note', stateB, true)
+        await b.flusher.flush()
+    }
+    const times = [...rows(world, 'entries').values()].map(({ time }) => time as number)
+    assert.equal(times.length, 8)
+    assert.equal(new Set(times).size, 8)
+    // In commit order: each flush's times are above every earlier one's.
+    const bySeq = (page: Page) =>
+        [...rows(world, 'entries').values()]
+            .filter((entry) => entry.sessionId === page.flusher.session?.id)
+            .map(({ time }) => time as number)
+    for (const own of [bySeq(a), bySeq(b)])
+        for (let i = 1; i < own.length; i++) assert.ok((own[i] as number) > (own[i - 1] as number))
+})
+
+test(
+    'a hide while a sliced flush runs finishes its extraction at once and sends it strictly',
+    { timeout: 10_000 },
+    async () => {
+        const world = createWorld({ seed: 17 })
+        let sliced = 0
+        const page = await openPage(world, world.tab('a'), {
+            // Slices that never come, as in a hidden tab: only the hide's hurry finishes the job.
+            runJob: (job, options) =>
+                new Promise((resolve) => {
+                    sliced++
+                    options?.hurry?.(() => {
+                        resolve(runToEnd(job))
+                    })
+                }),
+        })
+        let state = stateOf(goldenChart())
+        begin(page, state)
+        state = widen(state)
+        page.flusher.append('edit', () => 'Changed note', state, true)
+        const running = page.flusher.flush()
+        await world.idle()
+        assert.equal(page.batches.length, 0)
+        await page.flusher.flush({ strict: true, oneGo: true })
+        await running
+        assert.equal(sliced, 1)
+        assert.equal(page.batches.length, 1)
+        assert.equal(page.batches[0]?.durability, 'strict')
+        assert.equal(page.flusher.hasPending, false)
+    },
+)
 
 test('entry times are strictly increasing, whatever the clock says', async () => {
     const world = createWorld({ seed: 13 })

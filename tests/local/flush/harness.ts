@@ -168,7 +168,6 @@ export class WorkerHost {
 
     /** The newest worker's in-memory store. */
     get memory() {
-         
         return this.memories.at(-1)!
     }
 

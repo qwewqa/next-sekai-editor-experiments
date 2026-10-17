@@ -30,7 +30,7 @@ import {
 /** The state with its n-th note one quarter wider. */
 const widen = (state: State, n = 0) => {
     const notes = [...state.store.slides.note.values()].flat()
-     
+
     const target = notes[n % notes.length]!
     const transaction = createTransaction(state)
     replaceNote(transaction, target, { ...target, size: target.size + 0.25 })
@@ -232,7 +232,6 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
         tab,
         {
             transport: async (batch) => {
-                 
                 const result = await tab.run(() => ref.handlers!.flush(batch))
                 results.push(result)
                 return result
