@@ -12,8 +12,6 @@ export const redo: Command = {
         is: RedoIcon,
     },
 
-    readOnly: true,
-
     execute() {
         const name = redoState()
         if (name) {
