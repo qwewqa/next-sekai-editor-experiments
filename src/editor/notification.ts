@@ -68,7 +68,7 @@ const startTimer = (ms: number) => {
     const shown = notification.value.id
     timer = setTimeout(() => {
         // A later notice has its own timer.
-        if (notification.value.id === shown) clearNotification()
+        if (notification.value.id === shown) dismissNotification()
     }, ms)
     // A timer left by a test never holds the process open.
     ;(timer as { unref?: () => void }).unref?.()
@@ -99,10 +99,19 @@ export const notify = (
     track()
 }
 
-/** Removes a notice that no longer holds, such as one for a drag that changed nothing. */
-export const clearNotification = () => {
+/** Removes the shown notice, whatever it is. */
+export const dismissNotification = () => {
     notification.value = { id: notification.value.id }
     track()
+}
+
+/**
+ * Removes a plain notice that no longer holds, such as one for a drag that changed nothing.
+ * A notice with an action (Undo, Reopen, the update line) is another feature's, so it stays.
+ */
+export const clearNotification = () => {
+    if (notification.value.action) return
+    dismissNotification()
 }
 
 /** Pauses the notice's timeout while the pointer or focus is on it. */

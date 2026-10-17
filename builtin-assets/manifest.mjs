@@ -1,4 +1,5 @@
 // Sprite names -> template and parameters, the particle table, the clip table and the item metadata.
+import product from '../src/product.json' with { type: 'json' }
 import {
     activeColors,
     arrowColors,
@@ -14,8 +15,8 @@ import {
     traceColors,
 } from './palette.mjs'
 
-/** The shown product name (Part 4, 4.1). */
-export const productName = 'Next SEKAI Editor'
+/** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
+export const productName = product.name
 
 /** Bumped when the set's art changes. */
 export const setVersion = 1

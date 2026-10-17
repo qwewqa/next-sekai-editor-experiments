@@ -241,6 +241,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         'commands.visibilities.toggle.types.note',
         'elevation.auto',
+        // French spells "Version" the same.
         'load.version',
         'modals.form.bpm.label',
         'modals.form.cameraRotation.label',
@@ -264,6 +265,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.timeScaleTransition.label',
         'modals.form.unset.auto',
         'modals.info.ok',
+        // French spells "Version" the same.
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',
         'settings.editor.waveformVisualization.volume',

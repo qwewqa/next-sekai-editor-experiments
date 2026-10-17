@@ -16,6 +16,7 @@ export const collectDiagnosticText = async () => {
         productName: PRODUCT_NAME,
         appVersion: info.appVersion,
         atTag: appVersion().atTag,
+        hasCommit: info.appVersion.includes('+'),
         site: SITE,
         engine: info.engine,
         os: info.os,

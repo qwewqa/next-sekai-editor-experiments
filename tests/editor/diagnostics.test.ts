@@ -6,12 +6,13 @@ const fields = (entries: RingEntry[]) => ({
     productName: 'Next SEKAI Editor',
     appVersion: '0.6.0',
     atTag: true,
+    hasCommit: false,
     site: 'production',
     engine: 'chromium',
     os: 'windows',
     standalone: false,
     userAgent: 'UA',
-    estimate: { usage: 1536, quota: 1073741824 },
+    estimate: { usage: 1500, quota: 1073741824 },
     entries,
 })
 
@@ -39,12 +40,31 @@ test('the text names the version, engine, OS, standalone, storage and the ring',
     assert.match(text, /^Engine: chromium$/m)
     assert.match(text, /^OS: windows$/m)
     assert.match(text, /^Standalone: no$/m)
-    assert.match(text, /^Storage: 1\.5 KB used of about 1\.0 GB$/m)
+    assert.match(text, /^Storage: 1\.5 KB used of about 1[.]1 GB$/m)
     assert.match(
         text,
         /^- 1970-01-01T00:00:00\.000Z csp: script-src blocked inline at ~\\a\.js:3$/m,
     )
     assert.doesNotMatch(text, /kyle/)
+})
+
+test('a missing storage value is not printed as a value', () => {
+    const text = (estimate: { usage?: number; quota?: number }) =>
+        formatDiagnostics({ ...fields([]), estimate })
+    assert.match(text({ usage: 2_000_000 }), /^Storage: 2\.0 MB used, quota unknown$/m)
+    assert.match(
+        text({ quota: 1_000_000_000 }),
+        /^Storage: about 1\.0 GB available, usage unknown$/m,
+    )
+    assert.match(text({ usage: 999 }), /^Storage: 999 B used, quota unknown$/m)
+})
+
+test('the build line agrees with About: release, between releases, or untagged', () => {
+    const build = (atTag: boolean, hasCommit: boolean) =>
+        formatDiagnostics({ ...fields([]), atTag, hasCommit }).match(/^Build: (.*)$/m)?.[1]
+    assert.equal(build(true, false), 'release')
+    assert.equal(build(false, true), 'between releases')
+    assert.equal(build(false, false), 'untagged')
 })
 
 test('without a storage estimate or entries the text says so', () => {

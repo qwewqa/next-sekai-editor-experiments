@@ -772,7 +772,7 @@
       "privacy": "Confidentialité",
       "diagnostics": "Copier les informations de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
-      "diagnosticsNote": "Les messages d’erreur qu’il contient peuvent inclure des noms de fichiers et de dossiers. Relisez-le avant de le publier.",
+      "diagnosticsNote": "Les messages d’erreur de ce texte peuvent inclure des noms de fichiers et de dossiers. Relisez-le avant de le publier.",
       "copy": "Copier",
       "copied": "Copié"
     }
@@ -980,7 +980,7 @@
   },
   "load": {
     "version": "Version {0}",
-    "updated": "Mise à jour vers la version {0}",
+    "updated": "Mis à jour vers la version {0}",
     "whatsNew": "Nouveautés"
   },
   "player": {

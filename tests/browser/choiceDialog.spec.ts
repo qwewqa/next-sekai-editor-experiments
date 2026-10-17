@@ -182,25 +182,20 @@ test('a press within 300 ms of opening is ignored, and one after it works', asyn
 
 test('a held Enter does not confirm: repeats are ignored', async ({ page }) => {
     await boot(page)
+    // Enter goes down before the dialog opens, as the press that opened it would.
+    await page.keyboard.down('Enter')
     await open(page, 'replace')
     await expect(dialog(page)).toBeVisible()
     await settle(page)
-    // The default is focused. A repeating Enter must not click it...
-    await page.evaluate(() => {
-        const button = document.querySelector<HTMLElement>('dialog button[data-choice="default"]')!
-        button.focus()
-        button.dispatchEvent(
-            new KeyboardEvent('keydown', {
-                key: 'Enter',
-                repeat: true,
-                bubbles: true,
-                cancelable: true,
-            }),
-        )
-    })
+    const separate = dialog(page).getByRole('button', { name: 'Save as a Separate File' })
+    await expect(separate).toBeFocused()
+    // The key is still down, so these are real repeating keydowns on the focused default.
+    await page.keyboard.down('Enter')
+    await page.keyboard.down('Enter')
+    await page.keyboard.up('Enter')
     await expect(dialog(page)).toBeVisible()
     expect(await answers(page)).toEqual([])
-    // ...and the first press does.
+    // A fresh press does confirm.
     await page.keyboard.press('Enter')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await answers(page)).toEqual(['Changed on Disk:separate'])
@@ -219,6 +214,13 @@ test('a choice with a description shows it under its button, and the default is 
     expect(note.y).toBeGreaterThanOrEqual(button.y + button.height)
     // Stacked: the safe default first, Cancel last.
     expect(await names(page)).toEqual(['Save as a Separate File', 'Replace', 'Cancel'])
+    await expect(
+        dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+    ).toBeFocused()
+    await settle(page)
+    await expect(
+        dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+    ).toBeFocused()
 })
 
 test.describe('on a phone', () => {
@@ -241,6 +243,14 @@ test.describe('on a phone', () => {
         expect(boxes[0]!.y).toBeLessThan(boxes[1]!.y)
         expect(boxes[1]!.y).toBeLessThan(boxes[2]!.y)
         for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44)
+        // The declared default keeps focus in the new order, before and after the guard.
+        const separate = dialog(page).getByRole('button', { name: 'Save as a Separate File' })
+        await expect(separate).toBeFocused()
+        await settle(page)
+        await expect(separate).toBeFocused()
+        await page.keyboard.press('Enter')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        expect(await answers(page)).toEqual(['Changed on Disk:separate'])
     })
 })
 
@@ -254,6 +264,15 @@ test('long labels stack the buttons on a wide screen too', async ({ page }) => {
         'Enregistrer sous un autre nom de fichier',
         'Cancel',
     ])
+    const safe = dialog(page).getByRole('button', {
+        name: 'Remplacer le fichier existant sur le disque',
+    })
+    await expect(safe).toBeFocused()
+    await settle(page)
+    await expect(safe).toBeFocused()
+    // Narrowing the window restacks nothing new, and focus stays on the default.
+    await page.setViewportSize({ width: 390, height: 800 })
+    await expect(safe).toBeFocused()
 })
 
 test('dialogs stack: the later one answers first, and Escape closes only the top', async ({
