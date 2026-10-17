@@ -273,24 +273,130 @@ test('Export refuses to write over a .nxsp in its target’s place', async ({ pa
     expect(await readFile(page, 'LevelData')).toBe('zip')
 })
 
-test('level data with an unknown archetype gets no Export target', async ({ page }) => {
-    await start(page, opfs)
-    await writeFile(page, 'LevelData', { archetype: 'Skill' })
-    await openFile(page, 'LevelData')
+/** Opens level data with parts this build does not read, through its report dialog. */
+const openPartial = async (page: Page, name: string) => {
+    await writeFile(page, name, { archetype: 'Skill' })
+    await queuePicks(page, [name])
+    await page.keyboard.press('o')
+    // The dialog follows the open, in place of its notice.
     await expect(dialog(page)).toContainText(
         'This level has parts this version of the editor does not support. They were left out.',
     )
     await dialog(page).getByRole('button', { name: 'OK' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+}
+
+/** An OPFS file's level data archetypes, or undefined when it is empty. */
+const archetypes = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        const file = await (await root.getFileHandle(name)).getFile()
+        if (!file.size) return undefined
+        const stream = file.stream().pipeThrough(new DecompressionStream('gzip'))
+        const json = JSON.parse(await new Response(stream).text()) as {
+            entities: { archetype: string }[]
+        }
+        return json.entities.map(({ archetype }) => archetype)
+    }, name)
+
+test('level data with an unknown archetype gets no Export target', async ({ page }) => {
+    await start(page, opfs)
+    await openPartial(page, 'LevelData')
 
     await openExport(page)
     await expect(dialog(page).locator('[data-export-target]')).toHaveCount(0)
+    // An unlinked copy: never the original's own name (§1.4.7).
     const field = dialog(page).getByRole('textbox', { name: 'File Name' })
-    await expect(field).toHaveValue('LevelData')
+    await expect(field).toHaveValue('LevelData (2)')
     await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+    await expect(notice(page)).toHaveText('Exported to LevelData (2).nsld')
     // The original, with its Skill entity, is untouched.
-    expect(await opfsNames(page)).toEqual(['LevelData', 'LevelData.nsld'])
+    expect(await opfsNames(page)).toEqual(['LevelData', 'LevelData (2).nsld'])
+    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+})
+
+test('a partial level picked anyway is refused and put back, through Export and p', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await openPartial(page, 'LevelData')
+
+    await openExport(page)
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('Enter')
+    await expect(dialog(page)).toContainText(
+        '"LevelData" has parts this version of the editor does not support.',
+    )
+    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+    await page.waitForTimeout(350)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    // p suggests the copy's name, and refuses the original too.
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('p')
+    await expect(dialog(page)).toContainText(
+        '"LevelData" has parts this version of the editor does not support.',
+    )
+    expect((await pickerCalls(page)).at(-1)).toMatchObject({
+        picker: 'save',
+        id: 'levelData',
+        suggestedName: 'LevelData (2)',
+    })
+    expect(await archetypes(page, 'LevelData')).toContain('Skill')
+    expect(await opfsNames(page)).toEqual(['LevelData'])
+})
+
+test('Choose Another… on an opened LevelData suggests its own name, "All files" alone', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    await openExport(page)
+    await queuePicks(page, ['LevelData'])
+    await dialog(page).getByRole('button', { name: 'Choose Another…' }).click()
+    await expect(notice(page)).toHaveText('Exported to LevelData')
+    // Chromium appends "All files" after any listed type, so it is first only when alone.
+    expect((await pickerCalls(page)).at(-1)).toEqual({
+        picker: 'save',
+        id: 'levelData',
+        suggestedName: 'LevelData',
+    })
+})
+
+test('plain-JSON level data gets no Export target', async ({ page }) => {
+    await start(page, opfs)
+    const json = await page.evaluate(async () => {
+        const { buildLevelData } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/build')
+        >('/src/editor/commands/exportLevel/build.ts')
+        const stream = buildLevelData().stream().pipeThrough(new DecompressionStream('gzip'))
+        return Array.from(new Uint8Array(await new Response(stream).arrayBuffer()))
+    })
+    await writeFile(page, 'LevelData.json', { raw: json })
+    await openFile(page, 'LevelData.json')
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target]')).toHaveCount(0)
+    await expect(dialog(page).getByRole('textbox', { name: 'File Name' })).toBeVisible()
+})
+
+test('while peeking, Export says it exports the current version', async ({ page }) => {
+    await start(page, opfs)
+    await openExport(page)
+    await expect(dialog(page).getByText('Exports the current version.')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { peek, state } =
+            await window.editorTest.appImport<typeof import('../../src/history/stack')>(
+                '/src/history/stack.ts',
+            )
+        peek.value = { source: 'test', state: state.value }
+    })
+    await openExport(page)
+    await expect(dialog(page).getByText('Exports the current version.')).toBeVisible()
 })
 
 test('an opened gzipped LevelData saved with p then exported with Shift+P has no conflict', async ({
@@ -388,6 +494,32 @@ test('a dropped file opens nothing and leaves the page where it is', async ({ pa
     await expect(notice(page)).toHaveText('To open a file, use Open.')
     expect(page.url()).toBe(url)
     await expect(dialog(page)).toHaveCount(0)
+})
+
+test('a link dragged onto a checkbox is held; only text fields take it', async ({ page }) => {
+    await start(page, opfs)
+    const result = await page.evaluate(() => {
+        const fire = (target: Element) => {
+            const data = new DataTransfer()
+            data.setData('text/uri-list', 'https://example.com/')
+            const event = new DragEvent('dragover', {
+                dataTransfer: data,
+                bubbles: true,
+                cancelable: true,
+            })
+            target.dispatchEvent(event)
+            return event.defaultPrevented
+        }
+        const checkbox = document.createElement('input')
+        checkbox.type = 'checkbox'
+        const text = document.createElement('input')
+        document.body.append(checkbox, text)
+        const held = { checkbox: fire(checkbox), text: fire(text) }
+        checkbox.remove()
+        text.remove()
+        return held
+    })
+    expect(result).toEqual({ checkbox: true, text: false })
 })
 
 test('Shift+P exports; p with Caps Lock still saves', async ({ page }) => {

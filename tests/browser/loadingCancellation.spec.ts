@@ -321,12 +321,21 @@ for (const portrait of [false, true]) {
                 return [...data.slice(start, start + 4)]
             })
             bitmap.close()
-            return { width: canvas.width, height: canvas.height, type: blob.type, pixels }
+            const signature = [...new Uint8Array(await blob.slice(0, 8).arrayBuffer())]
+            return {
+                width: canvas.width,
+                height: canvas.height,
+                type: blob.type,
+                signature,
+                pixels,
+            }
         }, portrait)
+        // Every download is handed over as application/octet-stream (Part 1 §1.5.6); the bytes are the PNG.
         expect(result).toEqual({
             width: 4,
             height: 4,
-            type: 'image/png',
+            type: 'application/octet-stream',
+            signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
             pixels: [
                 [0, 255, 0, 255],
                 [0, 0, 255, 255],
