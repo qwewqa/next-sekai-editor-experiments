@@ -16,9 +16,9 @@ import { themes } from './src/themes'
 const repository = process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments'
 const root = fileURLToPath(new URL('.', import.meta.url))
 
-// The Vite entries (Part 5, 5.1.3): /privacy/ when its page exists. The apps' build has the editor only.
+// The Vite entries (Part 5, 5.1.3); the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
 const pages = (mode: string) => ({
-    main: resolve(root, 'index.html'),
+    index: resolve(root, 'index.html'),
     ...(mode !== 'native' && existsSync(resolve(root, 'privacy/index.html'))
         ? { privacy: resolve(root, 'privacy/index.html') }
         : {}),
