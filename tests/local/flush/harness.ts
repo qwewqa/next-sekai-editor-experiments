@@ -61,7 +61,7 @@ export type Page = {
 const freezing = (flusher: Flusher) => {
     const { append, begin } = flusher
     flusher.append = (kind, label, state, dirty) => {
-        freezePublished(state)
+        if (!(state instanceof Uint8Array)) freezePublished(state)
         append.call(flusher, kind, label, state, dirty)
     }
     flusher.begin = (start) => {
