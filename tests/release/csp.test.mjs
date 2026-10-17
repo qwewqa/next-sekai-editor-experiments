@@ -58,11 +58,10 @@ test('the base policy is Part 0 §0.9.2’s', () => {
     )
 })
 
-test('the web and native policies differ from the base only by their additions', () => {
-    assert.deepEqual(added(basePolicy(), webPolicy()), {
-        'img-src': ['https:'],
-        'connect-src': ['https:'],
-    })
+test('the web policy is the base, and the native one differs only by its additions', () => {
+    // The web makes no cross-origin requests.
+    assert.equal(webPolicy(), basePolicy())
+    assert.doesNotMatch(webPolicy(), /https:/)
     assert.deepEqual(added(basePolicy(), nativePolicy()), {
         'connect-src': ['ipc:', 'http://ipc.localhost'],
     })
