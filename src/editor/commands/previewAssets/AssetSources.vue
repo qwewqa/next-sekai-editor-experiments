@@ -1,27 +1,44 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { i18n } from '../../../i18n'
 import { platform } from '../../../platform'
 import {
+    assetSession,
     firstPaintBackgroundUrl,
     isAssetSafeModeActive,
     type AssetType,
 } from '../../../preview/assets'
+import { fallbacks } from '../../../preview/assets/active'
 import { loadBuiltinInfo, type BuiltinInfo } from '../../../preview/assets/builtin'
 import { choiceKey } from '../../../preview/assets/choice'
 import { rowText } from '../../../preview/assets/fallbackText'
-import { fallbacks } from '../../../preview/assets/active'
+import { storedChoice, type AssetChooser } from '../../../preview/assets/files/chooser'
+import { storedAssets, workerStore } from '../../../preview/assets/files/store'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
-import AssetGlyph from './AssetGlyph.vue'
 import { interpolateRaw } from '../../../utils/interpolate'
+import AssetGlyph from './AssetGlyph.vue'
+import AssetRow from './AssetRow.vue'
+import ChooserView from './ChooserView.vue'
+import { storedThumbnail } from './storedThumbnails'
 
 const props = defineProps<{
     type: AssetType
+    chooser: AssetChooser
 }>()
 
 const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
+const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
 const hasDefault = platform.capabilities.defaultAssets
 
@@ -54,6 +71,17 @@ const defaultName = computed(() =>
 
 const chosen = computed(() => settings.previewAssets[props.type])
 
+const storedRow = (choice: AssetChoice & { source: 'file' | 'server' }, image?: string): Row => ({
+    id: choiceKey(choice),
+    choice,
+    name: interpolateRaw(
+        choice.source === 'file' ? strings.value.storedFile : strings.value.storedServer,
+        choice.title,
+    ),
+    detail: [choice.author, choice.origin].filter(Boolean).join(' · '),
+    image,
+})
+
 const rows = computed<Row[]>(() => {
     const list: Row[] = []
     if (hasDefault)
@@ -73,19 +101,20 @@ const rows = computed<Row[]>(() => {
         detail: builtin.value?.author ?? '',
         image: builtin.value?.image,
     })
-    // A stored item that is the choice shows even before the Stored tab lists them all.
+    // The stored items of this type, newest first.
+    for (const meta of storedAssets.value) {
+        if (meta.type !== props.type) continue
+        const choice = storedChoice(meta)
+        if (choice.source === 'default' || choice.source === 'builtin') continue
+        list.push(storedRow(choice, storedThumbnail(meta)))
+    }
+    // A choice whose package is gone still shows, so its reason can sit under it.
     const choice = chosen.value
-    if (choice.source === 'file' || choice.source === 'server')
-        list.push({
-            id: choiceKey(choice),
-            choice,
-            name: interpolateRaw(
-                choice.source === 'file' ? strings.value.storedFile : strings.value.storedServer,
-                choice.title,
-            ),
-            detail: [choice.author, choice.origin].filter(Boolean).join(' · '),
-            image: undefined,
-        })
+    if (
+        (choice.source === 'file' || choice.source === 'server') &&
+        !list.some((row) => row.id === choiceKey(choice))
+    )
+        list.push(storedRow(choice))
     return list
 })
 
@@ -98,6 +127,9 @@ const selectedId = computed(() => {
 const select = (row: Row) => {
     if (row.id === selectedId.value) return
     settings.previewAssets = { ...settings.previewAssets, [props.type]: row.choice }
+    // Using a stored item marks it used; the mark is only a note.
+    if (row.choice.source === 'file' || row.choice.source === 'server')
+        void workerStore.touch(row.choice.key).catch(() => undefined)
 }
 
 const fallback = computed(() => fallbacks.value.find((item) => item.type === props.type))
@@ -107,57 +139,118 @@ const noteText = computed(() => {
     return fallback.value ? rowText(fallback.value) : ''
 })
 const hasWarning = computed(() => !!fallback.value)
+// A package that left storage is picked again from the file.
+const canChooseAgain = computed(
+    () => fallback.value?.reason === 'fileGone' && chosen.value.source === 'file',
+)
+
+// Closing the chooser leaves the focus on the chosen row, where the keys are useful.
+watch(
+    () => props.chooser.open.value,
+    async (now, before) => {
+        if (!before || now) return
+        await nextTick()
+        sources.value?.querySelector<HTMLElement>('input:checked')?.focus({ focusVisible: false })
+    },
+)
+
+// The chosen asset is still loading: a switch to a stored item can take a moment.
+const isLoading = computed(() => {
+    if (isAssetSafeModeActive) return false
+    const slot = assetSession.slots[props.type].value
+    if (slot.state === 'loading') return true
+    return (
+        slot.state === 'ready' &&
+        !!slot.choice &&
+        choiceKey(slot.choice) !== choiceKey(chosen.value)
+    )
+})
 </script>
 
 <template>
-    <div class="flex flex-col" role="radiogroup" :aria-label="strings[type]" data-asset-sources>
+    <ChooserView v-if="chooser.open.value" :type="type" :chooser="chooser" />
+    <div
+        v-else
+        ref="sources"
+        class="flex flex-col"
+        role="radiogroup"
+        :aria-label="strings[type]"
+        data-asset-sources
+    >
         <template v-for="row in rows" :key="row.id">
-            <label
-                class="asset-row relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:active]:bg-accent has-[:checked]:bg-button has-[:active]:text-on-accent has-[:checked]:shadow-md has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover [@media(hover:hover)]:has-[:checked]:hover:bg-button [@media(pointer:coarse)]:min-h-14"
+            <AssetRow
+                :type="type"
+                :name="row.name"
+                :detail="row.detail"
+                :image="row.image"
+                :checked="row.id === selectedId"
+                :group="groupName"
+                :autofocus="row.id === selectedId"
+                :describedby="row.id === selectedId && noteText ? noteId : undefined"
                 :data-asset-row="row.id"
-            >
-                <input
-                    type="radio"
-                    class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none"
-                    :name="groupName"
-                    :checked="row.id === selectedId"
-                    :data-autofocus="row.id === selectedId || undefined"
-                    :aria-describedby="row.id === selectedId && noteText ? noteId : undefined"
-                    @change="select(row)"
-                />
-                <span
-                    class="pointer-events-none relative size-4 shrink-0 rounded-full border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-full after:bg-fg after:transition-transform peer-checked:after:scale-100"
-                    aria-hidden="true"
-                />
-                <span
-                    class="pointer-events-none flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-recess"
-                    aria-hidden="true"
+                @select="select(row)"
+            />
+            <template v-if="row.id === selectedId && noteText">
+                <p
+                    :id="noteId"
+                    class="relative pl-[5.75rem] pr-3 pt-1 text-sm"
+                    :class="canChooseAgain ? 'pb-1' : 'pb-2'"
+                    data-asset-note
                 >
-                    <img v-if="row.image" :src="row.image" alt="" class="size-full object-cover" />
-                    <AssetGlyph v-else :type="type" class="opacity-60" />
-                </span>
-                <span class="pointer-events-none min-w-0 flex-1">
-                    <span class="block truncate">{{ row.name }}</span>
-                    <span v-if="row.detail" class="block truncate text-sm opacity-75">{{
-                        row.detail
-                    }}</span>
-                </span>
-            </label>
+                    <AssetGlyph
+                        v-if="hasWarning"
+                        type="warning"
+                        class="absolute left-[4.25rem] top-[0.4375rem]"
+                    />{{ noteText }}
+                </p>
+                <div v-if="canChooseAgain" class="pb-2 pl-[5.75rem] pr-3">
+                    <button
+                        type="button"
+                        class="inline-flex h-7 items-center rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        data-asset-choose-again
+                        @click="chooser.show()"
+                    >
+                        {{ strings.chooseAgain }}
+                    </button>
+                </div>
+            </template>
             <p
-                v-if="row.id === selectedId && noteText"
-                :id="noteId"
-                class="relative pb-2 pl-[5.75rem] pr-3 pt-1 text-sm"
-                data-asset-note
+                v-else-if="row.id === selectedId && isLoading"
+                class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm opacity-75"
+                role="status"
+                data-asset-loading
             >
-                <AssetGlyph
-                    v-if="hasWarning"
-                    type="warning"
-                    class="absolute left-[4.25rem] top-[0.4375rem]"
-                />{{ noteText }}
+                {{ i18n.modals.loading.loading }}
             </p>
         </template>
         <p v-if="type === 'effect'" class="px-3 pt-3 text-sm opacity-75" data-effect-hint>
             {{ strings.effectHint }}
         </p>
+        <div class="px-3 pt-3">
+            <button
+                type="button"
+                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                data-asset-choose
+                @click="chooser.show()"
+            >
+                {{ strings.choose }}
+            </button>
+        </div>
     </div>
 </template>
+
+<style scoped>
+/* A quick switch shows no "Loading…"; a slow one fades it in. */
+.asset-loading {
+    animation: asset-loading-in 0.2s 0.5s both;
+}
+
+@keyframes asset-loading-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 0.75;
+    }
+}
+</style>

@@ -21,6 +21,8 @@ export type AssetChoice =
 export type { BackgroundFit }
 
 export type LoadedBackground = {
+    /** The item's title, for a stored background. */
+    title?: string
     /** Object URL or asset URL */
     url: string
     aspectRatio: number
@@ -100,6 +102,8 @@ export type AssetStatus = {
     active: 'chosen' | 'default' | 'builtin'
     /** Why the chosen source was not used, if it was not. */
     reason?: AssetErrorCode
+    /** With `chosen` and a reason: the stored item that keeps showing in place of the failed one. */
+    usingTitle?: string
 }
 
 export type AssetResult<T extends AssetType> = { value: Loaded[T]; status: AssetStatus }

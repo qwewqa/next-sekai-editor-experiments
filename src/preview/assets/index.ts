@@ -2,6 +2,7 @@ import defaults, { firstPaintBackgroundUrl } from '#asset-defaults'
 import { settings } from '../../settings'
 import { builtinProviders } from './builtin'
 import { assetTypes } from './choice'
+import { lazyStoredProviders } from './files/lazy'
 import { createAssetLoader } from './loader'
 import { isAssetSafeMode } from './safeMode'
 import { createAssetSession } from './session'
@@ -11,7 +12,11 @@ export type * from './types'
 export { AssetError, sfxSlots } from './types'
 
 /** The composition root: the only importer of #asset-defaults. */
-export const assets = createAssetLoader({ defaults, builtin: builtinProviders })
+export const assets = createAssetLoader({
+    defaults,
+    builtin: builtinProviders,
+    providers: lazyStoredProviders(),
+})
 
 export { firstPaintBackgroundUrl }
 
