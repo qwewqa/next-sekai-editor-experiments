@@ -4,13 +4,11 @@ import test from 'node:test'
 import {
     ChunkBatch,
     Extractor,
-    recordText,
     runSliced,
     runToEnd,
     type SnapshotPlan,
 } from '../../../src/local/chunks'
 import { hash16Sync, toHex } from '../../../src/local/hash'
-import { canonical, type RecordValue } from '../../../src/local/records/canonical'
 import { entitiesOf } from '../../../src/local/records/extract'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
@@ -46,7 +44,7 @@ const store = () => {
                 texts.set(toHex(hash), text)
                 return hash
             })
-            extractor.settle(batch, hashes, epoch)
+            extractor.settle(batch, hashes, { db: 'test', epoch })
             return hashes
         },
         /** A plan's header and chunk texts, kind by kind, once its batch is settled. */
@@ -276,20 +274,25 @@ test('a whole-chart extraction runs in slices of about 8 ms', async () => {
     })
 })
 
-test('recordText writes exactly the canonical text, and refuses what a record can’t hold', () => {
-    const values: RecordValue[][] = [
-        [0, -0, 1.5, -1e21, 1e21, 5e-324, 2 ** 53, 0.1 + 0.2],
-        ['', 'a"b\\c', '\u0000\u001f\u2028', '\uD800', 'é', '𝄞'],
-        [true, false, [], [[1, 'x'], []]],
-    ]
-    for (const value of values) assert.equal(recordText(value), canonical(value))
-    assert.throws(() => recordText([NaN]))
-    assert.throws(() => recordText([Infinity]))
-    // eslint-disable-next-line no-sparse-arrays
-    assert.throws(() => recordText([1, , 2] as never))
-    assert.throws(() => recordText([null] as never))
-    assert.throws(() => recordText([{}] as never))
-    assert.throws(() => recordText([new Float64Array(1)] as never))
+test('outside release builds, a snapshot naming a group or stage its header lacks is refused (D9)', () => {
+    const state = stateOf(goldenChart())
+    const [note] = [...state.store.slides.note.values()].flat()
+    assert.ok(note)
+    const extractor = new Extractor()
+    // Planned first whole, so the refusal comes from the header's ids changing.
+    runToEnd(extractor.plan(state, new ChunkBatch()))
+    const withoutGroup = {
+        ...state,
+        groups: new Map([...state.groups].filter(([id]) => id !== note.groupId)),
+    } as State
+    assert.throws(() => runToEnd(extractor.plan(withoutGroup, new ChunkBatch())), /groups/)
+    const withoutStage = {
+        ...state,
+        stages: new Map([...state.stages].filter(([id]) => id !== note.stageId)),
+    } as State
+    assert.throws(() => runToEnd(new Extractor().plan(withoutStage, new ChunkBatch())), /stages/)
+    // A release build doesn't check.
+    runToEnd(new Extractor({ check: false }).plan(withoutStage, new ChunkBatch()))
 })
 
 /** A seeded generator, so the sequence is the same on every run. */

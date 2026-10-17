@@ -1,8 +1,9 @@
 import type { State } from '../state'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { Store } from '../state/store'
+import type { KnownAt } from './flushWrite'
 import { toHex } from './hash'
-import type { RecordValue } from './records/canonical'
+import { canonical, type RecordValue } from './records/canonical'
 import {
     bpmRecord,
     cameraEventRecord,
@@ -16,7 +17,15 @@ import {
 } from './records/encode'
 import { entitiesOf, inChainOrder, stageHeads } from './records/extract'
 import { headerRecord } from './records/records'
-import { kindNames, type KindName } from './records/schema'
+import {
+    checkHeader,
+    checkRefs,
+    headerIds,
+    kindNames,
+    kindRecords,
+    type HeaderIds,
+    type KindName,
+} from './records/schema'
 import { headerMedia } from './records/snapshot'
 import { splitKind } from './records/split'
 
@@ -34,31 +43,6 @@ type RecordMemo = { readonly text: string; readonly key: number }
 
 /** An entity in the emission order with its record's text. */
 type Item = { readonly entity: object; readonly key: number; readonly text: string }
-
-/** Whether a value is one a record can hold, as `canonical` requires (§1.6.11.1). */
-const checkRecordValue = (value: unknown): void => {
-    if (Array.isArray(value)) {
-        if (Object.getPrototypeOf(value) !== Array.prototype)
-            throw new TypeError('Unexpected array')
-        for (let i = 0; i < value.length; i++) {
-            if (!(i in value)) throw new TypeError('Unexpected hole')
-            checkRecordValue(value[i])
-        }
-        return
-    }
-    if (typeof value === 'string' || typeof value === 'boolean') return
-    if (typeof value === 'number' && Number.isFinite(value)) return
-    throw new TypeError(`Unexpected ${typeof value}`)
-}
-
-/**
- * A record's canonical text, as `canonical` gives it: checked first, then `JSON.stringify`,
- * which writes exactly that text for what a record can hold, about four times faster.
- */
-export const recordText = (record: Rec): string => {
-    checkRecordValue(record)
-    return JSON.stringify(record)
-}
 
 /** One batch's new chunk texts; a chunk is never sent twice. */
 export class ChunkBatch {
@@ -89,8 +73,8 @@ export class ChunkBatch {
 export type ChunkMemo = {
     readonly members: readonly object[]
     hash?: Uint8Array
-    /** The epoch at which it was last known stored (§1.6.6). */
-    epoch?: number
+    /** The database and epoch at which it was last known stored (§1.6.6). */
+    known?: KnownAt
     pending?: {
         readonly batch: ChunkBatch
         readonly id: number
@@ -143,11 +127,32 @@ export class Extractor {
     private chunks = new WeakMap<object, ChunkMemo[]>()
     /** Records encoded since the last reset: a test's measure of the memo's work. */
     encoded = 0
+    /**
+     * Outside release builds, every snapshot is checked before it's sent for the group, stage
+     * and folder ids its records name (D9), so a bug fails here rather than storing a snapshot
+     * this build can't read: new records as they're encoded, all of them when the ids change.
+     */
+    private readonly checking: boolean
+    private ids: { key: string; ids: HeaderIds } | undefined
+
+    constructor({ check = !isProduction() }: { check?: boolean } = {}) {
+        this.checking = check
+    }
 
     /** Forgets everything, after a worker restart. */
     reset() {
         this.kinds = new Map()
         this.chunks = new WeakMap()
+    }
+
+    /** The header's ids, checked; whether they changed since the last plan. */
+    private headerIds(header: readonly RecordValue[]) {
+        checkHeader(header)
+        const ids = headerIds(header)
+        const key = JSON.stringify(Object.values(ids).map((set) => [...set]))
+        const changed = this.ids?.key !== key
+        this.ids = { key, ids }
+        return { ids, changed }
     }
 
     private chunk(members: readonly Item[], kind: KindName, batch: ChunkBatch): PlannedChunk {
@@ -191,15 +196,15 @@ export class Extractor {
         return { t: 'pending', memo: created }
     }
 
-    /** A batch was stored: its chunks' hashes, and the epoch its transaction read. */
-    settle(batch: ChunkBatch, hashes: readonly Uint8Array[], epoch: number) {
+    /** A batch was stored: its chunks' hashes, and the database and epoch its transaction read. */
+    settle(batch: ChunkBatch, hashes: readonly Uint8Array[], known: KnownAt) {
         for (const memo of batch.introduced) {
             const pending = memo.pending
             if (!pending) continue
             const hash = hashes[pending.id]
             if (!hash) throw new Error('A stored batch is missing a chunk hash')
             memo.hash = hash
-            memo.epoch = epoch
+            memo.known = known
             memo.pending = undefined
             pending.resolve(hash)
         }
@@ -215,9 +220,9 @@ export class Extractor {
         }
     }
 
-    /** Marks reused chunks as checked at an epoch: the worker found them stored. */
-    confirm(memos: Iterable<ChunkMemo>, epoch: number) {
-        for (const memo of memos) if (memo.hash) memo.epoch = epoch
+    /** Marks reused chunks as checked in a database at an epoch: the worker found them stored. */
+    confirm(memos: Iterable<ChunkMemo>, known: KnownAt) {
+        for (const memo of memos) if (memo.hash) memo.known = known
     }
 
     /** Forgets the memo entries for hashes the closure check found missing. */
@@ -247,11 +252,15 @@ export class Extractor {
             levelInfo: state.levelInfo,
             ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
         })
-        const headerId = batch.header(recordText(header))
+        const headerId = batch.header(canonical(header))
+        const check = this.checking ? this.headerIds(header) : undefined
         const kinds: { kind: KindName; chunks: PlannedChunk[] }[] = []
         let noteCount = 0
         for (const kind of kindNames) {
-            const items = yield* this.kindItems(kind, state.store)
+            const items = yield* this.kindItems(kind, state.store, check?.ids)
+            if (check?.changed)
+                for (const item of items)
+                    checkRefs(kindRecords[kind], JSON.parse(item.text), check.ids, kind)
             if (kind === 'slides')
                 for (const item of items) noteCount += (item.entity as unknown[]).length
             const parts = splitKind(kind, items as unknown as KeyedRecord[]) as unknown as Item[][]
@@ -272,7 +281,7 @@ export class Extractor {
     }
 
     /** A kind's items in the v1 order (§1.6.11.1), as `orderStore` gives them. */
-    private *kindItems(kind: KindName, store: Store): Generator<void, Item[]> {
+    private *kindItems(kind: KindName, store: Store, ids?: HeaderIds): Generator<void, Item[]> {
         const source = kindSource(kind, store)
         const cached = this.kinds.get(kind)
         if (
@@ -285,7 +294,9 @@ export class Extractor {
         const record = (entity: object, key: number, encode: () => Rec): Item => {
             let memo = previous?.get(entity) ?? records.get(entity)
             if (!memo) {
-                memo = { text: recordText(encode()), key }
+                const value = encode()
+                if (ids) checkRefs(kindRecords[kind], value, ids, kind)
+                memo = { text: canonical(value), key }
                 this.encoded++
             }
             records.set(entity, memo)
@@ -321,6 +332,9 @@ export class Extractor {
 }
 
 type Beat = { beat: number }
+
+// Vite sets it; Node tests have no import.meta.env.
+const isProduction = () => (import.meta as { env?: { PROD?: boolean } }).env?.PROD === true
 
 type KindSource =
     | { kind: 'slides'; inputs: KindInputs; slides: Iterable<readonly NoteEntity[]> }
@@ -468,17 +482,37 @@ type IdleScope = {
 /**
  * Runs a job in slices of about 8 ms: `requestIdleCallback` deadlines where there are any,
  * `setTimeout` slices otherwise (Safari has none). Each slice's length goes to `onSlice`.
+ * `hurry` is handed a function that runs the rest at once, as a hide needs (§1.6.4).
  */
 export const runSliced = <T>(
     job: Generator<void, T>,
     {
         onSlice,
+        hurry,
         now = () => performance.now(),
-    }: { onSlice?: (ms: number) => void; now?: () => number } = {},
+    }: {
+        onSlice?: (ms: number) => void
+        hurry?: (finish: () => void) => void
+        now?: () => number
+    } = {},
 ): Promise<T> =>
     new Promise<T>((resolve, reject) => {
         const idle = (globalThis as IdleScope).requestIdleCallback
+        let settled = false
+        hurry?.(() => {
+            if (settled) return
+            settled = true
+            const start = now()
+            try {
+                const value = runToEnd(job)
+                onSlice?.(now() - start)
+                resolve(value)
+            } catch (error) {
+                reject(error instanceof Error ? error : new Error(String(error)))
+            }
+        })
         const slice = (deadline?: IdleDeadline) => {
+            if (settled) return
             const start = now()
             // Half the slice, leaving room for the last step and a collection to run past it.
             const budget = Math.min(SLICE_MS / 2, deadline ? deadline.timeRemaining() : SLICE_MS)
@@ -486,6 +520,7 @@ export const runSliced = <T>(
                 for (;;) {
                     const step = job.next()
                     if (step.done) {
+                        settled = true
                         onSlice?.(now() - start)
                         resolve(step.value)
                         return
@@ -493,6 +528,7 @@ export const runSliced = <T>(
                     if (now() - start >= Math.max(budget, 1)) break
                 }
             } catch (error) {
+                settled = true
                 reject(error instanceof Error ? error : new Error(String(error)))
                 return
             }

@@ -7,15 +7,26 @@ const previewUrl = `http://127.0.0.1:${previewPort}`
 
 export default defineConfig({
     ...config,
-    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
+    testMatch: [
+        'playerAudio.spec.ts',
+        'waveform.spec.ts',
+        'recordVectors.spec.ts',
+        // The storage core (Part 1 §1.11.3, Step 3a): the handshake, commit on unload, the worker's
+        // restart and the flush, in each engine.
+        'storageHandshake.spec.ts',
+        'storageCommitOnUnload.spec.ts',
+        'storageWorker.spec.ts',
+        'storageFlush.spec.ts',
+    ],
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,
         launchOptions: {},
     },
     projects: [
-        { name: 'firefox', use: { browserName: 'firefox' } },
-        { name: 'webkit', use: { browserName: 'webkit' } },
+        // The storage specs boot the editor in two tabs, slower here than in Chromium.
+        { name: 'firefox', timeout: 60_000, use: { browserName: 'firefox' } },
+        { name: 'webkit', timeout: 60_000, use: { browserName: 'webkit' } },
         // Firefox-specific keyboard defaults such as quick find and Backspace.
         {
             name: 'firefox-chrome',
@@ -32,6 +43,22 @@ export default defineConfig({
             name: 'webkit-production',
             testDir: './tests/production',
             testMatch: 'browserCompatibility.spec.ts',
+            use: { browserName: 'webkit', baseURL: previewUrl },
+        },
+        // The release build's classic storage worker under the web policy, its Blob restart and
+        // the flush (Step 3a).
+        {
+            name: 'firefox-production-storage',
+            testDir: './tests/production',
+            testMatch: ['storageFlush.spec.ts', 'csp.spec.ts'],
+            grep: /storage worker|release build/,
+            use: { browserName: 'firefox', baseURL: previewUrl },
+        },
+        {
+            name: 'webkit-production-storage',
+            testDir: './tests/production',
+            testMatch: ['storageFlush.spec.ts', 'csp.spec.ts'],
+            grep: /storage worker|release build/,
             use: { browserName: 'webkit', baseURL: previewUrl },
         },
         {

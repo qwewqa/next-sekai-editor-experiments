@@ -88,7 +88,8 @@ export const createContext = (emit: WorkerContext['emit']) => {
         status: () => context.core.status,
         tryAgain: () => context.core.tryAgain(),
         resume: () => context.core.resume(),
-        ping: () => 'pong' as const,
+        /** Answers while busy: the progress count tells slow work from a hang (§1.6.5). */
+        ping: () => (core ? core.progress : 0),
 
         /** Test: writes a meta row `test.<key>` and resolves once committed. */
         testPut: async ({ key, value }: { key: string; value: unknown }) => {

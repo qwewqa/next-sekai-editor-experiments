@@ -72,7 +72,14 @@ export type BatchSnapshot = {
 }
 
 export type FlushBatch = {
-    session: { id: string; chainId: string; origin: SessionOrigin; startedAt: number }
+    session: {
+        id: string
+        chainId: string
+        origin: SessionOrigin
+        startedAt: number
+        /** The stored session this one continues, written with its first flush (D10). */
+        parent?: { id: string; uptoSeq: number }
+    }
     chain: {
         docId: string
         lineageId: string
@@ -85,8 +92,8 @@ export type FlushBatch = {
     text: Uint8Array
     ends: number[]
     snapshots: BatchSnapshot[]
-    /** Stored hashes this batch reuses, each with the epoch it was last known stored at. */
-    reused: { hash: Uint8Array; epoch: number }[]
+    /** Stored hashes this batch reuses, each with where it was last known stored (§1.6.6). */
+    reused: { hash: Uint8Array; known?: KnownAt }[]
     entries: BatchEntry[]
     media: BatchMedia[]
     /** Media this tab holds but didn't send (§1.6.8.4's "held"), as hex. */
@@ -111,30 +118,45 @@ export type WriteStats = {
     bytesByStore: Record<string, number>
 }
 
+/**
+ * Where a hash was last known stored: the database (`meta.dbInstanceId`) and its epoch. A hash
+ * known in another database, as after Try Again's move or a worker restart over a new in-memory
+ * store, is checked again like one known at an older epoch.
+ */
+export type KnownAt = { db: string; epoch: number }
+
 export type FlushResult =
     | {
           kind: 'stored'
-          epoch: number
+          known: KnownAt
           /** Each new chunk's hash, by id. */
           chunks: Uint8Array[]
           /** Each snapshot's root. */
           roots: Uint8Array[]
           lastSeq: number
-          /** The media rows this flush put, to read back once committed. */
-          putMedia: string[]
+          /** The media this batch carried, put now or found there: each is read back once. */
+          readBack: string[]
           stats: WriteStats
+          /** Stored in memory only (storage unavailable): set by the worker's reply. */
+          memory?: boolean
           /** For the post-flush hook, in the worker only: stripped before the reply. */
           committed?: FlushCommitted
       }
     | {
           kind: 'missing'
-          epoch: number
+          known: KnownAt
           /** Reused chunk hashes no store holds: re-send those windows. */
           chunks: string[]
           /** Media the tab holds that the store lacks: re-send with the bytes. */
           media: string[]
       }
-    | { kind: 'notHead'; chainId: string; head: string }
+    | {
+          kind: 'notHead'
+          chainId: string
+          head: string
+          /** The stored session's last entry; undefined when nothing of it is stored. */
+          lastSeq?: number
+      }
 
 /** A batch's work done before the transaction: chunks verified, nodes and roots hashed. */
 export type PreparedFlush = {
@@ -274,36 +296,51 @@ export const writeFlush = async (
     { wall = Date.now(), testPoint }: { wall?: number; testPoint?: (name: string) => void } = {},
 ): Promise<FlushResult> => {
     const epoch = await readEpoch(tx)
+    const known: KnownAt = { db: (await readMeta(tx, 'dbInstanceId')) ?? '', epoch }
     const sessionRow = await tx.get('sessions', batch.session.id)
     const session = isRow(sessionRow) ? sessionRow : undefined
     const chainId = batch.session.chainId
-    // A fork moves its stored session to a new chain, made from the old record (§1.3.1).
-    const forking = session !== undefined && session.chainId !== chainId
-    if (forking && session.chainId !== batch.chain.forkOf)
+    // A stored session never changes chain (D10): a fork is a new session.
+    if (session !== undefined && session.chainId !== chainId)
         throw new FlushBatchError('The session belongs to another chain')
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
     // The head check (r12-arch-web L4): another tab continued the chain meanwhile.
     if (chain && chain.head !== batch.session.id)
-        return { kind: 'notHead', chainId, head: String(chain.head) }
+        return {
+            kind: 'notHead',
+            chainId,
+            head: String(chain.head),
+            ...(typeof session?.lastSeq === 'number' ? { lastSeq: session.lastSeq } : {}),
+        }
+    const parentRow =
+        !session && batch.session.parent
+            ? await tx.get('sessions', batch.session.parent.id)
+            : undefined
 
-    // The closure check (§1.6.6): only hashes not known stored at this epoch.
+    // The closure check (§1.6.6): only hashes not known stored in this database at this epoch.
     const missingChunks: string[] = []
-    for (const { hash, epoch: known } of batch.reused)
-        if (known !== epoch && (await tx.getKey('chunks', hashKey(hash))) === undefined)
+    for (const { hash, known: at } of batch.reused)
+        if (
+            (at?.db !== known.db || at.epoch !== epoch) &&
+            (await tx.getKey('chunks', hashKey(hash))) === undefined
+        )
             missingChunks.push(toHex(hash))
     const missingMedia: string[] = []
     const mediaToPut: (BatchMedia & { sha256: Uint8Array })[] = []
+    const readBack: string[] = []
     const referenced = new Set(prepared.roots.flatMap((root) => root.media.map(toHex)))
     for (const hex of referenced) {
-        if ((await tx.getKey('media', hashKey(fromHex16(hex)))) !== undefined) continue
         const carried = prepared.media.get(hex)
+        // Carried bytes are read back even when the row is there: a kill may have skipped it.
+        if (carried) readBack.push(hex)
+        if ((await tx.getKey('media', hashKey(fromHex16(hex)))) !== undefined) continue
         if (carried) mediaToPut.push(carried)
         // Held but not sent: the head's media went missing, so it's stored again (§1.6.4).
         else if (batch.held.includes(hex)) missingMedia.push(hex)
     }
     if (missingChunks.length || missingMedia.length)
-        return { kind: 'missing', epoch, chunks: missingChunks, media: missingMedia }
+        return { kind: 'missing', known, chunks: missingChunks, media: missingMedia }
 
     const forkSource =
         !chain && batch.chain.forkOf !== undefined
@@ -394,8 +431,13 @@ export const writeFlush = async (
 
     // Entries a kill after commit already stored are skipped: re-sends are idempotent.
     const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
+    // A continuation starts after its parent's last entry (§1.6.11.2).
+    const parentUpdated =
+        isRow(parentRow) && typeof parentRow.updatedAt === 'number' ? parentRow.updatedAt : 0
     const startedAt =
-        typeof session?.startedAt === 'number' ? session.startedAt : stamp(batch.session.startedAt)
+        typeof session?.startedAt === 'number'
+            ? session.startedAt
+            : stamp(Math.max(batch.session.startedAt, parentUpdated + 1))
     let updatedAt = typeof session?.updatedAt === 'number' ? session.updatedAt : startedAt
     let newLastSeq = lastSeq
     let written = 0
@@ -440,12 +482,13 @@ export const writeFlush = async (
         ...(batch.view ? { view: batch.view } : {}),
     }
     const sessionValue = session
-        ? updated(session, { ...sessionFields, ...(forking ? { chainId } : {}) })
+        ? updated(session, sessionFields)
         : {
               id: batch.session.id,
               chainId,
               startedAt,
               origin: batch.session.origin,
+              ...(batch.session.parent ? { parent: batch.session.parent } : {}),
               ...sessionFields,
           }
     await tx.put('sessions', sessionValue)
@@ -482,11 +525,11 @@ export const writeFlush = async (
 
     return {
         kind: 'stored',
-        epoch,
+        known,
         chunks: prepared.chunks.map((chunk) => chunk.hash),
         roots: prepared.roots.map((root) => root.hash),
         lastSeq: newLastSeq,
-        putMedia: mediaToPut.map((item) => item.hash),
+        readBack,
         stats,
         committed: {
             session: { id: batch.session.id, chainId },

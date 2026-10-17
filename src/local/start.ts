@@ -37,6 +37,8 @@ const readFlags = (): { flags: StorageTestFlags; test: boolean } => {
         const flags =
             typeof parsed === 'object' && parsed !== null ? (parsed as StorageTestFlags) : {}
         if (noStorage) flags.noStorage = true
+        // A simulated later version would upgrade the real database for good: dev builds only.
+        if (!import.meta.env.DEV) delete flags.dbVersion
         return { flags, test: text !== null || noStorage }
     } catch {
         return { flags: {}, test: false }
@@ -53,13 +55,17 @@ const tryAgainAction: NoticeAction = {
     },
 }
 
+/** Try Again waits about 3 s for other tabs, then moves what was stored in memory. */
+const TRY_AGAIN_TIMEOUT_MS = 30_000
+
 /** Try Again behind a blocked upgrade: asks again; still blocked says so again. */
 const tryAgain = async () => {
     const worker = storageWorker
     if (!worker) return
     let status: StorageStatus
     try {
-        status = await worker.call('tryAgain')
+        // The move from memory can be long; the watchdog waits while it makes progress.
+        status = await worker.call('tryAgain', undefined, { timeoutMs: TRY_AGAIN_TIMEOUT_MS })
     } catch {
         return
     }

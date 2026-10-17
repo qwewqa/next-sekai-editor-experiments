@@ -25,6 +25,9 @@ const listeners = new Set<(action: HistoryAction) => void>()
  */
 let early: HistoryAction[] | undefined = []
 
+/** The most early actions kept: the last reset and the newest after it, if storing never starts. */
+export const EARLY_LIMIT = 256
+
 /** Listens to every change of the undo stack; `replay` first delivers those since the last reset. */
 export const onHistoryAction = (
     listener: (action: HistoryAction) => void,
@@ -45,6 +48,8 @@ export const emitHistoryAction = (action: HistoryAction) => {
     if (early) {
         if (action.kind === 'reset') early = []
         early.push(action)
+        // A start that never comes (a failed import) mustn't hold every state for the page's life.
+        if (early.length > EARLY_LIMIT) early.splice(1, 1)
     }
     for (const listener of [...listeners]) listener(action)
 }

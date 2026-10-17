@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { runToEnd } from '../../../src/local/chunks'
 import { setDeflateHookForTests } from '../../../src/local/chunkVerify'
 import { bumpEpoch, hashKey } from '../../../src/local/db'
+import type { FlushSession } from '../../../src/local/flush'
 import { toRecords } from '../../../src/local/records/records'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
@@ -302,11 +304,11 @@ test('an epoch change with nothing missing re-sends nothing', async () => {
     )
 })
 
-test('a session whose chain was continued elsewhere becomes a fork, carrying unknown fields', async () => {
+test('a session whose chain was continued elsewhere forks into a new session, carrying unknown fields', async () => {
     const world = createWorld({ seed: 10 })
-    const forks: string[] = []
+    const forks: FlushSession[] = []
     const page = await openPage(world, world.tab('a'), {
-        onFork: (session) => forks.push(session.chainId),
+        onFork: (fork) => forks.push(fork),
     })
     let state = stateOf(goldenChart())
     const session = begin(page, state, 'import')
@@ -341,20 +343,42 @@ test('a session whose chain was continued elsewhere becomes a fork, carrying unk
         ['stored', 'notHead', 'stored'],
     )
     assert.equal(forks.length, 1)
-    assert.notEqual(session.chainId, oldChain)
-    assert.notEqual(session.docId, oldDoc)
-    const fork = rows(world, 'chains').get(session.chainId)
-    assert.ok(fork)
-    assert.equal(fork.head, session.id)
-    assert.equal(fork.docId, session.docId)
-    assert.equal(fork.lineageId, session.lineageId)
-    assert.equal(fork.future, 'carried')
-    assert.equal(fork.file, undefined)
-    // Its own edit marks it edited; the old record's mark isn't copied.
-    assert.equal(fork.edited, true)
-    assert.equal(fork.hasContent, true)
-    assert.equal(rows(world, 'sessions').get(session.id)?.chainId, session.chainId)
+    const fork = forks[0]!
+    assert.equal(page.flusher.session, fork)
+    assert.notEqual(fork.id, session.id)
+    assert.notEqual(fork.chainId, oldChain)
+    assert.notEqual(fork.docId, oldDoc)
+    // D10: the stored session stays in its chain, whose continuation keeps its whole history.
+    const sessions = rows(world, 'sessions')
+    assert.equal(sessions.get(session.id)?.chainId, oldChain)
+    assert.equal(sessions.get(session.id)?.lastSeq, 1)
     assert.equal(rows(world, 'chains').get(oldChain)?.head, 'continuation')
+    // The fork is a new session in a new chain, whose parent is the stored session.
+    const forkRow = sessions.get(fork.id)
+    assert.ok(forkRow)
+    assert.equal(forkRow.chainId, fork.chainId)
+    assert.equal(forkRow.origin, 'continued')
+    assert.deepEqual(forkRow.parent, { id: session.id, uptoSeq: 1 })
+    assert.ok((forkRow.startedAt as number) > (sessions.get(session.id)?.updatedAt as number))
+    const entries = [...rows(world, 'entries').values()]
+    assert.deepEqual(
+        entries
+            .map(
+                ({ sessionId, seq, kind }) => `${String(sessionId)} ${String(seq)} ${String(kind)}`,
+            )
+            .sort(),
+        [`${session.id} 1 init`, `${fork.id} 1 edit`].sort(),
+    )
+    const chain = rows(world, 'chains').get(fork.chainId)
+    assert.ok(chain)
+    assert.equal(chain.head, fork.id)
+    assert.equal(chain.docId, fork.docId)
+    assert.equal(chain.lineageId, session.lineageId)
+    assert.equal(chain.future, 'carried')
+    assert.equal(chain.file, undefined)
+    // Its own edit marks it edited; the old record's mark isn't copied.
+    assert.equal(chain.edited, true)
+    assert.equal(chain.hasContent, true)
     assert.deepEqual(checkStored(world.memory), [])
 })
 
@@ -421,6 +445,79 @@ test('a worker restart resets the memo and sends every pending entry again', asy
     assert.equal(page.batches.at(-1)?.ends.length, page.batches[0]?.ends.length)
     assert.equal(rows(world, 'entries').size, 2)
 })
+
+for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
+    test(`a chain whose first editing entry is ${kind} is marked edited`, async () => {
+        const world = createWorld({ seed: 15 })
+        const page = await openPage(world, world.tab('a'))
+        const blank = stateOf(goldenChart())
+        const session = begin(page, blank)
+        page.flusher.append(kind, () => 'Changed note', widen(blank), true)
+        await page.flusher.flush()
+        const chain = rows(world, 'chains').get(session.chainId)
+        assert.equal(chain?.edited, true)
+        assert.equal(chain?.hasContent, true)
+    })
+
+test('entry times stay strictly increasing across flushes and tabs, with the clock held still', async () => {
+    const world = createWorld({ seed: 16 })
+    const a = await openPage(world, world.tab('a'), { now: () => 5000 })
+    const b = await openPage(world, world.tab('b'), { now: () => 5000 })
+    let stateA = stateOf(goldenChart())
+    let stateB = stateOf(goldenChart())
+    begin(a, stateA)
+    begin(b, stateB)
+    for (let i = 0; i < 3; i++) {
+        stateA = widen(stateA, i)
+        a.flusher.append('edit', () => 'Changed note', stateA, true)
+        await a.flusher.flush()
+        stateB = widen(stateB, i)
+        b.flusher.append('edit', () => 'Changed note', stateB, true)
+        await b.flusher.flush()
+    }
+    const times = [...rows(world, 'entries').values()].map(({ time }) => time as number)
+    assert.equal(times.length, 8)
+    assert.equal(new Set(times).size, 8)
+    // In commit order: each flush's times are above every earlier one's.
+    const bySeq = (page: Page) =>
+        [...rows(world, 'entries').values()]
+            .filter((entry) => entry.sessionId === page.flusher.session?.id)
+            .map(({ time }) => time as number)
+    for (const own of [bySeq(a), bySeq(b)])
+        for (let i = 1; i < own.length; i++) assert.ok((own[i] as number) > (own[i - 1] as number))
+})
+
+test(
+    'a hide while a sliced flush runs finishes its extraction at once and sends it strictly',
+    { timeout: 10_000 },
+    async () => {
+        const world = createWorld({ seed: 17 })
+        let sliced = 0
+        const page = await openPage(world, world.tab('a'), {
+            // Slices that never come, as in a hidden tab: only the hide's hurry finishes the job.
+            runJob: (job, options) =>
+                new Promise((resolve) => {
+                    sliced++
+                    options?.hurry?.(() => {
+                        resolve(runToEnd(job))
+                    })
+                }),
+        })
+        let state = stateOf(goldenChart())
+        begin(page, state)
+        state = widen(state)
+        page.flusher.append('edit', () => 'Changed note', state, true)
+        const running = page.flusher.flush()
+        await world.idle()
+        assert.equal(page.batches.length, 0)
+        await page.flusher.flush({ strict: true, oneGo: true })
+        await running
+        assert.equal(sliced, 1)
+        assert.equal(page.batches.length, 1)
+        assert.equal(page.batches[0]?.durability, 'strict')
+        assert.equal(page.flusher.hasPending, false)
+    },
+)
 
 test('entry times are strictly increasing, whatever the clock says', async () => {
     const world = createWorld({ seed: 13 })

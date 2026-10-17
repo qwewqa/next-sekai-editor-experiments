@@ -10,7 +10,7 @@ import { CI_SEEDS, createWorld } from '../../../src/local/testing/world'
 import { setMediaReadBackHookForTests } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
 import { goldenChart, stateOf } from '../records/charts'
-import { openPage, rows, testId, workerCore, type Page } from './harness'
+import { openPage, openSplitPage, rows, testId, workerCore, type Page } from './harness'
 
 // Media follows the head (§1.6.8.4): a picked BGM is stored with the entry first naming it, read
 // back once, and stored again when it went missing while this tab holds it.
@@ -167,7 +167,7 @@ test('a media row that reads back wrong is written again from memory', async () 
     assert.equal(rows(world, 'media').size, 1)
 })
 
-test('a media row that reads back wrong twice pauses storing', async () => {
+test('a media row that reads back wrong twice is removed, and storing stays paused until it’s stored right', async () => {
     const world = createWorld({ seed: 5 })
     const page = await openPage(world, world.tab('a'))
     setMediaReadBackHookForTests((bytes) => bytes.slice(1))
@@ -178,6 +178,47 @@ test('a media row that reads back wrong twice pauses storing', async () => {
         setMediaReadBackHookForTests(undefined)
     }
     assert.equal(page.core.status.reason, 'failed')
+    // The bad row went, and the entries stay pending, so the next try stores it again.
+    assert.equal(rows(world, 'media').size, 0)
+    assert.equal(page.flusher.hasPending, true)
+    // Another write that succeeds doesn't resume storing.
+    await page.tab.run(() => page.handlers.countDay())
+    assert.equal(page.core.status.reason, 'failed')
+    await page.flusher.flush()
+    assert.equal(page.core.status.reason, undefined)
+    assert.equal(rows(world, 'media').size, 1)
+    assert.equal(page.flusher.hasPending, false)
+    assert.equal(rows(world, 'entries').size, 1)
+    assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a worker killed between a media flush’s commit and its read-back reads it back once restarted', async () => {
+    const world = createWorld({ seed: 7 })
+    const page = await openSplitPage(world)
+    let reads = 0
+    setMediaReadBackHookForTests((bytes) => {
+        if (++reads === 1) page.host.worker.kill()
+        return bytes
+    })
+    try {
+        page.flusher.begin({
+            id: testId(),
+            docId: testId(),
+            origin: 'import',
+            state: await withSong(stateOf(goldenChart()), 9),
+            label: () => 'Initialize',
+            dirty: false,
+        })
+        await page.flusher.flush()
+        await world.clock.run()
+        await world.idle()
+    } finally {
+        setMediaReadBackHookForTests(undefined)
+    }
+    assert.equal(page.host.starts, 2)
+    assert.equal(reads, 2)
+    assert.equal(rows(world, 'media').size, 1)
+    assert.equal(page.flusher.hasPending, false)
 })
 
 test('media bytes that don’t hash to their hash are refused', async () => {

@@ -3,7 +3,7 @@ import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
 import { appVersion, platform } from '../platform'
-import { Flusher, type FlushReport } from './flush'
+import { Flusher, flushTimeoutMs, type FlushReport } from './flush'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
 import type { StorageWorker } from './worker/client'
@@ -59,22 +59,36 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
 
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        transport: (batch, list) => worker.call('flush', transfer(batch, list)),
+        transport: (batch, list, current) =>
+            worker.call('flush', transfer(batch, list), {
+                timeoutMs: flushTimeoutMs(batch),
+                current,
+            }),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
             ...(view.groupId === undefined ? {} : { group: view.groupId }),
             ...(view.stageId === undefined ? {} : { stage: view.stageId }),
         }),
-        onFork: (forked) => {
-            if (currentSession.value.sessionId === forked.id)
-                currentSession.value = { ...currentSession.value, docId: forked.docId }
+        lockSession: (id) => {
+            const lock = holdSessionLock(locks, id)
+            return { ready: lock.granted.catch(() => undefined), done: lock.release }
+        },
+        onFork: (fork, from) => {
+            if (currentSession.value.sessionId === from.id)
+                currentSession.value = {
+                    ...currentSession.value,
+                    sessionId: fork.id,
+                    docId: fork.docId,
+                }
         },
         onFlushed: (report) => {
             if (test) reports.push(report)
         },
         onError: (error) => {
             if (test) errors.push(error)
+            // A dev build's checks (D9, a published state changed in place) fail loudly.
+            if (import.meta.env.DEV) console.error('A flush failed', error)
         },
     })
     flusher = instance

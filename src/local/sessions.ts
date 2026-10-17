@@ -71,11 +71,18 @@ export class TabClient {
         return snapshot.held.find((lock) => lock.name === this.lock.name)?.clientId
     }
 
-    /** Whether another tab holds a lock: held by a client that isn't this one. */
+    /**
+     * Whether another tab holds a lock: held by a client that isn't this one. Without client ids
+     * every holder counts as another tab, the safe side: a fork, never a second writer.
+     */
     async heldElsewhere(name: string): Promise<boolean> {
         const own = await this.id()
         const snapshot = await this.locks.query()
-        return snapshot.held.some((lock) => lock.name === name && lock.clientId !== own)
+        return snapshot.held.some(
+            (lock) =>
+                lock.name === name &&
+                (own === undefined || lock.clientId === undefined || lock.clientId !== own),
+        )
     }
 }
 

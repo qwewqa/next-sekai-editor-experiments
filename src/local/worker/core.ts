@@ -1,5 +1,6 @@
 import type { LockService } from '../../platform/types'
 import type { Channel } from '../channel'
+import { countDayOfUse } from '../days'
 import { DB_NAME, DB_VERSION, readMeta, STORE_NAMES, upgradeDatabase, writeMeta } from '../db'
 import { answerUpgrades, openWithHandshake, type Opened } from '../handshake'
 import {
@@ -11,6 +12,7 @@ import {
     type KvTx,
 } from '../kv/types'
 import { MAINT_WAIT_MS, realTimers, withMaintShared, type Timers } from '../locks'
+import { nextTime } from '../time'
 
 // The storage worker's state (Part 1 §1.6.1, §1.6.5, §1.6.7): which store it writes to, whether
 // storing is paused and why, the connection-loss retry, and writes under `nse-maint`. No browser
@@ -102,6 +104,13 @@ export class StorageCore {
     private retryBlocked: (() => Promise<Opened>) | undefined
     private upgradeAnswer: { onMessage: (message: unknown) => void } | undefined
     private trying: Promise<StorageStatus> | undefined
+    /** Set while Try Again moves the in-memory rows: writes wait, so none lands behind it. */
+    private moving: Promise<void> | undefined
+    private readonly memoryWrites = new Set<Promise<unknown>>()
+    /** Pauses that last until their cause is put right, such as a media row that read back wrong. */
+    private readonly holds = new Map<string, PauseReason>()
+    /** Counts steps of work done, so a slow worker can be told from a hung one (§1.6.5). */
+    progress = 0
     private readonly listeners = new Set<(status: StorageStatus) => void>()
     private readonly timers: Timers
     private readonly flags: TestFlags
@@ -123,6 +132,29 @@ export class StorageCore {
     onStatus(listener: (status: StorageStatus) => void) {
         this.listeners.add(listener)
         return () => this.listeners.delete(listener)
+    }
+
+    /** Bumps the progress count. */
+    tick() {
+        this.progress++
+    }
+
+    /** Keeps storing paused under a key until `release`, whatever later writes do. */
+    hold(key: string, reason: PauseReason) {
+        this.holds.set(key, reason)
+        if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
+            this.setStatus({ mode: 'stored', reason })
+    }
+
+    release(key: string) {
+        if (!this.holds.delete(key)) return
+        if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
+            this.setStatus(storedStatus(this.heldReason()))
+    }
+
+    private heldReason(): PauseReason | undefined {
+        for (const reason of this.holds.values()) return reason
+        return undefined
     }
 
     private setStatus(status: StorageStatus) {
@@ -217,6 +249,7 @@ export class StorageCore {
 
     /** A read: the stored, read-only or in-memory database alike. */
     async read<T>(stores: readonly string[], fn: (tx: KvTx) => Promise<T>): Promise<T> {
+        this.tick()
         if (this.lost) await this.reopen()
         const db = this.db
         if (!db) throw new StorageRefusedError(this.current.reason ?? 'failed')
@@ -226,7 +259,9 @@ export class StorageCore {
             if (!isConnectionError(error) || this.current.mode !== 'stored') throw error
             await this.reopen()
             if (!this.db) throw error
-            return this.db.transaction(stores, 'readonly', fn)
+            return await this.db.transaction(stores, 'readonly', fn)
+        } finally {
+            this.tick()
         }
     }
 
@@ -240,13 +275,23 @@ export class StorageCore {
         fn: (tx: KvTx) => Promise<T>,
         options: WriteOptions = {},
     ): Promise<T> {
+        this.tick()
+        // Try Again's move holds writes until it has switched, so none lands in memory behind it.
+        while (this.moving) await this.moving
         const { mode, reason } = this.current
         if (mode === 'readOnly') throw new StorageRefusedError('readOnly')
         if (reason === 'upgrading') throw new StorageRefusedError('upgrading')
         const db = this.db
         if (mode === 'memory') {
             if (!db) throw new StorageRefusedError('failed')
-            return db.transaction(stores, 'readwrite', fn, options)
+            const writing = db.transaction(stores, 'readwrite', fn, options)
+            this.memoryWrites.add(writing)
+            const done = () => {
+                this.memoryWrites.delete(writing)
+                this.tick()
+            }
+            writing.then(done, done)
+            return writing
         }
         let result: T
         try {
@@ -266,7 +311,8 @@ export class StorageCore {
             throw new StoragePausedError(paused, error)
         }
         if (this.current.mode === 'stored' && this.current.reason !== 'upgrading')
-            this.setStatus({ mode: 'stored' })
+            this.setStatus(storedStatus(this.heldReason()))
+        this.tick()
         return result
     }
 
@@ -290,9 +336,12 @@ export class StorageCore {
         fn: (tx: KvTx) => Promise<T>,
         options: WriteOptions,
     ) {
+        // A reopen can find a newer database (§1.6.1): never write what this build doesn't know.
+        if (this.current.mode !== 'stored') throw new StorageRefusedError('readOnly')
         if (this.current.reason === 'upgrading') throw new StorageRefusedError('upgrading')
         const db = this.db
         if (!db) throw domError('InvalidStateError', 'No connection')
+        if (db.version !== this.version) throw new StorageRefusedError('readOnly')
         if (this.flags.forceQuota) throw domError('QuotaExceededError', 'Forced by a test')
         if (this.flags.forceUnknownError) throw domError('UnknownError', 'Forced by a test')
         return db.transaction(stores, 'readwrite', fn, options)
@@ -382,8 +431,42 @@ export class StorageCore {
         return this.resume()
     }
 
-    /** Copies the in-memory rows into the database in one strict transaction, then switches. */
+    /**
+     * Copies the in-memory rows into the database in one strict transaction, then switches. Writes
+     * wait meanwhile, so an acknowledged flush can't land in memory behind the copy.
+     */
     private async moveIntoStorage(target: KvDatabase) {
+        let release!: () => void
+        this.moving = new Promise<void>((resolve) => {
+            release = resolve
+        })
+        // A newer tab asking meanwhile is answered at once, as a stored tab answers it.
+        const asked = { aside: false }
+        this.upgradeAnswer = answerUpgrades(target, () => {
+            asked.aside = true
+        })
+        try {
+            await this.copyIntoStorage(target)
+            if (asked.aside) {
+                this.db = undefined
+                this.upgradeAnswer = undefined
+                this.setStatus({ mode: 'stored', reason: 'upgrading' })
+                return
+            }
+            this.adopt(target)
+            this.setStatus(storedStatus(this.heldReason()))
+        } catch (error) {
+            this.upgradeAnswer = undefined
+            throw error
+        } finally {
+            this.moving = undefined
+            release()
+        }
+    }
+
+    private async copyIntoStorage(target: KvDatabase) {
+        // Writes already sent to memory commit first; the gate holds any later one.
+        await Promise.allSettled([...this.memoryWrites])
         const source = this.db
         const rows = new Map<string, { key: unknown; value: unknown }[]>()
         if (source)
@@ -405,22 +488,26 @@ export class StorageCore {
                 STORE_NAMES,
                 'readwrite',
                 async (tx) => {
+                    const stored = (await readMeta(tx, 'maxSeenTime')) ?? 0
+                    const seen = Math.max(stored, memoryTime ?? 0)
+                    // Moved rows take this database's day of use, not the memory store's (§1.6.8.7).
+                    const day = await countDayOfUse(tx, nextTime(seen, Date.now()))
                     for (const [store, list] of rows) {
                         const inline = tx.describe(store).keyPath !== null
                         for (const { key, value } of list) {
+                            this.tick()
+                            const moved = withDay(value, day)
                             if (inline) {
-                                await tx.put(store, value)
+                                await tx.put(store, moved)
                                 continue
                             }
                             // Content-addressed rows already there keep their first day.
                             const hash = key as ArrayBuffer
                             if ((await tx.getKey(store, hash)) === undefined)
-                                await tx.put(store, value, hash)
+                                await tx.put(store, moved, hash)
                         }
                     }
-                    const stored = (await readMeta(tx, 'maxSeenTime')) ?? 0
-                    if (memoryTime !== undefined && memoryTime > stored)
-                        await writeMeta(tx, 'maxSeenTime', memoryTime)
+                    if (seen > stored) await writeMeta(tx, 'maxSeenTime', seen)
                 },
                 { durability: 'strict' },
             )
@@ -428,7 +515,17 @@ export class StorageCore {
             waitMs: this.deps.maintWaitMs ?? MAINT_WAIT_MS,
             timers: this.timers,
         })
-        this.adopt(target)
-        this.setStatus({ mode: 'stored' })
     }
 }
+
+/** A row with its `day` set, when it has one. */
+const withDay = (value: unknown, day: number) =>
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { day?: unknown }).day === 'number'
+        ? { ...value, day }
+        : value
+
+/** The stored status, with a reason only when paused. */
+const storedStatus = (reason: PauseReason | undefined): StorageStatus =>
+    reason ? { mode: 'stored', reason } : { mode: 'stored' }
