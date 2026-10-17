@@ -22,8 +22,10 @@ export type JournalStack = {
     keep: number
     /** The hash of slot `keep − 1` as committed, as hex; absent when `keep` is 0. */
     lastKept?: string
-    /** Labels of uncommitted slots other than the head, which aren't kept. */
+    /** Labels of uncommitted slots other than the head, which aren't kept: the newest 64. */
     dropped: string[]
+    /** How many there are, when more than `dropped` names. */
+    droppedCount?: number
     /** The journalled state as a new slot at `keep`, or null when it's committed slot `index`. */
     head: { label: string } | null
     index: number
@@ -155,6 +157,11 @@ export const readJournal = (text: string, sessionId: string): JournalReading => 
         return unreadable('a bad stack lastKept')
     if (!Array.isArray(stack.dropped) || !stack.dropped.every((label) => typeof label === 'string'))
         return unreadable('a bad stack dropped')
+    if (
+        stack.droppedCount !== undefined &&
+        !(isCount(stack.droppedCount) && stack.droppedCount > stack.dropped.length)
+    )
+        return unreadable('a bad stack droppedCount')
     const { head } = stack
     if (head === null) {
         if (stack.index >= stack.keep) return unreadable('a committed head outside keep')

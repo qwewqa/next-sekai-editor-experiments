@@ -138,7 +138,7 @@ export type FlushDeps = {
      * Commits strictly what relaxed flushes stored (§1.6.4: a journal is cleared only once a
      * strict commit covers its `seq`); without it, a hide's flush with nothing new does nothing.
      */
-    syncStrict?: () => Promise<void>
+    syncStrict?: () => Promise<boolean>
     onError?: (error: unknown) => void
     /** Runs an extraction in slices; `runSliced` by default. */
     runJob?: typeof runSliced
@@ -253,6 +253,13 @@ export class Flusher {
     private noDatabase = false
     /** Whether the last flush failed: storing is paused, and it retries later. */
     failed = false
+    /** Whether the last strict sync failed or reached only an in-memory store. */
+    syncFailed = false
+    /**
+     * The replaced session's strict commit at the last `begin()` (§1.3.8): resolves whether
+     * everything of it is committed strictly in a database, for Step 4's switch prompt.
+     */
+    outgoing: Promise<boolean> = Promise.resolve(true)
     private retryMs = 0
 
     constructor(private readonly deps: FlushDeps) {
@@ -304,13 +311,15 @@ export class Flusher {
         this.current = session
         this.sessions.push(session)
         this.add(session, 'init', start.label, start.state, start.dirty)
+        let committing = Promise.resolve()
         if (
             previous?.pending.length ||
             (previous && previous.ackedSeq > previous.strictSeq) ||
             this.storesAtOnce(session)
         )
-            void this.flush({ strict: true })
+            committing = this.flush({ strict: true })
         else this.retire()
+        this.outgoing = committing.then(() => !previous || !this.unflushed(previous))
         return session
     }
 
@@ -530,9 +539,12 @@ export class Flusher {
         if (!behind.length || !this.deps.syncStrict) return
         const seqs = behind.map((session) => session.ackedSeq)
         try {
-            await this.deps.syncStrict()
+            // Committed in memory only (a worker restarted over memory): nothing is covered.
+            this.syncFailed = !(await this.deps.syncStrict())
+            if (this.syncFailed) return
         } catch (error) {
             // The journal stays until a later strict commit covers it.
+            this.syncFailed = true
             this.deps.onError?.(error)
             return
         }
@@ -555,8 +567,10 @@ export class Flusher {
             // may still take it (Try Again).
             if (this.noDatabase) session.memoryOnly.length = 0
             if (session.pending.length || session.memoryOnly.length) continue
-            // Committed relaxed only: kept until a strict commit covers it, so its journal clears.
-            if (this.deps.syncStrict && session.ackedSeq > session.strictSeq) continue
+            // Committed relaxed only: kept until a strict commit covers it, so its journal clears,
+            // unless no database will answer in this tab any more.
+            if (this.deps.syncStrict && !this.noDatabase && session.ackedSeq > session.strictSeq)
+                continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             session.done?.()
         }

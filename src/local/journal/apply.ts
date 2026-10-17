@@ -410,7 +410,9 @@ export const writeJournalApply = async (
         for (const key of ['name', 'renames'] as const)
             if (descriptor[key] !== undefined) fields[key] = descriptor[key]
         const record: Row = { ...chain, ...fields }
+        // The identity unit taken without a binding or revision leaves no such field (v1's shape).
         if (record.file === undefined) delete record.file
+        if (record.revision === undefined) delete record.revision
         await tx.put('chains', record)
     }
     await writeMeta(tx, 'maxSeenTime', maxSeen)

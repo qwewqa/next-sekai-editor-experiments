@@ -53,6 +53,13 @@ export class JournalWriter {
         { keys: { sessionId: string; seq: number }[]; moved: number }
     >()
 
+    /**
+     * Keys a "strict" commit covered where commits aren't durable on resolve (D14), by session:
+     * left for the next load, and removed once another session's newer journal verifies, so a
+     * visit doesn't pile them up in the budget.
+     */
+    private readonly covered = new Map<string, number>()
+
     constructor(private readonly deps: JournalWriterDeps) {}
 
     /**
@@ -87,7 +94,12 @@ export class JournalWriter {
             console.error('The journal could not be written', error)
         }
         this.written.set(session.id, { seq, verified })
-        if (verified) this.dropSuperseded(session.id)
+        if (verified) {
+            this.dropSuperseded(session.id)
+            this.covered.delete(session.id)
+            for (const [id, coveredSeq] of this.covered) this.deps.store.clear(id, coveredSeq)
+            this.covered.clear()
+        }
         this.deps.onWrite?.({
             sessionId: session.id,
             seq,
@@ -110,10 +122,14 @@ export class JournalWriter {
      * strict commits aren't (D14), none clears it.
      */
     committed(sessionId: string, seq: number, strict: boolean) {
-        if (!strict || this.deps.strictCommits === false) return
+        if (!strict) return
+        const last = this.written.get(sessionId)
+        if (this.deps.strictCommits === false) {
+            if (last && last.seq <= seq) this.covered.set(sessionId, seq)
+            return
+        }
         if (seq >= (this.superseded.get(sessionId)?.moved ?? Infinity))
             this.dropSuperseded(sessionId)
-        const last = this.written.get(sessionId)
         if (!last || last.seq > seq) return
         this.deps.store.clear(sessionId, seq)
         this.written.delete(sessionId)

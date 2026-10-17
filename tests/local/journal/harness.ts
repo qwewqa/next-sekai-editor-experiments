@@ -29,6 +29,8 @@ type Journalled = {
     writer: JournalWriter
     /** The live state the writer journals: the head the test last appended. */
     live: { state: State }
+    /** How many strict syncs from now on fail, as a disk or a paused store would. */
+    sync: { fails: number }
 }
 
 export type JournalPage = Page & Journalled
@@ -53,7 +55,14 @@ const journalled = (
         now: () => 1_792_130_467_000,
         ...extra,
     })
-    return { storage, store, writer, live }
+    return { storage, store, writer, live, sync: { fails: 0 } }
+}
+
+/** A sync that fails while the test says so. */
+const failing = (sync: { fails: number }) => {
+    if (sync.fails <= 0) return
+    sync.fails--
+    throw new Error('The strict sync failed')
 }
 
 export const openJournalPage = async (
@@ -62,12 +71,13 @@ export const openJournalPage = async (
     storage = new MemoryStorage(),
     writer: Partial<JournalWriterDeps> = {},
 ): Promise<JournalPage> => {
-    const ref: { page?: Page; writer?: JournalWriter } = {}
+    const ref: { writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openPage(world, world.tab(name), {
         onCommitted: (session, { seq, strict }) => ref.writer?.committed(session.id, seq, strict),
         onFork: (fork, from) => ref.writer?.forked(from, fork),
-        syncStrict: async () => {
-            await page.tab.run(() =>
+        syncStrict: () => {
+            if (ref.sync) failing(ref.sync)
+            return page.tab.run(() =>
                 journalHandlers({
                     core: page.core,
                     test: true,
@@ -83,6 +93,7 @@ export const openJournalPage = async (
         writer,
     )
     ref.writer = parts.writer
+    ref.sync = parts.sync
     return { ...page, ...parts }
 }
 
@@ -92,7 +103,7 @@ export const openSplitJournalPage = async (
     setup: WorkerSetup & { name?: string } = {},
     storage = new MemoryStorage(),
 ): Promise<SplitJournalPage> => {
-    const ref: { host?: WorkerHost; writer?: JournalWriter } = {}
+    const ref: { host?: WorkerHost; writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openSplitPage(world, {
         ...setup,
         flush: {
@@ -100,10 +111,13 @@ export const openSplitJournalPage = async (
                 ref.writer?.committed(session.id, seq, strict),
             onFork: (fork, from) => ref.writer?.forked(from, fork),
             syncStrict: async () => {
-                await ref.host?.call((_, core) =>
-                    journalHandlers({ core, test: true, emit: () => undefined }).syncStrict(
-                        undefined,
-                    ),
+                if (ref.sync) failing(ref.sync)
+                return (
+                    (await ref.host?.call((_, core) =>
+                        journalHandlers({ core, test: true, emit: () => undefined }).syncStrict(
+                            undefined,
+                        ),
+                    )) ?? false
                 )
             },
         },
@@ -115,6 +129,7 @@ export const openSplitJournalPage = async (
         () => page.host.core.status.reason === 'full',
     )
     ref.writer = parts.writer
+    ref.sync = parts.sync
     return { ...page, ...parts }
 }
 

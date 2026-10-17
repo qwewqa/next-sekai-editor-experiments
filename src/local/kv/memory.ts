@@ -3,6 +3,7 @@ import { compareKeys, inRange, keyAtPath, normalizeKey, requireKey, toRange } fr
 import { runTransaction } from './run'
 import {
     domError,
+    holdsBlob,
     isBlobRefusal,
     KeyRange,
     type CursorEntry,
@@ -370,10 +371,10 @@ const makeTx = (tx: Transaction): KvTx => {
         },
         put: (name, value, key) => write(name, value, key, false),
         tryPut: (name, value, key) =>
-            write(name, value, key, false, isBlobRefusal).then(
+            write(name, value, key, false, (error) => isBlobRefusal(error, value)).then(
                 () => true,
                 (error: unknown) => {
-                    if (isBlobRefusal(error)) return false
+                    if (isBlobRefusal(error, value)) return false
                     throw error
                 },
             ),
@@ -427,11 +428,6 @@ export type MemoryFaults = {
     /** An error to fail one put with, as a quota reported on the request does. */
     put?: (store: string, value: unknown) => Error | undefined
 }
-
-const holdsBlob = (value: unknown) =>
-    typeof value === 'object' &&
-    value !== null &&
-    Object.values(value).some((field) => typeof Blob !== 'undefined' && field instanceof Blob)
 
 /** A browser profile's databases, in memory. */
 export class MemoryKv {

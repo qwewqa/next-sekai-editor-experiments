@@ -419,3 +419,35 @@ test('a media item stored alone that fails by anything but the Blob refusal paus
     assert.equal(page.core.status.reason, 'failed')
     world.memory.faults.put = undefined
 })
+
+test('an UnknownError on a Blob row is the refusal whatever its message, and on any other row it isn’t', async () => {
+    const world = createWorld({ seed: 43 })
+    const page = await openPage(world, world.tab('a'))
+    const picked = await withSong(stateOf(goldenChart()), 43)
+    // A WebKit whose message names no Blob.
+    world.memory.faults.put = (store) =>
+        store === 'media'
+            ? new DOMException('An internal error occurred', 'UnknownError')
+            : undefined
+    begin(page, picked)
+    await page.flusher.flush()
+    assert.equal(page.flusher.failed, false)
+    assert.equal(rows(world, 'entries').size, 1)
+    assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [picked.bgm.meta!.hash] })
+    world.memory.faults.put = undefined
+    // The same error on a row with no Blob fails its transaction.
+    const failed = await page.tab
+        .run(() =>
+            page.core.write(['meta'], async (tx) => {
+                world.memory.faults.put = () =>
+                    new DOMException('An internal error occurred', 'UnknownError')
+                return tx.tryPut('meta', { key: 'probe', value: 1 })
+            }),
+        )
+        .then(
+            () => false,
+            () => true,
+        )
+    world.memory.faults.put = undefined
+    assert.equal(failed, true)
+})

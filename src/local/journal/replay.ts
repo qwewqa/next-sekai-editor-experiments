@@ -89,7 +89,7 @@ const planBatch = (
         ends,
         snapshot,
         summary: summaryOf(state, plan.noteCount),
-        label: deps.label(journal.stack.dropped.length),
+        label: deps.label(journal.stack.droppedCount ?? journal.stack.dropped.length),
         recovery: recoveryIds(journal),
         appVersion: deps.appVersion,
         wall: (deps.now ?? Date.now)(),

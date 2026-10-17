@@ -407,6 +407,13 @@ export const writeFlush = async (
     const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
     const ownsStack = (batch.entries.at(-1)?.seq ?? 0) > lastSeq
     let stack = ownsStack ? batch.stack : undefined
+    // A late flush reaching past a replayed journal (§1.6.6): its stack is the dead page's, which
+    // never saw the recovered entry, so none is kept rather than one that isn't replay's.
+    const first = batch.entries[0]?.seq ?? 0
+    if (stack && session && first <= lastSeq) {
+        const stored = await tx.get('entries', [batch.session.id, lastSeq])
+        if (isRow(stored) && stored.kind === 'recovered') stack = undefined
+    }
     // Slots and blocks the page knows stored elsewhere (a fork's parent, another store) are checked:
     // a block left alone may not be here, so the page sends the whole window; a stored slot must be.
     if (stack && stack.at?.db !== known.db) {
