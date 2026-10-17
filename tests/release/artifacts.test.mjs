@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { injectPolicy, webPolicy } from '../../scripts/csp.mjs'
 import {
     checkRelease,
     lyonNoticeFiles,
@@ -13,6 +14,7 @@ import {
     staticFiles,
     writeReleaseManifest,
 } from '../../scripts/release-utils.mjs'
+import { applyTestSite } from '../../scripts/site.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const metadata = {
@@ -20,8 +22,22 @@ const metadata = {
     commit: 'a'.repeat(40),
     base: '/',
     appVersion: '1.0.0-test+aaaaaaaa',
+    atTag: false,
+    site: 'production',
     sourceDirty: false,
 }
+const page = `<!doctype html>
+<html>
+    <head>
+        <title>Editor</title>
+        <script>
+            document.documentElement.dataset.theme = 'dark'
+        </script>
+    </head>
+    <body><script type="module" src="/assets/index-12345678.js"></script></body>
+</html>
+`
+const withPolicy = (html) => injectPolicy(html, webPolicy)
 
 async function temporary(t) {
     const directory = await mkdtemp(join(tmpdir(), 'sekai-release-test-'))
@@ -56,8 +72,9 @@ async function releaseFixture(t) {
             asset.file,
             `test ${asset.file.includes('skin') ? 'skin' : 'particle'} package`,
         )
-    for (const file of ['index.html', ...staticFiles, ...noticeFiles])
+    for (const file of [...staticFiles, ...noticeFiles])
         await write(directory, file, `test ${file}`)
+    await write(directory, 'index.html', withPolicy(page))
     for (const file of lyonNoticeFiles)
         await write(directory, file, await readFile(join(root, 'public', file)))
     await write(
@@ -196,4 +213,87 @@ test('Lyon notice inventory and exact kernel remain required when hashes are rec
         writeReleaseManifest(directory, metadata, assets),
         /Lyon release binary differs/,
     )
+})
+
+test('the version in the manifest follows the tag rule', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const check = async (change) => {
+        await writeReleaseManifest(directory, { ...metadata, ...change }, assets)
+        return checkRelease(directory)
+    }
+    await check({ atTag: true, appVersion: '1.0.0-test' })
+    await check({ appVersion: '1.0.0-test' })
+    await assert.rejects(check({ atTag: true }), /Invalid release metadata/)
+    await assert.rejects(check({ appVersion: '1.0.0-test+bbbbbbbb' }), /Invalid release metadata/)
+    await assert.rejects(check({ atTag: undefined }), /Invalid release metadata/)
+    await assert.rejects(check({ site: 'staging' }), /Invalid release metadata/)
+})
+
+test('the expected version, tag state and site must match the manifest', async (t) => {
+    const { directory } = await releaseFixture(t)
+    await checkRelease(directory, {
+        appVersion: metadata.appVersion,
+        atTag: false,
+        site: 'production',
+    })
+    await assert.rejects(checkRelease(directory, { atTag: true }), /metadata mismatch: atTag/)
+    await assert.rejects(
+        checkRelease(directory, { appVersion: '1.0.0-test' }),
+        /mismatch: appVersion/,
+    )
+    await assert.rejects(checkRelease(directory, { site: 'test' }), /metadata mismatch: site/)
+})
+
+test('every page carries the web policy as its first head child, hashing its inline scripts', async (t) => {
+    const policy = withPolicy(page)
+    const meta = policy.slice(policy.indexOf('<meta http-equiv'), policy.indexOf('/>') + 2)
+    const { directory, assets } = await releaseFixture(t)
+    const cases = {
+        'an unhashed inline script': policy.replace('<title>', '<script>alert(1)</script><title>'),
+        'no policy': page,
+        'a policy after other tags': page.replace('</title>', '</title>' + meta),
+        'a changed policy': policy.replace("'none'", "'self'"),
+    }
+    for (const [name, html] of Object.entries(cases))
+        await t.test(name, async () => {
+            await write(directory, 'index.html', html)
+            await writeReleaseManifest(directory, metadata, assets)
+            await assert.rejects(checkRelease(directory), /Content Security Policy differs/)
+        })
+})
+
+test('the test site build must be the one that is marked as such', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const testMetadata = { ...metadata, site: 'test' }
+    await writeReleaseManifest(directory, testMetadata, assets)
+    await assert.rejects(checkRelease(directory), /index.html does not match the site: test/)
+    await write(directory, 'index.html', withPolicy(applyTestSite(page)))
+    await writeReleaseManifest(directory, testMetadata, assets)
+    await checkRelease(directory, { site: 'test' })
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /index.html does not match the site: production/)
+})
+
+test('the apps’ bridge cannot be in a web release', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    await write(directory, 'assets/index-12345678.js', 'window.__TAURI_INTERNALS__.invoke()')
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /__TAURI_INTERNALS__: assets\/index-12345678.js/)
+})
+
+test('every file in public/ is staged by the release build, except the preview packages', async (t) => {
+    const directory = await temporary(t)
+    await stageReleasePublic(root, directory)
+    const walk = async (folder = '') => {
+        const files = []
+        for (const entry of await readdir(join(root, 'public', folder), { withFileTypes: true }))
+            files.push(
+                ...(entry.isDirectory()
+                    ? await walk(`${folder}${entry.name}/`)
+                    : [folder + entry.name]),
+            )
+        return files
+    }
+    for (const file of (await walk()).filter((file) => !file.startsWith('resource/')))
+        assert.ok((await readFile(join(directory, file))).length > 0, `${file} must be staged`)
 })

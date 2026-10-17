@@ -1,3 +1,6 @@
+import 'pixi.js/unsafe-eval'
+import './csp'
+
 import './index.css'
 import './selectLists.css'
 import './themes.css'

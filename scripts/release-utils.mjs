@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import { lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
+import { inlineScripts, metaIsFirst, pageMetaPolicy, webPolicy } from './csp.mjs'
+import { isTestSitePage } from './site.mjs'
 
 const execFileAsync = promisify(execFile)
 
@@ -29,6 +31,8 @@ if (sha256(lyonInventoryBytes) !== lyonNoticeHashes.get('third-party/lyon/source
     throw new Error('Lyon notice inventory differs from its pinned artifact')
 export const lyonNoticeFiles = [...lyonNoticeHashes.keys()]
 
+// The extension point for files copied from public/: a step that adds one lists it here (or in a list
+// beside this one, staged below), and in validateFileNames and tests/release/artifacts.test.mjs.
 export const staticFiles = ['favicon.ico', 'thumbnail.png']
 export const noticeFiles = [
     ...lyonNoticeFiles,
@@ -258,6 +262,37 @@ export async function writeReleaseManifest(directory, metadata, assets) {
     return manifest
 }
 
+// The version rule of scripts/version.mjs: X.Y.Z at the tag, X.Y.Z+<commit8> after it, or the package's.
+function validAppVersion(manifest) {
+    if (manifest.atTag) return manifest.appVersion === manifest.version
+    return [manifest.version, `${manifest.version}+${manifest.commit.slice(0, 8)}`].includes(
+        manifest.appVersion,
+    )
+}
+
+// The Vite entries (Part 5 adds /privacy/ and /app/); the third-party notice pages are static documents.
+const pageEntries = /^(?:index|privacy\/index|app\/index)\.html$/
+
+// The pages' policy is the web policy hashing exactly their inline scripts, first in <head>.
+async function checkPages(directory, files, manifest) {
+    for (const file of files.filter((file) => pageEntries.test(file))) {
+        const html = (await regularFile(join(directory, file))).toString('utf8')
+        if (pageMetaPolicy(html) !== webPolicy(inlineScripts(html)) || !metaIsFirst(html))
+            throw new Error(`Content Security Policy differs from the web policy: ${file}`)
+    }
+    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
+    if (isTestSitePage(index) !== (manifest.site === 'test'))
+        throw new Error(`index.html does not match the site: ${manifest.site}`)
+}
+
+// The apps' bridge must not reach the web build.
+async function checkBundles(directory, files) {
+    for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
+        if ((await regularFile(join(directory, file))).includes('__TAURI_INTERNALS__'))
+            throw new Error(`Release contains __TAURI_INTERNALS__: ${file}`)
+    }
+}
+
 export async function checkRelease(directory, expected = {}) {
     const manifest = JSON.parse(await regularFile(join(directory, 'release-manifest.json')))
     const assets = manifest.previewAssets
@@ -267,7 +302,9 @@ export async function checkRelease(directory, expected = {}) {
         typeof manifest.version !== 'string' ||
         !manifest.version ||
         manifest.base !== '/' ||
-        manifest.appVersion !== `${manifest.version}+${manifest.commit.slice(0, 8)}` ||
+        typeof manifest.atTag !== 'boolean' ||
+        !validAppVersion(manifest) ||
+        !['production', 'test'].includes(manifest.site) ||
         typeof manifest.sourceDirty !== 'boolean'
     )
         throw new Error('Invalid release metadata')
@@ -277,6 +314,8 @@ export async function checkRelease(directory, expected = {}) {
     const files = await listFiles(directory)
     validateFileNames(files, assets)
     await checkLyonRelease(directory, files)
+    await checkPages(directory, files, manifest)
+    await checkBundles(directory, files)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==

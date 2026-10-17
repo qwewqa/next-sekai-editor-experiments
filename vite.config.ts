@@ -1,8 +1,11 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
+import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defineConfig } from 'vite'
-import { version } from './package.json'
+import { devPolicy, injectPolicy, webPolicy } from './scripts/csp.mjs'
+import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
+import { appVersion } from './scripts/version.mjs'
 import { storageKey } from './src/storage'
 import { themes } from './src/themes'
 
@@ -35,13 +38,26 @@ export default defineConfig({
                     )
             },
         },
+        {
+            // NSE_SITE=test: the test site is not indexed and its title says so.
+            name: 'test-site',
+            apply: () => siteFromEnv() === 'test',
+            transformIndexHtml: applyTestSite,
+        },
+        {
+            // The policy (Part 0 §0.9.2) as the first child of <head>, hashing the inline scripts as they
+            // end up, so it runs after theme-script. `vite dev` has none unless NSE_DEV_CSP=1.
+            name: 'csp',
+            apply: (_config, { command }) => command === 'build' || process.env.NSE_DEV_CSP === '1',
+            transformIndexHtml: {
+                order: 'post',
+                handler: (html, { server }) => injectPolicy(html, server ? devPolicy : webPolicy),
+            },
+        },
     ],
     define: {
         __APP_VERSION__: JSON.stringify(
-            (process.env.GITHUB_SHA && `${version}+${process.env.GITHUB_SHA.slice(0, 8)}`) ||
-                (process.env.CF_PAGES_BRANCH !== 'prod' &&
-                    process.env.CF_PAGES_COMMIT_SHA?.slice(0, 8)) ||
-                version,
+            appVersion({ cwd: fileURLToPath(new URL('.', import.meta.url)) }).appVersion,
         ),
     },
 })
