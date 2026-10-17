@@ -1,23 +1,31 @@
-import type { CameraZoomVerticalAlign } from '../../chart/events/camera'
-import type { DivisionParity } from '../../chart/events/stage/pivot'
+import type { BpmObject } from '../../chart/bpm'
+import type { CameraEventObject, CameraZoomVerticalAlign } from '../../chart/events/camera'
+import type { StageMaskEventObject } from '../../chart/events/stage/mask'
+import type { DivisionParity, StagePivotEventObject } from '../../chart/events/stage/pivot'
 import type {
     BorderStyle,
     JudgmentLineColor,
     JudgmentLineStyle,
+    StageStyleEventObject,
 } from '../../chart/events/stage/style'
-import type { Anchor } from '../../chart/events/stage/transform'
+import type { Anchor, StageTransformEventObject } from '../../chart/events/stage/transform'
+import type { FolderObject } from '../../chart/folders'
+import type { GroupObject } from '../../chart/groups'
 import type {
     ConnectorLayer,
     ConnectorPresentation,
     ConnectorType,
     FlickDirection,
+    NoteObject,
     NoteSfx,
     NoteType,
 } from '../../chart/note'
 import type { NoteStyle } from '../../chart/noteStyle'
-import type { GenerateSimLines } from '../../chart/stages'
-import type { TimeScaleTransition } from '../../chart/timeScale'
+import type { GenerateSimLines, StageObject } from '../../chart/stages'
+import type { TimeScaleObject, TimeScaleTransition } from '../../chart/timeScale'
 import type { Ease, TimeScaleEase } from '../../ease'
+import type { BgmMeta } from '../../state/bgm'
+import type { LevelInfo, LevelInfoTag, MediaRef } from '../../state/levelInfo'
 import { isHash16Hex } from '../hash'
 import type { RecordValue } from './canonical'
 
@@ -26,7 +34,10 @@ import type { RecordValue } from './canonical'
 // it, and a test fails when that file drifts. Adding a field is one change here, at the end
 // of its record, optional, with a `format:bump` (Part 4, 4.9.4).
 
-/** The v1 kind order, one per array of the chart model. */
+/**
+ * The v1 kind order, one per array of the chart model. `fields-v1.json` carries it as the
+ * `kindOrder` array: JSON object key order means nothing, so no reader takes it from `kinds`.
+ */
 export const kindNames = [
     'slides',
     'bpms',
@@ -144,9 +155,17 @@ export type FieldType =
     | `array:${string}`
     | `record:${string}`
 
-export type Field = {
-    readonly name: string
+/**
+ * The header map an id must name (§1.6.11.1, D9): `folders` is the folder map holding the
+ * record itself. A snapshot whose records name an id its header lacks is invalid.
+ */
+export type RefTarget = 'groups' | 'stages' | 'groupFolders' | 'stageFolders' | 'folders'
+
+export type Field<N extends string = string> = {
+    readonly name: N
     readonly type: FieldType
+    /** An `id` that must name an entry of this header map. */
+    readonly ref?: RefTarget
     /** Only trailing fields; an unset one is left off. */
     readonly optional?: true
     readonly minItems?: number
@@ -158,12 +177,13 @@ export type Field = {
 export type RecordForm =
     readonly Field[] | { readonly type: `array:${string}`; readonly minItems?: number }
 
-const f = (name: string, type: FieldType, extra: Omit<Field, 'name' | 'type'> = {}): Field => ({
-    name,
-    type,
-    ...extra,
-})
+const f = <N extends string>(
+    name: N,
+    type: FieldType,
+    extra: Omit<Field, 'name' | 'type'> = {},
+): Field<N> => ({ name, type, ...extra })
 const optional = { optional: true } as const
+const folderLink = (ref: RefTarget) => ({ optional: true, ref }) as const
 
 /** Every v1 record form, by name. Positions are pinned once v0.6.0 ships. */
 export const records = {
@@ -194,7 +214,7 @@ export const records = {
         f('id', 'id'),
         f('name', 'string'),
         f('forceNoteSpeed', 'number', { default: 0 }),
-        f('folderId', 'id', optional),
+        f('folderId', 'id', folderLink('groupFolders')),
     ],
     stage: [
         f('id', 'id'),
@@ -202,9 +222,14 @@ export const records = {
         f('isFromStart', 'bool'),
         f('isUntilEnd', 'bool'),
         f('generateSimLines', 'enum:generateSimLines'),
-        f('folderId', 'id', optional),
+        f('folderId', 'id', folderLink('stageFolders')),
     ],
-    folder: [f('id', 'id'), f('name', 'string'), f('index', 'uint'), f('folderId', 'id', optional)],
+    folder: [
+        f('id', 'id'),
+        f('name', 'string'),
+        f('index', 'uint'),
+        f('folderId', 'id', folderLink('folders')),
+    ],
     levelInfo: [
         f('title', 'string'),
         f('artists', 'string'),
@@ -231,8 +256,8 @@ export const records = {
     ],
     slide: { type: 'array:note', minItems: 1 },
     note: [
-        f('groupId', 'id'),
-        f('stageId', 'id'),
+        f('groupId', 'id', { ref: 'groups' }),
+        f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('elevation', 'number', { default: 0 }),
         f('noteStyle', 'enum:noteStyle'),
@@ -257,7 +282,7 @@ export const records = {
     ],
     bpm: [f('beat', 'number'), f('bpm', 'number'), f('meter', 'number', { default: 4 })],
     timeScale: [
-        f('groupId', 'id'),
+        f('groupId', 'id', { ref: 'groups' }),
         f('beat', 'number'),
         f('editorLane', 'number'),
         f('timeScale', 'number'),
@@ -279,7 +304,7 @@ export const records = {
         f('eventEase', 'enum:ease'),
     ],
     stageMaskEvent: [
-        f('stageId', 'id'),
+        f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('maskLeft', 'number'),
         f('maskSize', 'number'),
@@ -287,7 +312,7 @@ export const records = {
         f('eventEase', 'enum:ease'),
     ],
     stagePivotEvent: [
-        f('stageId', 'id'),
+        f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('pivotLane', 'number'),
         f('divisionSize', 'number'),
@@ -297,7 +322,7 @@ export const records = {
         f('eventEase', 'enum:ease'),
     ],
     stageStyleEvent: [
-        f('stageId', 'id'),
+        f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('editorLane', 'number'),
         f('judgmentLineColor', 'enum:judgmentLineColor'),
@@ -312,7 +337,7 @@ export const records = {
         f('eventEase', 'enum:ease'),
     ],
     stageTransformEvent: [
-        f('stageId', 'id'),
+        f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('rotation', 'number'),
         f('xTranslation', 'number'),
@@ -337,6 +362,27 @@ export const kindRecords = {
     stageTransformEvents: 'stageTransformEvent',
 } as const satisfies Record<KindName, RecordName>
 
+// Each model record's fields must equal its form's names, both ways, so a model field added
+// later can't be left out of history silently: a type here names what differs.
+type Names<N extends RecordName> = (typeof records)[N] extends readonly Field<infer F>[] ? F : never
+export const fieldsMatchModel: [
+    Same<Names<'note'>, keyof NoteObject>,
+    Same<Names<'bpm'>, keyof BpmObject>,
+    Same<Names<'timeScale'>, keyof TimeScaleObject>,
+    Same<Names<'cameraEvent'>, keyof CameraEventObject>,
+    Same<Names<'stageMaskEvent'>, keyof StageMaskEventObject>,
+    Same<Names<'stagePivotEvent'>, keyof StagePivotEventObject>,
+    Same<Names<'stageStyleEvent'>, keyof StageStyleEventObject>,
+    Same<Names<'stageTransformEvent'>, keyof StageTransformEventObject>,
+    Same<Names<'group'>, 'id' | keyof GroupObject>,
+    Same<Names<'stage'>, 'id' | keyof StageObject>,
+    Same<Names<'folder'>, 'id' | keyof FolderObject>,
+    Same<Names<'levelInfo'>, keyof LevelInfo>,
+    Same<Names<'tag'>, keyof LevelInfoTag>,
+    Same<Names<'mediaRef'>, keyof MediaRef>,
+    Same<Names<'bgm'>, keyof BgmMeta>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+
 /** A record that breaks the v1 schema (§1.6.11.1): unreadable history, a damaged snapshot. */
 export class SchemaError extends Error {
     override name = 'SchemaError'
@@ -348,6 +394,10 @@ export class SchemaError extends Error {
     }
 }
 
+// `id` and `uint` are judged by value, as `JSON.parse` reads them: `1`, `1.0` and `1e0` are one
+// id, and `-0` is the `uint` 0 (never an id). The writer spells an integer only as plain digits
+// (`Number::toString`), so bytes spelled otherwise hash differently: such a chunk reads under its
+// own hash (a hand-made file), never under the canonical bytes' hash.
 const isId = (value: unknown) => Number.isSafeInteger(value) && (value as number) > 0
 const isUint = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0
 
@@ -456,8 +506,66 @@ export const checkHeaderIds = (header: readonly RecordValue[]) => {
     unique(header[6], 'header.stageFolders', unique(header[5], 'header.groupFolders'))
 }
 
-/** A header chunk, checked whole: its form, then the id rules. */
+/** The ids a header's maps define, for the references records make (D9). */
+export type HeaderIds = Readonly<Record<Exclude<RefTarget, 'folders'>, ReadonlySet<unknown>>>
+
+const idsOf = (records: RecordValue | undefined) =>
+    new Set((records as readonly RecordValue[][]).map((record) => record[0]))
+
+export const headerIds = (header: readonly RecordValue[]): HeaderIds => ({
+    groups: idsOf(header[3]),
+    stages: idsOf(header[4]),
+    groupFolders: idsOf(header[5]),
+    stageFolders: idsOf(header[6]),
+})
+
+/**
+ * Checks that every `ref` field of a record that passed `checkRecord` names an id of its map
+ * (D9): a note's group and stage, a time scale's group, a stage event's stage, and the folder
+ * links of groups, stages and folders. `folders` is the map holding a folder record.
+ */
+export const checkRefs = (
+    name: RecordName,
+    value: unknown,
+    ids: HeaderIds,
+    path: string = name,
+    folders?: ReadonlySet<unknown>,
+): void => {
+    const form: RecordForm = records[name]
+    if (!Array.isArray(form)) {
+        const item = splitType((form as { type: string }).type)[1] as RecordName
+        for (const [i, record] of (value as unknown[]).entries())
+            checkRefs(item, record, ids, `${path}[${i}]`, folders)
+        return
+    }
+    const fields = form as readonly Field[]
+    const list = value as readonly unknown[]
+    for (let i = 0; i < list.length; i++) {
+        const field = fields[i]
+        if (!field) continue
+        const at = `${path}.${field.name}`
+        if (field.ref) {
+            const target = field.ref === 'folders' ? folders : ids[field.ref]
+            if (!target?.has(list[i]))
+                throw new SchemaError(at, `no ${field.ref} entry ${String(list[i])}`)
+            continue
+        }
+        const [kind, item = ''] = splitType(field.type)
+        if (kind === 'record') checkRefs(item as RecordName, list[i], ids, at)
+        else if (kind === 'array' && Object.hasOwn(records, item)) {
+            // A folder map is the map its folders' own links name.
+            const own = field.name === 'groupFolders' || field.name === 'stageFolders'
+            const holder = own ? ids[field.name as 'groupFolders' | 'stageFolders'] : folders
+            for (const [j, record] of (list[i] as unknown[]).entries())
+                checkRefs(item as RecordName, record, ids, `${at}[${j}]`, holder)
+        }
+    }
+}
+
+/** A header chunk, checked whole: its form, the id rules, then its own folder links. */
 export const checkHeader = (value: unknown) => {
     checkRecord('header', value)
-    checkHeaderIds(value as RecordValue[])
+    const header = value as RecordValue[]
+    checkHeaderIds(header)
+    checkRefs('header', header, headerIds(header))
 }

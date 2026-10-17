@@ -29,7 +29,7 @@
         { "name": "id", "type": "id" },
         { "name": "name", "type": "string" },
         { "name": "forceNoteSpeed", "type": "number", "default": 0 },
-        { "name": "folderId", "type": "id", "optional": true }
+        { "name": "folderId", "type": "id", "optional": true, "ref": "groupFolders" }
     ],
     "stage": [
         { "name": "id", "type": "id" },
@@ -37,13 +37,13 @@
         { "name": "isFromStart", "type": "bool" },
         { "name": "isUntilEnd", "type": "bool" },
         { "name": "generateSimLines", "type": "enum:generateSimLines" },
-        { "name": "folderId", "type": "id", "optional": true }
+        { "name": "folderId", "type": "id", "optional": true, "ref": "stageFolders" }
     ],
     "folder": [
         { "name": "id", "type": "id" },
         { "name": "name", "type": "string" },
         { "name": "index", "type": "uint" },
-        { "name": "folderId", "type": "id", "optional": true }
+        { "name": "folderId", "type": "id", "optional": true, "ref": "folders" }
     ],
     "levelInfo": [
         { "name": "title", "type": "string" },
@@ -74,8 +74,8 @@
     ],
     "slide": { "type": "array:note", "minItems": 1 },
     "note": [
-        { "name": "groupId", "type": "id" },
-        { "name": "stageId", "type": "id" },
+        { "name": "groupId", "type": "id", "ref": "groups" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "elevation", "type": "number", "default": 0 },
         { "name": "noteStyle", "type": "enum:noteStyle" },
@@ -104,7 +104,7 @@
         { "name": "meter", "type": "number", "default": 4 }
     ],
     "timeScale": [
-        { "name": "groupId", "type": "id" },
+        { "name": "groupId", "type": "id", "ref": "groups" },
         { "name": "beat", "type": "number" },
         { "name": "editorLane", "type": "number" },
         { "name": "timeScale", "type": "number" },
@@ -126,7 +126,7 @@
         { "name": "eventEase", "type": "enum:ease" }
     ],
     "stageMaskEvent": [
-        { "name": "stageId", "type": "id" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "maskLeft", "type": "number" },
         { "name": "maskSize", "type": "number" },
@@ -134,7 +134,7 @@
         { "name": "eventEase", "type": "enum:ease" }
     ],
     "stagePivotEvent": [
-        { "name": "stageId", "type": "id" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "pivotLane", "type": "number" },
         { "name": "divisionSize", "type": "number" },
@@ -144,7 +144,7 @@
         { "name": "eventEase", "type": "enum:ease" }
     ],
     "stageStyleEvent": [
-        { "name": "stageId", "type": "id" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "editorLane", "type": "number" },
         { "name": "judgmentLineColor", "type": "enum:judgmentLineColor" },
@@ -159,7 +159,7 @@
         { "name": "eventEase", "type": "enum:ease" }
     ],
     "stageTransformEvent": [
-        { "name": "stageId", "type": "id" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "rotation", "type": "number" },
         { "name": "xTranslation", "type": "number" },
@@ -178,6 +178,16 @@
         "stageStyleEvents": "stageStyleEvent",
         "stageTransformEvents": "stageTransformEvent"
     },
+    "kindOrder": [
+        "slides",
+        "bpms",
+        "timeScales",
+        "cameraEvents",
+        "stageMaskEvents",
+        "stagePivotEvents",
+        "stageStyleEvents",
+        "stageTransformEvents"
+    ],
     "enums": {
         "kinds": { "slides": 1, "bpms": 1, "timeScales": 1, "cameraEvents": 1, "stageMaskEvents": 1, "stagePivotEvents": 1, "stageStyleEvents": 1, "stageTransformEvents": 1 },
         "noteStyle": { "default": 1, "neutral": 1, "red": 1, "green": 1, "blue": 1, "yellow": 1, "purple": 1, "cyan": 1, "black": 1 },

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import {
+    CHUNK_CAP,
     chunkRowOf,
     ChunkVerifyError,
     deflateChunk,
@@ -14,7 +15,9 @@ import {
     type VerifiedChunk,
 } from '../../../src/local/chunkVerify'
 import { hash16Sync } from '../../../src/local/hash'
+import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { toRecords } from '../../../src/local/records/records'
+import { checkRecord } from '../../../src/local/records/schema'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { goldenChart, stateOf } from './charts'
 
@@ -103,4 +106,43 @@ test('only verifyChunk makes a VerifiedChunk, and its row is a compact copy', as
         0,
     )
     assert.equal(row.bytes.buffer.byteLength, stored.length)
+})
+
+test('a verified chunk holds its own copy: the caller’s buffer changing after the call changes nothing', async () => {
+    const [chunk] = encodeSnapshot(toRecords(stateOf(goldenChart()))).chunks
+    assert.ok(chunk)
+    for (const canonical of [chunk.bytes, undefined]) {
+        const stored = deflateChunk(chunk.bytes)
+        const hash = chunk.hash.slice()
+        const pending = verifyChunk(canonical ? { hash, stored, canonical } : { hash, stored })
+        // Overwritten while the hash is awaited.
+        stored.fill(0)
+        hash.fill(0)
+        const verified = await pending
+        const row = chunkRowOf(verified, 0)
+        assert.deepEqual(inflateStrict(row.bytes), chunk.bytes)
+        assert.deepEqual(verified.hash, chunk.hash)
+    }
+})
+
+test('outside bytes inflate at most to the chunk reader cap', async () => {
+    const big = new Uint8Array(CHUNK_CAP + 1).fill(0x20)
+    const stored = deflateChunk(big)
+    const hash = hash16Sync(big)
+    await assert.rejects(verifyChunk({ hash, stored }), DeflateError)
+    await assert.rejects(verifyChunk({ hash, stored, maxSize: Infinity }), DeflateError)
+})
+
+test('an integer spelled otherwise is other bytes: it reads under its own hash, never the canonical one', async () => {
+    const spelled = new TextEncoder().encode('[[1.0,"F",-0,1e0]]')
+    const value = JSON.parse(new TextDecoder().decode(spelled)) as RecordValue
+    const canonical = canonicalBytes(value)
+    assert.equal(new TextDecoder().decode(canonical), '[[1,"F",0,1]]')
+    await assert.rejects(
+        verifyChunk({ hash: hash16Sync(canonical), stored: deflateChunk(spelled) }),
+        ChunkVerifyError,
+    )
+    const own = await verifyChunk({ hash: hash16Sync(spelled), stored: deflateChunk(spelled) })
+    assert.equal(own.size, spelled.length)
+    for (const folder of value as RecordValue[]) checkRecord('folder', folder)
 })

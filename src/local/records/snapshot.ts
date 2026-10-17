@@ -4,6 +4,8 @@ import { noteCountOf, recordKey, type KindRecords, type SnapshotRecords } from '
 import {
     checkHeader,
     checkRecord,
+    checkRefs,
+    headerIds,
     kindNames,
     kindRecords,
     SchemaError,
@@ -195,7 +197,9 @@ export type SnapshotSource = {
 
 /**
  * A snapshot's records from its root (§1.6.11.1), checking every root, node and record
- * against the v1 schema, and `noteCount` against the slides. Readers never assume the split.
+ * against the v1 schema, every group, stage and folder a record names against the header (D9),
+ * and `noteCount` against the slides. Readers never assume the split; an empty body chunk
+ * reads as no records.
  */
 export const decodeSnapshot = (rootJson: unknown, source: SnapshotSource): SnapshotRecords => {
     checkRoot(rootJson)
@@ -207,6 +211,7 @@ export const decodeSnapshot = (rootJson: unknown, source: SnapshotSource): Snaps
     ]
     const header = source.chunk(headerHash)
     checkHeader(header)
+    const ids = headerIds(header as Rec)
 
     const kinds: KindRecords[] = []
     for (const [kind, top] of kindRefs) {
@@ -227,6 +232,7 @@ export const decodeSnapshot = (rootJson: unknown, source: SnapshotSource): Snaps
             if (!Array.isArray(chunk)) throw new SchemaError(`${kind}[${i}]`, 'expected an array')
             return (chunk as unknown[]).map((record, j) => {
                 checkRecord(form, record, `${kind}[${i}][${j}]`)
+                checkRefs(form, record, ids, `${kind}[${i}][${j}]`)
                 return { key: recordKey(kind, record as Rec), record: record as Rec }
             })
         })
