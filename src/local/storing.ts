@@ -28,6 +28,21 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
+let watching = false
+
+/**
+ * Flushes at once and strictly on hide and freeze (§1.6.4). Watched from startup, before the
+ * worker answers, so the page's listeners are all in place early and never added later.
+ */
+export const watchLifecycle = () => {
+    if (watching) return
+    watching = true
+    platform.onLifecycle((event) => {
+        if (event === 'hide' || event === 'freeze')
+            void flusher?.flush({ strict: true, oneGo: true })
+    })
+}
+
 export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
     const reports: FlushReport[] = []
     const errors: unknown[] = []
@@ -92,10 +107,6 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
 
     worker.onRestart(() => {
         void instance.restarted()
-    })
-    platform.onLifecycle((event) => {
-        if (event === 'hide' || event === 'freeze')
-            void instance.flush({ strict: true, oneGo: true })
     })
 
     window.nse = {

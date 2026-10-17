@@ -5,7 +5,7 @@ import { appVersion } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { storageGet } from '../storage'
 import { interpolate } from '../utils/interpolate'
-import { startStoring } from './storing'
+import { startStoring, watchLifecycle } from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
 import storageWorkerUrl from './worker/storage.worker?worker&url'
@@ -110,6 +110,7 @@ export const startStorage = async () => {
         { timeoutMs: rpcTimeoutMs },
     )
     storageWorker = worker
+    watchLifecycle()
     worker.onStatus((status) => {
         storageStatus.value = status
     })
