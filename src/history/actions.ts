@@ -19,8 +19,22 @@ export type HistoryAction =
 
 const listeners = new Set<(action: HistoryAction) => void>()
 
-/** Listens to every change of the undo stack; returns the removal. */
-export const onHistoryAction = (listener: (action: HistoryAction) => void) => {
+/**
+ * Actions since the last reset, kept until storing starts after first paint, so edits made before
+ * then are stored too. Dropped once a listener takes them, so it never holds dropped redo states.
+ */
+let early: HistoryAction[] | undefined = []
+
+/** Listens to every change of the undo stack; `replay` first delivers those since the last reset. */
+export const onHistoryAction = (
+    listener: (action: HistoryAction) => void,
+    { replay = false }: { replay?: boolean } = {},
+) => {
+    if (replay) {
+        const actions = early ?? []
+        early = undefined
+        for (const action of actions) listener(action)
+    }
     listeners.add(listener)
     return () => {
         listeners.delete(listener)
@@ -28,5 +42,9 @@ export const onHistoryAction = (listener: (action: HistoryAction) => void) => {
 }
 
 export const emitHistoryAction = (action: HistoryAction) => {
+    if (early) {
+        if (action.kind === 'reset') early = []
+        early.push(action)
+    }
     for (const listener of [...listeners]) listener(action)
 }

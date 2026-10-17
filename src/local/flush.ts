@@ -222,12 +222,18 @@ export class Flusher {
         return session
     }
 
-    /** Appends an entry to the current session: synchronous, as push, undo and redo are. */
+    /**
+     * Appends an entry to the current session: synchronous, as push, undo and redo are. A state
+     * holding media not yet stored (a pick) flushes at once and strictly: the journal doesn't
+     * carry media (§1.6.4).
+     */
     append(kind: EntryKind, label: () => string, state: State, dirty: boolean) {
         const session = this.current
         if (!session) return
         this.add(session, kind, label, state, dirty)
-        this.schedule()
+        if (heldMediaOf(state).some((item) => !this.knownMedia.has(item.hash)))
+            void this.flush({ strict: true })
+        else this.schedule()
     }
 
     private add(

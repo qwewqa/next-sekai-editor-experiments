@@ -5,6 +5,7 @@ import { appVersion } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { storageGet } from '../storage'
 import { interpolate } from '../utils/interpolate'
+import { startStoring } from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
 import storageWorkerUrl from './worker/storage.worker?worker&url'
@@ -123,9 +124,13 @@ export const startStorage = async () => {
         if (document.visibilityState === 'visible') resume()
     })
 
+    let status: StorageStatus
     try {
-        sayAtLoad(await worker.start())
+        status = await worker.start()
+        sayAtLoad(status)
     } catch {
         // The worker never answered: the client paused storing.
+        status = worker.status ?? { mode: 'stored', reason: 'failed' }
     }
+    startStoring(worker, status, test)
 }
