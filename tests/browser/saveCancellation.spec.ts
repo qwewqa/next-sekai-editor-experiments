@@ -59,9 +59,13 @@ const installSave = (page: Page, mode: SaveMode) =>
             await new Promise<void>((resolve) => (fixture.release = resolve))
             fixture.events.push(`released:${phase}`)
         }
+        // The file as committed, which the platform reads back after close().
+        let pending: Blob | undefined
+        let committed: Blob | undefined
         const writable = {
             async write(blob: Blob) {
                 if (!blob.size) throw new Error('Expected serialized chart data')
+                pending = blob
                 fixture.events.push('write')
                 if (mode === 'write') await gate('write')
                 if (mode === 'writeFailure')
@@ -69,6 +73,7 @@ const installSave = (page: Page, mode: SaveMode) =>
             },
             close() {
                 fixture.events.push('close')
+                committed = pending
                 return Promise.resolve()
             },
             abort() {
@@ -77,6 +82,10 @@ const installSave = (page: Page, mode: SaveMode) =>
             },
         }
         const handle = {
+            getFile: () =>
+                committed
+                    ? Promise.resolve(new File([committed], 'LevelData'))
+                    : Promise.reject(new DOMException('Not found', 'NotFoundError')),
             async createWritable() {
                 fixture.events.push('create')
                 if (mode === 'create') await gate('create')

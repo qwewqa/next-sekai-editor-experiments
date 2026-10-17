@@ -49,7 +49,8 @@ export const validName = (name: string) => {
         // eslint-disable-next-line no-control-regex
         .replace(/[\\/*?"<>|\u0000-\u001f\u007f]/g, '-')
         .replace(/^[. ]+|[. ]+$/g, '')
-    if (reservedStem(result)) result = `${result}-`
+    const stem = reservedStem(result)
+    if (stem) result = `${stem}-${result.slice(stem.length)}`
     if (byteLength(result) > NAME_BYTE_LIMIT) {
         // Cut by grapheme, so no character is split.
         const characters = Array.from(

@@ -7,7 +7,7 @@ import {
     type SavePickerType,
     type SaveResult,
 } from '../../../platform'
-import { isLevelDataContent } from './build'
+import { isLevelDataContent } from './content'
 import { exportMemory, sameEntry, type ExportTarget } from './memory'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.

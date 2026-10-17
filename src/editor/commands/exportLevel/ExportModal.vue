@@ -176,7 +176,9 @@ const buttonClass =
             :data-modal-busy="busy || undefined"
             @submit.prevent="submit"
         >
-            <p v-if="preparing" role="status" data-export-preparing>{{ preparingText }}</p>
+            <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
+                {{ preparingText }}
+            </p>
             <template v-else>
                 <div
                     v-if="target"
@@ -245,6 +247,7 @@ const buttonClass =
                     v-if="preparing"
                     ref="downloadButton"
                     type="button"
+                    :aria-describedby="`${ids}-preparing`"
                     class="bg-accent text-on-accent active:bg-button active:text-fg"
                     :class="buttonClass"
                     @click="download"
