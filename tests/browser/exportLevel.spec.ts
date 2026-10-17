@@ -348,6 +348,107 @@ test('a partial level picked anyway is refused and put back, through Export and 
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
 
+type Writes = { held?: boolean; release?: () => void; aborted?: boolean; failing?: boolean }
+
+/** Holds each OPFS write() until released, or fails it while `failing`; records an abort. */
+const holdWrites = (page: Page, mode: 'hold' | 'fail') =>
+    page.evaluate((mode) => {
+        const writes: Writes = ((window as unknown as { writes: Writes }).writes = {})
+        const proto = FileSystemWritableFileStream.prototype
+        const { write, abort } = proto
+        writes.failing = mode === 'fail'
+        proto.write = async function (this: FileSystemWritableFileStream, ...args) {
+            if (writes.failing) throw new DOMException('Disk error', 'InvalidStateError')
+            writes.held = true
+            await new Promise<void>((resolve) => (writes.release = resolve))
+            return write.apply(this, args)
+        } as typeof write
+        proto.abort = function (this: FileSystemWritableFileStream, ...args) {
+            writes.aborted = true
+            return abort.apply(this, args)
+        } as typeof abort
+    }, mode)
+
+const writes = (page: Page) =>
+    page.evaluate(() => {
+        const { held, aborted } = (window as unknown as { writes: Writes }).writes
+        return { held, aborted }
+    })
+
+test('Escape after a pick is accepted lets the write finish, then closes', async ({ page }) => {
+    await start(page, opfs)
+    // An earlier export, which the picker empties when it is picked (D5).
+    await writeFile(page, 'Coconut.nsld', { bgmOffset: 5 })
+    await openExport(page)
+    await dialog(page).getByRole('textbox', { name: 'File Name' }).fill('Coconut')
+    await queuePicks(page, ['Coconut.nsld'])
+    await holdWrites(page, 'hold')
+    await page.keyboard.press('Enter')
+    await expect.poll(async () => (await writes(page)).held).toBe(true)
+
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(100)
+    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
+    await page.evaluate(() => (window as unknown as { writes: Writes }).writes.release?.())
+    await expect(notice(page)).toHaveText('Exported to Coconut.nsld')
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await readFile(page, 'Coconut.nsld')).toBe(0)
+})
+
+test('Cancel during a write to the target closes at once and leaves the target', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData', { bgmOffset: 3 })
+    await openFile(page, 'LevelData')
+    await page.evaluate(() => {
+        window.editorTest.history.pushState(() => 'Offset', {
+            ...window.editorTest.history.state.value,
+            bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
+        })
+    })
+    await holdWrites(page, 'hold')
+    for (const close of ['Cancel', 'Close'] as const) {
+        await openExport(page)
+        await page.keyboard.press('Enter')
+        await expect.poll(async () => (await writes(page)).held).toBe(true)
+        await dialog(page).getByRole('button', { name: close, exact: true }).click()
+        await expect(dialog(page)).toHaveCount(0)
+        await page.evaluate(() => {
+            const held = (window as unknown as { writes: Writes }).writes
+            held.held = false
+            held.release?.()
+        })
+        await expect.poll(async () => (await writes(page)).aborted).toBe(true)
+        await page.evaluate(
+            () => ((window as unknown as { writes: Writes }).writes.aborted = false),
+        )
+        expect(await readFile(page, 'LevelData')).toBe(3)
+        await expect(dialog(page)).toHaveCount(0)
+    }
+})
+
+test('p’s failed download of a refused pick’s bytes says so in its own words', async ({ page }) => {
+    await start(page, opfs)
+    await openPartial(page, 'LevelData')
+    // Putting the bytes back fails, so the file stays as the picker left it.
+    await holdWrites(page, 'fail')
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('p')
+    await expect(
+        page.getByText('"LevelData" was emptied, and its content could not be put back.'),
+    ).toBeVisible()
+    await page.evaluate(() => {
+        URL.createObjectURL = () => {
+            throw new TypeError('Failed to execute createObjectURL')
+        }
+    })
+    await page.waitForTimeout(350)
+    await page.getByRole('button', { name: 'Download' }).click()
+    await expect(page.getByText('"LevelData" could not be downloaded.')).toBeVisible()
+    await expect(page.getByText(/createObjectURL/)).toHaveCount(0)
+})
+
 test('Choose Another… on an opened LevelData suggests its own name, "All files" alone', async ({
     page,
 }) => {

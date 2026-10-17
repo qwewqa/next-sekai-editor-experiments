@@ -3,6 +3,7 @@ import { showChoice } from '../../../modals/choice'
 import type { FileError } from '../../../platform'
 import { interpolate } from '../../../utils/interpolate'
 import { notify } from '../../notification'
+import { fileErrorKey } from './errorText'
 import type { ExportUi } from './flow'
 import { formatSize, formatTime } from './format'
 
@@ -10,42 +11,18 @@ import { formatSize, formatTime } from './format'
 
 const title = () => i18n.value.export.title
 
-/** What the user reads for a failed file operation: never a browser's message (§1.4.19). */
-export const fileErrorText = (name: string, error: FileError) => {
-    const { save } = i18n.value
-    switch (error.step) {
-        case 'build':
-            return interpolate(() => save.buildFailed, name)()
-        case 'read':
-            return interpolate(() => save.readFailed, name)()
-        case 'readBack':
-            return interpolate(() => save.changedWhileWriting, name)()
-        case 'download':
-            return interpolate(() => save.downloadFailed, name)()
-        case undefined:
-            break
-    }
-    switch (error.code) {
-        case 'denied':
-            return interpolate(() => save.denied, name)()
-        case 'not-found':
-            return interpolate(() => save.notFound, name)()
-        case 'conflict':
-            return interpolate(() => save.changedWhileWriting, name)()
-        case 'not-local':
-            return interpolate(() => save.notLocal, name)()
-        case 'no-space':
-            return interpolate(() => save.noSpace, name)()
-        case 'io':
-            return interpolate(() => save.writeFailed, name)()
-    }
-}
+/** What the user reads for a failed file operation, naming the file that failed. */
+export const fileErrorText = (name: string, error: FileError) =>
+    interpolate(() => i18n.value.save[fileErrorKey(error)], error.fileName ?? name)()
 
-/** A refused pick whose bytes could not be put back; Download keeps them. */
-export const showNotPutBack = (dialogTitle: () => string, name: string) =>
+/** A refused pick whose bytes could not be put back, emptied or not; Download keeps them. */
+export const showNotPutBack = (dialogTitle: () => string, name: string, emptied: boolean) =>
     showChoice({
         title: dialogTitle,
-        message: interpolate(() => i18n.value.save.notPutBack, name),
+        message: interpolate(
+            () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+            name,
+        ),
         choices: [
             {
                 value: 'download' as const,
@@ -95,7 +72,7 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.export.unsupportedParts, name),
             choices: [chooseAnother],
         }),
-    notPutBack: (name) => showNotPutBack(title, name),
+    notPutBack: (name, emptied) => showNotPutBack(title, name, emptied),
     notFound: (name) =>
         showChoice({
             title,

@@ -117,12 +117,7 @@ const changedError = (
     return new FileError('conflict', message, found.disk)
 }
 
-/**
- * Writes through a handle. With `expected`, the file is checked first, and again just before
- * `close()`; a change aborts the write, leaving the target untouched. Then the file is read
- * back and its sha256 compared, so `saved` means verified.
- */
-export const writeHandle = async (
+const writeTo = async (
     req: SaveRequest,
     handle: FileSystemFileHandle,
     permission: Promise<PermissionState>,
@@ -178,7 +173,7 @@ export const writeHandle = async (
         // Before close(), writes remain pending: release the stream without committing it.
         await writable?.abort().catch(() => undefined)
         signal?.throwIfAborted()
-        if (isAbort(error)) throw error
+        // An AbortError with no cancel, as a browser's block on close(), is a failure.
         throw fileErrorOf(error)
     }
 
@@ -196,6 +191,24 @@ export const writeHandle = async (
             'readBack',
         )
     return { status: 'saved', target, name: handle.name, disk }
+}
+
+/**
+ * Writes through a handle. With `expected`, the file is checked first, and again just before
+ * `close()`; a change aborts the write, leaving the target untouched. Then the file is read
+ * back and its sha256 compared, so `saved` means verified. A failure names the handle's file.
+ */
+export const writeHandle = async (
+    req: SaveRequest,
+    handle: FileSystemFileHandle,
+    permission: Promise<PermissionState>,
+) => {
+    try {
+        return await writeTo(req, handle, permission)
+    } catch (error) {
+        if (!(error instanceof FileError) || error.fileName !== undefined) throw error
+        throw new FileError(error.code, error.message, error.disk, error.step, handle.name)
+    }
 }
 
 // Downloads.
@@ -294,6 +307,6 @@ export const handOver = async (
     if (expired && ready && !(await ready({ name, size: file.size })))
         return { status: 'cancelled' }
     if (!startDownload(file, name, dataUrl))
-        throw new FileError('io', `${name} could not be downloaded`, undefined, 'download')
+        throw new FileError('io', `${name} could not be downloaded`, undefined, 'download', name)
     return { status: 'download-started', name }
 }

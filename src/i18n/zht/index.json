@@ -1627,7 +1627,8 @@
     "notLocal": "\"{0}\" 尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入 \"{0}\"。",
-    "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。"
+    "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
+    "openedContentGone": "\"{0}\" 已不再包含開啟時的內容。"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",

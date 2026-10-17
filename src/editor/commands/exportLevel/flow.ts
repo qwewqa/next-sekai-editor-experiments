@@ -25,8 +25,8 @@ export type ExportUi = {
     notLevelData: (name: string) => Promise<'chooseAnother' | undefined>
     /** A pick of level data whose import left parts out. */
     unsupportedParts: (name: string) => Promise<'chooseAnother' | undefined>
-    /** A refused pick the picker emptied, whose bytes could not be put back. */
-    notPutBack: (name: string) => Promise<'download' | undefined>
+    /** A refused pick whose bytes could not be put back; `emptied` while it is empty. */
+    notPutBack: (name: string, emptied: boolean) => Promise<'download' | undefined>
     notFound: (name: string) => Promise<'chooseAnother' | undefined>
     denied: (name: string) => Promise<'tryAgain' | 'chooseAnother' | undefined>
     failed: (name: string, error: FileError) => Promise<'chooseAnother' | undefined>
@@ -49,6 +49,8 @@ export type ExportContext = {
     ready?: ReadyPrompt
     /** Aborted when the dialog is cancelled: nothing more is written or shown. */
     signal?: AbortSignal
+    /** Called once a picked file is accepted: its write runs to its end, cancel or not (D5). */
+    committed?: () => void
 }
 
 /** done: written or handed over; cancelled: nothing written; back: the picker was dismissed. */
@@ -62,8 +64,8 @@ const fileError = (error: unknown) => {
     return new FileError('io', error instanceof Error ? error.message : String(error))
 }
 
-const cancelled = (ctx: ExportContext, error?: unknown) =>
-    !!ctx.signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')
+// Only the user's cancel: a browser's own AbortError is a failure.
+const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
 
 const built = (ctx: ExportContext) => {
     let size = 0
@@ -187,7 +189,7 @@ export const exportToTarget = async (
         return 'cancelled'
     } catch (caught) {
         // A cancelled export ends here: no dialog follows the one that closed.
-        if (cancelled(ctx, caught)) return 'cancelled'
+        if (cancelled(ctx)) return 'cancelled'
         error = fileError(caught)
     }
 
@@ -214,20 +216,21 @@ export const exportToTarget = async (
 /** After a refused pick: the refusal, or the bytes to download when they could not go back. */
 const afterRefusal = async (ctx: ExportContext, refused: RefusedPick) => {
     const { name } = refused
-    if (refused.restored) {
+    if (refused.left === 'restored') {
         const ask =
             refused.reason === 'notLevelData'
                 ? () => ctx.ui.notLevelData(name)
                 : () => ctx.ui.unsupportedParts(name)
         return ended(await choose(ctx, ask))
     }
-    if ((await ctx.ui.notPutBack(name)) !== 'download') return 'cancelled'
+    if ((await ctx.ui.notPutBack(name, refused.left === 'empty')) !== 'download') return 'cancelled'
     try {
         const result = await downloadOpened(refused)
         if (result.status === 'download-started')
             ctx.ui.downloadStarted(result.name, refused.bytes.byteLength)
-    } catch (error) {
-        await ctx.ui.failed(name, fileError(error))
+    } catch (caught) {
+        const error = fileError(caught)
+        return ended(await choose(ctx, () => ctx.ui.failed(error.fileName ?? name, error)))
     }
     return 'cancelled'
 }
@@ -236,6 +239,7 @@ const afterRefusal = async (ctx: ExportContext, refused: RefusedPick) => {
 export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome> => {
     const body = built(ctx)
     let refused: RefusedPick | undefined
+    let accepted = false as boolean
     let result: SaveResult
     try {
         result = await platform.saveFile({
@@ -247,14 +251,20 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             signal: ctx.signal,
             picked: async (target) => {
                 refused = await refusePick(target)
-                return !refused
+                if (refused) return false
+                // A cancel before this point is still honoured, with nothing written.
+                accepted = !cancelled(ctx)
+                if (accepted) ctx.committed?.()
+                return true
             },
         })
     } catch (caught) {
-        if (cancelled(ctx, caught)) return 'cancelled'
+        // An accepted pick was emptied (D5): its failure is shown even after a cancel.
+        if (cancelled(ctx) && !accepted) return 'cancelled'
         const error = fileError(caught)
         ctx.leave()
-        return ended(await choose(ctx, () => ctx.ui.failed(ctx.suggestedName, error)))
+        const name = error.fileName ?? ctx.suggestedName
+        return ended(await choose(ctx, () => ctx.ui.failed(name, error)))
     }
 
     switch (result.status) {
@@ -271,7 +281,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
     }
     if (!refused) return 'back'
     // A file left empty is reported even after a cancel.
-    if (cancelled(ctx) && refused.restored) return 'cancelled'
+    if (cancelled(ctx) && refused.left === 'restored') return 'cancelled'
     ctx.leave()
     return afterRefusal(ctx, refused)
 }

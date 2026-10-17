@@ -185,39 +185,57 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         return disk
     }
 
+    // Honours the signal at the same points as the web, in the same order.
     const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
-        // The gesture's first call, as on the web.
-        const permission =
-            req.target?.kind === 'handle'
-                ? (
-                      req.target.handle as FileSystemFileHandle & {
-                          requestPermission: (d: object) => Promise<PermissionState>
-                      }
-                  ).requestPermission({ mode: 'readwrite' })
-                : undefined
-        if (permission && (await permission) !== 'granted')
-            throw new FileError('denied', 'Not allowed')
-        const target = req.target ?? saveTargets.shift() ?? 'download'
-        if (target === 'cancel') return { status: 'cancelled' }
-        req.signal?.throwIfAborted()
+        const { signal } = req
+        if (req.target) {
+            // The gesture's first call, as on the web.
+            const permission =
+                req.target.kind === 'handle'
+                    ? await (
+                          req.target.handle as FileSystemFileHandle & {
+                              requestPermission: (d: object) => Promise<PermissionState>
+                          }
+                      ).requestPermission({ mode: 'readwrite' })
+                    : 'granted'
+            if (permission !== 'granted') throw new FileError('denied', 'Not allowed')
+            signal?.throwIfAborted()
+            const name = targetKey(req.target)
+            const { expected } = req
+            const pinned = expected === undefined ? undefined : await check(name, expected)
+            signal?.throwIfAborted()
+            const file = pinned && fileOf(name)
+            const body = await req.build(
+                pinned && file ? [{ target: req.target, file, disk: pinned }] : [],
+            )
+            if (!(body instanceof Blob)) throw notYet('Write plans', 'Step 6')
+            signal?.throwIfAborted()
+            mock.beforeCommit?.(name)
+            if (expected !== undefined) await check(name, expected)
+            signal?.throwIfAborted()
+            return commit(req.target, name, body)
+        }
 
-        const expected = req.target ? req.expected : undefined
-        const name = target === 'download' ? req.suggestedName : targetKey(target)
-        const pinned = expected === undefined ? undefined : await check(name, expected)
-        const file = pinned && fileOf(name)
-        const body = await req.build(
-            pinned && file && target !== 'download' ? [{ target, file, disk: pinned }] : [],
-        )
+        // Built before the pick, as the picker empties what it returns (D5).
+        const body = await req.build([])
         if (!(body instanceof Blob)) throw notYet('Write plans', 'Step 6')
-        req.signal?.throwIfAborted()
-
+        signal?.throwIfAborted()
+        const target = saveTargets.shift() ?? 'download'
+        if (target === 'cancel') return { status: 'cancelled' }
         if (target === 'download') {
+            signal?.throwIfAborted()
             downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
             return { status: 'download-started', name: req.suggestedName }
         }
-        if (!req.target && req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+        if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+        signal?.throwIfAborted()
+        // Accepted: written to its end, cancel or not.
+        const name = targetKey(target)
         mock.beforeCommit?.(name)
-        if (expected !== undefined) await check(name, expected)
+        return commit(target, name, body)
+    }
+
+    const commit = async (target: FileTarget, name: string, body: Blob): Promise<SaveResult> => {
         calls.push(`write:${name}`)
         writeFile(name, body)
         return { status: 'saved', target, name, disk: await diskOf(name) }

@@ -1627,7 +1627,8 @@
     "notLocal": "\"{0}\" n’est pas encore disponible sur cet appareil.",
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
-    "notPutBack": "\"{0}\" a été vidé, et son contenu n’a pas pu être restauré."
+    "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
+    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert."
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",

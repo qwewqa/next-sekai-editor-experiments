@@ -111,6 +111,8 @@ export const recordingHandle = (
     events: string[],
     options: {
         failWrite?: boolean
+        /** What close() rejects with, in place of committing. */
+        failClose?: Error
         onWrite?: () => Promise<void>
         /** The file's content before any write; none is a missing file. */
         initial?: Blob
@@ -154,6 +156,7 @@ export const recordingHandle = (
                 },
                 close: () => {
                     events.push('close')
+                    if (options.failClose) return Promise.reject(options.failClose)
                     content = new Blob(parts)
                     written = true
                     return Promise.resolve()

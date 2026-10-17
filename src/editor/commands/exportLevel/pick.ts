@@ -1,23 +1,37 @@
-import { diskStateOfBytes, platform, type FileTarget } from '../../../platform'
+import { diskStateOfBytes, FileError, platform, type FileTarget } from '../../../platform'
 import { exportMemory, sameEntry } from './memory'
 
 // A save picker's pick of the opened file where it may not be written over (§1.4.8, D2, D5).
 
-/** A refused pick: why, and whether the file holds the bytes read at open again. */
+/** What a refused pick holds now: the bytes read at open, nothing, or something else. */
+export type PickLeft = 'restored' | 'empty' | 'other'
+
+/** A refused pick: why, and what the file holds now. */
 export type RefusedPick = {
     name: string
     reason: 'notLevelData' | 'unsupportedParts'
-    /** False when the picker emptied it and its bytes could not be put back. */
-    restored: boolean
+    left: PickLeft
     bytes: ArrayBuffer
 }
 
-/** Writes the bytes back while the file is still the empty one the picker left. */
-const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer) => {
+/** What the file holds now; a missing or unreadable file is "something else". */
+const holds = async (target: FileTarget, bytes: ArrayBuffer): Promise<PickLeft> => {
     try {
         const disk = await platform.inspect(target)
-        if (disk === 'missing') return false
-        if (disk.size === 0) {
+        if (disk === 'missing') return 'other'
+        if (disk.size === 0) return bytes.byteLength ? 'empty' : 'restored'
+        const opened = await diskStateOfBytes(bytes, 0)
+        return opened.fingerprint === disk.fingerprint ? 'restored' : 'other'
+    } catch {
+        return 'other'
+    }
+}
+
+/** Writes the bytes back while the file is still the empty one the picker left. */
+const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer): Promise<PickLeft> => {
+    try {
+        const disk = await platform.inspect(target)
+        if (disk !== 'missing' && disk.size === 0 && bytes.byteLength) {
             await platform.saveFile({
                 kind: 'recovery',
                 suggestedName: name,
@@ -25,13 +39,12 @@ const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer) => 
                 expected: disk,
                 build: () => Promise.resolve(new Blob([bytes])),
             })
-            return true
+            return 'restored'
         }
-        // Written since the pick: put back only if it holds the bytes already.
-        return (await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint
     } catch {
-        return false
+        // What the file holds after a failure is checked below.
     }
+    return holds(target, bytes)
 }
 
 /**
@@ -47,15 +60,22 @@ export const refusePick = async (target: FileTarget): Promise<RefusedPick | unde
     return {
         name,
         reason: opened.levelData ? 'unsupportedParts' : 'notLevelData',
-        restored: await putBack(target, name, bytes),
+        left: await putBack(target, name, bytes),
         bytes,
     }
 }
 
 /** Downloads the bytes read at open, for a file that could not be put back. */
-export const downloadOpened = (refused: RefusedPick) =>
-    platform.saveFile({
-        kind: 'recovery',
-        suggestedName: refused.name,
-        build: () => Promise.resolve(new Blob([refused.bytes])),
-    })
+export const downloadOpened = async (refused: RefusedPick) => {
+    try {
+        return await platform.saveFile({
+            kind: 'recovery',
+            suggestedName: refused.name,
+            build: () => Promise.resolve(new Blob([refused.bytes])),
+        })
+    } catch (error) {
+        // Any failure here is the download's, shown as such.
+        const message = error instanceof Error ? error.message : String(error)
+        throw new FileError('io', message, undefined, 'download', refused.name)
+    }
+}

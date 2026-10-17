@@ -20,6 +20,8 @@ const levelData =
         return Promise.resolve(levelBlob(n))
     }
 
+const levelJson = (n: number) => ({ bgmOffset: 0, entities: [{ n }] })
+
 const parsed = async (blob: Blob) =>
     JSON.parse(
         new TextDecoder().decode(ungzip(new Uint8Array(await blob.arrayBuffer()))),
@@ -484,6 +486,93 @@ test('cancelling during a write aborts it without a download', async () => {
         'abort',
     ])
     assert.equal(browser.downloads.length, 0)
+})
+
+test('an accepted pick is written to its end, even when cancelled during the write', async () => {
+    const events: string[] = []
+    const controller = new AbortController()
+    // The picker emptied it (D5); a cancel now would leave it so.
+    const handle = recordingHandle(events, {
+        initial: new Blob([]),
+        onWrite: () => {
+            controller.abort()
+            return Promise.resolve()
+        },
+    })
+    browser.window.showSaveFilePicker = () => Promise.resolve(handle)
+    try {
+        const result = await platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'LevelData',
+            picker: { id: 'levelData', types: [] },
+            signal: controller.signal,
+            build: levelData(events),
+            picked: () => Promise.resolve(true),
+        })
+        assert.equal(result.status, 'saved')
+        assert.deepEqual(events, [
+            'build',
+            'requestPermission',
+            'create',
+            `write:${levelBlob().size}`,
+            'close',
+        ])
+        assert.deepEqual(await parsed(await handle.getFile()), levelJson(0))
+    } finally {
+        delete browser.window.showSaveFilePicker
+    }
+})
+
+test('a cancel during the picker is honoured after the pick is checked, writing nothing', async () => {
+    const events: string[] = []
+    const controller = new AbortController()
+    const handle = recordingHandle(events, { initial: new Blob([]) })
+    browser.window.showSaveFilePicker = () => {
+        controller.abort()
+        return Promise.resolve(handle)
+    }
+    try {
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'LevelData',
+                picker: { id: 'levelData', types: [] },
+                signal: controller.signal,
+                build: levelData(events),
+                // A refused pick the picker emptied is put back here, cancel or not.
+                picked: () => {
+                    events.push('picked')
+                    return Promise.resolve(true)
+                },
+            }),
+            { name: 'AbortError' },
+        )
+        assert.deepEqual(events, ['build', 'picked'])
+    } finally {
+        delete browser.window.showSaveFilePicker
+    }
+})
+
+test('an AbortError with no cancel is a failure naming the file, never a cancel', async () => {
+    const events: string[] = []
+    // As Chromium's close() rejects when a check blocks the write.
+    const handle = recordingHandle(events, {
+        initial: levelBlob(0),
+        failClose: new DOMException('Blocked', 'AbortError'),
+    })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'Other',
+            target: { kind: 'handle', handle },
+            expected: await levelDataDiskState(await handle.getFile()),
+            signal: new AbortController().signal,
+            build: levelData(events, 1),
+        }),
+        (error: unknown) =>
+            error instanceof FileError && error.code === 'io' && error.fileName === 'chart',
+    )
+    assert.deepEqual(await parsed(await handle.getFile()), levelJson(0))
 })
 
 test('write plans wait for Step 6; inspect and read take handles', async () => {

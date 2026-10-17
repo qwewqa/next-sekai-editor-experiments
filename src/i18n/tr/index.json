@@ -1627,7 +1627,8 @@
     "notLocal": "\"{0}\" henüz bu cihazda değil.",
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "\"{0}\" yazılamadı.",
-    "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi."
+    "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
+    "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor."
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",

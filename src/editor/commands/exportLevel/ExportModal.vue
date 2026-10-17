@@ -104,8 +104,10 @@ const preparingText = computed(() =>
 )
 
 // Cancel, × and Escape stop a running export; once a follow-up dialog takes over, it runs on.
+// An accepted pick, which the picker emptied (D5), is written first, then the dialog closes.
 const controller = new AbortController()
 let left = false
+let committed = false
 
 const context = (): ExportContext => ({
     ui: exportUi,
@@ -122,6 +124,9 @@ const context = (): ExportContext => ({
     },
     ready,
     signal: controller.signal,
+    committed: () => {
+        committed = true
+    },
 })
 
 // The flow starts in the press itself, so its first call keeps the gesture.
@@ -159,13 +164,14 @@ const download = () => {
 }
 
 const stop = () => {
-    if (!left) controller.abort()
+    if (!left && !committed) controller.abort()
     answerReady?.(false)
     answerReady = undefined
 }
 
 const cancel = () => {
     stop()
+    if (committed && busy.value) return
     emit('close')
 }
 

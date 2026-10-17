@@ -26,10 +26,10 @@ const ready: ReadyPrompt = async (file) =>
 
 const title = () => i18n.value.commands.save.title
 
-/** A refused pick, shown as Save's failure, or with Download when the file was left empty. */
+/** A refused pick, shown as Save's failure, or with Download when its bytes did not go back. */
 const refusal = async (refused: RefusedPick) => {
     const { name } = refused
-    if (refused.restored)
+    if (refused.left === 'restored')
         throw new Error(
             interpolate(
                 () =>
@@ -39,8 +39,14 @@ const refusal = async (refused: RefusedPick) => {
                 name,
             )(),
         )
-    if ((await showNotPutBack(title, name)) !== 'download') return
-    const result = await downloadOpened(refused)
+    if ((await showNotPutBack(title, name, refused.left === 'empty')) !== 'download') return
+    let result
+    try {
+        result = await downloadOpened(refused)
+    } catch (error) {
+        if (!(error instanceof FileError)) throw error
+        throw new Error(fileErrorText(name, error), { cause: error })
+    }
     if (result.status === 'download-started')
         notify(
             interpolate(
