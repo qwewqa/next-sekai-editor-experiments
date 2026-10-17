@@ -124,8 +124,45 @@ export const backgroundData = (overrides: Record<string, unknown> = {}) => ({
 
 export const backgroundConfiguration = { blur: 4, mask: '#00000040' }
 
+const BAD = utf8('bad!')
+
+/**
+ * A real WAV of 8-bit mono PCM at 8 kHz, `seconds` long. A `bad` one starts its samples with a
+ * mark that `decodeTestAudio` refuses, as a decoder refuses a broken body.
+ */
+export const wav = (seconds: number, bad = false) => {
+    const frames = Math.round(seconds * 8000)
+    const bytes = new Uint8Array(44 + frames).fill(128, 44)
+    const view = new DataView(bytes.buffer)
+    bytes.set(utf8('RIFF'), 0)
+    view.setUint32(4, 36 + frames, true)
+    bytes.set(utf8('WAVEfmt '), 8)
+    view.setUint32(16, 16, true)
+    view.setUint16(20, 1, true)
+    view.setUint16(22, 1, true)
+    view.setUint32(24, 8000, true)
+    view.setUint32(28, 8000, true)
+    view.setUint16(32, 1, true)
+    view.setUint16(34, 8, true)
+    bytes.set(utf8('data'), 36)
+    view.setUint32(40, frames, true)
+    if (bad) bytes.set(BAD, 44)
+    return bytes
+}
+
+/** A decoder for the tests: a WAV from `wav` decodes to its length, at 44.1 kHz. */
+export const decodeTestAudio = async (data: ArrayBuffer): Promise<AudioBuffer> => {
+    const bytes = new Uint8Array(data)
+    const text = new TextDecoder().decode(bytes.subarray(0, 4))
+    if (text !== 'RIFF' || BAD.every((byte, i) => bytes[44 + i] === byte))
+        throw new Error('Unable to decode audio data')
+    const duration = (bytes.length - 44) / 8000
+    const length = Math.round(duration * 44100)
+    return { duration, length, numberOfChannels: 1, sampleRate: 44100 } as AudioBuffer
+}
+
 /** The audio package of an effect: one entry per clip, named as the data names it. */
-export const audioZip = (clips: Record<string, Uint8Array> = { 'perfect.mp3': utf8('perfect') }) =>
+export const audioZip = (clips: Record<string, Uint8Array> = { 'perfect.mp3': wav(1) }) =>
     rawZip(Object.entries(clips).map(([name, data]): RawEntry => ({ name, data, method: 0 })))
 
 export const effectData = (overrides: Record<string, unknown> = {}) => ({

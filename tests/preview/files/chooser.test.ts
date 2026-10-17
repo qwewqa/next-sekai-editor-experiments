@@ -12,6 +12,7 @@ import type { AssetChoice, AssetType } from '../../../src/preview/assets/types'
 import {
     audioZip,
     blobOf,
+    decodeTestAudio,
     effectData,
     gz,
     rawZip,
@@ -19,6 +20,7 @@ import {
     scpEntries,
     scpMulti,
     utf8,
+    wav,
 } from './fixtures'
 
 const en = (
@@ -37,7 +39,7 @@ const setup = () => {
     const deps: ChooserDeps = {
         store,
         maxTextureSide: () => 4096,
-        decodeAudio: async () => ({ duration: 1 }) as AudioBuffer,
+        decodeAudio: decodeTestAudio,
         apply: (choices) => applied.push(choices),
         describe: importMessage,
     }
@@ -180,10 +182,6 @@ test('a ticked item that fails stores nothing, and the chooser says why and stay
     const { store, applied, deps } = setup()
     const chooser = createAssetChooser('skin', {
         ...deps,
-        decodeAudio: async (data) => {
-            if (new TextDecoder().decode(data).startsWith('bad')) throw new Error('no decode')
-            return { duration: 1 } as AudioBuffer
-        },
     })
     const bytes = scpMulti([
         ['skin', named('neon', 'Neon')],
@@ -193,7 +191,7 @@ test('a ticked item that fails stores nothing, and the chooser says why and stay
                 ...named('neon', 'Neon'),
                 resources: {
                     data: gz(effectData()),
-                    audio: audioZip({ 'perfect.mp3': utf8('bad data') }),
+                    audio: audioZip({ 'perfect.mp3': wav(1, true) }),
                 },
             },
         ],

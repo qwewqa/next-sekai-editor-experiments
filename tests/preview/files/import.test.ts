@@ -13,6 +13,7 @@ import {
     audioZip,
     backgroundData,
     blobOf,
+    decodeTestAudio,
     effectData,
     gz,
     jpegHeader,
@@ -24,6 +25,7 @@ import {
     sha1,
     skinData,
     utf8,
+    wav,
     type ScpOptions,
 } from './fixtures'
 
@@ -38,13 +40,7 @@ const importMessage = (error: AssetImportError) =>
 // Rejection at import (Part 2, 2.5.5, 2.11): each way a package can be wrong is refused with a
 // plain message that names the problem.
 
-/** A clip's "audio" is text: `bad` does not decode, `seconds:N` decodes to N seconds. */
-const decodeAudio = async (data: ArrayBuffer) => {
-    const text = new TextDecoder().decode(data)
-    if (text.startsWith('bad')) throw new Error('Unable to decode audio data')
-    const seconds = /^seconds:(\d+)/.exec(text)?.[1]
-    return { duration: seconds ? Number(seconds) : 1 } as AudioBuffer
-}
+const decodeAudio = decodeTestAudio
 
 const context = (overrides: Partial<ImportContext> = {}): ImportContext => ({
     maxTextureSide: 4096,
@@ -517,7 +513,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
         valid('effect', {
             resources: {
                 data: gz(effectData({ clips: [{ name: 'Sekai Tick', filename: 'tick.mp3' }] })),
-                audio: audioZip({ 'tick.mp3': utf8('tick') }),
+                audio: audioZip({ 'tick.mp3': wav(1) }),
             },
         }),
         'noPerfect',
@@ -526,7 +522,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
     // The clip is there but will not decode.
     await expectRefused(
         'effect',
-        valid('effect', { resources: { audio: audioZip({ 'perfect.mp3': utf8('bad data') }) } }),
+        valid('effect', { resources: { audio: audioZip({ 'perfect.mp3': wav(1, true) }) } }),
         'noPerfect',
     )
     // A clip the data names but the audio package lacks.
@@ -551,8 +547,8 @@ test('sound effects longer than 120 seconds in all are refused', async () => {
                     }),
                 ),
                 audio: audioZip({
-                    'perfect.mp3': utf8('seconds:70'),
-                    'tick.mp3': utf8('seconds:70'),
+                    'perfect.mp3': wav(70),
+                    'tick.mp3': wav(70),
                 }),
             },
         }),

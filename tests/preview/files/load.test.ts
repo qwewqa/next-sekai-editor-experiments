@@ -19,6 +19,7 @@ import {
 import {
     audioZip,
     backgroundData,
+    decodeTestAudio,
     effectData,
     gz,
     particleData,
@@ -28,6 +29,7 @@ import {
     scpEntries,
     skinData,
     utf8,
+    wav,
 } from './fixtures'
 
 // Fallback at load (Part 2, 2.4.2, 2.5.5): a stored package is checked again under the same
@@ -48,11 +50,7 @@ Object.defineProperty(globalThis, 'createImageBitmap', {
     value: async () => bitmap(),
 })
 
-const decodeAudio = async (data: ArrayBuffer) => {
-    const text = new TextDecoder().decode(data)
-    if (text.startsWith('bad')) throw new Error('Unable to decode audio data')
-    return { duration: 1 } as AudioBuffer
-}
+const decodeAudio = decodeTestAudio
 const context = (signal = new AbortController().signal): LoadContext => ({ signal, decodeAudio })
 
 const defaults: AssetDefaults = {
@@ -240,14 +238,14 @@ const broken: [string, AssetType, Uint8Array][] = [
         scp('effect', {
             resources: {
                 data: gz(effectData({ clips: [{ name: 'Sekai Tick', filename: 'tick.mp3' }] })),
-                audio: audioZip({ 'tick.mp3': utf8('tick') }),
+                audio: audioZip({ 'tick.mp3': wav(1) }),
             },
         }),
     ],
     [
         'a clip that will not decode',
         'effect',
-        scp('effect', { resources: { audio: audioZip({ 'perfect.mp3': utf8('bad data') }) } }),
+        scp('effect', { resources: { audio: audioZip({ 'perfect.mp3': wav(1, true) }) } }),
     ],
     [
         'a missing resource',
