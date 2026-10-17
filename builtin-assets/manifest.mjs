@@ -39,37 +39,119 @@ const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
 const activeBand = (color) => band(mix(color, '#ffffff', 0.2), 0.8, mix(color, '#ffffff', 0.6))
 const glow = (color) =>
     image('slot-glow', { color, light: mix(color, '#ffffff', 0.5) }, { stretch: true })
-const kite = (color, width) => image('kite', { color }, { width })
+const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
 
 // The dark base of the judgment band.
 const judgmentShade = '#0b0c16'
 
-// The engine draws an arrow in a square half the note's width; narrow notes get theirs enlarged,
-// about the middle of its base, so the arrow stays readable: 1.6 times at width 1 down to 1.1 at 6.
-const arrowScale = (width) => 1 + 0.6 / width
-const arrowTransform = (k) => {
-    const near = (1 + k) / 2
-    const far = (1 - k) / 2
-    const base = (axis) => ({
-        [`${axis}1`]: { [`${axis}1`]: near, [`${axis}4`]: far },
-        [`${axis}2`]: { [`${axis}2`]: k, [`${axis}1`]: far, [`${axis}4`]: far },
-        [`${axis}3`]: { [`${axis}3`]: k, [`${axis}1`]: far, [`${axis}4`]: far },
-        [`${axis}4`]: { [`${axis}4`]: near, [`${axis}1`]: far },
-    })
-    return { ...base('x'), ...base('y') }
+/**
+ * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
+ * quad (0 to 1 from its bottom-left corner), so the art lands where the base skin's does on screen.
+ */
+export function box(u0, u1, v0, v1) {
+    const corner = (u, v) => ({ 1: 1 - u - v, 4: u, 2: v })
+    const corners = [corner(u0, v0), corner(u0, v1), corner(u1, v1), corner(u1, v0)]
+    const out = {}
+    for (const axis of ['x', 'y'])
+        corners.forEach((weights, i) => {
+            out[`${axis}${i + 1}`] = Object.fromEntries(
+                Object.entries(weights)
+                    .filter(([, weight]) => Math.abs(weight) > 1e-9)
+                    .map(([k, weight]) => [`${axis}${k}`, Math.round(weight * 1e6) / 1e6]),
+            )
+        })
+    return out
+}
+
+// The box for art that fills its frame but for a margin m on each side.
+const fit = (u0, u1, v0, v1, m) => {
+    const w = (u1 - u0) / (1 - 2 * m)
+    const h = (v1 - v0) / (1 - 2 * m)
+    return box(u0 - m * w, u0 - m * w + w, v0 - m * h, v0 - m * h + h)
+}
+
+// Where the base skin's flick arrows land in the engine's arrow square, by direction and width
+// (1 to 6): [u0, u1, v0, v1]. Narrow notes get large, tall arrows; wide notes flat ones.
+const arrowBoxes = {
+    up: [
+        [-0.14, 1.14, 0.25, 1.61],
+        [-0.09, 1.09, 0.17, 1.21],
+        [-0.07, 1.07, 0.11, 0.94],
+        [-0.05, 1.05, 0.09, 0.79],
+        [-0.04, 1.04, 0.07, 0.7],
+        [-0.03, 1.03, 0.06, 0.64],
+    ],
+    upLeft: [
+        [-0.32, 1.32, 0.27, 1.66],
+        [-0.24, 1.21, 0.2, 1.27],
+        [-0.19, 1.15, 0.15, 1.03],
+        [-0.17, 1.12, 0.11, 0.89],
+        [-0.15, 1.1, 0.08, 0.81],
+        [-0.13, 1.09, 0.07, 0.75],
+    ],
+    down: [
+        [-0.14, 1.14, 0.18, 1.55],
+        [-0.09, 1.09, 0.11, 1.15],
+        [-0.07, 1.07, 0.07, 0.9],
+        [-0.05, 1.05, 0.05, 0.76],
+        [-0.04, 1.04, 0.04, 0.67],
+        [-0.03, 1.03, 0.04, 0.62],
+    ],
+    downLeft: [
+        [-0.32, 1.32, 0.16, 1.55],
+        [-0.24, 1.21, 0.11, 1.18],
+        [-0.19, 1.15, 0.07, 0.96],
+        [-0.17, 1.12, 0.05, 0.84],
+        [-0.15, 1.1, 0.04, 0.77],
+        [-0.13, 1.09, 0.04, 0.72],
+    ],
+}
+const arrowKeys = {
+    'arrow-up': 'up',
+    'arrow-up-left': 'upLeft',
+    'arrow-down': 'down',
+    'arrow-down-left': 'downLeft',
 }
 const arrow = (template, accent, width) =>
-    image(template, { accent }, { transform: arrowTransform(arrowScale(width)) })
+    image(
+        template,
+        { accent },
+        { transform: fit(...arrowBoxes[arrowKeys[template]][width - 1], 0.03) },
+    )
+
+// Note bodies sit 6% over and under their quad and their ends reach 0.14 of a slice past the note,
+// as the base skin's do; slim traces keep their own height in the art.
+const bodyBox = {
+    Left: box(-0.14, 1, -0.06, 1.06),
+    Middle: box(0, 1, -0.06, 1.06),
+    Right: box(0, 1.14, -0.06, 1.06),
+}
+const slimBox = { Left: box(-0.14, 1, 0, 1), Middle: undefined, Right: box(0, 1.14, 0, 1) }
+const basicBox = box(-0.02, 1.02, -0.06, 1.06)
+// Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
+const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
 
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
 const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
-    image(`note-body-${part.toLowerCase()}`, { outer, inner, accent }, { stretch: true })
+    image(
+        `note-body-${part.toLowerCase()}`,
+        { outer, inner, accent },
+        { stretch: true, transform: bodyBox[part] },
+    )
 const slimImage = (part, accent) =>
-    image(`note-slim-${part.toLowerCase()}`, { accent }, { stretch: true })
+    image(
+        `note-slim-${part.toLowerCase()}`,
+        { accent },
+        { stretch: true, transform: slimBox[part] },
+    )
 const damageImage = (part, color, edge) =>
-    image(`note-damage-${part.toLowerCase()}`, { color, edge }, { stretch: true })
+    image(
+        `note-damage-${part.toLowerCase()}`,
+        { color, edge },
+        { stretch: true, transform: slimBox[part] },
+    )
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -223,10 +305,24 @@ export function skinSprites() {
             const name = `Sekai ${family} Note Basic`
             if (kind === 'body') {
                 const [outer, inner, accent] = bodyColors[key]
-                add(name, image('note-body-basic', { outer, inner, accent }))
+                add(
+                    name,
+                    image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+                )
             } else if (kind === 'damage')
-                add(name, image('note-damage-basic', { color: damage.color, edge: damage.edge }))
-            else add(name, image('note-slim-basic', { accent: traceColors[key] }))
+                add(
+                    name,
+                    image(
+                        'note-damage-basic',
+                        { color: damage.color, edge: damage.edge },
+                        { transform: basicBox },
+                    ),
+                )
+            else
+                add(
+                    name,
+                    image('note-slim-basic', { accent: traceColors[key] }, { transform: basicBox }),
+                )
         }
     })
 
@@ -333,11 +429,17 @@ export function skinSprites() {
             ['YELLOW', 'critical'],
         ]) {
             const [outer, inner, accent] = bodyColors[key]
-            add(`#NOTE_HEAD_${color}`, image('note-body-basic', { outer, inner, accent }))
+            add(
+                `#NOTE_HEAD_${color}`,
+                image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+            )
         }
         {
             const [outer, inner, accent] = styleColors('Purple')
-            add('#NOTE_HEAD_PURPLE', image('note-body-basic', { outer, inner, accent }))
+            add(
+                '#NOTE_HEAD_PURPLE',
+                image('note-body-basic', { outer, inner, accent }, { transform: basicBox }),
+            )
         }
         for (const key of ['green', 'red', 'yellow'])
             add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
@@ -393,17 +495,15 @@ export function skinSprites() {
 
 /** The particle sprites, in the order the effects index them (sprite in particles.mjs). */
 export const particleSprites = [
-    ['ring', 'particle-ring'],
-    ['circle', 'particle-circle'],
-    ['square', 'particle-square'],
-    ['diamond', 'particle-diamond'],
-    ['chevron', 'particle-chevron'],
-    ['bar', 'particle-bar'],
-    ['streak', 'particle-streak'],
-    ['flash', 'particle-flash'],
     ['glow', 'particle-glow'],
-    ['spark', 'particle-spark'],
+    ['frame', 'particle-frame'],
     ['star', 'particle-star'],
+    ['spark', 'particle-spark'],
+    ['comet', 'particle-comet'],
+    ['bar', 'particle-bar'],
+    ['flash', 'particle-flash'],
+    ['mote', 'particle-circle'],
+    ['diamond', 'particle-diamond'],
 ].map(([name, template]) => ({ name, spec: image(template, {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */

@@ -118,6 +118,6 @@ test('the particle data parses as gzip JSON with identity transforms', () => {
         sprites: unknown[]
         effects: { transform: Record<string, Record<string, number>> }[]
     }>(item.resource('data'))
-    assert.equal(data.sprites.length, 11)
+    assert.equal(data.sprites.length, 9)
     for (const effect of data.effects) assert.deepEqual(effect.transform.x1, { x1: 1 })
 })
