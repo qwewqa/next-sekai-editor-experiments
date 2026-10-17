@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="var(--view)">
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="var(--ax)" y1="var(--ay)" x2="var(--bx)" y2="var(--by)">
+        <stop offset="0" stop-color="var(--tip)"/>
+        <stop offset="0.7" stop-color="var(--accent)"/>
+    </linearGradient>
+    <g fill="none" stroke="var(--accent)" stroke-linejoin="round">
+        <polygon points="var(--glow)" stroke-width="var(--halo)" stroke-opacity="0.18"/>
+        <polygon points="var(--glow)" stroke-width="var(--blur)" stroke-opacity="0.3"/>
+    </g>
+    <polygon points="var(--outer)" fill="var(--rim)" stroke="var(--rim)" stroke-width="var(--round)" stroke-linejoin="round"/>
+    <polygon points="var(--inner)" fill="url(#g)" stroke="url(#g)" stroke-width="var(--round)" stroke-linejoin="round"/>
+</svg>
