@@ -199,18 +199,16 @@ test('WebGL2 note rendering works without native Canvas2D shape drawing', async 
     const bounds = await page.locator('canvas.editor-chart').boundingBox()
     if (!bounds) throw new Error('Missing editor canvas')
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 30)
+    const version = (selector: string) =>
+        page.locator(selector).evaluate((canvas: HTMLCanvasElement) => {
+            const gl = canvas.getContext('webgl2')
+            return gl?.getParameter(gl.VERSION) as string | undefined
+        })
+    // Below 800px wide the Elevation Editor replaces the chart, so read the chart’s first.
+    expect(await version('canvas.editor-chart')).toMatch(/^WebGL 2\.0/)
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-canvas')).toBeVisible()
-    const versions = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLCanvasElement>('.editor-chart, .elevation-canvas')].map(
-            (canvas) => {
-                const gl = canvas.getContext('webgl2')
-                return gl?.getParameter(gl.VERSION) as string | undefined
-            },
-        ),
-    )
-    expect(versions).toHaveLength(2)
-    for (const version of versions) expect(version).toMatch(/^WebGL 2\.0/)
+    expect(await version('.elevation-canvas')).toMatch(/^WebGL 2\.0/)
 })
 
 test('lane limit commands clamp note placement in the production editor', async ({
