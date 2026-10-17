@@ -14,25 +14,26 @@ const upBoxes = [
 ]
 // The base's down arrows sit a little lower.
 const downDrop = [0.07, 0.06, 0.04, 0.04, 0.03, 0.03]
-// The base's diagonal arrows: their horizontal span and the lower edge.
-const diagonalSpan = [
-    [-0.32, 1.32, 0.27],
-    [-0.24, 1.21, 0.2],
-    [-0.19, 1.15, 0.15],
-    [-0.17, 1.12, 0.11],
-    [-0.15, 1.1, 0.08],
-    [-0.13, 1.09, 0.07],
+// The base's up-left arrows, [u0, u1, v0, v1]; its down-left ones sit a little lower.
+const diagonalBoxes = [
+    [-0.32, 1.32, 0.27, 1.66],
+    [-0.24, 1.21, 0.2, 1.27],
+    [-0.19, 1.15, 0.15, 1.03],
+    [-0.17, 1.12, 0.11, 0.89],
+    [-0.15, 1.1, 0.08, 0.81],
+    [-0.13, 1.09, 0.07, 0.75],
 ]
-const diagonalFill = 0.94
 const diagonalDrop = [0.11, 0.09, 0.08, 0.06, 0.04, 0.04]
 
 // The arms' thickness as a share of the height: a notched "house" on narrow notes (the notch
 // about 36% of the height), a chevron with arms at least 45% of it on wide ones. Area = W x S, the
 // base's inked area.
 const armShare = [0.64, 0.62, 0.58, 0.52, 0.48, 0.46]
-// Diagonals turn the arrowhead towards the flick (the engine moves them 1 lane across per 2 up),
-// less on wide notes so they stay flat like the base's.
-const turn = [26.6, 24, 22, 20, 18, 17].map((degrees) => (degrees * Math.PI) / 180)
+// Diagonals turn an arrowhead towards the flick, less on wide notes, and its size is solved so the
+// turned shape fills the base's box: the same proportions on screen. Turned shapes are flatter, so
+// their arms take more of the height to ink as much.
+const turn = [22, 18, 14, 12, 10, 10].map((degrees) => (degrees * Math.PI) / 180)
+const diagonalShare = [0.66, 0.62, 0.58, 0.55, 0.5, 0.47]
 // Texture pixels per unit of the square: narrow arrows draw small, wide ones large.
 const density = [60, 84, 104, 120, 136, 150]
 
@@ -91,40 +92,41 @@ const bounds = (points) => {
  * arrow square, with the point its tip is at and the middle of its base.
  */
 export function arrowOutline(direction, width) {
-    const [u0, u1, v0, v1] = upBoxes[width - 1]
-    const [w, h] = [u1 - u0, v1 - v0]
-    let points = upOutline(w, h, armShare[width - 1] * h)
-    let tip = [0, h]
-    let tail = [0, 0]
     const diagonal = direction === 'upLeft' || direction === 'downLeft'
-    if (diagonal) {
-        // Turned about its middle, then scaled to 94% of the base's span (turned, it inks about as
-        // much as the base's), centred in it.
-        const middle = [0, h / 2]
-        const moved = (list) =>
+    const [u0, u1, v0, v1] = (diagonal ? diagonalBoxes : upBoxes)[width - 1]
+    const angle = diagonal ? turn[width - 1] : 0
+    const share = (diagonal ? diagonalShare : armShare)[width - 1]
+    const shape = (w, h) => {
+        const turned = (list) =>
             turnBy(
-                list.map(([x, y]) => [x - middle[0], y - middle[1]]),
-                turn[width - 1],
+                list.map(([x, y]) => [x, y - h / 2]),
+                angle,
             )
-        ;[points, [tip, tail]] = [moved(points), moved([tip, tail])]
-        const [x0, x1] = bounds(points)
-        const [s0, s1] = diagonalSpan[width - 1]
-        const scale = (diagonalFill * (s1 - s0)) / (x1 - x0)
-        const scaled = (list) => list.map(([x, y]) => [x * scale, y * scale])
-        ;[points, [tip, tail]] = [scaled(points), scaled([tip, tail])]
+        return [
+            turned(upOutline(w, h, share * h)),
+            ...turned([
+                [0, h],
+                [0, 0],
+            ]),
+        ]
     }
+    // The W and H whose turned outline has the box's bounds (a few rounds converge).
+    let [w, h] = [u1 - u0, v1 - v0]
+    for (let round = 0; round < (diagonal ? 30 : 0); round++) {
+        const [x0, x1, y0, y1] = bounds(shape(w, h)[0])
+        ;[w, h] = [(w * (u1 - u0)) / (x1 - x0), (h * (v1 - v0)) / (y1 - y0)]
+    }
+    let [points, tip, tail] = shape(w, h)
     if (direction === 'down' || direction === 'downLeft') {
         const flip = ([x, y]) => [x, -y]
         ;[points, tip, tail] = [points.map(flip), flip(tip), flip(tail)]
     }
-    // Place: the base's left edge (or span) and its lower edge.
+    // Place on the base's box, down arrows lower.
     const [x0, , y0] = bounds(points)
-    const [s0, s1] = diagonalSpan[width - 1]
-    const left = diagonal ? s0 + ((1 - diagonalFill) / 2) * (s1 - s0) : u0
-    const bottom = diagonal
-        ? diagonalSpan[width - 1][2] - (direction === 'downLeft' ? diagonalDrop[width - 1] : 0)
-        : v0 - (direction === 'down' ? downDrop[width - 1] : 0)
-    const place = ([x, y]) => [x - x0 + left, y - y0 + bottom]
+    const drop =
+        direction === 'down' ? downDrop : direction === 'downLeft' ? diagonalDrop : undefined
+    const bottom = v0 - (drop ? drop[width - 1] : 0)
+    const place = ([x, y]) => [x - x0 + u0, y - y0 + bottom]
     return { points: points.map(place), tip: place(tip), tail: place(tail) }
 }
 

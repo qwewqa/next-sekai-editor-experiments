@@ -28,6 +28,9 @@ const targets = {
     'Sekai Flick Arrow Up 6': [-0.03, 1.03, 0.06, 0.64],
     'Sekai Flick Arrow Down 1': [-0.14, 1.14, 0.18, 1.55],
     'Sekai Flick Arrow Down 3': [-0.07, 1.07, 0.07, 0.9],
+    'Sekai Flick Arrow Up Left 1': [-0.32, 1.32, 0.27, 1.66],
+    'Sekai Flick Arrow Up Left 6': [-0.13, 1.09, 0.07, 0.75],
+    'Sekai Flick Arrow Down Left 2': [-0.24, 1.21, 0.11, 1.18],
     'Sekai Critical Flick Arrow Up 1 Neutral': [-0.14, 1.14, 0.25, 1.61],
 }
 const tolerance = 0.06

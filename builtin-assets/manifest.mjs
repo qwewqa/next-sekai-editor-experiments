@@ -205,7 +205,8 @@ export function skinSprites() {
     })
 
     group('Stage, Sekai', () => {
-        add('Sekai Lane Background', solid(stage.lane, 0.8, 4, 64))
+        // Lane effects draw under the lane, so it lets them through, like the base's (0.40).
+        add('Sekai Lane Background', solid(stage.lane, 0.55, 4, 64))
         add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
         add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
         for (const name of ['Lane Background', 'Lane Divider', 'Stage Border'])
@@ -349,9 +350,10 @@ export function skinSprites() {
     })
 
     group('Connectors', () => {
+        // The critical band in the gold of critical notes, a clear yellow like the base's.
         for (const [family, color] of [
             ['Normal', activeColors.normal],
-            ['Critical', activeColors.critical],
+            ['Critical', bodyColors.critical[2]],
         ]) {
             add(`Sekai ${family} Active Slide Connection Normal`, band(color))
             add(`Sekai ${family} Active Slide Connection Active`, activeBand(color))
@@ -471,6 +473,10 @@ export const particleSprites = [
     ['flash', 'particle-flash'],
     ['mote', 'particle-circle'],
     ['diamond', 'particle-diamond'],
+    ['thin', 'particle-frame-thin'],
+    ['line', 'particle-frame-line'],
+    ['beam', 'particle-beam'],
+    ['streak', 'particle-streak'],
 ].map(([name, template]) => ({ name, spec: image(template, {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */
