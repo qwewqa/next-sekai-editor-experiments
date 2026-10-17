@@ -34,7 +34,7 @@ for (const chart of charts) {
                 editSelectedEditableEntities({ size: note.size + (i % 2 ? -0.25 : 0.25) })
                 history.replaceState({ ...history.state.value, selectedEntities: [] })
                 // The hide's write: the whole state, as a trigger makes it.
-                window.nseFlushTest!.journal.writer.write()
+                window.nseFlushTest!.journal.writer!.write()
             }, i)
         // Today's auto save write of the same state, for comparison (§1.9.3).
         const autoSave = await page.evaluate(async () => {

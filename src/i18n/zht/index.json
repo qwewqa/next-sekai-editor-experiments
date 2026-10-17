@@ -792,8 +792,6 @@
       },
       "elevationSideBySide": "高度編輯器並排顯示",
       "elevationConnectorArrows": "高度編輯器連接線箭頭",
-      "autoSave": "自動儲存",
-      "autoSaveDelay": "自動儲存週期（秒）",
       "waveformVisualization": {
         "title": "波形視覺化",
         "off": "關閉",
@@ -1142,26 +1140,6 @@
   },
   "history": {
     "initialize": "初始化",
-    "autoSave": {
-      "title": "自動儲存",
-      "importing": "正在還原譜面…",
-      "failed": "自動儲存無法儲存您的最新變更。瀏覽器儲存空間可能已滿或無法使用。關閉此分頁前，請將譜面儲存為檔案。",
-      "paused": "此分頁的自動儲存已暫停。編輯器會在下次開啟時嘗試還原上次工作階段中未儲存的譜面。",
-      "unreadable": {
-        "message": "無法還原上次工作階段中未儲存的譜面。可能需要較新版本的編輯器，或儲存的資料已損毀。",
-        "setAside": "新的變更不會覆寫這份譜面。編輯器會在下次開啟時再次嘗試還原。",
-        "keptInPlace": "此分頁的自動儲存已暫停，捨棄上次工作階段儲存的譜面後才會恢復。",
-        "waiting": "編輯器還儲存著一份更早的譜面。此分頁的自動儲存已暫停，捨棄上次工作階段儲存的譜面後才會恢復。",
-        "earlier": "仍無法還原先前工作階段中未儲存的譜面。",
-        "earlierHint": "編輯器會在下次開啟時再次嘗試還原。",
-        "download": "下載",
-        "downloaded": "已開始下載。",
-        "discard": "捨棄",
-        "restorable": "先前工作階段中未儲存的譜面現在可以還原了。還原會取代目前譜面及其未儲存的變更。",
-        "restore": "還原",
-        "restored": "已還原先前工作階段中未儲存的譜面"
-      }
-    },
     "changes": {
       "title": "更改",
       "message": "譜面的變更可能會遺失。是否繼續？"
@@ -1793,6 +1771,8 @@
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
     "recovered": "已還原最後的變更",
-    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。"
+    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。",
+    "continued": "已繼續",
+    "migrated": "已從自動儲存還原"
   }
 }

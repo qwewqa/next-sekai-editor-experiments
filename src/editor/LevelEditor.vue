@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch, watchEffect, type Ref } from 'vue'
-import { useAutoSave } from '../history/autoSave'
 import { isDynamicStages } from '../history/dynamicStages.ts'
 import { folderPathParts, templateParts, type NamePart } from '../chart/folders'
 import { groupFolders, groups } from '../history/groups'
@@ -30,8 +29,6 @@ import ResizeHandle from './workspace/ResizeHandle.vue'
 useFocusControl()
 useKeyboardControl()
 useControlLifecycle()
-
-useAutoSave()
 
 const container: Ref<HTMLDivElement | null> = useTemplateRef('container')
 const host = useTemplateRef<HTMLDivElement>('host')

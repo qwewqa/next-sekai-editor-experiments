@@ -145,7 +145,6 @@ const writers: {
             ],
         },
     },
-    { file: 'src/history/autoSave/index.ts', imports: { live: ['filename'] } },
     // Playback keeps the live BGM's audio, on the displayed chart.
     { file: 'src/player.ts', imports: { bgm: ['playbackBgm'] }, readsDisplay: true },
     { file: 'src/editor/commands/bgm/BgmModal.vue', imports: { index: ['liveState'] } },
@@ -173,10 +172,4 @@ test('the live computeds read only liveState', () => {
     const source = readFileSync(new URL('src/history/live.ts', root), 'utf8')
     assert.match(source, /import \{ liveState \} from '\.\/stack'/)
     assert.doesNotMatch(source, /\bstate\.value\b/)
-})
-
-test('auto save serializes liveState', () => {
-    const imports = historyImports('src/history/autoSave/index.ts')
-    assert.ok(imports.get('index')?.includes('liveState'))
-    assert.ok(!imports.get('index')?.includes('state'))
 })

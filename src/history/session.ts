@@ -10,6 +10,11 @@ export type SessionDescriptor = {
     readonly docId: string
     readonly name?: string
     readonly sourceName?: string
+    /**
+     * A separate copy (§1.3.1): the file it was copied from (`bound`), or the session's name, for
+     * the status label's "Separate copy of …".
+     */
+    readonly copyOf?: { readonly name: string; readonly bound: boolean }
 }
 
 /** A descriptor with fresh ids for whatever `init` leaves out; text passes the well-formed helper. */
@@ -20,6 +25,7 @@ export const createSessionDescriptor = (
     docId: init.docId ?? crypto.randomUUID(),
     ...(init.name === undefined ? {} : { name: toWellFormed(init.name) }),
     ...(init.sourceName === undefined ? {} : { sourceName: toWellFormed(init.sourceName) }),
+    ...(init.copyOf === undefined ? {} : { copyOf: init.copyOf }),
 })
 
 export const session = shallowRef<SessionDescriptor>(createSessionDescriptor())

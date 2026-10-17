@@ -110,6 +110,13 @@ export type FlushBatch = {
         sourceName?: string
         /** A fork's old chain: its record is copied by exclusion (§1.6.11.2). */
         forkOf?: string
+        /** A fork's name, "<name> (2)" (§1.3.1), set on the record it makes. */
+        name?: string
+        /**
+         * Chain fields this session set before its first write (a rename, Export's target):
+         * written with the record, `null` removing a field.
+         */
+        set?: Record<string, unknown>
     }
     appVersion: string
     /** The new chunks' canonical bytes, one after another; `ends` gives each one's end. */
@@ -359,8 +366,12 @@ export const writeFlush = async (
         throw new FlushBatchError('The session belongs to another chain')
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
+    // A continuation's first write moves the head from its parent, only if it's still the parent
+    // (§1.3.1's compare-and-set); another tab's continuation that moved it first makes this a fork.
+    const continuing =
+        !session && batch.session.parent !== undefined && chain?.head === batch.session.parent.id
     // The head check (r12-arch-web L4): another tab continued the chain meanwhile.
-    if (chain && chain.head !== batch.session.id)
+    if (chain && chain.head !== batch.session.id && !continuing)
         return {
             kind: 'notHead',
             chainId,
@@ -632,7 +643,7 @@ export const writeFlush = async (
     }
     const old = isRow(forkSource) ? forkSource : undefined
     const chainValue = chain
-        ? updated(chain, chainFields)
+        ? updated(chain, { ...chainFields, ...(continuing ? { head: batch.session.id } : {}) })
         : {
               ...forkRecord(old),
               chainId,
@@ -643,8 +654,13 @@ export const writeFlush = async (
                   ? {}
                   : { sourceName: batch.chain.sourceName }),
               ...(hasContentAtStart ? { hasContent: true } : {}),
+              ...(batch.chain.name === undefined ? {} : { name: batch.chain.name }),
               ...chainFields,
           }
+    // Fields the session set before its first write: written field by field, `null` removing.
+    for (const [key, value] of Object.entries(batch.chain.set ?? {}))
+        if (value === null) Reflect.deleteProperty(chainValue, key)
+        else chainValue[key] = value
     await tx.put('chains', chainValue)
     count('chains', chainValue, undefined, !chain)
 

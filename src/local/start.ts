@@ -1,19 +1,27 @@
 import { shallowRef } from 'vue'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
+import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
-import { appVersion } from '../platform'
+import { appVersion, platform } from '../platform'
 import { PRODUCT_NAME } from '../product'
-import { storageGet } from '../storage'
+import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
-import { applyJournalsAtStart } from './journal/startup'
-import { startStoring, watchLifecycle } from './storing'
+import { recoveredLabel } from './journal/label'
+import { addLoadEvent } from './startup/events'
+import { claimTab, openAtStart, type Claim } from './startup/open'
+import { failed, isSafeMode, opened } from './startup/state'
+import { runRecovery, type RecoveryContext } from './startup/steps'
+import { watchMarker } from './startup/tab'
+import { flusher, startStoring, tabClient, watchLifecycle } from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
+import { transfer } from './worker/rpc'
 import storageWorkerUrl from './worker/storage.worker?worker&url'
 
-// Starts the storage worker after first paint (Part 1 §1.6.5) and says at load what the
-// handshake found (§1.4.3): stored work behind other tabs, or a database newer than this build.
-// Until Step 4, startup is today's: the auto save restores, and storing runs alongside it.
+// Starts the storage worker after first paint (Part 1 §1.6.5), runs the recovery order (Part 0
+// §0.9.8: the canary, the journals, the old auto save) and opens the session this load continues
+// (§1.4.2), while the startup gate refuses input. It also says at load what the handshake found
+// (§1.4.3): stored work behind other tabs, or a database newer than this build.
 
 /** The worker's test flag, seeded like the other test keys (§1.11's test notes). */
 export const STORAGE_TEST_KEY = 'nse.test.storage'
@@ -85,6 +93,62 @@ const sayAtLoad = (status: StorageStatus) => {
     else if (status.mode === 'readOnly') addLoadNotice(olderVersion)
 }
 
+declare global {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        /** What the recovery order found at this load, for specs, under a storage test flag. */
+        nseStartupTest?: { recovery: RecoveryContext; claim: Claim['kind']; opened: boolean }
+        /** What journal replay did at this load, for specs, under a storage test flag. */
+        nseJournalTest?: { outcomes: RecoveryContext['outcomes']; ms: number }
+    }
+}
+
+/** A call's timeout: the usual 10 s and a second more per MB, as a flush's. */
+const timeoutFor = (bytes: number) => 10_000 + bytes / 1000
+
+/** The recovery order's context over this tab's worker and localStorage. */
+const recoveryContext = (
+    worker: StorageWorker,
+    status: StorageStatus,
+    safe: boolean,
+    claim: Claim,
+): RecoveryContext => ({
+    worker: {
+        applyJournal: (batch) =>
+            worker.call('applyJournal', transfer(batch, [batch.text.buffer]), {
+                timeoutMs: timeoutFor(batch.text.byteLength),
+            }),
+        keepRecovered: (item) =>
+            worker.call('keepRecovered', item, { timeoutMs: timeoutFor(item.text.length) }),
+        readMetaIds: () => worker.call('readMetaIds'),
+        migrateAutoSave: (batch) =>
+            worker.call('migrateAutoSave', transfer(batch, [batch.text.buffer]), {
+                timeoutMs: timeoutFor(batch.text.byteLength),
+            }),
+    },
+    status,
+    locks: platform.locks,
+    journal: platform.journal,
+    storage: () => {
+        try {
+            return localStorage
+        } catch {
+            return undefined
+        }
+    },
+    prefix: storageKey(''),
+    appVersion: appVersion().appVersion,
+    safe,
+    labels: {
+        recovered: (dropped) => recoveredLabel(i18n.value, dropped),
+        migrated: i18n.value.entry.migrated,
+    },
+    ...(claim.kind === 'reload' ? { own: claim.record.sessionId } : {}),
+    outcomes: [],
+    keptForLocalData: [],
+    events: addLoadEvent,
+})
+
 /** Whether this context can store at all: insecure origins have no locks or crypto.subtle. */
 const canStore = () =>
     typeof window !== 'undefined' &&
@@ -107,6 +171,9 @@ export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
     if (!canStore()) flags.noStorage = true
+    // Safe mode opens the database read-only and writes nothing but settings (§1.4.2).
+    const safe = isSafeMode()
+    if (safe) flags.readOnly = true
     const deviceId = storageGet('deviceId', undefined)
     const { rpcTimeoutMs, holdReplayMs, ...workerFlags } = flags
     const dev = import.meta.env.DEV
@@ -136,23 +203,63 @@ export const startStorage = async () => {
         if (document.visibilityState === 'visible') resume()
     })
 
+    // Reload or Duplicate Tab, by the session lock, before the recovery order (§1.4.2).
+    const claiming = claimTab(platform.locks).catch((): Claim => ({ kind: 'none' }))
     let status: StorageStatus
+    let answered = true
     try {
         status = await worker.start()
         sayAtLoad(status)
     } catch {
         // The worker never answered: the client paused storing.
         status = worker.status ?? { mode: 'stored', reason: 'failed' }
+        answered = false
     }
-    // Until Step 4's recovery order, pending journals are applied into the database here. Storing
-    // starts first, so a hide meanwhile writes this tab's journal; its flushes wait for replay.
-    const replay = () => applyJournalsAtStart(worker, test)
-    const replayed =
-        status.mode !== 'stored'
-            ? Promise.resolve([])
-            : holdReplayMs
-              ? new Promise((resolve) => setTimeout(resolve, holdReplayMs)).then(replay)
-              : replay()
-    startStoring(worker, status, test, replayed)
-    await replayed
+    const claim = await claiming
+    if (!safe) watchMarker(() => currentSession.value.sessionId)
+    const recovery = recoveryContext(worker, status, safe, claim)
+    // Storing starts first, so a hide meanwhile writes this tab's journal; its flushes wait for
+    // the recovery order, which runs before any session opens (Part 0 §0.9.8).
+    const recover = async () => {
+        if (!answered) return
+        await runRecovery(recovery)
+        if (test)
+            window.nseJournalTest = { outcomes: recovery.outcomes, ms: recovery.journalMs ?? 0 }
+    }
+    const recovered = holdReplayMs
+        ? new Promise((resolve) => setTimeout(resolve, holdReplayMs)).then(recover)
+        : recover()
+    startStoring(worker, status, test, recovered, { safe })
+    let open = false
+    try {
+        await recovered
+        if (answered && tabClient)
+            open = await openAtStart(
+                {
+                    worker,
+                    status,
+                    locks: platform.locks,
+                    client: tabClient,
+                    safe,
+                    ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
+                    ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
+                    flusher: () => flusher,
+                    labels: {
+                        continued: () => i18n.value.entry.continued,
+                        recoveredHead: () => i18n.value.entry.recovered,
+                    },
+                    events: addLoadEvent,
+                },
+                claim,
+            )
+        else if (claim.kind === 'reload') claim.lock.release()
+    } catch (error) {
+        // A journal, a row or the migration triggered a bug: the gate shows it (§1.4.2).
+        console.error('The stored work could not be opened', error)
+        failed(error)
+        return
+    } finally {
+        if (test) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
+    }
+    opened()
 }

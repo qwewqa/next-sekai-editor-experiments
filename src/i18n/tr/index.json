@@ -792,8 +792,6 @@
       },
       "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
       "elevationConnectorArrows": "Yükseklik Editöründe Bağlayıcı Okları",
-      "autoSave": "Otomatik Kaydet",
-      "autoSaveDelay": "Otomatik Kaydetme Gecikmesi (sn)",
       "waveformVisualization": {
         "title": "Dalga Formu Görselleştirmesi",
         "off": "Kapalı",
@@ -1142,26 +1140,6 @@
   },
   "history": {
     "initialize": "Başlat",
-    "autoSave": {
-      "title": "Otomatik Kaydet",
-      "importing": "Harita geri yükleniyor…",
-      "failed": "Otomatik kaydetme son değişikliklerinizi saklayamadı. Tarayıcı depolaması dolu veya kullanılamıyor olabilir. Bu sekmeyi kapatmadan önce haritanızı dosyaya kaydedin.",
-      "paused": "Bu sekmede otomatik kaydetme duraklatıldı. Editör bir sonraki açılışta son oturumunuzdaki kaydedilmemiş haritayı geri yüklemeyi deneyecek.",
-      "unreadable": {
-        "message": "Son oturumunuzdaki kaydedilmemiş harita geri yüklenemedi. Editörün daha yeni bir sürümü gerekebilir veya kayıtlı veriler bozulmuş olabilir.",
-        "setAside": "Yeni değişiklikleriniz bu haritanın üzerine yazmayacak. Editör bir sonraki açılışta tekrar deneyecek.",
-        "keptInPlace": "Son oturumunuzun kopyasını silene kadar bu sekmede otomatik kaydetme duraklatılır.",
-        "waiting": "Editörde daha eski bir harita da kayıtlı. Son oturumunuzun kopyasını silene kadar bu sekmede otomatik kaydetme duraklatılır.",
-        "earlier": "Önceki bir oturumdaki kaydedilmemiş harita hâlâ geri yüklenemiyor.",
-        "earlierHint": "Editör bir sonraki açılışta tekrar deneyecek.",
-        "download": "İndir",
-        "downloaded": "İndirme başlatıldı.",
-        "discard": "Sil",
-        "restorable": "Önceki bir oturumdaki kaydedilmemiş harita artık geri yüklenebilir. Geri yüklemek, mevcut haritanın ve kaydedilmemiş değişikliklerinin yerini alır.",
-        "restore": "Geri Yükle",
-        "restored": "Önceki bir oturumdaki kaydedilmemiş harita geri yüklendi"
-      }
-    },
     "changes": {
       "title": "Değişiklikler",
       "message": "Haritadaki değişiklikler kaybolabilir. Devam etmek istiyor musunuz?"
@@ -1793,6 +1771,8 @@
     "saved": "{0} kaydedildi",
     "downloaded": "{0} indirildi",
     "recovered": "Son değişiklik kurtarıldı",
-    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı."
+    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı.",
+    "continued": "Devam edildi",
+    "migrated": "Otomatik kayıttan kurtarıldı"
   }
 }

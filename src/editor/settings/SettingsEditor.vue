@@ -60,16 +60,6 @@ watch(
             :label="i18n.settings.editor.elevationConnectorArrows"
         />
 
-        <ToggleField v-model="settings.autoSave" :label="i18n.settings.editor.autoSave" />
-
-        <NumberField
-            v-model="settings.autoSaveDelay"
-            :label="i18n.settings.editor.autoSaveDelay"
-            :min="0"
-            :max="5"
-            step="any"
-        />
-
         <SelectField
             v-model="settings.beatDisplay"
             :label="i18n.settings.editor.beatDisplay.title"

@@ -28,7 +28,7 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
 import { changeBgm } from '../bgm/index.ts'
-import { exportMemory } from '../exportLevel/memory'
+import { exportMemory, rememberExport } from '../exportLevel/memory'
 import { installDropGuard } from './dropGuard'
 import OpenIcon from './OpenIcon.vue'
 
@@ -163,6 +163,8 @@ export const open: Command = {
                         bytes: type === 'levelData' && !partial ? undefined : buffer,
                     }
 
+                // The target and the partial flag are the new chain's (§1.4.8).
+                rememberExport()
                 notify(() => i18n.value.commands.open[openedMessages[type]])
             },
         })

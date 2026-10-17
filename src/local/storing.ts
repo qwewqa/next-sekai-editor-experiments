@@ -1,25 +1,44 @@
+import { setExportPersister } from '../editor/commands/exportLevel/memory'
 import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
+import { filename } from '../history/live'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
+import type { State } from '../state'
 import { isDurablyStoredWith } from './durable'
-import { Flusher, flushTimeoutMs, heldMediaOf, mediaTimeoutMs, type FlushReport } from './flush'
+import {
+    Flusher,
+    flushTimeoutMs,
+    heldMediaOf,
+    mediaTimeoutMs,
+    type FlushReport,
+    type FlushSession,
+} from './flush'
 import { toHex } from './hash'
+import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
+import { forkNameOf, namePartsOf } from './names'
 import { inspectSnapshot } from './records/inspect'
 import { stateFromRecords } from './records/records'
 import { decodeSnapshot } from './records/snapshot'
 import { holdSessionLock, TabClient } from './sessions'
+import {
+    legacyFromJournal,
+    removeLegacyRecovery,
+    writeLegacyRecovery,
+    writesLegacySlot,
+} from './startup/legacy'
+import { writeTabRecord } from './startup/tab'
 import type { StorageWorker } from './worker/client'
 import type { StorageStatus } from './worker/core'
 import { transfer } from './worker/rpc'
 
-// Storing alongside today's auto save (Part 1 §1.11.3: until Step 4 startup is today's, every load
-// starts a new session and a new chain, and stored sessions aren't shown). Every change to the
-// undo stack becomes an entry; the flush stores them about 1 s after the last change, at once and
-// strictly on hide, and right after a media pick.
+// Storing (Part 1 §1.6.4): every change to the undo stack becomes an entry; the flush stores them
+// about 1 s after the last change, at once and strictly on hide, and right after a media pick.
+// The journal covers what isn't committed strictly; while storage is unavailable it's written on
+// a slow idle timer too. For the first releases the legacy recovery slot is kept as well (§1.8).
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -31,7 +50,7 @@ declare global {
             flusher: Flusher
             reports: FlushReport[]
             errors: unknown[]
-            journal: { writer: JournalWriter; writes: JournalWrite[] }
+            journal: { writer: JournalWriter | undefined; writes: JournalWrite[] }
             /** Set by a spec: flushes from now on never reach the worker. */
             stall?: boolean
             isDurablyStored: () => boolean
@@ -42,8 +61,11 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
-/** This tab's journal writer (§1.6.4 #7), once storing started. */
+/** This tab's journal writer (§1.6.4 #7), once storing started; none in safe mode. */
 export let journalWriter: JournalWriter | undefined
+
+/** This tab's client id for `query()` (§1.6.5), once storing started. */
+export let tabClient: TabClient | undefined
 
 let storingWorker: StorageWorker | undefined
 
@@ -88,15 +110,43 @@ const whileStalled = async () => {
     while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
+/** About every 10 s while storage is unavailable and there are changes (§1.6.7). */
+export const IDLE_JOURNAL_MS = 10_000
+/** The legacy slot at idle: at most every 30–60 s (§1.8). */
+export const LEGACY_IDLE_MS = 45_000
+
+const whenIdle = (fn: () => void) => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 5000 })
+    else setTimeout(fn, 0)
+}
+
+/** The fields that differ from a chain record's, `undefined` meaning absent. */
+const changedFields = (
+    chain: Record<string, unknown> | undefined,
+    fields: Record<string, unknown>,
+) => {
+    const changed: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(fields))
+        if (value === undefined ? chain !== undefined && key in chain : chain?.[key] !== value)
+            changed[key] = value
+    return changed
+}
+
+export type StoringOptions = {
+    /** Safe mode: nothing but settings goes to localStorage, so no journal or legacy slot. */
+    safe?: boolean
+}
+
 /**
- * Starts storing: entries from now on, and the journal on hide. `replayed` is the startup replay
- * of journals, which every flush waits for (§1.6.4 #7: before any session opens).
+ * Starts storing: entries from now on, and the journal on hide. `replayed` is the recovery order
+ * (Part 0 §0.9.8), which every flush waits for: journals are replayed before any session opens.
  */
 export const startStoring = (
     worker: StorageWorker,
     status: StorageStatus,
     test: boolean,
     replayed: Promise<unknown> = Promise.resolve(),
+    { safe = false }: StoringOptions = {},
 ) => {
     const afterReplay = replayed.catch(() => undefined)
     const reports: FlushReport[] = []
@@ -104,6 +154,7 @@ export const startStoring = (
     const locks = platform.locks
     // This tab's client id for query() (§1.6.5).
     const client = new TabClient(locks)
+    tabClient = client
     void client.lock.granted.catch(() => undefined)
 
     if (status.mode === 'readOnly') {
@@ -142,13 +193,27 @@ export const startStoring = (
         },
         onFork: (fork, from) => {
             journalWriter?.forked(from, fork)
-            if (currentSession.value.sessionId === from.id)
-                currentSession.value = {
-                    ...currentSession.value,
-                    sessionId: fork.id,
-                    docId: fork.docId,
-                }
+            if (currentSession.value.sessionId !== from.id) return
+            // A separate copy of the file, or of the session, without the binding (§1.3.1).
+            const file = from.chain?.file as { name?: unknown } | undefined
+            const copyOf =
+                typeof file?.name === 'string'
+                    ? { name: file.name, bound: true }
+                    : (currentSession.value.copyOf ?? {
+                          name: currentSession.value.name ?? '',
+                          bound: false,
+                      })
+            currentSession.value = {
+                ...currentSession.value,
+                sessionId: fork.id,
+                docId: fork.docId,
+                ...(fork.forkName === undefined ? {} : { name: fork.forkName }),
+                copyOf,
+            }
+            writeTabRecord({ sessionId: fork.id, start: 'continuation', parent: from.id, copyOf })
         },
+        forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
+        writeChain: (request) => worker.call('writeChainFields', request),
         onFlushed: (report) => {
             if (test) reports.push(report)
         },
@@ -160,24 +225,69 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
-    journalWriter = new JournalWriter({
-        store: platform.journal,
-        flusher: () => flusher,
-        state: () => liveState.value,
-        pausedForSpace: () => worker.status?.reason === 'full',
-        strictCommits:
-            typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
-        appVersion: appVersion().appVersion,
-        onWrite: (write) => {
-            if (test) writes.push(write)
-        },
+    const version = appVersion().appVersion
+    const legacy = !safe && writesLegacySlot(version)
+    if (!safe && !legacy) removeLegacyRecovery()
+    let legacyState: State | undefined
+    journalWriter = safe
+        ? undefined
+        : new JournalWriter({
+              store: platform.journal,
+              flusher: () => flusher,
+              state: () => liveState.value,
+              pausedForSpace: () => worker.status?.reason === 'full',
+              strictCommits:
+                  typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
+              appVersion: version,
+              onWrite: (write) => {
+                  if (test) writes.push(write)
+              },
+              // The legacy slot from the hide journal's level data (§1.8).
+              onJournal: (journal, state) => {
+                  if (!legacy) return
+                  writeLegacyRecovery(JSON.stringify(legacyFromJournal(journal, filename.value)))
+                  legacyState = state
+              },
+          })
+
+    // Otherwise the legacy slot at idle, at most every 30–60 s, when the live state changed.
+    if (legacy)
+        setInterval(() => {
+            const state = liveState.value
+            if (state === legacyState || !instance.session?.edited) return
+            whenIdle(() => {
+                if (liveState.value !== state) return
+                legacyState = state
+                writeLegacyRecovery(
+                    JSON.stringify(legacyFromJournal(journalContent(state), filename.value)),
+                )
+            })
+        }, LEGACY_IDLE_MS)
+
+    // While storage is unavailable the journal is also written about every 10 s (§1.6.7).
+    if (status.mode === 'memory' && journalWriter)
+        setInterval(() => {
+            whenIdle(() => journalWriter?.write())
+        }, IDLE_JOURNAL_MS)
+
+    // Export's target and name are the open chain's fields (§1.4.8).
+    setExportPersister((fields) => {
+        const changed = changedFields(instance.session?.chain, fields)
+        if (Object.keys(changed).length) void instance.setChainFields(changed)
     })
 
+    let firstReset = true
     onHistoryAction(
         (action) => {
             if (action.kind === 'reset') {
                 const descriptor = currentSession.value
                 const lock = holdSessionLock(locks, descriptor.sessionId)
+                // The page's own blank start reloads by the new-visit rule; a New as blank (§1.4.2).
+                writeTabRecord({
+                    sessionId: descriptor.sessionId,
+                    start: action.origin === 'import' ? 'stored' : firstReset ? 'blank' : 'new',
+                })
+                firstReset = false
                 instance.begin({
                     id: descriptor.sessionId,
                     docId: descriptor.docId,

@@ -13,12 +13,12 @@ export const CHAIN_OWN_FIELDS: readonly string[] = [
     'appVersion',
 ]
 
-/** Fields a fork drops: the binding, the Export target, the export name and `edited`. */
-const FORK_DROPS: readonly string[] = ['file', 'exportTarget', 'exportName', 'edited']
+/** Fields a fork drops: the binding, the Export target, the export name, `edited` and `replaced`. */
+const FORK_DROPS: readonly string[] = ['file', 'exportTarget', 'exportName', 'edited', 'replaced']
 
 /**
  * A fork's chain record (§1.6.11.2): the old record copied by exclusion, so fields a newer build
- * added carry, without the binding, the Export target, the export name or `edited`.
+ * added carry, without the binding, the Export target, the export name, `edited` or `replaced`.
  */
 export const forkRecord = (old: Row | undefined): Row => {
     const record: Row = {}

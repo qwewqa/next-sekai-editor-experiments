@@ -254,10 +254,6 @@ const settingsProperties = {
         Type.Union(['system', ...themes].map((value) => Type.Literal(value))),
     ),
 
-    autoSave: Type.Boolean({ default: true }),
-
-    autoSaveDelay: number(1, 0, 5),
-
     waveform: Type.Union([Type.Literal('volume'), Type.Literal('fft'), Type.Literal('off')]),
 
     maxScrollX: Type.Number({ minimum: 0 }),
@@ -709,9 +705,12 @@ export const settings = Object.defineProperties(
     [K in keyof typeof settingsProperties]: Type.StaticDecode<(typeof settingsProperties)[K]>
 }
 
-// The former zone width, a percentage of the pane.
+// The former zone width, a percentage of the pane; and the auto save settings, retired with the
+// auto save (Part 1 §1.8): a new visit continues the most recent session instead.
 try {
     storageRemove('touchQuickScrollZone')
+    storageRemove('autoSave')
+    storageRemove('autoSaveDelay')
 } catch {
     // Storage is unavailable.
 }

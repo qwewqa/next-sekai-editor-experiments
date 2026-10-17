@@ -792,8 +792,6 @@
       },
       "elevationSideBySide": "Éditeur d’élévation côte à côte",
       "elevationConnectorArrows": "Flèches des connecteurs dans l’éditeur d’élévation",
-      "autoSave": "Sauvegarde automatique",
-      "autoSaveDelay": "Délai de la sauvegarde automatique (s)",
       "waveformVisualization": {
         "title": "Visualisation de la forme d’onde",
         "off": "Désactivée",
@@ -1142,26 +1140,6 @@
   },
   "history": {
     "initialize": "Initialiser",
-    "autoSave": {
-      "title": "Sauvegarde automatique",
-      "importing": "Restauration de la partition…",
-      "failed": "La sauvegarde automatique n’a pas pu enregistrer vos dernières modifications. Le stockage du navigateur est peut-être plein ou indisponible. Sauvegardez votre partition dans un fichier avant de fermer cet onglet.",
-      "paused": "La sauvegarde automatique est suspendue dans cet onglet. L’éditeur essaiera de restaurer la partition non sauvegardée de votre dernière session à la prochaine ouverture.",
-      "unreadable": {
-        "message": "La partition non sauvegardée de votre dernière session n’a pas pu être restaurée. Elle nécessite peut-être une version plus récente de l’éditeur, ou ses données sauvegardées sont peut-être endommagées.",
-        "setAside": "Vos nouvelles modifications ne remplaceront pas cette partition. L’éditeur réessaiera à la prochaine ouverture.",
-        "keptInPlace": "La sauvegarde automatique est suspendue dans cet onglet jusqu’à ce que vous supprimiez la copie de votre dernière session.",
-        "waiting": "Une partition plus ancienne est aussi conservée dans l’éditeur. La sauvegarde automatique est suspendue dans cet onglet jusqu’à ce que vous supprimiez la copie de votre dernière session.",
-        "earlier": "L’éditeur ne peut toujours pas restaurer une partition non sauvegardée d’une session précédente.",
-        "earlierHint": "L’éditeur réessaiera à la prochaine ouverture.",
-        "download": "Télécharger",
-        "downloaded": "Téléchargement lancé.",
-        "discard": "Supprimer",
-        "restorable": "Une partition non sauvegardée d’une session précédente peut maintenant être restaurée. La restaurer remplacera la partition actuelle, y compris ses modifications non sauvegardées.",
-        "restore": "Restaurer",
-        "restored": "Partition non sauvegardée d’une session précédente restaurée"
-      }
-    },
     "changes": {
       "title": "Modifications",
       "message": "Les modifications apportées au niveau peuvent être perdues. Continuer ?"
@@ -1793,6 +1771,8 @@
     "saved": "{0} sauvegardé",
     "downloaded": "{0} téléchargé",
     "recovered": "Dernière modification récupérée",
-    "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation n’a pas été conservée.|Dernière modification récupérée. {0} étapes d’annulation n’ont pas été conservées."
+    "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation n’a pas été conservée.|Dernière modification récupérée. {0} étapes d’annulation n’ont pas été conservées.",
+    "continued": "Reprise",
+    "migrated": "Récupéré de la sauvegarde automatique"
   }
 }

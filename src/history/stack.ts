@@ -294,13 +294,16 @@ export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new
     emitHistoryAction({ kind: 'reset', ...entry, origin })
 }
 
-/** A slot of a stored stack: its root and label, and whether it was changed since the file event. */
-export type RestoredSlot = { snapshot: Uint8Array; label: string; isDirty: boolean }
+/**
+ * A slot of a stored stack: its root and label, and whether it was changed since the file event.
+ * A slot given loaded with no root (a journal's head while storage is unavailable) stays loaded.
+ */
+export type RestoredSlot = { snapshot?: Uint8Array; label: string; isDirty: boolean }
 
 /**
  * Replaces the stack with a stored one, its slots lazy and the head given loaded (§1.3.8: a
- * reload, a new visit, an open, Restore Session). Step 4 adds the entry each of those appends;
- * nothing is emitted here.
+ * reload, a new visit, an open, Restore Session). Nothing is emitted: the storage side starts
+ * the session itself, with the entry each of those appends.
  */
 export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: State) => {
     const slot = slots[at]
@@ -314,7 +317,7 @@ export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: 
         ...slots.map(({ snapshot, label, isDirty }) => ({
             isDirty,
             name: () => label,
-            snapshot: snapshot.slice(),
+            ...(snapshot ? { snapshot: snapshot.slice() } : {}),
         })),
     )
     index.value = at

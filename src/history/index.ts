@@ -7,13 +7,12 @@ import { i18n } from '../i18n'
 import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import { platform } from '../platform'
-import { createState, type StateExtras } from '../state'
+import { createState, type State, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
-import { resetAutoSave } from './autoSave/index.ts'
 import { setFileEventMessages } from './markers'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
-import { isDirty, resetStates } from './stack'
+import { isDirty, resetStates, restoreStates, type RestoredSlot } from './stack'
 
 export { markExported, markSaved } from './markers'
 export {
@@ -112,11 +111,30 @@ export const resetState = (
     )
     setLevelDataHandle(undefined)
 
-    resetAutoSave()
     cleanupWaveform()
 
     switchToolTo('select')
 
+    notifyResetState()
+}
+
+/**
+ * Opens a stored session's stack (§1.3.8: a reload, a new visit, Reopen): its slots lazy, the
+ * head given loaded, in the session the descriptor names. Nothing is emitted: the storage side
+ * starts the session itself.
+ */
+export const openStoredState = (
+    descriptor: SessionDescriptor,
+    slots: readonly RestoredSlot[],
+    at: number,
+    head: State,
+) => {
+    if (!isElevationSideBySide.value) closeElevationEditor()
+    session.value = descriptor
+    restoreStates(slots, at, head)
+    setLevelDataHandle(undefined)
+    cleanupWaveform()
+    switchToolTo('select')
     notifyResetState()
 }
 

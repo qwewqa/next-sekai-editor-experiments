@@ -1,0 +1,223 @@
+import { hashKey, readEpoch, readMeta } from '../db'
+import type { KnownAt } from '../flushWrite'
+import { KeyRange, type KvTx } from '../kv/types'
+import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
+import {
+    blockOf,
+    blockSlot,
+    replay,
+    storedWindow,
+    windowBlocks,
+    type ReplayEntry,
+    type ReplaySlot,
+    type ReplayedStack,
+    type StackBlockRow,
+    type StackWindow,
+} from '../timeline'
+
+// Reading a stored session to open it (Part 1 §1.4.2, §1.6.4 #6): its row, its chain record and
+// its stored stack, read in one transaction in the storage worker. "Restoring or continuing reads
+// one row and its blocks"; a session without a stored stack has it rebuilt by replay (§1.3.9).
+
+type Row = Record<string, unknown>
+
+const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
+
+/** A stored stack's window, its slots `base … base + length − 1`, and each stored block's span. */
+export type StackRead = {
+    window: StackWindow
+    slots: ReplaySlot[]
+    /** Blocks read back whole, with the slots each holds; empty when the stack was rebuilt. */
+    blocks: { block: number; first: number; end: number }[]
+}
+
+export type SessionRead =
+    | {
+          kind: 'open'
+          session: Row
+          chain: Row
+          /** Whether it's its chain's latest session (§1.3.1). */
+          isHead: boolean
+          stack: StackRead
+          /** The head slot's root: the state on screen. */
+          head: Uint8Array
+          at: KnownAt
+      }
+    /** No row: a session never stored. */
+    | { kind: 'missing' }
+    /** Removed (a tombstone), or its chain is being deleted. */
+    | { kind: 'deleted' }
+    /** It, or its chain, needs a newer version: never continued (§1.6.11.8). */
+    | { kind: 'later'; why: string }
+    /** Its rows can't be read as a session: never continued. */
+    | { kind: 'damaged'; why: string }
+
+/** Parent links followed at most, rebuilding a stack by replay. */
+const MAX_DEPTH = 256
+
+const entriesOf = async (tx: KvTx, sessionId: string, upto = Infinity) =>
+    (await tx.getAll(
+        'entries',
+        KeyRange.bound([sessionId, -Infinity], [sessionId, upto]),
+    )) as (ReplayEntry & Row)[]
+
+/** A session's stack by replay of its entries over its parent's at `uptoSeq` (§1.3.9). */
+const rebuild = async (
+    tx: KvTx,
+    sessionId: string,
+    upto = Infinity,
+    depth = 0,
+): Promise<ReplayedStack> => {
+    if (depth > MAX_DEPTH) throw new Error('Too many parent links')
+    const session = await tx.get('sessions', sessionId)
+    if (!isRow(session)) throw new Error(`No session ${sessionId}`)
+    const parent = session.parent as { id?: unknown; uptoSeq?: unknown } | undefined
+    const inherited =
+        typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number'
+            ? await rebuild(tx, parent.id, parent.uptoSeq, depth + 1)
+            : undefined
+    return replay(await entriesOf(tx, sessionId, upto), inherited)
+}
+
+/** The stored window's slots and blocks, or undefined when a block lacks one. */
+const readStored = async (
+    tx: KvTx,
+    sessionId: string,
+    window: StackWindow,
+): Promise<StackRead | undefined> => {
+    const { first, last } = windowBlocks(window)
+    const rows = new Map<number, StackBlockRow | undefined>()
+    for (let block = first; block <= last; block++)
+        rows.set(block, (await tx.get('stackBlocks', [sessionId, block])) as StackBlockRow)
+    const slots: ReplaySlot[] = []
+    for (let slot = window.base; slot < window.base + window.length; slot++) {
+        const found = blockSlot(rows.get(blockOf(slot)), slot)
+        if (!found) return
+        slots.push(found)
+    }
+    const blocks: StackRead['blocks'] = []
+    for (const [block, row] of rows)
+        if (row) blocks.push({ block, first: row.first, end: row.first + row.labels.length })
+    return { window, slots, blocks }
+}
+
+/** A window of replay's stack, as a stored one would be: rewritten whole by the next flush. */
+const fromReplay = (stack: ReplayedStack): StackRead => {
+    const window = storedWindow(stack.slots.length, stack.index)
+    return {
+        window,
+        slots: stack.slots.slice(window.base, window.base + window.length),
+        blocks: [],
+    }
+}
+
+const isWindow = (value: unknown): value is StackWindow =>
+    isRow(value) &&
+    Number.isSafeInteger(value.base) &&
+    Number.isSafeInteger(value.length) &&
+    Number.isSafeInteger(value.index) &&
+    (value.length as number) > 0 &&
+    (value.base as number) <= (value.index as number) &&
+    (value.index as number) < (value.base as number) + (value.length as number)
+
+/** Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload. */
+export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<SessionRead> => {
+    if ((await tx.getKey('tombstones', sessionId)) !== undefined) return { kind: 'deleted' }
+    const session = await tx.get('sessions', sessionId)
+    if (!isRow(session)) return { kind: 'missing' }
+    if (typeof session.chainId !== 'string') return { kind: 'damaged', why: 'no chainId' }
+    const chain = await tx.get('chains', session.chainId)
+    if (!isRow(chain)) return { kind: 'damaged', why: 'no chain record' }
+    if (chain.deleting !== undefined) return { kind: 'deleted' }
+    // One session this build can't read makes the chain "Needs a newer version" (§1.6.11.8).
+    const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
+    if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
+        return { kind: 'later', why: 'its chain needs a newer version' }
+    const entries = await entriesOf(tx, sessionId)
+    if (entries.some((row) => !isKnownEntryKind(row.kind)))
+        return { kind: 'later', why: 'its session needs a newer version' }
+
+    let stack: StackRead | undefined
+    if (isWindow(session.stack)) stack = await readStored(tx, sessionId, session.stack)
+    if (!stack)
+        try {
+            stack = fromReplay(await rebuild(tx, sessionId))
+        } catch (error) {
+            return { kind: 'damaged', why: `its stack: ${String(error)}` }
+        }
+    const head = stack.slots[stack.window.index - stack.window.base]
+    if (!head) return { kind: 'damaged', why: 'no head slot' }
+    if ((await tx.getKey('nodes', hashKey(head.snapshot))) === undefined)
+        return { kind: 'damaged', why: 'its head is not stored' }
+    return {
+        kind: 'open',
+        session,
+        chain,
+        isHead: chain.head === sessionId,
+        stack,
+        head: head.snapshot,
+        at: { db: (await readMeta(tx, 'dbInstanceId')) ?? '', epoch: await readEpoch(tx) },
+    }
+}
+
+/**
+ * The most recent session (§1.4.2): the head of the chain record with the newest `updatedAt`,
+ * skipping chains being deleted and chains this build can't read or open.
+ */
+export const readNewestSession = async (
+    tx: KvTx,
+): Promise<(SessionRead & { kind: 'open' }) | undefined> => {
+    const chains = await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })
+    for (const { value } of chains) {
+        if (!isRow(value) || value.deleting !== undefined || typeof value.head !== 'string')
+            continue
+        const read = await readSessionForOpen(tx, value.head)
+        if (read.kind === 'open') return read
+    }
+    return
+}
+
+/** What a chain-field write did (§1.3.1). */
+export type ChainFieldsResult =
+    { kind: 'stored'; chain: Row } | { kind: 'notHead'; lastSeq?: number } | { kind: 'missing' }
+
+/**
+ * Writes chain fields field by field, only from the chain's head session (§1.3.1): `null`
+ * removes a field, and every other field of the record stays as it is.
+ */
+export const writeChainFields = async (
+    tx: KvTx,
+    {
+        chainId,
+        sessionId,
+        fields,
+        appVersion,
+    }: { chainId: string; sessionId: string; fields: Row; appVersion: string },
+): Promise<ChainFieldsResult> => {
+    const chain = await tx.get('chains', chainId)
+    if (!isRow(chain)) return { kind: 'missing' }
+    if (chain.head !== sessionId) {
+        const session = await tx.get('sessions', sessionId)
+        const lastSeq = isRow(session) ? session.lastSeq : undefined
+        return { kind: 'notHead', ...(typeof lastSeq === 'number' ? { lastSeq } : {}) }
+    }
+    const record: Row = { ...chain, appVersion }
+    for (const [key, value] of Object.entries(fields))
+        if (value === null || value === undefined) Reflect.deleteProperty(record, key)
+        else record[key] = value
+    await tx.put('chains', record)
+    return { kind: 'stored', chain: record }
+}
+
+/** Every held session's chain file name and handle, for the bound-elsewhere check (§1.3.2). */
+export const readBindings = async (tx: KvTx, sessionIds: readonly string[]) => {
+    const found: { sessionId: string; chainId: string; file: Row }[] = []
+    for (const sessionId of sessionIds) {
+        const session = await tx.get('sessions', sessionId)
+        if (!isRow(session) || typeof session.chainId !== 'string') continue
+        const chain = await tx.get('chains', session.chainId)
+        if (isRow(chain) && isRow(chain.file))
+            found.push({ sessionId, chainId: session.chainId, file: chain.file })
+    }
+    return found
+}

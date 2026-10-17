@@ -1,8 +1,10 @@
 import { onResetState } from '../../../history/resetHooks'
 import type { DiskState } from '../../../platform'
 
-// The stub `exportTargetMemory` (Part 1 §1.11.1, Step 1c): Export's remembered target and names,
-// held in this tab's memory until Step 4 adds the chain fields. A new chart clears it.
+// Export's remembered target and names (Part 1 §1.4.8): this tab's view of the chain's
+// `exportTarget`, `exportName` and the partial import's flag, stored on the chain record
+// (§1.3.1) whenever they change, and read back when a stored session opens. A new chart clears
+// it; a fork drops the target and the name (Step 1c's stub `exportTargetMemory`, retired).
 
 export type ExportTarget = {
     /** The file's name, as shown: "LevelData". */
@@ -48,6 +50,61 @@ export const clearExportMemory = () => {
 }
 
 onResetState(clearExportMemory)
+
+/** The chain fields this memory is stored as (§1.6.11.2), `undefined` removing one. */
+export type ExportChainFields = {
+    exportTarget: { name: string; handle: FileSystemFileHandle; disk: DiskState; opened?: true }
+    exportName: string
+    /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
+    partial: true
+}
+
+let persist: ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => void) | undefined
+
+/** Where the memory is stored: the open session's chain record, set once storing starts. */
+export const setExportPersister = (fn: typeof persist) => {
+    persist = fn
+}
+
+/** Stores the memory on the chain record, as it is now. */
+export const rememberExport = () => {
+    const { target, exportName, partial } = exportMemory
+    persist?.({
+        exportTarget: target
+            ? {
+                  name: target.name,
+                  handle: target.handle,
+                  disk: target.disk,
+                  ...(target.exported ? {} : { opened: true }),
+              }
+            : undefined,
+        exportName,
+        partial: partial ? true : undefined,
+    })
+}
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null
+
+/** Reads the memory back from a stored chain record, when a stored session opens. */
+export const restoreExportMemory = (chain: Record<string, unknown>) => {
+    clearExportMemory()
+    const target = chain.exportTarget
+    if (isObject(target) && typeof target.name === 'string' && isObject(target.disk)) {
+        const handle = target.handle as FileSystemFileHandle | undefined
+        if (handle)
+            exportMemory.target = {
+                name: target.name,
+                handle,
+                disk: target.disk as DiskState,
+                exported: target.opened !== true,
+            }
+        // The opened file's own name, which the picker suggests (§1.4.8).
+        if (target.opened === true) exportMemory.sourceName = target.name
+    }
+    if (typeof chain.exportName === 'string') exportMemory.exportName = chain.exportName
+    if (chain.partial === true) exportMemory.partial = true
+}
 
 /** The name a picker suggests: "<name> (2)" for an unlinked copy, so it is not the original's. */
 export const copyName = (name: string) => (name && exportMemory.partial ? `${name} (2)` : name)

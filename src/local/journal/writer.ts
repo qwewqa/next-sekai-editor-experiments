@@ -2,6 +2,7 @@ import type { JournalStore } from '../../platform/types'
 import type { State } from '../../state'
 import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
+import type { JournalV1 } from './format'
 
 // The last-chance journal's writer (Part 1 §1.6.4 #7): written synchronously on hide, pagehide,
 // beforeunload and freeze whenever the open session has entries not committed strictly, and
@@ -29,6 +30,8 @@ export type JournalWriterDeps = {
     now?: () => number
     /** Each write's figures, for the timing specs. */
     onWrite?: (write: JournalWrite) => void
+    /** A verified journal and the state it holds: the legacy slot is written from it (§1.8). */
+    onJournal?: (journal: JournalV1, state: State) => void
 }
 
 /** A write's figures; `size` is the gzipped level data's, most of the journal. */
@@ -80,16 +83,18 @@ export class JournalWriter {
         let verified = false
         let size = 0
         try {
+            const state = this.deps.state()
             const journal = buildJournal({
                 session,
                 seq,
                 live,
-                state: this.deps.state(),
+                state,
                 appVersion: this.deps.appVersion,
                 writtenAt: (this.deps.now ?? Date.now)(),
             })
             size = journal.levelDataGz.length
             verified = this.deps.store.writeWhole(journal)
+            if (verified) this.deps.onJournal?.(journal, state)
         } catch (error) {
             console.error('The journal could not be written', error)
         }

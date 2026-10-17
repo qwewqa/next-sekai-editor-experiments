@@ -48,6 +48,8 @@ export type TestFlags = {
     ignoreVersionChange?: boolean
     /** Kills the worker at the test point of this name. */
     crashAt?: string
+    /** Safe mode (§1.4.2): the database opens read-only, as for a newer one. */
+    readOnly?: boolean
 }
 
 export type CoreDeps = {
@@ -211,7 +213,7 @@ export class StorageCore {
         switch (opened.kind) {
             case 'stored':
                 this.adopt(opened.db)
-                this.setStatus({ mode: 'stored' })
+                this.setStatus({ mode: this.flags.readOnly ? 'readOnly' : 'stored' })
                 return
             case 'readOnly':
                 this.adopt(opened.db)

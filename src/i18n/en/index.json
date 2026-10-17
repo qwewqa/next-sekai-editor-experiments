@@ -792,8 +792,6 @@
             },
             "elevationSideBySide": "Elevation Editor Side by Side",
             "elevationConnectorArrows": "Elevation Editor Connector Arrows",
-            "autoSave": "Auto Save",
-            "autoSaveDelay": "Auto Save Delay (s)",
             "waveformVisualization": {
                 "title": "Waveform Visualization",
                 "off": "Off",
@@ -1142,26 +1140,6 @@
     },
     "history": {
         "initialize": "Initialize",
-        "autoSave": {
-            "title": "Auto Save",
-            "importing": "Restoring chart…",
-            "failed": "Auto save could not store your latest changes. Browser storage may be full or unavailable. Please save your chart to a file before closing this tab.",
-            "paused": "Auto save is paused in this tab. The editor will try to restore the unsaved chart from your last session the next time it starts.",
-            "unreadable": {
-                "message": "The editor could not restore the unsaved chart from your last session. It may need a newer editor version, or the saved data may be damaged.",
-                "setAside": "New changes will not replace this saved chart. The editor will try again the next time it starts.",
-                "keptInPlace": "Auto save is paused in this tab until you discard the copy from your last session.",
-                "waiting": "An earlier chart is also saved in the editor. Auto save is paused in this tab until you discard the copy from your last session.",
-                "earlier": "The editor still cannot restore an unsaved chart from an earlier session.",
-                "earlierHint": "The editor will try again the next time it starts.",
-                "download": "Download",
-                "downloaded": "Download started.",
-                "discard": "Discard",
-                "restorable": "The editor can now restore an unsaved chart from an earlier session. Restore replaces the current chart, including its unsaved changes.",
-                "restore": "Restore",
-                "restored": "Restored the unsaved chart from an earlier session"
-            }
-        },
         "changes": {
             "title": "Changes",
             "message": "Changes to the chart may be lost. Continue?"
@@ -1793,6 +1771,8 @@
         "saved": "Saved {0}",
         "downloaded": "Downloaded {0}",
         "recovered": "Recovered last change",
-        "recoveredDropped": "Recovered last change. {0} undo step was not kept.|Recovered last change. {0} undo steps were not kept."
+        "recoveredDropped": "Recovered last change. {0} undo step was not kept.|Recovered last change. {0} undo steps were not kept.",
+        "continued": "Continued",
+        "migrated": "Recovered from auto save"
     }
 }

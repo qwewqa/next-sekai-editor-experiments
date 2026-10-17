@@ -70,11 +70,15 @@ export const storageJournalStore = (
                 const key = keyOf(journal.sessionId)
                 const text = JSON.stringify(journal)
                 if (text.length > JOURNAL_KEY_LIMIT) return false
-                if (
-                    othersSize(store, key, text.length) + key.length + text.length >
+                const fits = () =>
+                    othersSize(store, key, text.length) + key.length + text.length <=
                     JOURNAL_TOTAL_LIMIT
-                )
-                    return false
+                if (!fits()) {
+                    // The legacy slot is the one left out first when space is short (§1.6.4).
+                    if (store.getItem(prefix + LEGACY) === null) return false
+                    store.removeItem(prefix + LEGACY)
+                    if (!fits()) return false
+                }
                 store.setItem(key, text)
                 // Only a write read back intact counts (§1.6.4): the same length and characters.
                 const back = store.getItem(key)

@@ -9,7 +9,7 @@ import {
     type SaveResult,
 } from '../../../platform'
 import { isLevelDataContent, mayBeLevelData } from './content'
-import { exportMemory, type ExportTarget } from './memory'
+import { exportMemory, rememberExport, type ExportTarget } from './memory'
 import { downloadOpened, refusePick, type RefusedPick } from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
@@ -84,6 +84,7 @@ const built = (ctx: ExportContext) => {
 const remember = (ctx: ExportContext, target: ExportTarget) => {
     exportMemory.target = target
     if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
+    rememberExport()
 }
 
 const saved = (ctx: ExportContext, result: SaveResult & { status: 'saved' }) => {
@@ -276,7 +277,10 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             return 'done'
         case 'download-started':
         case 'exported':
-            if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
+            if (ctx.exportName !== undefined) {
+                exportMemory.exportName = ctx.exportName
+                rememberExport()
+            }
             ctx.ui.markExported?.(result.name)
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'

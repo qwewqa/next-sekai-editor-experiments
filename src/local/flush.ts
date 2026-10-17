@@ -21,7 +21,15 @@ import type {
     WriteStats,
 } from './flushWrite'
 import { toHex } from './hash'
-import { isEditingKind, SessionStack, type ModelSlot, type StackPlan } from './timeline'
+import {
+    isEditingKind,
+    SessionStack,
+    SlotStack,
+    type ModelSlot,
+    type StackPlan,
+    type StackWindow,
+    type StoredAt,
+} from './timeline'
 
 export { onFlushCommitted } from './worker/flushHooks'
 
@@ -58,8 +66,19 @@ export type FlushSession = {
     readonly sourceName?: string
     /** A fork's old chain, whose record it copies (§1.3.1). */
     readonly forkOf?: string
-    /** The stored session a fork continues (D10). */
+    /** The stored session it continues: a continuation's, or a fork's (D10). */
     readonly parent?: { readonly id: string; readonly uptoSeq: number }
+    /**
+     * A continuation (a new visit, Reopen): stored from its first own entry, its `continue` entry
+     * first; its first write moves the chain's head from the parent (§1.3.1, §1.3.6).
+     */
+    readonly continuation?: boolean
+    /** Stored at once whatever its origin: it set chain fields before its first write. */
+    atOnce?: boolean
+    /** A fork's name on the record it makes, "<name> (2)" (§1.3.1). */
+    readonly forkName?: string
+    /** Chain fields set before its first write, `null` removing: written with its record. */
+    chainSet?: Record<string, unknown>
     /** Whether a flush of it has committed. */
     stored: boolean
     nextSeq: number
@@ -79,6 +98,8 @@ export type FlushSession = {
     chain?: Record<string, unknown>
     /** Runs once the session is replaced and nothing of it is pending: releases its lock. */
     readonly done?: () => void
+    /** An unstored continuation's hold on its parent (§1.3.6): released at its first write. */
+    parentDone?: () => void
 }
 
 export type SessionStart = {
@@ -92,6 +113,63 @@ export type SessionStart = {
     ready?: Promise<unknown>
     done?: () => void
 }
+
+/** A stored stack as read for opening: slots from `first`, every slot a stored root. */
+export type StoredStack = {
+    first: number
+    slots: { hash: Uint8Array; label: string }[]
+    index: number
+}
+
+/** A new session continuing a stored one (§1.3.1): in its chain, or as a fork of it. */
+export type ContinueStart = {
+    id: string
+    chainId: string
+    docId: string
+    lineageId: string
+    sourceName?: string
+    parent: { id: string; uptoSeq: number }
+    /** The parent's stack at `uptoSeq`, which the continuation's first write copies whole. */
+    stack: StoredStack
+    /** The chain record as read: the journal's descriptor carries it until the first write. */
+    chain: Record<string, unknown>
+    /** The `continue` entry's label. */
+    label: () => string
+    dirty: boolean
+    /** A fork: a new chain copied from `forkOf`'s record, with `forkName`. */
+    fork?: { forkOf: string; forkName?: string }
+    ready?: Promise<unknown>
+    done?: () => void
+    /** Releases the hold on the parent once the first write commits. */
+    parentDone?: () => void
+}
+
+/** A stored session taken up again by its own tab's reload (§1.4.2): no entry is added. */
+export type ResumeStart = {
+    id: string
+    chainId: string
+    docId: string
+    lineageId: string
+    origin: SessionOrigin
+    startedAt: number
+    parent?: { id: string; uptoSeq: number }
+    sourceName?: string
+    lastSeq: number
+    chain: Record<string, unknown>
+    stack: StoredStack & {
+        window: StackWindow
+        blocks: { block: number; first: number; end: number }[]
+        at: StoredAt
+    }
+    ready?: Promise<unknown>
+    done?: () => void
+}
+
+/** What writing chain fields found (§1.3.1: only the chain's head writes its record). */
+export type ChainWriteResult =
+    | { kind: 'stored'; chain: Record<string, unknown> }
+    | { kind: 'notHead'; lastSeq?: number }
+    | { kind: 'missing' }
 
 /**
  * Sends a batch. `current` says whether the batch was planned for the worker that is running
@@ -126,6 +204,15 @@ export type FlushDeps = {
     lockSession?: (id: string) => { ready: Promise<unknown>; done: () => void }
     /** A session's chain was continued elsewhere: its further entries went to this fork (D10). */
     onFork?: (fork: FlushSession, from: FlushSession) => void
+    /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
+    forkName?: (from: FlushSession) => string | undefined
+    /** Writes chain fields of a stored session, checking it's still the chain's head. */
+    writeChain?: (request: {
+        chainId: string
+        sessionId: string
+        fields: Record<string, unknown>
+        appVersion: string
+    }) => Promise<ChainWriteResult>
     /**
      * Stores a media item alone, after its flush's read-back failed (§1.6.8.4): resolves whether
      * it's stored right now. Without it the item is left not held in storage.
@@ -307,20 +394,216 @@ export class Flusher {
             strictSeq: 0,
             edited: false,
         }
+        this.add(session, 'init', start.label, start.state, start.dirty)
+        return this.switchTo(session)
+    }
+
+    /**
+     * Continues a stored session in a new one (§1.3.1): its `continue` entry first, pointing at
+     * the parent's head, over the parent's stack. Stored from its first own entry, when its write
+     * moves the chain's head, or as a fork, a new chain copied from the old record.
+     */
+    continueSession(start: ContinueStart): FlushSession {
+        const stack = new SessionStack<PendingEntry>()
+        stack.committed = new SlotStack<ModelSlot<PendingEntry>>(
+            start.stack.first,
+            start.stack.slots.map(({ hash, label }) => ({ hash, label })),
+            start.stack.index,
+        )
+        const head = start.stack.slots[start.stack.index - start.stack.first]
+        if (!head) throw new RangeError('The index is outside the stack')
+        const fork = start.fork
+        const chain = fork ? forkRecord(start.chain) : { ...start.chain }
+        if (fork?.forkName !== undefined) chain.name = fork.forkName
+        const session: FlushSession = {
+            id: start.id,
+            chainId: start.chainId,
+            docId: start.docId,
+            lineageId: start.lineageId,
+            origin: 'continued',
+            startedAt: this.now(),
+            ...(start.sourceName === undefined ? {} : { sourceName: start.sourceName }),
+            ...(fork ? { forkOf: fork.forkOf } : {}),
+            ...(fork?.forkName === undefined ? {} : { forkName: fork.forkName }),
+            parent: { ...start.parent },
+            continuation: true,
+            stored: false,
+            nextSeq: 1,
+            pending: [],
+            memoryOnly: [],
+            ready: start.ready ?? Promise.resolve(),
+            ...(start.done ? { done: start.done } : {}),
+            ...(start.parentDone ? { parentDone: start.parentDone } : {}),
+            stack,
+            ackedSeq: 0,
+            strictSeq: 0,
+            edited: false,
+            chain,
+        }
+        this.add(session, 'continue', start.label, head.hash, start.dirty)
+        return this.switchTo(session)
+    }
+
+    /**
+     * Takes up a stored session again, as its own tab's reload does (§1.4.2): no entry is added,
+     * and the next entry follows its `lastSeq` over its stored stack.
+     */
+    resumeSession(start: ResumeStart): FlushSession {
+        const stack = new SessionStack<PendingEntry>()
+        stack.committed = new SlotStack<ModelSlot<PendingEntry>>(
+            start.stack.first,
+            start.stack.slots.map(({ hash, label }) => ({ hash, label })),
+            start.stack.index,
+        )
+        stack.window = start.stack.window
+        for (const { block, first, end } of start.stack.blocks)
+            stack.blocks.set(block, { first, end })
+        // Blocks not read back are rewritten whole by the next flush.
+        stack.synced = start.stack.blocks.length > 0
+        stack.durable = true
+        stack.at = start.stack.at
+        const session: FlushSession = {
+            id: start.id,
+            chainId: start.chainId,
+            docId: start.docId,
+            lineageId: start.lineageId,
+            origin: start.origin,
+            startedAt: start.startedAt,
+            ...(start.sourceName === undefined ? {} : { sourceName: start.sourceName }),
+            ...(start.parent ? { parent: { ...start.parent } } : {}),
+            stored: true,
+            nextSeq: start.lastSeq + 1,
+            pending: [],
+            memoryOnly: [],
+            ready: start.ready ?? Promise.resolve(),
+            ...(start.done ? { done: start.done } : {}),
+            stack,
+            ackedSeq: start.lastSeq,
+            strictSeq: start.lastSeq,
+            edited: start.chain.edited === true,
+            chain: { ...start.chain },
+        }
+        return this.switchTo(session)
+    }
+
+    /**
+     * Takes up a session from its own journal while storage is unavailable (§1.6.7: a same-tab
+     * reload continues from it): its ids and descriptor kept, its state as its first entry, its
+     * `seq`s after the journal's, so the journal it goes on writing holds both visits' edits.
+     */
+    resumeJournalled(start: {
+        id: string
+        chainId: string
+        docId: string
+        lineageId: string
+        origin: SessionOrigin
+        startedAt: number
+        parent?: { id: string; uptoSeq: number }
+        sourceName?: string
+        seq: number
+        chain: Record<string, unknown>
+        state: State
+        label: () => string
+        ready?: Promise<unknown>
+        done?: () => void
+    }): FlushSession {
+        const session: FlushSession = {
+            id: start.id,
+            chainId: start.chainId,
+            docId: start.docId,
+            lineageId: start.lineageId,
+            origin: start.origin,
+            startedAt: start.startedAt,
+            ...(start.sourceName === undefined ? {} : { sourceName: start.sourceName }),
+            ...(start.parent ? { parent: { ...start.parent } } : {}),
+            atOnce: true,
+            stored: false,
+            nextSeq: start.seq + 1,
+            pending: [],
+            memoryOnly: [],
+            ready: start.ready ?? Promise.resolve(),
+            ...(start.done ? { done: start.done } : {}),
+            stack: new SessionStack(),
+            ackedSeq: 0,
+            strictSeq: 0,
+            edited: true,
+            chain: { ...start.chain },
+        }
+        this.add(session, 'init', start.label, start.state, true)
+        return this.switchTo(session)
+    }
+
+    /**
+     * Makes a session the current one. The replaced session is committed strictly (§1.3.8): its
+     * pending entries, or what relaxed flushes stored; `outgoing` says whether that held.
+     */
+    private switchTo(session: FlushSession): FlushSession {
         const previous = this.current
         this.current = session
         this.sessions.push(session)
-        this.add(session, 'init', start.label, start.state, start.dirty)
         let committing = Promise.resolve()
         if (
             previous?.pending.length ||
             (previous && previous.ackedSeq > previous.strictSeq) ||
-            this.storesAtOnce(session)
+            this.flushable(session)
         )
             committing = this.flush({ strict: true })
         else this.retire()
         this.outgoing = committing.then(() => !previous || !this.unflushed(previous))
         return session
+    }
+
+    /**
+     * Sets chain fields of the current session (§1.3.1: a rename, Export's target and name),
+     * `undefined` removing one. A session not stored yet commits its first row with them, as a
+     * continuation commits before it writes a file; a stored one writes them as the chain's head,
+     * and one that isn't the head any more goes on as a fork, which takes them. Resolves whether
+     * they're stored.
+     */
+    setChainFields(fields: Record<string, unknown>): Promise<boolean> {
+        const session = this.current
+        if (!session) return Promise.resolve(false)
+        const set: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(fields)) set[key] = value ?? null
+        const chain: Record<string, unknown> = { ...session.chain }
+        for (const [key, value] of Object.entries(set))
+            if (value === null) Reflect.deleteProperty(chain, key)
+            else chain[key] = value
+        session.chain = chain
+        const viaFirstWrite = (target: FlushSession) => {
+            target.chainSet = { ...target.chainSet, ...set }
+            target.atOnce = true
+            return this.flush({ strict: true }).then(() => target.stored && !target.chainSet)
+        }
+        const writeChain = this.deps.writeChain
+        if (!session.stored || !writeChain) return viaFirstWrite(session)
+        const run = this.running.then(async (): Promise<boolean> => {
+            await session.ready
+            let result: ChainWriteResult
+            try {
+                result = await writeChain({
+                    chainId: session.chainId,
+                    sessionId: session.id,
+                    fields: set,
+                    appVersion: this.deps.appVersion,
+                })
+            } catch (error) {
+                this.deps.onError?.(error)
+                return false
+            }
+            if (result.kind === 'stored') {
+                session.chain = result.chain
+                return true
+            }
+            if (result.kind === 'notHead' && this.sessions.includes(session)) {
+                // Another tab continued the chain: this session goes on as a fork (D10).
+                const fork = this.fork(session, result.lastSeq ?? session.ackedSeq)
+                void viaFirstWrite(fork)
+            }
+            return false
+        })
+        this.running = run.then(() => undefined)
+        return run
     }
 
     /**
@@ -393,8 +676,9 @@ export class Flusher {
     /** Whether a session has anything to store: a new session only from its first own entry. */
     private flushable(session: FlushSession) {
         if (!session.pending.length) return false
-        // A fork's entries are all its own edits.
-        if (session.stored || session.parent || this.storesAtOnce(session)) return true
+        if (session.stored || session.atOnce || this.storesAtOnce(session)) return true
+        // A fork's entries are all its own edits; a continuation's first is its `continue`.
+        if (session.parent && !session.continuation) return true
         return session.pending.length > 1
     }
 
@@ -572,6 +856,8 @@ export class Flusher {
             if (this.deps.syncStrict && !this.noDatabase && session.ackedSeq > session.strictSeq)
                 continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
+            session.parentDone?.()
+            session.parentDone = undefined
             session.done?.()
         }
     }
@@ -735,6 +1021,8 @@ export class Flusher {
                 lineageId: session.lineageId,
                 ...(session.sourceName === undefined ? {} : { sourceName: session.sourceName }),
                 ...(session.forkOf === undefined ? {} : { forkOf: session.forkOf }),
+                ...(session.forkName === undefined ? {} : { name: session.forkName }),
+                ...(session.chainSet ? { set: session.chainSet } : {}),
             },
             appVersion: this.deps.appVersion,
             text,
@@ -793,6 +1081,11 @@ export class Flusher {
                     }
                 session.stored = true
                 session.chain = result.chain
+                // Its first row is written: an unstored continuation's hold on its parent goes.
+                session.parentDone?.()
+                session.parentDone = undefined
+                // Held until a database has them: a restarted worker's memory makes the row again.
+                if (!result.memory) delete session.chainSet
                 if (stack)
                     session.stack.commit(
                         stack.plan,
@@ -913,9 +1206,17 @@ export class Flusher {
      * chain's record, whose parent is the stored session (D10). A stored session never changes
      * chain, so the chain that continued it keeps its whole history.
      */
-    private fork(from: FlushSession, lastSeq: number | undefined) {
+    private fork(from: FlushSession, lastSeq: number | undefined): FlushSession {
         // Entries a kill after commit already stored stay the stored session's.
         const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
+        // A continuation that lost the race forks from the parent it continued (§1.3.1).
+        const parent =
+            lastSeq !== undefined
+                ? { id: from.id, uptoSeq: lastSeq }
+                : from.continuation
+                  ? from.parent
+                  : undefined
+        const forkName = this.deps.forkName?.(from)
         // The parent's stack at `uptoSeq`: what's acknowledged, then what was stored unanswered.
         const stored = from.pending.filter((entry) => lastSeq !== undefined && entry.seq <= lastSeq)
         const inherited = from.stack.replay(stored, (entry) => this.slotOf(entry))?.stack
@@ -928,11 +1229,14 @@ export class Flusher {
             docId: this.newId(),
             lineageId: from.lineageId,
             // Without a stored row there is nothing to continue: it keeps its own origin.
-            origin: lastSeq === undefined ? from.origin : 'continued',
+            origin: parent ? 'continued' : from.origin,
             startedAt: this.now(),
             ...(from.sourceName === undefined ? {} : { sourceName: from.sourceName }),
             forkOf: from.chainId,
-            ...(lastSeq === undefined ? {} : { parent: { id: from.id, uptoSeq: lastSeq } }),
+            ...(forkName === undefined ? {} : { forkName }),
+            ...(parent ? { parent } : {}),
+            ...(from.parentDone ? { parentDone: from.parentDone } : {}),
+            ...(from.chainSet ? { chainSet: from.chainSet, atOnce: true } : {}),
             stored: false,
             nextSeq: moving.length + 1,
             pending: moving.map((entry, i) => ({ ...entry, seq: i + 1 })),
@@ -941,13 +1245,17 @@ export class Flusher {
             ...(lock ? { done: lock.done } : {}),
             stack: from.stack.forkedStack(inherited),
             // Until its own first flush, its journal's descriptor carries the old chain's fields.
-            ...(from.chain ? { chain: forkRecord(from.chain) } : {}),
+            ...(from.chain
+                ? { chain: { ...forkRecord(from.chain), ...(forkName ? { name: forkName } : {}) } }
+                : {}),
             ackedSeq: 0,
             strictSeq: 0,
             edited: moving.some((entry) => isEditingKind(entry.kind)),
         }
+        from.parentDone = undefined
         this.sessions.splice(this.sessions.indexOf(from) + 1, 0, fork)
         if (this.current === from) this.current = fork
         this.deps.onFork?.(fork, from)
+        return fork
     }
 }
