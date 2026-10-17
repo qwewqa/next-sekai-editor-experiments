@@ -554,8 +554,10 @@ export const checkRefs = (
         if (kind === 'record') checkRefs(item as RecordName, list[i], ids, at)
         else if (kind === 'array' && Object.hasOwn(records, item)) {
             // A folder map is the map its folders' own links name.
-            const own = field.name === 'groupFolders' || field.name === 'stageFolders'
-            const holder = own ? ids[field.name as 'groupFolders' | 'stageFolders'] : folders
+            const holder =
+                field.name === 'groupFolders' || field.name === 'stageFolders'
+                    ? ids[field.name]
+                    : folders
             for (const [j, record] of (list[i] as unknown[]).entries())
                 checkRefs(item as RecordName, record, ids, `${at}[${j}]`, holder)
         }
