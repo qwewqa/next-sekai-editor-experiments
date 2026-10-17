@@ -10,6 +10,7 @@ import {
     blobOf,
     concat,
     decodeTestAudio,
+    decodeTestImage,
     effectData,
     gz,
     scp,
@@ -92,6 +93,7 @@ const importEffect = async (bytes: Uint8Array, decodeAudio = decodeTestAudio, na
     return importItem(pkg, 'effect', name, {
         maxTextureSide: 4096,
         decodeAudio,
+        decodeImage: decodeTestImage,
         signal: new AbortController().signal,
         origin: 'fixture.scp',
         now: () => 1,

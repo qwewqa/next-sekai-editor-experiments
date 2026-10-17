@@ -17,6 +17,7 @@ import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
 import { createAssetChooser } from '../../../preview/assets/files/chooser'
 import { decodeToCheck } from '../../../preview/assets/files/audio'
+import { decodeImageToCheck } from '../../../preview/assets/files/decodeImage'
 import { importMessage } from '../../../preview/assets/files/importText'
 import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
 import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
@@ -53,6 +54,7 @@ const choosers = Object.fromEntries(
             store: workerStore,
             maxTextureSide,
             decodeAudio: decodeToCheck,
+            decodeImage: decodeImageToCheck,
             describe: importMessage,
             apply: (choices) => {
                 settings.previewAssets = { ...settings.previewAssets, ...choices }

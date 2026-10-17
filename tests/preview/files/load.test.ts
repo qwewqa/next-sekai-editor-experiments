@@ -23,6 +23,7 @@ import {
     effectData,
     gz,
     particleData,
+    png,
     pngHeader,
     rawZip,
     scp,
@@ -250,9 +251,7 @@ const broken: [string, AssetType, Uint8Array][] = [
     [
         'a missing resource',
         'skin',
-        rawZip(
-            scpEntries('skin').filter((entry) => entry.data.length !== pngHeader(64, 64).length),
-        ),
+        rawZip(scpEntries('skin').filter((entry) => entry.data.length !== png(64, 64).length)),
     ],
     [
         'a name that climbs out',
@@ -280,6 +279,26 @@ test('a stored package that cannot be decoded falls back as unreadable', async (
     })
     try {
         const result = await load('skin', scp('skin'))
+        assert.deepEqual(result?.status, { active: 'default', reason: 'corrupt' })
+    } finally {
+        Object.defineProperty(globalThis, 'createImageBitmap', {
+            configurable: true,
+            value: decoder,
+        })
+    }
+})
+
+test('a stored background whose image does not decode falls back as unreadable', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const decoder = globalThis.createImageBitmap
+    Object.defineProperty(globalThis, 'createImageBitmap', {
+        configurable: true,
+        value: async () => {
+            throw new Error('The source image could not be decoded')
+        },
+    })
+    try {
+        const result = await load('background', scp('background'))
         assert.deepEqual(result?.status, { active: 'default', reason: 'corrupt' })
     } finally {
         Object.defineProperty(globalThis, 'createImageBitmap', {

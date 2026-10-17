@@ -223,15 +223,16 @@ export const parseDataJson = (
     bytes: Uint8Array,
     type: AssetType,
     part: ImportPart = 'data',
+    maxInflated: number = LIMITS.dataInflated,
 ): unknown => {
     if (bytes.length > LIMITS.dataGzip)
         throw new AssetImportError('tooBig', { type, part, limit: LIMITS.dataGzip })
     let inflated: Uint8Array
     try {
-        inflated = gunzipCapped(bytes, LIMITS.dataInflated)
+        inflated = gunzipCapped(bytes, maxInflated)
     } catch (error) {
         throw error instanceof CapExceeded
-            ? new AssetImportError('tooBig', { type, part, limit: LIMITS.dataInflated })
+            ? new AssetImportError('tooBig', { type, part, limit: maxInflated })
             : new AssetImportError('unreadable', { type, part }, { cause: error })
     }
     try {

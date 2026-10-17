@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { deflateRawSync, gzipSync } from 'node:zlib'
+import { crc32, deflateRawSync, deflateSync, gzipSync, inflateSync } from 'node:zlib'
 import type { AssetType } from '../../../src/preview/assets/types'
 import { concat, rawZip, utf8, type RawEntry } from '../../zip/rawZip'
 
@@ -38,6 +38,82 @@ export const pngHeader = (width: number, height: number) =>
         0,
         0,
     ])
+
+const chunk = (type: string, data: Uint8Array) => {
+    const body = concat(utf8(type), data)
+    return concat(Uint8Array.from(u32be(data.length)), body, Uint8Array.from(u32be(crc32(body))))
+}
+
+/** A real PNG of transparent RGBA pixels, with a body that decodes. */
+export const png = (width: number, height: number) => {
+    const header = new Uint8Array(13)
+    header.set(u32be(width), 0)
+    header.set(u32be(height), 4)
+    header.set([8, 6, 0, 0, 0], 8)
+    const pixels = new Uint8Array(height * (1 + width * 4))
+    return concat(
+        pngHeader(width, height).subarray(0, 8),
+        chunk('IHDR', header),
+        chunk('IDAT', new Uint8Array(deflateSync(pixels))),
+        chunk('IEND', new Uint8Array(0)),
+    )
+}
+
+const CHANNELS: Partial<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }
+
+/**
+ * A decoder for the tests, as strict as a browser's about a PNG's body: every chunk's CRC, the
+ * image data inflating to its rows, and an end. Anything else does not decode.
+ */
+export const decodeTestImage = async (bytes: Uint8Array) => {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const fail = () => {
+        throw new Error('The source image could not be decoded')
+    }
+    if (bytes.length < 8 || view.getUint32(0) !== 0x89504e47) fail()
+    let at = 8
+    let width = 0
+    let height = 0
+    let channels = 0
+    const data: Uint8Array[] = []
+    let ended = false
+    while (at + 12 <= bytes.length && !ended) {
+        const length = view.getUint32(at)
+        const body = bytes.subarray(at + 4, at + 8 + length)
+        if (at + 12 + length > bytes.length || crc32(body) !== view.getUint32(at + 8 + length))
+            fail()
+        const type = new TextDecoder().decode(body.subarray(0, 4))
+        if (type === 'IHDR') {
+            width = view.getUint32(at + 8)
+            height = view.getUint32(at + 12)
+            channels = CHANNELS[bytes[at + 17] ?? -1] ?? 0
+        } else if (type === 'IDAT') data.push(body.subarray(4))
+        else if (type === 'IEND') ended = true
+        at += 12 + length
+    }
+    if (!ended || !channels || !data.length) fail()
+    let rows: Uint8Array
+    try {
+        rows = new Uint8Array(inflateSync(concat(...data)))
+    } catch {
+        return fail()
+    }
+    if (rows.length !== height * (1 + width * channels)) fail()
+}
+
+/** A PNG whose header is right and whose image data is not. */
+export const brokenPng = (width: number, height: number) => {
+    const bytes = png(width, height)
+    // The first bytes of the IDAT chunk's data, its CRC fixed so only the body is wrong.
+    const idat = new TextDecoder('latin1').decode(bytes).indexOf('IDAT')
+    const length = new DataView(bytes.buffer).getUint32(idat - 4)
+    bytes.fill(0xff, idat + 4, idat + 8)
+    new DataView(bytes.buffer).setUint32(
+        idat + 4 + length,
+        crc32(bytes.subarray(idat, idat + 4 + length)),
+    )
+    return bytes
+}
 
 /** A JPEG's start, a comment and a start-of-frame segment with the size. */
 export const jpegHeader = (width: number, height: number) =>
@@ -194,13 +270,13 @@ export type ScpOptions = {
 const defaults = (type: AssetType): Record<string, Uint8Array> => {
     switch (type) {
         case 'skin':
-            return { data: gz(skinData()), texture: pngHeader(64, 64) }
+            return { data: gz(skinData()), texture: png(64, 64) }
         case 'particle':
-            return { data: gz(particleData()), texture: pngHeader(64, 64) }
+            return { data: gz(particleData()), texture: png(64, 64) }
         case 'background':
             return {
                 data: gz(backgroundData()),
-                image: pngHeader(160, 90),
+                image: png(160, 90),
                 configuration: gz(backgroundConfiguration),
             }
         case 'effect':
@@ -220,7 +296,7 @@ export const scpEntries = (type: AssetType, options: ScpOptions = {}): NamedEntr
     const name = options.name ?? 'fixture'
     const resources: Record<string, Uint8Array> = {
         ...defaults(type),
-        thumbnail: pngHeader(32, 32),
+        thumbnail: png(32, 32),
         ...options.resources,
     }
     const hashes = options.hashes ?? 'good'

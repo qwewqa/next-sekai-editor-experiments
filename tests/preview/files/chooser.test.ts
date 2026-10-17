@@ -13,6 +13,7 @@ import {
     audioZip,
     blobOf,
     decodeTestAudio,
+    decodeTestImage,
     effectData,
     gz,
     rawZip,
@@ -40,6 +41,7 @@ const setup = () => {
         store,
         maxTextureSide: () => 4096,
         decodeAudio: decodeTestAudio,
+        decodeImage: decodeTestImage,
         apply: (choices) => applied.push(choices),
         describe: importMessage,
     }

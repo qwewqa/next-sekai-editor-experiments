@@ -1,6 +1,7 @@
 import { shallowRef } from 'vue'
 import { assetTypes } from '../choice'
 import type { AssetChoice, AssetType } from '../types'
+import type { DecodeImage } from './decodeImage'
 import { AssetImportError } from './errors'
 import { readImageSize } from './image'
 import { importItem } from './importer'
@@ -24,6 +25,7 @@ export type ChooserDeps = {
     store: UserAssetStore
     maxTextureSide: () => number
     decodeAudio: (data: ArrayBuffer) => Promise<AudioBuffer>
+    decodeImage: DecodeImage
     /** Sets the choices a Use made, all together. */
     apply: (choices: Partial<Record<AssetType, AssetChoice>>) => void
     /** The plain message for a package that is refused. */
@@ -103,7 +105,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                     ? await source.entry(path, {
                           type,
                           part: 'thumbnail',
-                          maxSize: 8 * 1024 * 1024,
+                          maxSize: LIMITS.thumbnail,
                       })
                     : undefined
                 const size = bytes && readImageSize(bytes)
@@ -199,6 +201,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                     await importItem(source, entry.type, entry.name, {
                         maxTextureSide: deps.maxTextureSide(),
                         decodeAudio: deps.decodeAudio,
+                        decodeImage: deps.decodeImage,
                         signal,
                         origin: fileName.value,
                         now: deps.now ?? Date.now,

@@ -13,11 +13,14 @@ import {
     audioZip,
     backgroundData,
     blobOf,
+    brokenPng,
     decodeTestAudio,
+    decodeTestImage,
     effectData,
     gz,
     jpegHeader,
     particleData,
+    png,
     pngHeader,
     rawZip,
     scp,
@@ -45,6 +48,7 @@ const decodeAudio = decodeTestAudio
 const context = (overrides: Partial<ImportContext> = {}): ImportContext => ({
     maxTextureSide: 4096,
     decodeAudio,
+    decodeImage: decodeTestImage,
     signal: new AbortController().signal,
     origin: 'fixture.scp',
     now: () => 1000,
@@ -306,6 +310,42 @@ test('oversized images are refused from their headers alone', async () => {
         'notImage',
         'This file’s skin texture is not a PNG or JPEG image.',
     )
+})
+
+test('an image whose body does not decode is refused, and only once its size passed', async () => {
+    await expectRefused(
+        'skin',
+        valid('skin', { resources: { texture: brokenPng(64, 64) } }),
+        'unreadable',
+        'This file’s skin texture could not be read.',
+    )
+    // A header with no body at all.
+    await expectRefused(
+        'particle',
+        valid('particle', { resources: { texture: pngHeader(64, 64) } }),
+        'unreadable',
+    )
+    await expectRefused(
+        'background',
+        valid('background', { resources: { image: brokenPng(160, 90) } }),
+        'unreadable',
+        'This file’s background image could not be read.',
+    )
+    // The size cap comes first: an image over it is never decoded.
+    let decoded = 0
+    await expectRefused(
+        'skin',
+        valid('skin', { resources: { texture: png(8192, 8) } }),
+        'imageSize',
+        undefined,
+        {
+            decodeImage: async (bytes) => {
+                decoded++
+                await decodeTestImage(bytes)
+            },
+        },
+    )
+    assert.equal(decoded, 0)
 })
 
 test('a sprite outside its texture is refused', async () => {
@@ -572,9 +612,7 @@ test('the audio package has its own limits', async () => {
 })
 
 test('an item missing a resource, or its details, is refused', async () => {
-    const entries = scpEntries('skin').filter(
-        (entry) => entry.data.length !== pngHeader(64, 64).length,
-    )
+    const entries = scpEntries('skin').filter((entry) => entry.data.length !== png(64, 64).length)
     // Dropping the texture's bytes leaves its SRL pointing nowhere.
     await expectRefused('skin', rawZip(entries), 'missing', 'This file’s skin texture is missing.')
     const pkg = await openSourcePackage(blobOf(valid('skin')))
