@@ -36,10 +36,9 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     page,
 }) => {
     const violations: string[] = []
-    const bundles: string[] = []
-    page.on('request', (request) => {
-        if (/\/assets\/.*\.js/.test(request.url())) bundles.push(request.url())
-    })
+    const errors: string[] = []
+    // A bundle that ran would throw: the page has no editor root.
+    page.on('pageerror', (error) => errors.push(error.message))
     await page.addInitScript(
         ({ prefix, autoSave }) => {
             // As Safari 16 has no navigator.locks.
@@ -54,7 +53,8 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     page.on('console', (message) => {
         if (message.text().startsWith('csp ')) violations.push(message.text())
     })
-    await page.goto('/')
+    // The page is stopped, so its load never comes.
+    await page.goto('/', { waitUntil: 'commit' })
     await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
     await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
     const button = page.getByRole('button', { name: 'Download Your Last Auto Save' })
@@ -65,10 +65,10 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     expect(file.suggestedFilename()).toBe('coconut.nsld')
     const path = await file.path()
     expect((await readFile(path)).equals(gz)).toBe(true)
-    // The bundle never loaded, and the page made nothing the policy blocks.
+    // The bundle never ran, and the page made nothing the policy blocks.
     await page.waitForTimeout(500)
-    expect(bundles).toEqual([])
-    await expect(page.locator('#app')).toBeEmpty()
+    expect(errors).toEqual([])
+    await expect(page.locator('script[type="module"]')).toHaveCount(0)
     expect(violations).toEqual([])
 })
 
