@@ -36,6 +36,7 @@ const settled = (page: Page) =>
 
 test('the release build stores an import at once, a BGM pick with its bytes, and goes on after a restart', async ({
     page,
+    browserName,
 }) => {
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
@@ -74,12 +75,21 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     await settled(page)
     stored = await rows(page, ['entries', 'media'])
     expect(stored.entries!.map(({ value }) => value.kind)).toEqual(['init', 'edit'])
-    expect(stored.media).toHaveLength(1)
-    expect(stored.media![0]!.value).toMatchObject({
-        kind: 'bgm',
-        type: 'audio/wav',
-        filename: 'song.wav',
-    })
+    // Playwright's WebKit contexts are private, as Safari's private windows: IndexedDB refuses
+    // Blobs there, so the entries are stored and the BGM is left pending.
+    if (browserName === 'webkit') {
+        expect(stored.media).toHaveLength(0)
+        expect(
+            await page.evaluate(() => window.nseStorageTest!.status()?.mediaPending?.length),
+        ).toBe(1)
+    } else {
+        expect(stored.media).toHaveLength(1)
+        expect(stored.media![0]!.value).toMatchObject({
+            kind: 'bgm',
+            type: 'audio/wav',
+            filename: 'song.wav',
+        })
+    }
 
     // A restart from the Blob copy, then another change is stored.
     await page.route('**/assets/storage.worker-*.js', (route) => route.fulfill({ status: 404 }))

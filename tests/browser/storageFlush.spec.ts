@@ -217,6 +217,7 @@ const wav = (seconds: number) => {
 
 test('a picked BGM is stored with its change, read back whole, and named in the state', async ({
     page,
+    browserName,
 }) => {
     await boot(page)
     const file = wav(0.5)
@@ -238,6 +239,21 @@ test('a picked BGM is stored with its change, read back whole, and named in the 
     const meta = await page.evaluate(() => window.editorTest.history.liveState.value.bgm.meta)
     expect(meta).toMatchObject({ filename: 'pick.wav', size: file.length, type: 'audio/wav' })
     expect(meta!.durationMs).toBe(500)
+    // The source is a copy that survived decoding.
+    expect(
+        await page.evaluate(() => window.editorTest.history.liveState.value.bgm.source?.byteLength),
+    ).toBe(file.length)
+    // Playwright's WebKit contexts are private, as Safari's private windows: IndexedDB refuses
+    // Blobs there, so the change is stored and the BGM is left pending.
+    if (browserName === 'webkit') {
+        expect((await storedRows(page, ['entries', 'media'])).media).toHaveLength(0)
+        expect(
+            await page.evaluate(
+                () => (window.nseStorageTest!.status() as StorageStatus).mediaPending,
+            ),
+        ).toEqual([meta!.hash])
+        return
+    }
     const stored = await page.evaluate(async (hash) => {
         const { media } = (await window.nseStorageTest!.worker.call('testRows', [
             'media',
@@ -265,8 +281,4 @@ test('a picked BGM is stored with its change, read back whole, and named in the 
         kind: 'bgm',
         matches: true,
     })
-    // The source is a copy that survived decoding.
-    expect(
-        await page.evaluate(() => window.editorTest.history.liveState.value.bgm.source?.byteLength),
-    ).toBe(file.length)
 })

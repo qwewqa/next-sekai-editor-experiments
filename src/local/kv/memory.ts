@@ -112,6 +112,8 @@ type Request = {
     run: () => unknown
     resolve: (value: unknown) => void
     reject: (error: Error) => void
+    /** A failure the caller handles: the transaction goes on. */
+    handled?: boolean
 }
 
 class Transaction {
@@ -148,10 +150,10 @@ class Transaction {
             throw domError('TransactionInactiveError', 'The transaction is not active')
     }
 
-    place(run: () => unknown) {
+    place(run: () => unknown, handled = false) {
         this.check()
         return new Promise<unknown>((resolve, reject) => {
-            const request = { run, resolve, reject }
+            const request = { run, resolve, reject, handled }
             this.outstanding++
             if (this.state === 'running') this.dispatch(request)
             else this.queued.push(request)
@@ -175,7 +177,7 @@ class Transaction {
                 this.active = true
                 this.memory.touch(this)
                 request.reject(failure)
-                this.abort(failure)
+                if (!request.handled) this.abort(failure)
                 return
             }
             this.active = true
@@ -250,7 +252,13 @@ const makeTx = (tx: Transaction): KvTx => {
         return rows.slice(0, upTo(count))
     }
 
-    const write = (name: string, value: unknown, key: Key | undefined, add: boolean) => {
+    const write = (
+        name: string,
+        value: unknown,
+        key: Key | undefined,
+        add: boolean,
+        handled = false,
+    ) => {
         writable()
         const data = store(name)
         const copy = clone(value)
@@ -265,6 +273,11 @@ const makeTx = (tx: Transaction): KvTx => {
             rowKey = requireKey(key)
         }
         return tx.place(() => {
+            if (tx.memory.faults.refuseBlobs && holdsBlob(copy))
+                throw domError(
+                    'UnknownError',
+                    'Error preparing Blob/File data to be stored in object store',
+                )
             const { index, found } = data.find(rowKey)
             if (found && add) throw domError('ConstraintError', 'The key already exists')
             const old = found ? data.rows[index] : undefined
@@ -277,7 +290,7 @@ const makeTx = (tx: Transaction): KvTx => {
                 else if (at.found) data.rows.splice(at.index, 1)
             })
             return normalizeKey(rowKey)
-        }) as Promise<Key>
+        }, handled) as Promise<Key>
     }
 
     const index = (name: string, indexName: string): KvIndex => {
@@ -353,6 +366,11 @@ const makeTx = (tx: Transaction): KvTx => {
             return tx.place(() => all(data, range).length) as Promise<number>
         },
         put: (name, value, key) => write(name, value, key, false),
+        tryPut: (name, value, key) =>
+            write(name, value, key, false, true).then(
+                () => true,
+                () => false,
+            ),
         add: (name, value, key) => write(name, value, key, true),
         delete: (name, query) => {
             writable()
@@ -398,7 +416,14 @@ const makeTx = (tx: Transaction): KvTx => {
 /** Faults a test injects: an error to fail a request or a commit with. */
 export type MemoryFaults = {
     request?: (stores: readonly string[], mode: TxMode) => Error | undefined
+    /** Rows holding a Blob fail to put, as in WebKit's private windows. */
+    refuseBlobs?: boolean
 }
+
+const holdsBlob = (value: unknown) =>
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).some((field) => typeof Blob !== 'undefined' && field instanceof Blob)
 
 /** A browser profile's databases, in memory. */
 export class MemoryKv {
