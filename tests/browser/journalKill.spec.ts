@@ -469,7 +469,9 @@ test('a kill with a flush in flight leaves the edit stored or journalled, and a 
 test('a hide while journals replay at load writes the journal, and the flush waits for replay', async ({
     page,
 }) => {
-    await boot(page, { holdReplayMs: 5000 })
+    // Long enough for a loaded machine's boot and edits to fall inside it.
+    test.setTimeout(60_000)
+    await boot(page, { holdReplayMs: 15_000 })
     await edit(page, 'notes', 2)
     const { sessionId } = await head(page)
     // Replay hasn't finished: storing has started all the same.
@@ -479,7 +481,9 @@ test('a hide while journals replay at load writes the journal, and the flush wai
     expect((await journalKeys(page)).some((key) => key.endsWith(sessionId))).toBe(true)
     expect(await page.evaluate(() => window.nseFlushTest!.reports.length)).toBe(0)
     // Once replay is done (this tab's own key is left to it), the strict flush clears the key.
-    await expect.poll(() => page.evaluate(() => window.nseJournalTest !== undefined)).toBe(true)
+    await expect
+        .poll(() => page.evaluate(() => window.nseJournalTest !== undefined), { timeout: 30_000 })
+        .toBe(true)
     await settled(page)
     expect(await journalKeys(page)).toEqual([])
 })
