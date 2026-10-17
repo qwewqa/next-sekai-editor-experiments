@@ -377,7 +377,7 @@ export function skinSprites() {
     return { sprites, groups }
 }
 
-/** The 8 particle sprites, in the order the effects index them. */
+/** The particle sprites, in the order the effects index them (sprite in particles.mjs). */
 export const particleSprites = [
     ['ring', 'particle-ring'],
     ['circle', 'particle-circle'],
@@ -387,6 +387,9 @@ export const particleSprites = [
     ['bar', 'particle-bar'],
     ['streak', 'particle-streak'],
     ['flash', 'particle-flash'],
+    ['glow', 'particle-glow'],
+    ['spark', 'particle-spark'],
+    ['star', 'particle-star'],
 ].map(([name, template]) => ({ name, spec: image(template, {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */

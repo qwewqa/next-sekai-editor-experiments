@@ -1,7 +1,8 @@
 // The particle effect table: every effect name with its kind and colour, and the groups of each kind.
 // Effects are drawn in a unit quad (-1 to 1) over their own 0 to 1 progress; sprite indexes follow
-// particleSprites in manifest.mjs.
-import { bodyColors, colorNames, damageColor, styleColors } from './palette.mjs'
+// particleSprites in manifest.mjs. Particles blend normally, so a white-hot core is a white particle
+// over a tinted one, and effect colours are the note colours made vivid for the dark stage.
+import { bodyColors, colorNames, damageColor, styleColors, vivid } from './palette.mjs'
 
 const sprite = {
     ring: 0,
@@ -12,13 +13,23 @@ const sprite = {
     bar: 5,
     streak: 6,
     flash: 7,
+    glow: 8,
+    spark: 9,
+    star: 10,
 }
+
+const white = '#ffffff'
+const turn = 2 * Math.PI
 
 const expression = (value) => (typeof value === 'number' ? { c: value } : value)
 const prop = (from, to = from, ease = 'linear') => ({
     from: expression(from),
     to: expression(to),
     ease,
+})
+const size = (from, to = from, ease = 'linear') => ({
+    w: prop(from, to, ease),
+    h: prop(from, to, ease),
 })
 
 const particle = ({ sprite: index, color, start = 0, duration = 1, x, y, w, h, r, a }) => ({
@@ -34,184 +45,281 @@ const particle = ({ sprite: index, color, start = 0, duration = 1, x, y, w, h, r
     a: a ?? prop(1, 0),
 })
 
-// Small squares or dots flying out on random angles.
-const burst = (index, color, count, size, distance) => ({
-    count,
-    particles: [
+const group = (count, ...particles) => ({ count, particles })
+const once = (...particles) => group(1, ...particles)
+
+// A glow that swells and fades, centred at (0, y).
+const bloom = (color, from, to, { y = 0, start = 0, duration = 1, alpha = 1 } = {}) =>
+    particle({
+        sprite: sprite.glow,
+        color,
+        start,
+        duration,
+        y: prop(y),
+        ...size(from, to, 'outQuad'),
+        a: prop(alpha, 0, 'outQuad'),
+    })
+
+const ring = (color, from, to, { start = 0, duration = 1 } = {}) =>
+    particle({
+        sprite: sprite.ring,
+        color,
+        start,
+        duration,
+        ...size(from, to, 'outCubic'),
+        a: prop(1, 0, 'inQuad'),
+    })
+
+// Sparks flying out from the centre on random angles, pointing the way they fly.
+const sparks = (color, count, { distance = 0.8, length = 0.12, duration = 1 } = {}) =>
+    group(
+        count,
         particle({
-            sprite: index,
+            sprite: sprite.spark,
             color,
-            x: prop(0, { cosr1: distance }, 'outQuad'),
-            y: prop(0, { sinr1: distance }, 'outQuad'),
-            w: prop(size, size / 3),
-            h: prop(size, size / 3),
-            r: prop(0, { r2: 3 }),
+            duration,
+            x: prop(0, { cosr1: distance }, 'outCubic'),
+            y: prop(0, { sinr1: distance }, 'outCubic'),
+            w: prop(length, length / 3, 'outQuad'),
+            h: prop(length / 3),
+            r: prop({ r1: turn }),
             a: prop(1, 0, 'inQuad'),
         }),
-    ],
-})
+    )
 
-const ring = (color, from, to, start = 0, duration = 1) => ({
-    count: 1,
-    particles: [
+// Points of light rising from the judge line across a band of the given half width.
+const rising = (
+    color,
+    count,
+    { spread = 0.6, height = 0.8, length = 0.1, start = 0, duration = 1 } = {},
+) =>
+    group(
+        count,
         particle({
-            sprite: sprite.ring,
+            sprite: sprite.spark,
             color,
             start,
             duration,
-            w: prop(from, to, 'outQuad'),
-            h: prop(from, to, 'outQuad'),
+            x: prop({ c: -spread, r1: 2 * spread }),
+            y: prop(-0.9, { c: -0.9 + height / 2, r2: height / 2 }, 'outCubic'),
+            w: prop(length, length / 3),
+            h: prop(length / 4),
+            r: prop(Math.PI / 2),
             a: prop(1, 0, 'inQuad'),
         }),
-    ],
-})
+    )
+
+// A light flare along the judge line.
+const flare = (color, width, { thickness = 0.07, duration = 1 } = {}) =>
+    particle({
+        sprite: sprite.streak,
+        color,
+        duration,
+        y: prop(-0.95),
+        w: prop(width * 0.2, width, 'outQuad'),
+        h: prop(thickness),
+        a: prop(1, 0, 'inQuad'),
+    })
+
+// White four-point stars scattered round the centre.
+const stars = (count, spread, { start = 0, duration = 0.7 } = {}) =>
+    group(
+        count,
+        particle({
+            sprite: sprite.star,
+            color: white,
+            start,
+            duration,
+            x: prop({ cosr1: spread }),
+            y: prop({ sinr1: spread }),
+            ...size(0.13, 0, 'inQuad'),
+            r: prop(0, 1.2),
+            a: prop(1, 0.6),
+        }),
+    )
+
+// A glow pulsing between two sizes over the loop.
+const pulse = (color, small, large, low, high, { y = 0, w = 1, h = 1 } = {}) =>
+    [
+        [small, large, low, high],
+        [large, small, high, low],
+    ].map(([from, to, a, b], half) =>
+        particle({
+            sprite: sprite.glow,
+            color,
+            start: half / 2,
+            duration: 0.5,
+            y: prop(y),
+            w: prop(from * w, to * w, 'inOutSine'),
+            h: prop(from * h, to * h, 'inOutSine'),
+            a: prop(a, b, 'inOutSine'),
+        }),
+    )
 
 /** The groups of each kind of effect for one colour. */
 export const kinds = {
-    circular: (color) => [ring(color, 0.3, 0.75), burst(sprite.square, color, 6, 0.07, 0.7)],
+    // Hits, on the stage plane round the note: a flash, a ring and sparks.
+    circular: (color) => [
+        once(
+            bloom(color, 0.35, 0.7, { duration: 0.7 }),
+            ring(color, 0.2, 0.7, { duration: 0.45 }),
+            bloom(white, 0.2, 0.36, { duration: 0.35 }),
+        ),
+        sparks(color, 8, { length: 0.2, duration: 0.6 }),
+        sparks(white, 4, { distance: 0.6, length: 0.14, duration: 0.45 }),
+    ],
     criticalCircular: (color) => [
-        ring(color, 0.3, 0.75),
-        ring(color, 0.2, 0.6, 0.2, 0.8),
-        burst(sprite.square, color, 6, 0.07, 0.7),
+        once(
+            bloom(color, 0.4, 0.85, { duration: 0.8 }),
+            ring(color, 0.2, 0.8, { duration: 0.5 }),
+            ring(white, 0.15, 0.6, { start: 0.15, duration: 0.5 }),
+            bloom(white, 0.24, 0.42, { duration: 0.4 }),
+        ),
+        sparks(color, 12, { distance: 0.95, length: 0.24, duration: 0.7 }),
+        sparks(white, 6, { distance: 0.7, length: 0.16, duration: 0.5 }),
+        stars(4, 0.45, { start: 0.05 }),
     ],
+    // Hits, above the note: a shaft of light, a flare on the line and rising sparks.
     linear: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.streak,
-                    color,
-                    y: prop(-0.85, -0.6, 'outQuad'),
-                    w: prop(0.1, 0.9, 'outQuad'),
-                    h: prop(0.06),
-                }),
-            ],
-        },
+        once(
+            particle({
+                sprite: sprite.bar,
+                color,
+                duration: 0.8,
+                y: prop(-0.85, -0.4, 'outQuad'),
+                w: prop(0.22, 0.08),
+                h: prop(0.15, 0.6, 'outQuad'),
+                a: prop(0.85, 0, 'outQuad'),
+            }),
+            flare(color, 1, { thickness: 0.12, duration: 0.7 }),
+            flare(white, 0.8, { duration: 0.45 }),
+        ),
+        rising(color, 6, { duration: 0.75 }),
+        rising(white, 3, { spread: 0.4, height: 0.6, length: 0.08, duration: 0.5 }),
     ],
+    // Flicks, in a square turned to the flick: chevrons and speed lines moving that way.
     directional: (color) => [
-        {
-            count: 1,
-            particles: [0, 0.1, 0.2].map((start) =>
+        once(
+            bloom(color, 0.3, 0.5, { y: -0.8, duration: 0.6, alpha: 0.8 }),
+            ...[0, 0.12, 0.24].flatMap((start) => [
                 particle({
                     sprite: sprite.chevron,
                     color,
                     start,
-                    duration: 0.7,
-                    y: prop(-0.6, 0.9, 'outQuad'),
-                    w: prop(0.25),
-                    h: prop(0.12),
+                    duration: 0.65,
+                    y: prop(-0.5, 0.8, 'outQuad'),
+                    w: prop(0.34, 0.26),
+                    h: prop(0.17, 0.13),
                     a: prop(1, 0, 'inQuad'),
                 }),
-            ),
-        },
+                particle({
+                    sprite: sprite.chevron,
+                    color: white,
+                    start,
+                    duration: 0.45,
+                    y: prop(-0.5, 0.5, 'outQuad'),
+                    w: prop(0.2, 0.14),
+                    h: prop(0.1, 0.07),
+                    a: prop(0.9, 0, 'inQuad'),
+                }),
+            ]),
+        ),
+        rising(white, 6, { spread: 0.5, height: 1.6, length: 0.2, duration: 0.7 }),
     ],
+    // Lane flashes: a short burst that drops back to the line (the lane quad, 1 s).
     lane: (color) => [
-        {
-            count: 1,
-            particles: [particle({ sprite: sprite.flash, color, a: prop(0.5, 0) })],
-        },
+        once(
+            particle({ sprite: sprite.flash, color, duration: 0.08, a: prop(0.75) }),
+            particle({
+                sprite: sprite.flash,
+                color,
+                start: 0.08,
+                duration: 0.17,
+                y: prop(0, -0.4, 'outQuad'),
+                h: prop(1, 0.6, 'outQuad'),
+                a: prop(0.75, 0, 'outQuad'),
+            }),
+            particle({ sprite: sprite.flash, color: white, duration: 0.12, a: prop(0.3, 0) }),
+        ),
     ],
+    // The standard lane effect (0.3 s).
+    laneBasic: (color) => [once(particle({ sprite: sprite.flash, color, a: prop(0.5, 0) }))],
+    // One per lane under the note: a short shaft from the slot and two motes.
     slotLinear: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.bar,
-                    color,
-                    y: prop(-0.6, 0.4, 'outQuad'),
-                    w: prop(0.4),
-                    h: prop(0.5),
-                    a: prop(0.8, 0, 'outQuad'),
-                }),
-            ],
-        },
+        once(
+            particle({
+                sprite: sprite.bar,
+                color,
+                duration: 0.6,
+                y: prop(-0.95, -0.6, 'outQuad'),
+                w: prop(0.4, 0.3),
+                h: prop(0.08, 0.35, 'outQuad'),
+                a: prop(0.8, 0, 'outQuad'),
+            }),
+        ),
+        rising(white, 2, { spread: 0.3, height: 0.6, length: 0.07, duration: 0.7 }),
     ],
+    // Ticks and traces, at the note (a square about ten lanes across): a glint over a small pop.
     tick: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.diamond,
-                    color,
-                    w: prop(0.2, 0.4, 'outQuad'),
-                    h: prop(0.2, 0.4, 'outQuad'),
-                    a: prop(1, 0, 'inQuad'),
-                }),
-            ],
-        },
-        burst(sprite.circle, color, 4, 0.06, 0.7),
+        once(
+            bloom(color, 0.1, 0.2, { duration: 0.6, alpha: 0.9 }),
+            ring(color, 0.05, 0.2, { duration: 0.5 }),
+            particle({
+                sprite: sprite.diamond,
+                color,
+                duration: 0.5,
+                ...size(0.06, 0.1, 'outQuad'),
+                a: prop(1, 0, 'inQuad'),
+            }),
+            particle({
+                sprite: sprite.star,
+                color: white,
+                duration: 0.5,
+                ...size(0.16, 0.04, 'outQuad'),
+                r: prop(0, 0.6),
+                a: prop(1, 0, 'inQuad'),
+            }),
+        ),
+        sparks(color, 6, { distance: 0.25, length: 0.06, duration: 0.6 }),
     ],
     traceLinear: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.streak,
-                    color,
-                    y: prop(-0.85, -0.7, 'outQuad'),
-                    w: prop(0.1, 0.35, 'outQuad'),
-                    h: prop(0.05),
-                }),
-            ],
-        },
+        once(
+            flare(color, 0.45, { thickness: 0.08, duration: 0.6 }),
+            flare(white, 0.3, { thickness: 0.04, duration: 0.4 }),
+        ),
+        rising(color, 4, { spread: 0.25, height: 0.5, length: 0.07, duration: 0.6 }),
     ],
+    // Held slides (looped, 1 s, a quad twice the hit's): a pulsing glow, a slow ring, sparkles.
     holdCircular: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.ring,
-                    color,
-                    w: prop(0.35, 0.5, 'inOutSine'),
-                    h: prop(0.35, 0.5, 'inOutSine'),
-                    a: prop(0.8, 0.3),
-                }),
-            ],
-        },
-        {
-            count: 3,
-            particles: [
-                particle({
-                    sprite: sprite.square,
-                    color,
-                    x: prop({ c: -0.5, r1: 1 }),
-                    y: prop(-0.3, { c: 0.7, r2: 0.2 }),
-                    w: prop(0.05),
-                    h: prop(0.05),
-                    a: prop(1, 0, 'inQuad'),
-                }),
-            ],
-        },
+        once(
+            ...pulse(color, 0.12, 0.16, 0.7, 0.9),
+            ring(color, 0.06, 0.22),
+            particle({ sprite: sprite.glow, color: white, ...size(0.07), a: prop(0.8) }),
+        ),
+        ...[0, 0.5].map((start) => stars(2, 0.14, { start, duration: 0.5 })),
     ],
+    // Held slides, above the note: a steady shaft over a pulsing base and rising motes.
     holdLinear: (color) => [
-        {
-            count: 1,
-            particles: [
-                particle({
-                    sprite: sprite.bar,
-                    color,
-                    w: prop(0.3),
-                    h: prop(0.9),
-                    a: prop(0.6, 0.2, 'inOutSine'),
-                }),
-            ],
-        },
+        once(
+            particle({
+                sprite: sprite.bar,
+                color,
+                y: prop(-0.5),
+                w: prop(0.12),
+                h: prop(0.5),
+                a: prop(0.35),
+            }),
+            ...pulse(color, 1, 1.1, 0.6, 0.85, { y: -0.95, w: 0.45, h: 0.2 }),
+        ),
+        ...[0, 0.25, 0.5].map((start) =>
+            rising(color, 2, { spread: 0.4, height: 1, length: 0.08, start, duration: 0.5 }),
+        ),
+        rising(white, 2, { spread: 0.3, height: 0.8, length: 0.06, start: 0.1, duration: 0.6 }),
     ],
+    // Moving slides leave motes rising behind them.
     trail: (color) => [
-        {
-            count: 4,
-            particles: [
-                particle({
-                    sprite: sprite.square,
-                    color,
-                    x: prop({ c: -0.6, r1: 1.2 }),
-                    y: prop(-0.9, { c: 0.2, r2: 0.3 }, 'outQuad'),
-                    w: prop(0.05),
-                    h: prop(0.05),
-                    a: prop(1, 0, 'inQuad'),
-                }),
-            ],
-        },
+        rising(color, 3, { spread: 0.5, height: 0.9, length: 0.08 }),
+        rising(white, 1, { spread: 0.3, height: 0.6, length: 0.06, duration: 0.7 }),
     ],
 }
 
@@ -254,7 +362,7 @@ export function particleEffects() {
     const add = (name, kind, color) => {
         if (names.has(name)) throw new Error(`Duplicate particle effect name: ${name}`)
         names.add(name)
-        effects.push({ name, kind, color })
+        effects.push({ name, kind, color: vivid(color) })
     }
     // The plain name with the plain colour, and then one per style colour.
     const family = (name, kind, { plain = true } = {}) => {
@@ -263,7 +371,7 @@ export function particleEffects() {
     }
     const circular = (name) => (name.includes('Critical') ? 'criticalCircular' : 'circular')
 
-    add('#LANE_LINEAR', 'lane', '#ffffff')
+    add('#LANE_LINEAR', 'laneBasic', '#ffffff')
 
     for (const name of hitFamilies) {
         family(`Sekai ${name} Note Circular`, circular(name))

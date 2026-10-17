@@ -47,3 +47,36 @@ export const mix = (a, b, t) =>
         .map((value, i) => Math.round(value + (channels(b)[i] - value) * t))
         .map((value) => value.toString(16).padStart(2, '0'))
         .join('')
+
+/** A colour pushed to full saturation at a lightness of at most 0.62, for effects on the dark stage. */
+export function vivid(hex) {
+    const [r, g, b] = channels(hex).map((value) => value / 255)
+    const max = Math.max(r, g, b)
+    const min = Math.min(r, g, b)
+    if (max === min) return hex
+    const d = max - min
+    const hue =
+        (max === r
+            ? (g - b) / d + (g < b ? 6 : 0)
+            : max === g
+              ? (b - r) / d + 2
+              : (r - g) / d + 4) / 6
+    const l = Math.min((max + min) / 2, 0.62)
+    const q = l < 0.5 ? l * 2 : l + 1 - l
+    const p = 2 * l - q
+    const channel = (t) => {
+        t = (t + 1) % 1
+        const value =
+            t < 1 / 6
+                ? p + (q - p) * 6 * t
+                : t < 1 / 2
+                  ? q
+                  : t < 2 / 3
+                    ? p + (q - p) * (2 / 3 - t) * 6
+                    : p
+        return Math.round(value * 255)
+            .toString(16)
+            .padStart(2, '0')
+    }
+    return `#${channel(hue + 1 / 3)}${channel(hue)}${channel(hue - 1 / 3)}`
+}
