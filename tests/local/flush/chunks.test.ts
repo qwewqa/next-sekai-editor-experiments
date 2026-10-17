@@ -50,7 +50,6 @@ const store = () => {
                 kinds: plan.kinds.map(({ kind, chunks }) => ({
                     kind,
                     chunks: chunks.map((chunk) =>
-                         
                         text(chunk.t === 'stored' ? chunk.hash : chunk.memo.hash!),
                     ),
                 })),
@@ -133,7 +132,7 @@ test('a one-note edit sends one chunk and encodes one record', () => {
     const encoded = extractor.encoded
 
     const [notes] = [...state.store.slides.note.values()]
-     
+
     const target = notes![0]!
     const edited = edit(state, (t) => {
         replaceNote(t, target, { ...target, size: target.size + 0.25 })
@@ -168,7 +167,7 @@ test('two states in one batch send a shared new chunk once', () => {
     worker.settle(extractor, planOnce(extractor, state).batch)
 
     const [notes] = [...state.store.slides.note.values()]
-     
+
     const target = notes![0]!
     const first = edit(state, (t) => {
         replaceNote(t, target, { ...target, size: target.size + 0.25 })
@@ -192,7 +191,7 @@ test('a failed batch is forgotten: its chunks are sent again and its promises re
     const pending = plan.kinds[0]?.chunks[0]
     assert.equal(pending?.t, 'pending')
     extractor.fail(batch, new Error('paused'))
-     
+
     await assert.rejects(pending!.memo.pending!.promise, /paused/)
     const again = planOnce(extractor, state)
     assert.equal(again.batch.texts.length, batch.texts.length)
@@ -208,7 +207,7 @@ test('a pending chunk from a batch in flight resolves to its hash once that batc
     assert.equal(next.batch.texts.length, 1)
     const chunk = next.plan.kinds[0]?.chunks[0]
     assert.equal(chunk?.t, 'pending')
-     
+
     const pending = chunk!.memo.pending!
     assert.notEqual(pending.batch, next.batch)
     const hashes = worker.settle(extractor, inFlight.batch)

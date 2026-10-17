@@ -1,7 +1,7 @@
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
-import { equalBytes, fromHex16, hash16, sha256, toHex } from './hash'
+import { fromHex16, hash16, sha256, toHex } from './hash'
 import type { KvTx } from './kv/types'
 import { putChunk } from './putChunk'
 import { nodeRow, rootRow } from './records/rows'
@@ -9,6 +9,7 @@ import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
+import type { FlushCommitted } from './worker/flushHooks'
 
 // The storage worker's half of a flush (Part 1 §1.6.2's order of work, §1.6.4 step 2): deflate,
 // verify and hash first, then one transaction holding `nse-maint` shared: the epoch and the
@@ -43,7 +44,6 @@ export type MediaKind = 'bgm' | 'cover' | 'preview'
 export type BatchMedia = {
     /** The first 16 bytes of `sha256`, as hex: the key and the state's `hash`. */
     hash: string
-    sha256: Uint8Array
     bytes: ArrayBuffer
     type: string
     filename?: string
@@ -119,6 +119,8 @@ export type FlushResult =
           /** The media rows this flush put, to read back once committed. */
           putMedia: string[]
           stats: WriteStats
+          /** For the post-flush hook, in the worker only: stripped before the reply. */
+          committed?: FlushCommitted
       }
     | {
           kind: 'missing'
@@ -135,7 +137,8 @@ export type PreparedFlush = {
     chunks: VerifiedChunk[]
     nodes: EncodedNode[]
     roots: EncodedRoot[]
-    media: Map<string, BatchMedia>
+    /** Carried media by hash, with the full SHA-256 of its bytes. */
+    media: Map<string, BatchMedia & { sha256: Uint8Array }>
 }
 
 /** A batch the worker refused before writing: a bug in the page's half. */
@@ -198,13 +201,13 @@ export const prepareFlush = async (
         )
     }
 
-    const media = new Map<string, BatchMedia>()
+    const media = new Map<string, BatchMedia & { sha256: Uint8Array }>()
     for (const item of batch.media) {
         // Hashed on the page before decoding; checked again here before it can be stored.
         const digest = await waiter.wait(sha256(new Uint8Array(item.bytes)))
-        if (!equalBytes(digest, item.sha256) || toHex(digest.subarray(0, 16)) !== item.hash)
+        if (toHex(digest.subarray(0, 16)) !== item.hash)
             throw new FlushBatchError('Media bytes do not hash to their hash')
-        media.set(item.hash, item)
+        media.set(item.hash, { ...item, sha256: digest })
     }
     return { chunks, nodes: [...nodes.values()], roots, media }
 }
@@ -269,13 +272,15 @@ export const writeFlush = async (
     const epoch = await readEpoch(tx)
     const sessionRow = await tx.get('sessions', batch.session.id)
     const session = isRow(sessionRow) ? sessionRow : undefined
-    const chainId =
-        session && typeof session.chainId === 'string' ? session.chainId : batch.session.chainId
+    const chainId = batch.session.chainId
+    // A fork moves its stored session to a new chain, made from the old record (§1.3.1).
+    const forking = session !== undefined && session.chainId !== chainId
+    if (forking && session.chainId !== batch.chain.forkOf)
+        throw new FlushBatchError('The session belongs to another chain')
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
-    // A fork moves the session to its own new chain, whose record doesn't exist yet.
-    const forking = batch.chain.forkOf !== undefined && chainId !== batch.session.chainId
-    if (chain && chain.head !== batch.session.id && !forking)
+    // The head check (r12-arch-web L4): another tab continued the chain meanwhile.
+    if (chain && chain.head !== batch.session.id)
         return { kind: 'notHead', chainId, head: String(chain.head) }
 
     // The closure check (§1.6.6): only hashes not known stored at this epoch.
@@ -284,7 +289,7 @@ export const writeFlush = async (
         if (known !== epoch && (await tx.getKey('chunks', hashKey(hash))) === undefined)
             missingChunks.push(toHex(hash))
     const missingMedia: string[] = []
-    const mediaToPut: BatchMedia[] = []
+    const mediaToPut: (BatchMedia & { sha256: Uint8Array })[] = []
     const referenced = new Set(prepared.roots.flatMap((root) => root.media.map(toHex)))
     for (const hex of referenced) {
         if ((await tx.getKey('media', hashKey(fromHex16(hex)))) !== undefined) continue
@@ -297,7 +302,9 @@ export const writeFlush = async (
         return { kind: 'missing', epoch, chunks: missingChunks, media: missingMedia }
 
     const forkSource =
-        forking && batch.chain.forkOf ? await tx.get('chains', batch.chain.forkOf) : undefined
+        !chain && batch.chain.forkOf !== undefined
+            ? await tx.get('chains', batch.chain.forkOf)
+            : undefined
 
     const nodesToPut: EncodedNode[] = []
     for (const node of prepared.nodes)
@@ -334,9 +341,12 @@ export const writeFlush = async (
     }
 
     let ownBytes = 0
+    const records: Uint8Array[] = []
+    const entryRows: unknown[] = []
     for (const chunk of prepared.chunks) {
         const row = await putChunk(tx, chunk, day)
         if (!row) continue
+        records.push(chunk.hash)
         ownBytes += row.bytes.length
         stats.chunks++
         count('chunks', row, chunk.hash)
@@ -344,6 +354,7 @@ export const writeFlush = async (
     for (const node of nodesToPut) {
         const row = nodeRow(node, day)
         await tx.put('nodes', row, hashKey(node.hash))
+        records.push(node.hash)
         ownBytes += row.size
         stats.nodes++
         count('nodes', row, node.hash)
@@ -351,6 +362,7 @@ export const writeFlush = async (
     for (const root of rootsToPut.values()) {
         const row = rootRow(root, day)
         await tx.put('nodes', row, hashKey(root.hash))
+        records.push(root.hash)
         ownBytes += row.size
         stats.nodes++
         count('nodes', row, root.hash)
@@ -358,7 +370,7 @@ export const writeFlush = async (
     for (const item of mediaToPut) {
         const row = {
             blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
-            sha256: item.sha256.slice(),
+            sha256: item.sha256,
             size: item.bytes.byteLength,
             type: item.type,
             ...(item.filename === undefined ? {} : { filename: item.filename }),
@@ -398,6 +410,7 @@ export const writeFlush = async (
             kept: true,
         }
         await tx.put('entries', row)
+        entryRows.push(row)
         stats.entries++
         count('entries', row)
         updatedAt = time
@@ -436,14 +449,15 @@ export const writeFlush = async (
         appVersion: batch.appVersion,
         ...(edited ? { edited: true, hasContent: true } : {}),
     }
+    const old = isRow(forkSource) ? forkSource : undefined
     const chainValue = chain
         ? updated(chain, chainFields)
         : {
-              ...forkRecord(isRow(forkSource) ? forkSource : undefined),
+              ...forkRecord(old),
               chainId,
               head: batch.session.id,
               docId: batch.chain.docId,
-              lineageId: batch.chain.lineageId,
+              lineageId: typeof old?.lineageId === 'string' ? old.lineageId : batch.chain.lineageId,
               ...(batch.chain.sourceName === undefined
                   ? {}
                   : { sourceName: batch.chain.sourceName }),
@@ -464,5 +478,13 @@ export const writeFlush = async (
         lastSeq: newLastSeq,
         putMedia: mediaToPut.map((item) => item.hash),
         stats,
+        committed: {
+            session: { id: batch.session.id, chainId },
+            entries: entryRows,
+            stackBlocks: [],
+            records,
+            media: mediaToPut.map((item) => fromHex16(item.hash)),
+            descriptorChanged: !chain,
+        },
     }
 }

@@ -1,5 +1,6 @@
 import { computed, ref, shallowReactive, shallowRef } from 'vue'
 import type { State } from '../state'
+import { emitHistoryAction } from './actions'
 
 export type HistoryEntry = {
     isDirty: boolean
@@ -59,6 +60,7 @@ export const pushState = (name: () => string, state: State) => {
         state,
     })
     index.value++
+    emitHistoryAction({ kind: 'edit', state, name, isDirty: true })
 }
 
 export const undoState = () => {
@@ -66,6 +68,8 @@ export const undoState = () => {
 
     const name = current.value.name
     index.value--
+    const { state, isDirty } = current.value
+    emitHistoryAction({ kind: 'undo', state, name, isDirty })
     return name
 }
 
@@ -73,12 +77,15 @@ export const redoState = () => {
     if (index.value >= states.length - 1) return
 
     index.value++
-    return current.value.name
+    const { state, name, isDirty } = current.value
+    emitHistoryAction({ kind: 'redo', state, name, isDirty })
+    return name
 }
 
 /** Replaces the whole history with one entry, leaving any peek. */
-export const resetStates = (entry: HistoryEntry) => {
+export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
     peek.value = undefined
     index.value = 0
     states.splice(0, states.length, entry)
+    emitHistoryAction({ kind: 'reset', ...entry, origin })
 }
