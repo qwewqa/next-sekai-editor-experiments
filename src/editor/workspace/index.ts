@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 import { isResettingSettings, settings } from '../../settings'
-import { oneRowToolbarWidth, toolbarGroups } from '../toolbar/layout'
+import { isCommandName } from '../commands'
+import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
     carryAcrossShape,
     coarseRailSize,
@@ -111,7 +112,7 @@ const panelPositions = computed(
 // The main editor's toolbar, which side docks' defaults leave room for.
 const toolbarWidth = computed(() =>
     oneRowToolbarWidth(
-        toolbarGroups(settings.toolbar).length,
+        toolbarGroups(registeredGroups(settings.toolbar, isCommandName)).length,
         rootFontSize.value,
         isCoarsePointer.value,
     ),
@@ -217,7 +218,7 @@ export const keepDefaultsAcrossDisplay = () =>
         [
             () => settings.previewAspectRatio,
             () => settings.previewTransportPosition,
-            () => toolbarGroups(settings.toolbar).length,
+            () => toolbarGroups(registeredGroups(settings.toolbar, isCommandName)).length,
         ],
         (_, [previewAspectRatio, transport, tools]) => {
             if (!isPanelStateUnset.value || isResettingSettings()) return
