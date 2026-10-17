@@ -11,7 +11,7 @@ import normalTraceUrl from './assets/se_live_trace.mp3?url'
 import criticalTraceUrl from './assets/se_live_trace_critical.mp3?url'
 import type { GroupId } from './chart/groups'
 import { createDisplayClock } from './displayClock'
-import { bgm } from './history/bgm'
+import { playbackBgm as bgm } from './history/bgm'
 import { bpms } from './history/bpms'
 import { cullEntities, store } from './history/store'
 import {

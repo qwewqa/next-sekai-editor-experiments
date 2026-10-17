@@ -1,4 +1,4 @@
-import type { Component } from 'vue'
+import { shallowReactive, type Component } from 'vue'
 import { bgm } from './bgm'
 import { bpm } from './bpm'
 import { brush } from './brush'
@@ -90,9 +90,13 @@ export type Command = {
     }
 
     execute: () => void | Promise<void>
+    /** Allowed while peeking, which refuses every other command. */
+    readOnly?: true
+    /** Picking it from a toolbar flyout leaves the group's face as it is. */
+    keepsFace?: true
 }
 
-export const commands = {
+const builtInCommands = {
     open,
     save,
     reset,
@@ -219,6 +223,15 @@ export const commands = {
     openContextMenu,
 }
 
-export type CommandName = keyof typeof commands
+export type CommandName = keyof typeof builtInCommands
 
-export const isCommandName = (name: string): name is CommandName => name in commands
+// Reactive, so commands registered after startup appear wherever commands are listed.
+const registry = shallowReactive<Record<string, Command>>(builtInCommands)
+
+export const commands = registry as Record<CommandName, Command>
+
+export const registerCommand = (name: string, command: Command) => {
+    registry[name] = command
+}
+
+export const isCommandName = (name: string): name is CommandName => name in registry

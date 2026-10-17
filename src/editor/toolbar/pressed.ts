@@ -33,9 +33,14 @@ const valuePreset = (name: CommandName) => {
     if (limit !== undefined) return { family: 'laneLimit', current: settings.maxLane === limit }
 }
 
-/** A tool or mode, shown strongly while in use, or a setting's value, shown low-key. */
+/**
+ * A tool or mode, shown strongly while in use; a setting's value, shown low-key; or a panel,
+ * shown pressed while open but never taking the face.
+ */
 export type CommandState =
-    { kind: 'tool'; current: boolean } | { kind: 'value'; family: string; current: boolean }
+    | { kind: 'tool'; current: boolean }
+    | { kind: 'value'; family: string; current: boolean }
+    | { kind: 'panel'; current: boolean }
 
 const tool = (current: boolean): CommandState => ({ kind: 'tool', current })
 

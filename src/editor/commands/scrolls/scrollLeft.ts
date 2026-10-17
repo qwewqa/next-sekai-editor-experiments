@@ -10,6 +10,8 @@ export const scrollLeft: Command = {
         is: ScrollLeftIcon,
     },
 
+    readOnly: true,
+
     execute() {
         scrollViewXBy(-getControlBounds(view).w * 0.1, true)
     },

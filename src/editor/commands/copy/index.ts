@@ -30,6 +30,8 @@ export const copy: Command = {
         is: CopyIcon,
     },
 
+    readOnly: true,
+
     execute() {
         const entities = selectedEntities.value
 

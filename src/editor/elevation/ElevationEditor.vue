@@ -170,6 +170,7 @@ import {
 import SelectValue from '../../modals/form/SelectValue.vue'
 import SquareGridIcon from './SquareGridIcon.vue'
 import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
+import { runCommand } from '../commands/runCommand'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const container = useTemplateRef<HTMLElement>('container')
@@ -1417,7 +1418,7 @@ const onKeydown = (event: KeyboardEvent) => {
     // A drag's Escape only cancels it, before this runs.
     // Side by side, it runs Deselect, so a second press switches to Select as on the chart.
     if (!isElevationSideBySide.value) closeElevationEditor()
-    else void deselect.execute()
+    else void runCommand(deselect)
 }
 // Its scroll and zoom move where a drag in it lands.
 watch([() => elevationViewport.center, () => elevationViewport.scale], notifyPaneMoved)

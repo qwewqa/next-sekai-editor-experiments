@@ -20,6 +20,8 @@ const setLimit = (maxLane: number) => {
 export const laneLimitNone: Command = {
     title: () => i18n.value.commands.laneLimits.none,
     icon: { is: LaneLimitIcon, props: { mode: 'none' } },
+    readOnly: true,
+
     execute() {
         setLimit(0)
     },
@@ -28,6 +30,8 @@ export const laneLimitNone: Command = {
 export const laneLimitSix: Command = {
     title: () => i18n.value.commands.laneLimits.six,
     icon: { is: LaneLimitIcon, props: { mode: 'six' } },
+    readOnly: true,
+
     execute() {
         setLimit(6)
     },
@@ -36,6 +40,8 @@ export const laneLimitSix: Command = {
 export const laneLimitCustom: Command = {
     title: () => i18n.value.commands.laneLimits.custom,
     icon: { is: LaneLimitIcon, props: { mode: 'custom' } },
+    readOnly: true,
+
     async execute() {
         const maxLane: number | undefined = await showModal(CustomLaneLimitModal, {})
         if (maxLane === undefined || !Number.isFinite(maxLane) || maxLane <= 0) return

@@ -10,6 +10,8 @@ export const zoomYOut: Command = {
         is: ZoomYOutIcon,
     },
 
+    readOnly: true,
+
     execute() {
         setVerticalScale(getVerticalScale() / 1.1)
 

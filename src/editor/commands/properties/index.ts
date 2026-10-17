@@ -13,6 +13,8 @@ export const properties: Command = {
         is: PropertiesIcon,
     },
 
+    readOnly: true,
+
     async execute() {
         const newInitialLife = await showModal(PropertiesModal, {
             initialLife: initialLife.value,

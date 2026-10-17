@@ -2,13 +2,17 @@ import { saveAs } from 'file-saver'
 import { gzip } from 'pako'
 import type { Command } from '..'
 import { levelDataHandle, setLevelDataHandle } from '../../../history'
-import { bgm } from '../../../history/bgm'
-import { isDynamicStages } from '../../../history/dynamicStages.ts'
-import { filename } from '../../../history/filename'
-import { groupFolders, groups } from '../../../history/groups'
-import { initialLife } from '../../../history/initialLife'
-import { stageFolders, stages } from '../../../history/stages'
-import { store } from '../../../history/store'
+import {
+    bgm,
+    filename,
+    groupFolders,
+    groups,
+    initialLife,
+    isDynamicStages,
+    stageFolders,
+    stages,
+    store,
+} from '../../../history/live'
 import { i18n } from '../../../i18n'
 import { serializeToLevelData } from '../../../levelData/serialize'
 import { showModal } from '../../../modals'

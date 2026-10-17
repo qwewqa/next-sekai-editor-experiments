@@ -10,6 +10,8 @@ export const help: Command = {
         is: HelpIcon,
     },
 
+    readOnly: true,
+
     execute() {
         void showModal(HelpModal, {})
     },

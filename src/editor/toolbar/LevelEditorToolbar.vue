@@ -47,6 +47,8 @@ import {
 } from './layout'
 import { secondarySwitchBack } from '../tools/state'
 import { commandState, isCommandPressed } from './pressed'
+import { faceAfterPick, movesFace } from './face'
+import { runCommand } from '../commands/runCommand'
 
 const props = defineProps<{ pane: ToolModalPane; available?: CommandName[] }>()
 
@@ -101,7 +103,10 @@ watch(activeNames, (names) => shownByLayout.set(keyOf(toolbar.value), [...names]
 
 // Values move a face only in a group whose states are all of one value family.
 const followsValues = (index: number) => {
-    const states = (toolbar.value[index] ?? []).flatMap((name) => stateOf(name, index) ?? [])
+    const states = (toolbar.value[index] ?? []).flatMap((name) => {
+        const state = stateOf(name, index)
+        return movesFace(state) ? [state] : []
+    })
     const families = new Set(states.map((state) => state.kind === 'value' && state.family))
     return families.size === 1 && !families.has(false)
 }
@@ -109,7 +114,13 @@ const followsValues = (index: number) => {
 // A group shows its tool in use, else its value in use where values move it, nearest its default.
 watch(
     [
-        () => toolbar.value.map((group) => group.filter((name) => isCommandPressed(name, group))),
+        () =>
+            toolbar.value.map((group) =>
+                group.filter((name) => {
+                    const state = commandState(name, group)
+                    return movesFace(state) && state.current
+                }),
+            ),
         () => !!secondarySwitchBack.value,
     ],
     ([pressed, switched]) => {
@@ -277,7 +288,7 @@ const onReleaseQuick = (event: PointerEvent) => {
     const name = target?.face ? activeNames.value[index] : toolbar.value[index]?.[target?.row ?? -1]
     activeIndex.value = -1
     if (!name) return
-    if (target?.face) void commands[name].execute()
+    if (target?.face) void runCommand(commands[name])
     else pick(index, name)
 }
 
@@ -303,7 +314,7 @@ const onClickMain = (event: MouseEvent, index: number, name: CommandName) => {
         return
     }
 
-    void commands[name].execute()
+    void runCommand(commands[name])
 
     activeIndex.value = -1
 }
@@ -317,19 +328,23 @@ const onClickSub = (event: MouseEvent, index: number, name: CommandName) => {
 
 // Runs a group's member, which takes the face as a flyout choice does.
 const pick = (index: number, name: CommandName) => {
-    const done = commands[name].execute()
+    const done = runCommand(commands[name])
 
     activeIndex.value = -1
-    // A toggle takes the face once in use; one a dialog cancels leaves it on the one in use.
     const show = () => {
-        if (isPressed(name, index) === false || !toolbar.value[index]?.includes(name)) return
-        // Over a temporary face, a picked tool holds the face; anything else is where it returns.
         const { displaced } = temporary
-        if (displaced[index])
-            displaced[index] = stateOf(name, index)?.kind === 'tool' ? undefined : name
-        // A value leaves the face to a tool in use.
-        if (stateOf(name, index)?.kind === 'value' && hasToolInUse(index)) return
-        activeNames.value[index] = name
+        const next = faceAfterPick(
+            { face: activeNames.value[index], displaced: displaced[index] },
+            {
+                name,
+                state: stateOf(name, index),
+                keepsFace: commands[name].keepsFace,
+                inGroup: !!toolbar.value[index]?.includes(name),
+                toolInUse: hasToolInUse(index),
+            },
+        )
+        if (next.displaced !== displaced[index]) displaced[index] = next.displaced
+        if (next.face) activeNames.value[index] = next.face
     }
     if (isPressed(name, index) === false) void Promise.resolve(done).then(show)
     else show()

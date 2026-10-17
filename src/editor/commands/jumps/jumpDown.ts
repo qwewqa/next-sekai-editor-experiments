@@ -10,6 +10,8 @@ export const jumpDown: Command = {
         is: JumpDownIcon,
     },
 
+    readOnly: true,
+
     execute() {
         let beat = Number.POSITIVE_INFINITY
         walkAllEntities((entity) => {

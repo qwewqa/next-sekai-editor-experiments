@@ -1,5 +1,6 @@
 import { isToolModalOpen } from '../../../../modals'
 import { deselect } from '../../../commands/deselect'
+import { runCommand } from '../../../commands/runCommand'
 import type { Recognizer } from './recognizer'
 
 export const twoTap = (): Recognizer<2> => ({
@@ -15,7 +16,7 @@ export const twoTap = (): Recognizer<2> => ({
         )
             return false
 
-        void deselect.execute()
+        void runCommand(deselect)
         return true
     },
 })

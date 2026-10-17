@@ -33,6 +33,8 @@ export const open: Command = {
         is: OpenIcon,
     },
 
+    readOnly: true,
+
     async execute() {
         if (!(await checkState())) return
 

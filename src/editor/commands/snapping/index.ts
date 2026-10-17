@@ -10,6 +10,8 @@ export const snapping: Command = {
         is: SnappingIcon,
     },
 
+    readOnly: true,
+
     execute() {
         if (view.snapping === 'absolute') {
             view.snapping = 'relative'

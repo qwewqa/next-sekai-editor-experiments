@@ -10,6 +10,8 @@ export const reset: Command = {
         is: ResetIcon,
     },
 
+    readOnly: true,
+
     async execute() {
         if (!(await checkState())) return
 

@@ -1,4 +1,5 @@
 import { play } from '../../../commands/play'
+import { runCommand } from '../../../commands/runCommand'
 import type { Recognizer } from './recognizer'
 
 /** Toggles playback; the gesture's first touch already stopped it when it was playing. */
@@ -15,7 +16,7 @@ export const threeTap = (wasPlaying: () => boolean): Recognizer<3> => ({
         )
             return false
 
-        if (!wasPlaying()) void play.execute()
+        if (!wasPlaying()) void runCommand(play)
         return true
     },
 })

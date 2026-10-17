@@ -9,6 +9,8 @@ export const stop: Command = {
         is: StopIcon,
     },
 
+    readOnly: true,
+
     execute() {
         stopPlayer(true)
     },

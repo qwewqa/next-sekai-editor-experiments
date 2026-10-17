@@ -10,6 +10,8 @@ export const zoomYIn: Command = {
         is: ZoomYInIcon,
     },
 
+    readOnly: true,
+
     execute() {
         setVerticalScale(getVerticalScale() * 1.1)
 

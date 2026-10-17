@@ -12,6 +12,8 @@ export const cycleVisibilities: Command = {
         is: CycleVisibilityIcon,
     },
 
+    readOnly: true,
+
     execute() {
         const visibilityTypes = isDynamicStages.value
             ? dynamicStagesVisibilityTypes

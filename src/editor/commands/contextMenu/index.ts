@@ -6,6 +6,8 @@ import ContextMenuIcon from './ContextMenuIcon.vue'
 export const openContextMenu: Command = {
     title: () => i18n.value.commands.openContextMenu.title,
     icon: { is: ContextMenuIcon },
+    readOnly: true,
+
     execute() {
         if (contextMenu.value) closeContextMenu()
         else openSelectionContextMenu()

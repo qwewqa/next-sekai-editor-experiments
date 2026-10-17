@@ -19,6 +19,8 @@ export const toggleBgmVolume: Command = {
         },
     },
 
+    readOnly: true,
+
     execute() {
         isBgmEnabled.value = !isBgmEnabled.value
 

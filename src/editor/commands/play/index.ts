@@ -15,6 +15,8 @@ export const play: Command = {
         },
     },
 
+    readOnly: true,
+
     execute() {
         startOrStopPlayer()
     },

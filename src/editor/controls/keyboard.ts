@@ -5,6 +5,7 @@ import { holdsTyping } from '../../modals/form/resync'
 import { settings } from '../../settings'
 import { isComposingKey } from '../../utils/composition'
 import { commands, type CommandName } from '../commands'
+import { runCommand } from '../commands/runCommand'
 import { drawerSide, takesDockKeys } from '../workspace'
 import {
     blocksDefault,
@@ -127,7 +128,7 @@ const onKeydown = (event: KeyboardEvent) => {
         names.includes('deselect')
     ) {
         event.preventDefault()
-        void commands.deselect.execute()
+        void runCommand(commands.deselect)
         return
     }
     // A field showing its committed value passes undo and redo to the editor.
@@ -159,7 +160,7 @@ const onKeydown = (event: KeyboardEvent) => {
     for (const name of names) {
         if (event.repeat && !repeatsWhenHeld.has(name)) continue
         if (pressing && movesViewUnderPress.has(name)) continue
-        void commands[name].execute()
+        void runCommand(commands[name])
     }
     if (!names.length) return
     // A command chord has no native use outside text entry, so selects and toggles drop it.

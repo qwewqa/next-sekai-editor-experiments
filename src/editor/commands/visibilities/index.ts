@@ -41,6 +41,8 @@ export const createVisibility = (
         },
     },
 
+    readOnly: true,
+
     execute() {
         const visibilities = { ...view.visibilities }
 

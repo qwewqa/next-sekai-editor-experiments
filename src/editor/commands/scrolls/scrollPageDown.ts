@@ -10,6 +10,8 @@ export const scrollPageDown: Command = {
         is: ScrollPageDownIcon,
     },
 
+    readOnly: true,
+
     execute() {
         scrollViewYBy(-getControlBounds(view).h, true)
     },

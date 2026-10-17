@@ -10,6 +10,8 @@ export const settings: Command = {
         is: SettingsIcon,
     },
 
+    readOnly: true,
+
     execute() {
         void showModal(SettingsModal, {})
     },

@@ -13,6 +13,7 @@ import { toolName, tools } from '../../tools'
 import { view } from '../../view'
 import SizeField from '../../../modals/form/SizeField.vue'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
+import { runCommand } from '../../commands/runCommand'
 
 // Long values, such as event tool names, go below their label, as in Settings.
 provide(stackLongValuesKey, true)
@@ -21,7 +22,7 @@ provide(stackLongValuesKey, true)
 const tool = computed({
     get: () => toolName.value,
     set: (tool) => {
-        void commands[tool].execute()
+        void runCommand(commands[tool])
     },
 })
 
@@ -60,10 +61,10 @@ const division = computed({
             case 8:
             case 12:
             case 16:
-                void commands[`division${division}`].execute()
+                void runCommand(commands[`division${division}`])
                 break
             default:
-                void commands.divisionCustom.execute()
+                void runCommand(commands.divisionCustom)
                 break
         }
     },
@@ -79,7 +80,7 @@ const snapping = computed({
     get: () => view.snapping,
     set: (snapping) => {
         if (snapping === view.snapping) return
-        void commands.snapping.execute()
+        void runCommand(commands.snapping)
     },
 })
 
@@ -87,7 +88,7 @@ const layout = computed({
     get: () => view.layout,
     set: (layout) => {
         if (layout === view.layout) return
-        void commands.editorLayout.execute()
+        void runCommand(commands.editorLayout)
     },
 })
 </script>

@@ -10,6 +10,8 @@ export const zoomXOut: Command = {
         is: ZoomXOutIcon,
     },
 
+    readOnly: true,
+
     execute() {
         settings.width *= 1.1
 

@@ -14,6 +14,8 @@ export const deselect: Command = {
         is: DeselectIcon,
     },
 
+    readOnly: true,
+
     execute() {
         // Dismisses an entity marker even with nothing selected; a cursor marker stays.
         if (view.touchMarker?.kind === 'entity') view.touchMarker = undefined

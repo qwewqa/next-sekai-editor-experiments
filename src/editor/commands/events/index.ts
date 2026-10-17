@@ -2,6 +2,7 @@ import { commands, type Command, type CommandName } from '..'
 import { i18n } from '../../../i18n'
 import { interpolate } from '../../../utils/interpolate'
 import { toolName, type ToolName } from '../../tools'
+import { runCommand } from '../runCommand'
 import EventIcon from './EventIcon.vue'
 
 let prev: CommandName = 'cameraEvent'
@@ -27,6 +28,6 @@ export const event: Command = {
             stageTransformEvent: 'cameraEvent',
         }
 
-        void commands[(prev = next[toolName.value] ?? prev)].execute()
+        void runCommand(commands[(prev = next[toolName.value] ?? prev)])
     },
 }

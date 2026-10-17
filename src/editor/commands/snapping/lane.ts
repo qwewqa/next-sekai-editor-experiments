@@ -7,6 +7,8 @@ import SnappingIcon from './SnappingIcon.vue'
 export const laneSnapping: Command = {
     title: () => i18n.value.commands.laneSnapping.title,
     icon: { is: SnappingIcon, props: { class: '-rotate-90' } },
+    readOnly: true,
+
     execute() {
         const snapping = view.laneSnapping === 'absolute' ? 'relative' : 'absolute'
         view.laneSnapping = snapping

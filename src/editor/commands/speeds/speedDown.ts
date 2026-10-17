@@ -9,6 +9,8 @@ export const speedDown: Command = {
         is: SpeedDownIcon,
     },
 
+    readOnly: true,
+
     execute() {
         changePlayerSpeed(-1)
     },

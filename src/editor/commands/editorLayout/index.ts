@@ -9,6 +9,8 @@ export const editorLayout: Command = {
     title: () => i18n.value.commands.editorLayout.title,
     icon: { is: EditorLayoutIcon },
 
+    readOnly: true,
+
     execute() {
         // Without dynamic stages both layouts are the same.
         if (!isDynamicStages.value) {

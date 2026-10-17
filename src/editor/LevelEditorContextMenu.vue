@@ -33,6 +33,7 @@ import { isEntityInScope, scopeLookup } from './scope'
 import { toolName } from './tools'
 import { modifyEntities, pointHitsAt } from './tools/utils'
 import { snappingSources, view, yToValidBeat } from './view'
+import { runCommand } from './commands/runCommand'
 
 type ActionName = CommandName | 'selectSlideNotes' | 'editElevations' | 'editProperties'
 type Action = {
@@ -164,7 +165,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
         notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
     } else if (name === 'paste') {
         if (point) void pasteAtContextPosition(point.x, point.y, { ctrl: false, shift: false })
-    } else void commands[name].execute()
+    } else void runCommand(commands[name])
 }
 
 watch(contextMenu, async (point) => {

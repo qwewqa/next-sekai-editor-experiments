@@ -10,6 +10,8 @@ export const scrollRight: Command = {
         is: ScrollRightIcon,
     },
 
+    readOnly: true,
+
     execute() {
         scrollViewXBy(getControlBounds(view).w * 0.1, true)
     },

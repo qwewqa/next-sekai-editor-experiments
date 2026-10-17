@@ -10,6 +10,8 @@ export const utilities: Command = {
         is: UtilitiesIcon,
     },
 
+    readOnly: true,
+
     execute() {
         void showModal(UtilitiesModal, {})
     },

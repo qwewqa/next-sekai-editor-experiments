@@ -4,6 +4,7 @@ import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
 import { clamp } from '../../utils/math'
 import { beginAudioPreviewInteraction } from '../audioPreview'
+import { runCommand } from '../commands/runCommand'
 import { zoomXIn } from '../commands/zooms/zoomXIn'
 import { zoomXOut } from '../commands/zooms/zoomXOut'
 import { zoomYIn } from '../commands/zooms/zoomYIn'
@@ -251,31 +252,31 @@ const wheel = (event: WheelEvent) => {
         if (event.shiftKey) {
             if (event.deltaY) {
                 if (event.deltaY > 0) {
-                    void zoomXOut.execute()
+                    void runCommand(zoomXOut)
                 } else {
-                    void zoomXIn.execute()
+                    void runCommand(zoomXIn)
                 }
             }
             if (event.deltaX) {
                 if (event.deltaX > 0) {
-                    void zoomYOut.execute()
+                    void runCommand(zoomYOut)
                 } else {
-                    void zoomYIn.execute()
+                    void runCommand(zoomYIn)
                 }
             }
         } else {
             if (event.deltaY) {
                 if (event.deltaY > 0) {
-                    void zoomYOut.execute()
+                    void runCommand(zoomYOut)
                 } else {
-                    void zoomYIn.execute()
+                    void runCommand(zoomYIn)
                 }
             }
             if (event.deltaX) {
                 if (event.deltaX > 0) {
-                    void zoomXOut.execute()
+                    void runCommand(zoomXOut)
                 } else {
-                    void zoomXIn.execute()
+                    void runCommand(zoomXIn)
                 }
             }
         }

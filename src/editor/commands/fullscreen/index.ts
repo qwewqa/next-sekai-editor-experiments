@@ -22,6 +22,8 @@ export const fullscreen: Command = {
         is: FullscreenIcon,
     },
 
+    readOnly: true,
+
     async execute() {
         try {
             if (document.fullscreenElement || document.webkitFullscreenElement) {

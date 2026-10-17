@@ -21,6 +21,8 @@ export const division = (division: number, axis: 'beat' | 'lane' = 'beat'): Comm
         },
     },
 
+    readOnly: true,
+
     execute() {
         if (axis === 'lane') view.laneDivision = division
         else view.division = division

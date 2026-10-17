@@ -10,6 +10,8 @@ export const zoomXIn: Command = {
         is: ZoomXInIcon,
     },
 
+    readOnly: true,
+
     execute() {
         settings.width /= 1.1
 

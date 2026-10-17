@@ -10,6 +10,8 @@ export const scrollPageUp: Command = {
         is: ScrollPageUpIcon,
     },
 
+    readOnly: true,
+
     execute() {
         scrollViewYBy(getControlBounds(view).h, true)
     },

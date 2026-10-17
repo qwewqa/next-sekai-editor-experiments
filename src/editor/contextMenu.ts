@@ -4,6 +4,7 @@ import { selectedEntities } from '../history/selectedEntities'
 import { settings } from '../settings'
 import { beatToTime } from '../state/integrals/bpms'
 import { deselect } from './commands/deselect'
+import { runCommand } from './commands/runCommand'
 import { getComposedLayout } from './composedView'
 import { editorNavigation } from './navigation'
 import { endTapCycle, select } from './tools/select'
@@ -21,7 +22,7 @@ export const openContextMenu = (x: number, y: number) => {
     const { hits } = found
     if (!hits.length && selectedEntities.value.length) {
         closeContextMenu()
-        void deselect.execute()
+        void runCommand(deselect)
         return
     }
     if (!selectedEntities.value.length || (hits.length && !selectedHit(found))) {

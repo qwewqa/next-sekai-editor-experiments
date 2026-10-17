@@ -10,6 +10,8 @@ export const jumpUp: Command = {
         is: JumpUpIcon,
     },
 
+    readOnly: true,
+
     execute() {
         let beat = Number.NEGATIVE_INFINITY
         walkAllEntities((entity) => {

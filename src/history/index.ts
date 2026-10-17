@@ -1,4 +1,3 @@
-import { computed, ref, shallowReactive } from 'vue'
 import type { Chart } from '../chart'
 import { addToGroups, type Groups } from '../chart/groups'
 import { addDefaultStageToStages, type Stages } from '../chart/stages'
@@ -7,10 +6,24 @@ import { switchToolTo } from '../editor/tools'
 import { i18n } from '../i18n'
 import { showModal } from '../modals'
 import ConfirmModal from '../modals/ConfirmModal.vue'
-import { createState, type State } from '../state'
+import { createState } from '../state'
 import { cleanupWaveform } from '../waveform'
 import { resetAutoSave } from './autoSave/index.ts'
 import { notifyResetState } from './resetHooks'
+import { isDirty, resetStates } from './stack'
+
+export {
+    canUndo,
+    isDirty,
+    isPeeking,
+    liveState,
+    peek,
+    pushState,
+    redoState,
+    replaceState,
+    state,
+    undoState,
+} from './stack'
 
 const createDefaultChart = (): Chart => {
     const groups: Groups = new Map()
@@ -41,62 +54,17 @@ const createDefaultChart = (): Chart => {
     }
 }
 
-const index = ref(0)
-
-export const canUndo = computed(() => index.value > 0)
-
-const states = shallowReactive([
-    {
-        isDirty: false,
-        name: () => i18n.value.history.initialize,
-        state: createState(createDefaultChart(), 0),
-    },
-])
+resetStates({
+    isDirty: false,
+    name: () => i18n.value.history.initialize,
+    state: createState(createDefaultChart(), 0),
+})
 
 export let levelDataHandle: FileSystemFileHandle | undefined
 
 addEventListener('beforeunload', (event) => {
     if (isDirty.value) event.preventDefault()
 })
-
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const current = computed(() => states[index.value]!)
-
-export const isDirty = computed(() => current.value.isDirty)
-
-export const state = computed(() => current.value.state)
-
-export const replaceState = (state: State) => {
-    states[index.value] = {
-        isDirty: current.value.isDirty,
-        name: current.value.name,
-        state,
-    }
-}
-
-export const pushState = (name: () => string, state: State) => {
-    states.splice(index.value + 1, states.length - index.value - 1, {
-        isDirty: true,
-        name,
-        state,
-    })
-    index.value++
-}
-
-export const undoState = () => {
-    if (!canUndo.value) return
-
-    const name = current.value.name
-    index.value--
-    return name
-}
-
-export const redoState = () => {
-    if (index.value >= states.length - 1) return
-
-    index.value++
-    return current.value.name
-}
 
 export const checkState = async () => {
     if (!isDirty.value) return true
@@ -115,8 +83,7 @@ export const resetState = (
     handle?: FileSystemFileHandle,
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
-    index.value = 0
-    states.splice(0, states.length, {
+    resetStates({
         isDirty,
         name: () => i18n.value.history.initialize,
         state: createState(chart ?? createDefaultChart(), offset ?? 0, filename),

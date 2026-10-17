@@ -10,6 +10,8 @@ export const select: Command = {
         is: SelectIcon,
     },
 
+    readOnly: true,
+
     execute() {
         switchToolTo('select')
 

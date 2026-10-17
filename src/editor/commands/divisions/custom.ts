@@ -20,6 +20,8 @@ const createCustomDivision = (axis: 'beat' | 'lane'): Command => ({
         },
     },
 
+    readOnly: true,
+
     async execute() {
         const division: number | undefined = await showModal(CustomDivisionModal, { axis })
         if (!division || !Number.isSafeInteger(division) || division < 1) return

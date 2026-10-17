@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, shallowReactive, watch } from 'vue'
-import { state } from '../../../history'
+import { isPeeking, liveState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import FileField from '../../../modals/form/FileField.vue'
@@ -44,7 +44,8 @@ onBeforeUnmount(() => {
     request?.abort()
     releaseWaveform(ownedWaveform)
 })
-watch(() => state.value.store, onClose, { flush: 'sync' })
+// It edits the live BGM, so a chart change or a peek closes it.
+watch([() => liveState.value.store, isPeeking], onClose, { flush: 'sync' })
 
 const onSelect = (file: File) => {
     request?.abort()

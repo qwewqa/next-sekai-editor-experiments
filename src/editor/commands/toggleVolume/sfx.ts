@@ -19,6 +19,8 @@ export const toggleSfxVolume: Command = {
         },
     },
 
+    readOnly: true,
+
     execute() {
         isSfxEnabled.value = !isSfxEnabled.value
 

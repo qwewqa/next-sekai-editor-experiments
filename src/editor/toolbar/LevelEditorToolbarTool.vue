@@ -19,8 +19,8 @@ const props = withDefaults(
 )
 
 const pressed = computed(() => props.state?.current)
-// Only a tool or mode in use takes the selected look; a value in use is checked.
-const selected = computed(() => props.state?.kind === 'tool' && props.state.current)
+// Only a tool, mode or open panel takes the selected look; a value in use is checked.
+const selected = computed(() => props.state?.kind !== 'value' && !!props.state?.current)
 const checked = computed(() => props.state?.kind === 'value' && props.state.current)
 
 const title = computed(() => commands[props.name].title())
