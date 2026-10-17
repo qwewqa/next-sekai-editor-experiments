@@ -1,11 +1,13 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import './check-lyon.mjs'
 import { stagePreviewAssets } from './release-assets.mjs'
 import { checkRelease, stageReleasePublic, writeReleaseManifest } from './release-utils.mjs'
+import { siteFromEnv } from './site.mjs'
+import { appVersion } from './version.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -14,12 +16,14 @@ if (process.env.GITHUB_SHA && process.env.GITHUB_SHA !== commit) {
     throw new Error('GITHUB_SHA does not match the checked-out source')
 }
 process.env.GITHUB_SHA = commit
-const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+const { version, appVersion: shown, atTag } = appVersion({ cwd: root })
 const metadata = {
     version,
     commit,
     base: '/',
-    appVersion: `${version}+${commit.slice(0, 8)}`,
+    appVersion: shown,
+    atTag,
+    site: siteFromEnv(),
     sourceDirty: Boolean(git('status', '--porcelain', '--untracked-files=normal')),
 }
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'sekai-release-'))

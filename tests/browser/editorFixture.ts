@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import { test, type BrowserContext, type Locator, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
@@ -472,4 +472,31 @@ export const touchInput = async (page: Page): Promise<TouchInput> => {
 export const addBrushProperty = async (scope: Locator, key: string) => {
     await scope.getByRole('button', { name: 'Add Property', exact: true }).click()
     await scope.page().locator(`[role="menu"] [data-menu-key="${key}"]`).click()
+}
+
+// Under NSE_DEV_CSP=1 (the dev server with the web policy), a CSP violation fails the spec.
+if (process.env.NSE_DEV_CSP === '1') {
+    const violations = new WeakMap<BrowserContext, string[]>()
+    test.beforeEach(async ({ context }) => {
+        const found: string[] = []
+        violations.set(context, found)
+        await context.exposeFunction('nseReportCspViolation', (violation: string) =>
+            found.push(violation),
+        )
+        await context.addInitScript(() =>
+            document.addEventListener(
+                'securitypolicyviolation',
+                (event) => {
+                    const report = (window as unknown as Record<string, (v: string) => void>)
+                        .nseReportCspViolation
+                    report?.(`${event.effectiveDirective} blocked ${event.blockedURI}`)
+                },
+                true,
+            ),
+        )
+    })
+    test.afterEach(({ context }) => {
+        const found = violations.get(context) ?? []
+        if (found.length) throw new Error(`Content Security Policy violations: ${found.join('; ')}`)
+    })
 }
