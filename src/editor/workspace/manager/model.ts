@@ -1,5 +1,6 @@
 import type { Component, Ref } from 'vue'
 import type { FolderId } from '../../../chart/folders'
+import { toWellFormed } from '../../../local/records/wellFormed'
 import type { ScopeVisibility } from '../../scope'
 import type { FolderOps } from './folders'
 import type { OwnerKey } from './objects'
@@ -76,7 +77,8 @@ export type ManagerModel<T> = {
 }
 
 /** A name as stored after renaming, or `undefined` when it is blank. */
-export const normalizeName = (name: string) => name.trim() || undefined
+/** A typed name, well formed (§1.6.11's conventions) and trimmed; undefined when blank. */
+export const normalizeName = (name: string) => toWellFormed(name).trim() || undefined
 
 /** Modifiers of a click on a row's name: Shift selects a range, Ctrl or Cmd toggles. */
 export type SelectModifiers = { range: boolean; toggle: boolean }

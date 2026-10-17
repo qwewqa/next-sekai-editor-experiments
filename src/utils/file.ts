@@ -1,3 +1,4 @@
+import { toWellFormed } from '../local/records/wellFormed'
 import { platform } from '../platform'
 
 export const pickFile = async () => (await platform.pickFiles({}))[0]?.file
@@ -29,7 +30,7 @@ export const getFilename = (file: Pick<File, 'name'>) => {
     const { name } = file
     const lower = name.toLowerCase()
     const extension = knownExtensions.find((extension) => lower.endsWith(extension))
-    return (extension ? name.slice(0, -extension.length) : name).trim()
+    return toWellFormed(extension ? name.slice(0, -extension.length) : name).trim()
 }
 
 export const pickFileForOpen = async (id: string) => {
