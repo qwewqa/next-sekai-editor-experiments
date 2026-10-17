@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 192">
+    <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#fff"/>
+        <stop offset="0.3" stop-color="#fff" stop-opacity="0.85"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="b" x="-50%" y="-10%" width="200%" height="120%">
+        <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+    <path d="M32 10C35 70 46 130 48 160C49 176 42 182 32 182C22 182 15 176 16 160C18 130 29 70 32 10Z" fill="url(#g)" filter="url(#b)"/>
+    <path d="M32 60C33 100 38 140 39 160C39 170 36 174 32 174C28 174 25 170 25 160C26 140 31 100 32 60Z" fill="url(#g)"/>
+</svg>

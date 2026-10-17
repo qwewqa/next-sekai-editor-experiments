@@ -510,22 +510,27 @@ export function skinSprites() {
     return { sprites, groups }
 }
 
-/** The particle sprites, in the order the effects index them (sprite in particles.mjs). */
+/** The particle sprites, in the order the effects index them (sprite in particles.mjs), and a
+ * width for the soft ones drawn smaller. */
 export const particleSprites = [
-    ['glow', 'particle-glow'],
-    ['frame', 'particle-frame'],
-    ['star', 'particle-star'],
-    ['spark', 'particle-spark'],
-    ['comet', 'particle-comet'],
-    ['bar', 'particle-bar'],
-    ['flash', 'particle-flash'],
-    ['mote', 'particle-circle'],
-    ['diamond', 'particle-diamond'],
-    ['thin', 'particle-frame-thin'],
+    ['glow', 'particle-glow', 96],
+    ['halo', 'particle-halo', 96],
+    ['frame', 'particle-frame-thin'],
     ['line', 'particle-frame-line'],
-    ['beam', 'particle-beam'],
+    ['plate', 'particle-plate'],
+    ['flare', 'particle-flare'],
+    ['sparkle', 'particle-sparkle'],
+    ['mote', 'particle-circle'],
+    ['shard', 'particle-diamond'],
+    ['arc', 'particle-arc'],
+    ['flame', 'particle-flame'],
+    ['needle', 'particle-needle'],
+    ['ring', 'particle-ring'],
+    ['wisp', 'particle-wisp'],
+    ['fan', 'particle-fan'],
+    ['flash', 'particle-flash'],
     ['streak', 'particle-streak'],
-].map(([name, template]) => ({ name, spec: image(template, {}) }))
+].map(([name, template, width]) => ({ name, spec: image(template, {}, width ? { width } : {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */
 export const clipFiles = {
