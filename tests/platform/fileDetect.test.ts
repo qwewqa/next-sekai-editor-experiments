@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
-import { classifyZipNames, detectContent, isMpegHeader } from '../../src/files/detect'
+import { classifyZipNames, detectContent, detectHead, isMpegHeader } from '../../src/files/detect'
 import { buildZip, type ZipInput } from '../../src/zip'
 
 const utf8 = (text: string) => new TextEncoder().encode(text)
@@ -51,6 +51,15 @@ test('a file with an audio MIME type is audio, as it always was', async () => {
     assert.deepEqual(await detectContent(file([utf8('not really')], 'a.bin', 'audio/mpeg')), {
         kind: 'audio',
     })
+})
+
+test('content comes before the MIME type: a ZIP with an audio type is a ZIP', async () => {
+    const zip = await buildZip([entry('a.txt')])
+    assert.deepEqual(await detectContent(file([zip], 'a.mp3', 'audio/mpeg')), {
+        kind: 'zip',
+        zip: 'other',
+    })
+    assert.equal(await detectHead(file([zip], 'a.mp3', 'audio/mpeg')), 'zip')
 })
 
 test('a UTF-16 text file is not mistaken for MP3', async () => {
@@ -240,3 +249,25 @@ function hasShipped() {
         return false
     }
 }
+
+test('Open tells a ZIP from its first 64 bytes without opening it', async () => {
+    const content = await buildZip([entry('project.json', '{"format":"nxsp"}')])
+    const slices: [number, number][] = []
+    const spy = {
+        size: content.size,
+        type: '',
+        slice(start: number, end: number) {
+            slices.push([start, end])
+            return content.slice(start, end)
+        },
+    } as unknown as Blob
+    assert.equal(await detectHead(spy), 'zip')
+    assert.deepEqual(slices, [[0, 64]])
+})
+
+test('Open is refused while peeking, since its audio branch changes the BGM', () => {
+    // The command module loads Vue components, so its source is checked instead.
+    const source = readFileSync('src/editor/commands/open/index.ts', 'utf8')
+    assert.ok(source.includes('changeBgm(file)'))
+    assert.ok(!/readOnly:\s*true/.test(source))
+})

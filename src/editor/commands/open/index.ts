@@ -7,7 +7,7 @@ import { parseUscChart } from '../../../chart/parse/usc'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
-import { detectContent, type Detection } from '../../../files/detect'
+import { detectHead } from '../../../files/detect'
 import { checkState, resetState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
@@ -34,17 +34,15 @@ export const open: Command = {
         is: OpenIcon,
     },
 
-    readOnly: true,
-
     async execute() {
         if (!(await checkState())) return
 
         const { file, handle } = await pickFileForOpen('levelData')
         if (!file) return
 
-        // A failed read here surfaces in the loading modal below.
-        const detected = await detectContent(file).catch((): Detection => ({ kind: 'data' }))
-        if (detected.kind === 'audio') {
+        // A failed read here surfaces in the loading modal below. A ZIP is only recognised for now.
+        const detected = await detectHead(file).catch(() => 'data' as const)
+        if (detected === 'audio') {
             void changeBgm(file)
             return
         }
@@ -56,7 +54,7 @@ export const open: Command = {
                 yield () => i18n.value.commands.open.loading
 
                 // Project files, archives and packages have no message of their own yet.
-                if (detected.kind === 'zip') throw new UnsupportedFileError()
+                if (detected === 'zip') throw new UnsupportedFileError()
 
                 const buffer = await file.arrayBuffer()
                 signal.throwIfAborted()

@@ -9,6 +9,7 @@ export type ZipErrorCode =
     | 'inflate'
     | 'too-large'
     | 'limit'
+    | 'ambiguous'
 
 /** A ZIP that cannot be read (damaged or unsupported), or a write past what the writer supports. */
 export class ZipError extends Error {
