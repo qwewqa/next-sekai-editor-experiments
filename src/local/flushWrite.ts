@@ -143,6 +143,8 @@ export type FlushResult =
           stats: WriteStats
           /** Stored in memory only (storage unavailable): set by the worker's reply. */
           memory?: boolean
+          /** In memory, and no database will answer in this tab: Try Again has nothing to ask. */
+          noDatabase?: boolean
           /** For the post-flush hook, in the worker only: stripped before the reply. */
           committed?: FlushCommitted
       }

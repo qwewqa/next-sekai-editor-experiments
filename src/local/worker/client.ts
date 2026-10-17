@@ -49,6 +49,7 @@ export class StorageWorker {
     constructor(
         private readonly script: WorkerScript,
         private readonly init: InitOptions,
+        /** `timeoutMs`: a test's timeout for every call, a flush's and Try Again's included. */
         private readonly options: { timeoutMs?: number } = {},
     ) {}
 
@@ -109,7 +110,7 @@ export class StorageWorker {
         return this.watch(
             reply,
             id,
-            options?.timeoutMs ?? this.options.timeoutMs ?? CALL_TIMEOUT_MS,
+            this.options.timeoutMs ?? options?.timeoutMs ?? CALL_TIMEOUT_MS,
             client,
         )
     }

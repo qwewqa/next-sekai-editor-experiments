@@ -470,3 +470,32 @@ test('a batch planned before a restart is planned again even where the new store
         )
     }
 })
+
+test('where no database will ever answer, a replaced session’s in-memory history is let go', async () => {
+    const world = createWorld({ seed: 8 })
+    const page = await openSplitPage(world, { flags: { noStorage: true } })
+    const released: string[] = []
+    const start = (id: string, state: State) =>
+        page.flusher.begin({
+            id,
+            docId: testId(),
+            origin: 'import',
+            state,
+            label: () => 'Initialize',
+            dirty: false,
+            done: () => released.push(id),
+        })
+    const state = stateOf(goldenChart())
+    start('first', state)
+    await page.flusher.flush()
+    start('second', widen(state))
+    await page.flusher.flush()
+    // The first session's lock went with it; the current one's history is still kept.
+    assert.deepEqual(released, ['first'])
+    page.host.worker.kill()
+    await settle(world)
+    assert.deepEqual(
+        sessionsIn(page.host.memory).map(({ seqs }) => seqs),
+        [[1]],
+    )
+})

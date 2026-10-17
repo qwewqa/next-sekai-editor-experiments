@@ -86,6 +86,7 @@ const start = async () => {
     const call = worker.call.bind(worker) as unknown as (
         method: string,
         arg?: unknown,
+        options?: { timeoutMs?: number },
     ) => Promise<unknown>
     return { worker, call }
 }
@@ -115,6 +116,13 @@ test('a hung call is restarted within about its timeout while another call keeps
     assert.equal(((await busy) as Error).name, 'WorkerRestartedError')
     await sleep(20)
     assert.equal(FakeWorker.created.length, 2)
+})
+
+test('the test timeout reaches calls that give their own, as a flush does', async () => {
+    const { call } = await start()
+    const began = Date.now()
+    await assert.rejects(call('stuck', undefined, { timeoutMs: 10_000 }), { name: 'TimeoutError' })
+    assert.ok(Date.now() - began < 1000)
 })
 
 test('a worker that doesn’t answer the ping is restarted', async () => {

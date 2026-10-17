@@ -168,6 +168,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
             if (result.kind !== 'stored') return result
             // In memory, the page keeps the entries: a restarted worker's store is new (§1.6.5).
             const memory = core.status.mode === 'memory'
+            const noDatabase = memory && core.status.reason !== 'olderTabs'
             const { committed, ...reply } = result
             // Media that reads back wrong never fails the entries: they're committed (§1.6.8.4).
             const mediaFailed = await readBackMedia(
@@ -182,6 +183,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                 ...reply,
                 ...(mediaFailed.length ? { mediaFailed } : {}),
                 ...(memory ? { memory } : {}),
+                ...(noDatabase ? { noDatabase } : {}),
             }
         },
 

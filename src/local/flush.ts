@@ -28,7 +28,8 @@ export { onFlushCommitted } from './worker/flushHooks'
 // switch and right after a media pick it runs at once and strictly. Entries stay pending until
 // the worker acknowledges the transaction that stored them, so a failed or killed flush loses
 // nothing: the next one, or the restarted worker, gets them again. Entries an in-memory store
-// acknowledged are kept too, until a database holds them, since a restarted worker's memory is new.
+// acknowledged are kept too, until a database holds them, since a restarted worker's memory is new;
+// where no database ever will, only the current session's (the journal covers the head).
 
 /** An entry not yet acknowledged by the worker, holding its state. */
 export type PendingEntry = {
@@ -226,6 +227,8 @@ export class Flusher {
     private readonly newId: () => string
     private readonly setTimer: (fn: () => void, ms: number) => unknown
     private readonly clearTimer: (handle: unknown) => void
+    /** No database will answer in this tab: replaced sessions keep no in-memory history. */
+    private noDatabase = false
     /** Whether the last flush failed: storing is paused, and it retries later. */
     failed = false
     private retryMs = 0
@@ -364,6 +367,13 @@ export class Flusher {
         return run
     }
 
+    /** No database will answer in this tab any more (a newer one opened read-only). */
+    withoutDatabase() {
+        this.noDatabase = true
+        for (const session of this.sessions) session.memoryOnly.length = 0
+        this.retire()
+    }
+
     /**
      * After the worker restarted: the memo is reset, and every pending entry is sent again, after
      * the entries only the old worker's in-memory store held.
@@ -458,7 +468,9 @@ export class Flusher {
             if (session === this.current) continue
             // A blank start never edited stores nothing (§1.3.6).
             if (!this.flushable(session)) session.pending.length = 0
-            // Held in memory only: kept, so a worker restart can send it again.
+            // Held in memory only: kept, so a worker restart can send it again, while a database
+            // may still take it (Try Again).
+            if (this.noDatabase) session.memoryOnly.length = 0
             if (session.pending.length || session.memoryOnly.length) continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             session.done?.()
@@ -643,6 +655,7 @@ export class Flusher {
                     result.known,
                 )
                 const acknowledged = session.pending.splice(0, entries.length)
+                this.noDatabase = !!result.noDatabase
                 if (result.memory) session.memoryOnly.push(...acknowledged)
                 // A database holds them now: moved by Try Again, or sent again after a restart.
                 else for (const each of this.sessions) each.memoryOnly.length = 0

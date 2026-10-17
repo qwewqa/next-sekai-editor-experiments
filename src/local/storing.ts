@@ -121,6 +121,11 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
         { replay: true },
     )
 
+    // A newer database opened by Try Again: nothing this tab holds will be stored.
+    worker.onStatus((next) => {
+        if (next.mode === 'readOnly') instance.withoutDatabase()
+    })
+
     worker.onRestart(() => {
         void instance.restarted()
     })
