@@ -206,6 +206,8 @@ export type FlushDeps = {
     onFork?: (fork: FlushSession, from: FlushSession) => void
     /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
     forkName?: (from: FlushSession) => string | undefined
+    /** The label of a `continue` entry the flusher adds itself. */
+    continueLabel?: () => string
     /** Writes chain fields of a stored session, checking it's still the chain's head. */
     writeChain?: (request: {
         chainId: string
@@ -596,8 +598,18 @@ export class Flusher {
                 return true
             }
             if (result.kind === 'notHead' && this.sessions.includes(session)) {
-                // Another tab continued the chain: this session goes on as a fork (D10).
+                // Another tab continued the chain: this session goes on as a fork (D10), which
+                // starts with a `continue` entry at the head when it has no entries of its own.
                 const fork = this.fork(session, result.lastSeq ?? session.ackedSeq)
+                const head = fork.stack.committed.at(fork.stack.committed.index)
+                if (!fork.pending.length && head?.hash)
+                    this.add(
+                        fork,
+                        'continue',
+                        this.deps.continueLabel ?? (() => ''),
+                        head.hash,
+                        false,
+                    )
                 void viaFirstWrite(fork)
             }
             return false

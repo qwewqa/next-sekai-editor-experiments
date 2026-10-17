@@ -17,9 +17,12 @@ export class RecoverySteps<C> {
     private readonly steps: RecoveryStep<C>[]
     private readonly afterCanary: RecoveryStep<C>[] = []
     private readonly afterAll: RecoveryStep<C>[] = []
+    /** Where the canary stands, so `afterCanary` holds when the canary is replaced. */
+    private readonly canaryAt: number
 
     constructor(steps: readonly RecoveryStep<C>[]) {
         this.steps = [...steps]
+        this.canaryAt = steps.findIndex((step) => step.name === 'canary')
     }
 
     /** Adds a step at an insertion point, after any added there before. */
@@ -41,9 +44,9 @@ export class RecoverySteps<C> {
 
     /** The steps in the order they run. */
     ordered(): RecoveryStep<C>[] {
-        const at = this.steps.findIndex((step) => step.name === 'canary')
-        const head = at === -1 ? [] : this.steps.slice(0, at + 1)
-        const rest = at === -1 ? this.steps : this.steps.slice(at + 1)
+        const at = this.canaryAt
+        const head = this.steps.slice(0, at + 1)
+        const rest = this.steps.slice(at + 1)
         return [...head, ...this.afterCanary, ...rest, ...this.afterAll]
     }
 

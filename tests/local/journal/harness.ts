@@ -4,6 +4,7 @@ import { replayJournal, type ReplayDeps } from '../../../src/local/journal/repla
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { JournalWriter, type JournalWriterDeps } from '../../../src/local/journal/writer'
 import type { Tab, World } from '../../../src/local/testing/world'
+import type { CoreDeps } from '../../../src/local/worker/core'
 import type { JournalStore } from '../../../src/platform/types'
 import type { State } from '../../../src/state'
 import {
@@ -70,22 +71,29 @@ export const openJournalPage = async (
     name: string,
     storage = new MemoryStorage(),
     writer: Partial<JournalWriterDeps> = {},
+    coreDeps: Partial<CoreDeps> = {},
 ): Promise<JournalPage> => {
     const ref: { writer?: JournalWriter; sync?: { fails: number } } = {}
-    const page = await openPage(world, world.tab(name), {
-        onCommitted: (session, { seq, strict }) => ref.writer?.committed(session.id, seq, strict),
-        onFork: (fork, from) => ref.writer?.forked(from, fork),
-        syncStrict: () => {
-            if (ref.sync) failing(ref.sync)
-            return page.tab.run(() =>
-                journalHandlers({
-                    core: page.core,
-                    test: true,
-                    emit: () => undefined,
-                }).syncStrict(undefined),
-            )
+    const page = await openPage(
+        world,
+        world.tab(name),
+        {
+            onCommitted: (session, { seq, strict }) =>
+                ref.writer?.committed(session.id, seq, strict),
+            onFork: (fork, from) => ref.writer?.forked(from, fork),
+            syncStrict: () => {
+                if (ref.sync) failing(ref.sync)
+                return page.tab.run(() =>
+                    journalHandlers({
+                        core: page.core,
+                        test: true,
+                        emit: () => undefined,
+                    }).syncStrict(undefined),
+                )
+            },
         },
-    })
+        coreDeps,
+    )
     const parts = journalled(
         storage,
         () => page.flusher,

@@ -5,6 +5,7 @@ import { onHistoryAction } from '../history/actions'
 import { filename } from '../history/live'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
+import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
 import type { State } from '../state'
 import { isDurablyStoredWith } from './durable'
@@ -214,6 +215,7 @@ export const startStoring = (
         },
         forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
         writeChain: (request) => worker.call('writeChainFields', request),
+        continueLabel: () => i18n.value.entry.continued,
         onFlushed: (report) => {
             if (test) reports.push(report)
         },

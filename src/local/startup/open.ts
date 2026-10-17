@@ -8,8 +8,6 @@ import type { JournalFound, LockService } from '../../platform/types'
 import type { State } from '../../state'
 import type { FlushSession, StoredStack } from '../flush'
 import { toHex } from '../hash'
-import { journalState } from '../journal/content'
-import { readJournal } from '../journal/format'
 import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, forkNameOf, namePartsOf } from '../names'
 import { stateFromRecords } from '../records/records'
@@ -18,6 +16,7 @@ import type { HeldLock, TabClient } from '../sessions'
 import type { StorageWorker } from '../worker/client'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
+import { journalledSession } from './resume'
 import { blankRequested, openingName, startsBlankForTests } from './state'
 import type { SessionRead } from './stored'
 import {
@@ -364,48 +363,28 @@ const forked = async (
 /** A reload while storage is unavailable continues from its own journal (§1.6.7). */
 const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock): boolean => {
     const flusher = deps.flusher()
-    const reading = readJournal(found.text, found.sessionId)
-    if (!flusher || reading.kind !== 'journal') return false
-    const content = journalState(reading.journal)
-    if (content.kind !== 'state') return false
-    const { journal } = reading
-    const { descriptor } = journal
-    const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
-    const chain: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(descriptor))
-        if (!['v', 'origin', 'parent', 'startedAt'].includes(key)) chain[key] = value
-    const name = text(descriptor.name)
-    const sourceName = text(descriptor.sourceName)
-    const label = journal.stack.head?.label ?? ''
+    const journalled = journalledSession(found)
+    if (!flusher || !journalled) return false
+    const { name, sourceName, label, state, chain } = journalled
     openStoredState(
         createSessionDescriptor({
-            sessionId: found.sessionId,
-            docId: descriptor.docId,
+            sessionId: journalled.id,
+            docId: journalled.docId,
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
         }),
         [{ label, isDirty: true }],
         0,
-        content.state,
+        state,
     )
     flusher.resumeJournalled({
-        id: found.sessionId,
-        chainId: descriptor.chainId,
-        docId: descriptor.docId,
-        lineageId: descriptor.lineageId,
-        origin: descriptor.origin as FlushSession['origin'],
-        startedAt: descriptor.startedAt,
-        ...(descriptor.parent ? { parent: descriptor.parent } : {}),
-        ...(sourceName === undefined ? {} : { sourceName }),
-        seq: journal.seq,
-        chain,
-        state: content.state,
+        ...journalled,
         label: () => label || deps.labels.recoveredHead(),
         ready: Promise.resolve(),
         done: lock.release,
     })
     restoreExportMemory({ partial: chain.partial })
-    writeTabRecord({ sessionId: found.sessionId, start: 'stored' })
+    writeTabRecord({ sessionId: journalled.id, start: 'stored' })
     return true
 }
 

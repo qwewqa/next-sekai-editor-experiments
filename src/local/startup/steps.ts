@@ -259,7 +259,7 @@ export const migrationStep = async (context: RecoveryContext) => {
         ? true
         : result.kind === 'duplicate' && read(context, LEGACY_RECOVERY_KEY) !== undefined
           ? true
-          : writeLegacyRecovery(text, context.storage() ?? undefined)
+          : writeLegacyRecovery(text, context.storage() ?? undefined, context.prefix)
     // An old tab's newer write survives, and the next load migrates it.
     if (legacy && read(context, AUTO_SAVE_KEY) === text)
         try {

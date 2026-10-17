@@ -49,12 +49,16 @@ const local = (): Store | undefined => {
  * Writes the legacy slot when it fits the journals' budget beside every pending journal, and reads
  * it back; true only when it verified. Left out (and an older copy removed) when it doesn't fit.
  */
-export const writeLegacyRecovery = (text: string, store: Store | undefined = local()) => {
+export const writeLegacyRecovery = (
+    text: string,
+    store: Store | undefined = local(),
+    prefix = storageKey(''),
+) => {
     if (!store) return false
-    const key = storageKey(LEGACY_RECOVERY_KEY)
+    const key = prefix + LEGACY_RECOVERY_KEY
     try {
         let others = 0
-        const journals = storageKey('journal.')
+        const journals = `${prefix}journal.`
         for (let i = 0; i < store.length; i++) {
             const name = store.key(i)
             if (name?.startsWith(journals))
