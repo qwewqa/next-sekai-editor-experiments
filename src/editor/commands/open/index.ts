@@ -7,6 +7,7 @@ import { parseUscChart } from '../../../chart/parse/usc'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
+import { detectContent, type Detection } from '../../../files/detect'
 import { checkState, resetState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
@@ -41,7 +42,9 @@ export const open: Command = {
         const { file, handle } = await pickFileForOpen('levelData')
         if (!file) return
 
-        if (file.type.startsWith('audio/')) {
+        // A failed read here surfaces in the loading modal below.
+        const detected = await detectContent(file).catch((): Detection => ({ kind: 'data' }))
+        if (detected.kind === 'audio') {
             void changeBgm(file)
             return
         }
@@ -51,6 +54,9 @@ export const open: Command = {
             title: () => i18n.value.commands.open.title,
             async *task(signal: AbortSignal) {
                 yield () => i18n.value.commands.open.loading
+
+                // Project files, archives and packages have no message of their own yet.
+                if (detected.kind === 'zip') throw new UnsupportedFileError()
 
                 const buffer = await file.arrayBuffer()
                 signal.throwIfAborted()

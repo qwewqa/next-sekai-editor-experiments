@@ -2,7 +2,35 @@ import { platform } from '../platform'
 
 export const pickFile = async () => (await platform.pickFiles({}))[0]?.file
 
-export const getFilename = (file: File) => file.name.split('.')[0]?.trim()
+// Only these end a name (§1.5.2): "v1.2 final.nxsp" is "v1.2 final", and ".json.gz" goes whole.
+const knownExtensions = [
+    '.nxsp',
+    '.nsld',
+    '.json.gz',
+    '.gz',
+    '.json',
+    '.usc',
+    '.sus',
+    '.zip',
+    '.scp',
+    '.mp3',
+    '.wav',
+    '.ogg',
+    '.oga',
+    '.opus',
+    '.flac',
+    '.m4a',
+    '.aac',
+    '.mp4',
+    '.webm',
+]
+
+export const getFilename = (file: Pick<File, 'name'>) => {
+    const { name } = file
+    const lower = name.toLowerCase()
+    const extension = knownExtensions.find((extension) => lower.endsWith(extension))
+    return (extension ? name.slice(0, -extension.length) : name).trim()
+}
 
 export const pickFileForOpen = async (id: string) => {
     const [opened] = await platform.pickFiles({ id, handles: true })
