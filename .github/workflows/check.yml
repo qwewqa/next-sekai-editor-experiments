@@ -2,7 +2,7 @@ name: Check
 
 on:
     push:
-        branches: ['main']
+        branches: ['main', 'ci/**']
     pull_request:
         branches: ['main']
     workflow_call:
@@ -53,7 +53,7 @@ jobs:
             - run: npm ci
             - run: npx playwright install --with-deps firefox webkit
             - run: npm run build
-            - run: npx playwright test --config playwright.compatibility.config.ts --project=firefox --project=firefox-chrome --project=firefox-production --project=webkit --project=webkit-production --project=mobile-webkit-production
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=firefox --project=firefox-chrome --project=firefox-production --project=webkit --project=webkit-production --project=mobile-webkit-production
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -80,7 +80,7 @@ jobs:
             - run: npm ci
             - run: npx playwright install --with-deps firefox webkit
             - run: npm run build
-            - run: npx playwright test --config playwright.compatibility.config.ts --project='*-storage'
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project='*-storage'
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
