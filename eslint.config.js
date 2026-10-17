@@ -6,7 +6,14 @@ import tsEslint from 'typescript-eslint'
 
 export default tsEslint.config(
     {
-        ignores: ['node_modules/**', 'dist/**', 'public/**', 'test-results*/**', '.idea/**'],
+        ignores: [
+            'node_modules/**',
+            'dist/**',
+            'dist-native/**',
+            'public/**',
+            'test-results*/**',
+            '.idea/**',
+        ],
     },
 
     {
@@ -67,6 +74,72 @@ export default tsEslint.config(
         },
     },
 
+    // Where platform names may appear (Part 0, 0.11.1): native code stays out of shared code.
+    {
+        files: ['src/**/*.{ts,vue}'],
+        // The native implementation, the native-only folders and the one loader that imports them.
+        ignores: [
+            'src/platform/native/**',
+            'src/library/**',
+            'src/projects/**',
+            'src/nativeLoader.ts',
+        ],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            regex: '^@tauri-apps/',
+                            message: 'Only the native implementation may import @tauri-apps.',
+                        },
+                        {
+                            regex: '(^|/)platform/native(/|$)',
+                            message: 'Reach the native platform only through #platform.',
+                        },
+                        {
+                            regex: '(^|/)(library|projects)(/|$)',
+                            message: 'The native-only folders load only through the native loader.',
+                        },
+                    ],
+                },
+            ],
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "Identifier[name='__NATIVE__']",
+                    message: '__NATIVE__ belongs to the build configuration and the native loader.',
+                },
+                {
+                    selector: "Identifier[name='isTauri']",
+                    message: 'isTauri belongs to the native implementation.',
+                },
+            ],
+        },
+    },
+    {
+        files: ['src/**/*.{ts,vue}'],
+        ignores: ['src/platform/**', 'src/library/**', 'src/projects/**', 'src/nativeLoader.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "Identifier[name='__NATIVE__']",
+                    message: '__NATIVE__ belongs to the build configuration and the native loader.',
+                },
+                {
+                    selector: "Identifier[name='isTauri']",
+                    message: 'isTauri belongs to the native implementation.',
+                },
+                {
+                    selector:
+                        "MemberExpression[object.name='platform'][property.name=/^(kind|os)$/]",
+                    message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+            ],
+        },
+    },
+
     {
         files: ['tests/**/*.ts', '*.config.ts'],
         extends: [eslint.configs.recommended, ...tsEslint.configs.recommended],
@@ -80,7 +153,7 @@ export default tsEslint.config(
     },
 
     {
-        files: ['scripts/**/*.mjs', 'tests/**/*.mjs', '*.config.js'],
+        files: ['scripts/**/*.mjs', 'builtin-assets/**/*.mjs', 'tests/**/*.mjs', '*.config.js'],
         extends: [eslint.configs.recommended],
         languageOptions: {
             globals: globals.node,

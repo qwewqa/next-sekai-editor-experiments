@@ -4,7 +4,9 @@
     "src/**/*",
     "src/**/*.vue",
     "tests/**/*.ts",
-    "scripts/**/*.mjs"
+    "scripts/**/*.mjs",
+    "builtin-assets/**/*.mjs",
+    "tests/builtin/*.mjs"
   ],
   "compilerOptions": {
     "allowJs": true,

@@ -32,6 +32,9 @@ jobs:
             - run: npm run check-format
             - run: npm test
             - run: npm run test:release
+            - run: npm run check:builtin-assets
+            - run: npm run build:native
+            - run: npm run check:native-bundle
 
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}

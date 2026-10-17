@@ -5,16 +5,18 @@
     "type": "module",
     "imports": {
         "#platform": {
+            "native": "./src/platform/native/index.ts",
             "default": "./src/platform/web.ts"
         },
         "#asset-defaults": {
+            "native": "./src/preview/assets/defaults.native.ts",
             "default": "./src/preview/assets/defaults.web.ts"
         }
     },
     "scripts": {
         "postinstall": "node scripts/patch-pixi-default-batcher.mjs",
         "fixtures:generated-large": "node scripts/generate-large-chart.mjs",
-        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing}/**/*.test.{ts,mjs}\"",
+        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",
         "test:compatibility": "npm run build && playwright test --config playwright.compatibility.config.ts",
@@ -23,7 +25,11 @@
         "dev": "vite --host",
         "build": "node scripts/check-lyon.mjs && vite build",
         "build:release": "node scripts/build-release.mjs",
+        "build:native": "node scripts/build-native.mjs",
+        "build:builtin-assets": "tsx scripts/build-builtin-assets.mjs",
         "check:release": "node scripts/check-release.mjs",
+        "check:native-bundle": "node scripts/check-native-bundle.mjs",
+        "check:builtin-assets": "tsx scripts/build-builtin-assets.mjs --check",
         "refresh:preview-assets": "node scripts/refresh-preview-assets.mjs",
         "check-type": "vue-tsc --build --force",
         "check-lint": "eslint .",
@@ -43,6 +49,7 @@
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.63.0",
+        "@resvg/resvg-wasm": "2.6.2",
         "@tsconfig/node22": "^22.0.5",
         "@types/file-saver": "^2.0.7",
         "@types/node": "^22.20.1",

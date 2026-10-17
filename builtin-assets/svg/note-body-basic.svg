@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 96">
+    <rect x="48" width="48" height="96" fill="var(--outer)"/>
+    <rect x="48" y="16" width="48" height="64" fill="var(--inner)"/>
+    <path d="M48 0H16A16 16 0 0 0 0 16V80A16 16 0 0 0 16 96H48Z" fill="var(--outer)"/>
+    <path d="M48 16H32A16 16 0 0 0 16 32V64A16 16 0 0 0 32 80H48Z" fill="var(--inner)"/>
+    <rect x="16" y="36" width="24" height="24" fill="var(--accent)"/>
+    <g transform="translate(144 0) scale(-1 1)">
+        <path d="M48 0H16A16 16 0 0 0 0 16V80A16 16 0 0 0 16 96H48Z" fill="var(--outer)"/>
+        <path d="M48 16H32A16 16 0 0 0 16 32V64A16 16 0 0 0 32 80H48Z" fill="var(--inner)"/>
+        <rect x="16" y="36" width="24" height="24" fill="var(--accent)"/>
+    </g>
+</svg>
