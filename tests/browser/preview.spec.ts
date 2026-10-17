@@ -3033,7 +3033,7 @@ test('Ctrl+Z in a preview number field showing its value undoes the last edit', 
 }) => {
     await page.evaluate(async () => {
         const { history, fixtures, store, appImport } = window.editorTest
-        history.resetState(false, structuredClone(fixtures.notes), 0, 'undo.json')
+        history.resetState(false, structuredClone(fixtures.notes), 0, { sourceName: 'undo.json' })
         const { editSelectedEditableEntities } = await appImport<
             typeof import('../../src/editor/sidebars/default')
         >('/src/editor/sidebars/default/index.ts')
@@ -3067,7 +3067,7 @@ test('Ctrl+Z and Ctrl+Y on preview sliders, switches and selects reach the edito
 }) => {
     await page.evaluate(async () => {
         const { history, fixtures, store, appImport } = window.editorTest
-        history.resetState(false, structuredClone(fixtures.notes), 0, 'undo.json')
+        history.resetState(false, structuredClone(fixtures.notes), 0, { sourceName: 'undo.json' })
         const { editSelectedEditableEntities } = await appImport<
             typeof import('../../src/editor/sidebars/default')
         >('/src/editor/sidebars/default/index.ts')

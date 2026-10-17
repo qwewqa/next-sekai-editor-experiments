@@ -1,6 +1,7 @@
 import { groupFolderArchetype, stageFolderArchetype, type Folders } from '../../../chart/folders'
 import type { Groups } from '../../../chart/groups'
 import type { Stages } from '../../../chart/stages'
+import { orderStore } from '../../../local/records/extract'
 import type { Store } from '../../../state/store'
 import { LATEST_REVISION } from '../../revision'
 import { serializeBpmsToLevelDataEntities } from './bpm'
@@ -26,6 +27,8 @@ export const serializeToLevelDataEntities = (
 ) => {
     let id = 0
     const getName = () => (id++).toString(16)
+    // One order for every kind, the records' (§1.6.11.6): level data is a function of the state.
+    const ordered = orderStore(store)
 
     const initialization = {
         archetype: 'Initialization',
@@ -41,7 +44,7 @@ export const serializeToLevelDataEntities = (
         ],
     }
 
-    const bpmEntities = serializeBpmsToLevelDataEntities(store)
+    const bpmEntities = serializeBpmsToLevelDataEntities(ordered)
 
     const groupFolderEntities =
         folders &&
@@ -63,6 +66,7 @@ export const serializeToLevelDataEntities = (
         isDynamicStages,
         initialization,
         store,
+        ordered,
         getName,
     )
 
@@ -70,28 +74,36 @@ export const serializeToLevelDataEntities = (
         isDynamicStages,
         stageEntities,
         store,
+        ordered,
         getName,
     )
     const stagePivotEventEntities = serializeStagePivotEventsToLevelDataEntities(
         isDynamicStages,
         stageEntities,
         store,
+        ordered,
         getName,
     )
     const stageStyleEventEntities = serializeStageStyleEventsToLevelDataEntities(
         isDynamicStages,
         stageEntities,
         store,
+        ordered,
         getName,
     )
     const stageTransformEventEntities = serializeStageTransformEventsToLevelDataEntities(
         isDynamicStages,
         stageEntities,
         store,
+        ordered,
         getName,
     )
 
-    const timeScaleEntities = serializeTimeScalesToLevelDataEntities(groupEntities, store, getName)
+    const timeScaleEntities = serializeTimeScalesToLevelDataEntities(
+        groupEntities,
+        ordered,
+        getName,
+    )
 
     const slideEntities = serializeSlidesToLevelDataEntities(
         groupEntities,
@@ -99,6 +111,7 @@ export const serializeToLevelDataEntities = (
         store,
         stages,
         getName,
+        ordered,
     )
 
     return [

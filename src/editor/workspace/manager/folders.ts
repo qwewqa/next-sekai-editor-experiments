@@ -82,6 +82,8 @@ export type FolderOps<K> = ReturnType<typeof createFolderOps<K, FolderMember & {
 export function createFolderOps<K, V extends FolderMember & { name: string }>(config: {
     entries: () => ReadonlyMap<K, V>
     folders: () => Folders
+    /** The other kind's folders, whose ids new folders never take. */
+    otherFolders: () => Folders
     /** The state with these entries and folders. */
     withData: (state: State, entries: Map<K, V>, folders: Folders) => State
     /** The state without these entries and their objects, keeping at least one entry. */
@@ -154,7 +156,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             if (!folder) continue
             const name = copyName(folder.name, names, i18n.value.workspace.manager.copyName)
             names.add(name)
-            copies.set(id, addToFolders(folders, name))
+            copies.set(id, addToFolders(folders, config.otherFolders(), name))
         }
         return copies
     }
@@ -177,7 +179,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         create(held?: ReadonlySet<K>) {
             const folders: Folders = new Map(config.folders())
             const name = newName()
-            const id = addToFolders(folders, name)
+            const id = addToFolders(folders, config.otherFolders(), name)
             let next = tree()
             const entry = held && entriesInTreeOrder(next).find((id) => held.has(id))
             if (!held || entry === undefined) {

@@ -101,7 +101,7 @@ const editNamedChart = (page: Page) =>
         const { history, fixtures, store, settings } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
-        history.resetState(false, fixtures.interaction, 0, 'named-chart')
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
         settings.autoSaveDelay = 0
         settings.autoSave = true
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
@@ -142,7 +142,7 @@ const canvasColors = (page: Page) =>
         return { blue, purple }
     })
 
-test('chart filename survives speculative edits, committed edits, undo and redo', async ({
+test('the session’s source name survives speculative edits, committed edits, undo and redo', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -151,7 +151,7 @@ test('chart filename survives speculative edits, committed edits, undo and redo'
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
         const { filename } = await import('/src/history/filename.ts')
-        history.resetState(false, fixtures.interaction, 0, 'named-chart')
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         const source = history.state.value
@@ -169,8 +169,7 @@ test('chart filename survives speculative edits, committed edits, undo and redo'
         const sourceRestored = history.state.value === source
         history.redoState()
         return {
-            speculativeFilename: speculative.filename,
-            sourceFilename: source.filename,
+            inState: 'filename' in speculative || 'filename' in source,
             sourceRestored,
             committed,
             undone,
@@ -178,8 +177,7 @@ test('chart filename survives speculative edits, committed edits, undo and redo'
         }
     })
     expect(result).toEqual({
-        speculativeFilename: 'named-chart',
-        sourceFilename: 'named-chart',
+        inState: false,
         sourceRestored: true,
         committed: { filename: 'named-chart', size: 3 },
         undone: { filename: 'named-chart', size: 2 },
@@ -200,7 +198,7 @@ test('undo to clean clears recovery, redo recreates it, and a clean reset clears
 
     await page.evaluate(() => {
         const { history, fixtures } = window.editorTest
-        history.resetState(false, fixtures.notes, 0, 'replacement-chart')
+        history.resetState(false, fixtures.notes, 0, { sourceName: 'replacement-chart' })
     })
     await expect.poll(() => recovery(page)).toBeUndefined()
 })
@@ -215,7 +213,7 @@ for (const how of ['undoes an edit it never saved', 'undoes a saved edit', 'turn
         await other.evaluate(
             (delay) => {
                 const { history, fixtures, settings } = window.editorTest
-                history.resetState(false, fixtures.interaction, 0, 'other-chart')
+                history.resetState(false, fixtures.interaction, 0, { sourceName: 'other-chart' })
                 settings.autoSaveDelay = delay
                 settings.autoSave = true
             },
@@ -249,10 +247,11 @@ for (const how of ['undoes an edit it never saved', 'undoes a saved edit', 'turn
         await expect
             .poll(() =>
                 reopened.evaluate(async () => {
-                    const { state } = await import('/src/history/index.ts')
+                    await import('/src/history/index.ts')
                     const { getAllEntities } = await import('/src/history/store.ts')
                     return {
-                        filename: state.value.filename,
+                        filename: (await import('/src/history/session.ts')).session.value
+                            .sourceName,
                         size: [...getAllEntities()]
                             .filter((entity) => entity.type === 'note')
                             .find((entity) => entity.beat === 3)?.size,
@@ -275,8 +274,7 @@ test("hiding an unchanged tab leaves another tab's newer recovery in place", asy
     await expect
         .poll(() =>
             other.evaluate(async () => {
-                const { state } = await import('/src/history/index.ts')
-                return state.value.filename
+                return (await import('/src/history/session.ts')).session.value.sourceName
             }),
         )
         .toBe('named-chart')
@@ -286,7 +284,7 @@ test("hiding an unchanged tab leaves another tab's newer recovery in place", asy
         const { history, fixtures, settings, store } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
-        history.resetState(false, fixtures.interaction, 0, 'other-chart')
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'other-chart' })
         settings.autoSaveDelay = 0
         settings.autoSave = true
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
@@ -320,12 +318,12 @@ test('restored autosave retains its filename and warns before close until reset 
     ).toBe(true)
     const snapshot = () =>
         page.evaluate(async () => {
-            const { state, isDirty, canUndo } = await import('/src/history/index.ts')
+            const { isDirty, canUndo } = await import('/src/history/index.ts')
             const { getAllEntities } = await import('/src/history/store.ts')
             const event = new Event('beforeunload', { cancelable: true })
             window.dispatchEvent(event)
             return {
-                filename: state.value.filename,
+                filename: (await import('/src/history/session.ts')).session.value.sourceName,
                 size: [...getAllEntities()]
                     .filter((entity) => entity.type === 'note')
                     .find((entity) => entity.beat === 3)?.size,
@@ -380,7 +378,7 @@ test('closing before the autosave delay preserves colored notes, connectors and 
                 ],
             },
             0.125,
-            'colored-chart',
+            { sourceName: 'colored-chart' },
         )
         const notes = [...history.state.value.store.slides.note.values()].flat()
         history.replaceState({ ...history.state.value, selectedEntities: notes })
@@ -417,7 +415,7 @@ test('closing before the autosave delay preserves colored notes, connectors and 
                 const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
                 const s = state.value
                 return {
-                    filename: s.filename,
+                    filename: (await import('/src/history/session.ts')).session.value.sourceName,
                     data: serializeToLevelData(
                         s.initialLife,
                         s.isDynamicStages,
@@ -480,7 +478,7 @@ test('tab recovery preserves default guide color without adding it to exported l
                 ],
             },
             0,
-            'guide-colors',
+            { sourceName: 'guide-colors' },
         )
     })
     page.on('dialog', (dialog) => void dialog.accept())
@@ -598,7 +596,7 @@ test('charts above the former entity limit still create recoverable colored data
                 ]),
             },
             0,
-            'large-colored-chart',
+            { sourceName: 'large-colored-chart' },
         )
     })
     await expect
@@ -852,7 +850,14 @@ const openChart = (page: Page) =>
                 .map((entry) => entry.name)
                 .find((name) => new URL(name).pathname === pathname) ?? pathname
         const { state } = (await import(url)) as typeof import('../../src/history')
-        return { filename: state.value.filename, bpm: Math.round(60 / state.value.bpms[0]!.s) }
+        const sessionPath = '/src/history/session.ts'
+        const sessionUrl =
+            performance
+                .getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .find((name) => new URL(name).pathname === sessionPath) ?? sessionPath
+        const { session } = (await import(sessionUrl)) as typeof import('../../src/history/session')
+        return { filename: session.value.sourceName, bpm: Math.round(60 / state.value.bpms[0]!.s) }
     })
 
 /** Reloads with these recoveries stored and auto save on, after this tab's last save. */
@@ -988,7 +993,7 @@ test("a tab that restored an older recovery leaves another tab's newer one in pl
         })
     await page.evaluate(() => {
         const { history, fixtures, settings } = window.editorTest
-        history.resetState(false, fixtures.interaction, 0, 'named-chart')
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
         settings.autoSaveDelay = 0
         settings.autoSave = true
         history.pushState(() => 'edit', { ...history.state.value, initialLife: 999 })
@@ -1049,7 +1054,7 @@ const writeNewer = async (page: Page) => {
     const before = (await unreadableStores(page)).recovery
     await page.evaluate(() => {
         const { history, fixtures } = window.editorTest
-        history.resetState(false, fixtures.interaction, 0, 'newer-chart')
+        history.resetState(false, fixtures.interaction, 0, { sourceName: 'newer-chart' })
         history.pushState(() => 'edit', { ...history.state.value, initialLife: 997 })
     })
     await expect.poll(async () => (await unreadableStores(page)).recovery).not.toBe(before)
@@ -1492,7 +1497,7 @@ for (const dialog of ['properties', 'bgm'] as const)
     test(`confirming the ${dialog} dialog unchanged adds no history entry`, async ({ page }) => {
         await page.evaluate(() => {
             const { history, fixtures } = window.editorTest
-            history.resetState(false, fixtures.interaction, 0.0041, 'clean-chart')
+            history.resetState(false, fixtures.interaction, 0.0041, { sourceName: 'clean-chart' })
         })
         const command = page.evaluate(async (dialog) => {
             const { commands } = await window.editorTest.appImport<

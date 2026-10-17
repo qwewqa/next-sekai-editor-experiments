@@ -42,7 +42,7 @@ const boot = async (page: Page, settings: Record<string, unknown> = {}) => {
             { ...head!, noteStyle: styles[index]! },
             { ...head!, beat: head!.beat + 1, noteStyle: styles[index]! },
         ])
-        history.resetState(false, chart, 0, 'lists.json')
+        history.resetState(false, chart, 0, { sourceName: 'lists.json' })
     })
 }
 

@@ -102,8 +102,18 @@ const parseEntities = (
 
     const groupFolders: Folders = new Map()
     const stageFolders: Folders = new Map()
-    const groupFolderIds = parseFoldersToChart({ entities }, groupFolderArchetype, groupFolders)
-    const stageFolderIds = parseFoldersToChart({ entities }, stageFolderArchetype, stageFolders)
+    const groupFolderIds = parseFoldersToChart(
+        { entities },
+        groupFolderArchetype,
+        groupFolders,
+        stageFolders,
+    )
+    const stageFolderIds = parseFoldersToChart(
+        { entities },
+        stageFolderArchetype,
+        stageFolders,
+        groupFolders,
+    )
     const folderIdOf = (ids: Map<string, FolderId>, entity: LevelDataEntity) => {
         const ref = getOptionalRef(entity, 'editorFolder')
         return ref === undefined ? undefined : ids.get(ref)

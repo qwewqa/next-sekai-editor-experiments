@@ -164,14 +164,14 @@ for (const command of ['open', 'autosave'] as const) {
             const { history } = window.editorTest
             history.pushState(() => 'Later edit', {
                 ...history.state.value,
-                filename: 'later-edit',
+                levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
             })
             window.loadingReview.release()
         })
         await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
         expect(
             await page.evaluate(() => ({
-                filename: window.editorTest.history.state.value.filename,
+                filename: window.editorTest.history.state.value.levelInfo.title,
                 canUndo: window.editorTest.history.canUndo.value,
             })),
         ).toEqual({ filename: 'later-edit', canUndo: true })

@@ -430,7 +430,11 @@ test('selection layout reuse invalidates for note, tempo, stage-event and stage-
     const notes = [...source.store.slides.note.values()][0]!
     assert.equal(createComposedLayout({ ...source, selectedEntities: notes }), first)
     assert.equal(
-        createComposedLayout({ ...source, filename: 'Renamed', bgm: { offset: 2 } }),
+        createComposedLayout({
+            ...source,
+            levelInfo: { ...source.levelInfo, title: 'Renamed' },
+            bgm: { offset: 2 },
+        }),
         first,
     )
 

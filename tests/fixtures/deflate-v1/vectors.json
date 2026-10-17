@@ -1,0 +1,5 @@
+{
+    "inflatesTo": "canonical.bin",
+    "valid": ["valid.bin", "valid-stored.bin"],
+    "damage": ["trailing-byte.bin", "truncated.bin", "concatenated.bin", "non-final.bin"]
+}

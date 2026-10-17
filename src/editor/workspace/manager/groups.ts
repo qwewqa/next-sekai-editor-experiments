@@ -2,6 +2,7 @@ import type { FolderId } from '../../../chart/folders'
 import { addToGroups, type GroupId } from '../../../chart/groups'
 import { pushState, state } from '../../../history'
 import { groupFolders, groups } from '../../../history/groups'
+import { stageFolders } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -114,6 +115,7 @@ const removeGroups = (groupIds: ReadonlySet<GroupId>) => {
 export const groupFolderOps = createFolderOps({
     entries: () => groups.value,
     folders: () => groupFolders.value,
+    otherFolders: () => stageFolders.value,
     withData: (state, groups, groupFolders) => ({ ...state, groups, groupFolders }),
     removeEntries: removeGroups,
     entriesOf: (state) => state.groups,

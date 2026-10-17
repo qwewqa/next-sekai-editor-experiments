@@ -417,7 +417,7 @@ for (const composed of [false, true]) {
         const original = render(state)
         const updated: State = {
             ...state,
-            filename: 'renamed',
+            levelInfo: { ...state.levelInfo, title: 'renamed' },
             initialLife: 500,
             bgm: { offset: 0.5 },
             groups: new Map([[groupId, { name: 'Renamed Group' }]]),

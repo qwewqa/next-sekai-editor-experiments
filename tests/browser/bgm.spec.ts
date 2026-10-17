@@ -582,7 +582,7 @@ test('a loaded BGM offset shows in milliseconds without floating point noise', a
     ] as const) {
         await page.evaluate((offset) => {
             const { history, fixtures } = window.editorTest
-            history.resetState(false, fixtures.interaction, offset, 'offset.json')
+            history.resetState(false, fixtures.interaction, offset, { sourceName: 'offset.json' })
         }, seconds)
         await page.keyboard.press('m')
         await expect(dialogs.getByRole('spinbutton', { name: 'Offset (ms)' })).toHaveValue(shown)
@@ -599,7 +599,7 @@ test('confirming the BGM dialog keeps a loaded offset exactly', async ({ page })
     for (const seconds of [0.0041, 0.0153, -4.095, 0.1234567]) {
         await page.evaluate((offset) => {
             const { history, fixtures } = window.editorTest
-            history.resetState(false, fixtures.interaction, offset, 'offset.json')
+            history.resetState(false, fixtures.interaction, offset, { sourceName: 'offset.json' })
         }, seconds)
         await page.keyboard.press('m')
         await dialogs.getByRole('button', { name: 'Confirm' }).click()

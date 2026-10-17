@@ -107,7 +107,10 @@ for (const layout of ['basic', 'composed'] as const) {
                     })
                 }
                 await compare('document metadata', () => {
-                    history.replaceState({ ...history.state.value, filename: 'renamed.json' })
+                    history.replaceState({
+                        ...history.state.value,
+                        levelInfo: { ...history.state.value.levelInfo, title: 'renamed.json' },
+                    })
                 })
                 const note = [...store.getAllEntities()].find(
                     (entity) =>

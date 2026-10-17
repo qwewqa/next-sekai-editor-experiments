@@ -17,7 +17,7 @@ const open = async (page: Page, locale: string, rightDockWidth: number) => {
                 { ...head!, isCritical: index === 0 },
                 { ...head!, beat: head!.beat + 1 },
             ])
-            history.resetState(false, chart, 0, 'stacking.json')
+            history.resetState(false, chart, 0, { sourceName: 'stacking.json' })
             Object.assign(settings, {
                 locale,
                 showSidebar: true,
@@ -139,7 +139,7 @@ test('a mixed range too long for its pill goes below its label', async ({ page }
             { ...head!, beat: 56 + 1 / 3 + index },
             { ...head!, beat: 62.75 + index },
         ])
-        history.resetState(false, chart, 0, 'stacking.json')
+        history.resetState(false, chart, 0, { sourceName: 'stacking.json' })
         await nextTick()
         history.replaceState({
             ...history.state.value,
@@ -199,7 +199,7 @@ test('a field refits when only its mixed range changes', async ({ page }) => {
                 { ...head!, beat: 62.75 },
             ],
         ]
-        history.resetState(false, chart, 0, 'stacking.json')
+        history.resetState(false, chart, 0, { sourceName: 'stacking.json' })
         await nextTick()
     })
     await select(0)

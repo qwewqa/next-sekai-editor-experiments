@@ -247,7 +247,7 @@ test('chart cache ignores selection, audio, filename and wrapper-only history ch
             {
                 ...source,
                 selectedEntities: [selected],
-                filename: 'renamed.json',
+                levelInfo: { ...source.levelInfo, title: 'renamed.json' },
                 bgm: { offset: 2 },
                 initialLife: 2000,
             },

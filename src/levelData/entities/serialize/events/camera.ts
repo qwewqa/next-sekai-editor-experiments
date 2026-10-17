@@ -2,19 +2,21 @@ import { EngineArchetypeDataName, type LevelDataEntity } from '@sonolus/core'
 import { serializeEventsToLevelDataEntities } from '.'
 import { getStoreEntities } from '..'
 import { easeValues } from '../../../../ease'
+import type { OrderedStore } from '../../../../local/records/extract'
 import type { Store } from '../../../../state/store'
 
 export const serializeCameraEventsToLevelDataEntities = (
     isDynamicStages: boolean,
     initialization: LevelDataEntity,
     store: Store,
+    ordered: OrderedStore,
     getName: () => string,
 ) => {
     if (!isDynamicStages) return []
 
-    const { ref, entities } = serializeEventsToLevelDataEntities(
+    const entities = serializeEventsToLevelDataEntities(
+        ordered.cameraEvents.map(({ entity }) => entity),
         getStoreEntities(store.grid.cameraEventConnection),
-        store.globalEventRanges.cameraEventJoint,
         getName,
         (joint) => ({
             archetype: 'CameraChange',
@@ -63,14 +65,18 @@ export const serializeCameraEventsToLevelDataEntities = (
         }),
     )
 
-    if (ref) {
+    const range = store.globalEventRanges.cameraEventJoint
+    if (range) {
+        const first = entities.get(range.min)
+        if (!first) throw new Error('Unexpected missing joint')
+
         initialization.data.push({
             name: 'firstCamera',
-            ref,
+            ref: (first.name ??= getName()),
         })
     }
 
-    return entities
+    return entities.values()
 }
 
 const zoomVerticalAligns = {

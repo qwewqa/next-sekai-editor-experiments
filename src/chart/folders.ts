@@ -36,8 +36,6 @@ export type FolderMember = { folderId?: FolderId }
 
 let i = 1
 
-export const newFolderId = () => i++ as FolderId
-
 /** One top-level item of the tree: a loose entry, or a folder and its members. */
 export type FolderTreeItem<K> =
     { type: 'entry'; id: K } | { type: 'folder'; id: FolderId; members: K[] }
@@ -370,9 +368,19 @@ export const removeFolderFromTree = <K>(
     folderId: FolderId,
 ): FolderTreeItem<K>[] => tree.filter((item) => item.type !== 'folder' || item.id !== folderId)
 
-/** Adds a folder object without placing it; callers place it in a tree. */
-export const addToFolders = (folders: Folders, name: string, index = 0) => {
-    const id = newFolderId()
+/**
+ * Adds a folder object without placing it; callers place it in a tree. Its id
+ * is in neither `folders` nor `other`, the other kind's folders: restored
+ * charts keep their ids, and collapsed folders are one set for both kinds.
+ */
+export const addToFolders = (
+    folders: Folders,
+    other: ReadonlyMap<FolderId, unknown>,
+    name: string,
+    index = 0,
+) => {
+    while (folders.has(i as FolderId) || other.has(i as FolderId)) i++
+    const id = i++ as FolderId
     folders.set(id, { name, index })
     return id
 }

@@ -8,7 +8,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { checkState, resetState } from '../../../history'
+import { checkState, resetState, setLevelDataHandle } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -78,7 +78,7 @@ export const open: Command = {
                             const chart = parseUscChart(objects)
                             validateChart(chart)
 
-                            resetState(false, chart, offset, getFilename(file))
+                            resetState(false, chart, offset, { sourceName: getFilename(file) })
                             break
                         }
                         case 'levelData': {
@@ -101,13 +101,10 @@ export const open: Command = {
 
                             // Content this build did not read: no file is written over (D2).
                             const complete = report.isEmpty
-                            resetState(
-                                false,
-                                chart,
-                                levelData.bgmOffset,
-                                getFilename(file),
-                                complete ? handle : undefined,
-                            )
+                            resetState(false, chart, levelData.bgmOffset, {
+                                sourceName: getFilename(file),
+                            })
+                            setLevelDataHandle(complete ? handle : undefined)
                             warning = complete ? revisionWarning : 'unsupportedParts'
                             if (complete && isGzip(buffer)) {
                                 // Export's own format: its file is the remembered target (§1.4.8).
@@ -132,7 +129,7 @@ export const open: Command = {
                             const chart = parseUscChart(usc.objects)
                             validateChart(chart)
 
-                            resetState(false, chart, usc.offset, getFilename(file))
+                            resetState(false, chart, usc.offset, { sourceName: getFilename(file) })
                             break
                         }
                         case 'sus': {
@@ -141,7 +138,7 @@ export const open: Command = {
                             const chart = parseSusChart(sus)
                             validateChart(chart)
 
-                            resetState(false, chart, sus.offset, getFilename(file))
+                            resetState(false, chart, sus.offset, { sourceName: getFilename(file) })
                             break
                         }
                     }

@@ -71,7 +71,8 @@ export const useAutoSave = () => {
                 hasSameChartData(savedState, current) &&
                 savedState.initialLife === current.initialLife &&
                 savedState.bgm.offset === current.bgm.offset &&
-                (savedState.filename ?? savedState.bgm.filename) === filename.value &&
+                // The source name changes only with a reset, whose new store fails the check above.
+                savedState.bgm.filename === current.bgm.filename &&
                 // Written back only when another tab removed it; one that replaced it holds the last edit.
                 (written === undefined || storageGetText(key) !== undefined)
             )
@@ -202,7 +203,7 @@ export const useAutoSave = () => {
         if (aside !== undefined && !earlier) await offerUnreadable(aside, 'earlier')
 
         if (primary) {
-            resetState(true, primary.chart, primary.offset, primary.filename)
+            resetState(true, primary.chart, primary.offset, { sourceName: primary.filename })
             savedState = liveState.value
             adopt(data)
             restored = primary
@@ -214,7 +215,7 @@ export const useAutoSave = () => {
             const choice = isDirty.value ? await showModal(RestorableRecoveryModal, {}) : 'restore'
             if (choice === 'discard') removeRecovery('earlier', aside)
             if (choice === 'restore') {
-                resetState(true, earlier.chart, earlier.offset, earlier.filename)
+                resetState(true, earlier.chart, earlier.offset, { sourceName: earlier.filename })
                 savedState = liveState.value
                 restored = earlier
                 notify(() => i18n.value.history.autoSave.unreadable.restored)

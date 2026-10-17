@@ -52,7 +52,7 @@ const open = async (page: Page, settings: Record<string, unknown> = {}) => {
         // Each head gets a tail, so connector fields show.
         chart.slides = chart.slides.map(([head]) => [head!, { ...head!, beat: head!.beat + 1 }])
         chart.timeScales = structuredClone(fixtures.events.timeScales)
-        history.resetState(false, chart, 0, 'glyphs.json')
+        history.resetState(false, chart, 0, { sourceName: 'glyphs.json' })
         Object.assign(window.editorTest.settings, {
             showSidebar: true,
             propertiesConnectorExpanded: true,
@@ -565,7 +565,7 @@ test.describe('ease lists', () => {
                 { ...head!, connectorEase: (eases[index] ?? 'linear') as never },
                 { ...head!, beat: head!.beat + 1 },
             ])
-            history.resetState(false, chart, 0, 'eases.json')
+            history.resetState(false, chart, 0, { sourceName: 'eases.json' })
             await window.editorTest.nextTick()
         }, eases)
 

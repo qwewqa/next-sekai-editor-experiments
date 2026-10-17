@@ -50,7 +50,7 @@ const seedGroups = (page: Page, groups: Seed, emptyFolders: string[] = []) =>
                     { name, index: emptyFolders.includes(name) ? Infinity : 0 },
                 ]),
             )
-            history.resetState(false, chart, 0, 'folders.json')
+            history.resetState(false, chart, 0, { sourceName: 'folders.json' })
             view.groupId = undefined
             view.stageId = undefined
             view.groupVisibility = new Map()
@@ -350,7 +350,9 @@ test.describe('level data', () => {
                 state.stages,
                 { groups: state.groupFolders, stages: state.stageFolders },
             )
-            history.resetState(false, parseLevelDataChart(data.entities), 0, 'reopened.json')
+            history.resetState(false, parseLevelDataChart(data.entities), 0, {
+                sourceName: 'reopened.json',
+            })
         })
         expect(reopened).toBeUndefined()
         expect(await tree(page)).toBe('Default [Verse: Lead Echo] Bass [Empty:]')

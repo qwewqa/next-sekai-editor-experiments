@@ -12,10 +12,12 @@ import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
 import { serializeEditorMetadata } from '../../../levelData/editorMetadata'
 import { serializeToLevelDataEntities } from '../../../levelData/entities/serialize'
+import { orderStore } from '../../../local/records/extract'
 import type { Entity, EntityOfType, EntityType } from '../../../state/entities'
 import type { NoteEntity } from '../../../state/entities/slides/note'
 import { getDetachedNotePositions } from '../../../state/operations/notePositions'
 import { inStoredOrder } from '../../../state/operations/transformSelection'
+import type { Store } from '../../../state/store'
 import { createStore } from '../../../state/store/creates'
 import { interpolate } from '../../../utils/interpolate'
 import { createComposedLayout } from '../../composed'
@@ -73,7 +75,7 @@ export const copy: Command = {
         setClipboardData({
             lane: kept ? kept.left + kept.size / 2 : anchor.lane,
             beat: anchor.beat,
-            anchor: getClipboardAnchor(entities, copiedEntities, anchor.note),
+            anchor: getClipboardAnchor(entities, copiedEntities, anchor.note, copiedStore),
             entities: copiedEntities,
             ...serializeEditorMetadata(copiedEntities, copiedStore),
             source: clipboardSource(),
@@ -137,9 +139,20 @@ export const getClipboardAnchor = (
     entities: Entity[],
     serialized: LevelDataEntity[],
     note: NoteEntity | undefined = getAnchor(entities, view.pointer.x, view.pointer.y).note,
+    /** The store the entities were serialized from; built from the copied slides when left out. */
+    copiedStore: Store = copiedSlidesStore(entities),
 ) => {
     if (!note) return
-    const ordinal = getSlides(entities).flat().indexOf(note)
+    // The serializer emits slides in the records' order (§1.6.11.6), so find the copied note there.
+    const slides = getSlides(entities)
+    const slideIndex = slides.findIndex((notes) => notes.includes(note))
+    const copiedNote = [...copiedStore.slides.note.values()][slideIndex]?.[
+        slides[slideIndex]?.indexOf(note) ?? -1
+    ]
+    if (!copiedNote) return
+    const ordinal = orderStore(copiedStore)
+        .slides.flatMap(({ entity }) => entity)
+        .indexOf(copiedNote)
     let index = 0
     for (const [entityIndex, entity] of serialized.entries()) {
         if (
@@ -150,6 +163,26 @@ export const getClipboardAnchor = (
         if (index++ === ordinal) return entityIndex
     }
 }
+
+/** A store of only the copied slides, in the order copy builds them. */
+const copiedSlidesStore = (entities: Entity[]) =>
+    createStore(
+        {
+            initialLife: initialLife.value,
+            isDynamicStages: isDynamicStages.value,
+            bpms: [],
+            timeScales: [],
+            cameraEvents: [],
+            stageMaskEvents: [],
+            stagePivotEvents: [],
+            stageStyleEvents: [],
+            stageTransformEvents: [],
+            groups: groups.value,
+            stages: stages.value,
+            slides: getCopiedSlides(entities).slides,
+        },
+        state.value.bpms,
+    )
 
 // A same-beat pair keeps its stored order, whatever the selection order.
 const getEntities = <T extends EntityType>(entities: Entity[], type: T) =>

@@ -191,13 +191,19 @@ test('export and preview share simultaneous-line eligibility and attachment boun
             assert.ok(entity)
             return value(entity, EngineArchetypeDataName.Beat)
         })
-    assert.deepEqual(simBeats, [0, 2, 3, 5])
+    // Export emits slides in the records' order (§1.6.11.6), so sim lines come in another order.
+    const ascending = (beats: number[]) => [...beats].sort((a, b) => a - b)
+    assert.deepEqual(ascending(simBeats), [0, 2, 3, 5])
     assert.deepEqual(
-        preview.simLines.map(({ left }) => left.targetTime * 2),
-        simBeats,
+        ascending(preview.simLines.map(({ left }) => left.targetTime * 2)),
+        ascending(simBeats),
     )
 
-    const noteEntities = entities.slice(0, slide.length)
+    // The six-note slide's notes; the single notes stand 2 lanes to its right.
+    const noteEntities = entities.filter(
+        (entity) =>
+            entity.data.some(({ name }) => name === 'segmentKind') && value(entity, 'lane') === -2,
+    )
     assert.deepEqual(
         noteEntities.map((entity) => value(entity, 'isAttached')),
         [0, 1, 1, 1, 1, 0],

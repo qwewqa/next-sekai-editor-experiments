@@ -35,7 +35,7 @@ const seedGroups = (page: Page, groups: [name: string, folder?: string][]) =>
         chart.groupFolders = new Map(
             folders.map((name, i) => [(9000 + i) as never, { name, index: 0 }]),
         )
-        history.resetState(false, chart, 0, 'managers.json')
+        history.resetState(false, chart, 0, { sourceName: 'managers.json' })
         view.groupId = undefined
         view.stageId = undefined
         settings.showGroups = false

@@ -1,9 +1,9 @@
 import { EngineArchetypeDataName, EngineArchetypeName, type LevelDataEntity } from '@sonolus/core'
-import { getStoreEntities } from '.'
-import type { Store } from '../../../state/store'
+import type { OrderedStore } from '../../../local/records/extract'
 
-export const serializeBpmsToLevelDataEntities = (store: Store) =>
-    [...getStoreEntities(store.grid.bpm)].map((bpm): LevelDataEntity => ({
+/** BPM changes in the records' order (§1.6.11.6). */
+export const serializeBpmsToLevelDataEntities = (ordered: OrderedStore) =>
+    ordered.bpms.map(({ entity: bpm }): LevelDataEntity => ({
         archetype: EngineArchetypeName.BpmChange,
         data: [
             {

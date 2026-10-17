@@ -91,7 +91,7 @@ const seed = (page: Page) =>
             [note(34, -4), note(36, -2), note(36, 2), note(38, 0)],
         )
 
-        history.resetState(false, chart, 0, 'duplicate.json')
+        history.resetState(false, chart, 0, { sourceName: 'duplicate.json' })
         view.groupId = undefined
         view.stageId = undefined
         view.groupVisibility = new Map()
@@ -643,7 +643,7 @@ test('without dynamic stages there is no stage to duplicate', async ({ page }) =
             false,
             { ...window.editorTest.fixtures.notes, isDynamicStages: false },
             0,
-            'static.json',
+            { sourceName: 'static.json' },
         )
     })
     const list = panel(page, 'stages')
@@ -684,7 +684,7 @@ test('duplicating a large group and stage stays quick', async ({ page }) => {
             beat: Math.floor(i / 2) * 0.5,
             maskLeft: (i % 6) - 6,
         }))
-        history.resetState(false, chart, 0, 'large.json')
+        history.resetState(false, chart, 0, { sourceName: 'large.json' })
         const { groupFolderOps } = await import('/src/editor/workspace/manager/groups.ts')
         const { stageFolderOps } = await import('/src/editor/workspace/manager/stages.ts')
         const time = (run: () => void) => {

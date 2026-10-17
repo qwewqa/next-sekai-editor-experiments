@@ -1,93 +1,70 @@
 import { EngineArchetypeDataName, EngineArchetypeName, type LevelDataEntity } from '@sonolus/core'
-import { getStoreEntities } from '.'
 import type { GroupId } from '../../../chart/groups'
 import { easeValues } from '../../../ease'
-import type { TimeScaleEntity } from '../../../state/entities/timeScale'
-import type { Store } from '../../../state/store'
+import type { OrderedStore } from '../../../local/records/extract'
 
+/**
+ * Time-scale changes in the records' order (§1.6.11.6): by beat, then group, then their
+ * order in the group, each group's chain linked in that order.
+ */
 export const serializeTimeScalesToLevelDataEntities = (
     groupEntities: Map<GroupId, LevelDataEntity>,
-    store: Store,
+    ordered: OrderedStore,
     getName: () => string,
 ) => {
-    const timeScalesByGroup = new Map<GroupId, TimeScaleEntity[]>()
+    const prevs = new Map<GroupId, LevelDataEntity>()
 
-    for (const timeScale of getStoreEntities(store.grid.timeScale)) {
-        const timeScales = timeScalesByGroup.get(timeScale.groupId)
-        if (timeScales) {
-            timeScales.push(timeScale)
-        } else {
-            timeScalesByGroup.set(timeScale.groupId, [timeScale])
-        }
-    }
-
-    const entities: LevelDataEntity[] = []
-
-    for (const [groupId, timeScales] of timeScalesByGroup) {
-        const timeScaleGroup = groupEntities.get(groupId)
+    return ordered.timeScales.map(({ entity: timeScale }) => {
+        const timeScaleGroup = groupEntities.get(timeScale.groupId)
         if (!timeScaleGroup) throw new Error('Unexpected missing group')
 
-        let prev: LevelDataEntity | undefined
-        entities.push(
-            ...timeScales
-                .sort((a, b) => a.beat - b.beat)
-                .map((timeScale) => {
-                    const entity: LevelDataEntity = {
-                        archetype: EngineArchetypeName.TimeScaleChange,
-                        data: [
-                            {
-                                name: '#TIMESCALE_GROUP',
-                                ref: (timeScaleGroup.name ??= getName()),
-                            },
-                            {
-                                name: EngineArchetypeDataName.Beat,
-                                value: timeScale.beat,
-                            },
-                            {
-                                name: 'editorLane',
-                                value: timeScale.editorLane,
-                            },
-                            {
-                                name: EngineArchetypeDataName.TimeScale,
-                                value: timeScale.timeScale,
-                            },
-                            {
-                                name: '#TIMESCALE_SKIP',
-                                value: timeScale.skip,
-                            },
-                            {
-                                name: '#TIMESCALE_EASE',
-                                value: easeValues[timeScale.timeScaleEase],
-                            },
-                            {
-                                name: 'transitionStyle',
-                                value: transitionStyles[timeScale.timeScaleTransition],
-                            },
-                            {
-                                name: 'hideNotes',
-                                value: +timeScale.hideNotes,
-                            },
-                        ],
-                    }
+        const entity: LevelDataEntity = {
+            archetype: EngineArchetypeName.TimeScaleChange,
+            data: [
+                {
+                    name: '#TIMESCALE_GROUP',
+                    ref: (timeScaleGroup.name ??= getName()),
+                },
+                {
+                    name: EngineArchetypeDataName.Beat,
+                    value: timeScale.beat,
+                },
+                {
+                    name: 'editorLane',
+                    value: timeScale.editorLane,
+                },
+                {
+                    name: EngineArchetypeDataName.TimeScale,
+                    value: timeScale.timeScale,
+                },
+                {
+                    name: '#TIMESCALE_SKIP',
+                    value: timeScale.skip,
+                },
+                {
+                    name: '#TIMESCALE_EASE',
+                    value: easeValues[timeScale.timeScaleEase],
+                },
+                {
+                    name: 'transitionStyle',
+                    value: transitionStyles[timeScale.timeScaleTransition],
+                },
+                {
+                    name: 'hideNotes',
+                    value: +timeScale.hideNotes,
+                },
+            ],
+        }
 
-                    if (prev) {
-                        prev.data.push({
-                            name: 'next',
-                            ref: (entity.name ??= getName()),
-                        })
-                    } else {
-                        timeScaleGroup.data.push({
-                            name: 'first',
-                            ref: (entity.name ??= getName()),
-                        })
-                    }
+        const prev = prevs.get(timeScale.groupId)
+        ;(prev ?? timeScaleGroup).data.push({
+            name: prev ? 'next' : 'first',
+            ref: (entity.name ??= getName()),
+        })
+        prevs.set(timeScale.groupId, entity)
 
-                    return (prev = entity)
-                }),
-        )
-    }
-
-    return entities
+        return entity
+    })
 }
 
 const transitionStyles = {
