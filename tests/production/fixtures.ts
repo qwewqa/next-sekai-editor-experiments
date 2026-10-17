@@ -192,3 +192,9 @@ export const instrumentRendering = () => {
         return url
     }
 }
+
+/** The fixture's version, and the release already seen: seeded settings make an existing user, who would otherwise see "Updated to version" over the canvas. */
+export const seedVersion = () => {
+    localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
+    localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+}

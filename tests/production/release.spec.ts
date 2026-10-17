@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { noteStyles } from '../../src/chart/noteStyle'
 import { parseGzippedJson, parseScp } from '../../src/preview/scp'
-import { chart, instrumentRendering, stereoWav } from './fixtures'
+import { chart, instrumentRendering, seedVersion, stereoWav } from './fixtures'
 
 const siteUrl = new URL(process.env.PRODUCTION_SITE_URL ?? 'https://nse.qwewqa.dev/').href
 
@@ -31,6 +31,7 @@ const showPreviewSettings = async (page: Page) => {
 }
 
 test('Preview Settings open by themselves at first load where they fit', async ({ page }) => {
+    await page.addInitScript(seedVersion)
     await page.addInitScript(() => {
         // With Groups and Stages closed, the Preview panel has room for the form.
         localStorage.setItem('sonolus-next-sekai-editor.showGroups', 'false')

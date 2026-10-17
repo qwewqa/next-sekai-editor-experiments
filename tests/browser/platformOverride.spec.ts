@@ -57,6 +57,8 @@ test('another version override shows that version', async ({ page }) => {
             'nse.test.version',
             JSON.stringify({ appVersion: '0.7.1+0123abcd', atTag: false }),
         )
+        // The release already seen, so the pill says "Version", not "Updated to version".
+        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.7.1'))
     })
     await page.goto('/')
 

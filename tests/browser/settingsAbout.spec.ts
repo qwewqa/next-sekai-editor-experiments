@@ -120,7 +120,9 @@ test.describe('Copy Diagnostic Info…', () => {
         await dialog.getByRole('button', { name: 'Copy', exact: true }).click()
         await expect(page.getByRole('dialog', { name: 'Diagnostic Info' })).toHaveCount(0)
         await expect(page.locator('[data-notice-region]')).toHaveText('Copied')
-        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text)
+        // Windows clipboards use CRLF.
+        const copied = await page.evaluate(() => navigator.clipboard.readText())
+        expect(copied.replace(/\r\n/g, '\n')).toBe(text.replace(/\r\n/g, '\n'))
     })
 
     test('Cancel copies nothing', async ({ page }) => {

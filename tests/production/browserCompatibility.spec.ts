@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { resource } from '../browser/previewResourceFixture'
-import { chart, instrumentRendering } from './fixtures'
+import { chart, instrumentRendering, seedVersion } from './fixtures'
 
 test.use({ hasTouch: true })
 
@@ -59,6 +59,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
             localStorage.setItem(`sonolus-next-sekai-editor.${key}`, 'false')
         localStorage.setItem('sonolus-next-sekai-editor.pps', '120')
     })
+    await page.addInitScript(seedVersion)
     await page.addInitScript(instrumentRendering)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

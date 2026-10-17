@@ -66,29 +66,25 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
         >
             {{ notification.message() }}
         </div>
-        <Transition name="notice-pill">
-            <div
-                v-if="notification.message && notification.action"
-                :key="notification.id"
-                class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 pr-2 shadow-md"
-                @pointerenter="pause('hover', true)"
-                @pointerleave="pause('hover', false)"
-                @focusin="pause('focus', true)"
-                @focusout="pause('focus', false)"
+        <div
+            v-else-if="notification.message && notification.action"
+            :key="notification.id"
+            class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 pr-2 shadow-md"
+            @pointerenter="pause('hover', true)"
+            @pointerleave="pause('hover', false)"
+            @focusin="pause('focus', true)"
+            @focusout="pause('focus', false)"
+        >
+            <span class="min-w-0 whitespace-break-spaces py-1">{{ notification.message() }}</span>
+            <button
+                type="button"
+                data-notice-action
+                class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"
+                @click="notification.action?.run()"
             >
-                <span class="min-w-0 whitespace-break-spaces py-1">{{
-                    notification.message()
-                }}</span>
-                <button
-                    type="button"
-                    data-notice-action
-                    class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"
-                    @click="notification.action?.run()"
-                >
-                    {{ notification.action?.label() }}
-                </button>
-            </div>
-        </Transition>
+                {{ notification.action?.label() }}
+            </button>
+        </div>
     </div>
 </template>
 
@@ -100,14 +96,6 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
 }
 
 /* Stays until its timeout ends, which removes it. */
-.notice-pill-leave-active {
-    transition: opacity 0.2s;
-}
-
-.notice-pill-leave-to {
-    opacity: 0;
-}
-
 .notification-pill {
     animation: none;
     /* Dark text on mint, as on every accent fill (8.9:1). */
