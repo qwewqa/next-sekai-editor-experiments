@@ -233,6 +233,9 @@ export const pinned: Record<number, ReturnType<typeof tableAt>> = {
             'SimLine',
             'TransientHiddenTickNote',
             'TransientHiddenDamageTickNote',
+            'Skill',
+            'FeverChance',
+            'FeverStart',
         ],
         ignoredFields: [
             {

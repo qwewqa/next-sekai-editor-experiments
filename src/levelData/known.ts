@@ -41,6 +41,8 @@ export type IgnoredReason =
     | 'rewritten'
     /** It carries nothing the level needs. */
     | 'nothing'
+    /** The editor doesn't support it and leaves it out, as it always has (owner decision D2). */
+    | 'dropped'
 
 export type Ignored = { reason: IgnoredReason; note: string; since?: Since }
 
@@ -271,6 +273,9 @@ export const ignoredArchetypes: Readonly<Record<string, Ignored>> = {
     TransientHiddenDamageTickNote: rewritten(
         'Hidden damage ticks are scheduled again from the connectors.',
     ),
+    Skill: { reason: 'dropped', note: 'Skill timing; not supported, left out as before.' },
+    FeverChance: { reason: 'dropped', note: 'Fever timing; not supported, left out as before.' },
+    FeverStart: { reason: 'dropped', note: 'Fever timing; not supported, left out as before.' },
 }
 
 const eventStage = rewritten(
