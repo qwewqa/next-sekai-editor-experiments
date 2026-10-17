@@ -1,10 +1,15 @@
 import { buildParticle } from '../../particle'
 import { buildSkin } from '../../skin'
-import type { LoadedBackground } from '../types'
-import { AssetError, type AssetType, type ChoiceProviders, type LoadContext } from '../types'
+import {
+    AssetError,
+    type AssetType,
+    type ChoiceProviders,
+    type LoadContext,
+    type LoadedBackground,
+} from '../types'
 import { loadEffectFromParts } from './effect'
+import { asImportError } from './errors'
 import { readImageSize } from './image'
-import { asImportError } from './importer'
 import { checkItem, type CheckedItem, type CheckedParts } from './item'
 import { openSourcePackage } from './package'
 import type { UserAssetStore } from './store'

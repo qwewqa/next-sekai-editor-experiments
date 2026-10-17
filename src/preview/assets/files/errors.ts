@@ -1,3 +1,4 @@
+import { ZipError } from '../../../zip/error'
 import type { AssetType } from '../types'
 
 /** The part of an item a message names. */
@@ -52,4 +53,12 @@ export class AssetImportError extends Error {
         )
         this.name = 'AssetImportError'
     }
+}
+
+/** Any failure of reading a package, as the one error the dialog words. */
+export const asImportError = (error: unknown, type?: AssetType): unknown => {
+    if (error instanceof AssetImportError) return error
+    if (error instanceof ZipError)
+        return new AssetImportError('damaged', { type }, { cause: error })
+    return error
 }

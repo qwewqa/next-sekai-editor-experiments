@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { i18n } from '../../../i18n'
 import { platform } from '../../../platform'
 import {
@@ -29,6 +38,7 @@ const props = defineProps<{
 
 const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
+const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
 const hasDefault = platform.capabilities.defaultAssets
 
@@ -134,6 +144,16 @@ const canChooseAgain = computed(
     () => fallback.value?.reason === 'fileGone' && chosen.value.source === 'file',
 )
 
+// Closing the chooser leaves the focus on the chosen row, where the keys are useful.
+watch(
+    () => props.chooser.open.value,
+    async (now, before) => {
+        if (!before || now) return
+        await nextTick()
+        sources.value?.querySelector<HTMLElement>('input:checked')?.focus({ focusVisible: false })
+    },
+)
+
 // The chosen asset is still loading: a switch to a stored item can take a moment.
 const isLoading = computed(() => {
     if (isAssetSafeModeActive) return false
@@ -151,6 +171,7 @@ const isLoading = computed(() => {
     <ChooserView v-if="chooser.open.value" :type="type" :chooser="chooser" />
     <div
         v-else
+        ref="sources"
         class="flex flex-col"
         role="radiogroup"
         :aria-label="strings[type]"
@@ -169,27 +190,30 @@ const isLoading = computed(() => {
                 :data-asset-row="row.id"
                 @select="select(row)"
             />
-            <p
-                v-if="row.id === selectedId && noteText"
-                :id="noteId"
-                class="relative pb-2 pl-[5.75rem] pr-3 pt-1 text-sm"
-                data-asset-note
-            >
-                <AssetGlyph
-                    v-if="hasWarning"
-                    type="warning"
-                    class="absolute left-[4.25rem] top-[0.4375rem]"
-                />{{ noteText }}
-                <button
-                    v-if="canChooseAgain"
-                    type="button"
-                    class="ml-2 inline-flex h-7 items-center rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
-                    data-asset-choose-again
-                    @click="chooser.show()"
+            <template v-if="row.id === selectedId && noteText">
+                <p
+                    :id="noteId"
+                    class="relative pl-[5.75rem] pr-3 pt-1 text-sm"
+                    :class="canChooseAgain ? 'pb-1' : 'pb-2'"
+                    data-asset-note
                 >
-                    {{ strings.chooseAgain }}
-                </button>
-            </p>
+                    <AssetGlyph
+                        v-if="hasWarning"
+                        type="warning"
+                        class="absolute left-[4.25rem] top-[0.4375rem]"
+                    />{{ noteText }}
+                </p>
+                <div v-if="canChooseAgain" class="pb-2 pl-[5.75rem] pr-3">
+                    <button
+                        type="button"
+                        class="inline-flex h-7 items-center rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        data-asset-choose-again
+                        @click="chooser.show()"
+                    >
+                        {{ strings.chooseAgain }}
+                    </button>
+                </div>
+            </template>
             <p
                 v-else-if="row.id === selectedId && isLoading"
                 class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm opacity-75"

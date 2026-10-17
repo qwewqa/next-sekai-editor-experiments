@@ -71,6 +71,8 @@ export const workerStore: UserAssetStore = (() => {
 
 /** The packages stored on this device, for the dialog's lists and footer; loaded when it opens. */
 export const storedAssets = shallowRef<UserAssetMeta[]>([])
+/** Whether the list has been asked for once, so the Stored tab does not say "empty" before it is read. */
+export const storedLoaded = shallowRef(false)
 
 export const refreshStored = async (store: UserAssetStore = workerStore) => {
     try {
@@ -78,4 +80,5 @@ export const refreshStored = async (store: UserAssetStore = workerStore) => {
     } catch {
         // Nothing to list where storage did not start.
     }
+    storedLoaded.value = true
 }

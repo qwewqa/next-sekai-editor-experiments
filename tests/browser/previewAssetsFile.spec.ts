@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { EffectData, ParticleData, SkinData } from '@sonolus/core'
 import { mkdirSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { pngHeader } from '../preview/files/fixtures'
@@ -185,7 +186,7 @@ const fileChoice = {
     origin: 'neon.scp',
 }
 
-const jsonOf = (gz: Uint8Array) => JSON.parse(gunzipSync(gz).toString()) as Record<string, any>
+const jsonOf = <T>(gz: Uint8Array) => JSON.parse(gunzipSync(gz).toString()) as T
 const gzOf = (value: unknown) => new Uint8Array(gzipSync(JSON.stringify(value)))
 
 /** An entry of a Built-in package, read back through its SRL. */
@@ -512,13 +513,13 @@ test.describe('a stored item that is gone', () => {
         )
         expect((await choices(page)).skin).toEqual(fileChoice)
 
-        await note.locator('[data-asset-choose-again]').click()
+        await dialog(page).locator('[data-asset-choose-again]').click()
         await expect(chooser(page)).toBeVisible()
         // Cancelling leaves the setting as it was.
         await chooser(page).locator('[data-chooser-cancel]').click()
         expect((await choices(page)).skin).toEqual(fileChoice)
 
-        await dialog(page).locator('[data-asset-note] [data-asset-choose-again]').click()
+        await dialog(page).locator('[data-asset-choose-again]').click()
         await pick(
             page,
             'neon.scp',
@@ -693,6 +694,45 @@ test.describe('the source list', () => {
     })
 })
 
+test.describe('a stored item that is slow to load', () => {
+    test('shows Loading… under its row until it is shown', async ({ page }) => {
+        await start(page)
+        await open(page)
+        await importFile(
+            page,
+            'skin',
+            'neon.scp',
+            await variants('skin', [{ name: 'neon', title: 'Neon Skin' }]),
+        )
+        await dialog(page).locator('[data-asset-row="builtin"]').click()
+        await expect.poll(() => slot(page, 'skin')).toMatchObject({ status: { active: 'builtin' } })
+        await expect(dialog(page).locator('[data-asset-loading]')).toHaveCount(0)
+
+        // The store answers slowly for a while.
+        await page.evaluate(async () => {
+            const { workerStore } = await window.editorTest.appImport<
+                typeof import('../../src/preview/assets/files/store')
+            >('/src/preview/assets/files/store.ts')
+            const get = workerStore.get
+            workerStore.get = async (key) => {
+                await new Promise((resolve) => setTimeout(resolve, 2500))
+                return get(key)
+            }
+        })
+        await dialog(page).locator('[data-asset-row^="file:"]').click()
+        const loading = dialog(page).locator('[data-asset-loading]')
+        await expect(loading).toHaveText('Loading…')
+        // It sits under the chosen row, and goes when the item shows.
+        await expect(
+            dialog(page).locator('[data-asset-row^="file:"] + [data-asset-loading]'),
+        ).toHaveCount(1)
+        await expect
+            .poll(() => slot(page, 'skin'), { timeout: 15_000 })
+            .toMatchObject({ status: { active: 'chosen' }, title: 'Neon Skin' })
+        await expect(loading).toHaveCount(0)
+    })
+})
+
 test.describe('refusing a file', () => {
     // A package that cannot be opened is refused when it is picked; an item that fails a check, at Use.
     const refused = async (page: Page, bytes: Uint8Array, message: string) => {
@@ -790,14 +830,14 @@ test.describe('refusing a file', () => {
         )
 
         // A sprite outside the texture, in the real skin's own data.
-        const skinData = jsonOf(await resourceOf('skin', 'data'))
+        const skinData = jsonOf<SkinData>(await resourceOf('skin', 'data'))
         skinData.sprites.push({
             name: 'Outside',
             x: skinData.width - 1,
             y: 0,
             w: 8,
             h: 8,
-            transform: {},
+            transform: skinData.sprites[0]!.transform,
         })
         await refused(
             page,
@@ -809,9 +849,9 @@ test.describe('refusing a file', () => {
         await chooser(page).locator('[data-chooser-cancel]').click()
         await tabOf(page, 'particle').click()
         await choose(page)
-        const particleData = jsonOf(await resourceOf('particle', 'data'))
-        const effect = particleData.effects[0]
-        effect.groups = [{ ...effect.groups[0], count: 600 }]
+        const particleData = jsonOf<ParticleData>(await resourceOf('particle', 'data'))
+        const effect = particleData.effects[0]!
+        effect.groups = [{ particles: effect.groups[0]!.particles, count: 600 }]
         await refused(
             page,
             await patched('particle', { resources: { data: gzOf(particleData) } }),
@@ -822,7 +862,7 @@ test.describe('refusing a file', () => {
         await chooser(page).locator('[data-chooser-cancel]').click()
         await tabOf(page, 'effect').click()
         await choose(page)
-        const effectData = jsonOf(await resourceOf('effect', 'data'))
+        const effectData = jsonOf<EffectData>(await resourceOf('effect', 'data'))
         effectData.clips = effectData.clips.filter(
             (clip: { name: string }) => clip.name !== '#PERFECT',
         )

@@ -220,7 +220,9 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             if (mine !== generation || isAbort(failure)) return
             phase.value = 'listed'
             error.value = describe(failure)
-            console.error('Could not store the preview asset:', failure)
+            // A refused package is the file's doing, and the message says so; the rest is ours.
+            if (!(failure instanceof AssetImportError))
+                console.error('Could not store the preview asset:', failure)
         }
     }
 

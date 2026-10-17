@@ -4,7 +4,12 @@ import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import { assetTypes, choiceKey } from '../../../preview/assets/choice'
 import { storedChoice } from '../../../preview/assets/files/chooser'
-import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
+import {
+    refreshStored,
+    storedAssets,
+    storedLoaded,
+    workerStore,
+} from '../../../preview/assets/files/store'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
@@ -62,10 +67,10 @@ const buttonClass =
 </script>
 
 <template>
-    <p v-if="!rows.length" class="px-3 py-2 opacity-75" data-stored-empty>
+    <p v-if="!rows.length && storedLoaded" class="px-3 py-2 opacity-75" data-stored-empty>
         {{ strings.storedEmpty }}
     </p>
-    <ul v-else class="flex flex-col" data-stored-list>
+    <ul v-else-if="rows.length" class="flex flex-col" data-stored-list>
         <li
             v-for="row in rows"
             :key="row.meta.key"

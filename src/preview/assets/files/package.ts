@@ -53,12 +53,11 @@ export const displayText = (value: unknown) => {
         .trim()
 }
 
-const isBadName = (name: string) =>
-    name.startsWith('/') ||
-    name.startsWith('\\') ||
-    name.includes('\0') ||
-    name.includes('\\') ||
-    name.split('/').includes('..')
+// A backslash separates segments in names made on Windows, so it counts as a slash here.
+const isBadName = (name: string) => {
+    const path = name.replaceAll('\\', '/')
+    return path.startsWith('/') || path.includes('\0') || path.split('/').includes('..')
+}
 
 const mapZipError = (
     error: unknown,

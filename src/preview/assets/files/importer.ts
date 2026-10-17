@@ -1,9 +1,8 @@
 import { toHex } from '../../../local/hash'
 import type { UserAssetRecord } from '../../../local/userAssets'
-import { ZipError } from '../../../zip'
-import { AssetError, type AssetType, type LoadContext } from '../types'
+import type { AssetType, LoadContext } from '../types'
 import { loadEffectFromParts } from './effect'
-import { AssetImportError } from './errors'
+import { AssetImportError, asImportError } from './errors'
 import { checkItem, type CheckedItem } from './item'
 import { LIMITS } from './limits'
 import type { SourcePackage } from './package'
@@ -24,14 +23,6 @@ export type ImportContext = {
 
 const throwIfAborted = (signal: AbortSignal) => {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-}
-
-/** Any failure of reading a package, as the one error the dialog words. */
-export const asImportError = (error: unknown, type?: AssetType): unknown => {
-    if (error instanceof AssetImportError) return error
-    if (error instanceof ZipError)
-        return new AssetImportError('damaged', { type }, { cause: error })
-    return error
 }
 
 /** Checks everything about an item the way a stored package is checked again at load. */
@@ -72,7 +63,6 @@ export const importItem = async (
     try {
         checked = await checkWholeItem(pkg, type, name, context)
     } catch (error) {
-        if (error instanceof AssetError) throw new AssetImportError('noPerfect', { type })
         throw asImportError(error, type)
     }
 
