@@ -1,12 +1,7 @@
-import {
-    SkinSpriteName,
-    type ServerItemDetails,
-    type ServerItemList,
-    type SkinData,
-    type SkinItem,
-} from '@sonolus/core'
+import { SkinSpriteName, type SkinData, type SkinItem } from '@sonolus/core'
 import { noteStyles, type NoteStyle } from '../chart/noteStyle'
-import { parseGzippedJson, parseScp } from './scp'
+import { readItem, type ResourceGetter } from './assets/scpItem'
+import { parseGzippedJson } from './scp'
 
 export type Sprite = {
     u0: number
@@ -45,20 +40,21 @@ export type LoadedSkin = {
 type SpriteGetter = (name: string) => Sprite | undefined
 
 export const loadSkinFromScp = async (buffer: ArrayBuffer): Promise<LoadedSkin> => {
-    const scp = parseScp(buffer)
+    const read = readItem<SkinItem>(buffer, 'skins')
+    if (!read) throw new Error('No skin found in scp file')
 
-    const list = scp.getJson<ServerItemList<SkinItem>>('sonolus/skins/list')
-    const item = list?.items[0]
-    if (!item) throw new Error('No skin found in scp file')
+    return loadSkin(read.item, read.getResource)
+}
 
-    const details = scp.getJson<ServerItemDetails<SkinItem>>(`sonolus/skins/${item.name}`)
-    const skinItem = details?.item ?? item
-
-    const dataRaw = skinItem.data.url ? scp.get(skinItem.data.url) : undefined
+export const loadSkin = async (
+    skinItem: SkinItem,
+    getResource: ResourceGetter,
+): Promise<LoadedSkin> => {
+    const dataRaw = getResource(skinItem.data)
     if (!dataRaw) throw new Error('Missing skin data in scp file')
     const data = parseGzippedJson<SkinData>(dataRaw)
 
-    const textureRaw = skinItem.texture.url ? scp.get(skinItem.texture.url) : undefined
+    const textureRaw = getResource(skinItem.texture)
     if (!textureRaw) throw new Error('Missing skin texture in scp file')
     const sprites = new Map<string, Sprite>()
     for (const sprite of data.sprites) {

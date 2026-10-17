@@ -1,13 +1,22 @@
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { errorMessage } from '../utils/error'
-import { loadParticleFromScp, type LoadedParticle } from './particle'
-import { loadPreviewResource } from './resource'
-import { loadSkinFromScp, type LoadedSkin } from './skin'
+import {
+    AssetError,
+    assets,
+    type AssetChoice,
+    type LoadContext,
+    type LoadedBackground,
+} from './assets'
+import type { LoadedParticle } from './particle'
+import type { LoadedSkin } from './skin'
 
-declare const __APP_VERSION__: string
-
-const resourceUrl = (name: string) =>
-    `${import.meta.env.BASE_URL}resource/${name}.scp?v=${encodeURIComponent(__APP_VERSION__)}`
+// Choosing assets arrives with the Preview Assets dialog; until then Default is used.
+const choice: AssetChoice = { source: 'default' }
+// Neither preview resource needs audio.
+const loadContext = (signal: AbortSignal): LoadContext => ({
+    signal,
+    decodeAudio: () => Promise.reject(new Error('Preview resources have no audio')),
+})
 
 // Decoded skin and particle atlases are shared by every preview mount for the
 // lifetime of the page. Closing, covering, moving, or recreating a preview's
@@ -15,6 +24,7 @@ const resourceUrl = (name: string) =>
 // them again. Only successful loads are cached; failures retry on next use.
 const skin = shallowRef<LoadedSkin>()
 const particle = shallowRef<LoadedParticle>()
+const background = shallowRef<LoadedBackground>()
 const skinStatus = ref<'idle' | 'loading' | 'missing' | 'ready'>('idle')
 const skinError = ref('')
 let particleStatus: 'idle' | 'loading' | 'done' = 'idle'
@@ -24,40 +34,49 @@ const loadParticle = async (signal: AbortSignal) => {
     if (particleStatus !== 'idle') return
     particleStatus = 'loading'
     try {
-        const loaded = await loadPreviewResource(
-            resourceUrl('particle'),
-            loadParticleFromScp,
-            signal,
-        )
-        if (signal.aborted) return
-        particle.value = loaded
-        // A missing particle package is a valid configuration; effects are skipped.
+        const loaded = await assets.load('particle', choice, loadContext(signal))
+        if (!loaded) return
+        particle.value = loaded.value
         particleStatus = 'done'
     } catch (error) {
         if (signal.aborted) return
+        // A missing particle package is a valid configuration; effects are skipped.
+        if (error instanceof AssetError && error.code === 'missing') {
+            particleStatus = 'done'
+            return
+        }
         console.error('Failed to load preview particle:', error)
     } finally {
         if (!signal.aborted && particleStatus === 'loading') particleStatus = 'idle'
     }
 }
 
+const loadBackground = async (signal: AbortSignal) => {
+    if (background.value) return
+    try {
+        const loaded = await assets.load('background', choice, loadContext(signal))
+        if (loaded) background.value = loaded.value
+    } catch (error) {
+        if (!signal.aborted) console.error('Failed to load preview background:', error)
+    }
+}
+
 const load = async (signal: AbortSignal) => {
+    void loadBackground(signal)
     if (!skin.value) {
         skinStatus.value = 'loading'
         skinError.value = ''
         try {
-            const loaded = await loadPreviewResource(resourceUrl('skin'), loadSkinFromScp, signal)
-            if (signal.aborted) return
-            if (!loaded) {
-                skinStatus.value = 'missing'
-                return
-            }
-            skin.value = loaded
+            const loaded = await assets.load('skin', choice, loadContext(signal))
+            if (!loaded) return
+            skin.value = loaded.value
         } catch (error) {
             if (signal.aborted) return
+            skinStatus.value = 'missing'
+            // A missing skin has no detail to show.
+            if (error instanceof AssetError && error.code === 'missing') return
             console.error('Failed to load preview skin:', error)
             skinError.value = errorMessage(error)
-            skinStatus.value = 'missing'
             return
         }
     }
@@ -128,6 +147,7 @@ export const usePreviewResources = () => {
     return {
         skin,
         particle,
+        background,
         status,
         errorDetail,
         loadVersion,

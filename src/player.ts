@@ -1,14 +1,4 @@
 import { computed, ref, shallowRef, watch } from 'vue'
-import normalTickUrl from './assets/se_live_connect.mp3?url'
-import criticalTickUrl from './assets/se_live_connect_critical.mp3?url'
-import criticalTapUrl from './assets/se_live_critical.mp3?url'
-import normalFlickUrl from './assets/se_live_flick.mp3?url'
-import criticalFlickUrl from './assets/se_live_flick_critical.mp3?url'
-import normalActiveUrl from './assets/se_live_long.mp3?url'
-import criticalActiveUrl from './assets/se_live_long_critical.mp3?url'
-import normalTapUrl from './assets/se_live_perfect.mp3?url'
-import normalTraceUrl from './assets/se_live_trace.mp3?url'
-import criticalTraceUrl from './assets/se_live_trace_critical.mp3?url'
 import type { GroupId } from './chart/groups'
 import { createDisplayClock } from './displayClock'
 import { playbackBgm as bgm } from './history/bgm'
@@ -21,6 +11,7 @@ import {
     type PlayerAudio,
 } from './playerAudio'
 import { shownBeatRanges, spacedTimes, type HideChange } from './playerSections'
+import { assets, sfxSlots } from './preview/assets'
 import { settings } from './settings'
 import { createSlideInfoLookup } from './state/entities/slides/lookup'
 import { getActiveNoteRole } from './state/entities/slides/semantics'
@@ -506,33 +497,36 @@ const schedule = (
     audio.start(startTime, Math.max(0, offset))
 }
 
-const loadSfx = () => {
-    const load = async (type: keyof typeof sfxBuffers, url: string) => {
-        const response = await fetch(url)
-        const data = await response.arrayBuffer()
-        sfxBuffers[type] = await context.decodeAudioData(data)
-    }
+const sfxController = new AbortController()
 
-    void Promise.allSettled([
-        load('normalTap', normalTapUrl),
-        load('criticalTap', criticalTapUrl),
-        load('normalFlick', normalFlickUrl),
-        load('criticalFlick', criticalFlickUrl),
-        load('normalTrace', normalTraceUrl),
-        load('criticalTrace', criticalTraceUrl),
-        load('normalTick', normalTickUrl),
-        load('criticalTick', criticalTickUrl),
-        load('normalActive', normalActiveUrl),
-        load('criticalActive', criticalActiveUrl),
-    ]).then(() => {
-        areSfxReady = true
-    })
+const loadSfx = () => {
+    // Choosing an effect arrives with the Preview Assets dialog; until then Default is used.
+    void assets
+        .load(
+            'effect',
+            { source: 'default' },
+            {
+                signal: sfxController.signal,
+                decodeAudio: (data) => context.decodeAudioData(data),
+            },
+        )
+        .then((loaded) => {
+            if (!loaded) return
+            for (const slot of sfxSlots) sfxBuffers[slot] = loaded.value.buffers[slot]
+        })
+        .catch((error: unknown) => {
+            console.error('Failed to load sound effects:', error)
+        })
+        .finally(() => {
+            areSfxReady = true
+        })
 }
 
 loadSfx()
 
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
+        sfxController.abort()
         stopPlayer()
         stopPreviewPlayer()
         context.removeEventListener('statechange', updateScheduler)

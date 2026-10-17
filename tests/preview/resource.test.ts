@@ -11,7 +11,7 @@ test('resource loads retain their bitmap and pass cancellation through to fetch'
     t.mock.method(globalThis, 'fetch', async (url: string, options: RequestInit) => {
         assert.equal(url, '/resource/skin.scp')
         assert.equal(options.signal, controller.signal)
-        assert.equal(options.cache, 'no-store')
+        assert.equal('cache' in options, false)
         return { ok: true, arrayBuffer: async () => buffer } as Response
     })
     assert.equal(
@@ -24,6 +24,32 @@ test('resource loads retain their bitmap and pass cancellation through to fetch'
             controller.signal,
         ),
         resource,
+    )
+})
+
+test('the resource fetch passes no cache option, so the browser caches per build', async (t) => {
+    const fetched = t.mock.method(globalThis, 'fetch', async () => ({
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(0),
+    }))
+    await loadPreviewResource(
+        '/resource/skin.scp?v=1',
+        async () => ({ texture: { close: () => {} } as ImageBitmap }),
+        new AbortController().signal,
+    )
+    const options = fetched.mock.calls[0]?.arguments[1] as RequestInit
+    assert.deepEqual(Object.keys(options), ['signal'])
+})
+
+test('a missing resource loads as undefined', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 404 }))
+    assert.equal(
+        await loadPreviewResource(
+            '/resource/particle.scp',
+            async () => assert.fail('missing resource decoded'),
+            new AbortController().signal,
+        ),
+        undefined,
     )
 })
 

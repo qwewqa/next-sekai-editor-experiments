@@ -3,12 +3,11 @@ import {
     type ParticleData,
     type ParticleDataEffect,
     type ParticleItem,
-    type ServerItemDetails,
-    type ServerItemList,
 } from '@sonolus/core'
 import { noteStyles, type NoteStyle } from '../chart/noteStyle'
+import { readItem, type ResourceGetter } from './assets/scpItem'
 import type { Tint } from './gl'
-import { parseGzippedJson, parseScp } from './scp'
+import { parseGzippedJson } from './scp'
 import { toSpriteUv, type Sprite } from './skin'
 
 export type ParticleExpression = Partial<Record<string, number>>
@@ -93,20 +92,21 @@ export type LoadedParticle = {
 }
 
 export const loadParticleFromScp = async (buffer: ArrayBuffer): Promise<LoadedParticle> => {
-    const scp = parseScp(buffer)
+    const read = readItem<ParticleItem>(buffer, 'particles')
+    if (!read) throw new Error('No particle found in scp file')
 
-    const list = scp.getJson<ServerItemList<ParticleItem>>('sonolus/particles/list')
-    const item = list?.items[0]
-    if (!item) throw new Error('No particle found in scp file')
+    return loadParticle(read.item, read.getResource)
+}
 
-    const details = scp.getJson<ServerItemDetails<ParticleItem>>(`sonolus/particles/${item.name}`)
-    const particleItem = details?.item ?? item
-
-    const dataRaw = particleItem.data.url ? scp.get(particleItem.data.url) : undefined
+export const loadParticle = async (
+    particleItem: ParticleItem,
+    getResource: ResourceGetter,
+): Promise<LoadedParticle> => {
+    const dataRaw = getResource(particleItem.data)
     if (!dataRaw) throw new Error('Missing particle data in scp file')
     const data = parseGzippedJson<ParticleData>(dataRaw)
 
-    const textureRaw = particleItem.texture.url ? scp.get(particleItem.texture.url) : undefined
+    const textureRaw = getResource(particleItem.texture)
     if (!textureRaw) throw new Error('Missing particle texture in scp file')
     const sprites = data.sprites.map((sprite): Sprite => ({
         ...toSpriteUv(sprite.x, sprite.y, sprite.w, sprite.h, data.width, data.height),
