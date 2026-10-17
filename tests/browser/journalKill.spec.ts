@@ -18,11 +18,11 @@ test.skip(
 
 type Row = { key: unknown; value: Record<string, unknown> }
 
-const boot = async (page: Page) => {
+const boot = async (page: Page, flags: Record<string, unknown> = {}) => {
     await page.addInitScript(installCanvasCounters)
-    await page.addInitScript(() => {
-        sessionStorage.setItem('nse.test.storage', '{}')
-    })
+    await page.addInitScript((flags) => {
+        sessionStorage.setItem('nse.test.storage', JSON.stringify(flags))
+    }, flags)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
@@ -424,4 +424,62 @@ test('with localStorage full the journal does not verify, and the session is not
         for (const key of Object.keys(localStorage))
             if (key.startsWith('fill.')) localStorage.removeItem(key)
     })
+})
+
+/** The tab's journal keys. */
+const journalKeys = (page: Page) =>
+    page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('.journal.')))
+
+/** A hidden visibilitychange and pagehide, as a close or a switch away gives. */
+const hide = (page: Page) =>
+    page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+        document.dispatchEvent(new Event('visibilitychange'))
+        window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    })
+
+test('a kill with a flush in flight leaves the edit stored or journalled, and a new visit has it', async ({
+    context,
+}) => {
+    const page = await context.newPage()
+    await boot(page)
+    await startBlank(page)
+    await edit(page, 'notes', 30)
+    await settled(page)
+    // Nothing held: the hide's strict flush is in flight when the tab goes.
+    await edit(page, 'wholeChart')
+    const expected = await head(page)
+    await hide(page)
+    await killByClose(page)
+
+    const next = await newVisit(context)
+    const outcomes = await next.evaluate(() =>
+        window.nseJournalTest!.outcomes.map((outcome) => outcome.kind),
+    )
+    // Applied, covered by the flush that landed, or nothing left once a strict commit cleared it.
+    expect(outcomes.every((kind) => kind === 'applied' || kind === 'covered')).toBe(true)
+    const rows = await rowsOf(next, ['entries'])
+    const entries = rows
+        .entries!.map(({ value }) => value)
+        .filter((entry) => entry.sessionId === expected.sessionId)
+    expect(hex(entries.at(-1)!.snapshot)).toBe(expected.root)
+    expect(await journalKeys(next)).toEqual([])
+})
+
+test('a hide while journals replay at load writes the journal, and the flush waits for replay', async ({
+    page,
+}) => {
+    await boot(page, { holdReplayMs: 5000 })
+    await edit(page, 'notes', 2)
+    const { sessionId } = await head(page)
+    // Replay hasn't finished: storing has started all the same.
+    expect(await page.evaluate(() => window.nseJournalTest)).toBeUndefined()
+    await hide(page)
+    expect(await page.evaluate(() => window.nseFlushTest!.journal.writes.length)).toBe(1)
+    expect((await journalKeys(page)).some((key) => key.endsWith(sessionId))).toBe(true)
+    expect(await page.evaluate(() => window.nseFlushTest!.reports.length)).toBe(0)
+    // Once replay is done (this tab's own key is left to it), the strict flush clears the key.
+    await expect.poll(() => page.evaluate(() => window.nseJournalTest !== undefined)).toBe(true)
+    await settled(page)
+    expect(await journalKeys(page)).toEqual([])
 })
