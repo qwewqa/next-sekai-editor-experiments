@@ -4,12 +4,14 @@ import { MemoryKv } from '../kv/memory'
 import { asError, type KvFactory } from '../kv/types'
 import { Scheduler, type Actor, type Waiter } from '../scheduler'
 import { FakeChannels } from './channels'
+import { FakeClock } from './clock'
 import { FakeLockManager } from './locks'
 
 // The test core's world (§1.6.1, §1.11's test notes): one browser profile with tabs. Each tab has
 // its own connections, lock client and channels, and every delivery to it is a task of its actor
 // on the seeded scheduler, so killing a tab drops its pending work, aborts its open transactions
-// and releases its locks.
+// and releases its locks. A tab's storage worker is an actor of its own, which dies with the page
+// but can also die alone, and timers run on the world's clock.
 
 export type Tab = {
     readonly name: string
@@ -30,7 +32,9 @@ export type World = {
     readonly memory: MemoryKv
     readonly locks: FakeLockManager
     readonly channels: FakeChannels
-    tab: (name: string) => Tab
+    readonly clock: FakeClock
+    /** A tab, or with `owner` a worker of that tab's page: killed with it, or alone. */
+    tab: (name: string, options?: { owner?: Tab }) => Tab
     /** Waits until nothing is queued, then fails on any error a task threw. */
     idle: () => Promise<void>
 }
@@ -66,8 +70,13 @@ export const createWorld = ({ seed }: { seed?: number } = {}): World => {
     const memory = new MemoryKv(scheduler)
     const locks = new FakeLockManager(scheduler)
     const channels = new FakeChannels(scheduler)
-    const tab = (name: string): Tab => {
+    const clock = new FakeClock(scheduler)
+    const tab = (name: string, { owner }: { owner?: Tab } = {}): Tab => {
         const actor = scheduler.actor(name)
+        if (owner)
+            scheduler.onKill(owner.actor, () => {
+                scheduler.kill(actor)
+            })
         const kv = memory.factory(actor)
         return {
             name,
@@ -100,6 +109,7 @@ export const createWorld = ({ seed }: { seed?: number } = {}): World => {
         memory,
         locks,
         channels,
+        clock,
         tab,
         idle: async () => {
             await scheduler.idle()

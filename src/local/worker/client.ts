@@ -77,22 +77,27 @@ export class StorageWorker {
         return () => this.restartListeners.delete(listener)
     }
 
-    /** A call to the worker; waits through a restart in progress. */
+    /**
+     * A call to the worker; waits through a restart in progress. `current` refuses a call made
+     * for the worker before it, once the restart is through (the flush plans it again).
+     */
     async call<K extends keyof StorageHandlers>(
         method: K,
         arg?: Parameters<StorageHandlers[K]>[0],
-        options?: CallOptions,
+        options?: CallOptions & { current?: () => boolean },
     ): Promise<Awaited<ReturnType<StorageHandlers[K]>>> {
         await this.ready
         const client = this.client
         if (this.dead || !client)
             throw new RpcError('WorkerFailedError', 'The storage worker stopped')
+        if (options?.current && !options.current())
+            throw new RpcError('WorkerRestartedError', 'Made for the worker before a restart')
         const call = client.call as (
             method: string,
             arg: unknown,
             options?: CallOptions,
         ) => Promise<Awaited<ReturnType<StorageHandlers[K]>>>
-        if (options?.bulk) return call(method, arg, options)
+        if (options?.bulk) return call(method, arg, { bulk: true })
         return this.watch(
             call(method, arg, { bulk: true }),
             options?.timeoutMs ?? this.options.timeoutMs ?? CALL_TIMEOUT_MS,

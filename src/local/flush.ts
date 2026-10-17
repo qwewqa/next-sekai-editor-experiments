@@ -77,7 +77,15 @@ export type SessionStart = {
     done?: () => void
 }
 
-export type FlushTransport = (batch: FlushBatch, transfer: Transferable[]) => Promise<FlushResult>
+/**
+ * Sends a batch. `current` says whether the batch was planned for the worker that is running
+ * now: the transport refuses one planned before a restart, and the flusher plans it again.
+ */
+export type FlushTransport = (
+    batch: FlushBatch,
+    transfer: Transferable[],
+    current: () => boolean,
+) => Promise<FlushResult>
 
 /** One flush's figures, for the timing and budget specs. */
 export type FlushReport = {
@@ -178,6 +186,8 @@ export class Flusher {
     private active: { strict: boolean; oneGo: boolean } | undefined
     /** Finishes the running sliced extraction at once. */
     private hurry: (() => void) | undefined
+    /** Counts worker restarts: a batch planned before one is planned again. */
+    private generation = 0
     private timer: unknown
     /** Media this tab knows stored; others it holds go with the next flush naming them. */
     private readonly knownMedia = new Set<string>()
@@ -326,6 +336,7 @@ export class Flusher {
      * the entries only the old worker's in-memory store held.
      */
     restarted() {
+        this.generation++
         this.extractor.reset()
         this.knownMedia.clear()
         for (const session of this.sessions) {
@@ -379,8 +390,9 @@ export class Flusher {
         await session.ready
         for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
             const batch = new ChunkBatch()
+            const generation = this.generation
             try {
-                const outcome = await this.attempt(session, batch, options)
+                const outcome = await this.attempt(session, batch, options, generation)
                 if (outcome === 'stored') {
                     this.failed = false
                     return true
@@ -390,6 +402,9 @@ export class Flusher {
                     batch,
                     error instanceof Error ? error : new Error(String(error)),
                 )
+                // Planned with the memo of a worker that restarted meanwhile: planned again, with
+                // what only its in-memory store held first, so the session has no gap.
+                if (generation !== this.generation) continue
                 this.failed = true
                 this.deps.onError?.(error)
                 return false
@@ -404,6 +419,7 @@ export class Flusher {
         session: FlushSession,
         batch: ChunkBatch,
         options: { strict: boolean; oneGo: boolean },
+        generation: number,
     ): Promise<'stored' | 'retry'> {
         const slices: number[] = []
         const plans: SnapshotPlan[] = []
@@ -527,7 +543,11 @@ export class Flusher {
         // Read before the buffer is transferred.
         const textBytes = text.length
 
-        const result = await this.deps.transport(wire, [text.buffer])
+        const result = await this.deps.transport(
+            wire,
+            [text.buffer],
+            () => generation === this.generation,
+        )
         switch (result.kind) {
             case 'stored': {
                 this.extractor.settle(batch, result.chunks, result.known)

@@ -65,8 +65,11 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
 
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        transport: (batch, list) =>
-            worker.call('flush', transfer(batch, list), { timeoutMs: flushTimeoutMs(batch) }),
+        transport: (batch, list, current) =>
+            worker.call('flush', transfer(batch, list), {
+                timeoutMs: flushTimeoutMs(batch),
+                current,
+            }),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
