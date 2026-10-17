@@ -557,23 +557,20 @@
       "fromFile": "Depuis un fichier",
       "fromServer": "Depuis un serveur",
       "serverAddress": "Adresse du serveur",
-      "connect": "Se connecter",
+      "connect": "Connecter",
       "search": "Rechercher…",
-      "more": "Plus",
+      "more": "Afficher plus",
       "alsoServerItem": "Utiliser aussi \"{1}\" ({0}) de ce serveur",
       "noneFound": "Aucun élément trouvé",
-      "forServerOwners": "Pour les propriétaires de serveur",
       "server": {
-        "blocked": "Ce serveur n’autorise pas l’accès depuis les pages web.",
-        "blockedRoute": "Pour utiliser l’un de ses éléments, obtenez-le sous forme de fichier .scp et choisissez Depuis un fichier.",
-        "blockedOwners": "Envoyez l’en-tête Access-Control-Allow-Origin avec la valeur * sur /sonolus/* et sur les fichiers de ressources.",
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
-        "auth": "Ce serveur demande une connexion, que l’éditeur ne prend pas en charge.",
-        "insecure": "Ce serveur utilise http, que l’éditeur ne peut pas charger depuis une page https.",
+        "auth": "Ce serveur demande de se connecter à un compte, ce que l’éditeur ne prend pas en charge.",
+        "insecure": "Ce serveur utilise http, que l’éditeur ne peut pas charger.",
         "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
         "notFound": "Ce serveur n’a pas cet élément.",
         "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
         "status": "Ce serveur a répondu par une erreur ({0}).",
+        "filesFailed": "Impossible de télécharger les fichiers de cet élément depuis {0}.",
         "addressEmpty": "Saisissez l’adresse d’un serveur.",
         "addressInvalid": "Cette adresse de serveur n’est pas valide.",
         "addressCredentials": "Une adresse de serveur ne peut pas contenir de nom d’utilisateur ni de mot de passe."
@@ -581,8 +578,8 @@
       "serverImport": {
         "tooBig": "Dans cet élément, {1} ({0}) : plus de {2}.",
         "unreadable": "Impossible de lire {1} ({0}) dans cet élément.",
-        "missing": "Dans cet élément, {1} ({0}) manque.",
-        "notImage": "Dans cet élément, {1} ({0}) doit être une image PNG ou JPEG.",
+        "missing": "Il manque {1} ({0}) dans cet élément.",
+        "notImage": "Dans cet élément, {1} ({0}) : image PNG ou JPEG attendue.",
         "imageSize": "Dans cet élément, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
         "spriteOutside": "Dans cet élément, les données ({0}) contiennent un sprite hors de la texture.",
         "tooManySprites": "Dans cet élément, les données ({0}) contiennent plus de {1} sprites.",
@@ -592,7 +589,8 @@
         "audioLength": "Dans cet élément, l’audio ({0}) dépasse {1} secondes au total.",
         "tooManyParticles": "Dans cet élément, les données ({0}) contiennent plus de {1} particules.",
         "tooManyGroups": "Dans cet élément, les données ({0}) contiennent plus de {1} groupes de particules.",
-        "effectGroups": "Dans cet élément, l’effet \"{1}\" ({0}) contient plus de {2} groupes de particules."
+        "effectGroups": "Dans cet élément, l’effet \"{1}\" ({0}) contient plus de {2} groupes de particules.",
+        "ratio": "Dans cet élément, {1} ({0}) : taux de décompression supérieur à {2} pour 1."
       }
     }
   },
@@ -749,8 +747,7 @@
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification.",
-    "builtinServer": "Pour essayer Depuis un serveur, connectez-vous à {0}, qui sert les éléments intégrés."
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification."
   },
   "elevation": {
     "edit": "Modifier les élévations",

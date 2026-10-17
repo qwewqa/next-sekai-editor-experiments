@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// The inline progress of the From a Server view: a line of text and a bar that slides.
+// The inline progress of the From a Server view: a line of text and a bar that slides. It shows
+// inside a live region that stays mounted, so the text is announced.
 defineProps<{
     text: string
 }>()
 </script>
 
 <template>
-    <div class="px-2" role="status" data-chooser-progress>
+    <div class="px-2" data-chooser-progress>
         <p class="text-sm">{{ text }}</p>
         <div class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20" aria-hidden="true">
             <div class="chooser-bar-fill h-full w-1/3 rounded-full bg-fg" />

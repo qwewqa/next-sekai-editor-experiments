@@ -79,6 +79,8 @@ test('the web platform’s capabilities are the web’s set', () => {
     assert.equal(capabilities.browserStorage, true)
     assert.equal(capabilities.safeModeEntry, 'query')
     assert.equal(capabilities.fileAssociations, false)
+    // The web makes no cross-origin requests: no From a Server.
+    assert.equal(capabilities.serverFetch, false)
     assert.ok(Object.isFrozen(capabilities))
 })
 

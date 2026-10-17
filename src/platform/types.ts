@@ -18,6 +18,8 @@ export type PlatformCapabilities = {
     readonly safeModeEntry: 'query' | 'startMarker'
     readonly fileAssociations: boolean
     readonly mp3Export: boolean
+    /** Browsing and downloading from Sonolus servers (Part 2, 2.5.3): the apps only. */
+    readonly serverFetch: boolean
 }
 
 /** An app file reference: a path on desktop, a URI on mobile (Part 3). */
@@ -176,7 +178,7 @@ export type UpdateService = {
 
 export type ServerFetchInit = Pick<
     RequestInit,
-    'method' | 'headers' | 'body' | 'signal' | 'credentials' | 'mode' | 'referrerPolicy'
+    'method' | 'headers' | 'body' | 'signal' | 'credentials' | 'referrerPolicy'
 >
 
 /** Copy Diagnostic Info… (Part 1 §1.4.16); Step 1b adds the rest. */

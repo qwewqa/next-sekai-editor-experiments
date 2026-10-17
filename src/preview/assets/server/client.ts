@@ -1,21 +1,22 @@
 import type { ServerFetchInit } from '../../../platform/types'
 import { LIMITS } from '../files/limits'
 import { displayText, isItemName, isSrl, type Srl } from '../files/package'
+import { isLocalHost } from '../serverUrl'
 import type { AssetType } from '../types'
 
-// The Sonolus server client (Part 2, 2.5.3; Part 1 §1.5.8): plain GETs with no credentials and no
-// custom headers, so a browser sends no preflight. A request times out after 30 s, and at most 4
-// are open at once. A failed web fetch is told apart by repeating it once with `no-cors`.
+// The Sonolus server client (Part 2, 2.5.3; Part 1 §1.5.8), for the apps: plain GETs with no
+// credentials and no custom headers. A request fails after 30 s without response headers, 30 s
+// without a body byte, or 10 minutes in all (DECISIONS D12), and at most 4 are open at once; the
+// user's own requests go before background ones (thumbnails, the other types' lookups).
 
 export type ServerErrorCode =
     /** The device has no network. */
     | 'offline'
-    /** Reachable, but the server sends no CORS headers. */
-    | 'blocked'
+    /** No answer, or one that stalled or took too long */
     | 'unreachable'
     /** A 401 */
     | 'auth'
-    /** An http address on the web */
+    /** An http address where http is not allowed */
     | 'insecure'
     | 'notFound'
     /** Any other failing status */
@@ -25,13 +26,16 @@ export type ServerErrorCode =
     | 'tooBig'
 
 export class ServerError extends Error {
+    /** The address of the request that failed, when there was one. */
+    readonly url: string | undefined
     constructor(
         readonly code: ServerErrorCode,
         readonly status?: number,
-        options?: ErrorOptions,
+        options?: ErrorOptions & { url?: string },
     ) {
         super(status === undefined ? code : `${code} (${status})`, options)
         this.name = 'ServerError'
+        this.url = options?.url
     }
 }
 
@@ -50,13 +54,19 @@ export type ServerClientOptions = {
     language: () => string
     /** Whether the device is online; `navigator.onLine` by default. */
     isOnline?: () => boolean
-    /** Repeat a failed fetch as `no-cors` to tell a blocked page from an unreachable server. */
-    corsProbe?: boolean
     /** Plain http, for the apps' local servers. */
     allowHttp?: boolean
+    /** Thumbnails on this device or its network, with the apps' local servers allowed. */
+    allowLocal?: boolean
+    /** How long a request may wait for its headers, or for its body's next byte */
     timeoutMs?: number
+    /** How long a request may take in all */
+    totalTimeoutMs?: number
     concurrency?: number
 }
+
+/** A background request waits behind every request the user made. */
+export type RequestPriority = 'user' | 'background'
 
 /** One item of a server's list. */
 export type ServerListItem = {
@@ -83,13 +93,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
+const abortError = () => new DOMException('Aborted', 'AbortError')
+
+/** Settles with the promise, or rejects as soon as the signal aborts. */
+const raced = <T>(promise: Promise<T>, signal: AbortSignal) =>
+    new Promise<T>((resolve, reject) => {
+        const onAbort = () => {
+            reject(abortError())
+        }
+        if (signal.aborted) onAbort()
+        signal.addEventListener('abort', onAbort, { once: true })
+        promise.then(resolve, reject).finally(() => {
+            signal.removeEventListener('abort', onAbort)
+        })
+    })
 
 export const createServerClient = (options: ServerClientOptions) => {
     const {
         language,
-        corsProbe = true,
         allowHttp = false,
+        allowLocal = false,
         timeoutMs = 30_000,
+        totalTimeoutMs = 600_000,
         concurrency = 4,
     } = options
     const isOnline =
@@ -98,81 +123,69 @@ export const createServerClient = (options: ServerClientOptions) => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
         (() => typeof navigator === 'undefined' || navigator.onLine !== false)
 
-    // At most `concurrency` requests at once; the rest wait their turn.
+    // At most `concurrency` requests at once. A slot that frees goes straight to the next waiter,
+    // the user's first, so no turn is lost.
     let active = 0
-    const waiting: (() => void)[] = []
-    const acquire = async (signal: AbortSignal | undefined) => {
-        while (active >= concurrency) {
-            await new Promise<void>((resolve, reject) => {
-                const wake = () => {
-                    signal?.removeEventListener('abort', onAbort)
-                    resolve()
-                }
-                const onAbort = () => {
-                    waiting.splice(waiting.indexOf(wake), 1)
-                    reject(new DOMException('Aborted', 'AbortError'))
-                }
-                waiting.push(wake)
-                signal?.addEventListener('abort', onAbort, { once: true })
-            })
-        }
-        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-        active++
-    }
+    const waiting: Record<RequestPriority, (() => void)[]> = { user: [], background: [] }
+    const acquire = (signal: AbortSignal | undefined, priority: RequestPriority) =>
+        new Promise<void>((resolve, reject) => {
+            if (signal?.aborted) {
+                reject(abortError())
+                return
+            }
+            if (active < concurrency) {
+                active++
+                resolve()
+                return
+            }
+            const queue = waiting[priority]
+            const wake = () => {
+                signal?.removeEventListener('abort', onAbort)
+                active++
+                resolve()
+            }
+            const onAbort = () => {
+                queue.splice(queue.indexOf(wake), 1)
+                reject(abortError())
+            }
+            queue.push(wake)
+            signal?.addEventListener('abort', onAbort, { once: true })
+        })
     const release = () => {
         active--
-        waiting.shift()?.()
+        const next = waiting.user.shift() ?? waiting.background.shift()
+        next?.()
     }
 
-    /** What went wrong with a fetch that threw: no network, a blocked page, or no answer. */
-    const classify = async (url: string, signal: AbortSignal | undefined) => {
-        if (!isOnline()) return new ServerError('offline')
-        if (!corsProbe) return new ServerError('unreachable')
-        const probe = new AbortController()
-        const stop = () => {
-            probe.abort()
-        }
-        signal?.addEventListener('abort', stop, { once: true })
-        try {
-            await options.fetch(url, {
-                method: 'GET',
-                mode: 'no-cors',
-                credentials: 'omit',
-                referrerPolicy: 'no-referrer',
-                signal: probe.signal,
-            })
-            // An opaque answer: the server is there, and the browser will not show it to a page.
-            return new ServerError('blocked')
-        } catch {
-            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-            return new ServerError('unreachable')
-        } finally {
-            signal?.removeEventListener('abort', stop)
-            probe.abort()
-        }
-    }
-
-    /** Reads a body, stopping once it passes the cap. */
-    const readBody = async (response: Response, maxBytes: number) => {
+    /** Reads a body, stopping once it passes the cap; each chunk is progress. */
+    const readBody = async (
+        response: Response,
+        maxBytes: number,
+        signal: AbortSignal,
+        progress: () => void,
+    ) => {
         const declared = Number(response.headers.get('content-length'))
         if (declared > maxBytes) throw new ServerError('tooBig')
         const reader = response.body?.getReader()
         if (!reader) {
-            const bytes = new Uint8Array(await response.arrayBuffer())
+            const bytes = new Uint8Array(await raced(response.arrayBuffer(), signal))
             if (bytes.length > maxBytes) throw new ServerError('tooBig')
             return bytes
         }
         const chunks: Uint8Array[] = []
         let size = 0
-        for (;;) {
-            const { done, value } = await reader.read()
-            if (done) break
-            size += value.length
-            if (size > maxBytes) {
-                void reader.cancel().catch(() => undefined)
-                throw new ServerError('tooBig')
+        try {
+            for (;;) {
+                const { done, value } = await raced(reader.read(), signal)
+                if (done) break
+                progress()
+                size += value.length
+                if (size > maxBytes) throw new ServerError('tooBig')
+                chunks.push(value)
             }
-            chunks.push(value)
+        } catch (error) {
+            void reader.cancel().catch(() => undefined)
+            throw error
         }
         const bytes = new Uint8Array(size)
         let offset = 0
@@ -184,63 +197,84 @@ export const createServerClient = (options: ServerClientOptions) => {
     }
 
     /** One GET: the answer's final address and its body, or the reason it failed. */
-    const get = async (url: string, maxBytes: number, outer?: AbortSignal) => {
-        if (/^http:/i.test(url) && !allowHttp) throw new ServerError('insecure')
-        if (!isOnline()) throw new ServerError('offline')
-        await acquire(outer)
+    const get = async (
+        url: string,
+        maxBytes: number,
+        outer?: AbortSignal,
+        priority: RequestPriority = 'user',
+    ) => {
+        if (/^http:/i.test(url) && !allowHttp) throw new ServerError('insecure', undefined, { url })
+        if (!isOnline()) throw new ServerError('offline', undefined, { url })
+        await acquire(outer, priority)
         const controller = new AbortController()
         let timedOut = false
         // A function, so TypeScript does not keep `false` across the awaits.
         const hasTimedOut = () => timedOut
-        const timer = setTimeout(() => {
+        const expire = () => {
             timedOut = true
             controller.abort()
-        }, timeoutMs)
+        }
+        let stall = setTimeout(expire, timeoutMs)
+        const total = setTimeout(expire, totalTimeoutMs)
+        const progress = () => {
+            clearTimeout(stall)
+            stall = setTimeout(expire, timeoutMs)
+        }
         const abort = () => {
             controller.abort()
         }
         outer?.addEventListener('abort', abort, { once: true })
         // It may have been aborted while the request waited for its turn.
         if (outer?.aborted) controller.abort()
+        const failure = (code: ServerErrorCode, cause?: unknown) =>
+            new ServerError(code, undefined, { url, cause })
         try {
             let response: Response
             try {
-                response = await options.fetch(url, {
-                    method: 'GET',
-                    credentials: 'omit',
-                    referrerPolicy: 'no-referrer',
-                    signal: controller.signal,
-                })
+                response = await raced(
+                    options.fetch(url, {
+                        method: 'GET',
+                        credentials: 'omit',
+                        referrerPolicy: 'no-referrer',
+                        signal: controller.signal,
+                    }),
+                    controller.signal,
+                )
             } catch (error) {
-                if (outer?.aborted) throw new DOMException('Aborted', 'AbortError')
-                if (hasTimedOut()) throw new ServerError('unreachable', undefined, { cause: error })
+                if (outer?.aborted) throw abortError()
+                if (hasTimedOut()) throw failure('unreachable', error)
                 if (isAbort(error)) throw error
-                throw await classify(url, outer)
+                throw failure(isOnline() ? 'unreachable' : 'offline', error)
             }
-            if (response.status === 401) throw new ServerError('auth', 401)
-            if (response.status === 404) throw new ServerError('notFound', 404)
-            if (!response.ok) throw new ServerError('status', response.status)
+            progress()
+            if (response.status === 401) throw new ServerError('auth', 401, { url })
+            if (response.status === 404) throw new ServerError('notFound', 404, { url })
+            if (!response.ok) throw new ServerError('status', response.status, { url })
             try {
-                return { url: response.url || url, bytes: await readBody(response, maxBytes) }
+                return {
+                    url: response.url || url,
+                    bytes: await readBody(response, maxBytes, controller.signal, progress),
+                }
             } catch (error) {
-                if (outer?.aborted) throw new DOMException('Aborted', 'AbortError')
-                if (error instanceof ServerError && error.code === 'tooBig') throw error
-                // A body that broke off on the way, or never finished.
-                throw new ServerError('unreachable', undefined, { cause: error })
+                if (outer?.aborted) throw abortError()
+                if (error instanceof ServerError && error.code === 'tooBig') throw failure('tooBig')
+                // A body that broke off on the way, stalled, or never finished.
+                throw failure(isOnline() || hasTimedOut() ? 'unreachable' : 'offline', error)
             }
         } finally {
-            clearTimeout(timer)
+            clearTimeout(stall)
+            clearTimeout(total)
             outer?.removeEventListener('abort', abort)
             release()
         }
     }
 
-    const getJson = async (url: string, signal?: AbortSignal) => {
-        const { url: finalUrl, bytes } = await get(url, LIMITS.json, signal)
+    const getJson = async (url: string, signal?: AbortSignal, priority?: RequestPriority) => {
+        const { url: finalUrl, bytes } = await get(url, LIMITS.json, signal, priority)
         try {
             return { url: finalUrl, json: JSON.parse(new TextDecoder().decode(bytes)) as unknown }
         } catch (error) {
-            throw new ServerError('invalid', undefined, { cause: error })
+            throw new ServerError('invalid', undefined, { cause: error, url })
         }
     }
 
@@ -263,6 +297,13 @@ export const createServerClient = (options: ServerClientOptions) => {
         return
     }
 
+    /** A thumbnail's address; one on this device or its network is not fetched (D11). */
+    const thumbnailUrl = (address: string, url: string | null | undefined) => {
+        const resolved = resolveUrl(address, url)
+        if (!resolved || (!allowLocal && isLocalHost(new URL(resolved).hostname))) return
+        return resolved
+    }
+
     const listItem = (address: string, raw: unknown): ServerListItem | undefined => {
         if (!isRecord(raw) || !isItemName(raw.name)) return
         const thumbnail: Srl = isSrl(raw.thumbnail) ? raw.thumbnail : undefined
@@ -270,7 +311,7 @@ export const createServerClient = (options: ServerClientOptions) => {
             name: raw.name,
             title: displayText(raw.title) || raw.name,
             author: displayText(raw.author),
-            thumbnail: resolveUrl(address, thumbnail?.url),
+            thumbnail: thumbnailUrl(address, thumbnail?.url),
         }
     }
 
@@ -346,9 +387,14 @@ export const createServerClient = (options: ServerClientOptions) => {
             type: AssetType,
             name: string,
             signal?: AbortSignal,
+            priority?: RequestPriority,
         ): Promise<Record<string, unknown>> => {
             const params = new URLSearchParams({ localization: language() })
-            const { json } = await getJson(`${itemUrl(address, type, name)}?${params}`, signal)
+            const { json } = await getJson(
+                `${itemUrl(address, type, name)}?${params}`,
+                signal,
+                priority,
+            )
             if (!isRecord(json) || !isRecord(json.item)) throw new ServerError('invalid')
             return json.item
         },
@@ -356,6 +402,10 @@ export const createServerClient = (options: ServerClientOptions) => {
         /** A resource's bytes, up to a cap. */
         resource: async (url: string, maxBytes: number, signal?: AbortSignal) =>
             (await get(url, maxBytes, signal)).bytes,
+
+        /** A listed item's thumbnail, behind the user's own requests. */
+        thumbnail: async (url: string, signal?: AbortSignal) =>
+            (await get(url, LIMITS.thumbnail, signal, 'background')).bytes,
     }
 }
 

@@ -670,14 +670,16 @@ test('external links open a new tab with noopener, never a Blob or data: URL', (
     assert.equal(browser.opened.length, 1)
 })
 
-test('fetchServer is fetch', async () => {
+test('fetchServer fetches nothing on the web', async () => {
     const original = globalThis.fetch
-    globalThis.fetch = (input) => Promise.resolve(new Response(String(input)))
+    let fetched = false
+    globalThis.fetch = () => {
+        fetched = true
+        return Promise.resolve(new Response())
+    }
     try {
-        assert.equal(
-            await (await platform.fetchServer('https://server/a')).text(),
-            'https://server/a',
-        )
+        await assert.rejects(platform.fetchServer('https://server/a'))
+        assert.equal(fetched, false)
     } finally {
         globalThis.fetch = original
     }

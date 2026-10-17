@@ -120,7 +120,7 @@ const ipv6Groups = (host: string) => {
         const v4 = ipv4Parts(dotted[2] ?? '')
         if (!v4) return
         const [a = 0, b = 0, c = 0, d = 0] = v4
-        text = `${dotted[1]}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`
+        text = `${dotted[1] ?? ''}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`
     }
     const halves = text.split('::')
     if (halves.length > 2) return

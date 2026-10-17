@@ -45,6 +45,8 @@ const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
 const hintId = useId()
 const hasDefault = platform.capabilities.defaultAssets
+// The web fetches no servers: a file is the only way to choose.
+const hasServers = platform.capabilities.serverFetch
 
 type Row = {
     id: string
@@ -240,15 +242,19 @@ const isLoading = computed(() => {
             <button
                 type="button"
                 class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
-                :aria-describedby="hintId"
+                :aria-describedby="hasServers ? hintId : undefined"
                 data-asset-choose
                 @click="chooser.show()"
             >
                 {{ strings.choose }}
             </button>
-            <span :id="hintId" class="min-w-0 text-sm opacity-75" data-asset-choose-hint>{{
-                strings.chooseHint
-            }}</span>
+            <span
+                v-if="hasServers"
+                :id="hintId"
+                class="min-w-0 text-sm opacity-75"
+                data-asset-choose-hint
+                >{{ strings.chooseHint }}</span
+            >
         </div>
     </div>
 </template>

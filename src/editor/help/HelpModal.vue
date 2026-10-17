@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { i18n } from '../../i18n'
-import { builtinServerUrl } from '../../preview/assets/server/builtinServer'
-import { interpolateRaw } from '../../utils/interpolate'
 import BaseModal from '../../modals/BaseModal.vue'
 import HelpSection from './HelpSection.vue'
 </script>
@@ -163,10 +161,6 @@ import HelpSection from './HelpSection.vue'
             <li>{{ i18n.help.modal.stageTransformEventTool.move }}</li>
             <li>{{ i18n.help.modal.stageTransformEventTool.ctrl }}</li>
             <li>{{ i18n.help.modal.stageTransformEventTool.properties }}</li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.commands.previewAssets.modal.title" command="previewAssets">
-            <li>{{ interpolateRaw(i18n.help.builtinServer, builtinServerUrl()) }}</li>
         </HelpSection>
     </BaseModal>
 </template>

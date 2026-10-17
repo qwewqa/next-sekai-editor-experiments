@@ -556,24 +556,21 @@
       "chooseHint": "Bir dosyadan veya Sonolus sunucusundan",
       "fromFile": "Dosyadan",
       "fromServer": "Sunucudan",
-      "serverAddress": "Sunucu adresi",
+      "serverAddress": "Sunucu Adresi",
       "connect": "Bağlan",
       "search": "Ara…",
-      "more": "Daha fazla",
+      "more": "Daha Fazla",
       "alsoServerItem": "Bu sunucudaki \"{1}\" öğesini ({0}) de kullan",
       "noneFound": "Öğe bulunamadı",
-      "forServerOwners": "Sunucu sahipleri için",
       "server": {
-        "blocked": "Bu sunucu web sayfalarından erişime izin vermiyor.",
-        "blockedRoute": "Öğelerinden birini kullanmak için onu .scp dosyası olarak edinin ve Dosyadan seçeneğini seçin.",
-        "blockedOwners": "/sonolus/* ve kaynak dosyalarında Access-Control-Allow-Origin: * gönderin.",
         "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
-        "auth": "Bu sunucu oturum açmayı gerektiriyor, düzenleyici bunu desteklemiyor.",
-        "insecure": "Bu sunucu http kullanıyor; düzenleyici bunu https sayfasından yükleyemez.",
+        "auth": "Bu sunucu oturum açmayı gerektiriyor; düzenleyici bunu desteklemiyor.",
+        "insecure": "Bu sunucu http kullanıyor; düzenleyici bunu yükleyemez.",
         "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
         "invalid": "Bu adres bir Sonolus sunucusu değil.",
         "status": "Sunucu bir hatayla yanıt verdi ({0}).",
+        "filesFailed": "Bu öğenin dosyaları {0} adresinden indirilemedi.",
         "addressEmpty": "Bir sunucu adresi girin.",
         "addressInvalid": "Bu sunucu adresi geçerli değil.",
         "addressCredentials": "Sunucu adresi kullanıcı adı veya parola içeremez."
@@ -585,14 +582,15 @@
         "notImage": "Bu öğedeki {1} ({0}) PNG veya JPEG görseli değil.",
         "imageSize": "Bu öğedeki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
         "spriteOutside": "Bu öğedeki veride ({0}) dokunun dışında kalan bir sprite var.",
-        "tooManySprites": "Bu öğedeki veride ({0}) {1} spriteten fazlası var.",
+        "tooManySprites": "Bu öğedeki veride ({0}) {1} sprite’tan fazlası var.",
         "tooManyEffects": "Bu öğedeki veride ({0}) {1} efektten fazlası var.",
         "particleCount": "Bu öğedeki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
         "noPerfect": "Bu öğedeki ses ({0}) kullanılabilir bir #PERFECT klibi içermiyor.",
         "audioLength": "Bu öğedeki ses ({0}) toplamda {1} saniyeden uzun.",
         "tooManyParticles": "Bu öğedeki veride ({0}) {1} parçacıktan fazlası var.",
         "tooManyGroups": "Bu öğedeki veride ({0}) {1} parçacık grubundan fazlası var.",
-        "effectGroups": "Bu öğedeki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var."
+        "effectGroups": "Bu öğedeki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var.",
+        "ratio": "Bu öğedeki {1} ({0}) açıldığında boyutunun {2} katından fazlasına ulaşıyor."
       }
     }
   },
@@ -749,8 +747,7 @@
         "properties": "Varsayılan Özellikleri değiştirmek için tekrar Sahne Dönüşüm Olayı aracına geçin."
       }
     },
-    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır.",
-    "builtinServer": "Sunucudan seçeneğini denemek için, yerleşik öğeleri sunan {0} adresine bağlanın."
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",

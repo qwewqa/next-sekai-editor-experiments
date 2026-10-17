@@ -11,8 +11,9 @@ import AssetGlyph from './AssetGlyph.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserProgress from './ChooserProgress.vue'
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6): the address, the server's list with its
-// quick search and More, and the other types' items of the same name. The footer is the chooser's.
+// The chooser's From a Server view (Part 2, 2.5.3, 2.6), in the apps: the address, the server's
+// list with its quick search and More, and the other types' items of the same name. The footer is
+// the chooser's.
 const props = defineProps<{
     type: AssetType
     server: ServerChooser
@@ -22,13 +23,15 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
 const errorId = useId()
 
-const { address, phase, loading, title, items, hasMore, selected, also, error, query } =
+const { address, phase, loading, title, items, hasMore, selected, also, error, query, thumbnails } =
     props.server
 
 const isListed = computed(() => phase.value === 'listed' || phase.value === 'working')
 const errorText = computed(() => (error.value ? serverFailureText(error.value) : undefined))
 // The address is read-only while a connection or a download is under way.
 const isBusy = computed(() => phase.value === 'connecting' || phase.value === 'working')
+// The field's name is the placeholder without its ellipsis.
+const searchLabel = computed(() => strings.value.search.replace(/(…|\.\.\.)$/, ''))
 
 // A quick search runs a moment after typing stops, or at once on Enter.
 const searchText = shallowRef(query.value)
@@ -85,20 +88,13 @@ const inputClass =
         </button>
     </form>
 
-    <ChooserProgress v-if="phase === 'connecting'" :text="strings.progress.connecting" />
-
-    <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
-        <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />
-        <p aria-live="polite" data-server-error-text>{{ errorText.text }}</p>
-        <p v-if="errorText.route" class="mt-1" data-server-error-route>{{ errorText.route }}</p>
-        <details v-if="errorText.owners" class="mt-1" data-server-owners>
-            <summary
-                class="cursor-pointer rounded outline-none focus-visible:ring-2 focus-visible:ring-fg"
-            >
-                {{ strings.forServerOwners }}
-            </summary>
-            <p class="mt-1 break-words">{{ errorText.owners }}</p>
-        </details>
+    <!-- Mounted while empty, so what appears in it is announced; empty, it takes no gap. -->
+    <div class="flex flex-col gap-3 empty:-mt-3" role="status" data-server-status>
+        <ChooserProgress v-if="phase === 'connecting'" :text="strings.progress.connecting" />
+        <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
+            <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />
+            <p data-server-error-text>{{ errorText }}</p>
+        </div>
     </div>
 
     <template v-if="isListed">
@@ -123,7 +119,7 @@ const inputClass =
                     spellcheck="false"
                     :placeholder="strings.search"
                     :class="[inputClass, 'w-full']"
-                    :aria-label="strings.search"
+                    :aria-label="searchLabel"
                     :disabled="phase === 'working'"
                     data-server-search
                 />
@@ -143,7 +139,7 @@ const inputClass =
                 :type="type"
                 :name="item.title"
                 :detail="item.author"
-                :image="item.thumbnail"
+                :image="thumbnails.get(item.name)"
                 :checked="item.name === selected"
                 :group="groupName"
                 :disabled="phase === 'working'"

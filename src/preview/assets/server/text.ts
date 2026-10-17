@@ -8,9 +8,6 @@ import type { ServerChooserError } from './chooser'
 
 export type ServerStrings = ImportStrings & {
     server: {
-        blocked: string
-        blockedRoute: string
-        blockedOwners: string
         unreachable: string
         auth: string
         insecure: string
@@ -18,6 +15,7 @@ export type ServerStrings = ImportStrings & {
         notFound: string
         invalid: string
         status: string
+        filesFailed: string
         addressEmpty: string
         addressInvalid: string
         addressCredentials: string
@@ -33,60 +31,45 @@ export const serverItemMessage = (
     strings: ServerStrings,
     number: (value: number) => string,
     size: (bytes: number) => string,
-) =>
-    error.code === 'checksum'
-        ? strings.server.checksum
-        : formatImportMessage(
-              error,
-              { ...strings, import: { ...strings.import, ...strings.serverImport } },
-              number,
-              size,
-          )
-
-export type ServerErrorText = {
-    text: string
-    /** For a server that sends no CORS headers: what to do instead, and what its owner can do. */
-    route?: string
-    owners?: string
+) => {
+    if (error.code === 'checksum') return strings.server.checksum
+    // Details the server does not have: the item is not on it.
+    if (error.code === 'missing' && error.detail.part === 'details') return strings.server.notFound
+    return formatImportMessage(
+        error,
+        { ...strings, import: { ...strings.import, ...strings.serverImport } },
+        number,
+        size,
+    )
 }
 
-/** What the chooser says under the address field. */
-export const serverErrorText = (
-    error: ServerChooserError,
-    strings: ServerStrings,
-): ServerErrorText => {
+/** What the chooser says under the address, or next to Use. */
+export const serverErrorText = (error: ServerChooserError, strings: ServerStrings): string => {
     const { server } = strings
-    if (error.kind === 'item') return { text: error.message }
+    if (error.kind === 'item') return error.message
     if (error.kind === 'address')
         return {
-            text: {
-                empty: server.addressEmpty,
-                invalid: server.addressInvalid,
-                credentials: server.addressCredentials,
-                insecure: server.insecure,
-            }[error.code],
-        }
+            empty: server.addressEmpty,
+            invalid: server.addressInvalid,
+            credentials: server.addressCredentials,
+            insecure: server.insecure,
+        }[error.code]
+    if (error.code === 'offline') return strings.offline
+    // The item's files are on another host, such as a CDN: it is named, not "this server".
+    if (error.host !== undefined) return interpolateRaw(server.filesFailed, error.host)
     switch (error.code) {
-        case 'offline':
-            return { text: strings.offline }
-        case 'blocked':
-            return {
-                text: server.blocked,
-                route: server.blockedRoute,
-                owners: server.blockedOwners,
-            }
         case 'unreachable':
-            return { text: server.unreachable }
+            return server.unreachable
         case 'auth':
-            return { text: server.auth }
+            return server.auth
         case 'insecure':
-            return { text: server.insecure }
+            return server.insecure
         case 'notFound':
-            return { text: server.notFound }
+            return server.notFound
         case 'status':
-            return { text: interpolateRaw(server.status, String(error.status ?? 0)) }
+            return interpolateRaw(server.status, String(error.status ?? 0))
         case 'invalid':
         case 'tooBig':
-            return { text: server.invalid }
+            return server.invalid
     }
 }
