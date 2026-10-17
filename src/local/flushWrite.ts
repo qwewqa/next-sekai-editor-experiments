@@ -99,7 +99,11 @@ export type FlushBatch = {
 /** What a flush wrote, by row kind, with about 50 bytes of IndexedDB overhead a row (§1.6.8.1). */
 export type WriteStats = {
     rows: number
+    /** Bytes written, overwrites of the session row and chain record included. */
     bytes: number
+    /** Bytes of rows added: the database's growth (§1.9.3). */
+    growth: number
+    growthByStore: Record<string, number>
     chunks: number
     nodes: number
     entries: number
@@ -326,16 +330,22 @@ export const writeFlush = async (
     const stats: WriteStats = {
         rows: 0,
         bytes: 0,
+        growth: 0,
+        growthByStore: {},
         chunks: 0,
         nodes: 0,
         entries: 0,
         rowsByStore: {},
         bytesByStore: {},
     }
-    const count = (store: string, value: unknown, key?: unknown) => {
+    const count = (store: string, value: unknown, key?: unknown, added = true) => {
         const bytes = rowBytes(value) + rowBytes(key) + ROW_OVERHEAD
         stats.rows++
         stats.bytes += bytes
+        if (added) {
+            stats.growth += bytes
+            stats.growthByStore[store] = (stats.growthByStore[store] ?? 0) + bytes
+        }
         stats.rowsByStore[store] = (stats.rowsByStore[store] ?? 0) + 1
         stats.bytesByStore[store] = (stats.bytesByStore[store] ?? 0) + bytes
     }
@@ -439,7 +449,7 @@ export const writeFlush = async (
               ...sessionFields,
           }
     await tx.put('sessions', sessionValue)
-    count('sessions', sessionValue)
+    count('sessions', sessionValue, undefined, !session)
 
     const hasContentAtStart = batch.session.origin !== 'new' && batch.session.origin !== 'continued'
     const chainFields: Row = {
@@ -465,7 +475,7 @@ export const writeFlush = async (
               ...chainFields,
           }
     await tx.put('chains', chainValue)
-    count('chains', chainValue)
+    count('chains', chainValue, undefined, !chain)
 
     await writeMeta(tx, 'maxSeenTime', maxSeen)
     testPoint?.('flush:beforeCommit')

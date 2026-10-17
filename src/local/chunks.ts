@@ -1,7 +1,8 @@
 import type { State } from '../state'
+import type { NoteEntity } from '../state/entities/slides/note'
 import type { Store } from '../state/store'
 import { toHex } from './hash'
-import { canonical, type RecordValue } from './records/canonical'
+import type { RecordValue } from './records/canonical'
 import {
     bpmRecord,
     cameraEventRecord,
@@ -15,7 +16,7 @@ import {
 } from './records/encode'
 import { entitiesOf, inChainOrder, stageHeads } from './records/extract'
 import { headerRecord } from './records/records'
-import type { KindName } from './records/schema'
+import { kindNames, type KindName } from './records/schema'
 import { headerMedia } from './records/snapshot'
 import { splitKind } from './records/split'
 
@@ -34,6 +35,31 @@ type RecordMemo = { readonly text: string; readonly key: number }
 /** An entity in the emission order with its record's text. */
 type Item = { readonly entity: object; readonly key: number; readonly text: string }
 
+/** Whether a value is one a record can hold, as `canonical` requires (§1.6.11.1). */
+const checkRecordValue = (value: unknown): void => {
+    if (Array.isArray(value)) {
+        if (Object.getPrototypeOf(value) !== Array.prototype)
+            throw new TypeError('Unexpected array')
+        for (let i = 0; i < value.length; i++) {
+            if (!(i in value)) throw new TypeError('Unexpected hole')
+            checkRecordValue(value[i])
+        }
+        return
+    }
+    if (typeof value === 'string' || typeof value === 'boolean') return
+    if (typeof value === 'number' && Number.isFinite(value)) return
+    throw new TypeError(`Unexpected ${typeof value}`)
+}
+
+/**
+ * A record's canonical text, as `canonical` gives it: checked first, then `JSON.stringify`,
+ * which writes exactly that text for what a record can hold, about four times faster.
+ */
+export const recordText = (record: Rec): string => {
+    checkRecordValue(record)
+    return JSON.stringify(record)
+}
+
 /** One batch's new chunk texts; a chunk is never sent twice. */
 export class ChunkBatch {
     readonly texts: string[] = []
@@ -42,10 +68,13 @@ export class ChunkBatch {
     private readonly headers = new Map<string, number>()
     /** Memo entries this batch introduced, settled when it is acknowledged or fails. */
     readonly introduced: ChunkMemo[] = []
+    /** The new text so far, in UTF-16 code units. */
+    size = 0
 
     add(text: string, kind: KindName | 'header') {
         this.texts.push(text)
         this.kinds.push(kind)
+        this.size += text.length
         return this.texts.length - 1
     }
 
@@ -53,12 +82,6 @@ export class ChunkBatch {
         let id = this.headers.get(text)
         if (id === undefined) this.headers.set(text, (id = this.add(text, 'header')))
         return id
-    }
-
-    get size() {
-        let size = 0
-        for (const text of this.texts) size += text.length
-        return size
     }
 }
 
@@ -95,33 +118,36 @@ const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 /** At most this many memo entries share a first member (different chunk boundaries). */
 const SAME_FIRST_LIMIT = 4
 
+/** Work between yields: records encoded, and chunks made. */
+const RECORDS_PER_STEP = 64
+const CHUNKS_PER_STEP = 4
+
+/** What a kind's records come from: when all are the same objects, so are its records. */
+type KindInputs = readonly unknown[]
+
+type KindCache = {
+    readonly inputs: KindInputs
+    readonly items: Item[]
+    /** Its entities' records, so a changed kind encodes only its changed entities. */
+    readonly records: Map<object, RecordMemo>
+}
+
 /**
  * The identity memo and the extraction. One per tab: a worker restart resets it (§1.6.5), and
- * a closure check that finds windows missing forgets only those (§1.6.6).
+ * a closure check that finds windows missing forgets only those (§1.6.6). States are immutable
+ * and share what an edit didn't touch, so an unchanged kind's maps are the same objects, and an
+ * unchanged entity is the same object: neither is encoded again.
  */
 export class Extractor {
-    /** The last extraction's records, so a record is encoded once while its entity lives on. */
-    private records = new Map<object, RecordMemo>()
-    private next = new Map<object, RecordMemo>()
+    private kinds = new Map<KindName, KindCache>()
     private chunks = new WeakMap<object, ChunkMemo[]>()
     /** Records encoded since the last reset: a test's measure of the memo's work. */
     encoded = 0
 
     /** Forgets everything, after a worker restart. */
     reset() {
-        this.records = new Map()
-        this.next = new Map()
+        this.kinds = new Map()
         this.chunks = new WeakMap()
-    }
-
-    private record(entity: object, key: number, encode: () => Rec): Item {
-        let memo = this.next.get(entity) ?? this.records.get(entity)
-        if (!memo) {
-            memo = { text: canonical(encode()), key }
-            this.encoded++
-        }
-        this.next.set(entity, memo)
-        return { entity, key: memo.key, text: memo.text }
     }
 
     private chunk(members: readonly Item[], kind: KindName, batch: ChunkBatch): PlannedChunk {
@@ -212,33 +238,31 @@ export class Extractor {
     }
 
     /**
-     * A state's snapshot plan, as a job that yields between slices of work. The records memo
-     * then holds only this state's entities.
+     * A state's snapshot plan, as a job that yields between slices of work. The memo then holds
+     * this state's records.
      */
     *plan(state: State, batch: ChunkBatch): Generator<void, SnapshotPlan> {
-        this.next = new Map()
         const header = headerRecord(state, {
             bgmOffset: state.bgm.offset,
             levelInfo: state.levelInfo,
             ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
         })
-        const headerId = batch.header(canonical(header))
+        const headerId = batch.header(recordText(header))
         const kinds: { kind: KindName; chunks: PlannedChunk[] }[] = []
         let noteCount = 0
-        const ordered = yield* this.orderGen(state.store)
-        for (const [kind, items] of ordered) {
+        for (const kind of kindNames) {
+            const items = yield* this.kindItems(kind, state.store)
             if (kind === 'slides')
                 for (const item of items) noteCount += (item.entity as unknown[]).length
-            yield
             const parts = splitKind(kind, items as unknown as KeyedRecord[]) as unknown as Item[][]
+            yield
             const chunks: PlannedChunk[] = []
             for (const [i, part] of parts.entries()) {
                 chunks.push(this.chunk(part, kind, batch))
-                if (i % 16 === 15) yield
+                if (i % CHUNKS_PER_STEP === CHUNKS_PER_STEP - 1) yield
             }
             if (chunks.length) kinds.push({ kind, chunks })
         }
-        this.records = this.next
         return {
             header: headerId,
             kinds,
@@ -247,108 +271,178 @@ export class Extractor {
         }
     }
 
-    /** Each kind's items in the v1 order (§1.6.11.1), as `orderStore` gives them. */
-    private *orderGen(store: Store): Generator<void, [KindName, Item[]][]> {
-        const { grid, slides, globalEventRanges, stageEventRanges } = store
-        const slideItems: Item[] = []
-        let n = 0
-        for (const notes of slides.note.values()) {
-            const first = notes[0]
-            if (!first) continue
-            slideItems.push(this.record(notes, first.beat, () => slideRecord(notes)))
-            if (++n % 256 === 0) yield
+    /** A kind's items in the v1 order (§1.6.11.1), as `orderStore` gives them. */
+    private *kindItems(kind: KindName, store: Store): Generator<void, Item[]> {
+        const source = kindSource(kind, store)
+        const cached = this.kinds.get(kind)
+        if (
+            cached?.inputs.length === source.inputs.length &&
+            cached.inputs.every((input, i) => input === source.inputs[i])
+        )
+            return cached.items
+        const previous = cached?.records
+        const records = new Map<object, RecordMemo>()
+        const record = (entity: object, key: number, encode: () => Rec): Item => {
+            let memo = previous?.get(entity) ?? records.get(entity)
+            if (!memo) {
+                memo = { text: recordText(encode()), key }
+                this.encoded++
+            }
+            records.set(entity, memo)
+            return { entity, key: memo.key, text: memo.text }
         }
-        slideItems.sort((a, b) => a.key - b.key || compareText(a.text, b.text))
-
-        const events = <T extends { beat: number }>(
-            entities: readonly T[],
-            track: (entity: T) => number,
-            encode: (entity: T) => Rec,
-        ): Item[] =>
-            entities
-                .map((entity, index) => ({
-                    item: this.record(entity, entity.beat, () => encode(entity)),
-                    track: track(entity),
+        let items: Item[]
+        if (source.kind === 'slides') {
+            items = []
+            let n = 0
+            for (const notes of source.slides) {
+                const first = notes[0]
+                if (!first) continue
+                items.push(record(notes, first.beat, () => slideRecord(notes)))
+                if (++n % RECORDS_PER_STEP === 0) yield
+            }
+            items.sort((a, b) => a.key - b.key || compareText(a.text, b.text))
+        } else {
+            const placed: { item: Item; track: number; index: number }[] = []
+            for (const [index, entity] of source.entities().entries()) {
+                placed.push({
+                    item: record(entity, entity.beat, () => source.encode(entity)),
+                    track: source.track(entity),
                     index,
-                }))
-                .sort((a, b) => a.item.key - b.item.key || a.track - b.track || a.index - b.index)
-                .map(({ item }) => item)
+                })
+                if (index % RECORDS_PER_STEP === RECORDS_PER_STEP - 1) yield
+            }
+            placed.sort((a, b) => a.item.key - b.item.key || a.track - b.track || a.index - b.index)
+            items = placed.map(({ item }) => item)
+        }
+        this.kinds.set(kind, { inputs: source.inputs, items, records })
+        return items
+    }
+}
 
-        const kinds: [KindName, Item[]][] = [['slides', slideItems]]
-        kinds.push(['bpms', events(entitiesOf(grid.bpm), () => 0, bpmRecord)])
-        yield
-        kinds.push([
-            'timeScales',
-            events(entitiesOf(grid.timeScale), (e) => e.groupId, timeScaleRecord),
-        ])
-        yield
-        kinds.push([
-            'cameraEvents',
-            events(
-                inChainOrder(
-                    grid.cameraEventJoint,
-                    grid.cameraEventConnection,
-                    globalEventRanges.cameraEventJoint
-                        ? [globalEventRanges.cameraEventJoint.min]
-                        : [],
-                ),
+type Beat = { beat: number }
+
+type KindSource =
+    | { kind: 'slides'; inputs: KindInputs; slides: Iterable<readonly NoteEntity[]> }
+    | {
+          kind: Exclude<KindName, 'slides'>
+          inputs: KindInputs
+          entities: () => Beat[]
+          track: (entity: Beat) => number
+          encode: (entity: Beat) => Rec
+      }
+
+const event = <T extends Beat>(
+    kind: Exclude<KindName, 'slides'>,
+    inputs: KindInputs,
+    entities: () => T[],
+    track: (entity: T) => number,
+    encode: (entity: T) => Rec,
+): KindSource => ({
+    kind,
+    inputs,
+    entities,
+    track: track as (entity: Beat) => number,
+    encode: encode as (entity: Beat) => Rec,
+})
+
+/** Where a kind's records come from in a store, in `orderStore`'s order, and what decides them. */
+const kindSource = (kind: KindName, store: Store): KindSource => {
+    const { grid, slides, globalEventRanges, stageEventRanges } = store
+    switch (kind) {
+        case 'slides':
+            return { kind, inputs: [slides.note], slides: slides.note.values() }
+        case 'bpms':
+            return event(
+                kind,
+                [grid.bpm],
+                () => entitiesOf(grid.bpm),
+                () => 0,
+                bpmRecord,
+            )
+        case 'timeScales':
+            return event(
+                kind,
+                [grid.timeScale],
+                () => entitiesOf(grid.timeScale),
+                (e) => e.groupId,
+                timeScaleRecord,
+            )
+        case 'cameraEvents': {
+            const range = globalEventRanges.cameraEventJoint
+            return event(
+                kind,
+                [grid.cameraEventJoint, grid.cameraEventConnection, range],
+                () =>
+                    inChainOrder(
+                        grid.cameraEventJoint,
+                        grid.cameraEventConnection,
+                        range ? [range.min] : [],
+                    ),
                 () => 0,
                 cameraEventRecord,
-            ),
-        ])
-        yield
-        kinds.push([
-            'stageMaskEvents',
-            events(
-                inChainOrder(
-                    grid.stageMaskEventJoint,
-                    grid.stageMaskEventConnection,
-                    stageHeads(stageEventRanges.stageMaskEventJoint),
-                ),
+            )
+        }
+        case 'stageMaskEvents': {
+            const ranges = stageEventRanges.stageMaskEventJoint
+            return event(
+                kind,
+                [grid.stageMaskEventJoint, grid.stageMaskEventConnection, ranges],
+                () =>
+                    inChainOrder(
+                        grid.stageMaskEventJoint,
+                        grid.stageMaskEventConnection,
+                        stageHeads(ranges),
+                    ),
                 (e) => e.stageId,
                 stageMaskEventRecord,
-            ),
-        ])
-        yield
-        kinds.push([
-            'stagePivotEvents',
-            events(
-                inChainOrder(
-                    grid.stagePivotEventJoint,
-                    grid.stagePivotEventConnection,
-                    stageHeads(stageEventRanges.stagePivotEventJoint),
-                ),
+            )
+        }
+        case 'stagePivotEvents': {
+            const ranges = stageEventRanges.stagePivotEventJoint
+            return event(
+                kind,
+                [grid.stagePivotEventJoint, grid.stagePivotEventConnection, ranges],
+                () =>
+                    inChainOrder(
+                        grid.stagePivotEventJoint,
+                        grid.stagePivotEventConnection,
+                        stageHeads(ranges),
+                    ),
                 (e) => e.stageId,
                 stagePivotEventRecord,
-            ),
-        ])
-        yield
-        kinds.push([
-            'stageStyleEvents',
-            events(
-                inChainOrder(
-                    grid.stageStyleEventJoint,
-                    grid.stageStyleEventConnection,
-                    stageHeads(stageEventRanges.stageStyleEventJoint),
-                ),
+            )
+        }
+        case 'stageStyleEvents': {
+            const ranges = stageEventRanges.stageStyleEventJoint
+            return event(
+                kind,
+                [grid.stageStyleEventJoint, grid.stageStyleEventConnection, ranges],
+                () =>
+                    inChainOrder(
+                        grid.stageStyleEventJoint,
+                        grid.stageStyleEventConnection,
+                        stageHeads(ranges),
+                    ),
                 (e) => e.stageId,
                 stageStyleEventRecord,
-            ),
-        ])
-        yield
-        kinds.push([
-            'stageTransformEvents',
-            events(
-                inChainOrder(
-                    grid.stageTransformEventJoint,
-                    grid.stageTransformEventConnection,
-                    stageHeads(stageEventRanges.stageTransformEventJoint),
-                ),
+            )
+        }
+        case 'stageTransformEvents': {
+            const ranges = stageEventRanges.stageTransformEventJoint
+            return event(
+                kind,
+                [grid.stageTransformEventJoint, grid.stageTransformEventConnection, ranges],
+                () =>
+                    inChainOrder(
+                        grid.stageTransformEventJoint,
+                        grid.stageTransformEventConnection,
+                        stageHeads(ranges),
+                    ),
                 (e) => e.stageId,
                 stageTransformEventRecord,
-            ),
-        ])
-        return kinds
+            )
+        }
     }
 }
 
@@ -386,8 +480,8 @@ export const runSliced = <T>(
         const idle = (globalThis as IdleScope).requestIdleCallback
         const slice = (deadline?: IdleDeadline) => {
             const start = now()
-            // Leave a margin under the slice: the last step may run past the check.
-            const budget = Math.min(SLICE_MS - 2, deadline ? deadline.timeRemaining() : SLICE_MS)
+            // Half the slice, leaving room for the last step and a collection to run past it.
+            const budget = Math.min(SLICE_MS / 2, deadline ? deadline.timeRemaining() : SLICE_MS)
             try {
                 for (;;) {
                     const step = job.next()

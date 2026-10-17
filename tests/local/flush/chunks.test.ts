@@ -4,18 +4,29 @@ import test from 'node:test'
 import {
     ChunkBatch,
     Extractor,
+    recordText,
     runSliced,
     runToEnd,
     type SnapshotPlan,
 } from '../../../src/local/chunks'
 import { hash16Sync, toHex } from '../../../src/local/hash'
+import { canonical, type RecordValue } from '../../../src/local/records/canonical'
+import { entitiesOf } from '../../../src/local/records/extract'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { State } from '../../../src/state'
 import { createSlideId } from '../../../src/state/entities/slides'
+import { addBpm, replaceBpm } from '../../../src/state/mutations/bpm'
+import {
+    addCameraEventJoint,
+    replaceCameraEventJoint,
+} from '../../../src/state/mutations/events/camera'
+import { addStageMaskEventJoint } from '../../../src/state/mutations/events/stage/mask'
+import { addStageStyleEventJoint } from '../../../src/state/mutations/events/stage/style'
 import { addNote, replaceNote } from '../../../src/state/mutations/slides/note'
+import { replaceTimeScale } from '../../../src/state/mutations/timeScale'
 import { createTransaction, type Transaction } from '../../../src/state/transaction'
-import { edgeChart, goldenChart, note, stateOf } from '../records/charts'
+import { camera, edgeChart, goldenChart, mask, note, stateOf, style } from '../records/charts'
 import { samplePaths, sampleState } from '../records/samples'
 
 // The identity memo and the extraction (§1.6.2): the plan's chunks are exactly the snapshot
@@ -263,4 +274,87 @@ test('a whole-chart extraction runs in slices of about 8 ms', async () => {
         header: want.header,
         kinds: want.kinds,
     })
+})
+
+test('recordText writes exactly the canonical text, and refuses what a record can’t hold', () => {
+    const values: RecordValue[][] = [
+        [0, -0, 1.5, -1e21, 1e21, 5e-324, 2 ** 53, 0.1 + 0.2],
+        ['', 'a"b\\c', '\u0000\u001f\u2028', '\uD800', 'é', '𝄞'],
+        [true, false, [], [[1, 'x'], []]],
+    ]
+    for (const value of values) assert.equal(recordText(value), canonical(value))
+    assert.throws(() => recordText([NaN]))
+    assert.throws(() => recordText([Infinity]))
+    // eslint-disable-next-line no-sparse-arrays
+    assert.throws(() => recordText([1, , 2] as never))
+    assert.throws(() => recordText([null] as never))
+    assert.throws(() => recordText([{}] as never))
+    assert.throws(() => recordText([new Float64Array(1)] as never))
+})
+
+/** A seeded generator, so the sequence is the same on every run. */
+const random = (seed: number) => () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return seed / 2147483648
+}
+
+test('across many kinds of edits, and back to earlier states, every plan is the snapshot encoding', () => {
+    const next = random(7)
+    const pick = <T>(list: readonly T[]) => list[Math.floor(next() * list.length)]
+    const extractor = new Extractor()
+    const worker = store()
+    const history: State[] = [stateOf(goldenChart())]
+    let state = history[0]!
+    for (let step = 0; step < 80; step++) {
+        const roll = next()
+        const grid = state.store.grid
+        if (roll < 0.1 && history.length > 2) {
+            // Undo or redo to an earlier state: its entities are the same objects again.
+            state = pick(history)!
+        } else if (roll < 0.15) {
+            state = { ...state, initialLife: 900 + step }
+        } else if (roll < 0.2) {
+            const groups = new Map(state.groups)
+            const [id, group] = [...groups][0]!
+            groups.set(id, { ...group, name: `Group ${step}` })
+            state = { ...state, groups }
+        } else {
+            state = edit(state, (t) => {
+                const choice = next()
+                if (choice < 0.25)
+                    addNote(t, createSlideId(), note(1 + step / 4, { left: step % 5 }))
+                else if (choice < 0.45) {
+                    const target = pick([...state.store.slides.note.values()].flat())
+                    if (target) replaceNote(t, target, { ...target, size: target.size + 0.5 })
+                } else if (choice < 0.55) addCameraEventJoint(t, camera(2 + step / 8))
+                else if (choice < 0.65) {
+                    const target = pick(entitiesOf(grid.cameraEventJoint))
+                    if (target) replaceCameraEventJoint(t, target, { ...target, cameraZoom: 2 })
+                } else if (choice < 0.72) addStageMaskEventJoint(t, mask(3 + step / 8))
+                else if (choice < 0.8) addStageStyleEventJoint(t, style(3 + step / 8))
+                else if (choice < 0.88) {
+                    const target = pick(entitiesOf(grid.bpm))
+                    if (target) replaceBpm(t, target, { ...target, bpm: target.bpm + 1 })
+                } else if (choice < 0.94) addBpm(t, { beat: 8 + step, bpm: 120, meter: 4 })
+                else {
+                    const target = pick(entitiesOf(grid.timeScale))
+                    if (target)
+                        replaceTimeScale(t, target, {
+                            ...target,
+                            timeScale: target.timeScale + 0.5,
+                        })
+                }
+            })
+            history.push(state)
+        }
+        const { batch, plan } = planOnce(extractor, state)
+        worker.settle(extractor, batch)
+        const want = expected(state)
+        assert.deepEqual(
+            worker.resolve(plan, batch),
+            { header: want.header, kinds: want.kinds },
+            `step ${step}`,
+        )
+        assert.equal(plan.noteCount, want.noteCount, `step ${step}`)
+    }
 })
