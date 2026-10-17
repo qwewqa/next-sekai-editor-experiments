@@ -1,3 +1,3 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 96">
-    <rect y="18" width="16" height="60" fill="var(--accent)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="96" viewBox="0 0 16 var(--h)" preserveAspectRatio="none">
+    <rect y="var(--top)" width="16" height="var(--span)" fill="var(--accent)"/>
 </svg>

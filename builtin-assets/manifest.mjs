@@ -39,6 +39,9 @@ const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
 const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
 // Slot glows in the base set's glow colours: [at the note, middle, top].
 const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, { stretch: true })
+// Slots fill their lane cell exactly with square corners, the rim on the cell's edge and a soft
+// glow past it, the way the base's do (its 128 px square over the cell's -0.28 to 1.28).
+const slot = (color) => image('slot', { color }, { transform: box(-0.28, 1.28, -0.28, 1.28) })
 const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
 
 // The dark base of the judgment band.
@@ -79,12 +82,61 @@ const arrow = (direction, accent, width) => {
 
 // Note bodies sit 6% over and under their quad, as the base skin's do; their ends stop 0.02 of a
 // lane inside the note, so notes side by side keep a gap. Slim traces keep their height in the art.
+const bodySpan = { end: 0.92, over: 0.06 }
+const slimSpan = { end: 0.84, over: 0 }
 const bodyBox = {
-    Left: box(0.08, 1, -0.06, 1.06),
-    Middle: box(0, 1, -0.06, 1.06),
-    Right: box(0, 0.92, -0.06, 1.06),
+    Left: box(1 - bodySpan.end, 1, -bodySpan.over, 1 + bodySpan.over),
+    Middle: box(0, 1, -bodySpan.over, 1 + bodySpan.over),
+    Right: box(0, bodySpan.end, -bodySpan.over, 1 + bodySpan.over),
 }
-const slimBox = { Left: box(0.16, 1, 0, 1), Middle: undefined, Right: box(0, 0.84, 0, 1) }
+const slimBox = {
+    Left: box(1 - slimSpan.end, 1, 0, 1),
+    Middle: undefined,
+    Right: box(0, slimSpan.end, 0, 1),
+}
+
+// At stage tilt 0 a note is one lane tall, its end slices 0.25 lane (slim 0.125) wide. Body art is
+// drawn in units square on screen there, so its borders are even and its corners round; the
+// texture keeps its pixel size and squeezes the units (taller units at other tilts).
+const NOTE_EDGE_W = 0.25
+const NOTE_SLIM_EDGE_W = 0.125
+/** The art's height in units for an end slice `pixels` wide over `edge` lanes. */
+export const unitHeight = (pixels, edge, { end, over }) => (pixels * (1 + 2 * over)) / (end * edge)
+const bodyH = unitHeight(48, NOTE_EDGE_W, bodySpan)
+const slimH = unitHeight(24, NOTE_SLIM_EDGE_W, slimSpan)
+const damageH = unitHeight(48, NOTE_EDGE_W, slimSpan)
+const n = (value) => Math.round(value * 1000) / 1000
+// A shape from x to the slice's inner end and from top to bottom, its outer corners rounded.
+const endShape = (x, top, bottom, radius, end = 48) =>
+    `M${end} ${n(top)}H${n(x + radius)}A${radius} ${radius} 0 0 0 ${n(x)} ${n(top + radius)}` +
+    `V${n(bottom - radius)}A${radius} ${radius} 0 0 0 ${n(x + radius)} ${n(bottom)}H${end}Z`
+// Regular bodies: a 16 unit border in the outer colour round the inner face, and the accent mark.
+const bodyVars = {
+    h: n(bodyH),
+    rim: endShape(0, 0, bodyH, 16),
+    face: endShape(16, 16, bodyH - 16, 16),
+    mark: n(bodyH / 2 - 12),
+    span: n(bodyH - 32),
+}
+// Slim traces: the bar is 62.5% of the note's height, with round ends.
+const slimTop = slimH * 0.1875
+const slimVars = {
+    h: n(slimH),
+    face: endShape(0, slimTop, slimH - slimTop, 20, 24),
+    top: n(slimTop),
+    span: n(slimH - 2 * slimTop),
+}
+// Damage: 90% of the height, a 4 unit rim in the edge colour.
+const damageTop = damageH * (5 / 96)
+const damageVars = {
+    h: n(damageH),
+    rim: endShape(0, damageTop, damageH - damageTop, 22),
+    face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18),
+    top: n(damageTop),
+    span: n(damageH - 2 * damageTop),
+    inset: n(damageTop + 4),
+    inside: n(damageH - 2 * damageTop - 8),
+}
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 // Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
 const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
@@ -95,19 +147,19 @@ const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
     image(
         `note-body-${part.toLowerCase()}`,
-        { outer, inner, accent },
+        { ...bodyVars, outer, inner, accent },
         { stretch: true, transform: bodyBox[part] },
     )
 const slimImage = (part, accent) =>
     image(
         `note-slim-${part.toLowerCase()}`,
-        { accent },
+        { ...slimVars, accent },
         { stretch: true, transform: slimBox[part] },
     )
 const damageImage = (part, color, edge) =>
     image(
         `note-damage-${part.toLowerCase()}`,
-        { color, edge },
+        { ...damageVars, color, edge },
         { stretch: true, transform: slimBox[part] },
     )
 
@@ -316,7 +368,7 @@ export function skinSprites() {
 
     group('Slots and slot glows', () => {
         for (const [family, key, base] of slotFamilies) {
-            add(`Sekai Slot ${family}`, image('slot', { color: bodyColors[key][2] }))
+            add(`Sekai Slot ${family}`, slot(bodyColors[key][2]))
             add(`Sekai Slot Glow ${family}`, glow(baseColors.slotGlow[base]))
         }
         for (const [color, key] of [
@@ -327,7 +379,7 @@ export function skinSprites() {
             ['Yellow Flick', 'critical'],
             ['Yellow Slider', 'critical'],
         ])
-            add(`Sekai Slot ${color}`, image('slot', { color: bodyColors[key][2] }))
+            add(`Sekai Slot ${color}`, slot(bodyColors[key][2]))
         for (const [color, value] of Object.entries(baseColors.slotGlow))
             add(`Sekai Slot Glow ${color}`, glow(value))
         add('Sekai Normal Slide Slot Glow', glow(baseColors.slotGlow['Green Slider Hold']))
@@ -423,7 +475,7 @@ export function skinSprites() {
                 baseColors.style[color]
             const [slotGlow, criticalGlow] = baseColors.styleGlow[color]
             for (const [family] of slotFamilies) {
-                add(`Sekai Slot ${family} ${color}`, image('slot', { color: accent }))
+                add(`Sekai Slot ${family} ${color}`, slot(accent))
                 add(
                     `Sekai Slot Glow ${family} ${color}`,
                     glow(family.startsWith('Critical') ? criticalGlow : slotGlow),

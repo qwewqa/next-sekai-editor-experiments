@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 96">
-    <path d="M48 0H16A16 16 0 0 0 0 16V80A16 16 0 0 0 16 96H48Z" fill="var(--outer)"/>
-    <path d="M48 16H32A16 16 0 0 0 16 32V64A16 16 0 0 0 32 80H48Z" fill="var(--inner)"/>
-    <rect x="16" y="36" width="24" height="24" fill="var(--accent)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="96" viewBox="0 0 48 var(--h)" preserveAspectRatio="none">
+    <path d="var(--rim)" fill="var(--outer)"/>
+    <path d="var(--face)" fill="var(--inner)"/>
+    <rect x="16" y="var(--mark)" width="24" height="24" fill="var(--accent)"/>
 </svg>
