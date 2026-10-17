@@ -481,7 +481,9 @@ test('a checked folder duplicates whole beside other entries, in one step', asyn
     expect(await tree(page)).toBe(
         'Default Other [Verse: Lead Fill] [Verse (2): Lead Fill] Bass Drums [Outro: Pad]',
     )
-    await expect(page.getByText('Duplicated Verse folder')).toBeVisible()
+    await expect(
+        page.locator('.notification', { hasText: 'Duplicated Verse folder' }),
+    ).toBeVisible()
 })
 
 test('a stage duplicates with its events and notes, which keep their groups', async ({ page }) => {

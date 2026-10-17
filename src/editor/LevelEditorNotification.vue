@@ -16,17 +16,22 @@ const host = useTemplateRef<HTMLElement>('host')
 const clearance = ref(0)
 const gap = 8
 let observer: ResizeObserver | undefined
+let observed: Element | undefined
 const measure = () => {
     const toolbar = host.value?.parentElement?.querySelector<HTMLElement>(
         ':scope > [data-editor-toolbar]',
     )
     const bar = toolbar?.firstElementChild
-    observer?.disconnect()
+    // Observing again delivers a fresh notification at once, so only a new bar is observed.
+    if (bar !== observed) {
+        if (observed) observer?.unobserve(observed)
+        observed = bar ?? undefined
+        if (bar) observer?.observe(bar)
+    }
     if (!toolbar || !bar) {
         clearance.value = 0
         return
     }
-    observer?.observe(bar)
     // While a drag hides the toolbar its size reads 0: keep the last clearance.
     if (bar.getBoundingClientRect().height > 0) {
         const padding = parseFloat(getComputedStyle(toolbar).paddingBottom) || 0

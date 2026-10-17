@@ -90,7 +90,7 @@ test('normal startup draws without an obsolete renderer-download loading screen'
     await openEditor(page)
     await expectDrawn(page)
     await expect(page.locator('.rendering-error')).toHaveCount(0)
-    await expect(page.locator('#app > [role=status]')).toHaveCount(0)
+    await expect(page.locator('#app > [role=status]:not([data-notice-region])')).toHaveCount(0)
 })
 
 for (const mode of ['sync', 'async'] as const) {

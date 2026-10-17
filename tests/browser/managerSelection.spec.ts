@@ -318,7 +318,9 @@ test('checked folders delete with their members, empty ones too, and undo restor
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
     expect(await tree(page)).toBe('Other Bass Drums [Outro: Pad]')
     await expect(bar).toHaveCount(0)
-    await expect(page.getByText('Deleted selected folders (2) and groups (3)')).toBeVisible()
+    await expect(
+        page.locator('.notification', { hasText: 'Deleted selected folders (2) and groups (3)' }),
+    ).toBeVisible()
     expect(await historyLength(page)).toBe(1)
     await undo(page)
     expect(await tree(page)).toBe(before)
@@ -336,7 +338,7 @@ test('checked folders delete with their members, empty ones too, and undo restor
     await expect(dialog).toHaveCount(0)
     expect(await tree(page)).toBe('Default Other [Verse: Lead Fill] Bass Drums [Outro: Pad]')
     // One folder alone is named, as from its own menu.
-    await expect(page.getByText('Deleted Spare folder')).toBeVisible()
+    await expect(page.locator('.notification', { hasText: 'Deleted Spare folder' })).toBeVisible()
     await undo(page)
     expect(await tree(page)).toBe(before)
 
@@ -345,7 +347,7 @@ test('checked folders delete with their members, empty ones too, and undo restor
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
     expect(await tree(page)).toBe('Default Other Bass Drums [Outro: Pad] [Spare:]')
-    await expect(page.getByText('Deleted Verse folder')).toBeVisible()
+    await expect(page.locator('.notification', { hasText: 'Deleted Verse folder' })).toBeVisible()
 })
 
 test('Move to Folder moves every selected entry, emptying checked folders, in one step', async ({
@@ -374,7 +376,9 @@ test('Move to Folder moves every selected entry, emptying checked folders, in on
     expect(await tree(page)).toBe(
         'Default Other [Verse:] Drums [Outro: Pad Lead Fill Bass] [Spare:]',
     )
-    await expect(page.getByText('Moved 3 groups to Outro folder')).toBeVisible()
+    await expect(
+        page.locator('.notification', { hasText: 'Moved 3 groups to Outro folder' }),
+    ).toBeVisible()
     await expect(verse).toHaveAttribute('aria-checked', 'true')
     expect(await checked(list)).toEqual(['Lead', 'Fill', 'Bass'])
     await expect(bar).toContainText('4 Selected')
@@ -1141,14 +1145,16 @@ test('Move to Folder leaves entries already in the folder in place', async ({ pa
     await menu.getByRole('menuitemradio', { name: 'Verse', checked: true }).click()
     expect(await tree(page)).toBe(before)
     expect(await historyLength(page)).toBe(0)
-    await expect(page.getByText(/^Moved /)).toHaveCount(0)
+    await expect(page.locator('.notification', { hasText: /^Moved / })).toHaveCount(0)
 
     // Only newcomers join, at the end, and only they are counted.
     await nameButton(list, 'Bass').click()
     await move.click()
     await menu.getByRole('menuitemradio', { name: 'Verse' }).click()
     expect(await tree(page)).toBe('Default Other [Verse: Lead Fill Bass] Drums [Outro: Pad]')
-    await expect(page.getByText('Moved 1 group to Verse folder')).toBeVisible()
+    await expect(
+        page.locator('.notification', { hasText: 'Moved 1 group to Verse folder' }),
+    ).toBeVisible()
     expect(await historyLength(page)).toBe(1)
     await undo(page)
 
