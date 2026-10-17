@@ -27,7 +27,8 @@ export { onFlushCommitted } from './worker/flushHooks'
 // memo, in slices of about 8 ms, and sent to the storage worker as bytes. On hide, before a
 // switch and right after a media pick it runs at once and strictly. Entries stay pending until
 // the worker acknowledges the transaction that stored them, so a failed or killed flush loses
-// nothing: the next one, or the restarted worker, gets them again.
+// nothing: the next one, or the restarted worker, gets them again. Entries an in-memory store
+// acknowledged are kept too, until a database holds them, since a restarted worker's memory is new.
 
 /** An entry not yet acknowledged by the worker, holding its state. */
 export type PendingEntry = {
@@ -48,12 +49,16 @@ export type FlushSession = {
     readonly origin: SessionOrigin
     readonly startedAt: number
     readonly sourceName?: string
-    /** Set when the chain was continued elsewhere and this session became a fork (§1.3.1). */
-    forkOf?: string
+    /** A fork's old chain, whose record it copies (§1.3.1). */
+    readonly forkOf?: string
+    /** The stored session a fork continues (D10). */
+    readonly parent?: { readonly id: string; readonly uptoSeq: number }
     /** Whether a flush of it has committed. */
     stored: boolean
     nextSeq: number
     readonly pending: PendingEntry[]
+    /** Acknowledged by an in-memory store only: sent again after a worker restart. */
+    readonly memoryOnly: PendingEntry[]
     /** Resolves once this tab holds the session's lock (§1.6.6). */
     readonly ready: Promise<unknown>
     /** Runs once the session is replaced and nothing of it is pending: releases its lock. */
@@ -93,8 +98,10 @@ export type FlushDeps = {
     now?: () => number
     newId?: () => string
     view?: () => SessionView | undefined
-    /** A session became a fork: its new chain and document ids. */
-    onFork?: (session: FlushSession) => void
+    /** The lock of a session the flusher starts itself (a fork): held until `done`. */
+    lockSession?: (id: string) => { ready: Promise<unknown>; done: () => void }
+    /** A session's chain was continued elsewhere: its further entries went to this fork (D10). */
+    onFork?: (fork: FlushSession, from: FlushSession) => void
     onFlushed?: (report: FlushReport) => void
     onError?: (error: unknown) => void
     /** Runs an extraction in slices; `runSliced` by default. */
@@ -111,8 +118,10 @@ export const BATCH_TEXT = 2 * 1024 * 1024
 /** After a failed flush, the next try waits this long, doubling up to the maximum. */
 export const RETRY_MS = 5000
 export const RETRY_MAX_MS = 60_000
-/** Attempts of one batch: missing windows re-sent, a fork made, before it counts as failed. */
+/** Attempts of one batch: missing windows re-sent, before it counts as failed. */
 const ATTEMPTS = 4
+
+type FlushOptions = { strict?: boolean; oneGo?: boolean }
 
 /** A media item a state holds the bytes of: the BGM's `Bgm.source` (§1.6.8.4). */
 export const heldMediaOf = (state: State): BatchMedia[] => {
@@ -165,6 +174,10 @@ export class Flusher {
     private readonly sessions: FlushSession[] = []
     private current: FlushSession | undefined
     private running: Promise<void> = Promise.resolve()
+    /** The running drain's options: a hide makes them strict and one-go. */
+    private active: { strict: boolean; oneGo: boolean } | undefined
+    /** Finishes the running sliced extraction at once. */
+    private hurry: (() => void) | undefined
     private timer: unknown
     /** Media this tab knows stored; others it holds go with the next flush naming them. */
     private readonly knownMedia = new Set<string>()
@@ -215,6 +228,7 @@ export class Flusher {
             stored: false,
             nextSeq: 1,
             pending: [],
+            memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
             ...(start.done ? { done: start.done } : {}),
         }
@@ -266,7 +280,9 @@ export class Flusher {
     /** Whether a session has anything to store: a new session only from its first own entry. */
     private flushable(session: FlushSession) {
         if (!session.pending.length) return false
-        return session.stored || this.storesAtOnce(session) || session.pending.length > 1
+        // A fork's entries are all its own edits.
+        if (session.stored || session.parent || this.storesAtOnce(session)) return true
+        return session.pending.length > 1
     }
 
     /** About 1 s after the last change, then through idle slices. */
@@ -280,12 +296,20 @@ export class Flusher {
 
     /**
      * Flushes everything pending now. `strict` for hide, a switch and media (§1.6.1); `oneGo`
-     * extracts without yielding, for hide (§1.6.4). Resolves once every batch was tried.
+     * extracts without yielding, for hide (§1.6.4): a flush already running then finishes its
+     * extraction at once and sends strictly. Resolves once every batch was tried.
      */
-    flush(options: { strict?: boolean; oneGo?: boolean } = {}): Promise<void> {
+    flush(options: FlushOptions = {}): Promise<void> {
         if (this.timer !== undefined) {
             this.clearTimer(this.timer)
             this.timer = undefined
+        }
+        if (this.active) {
+            if (options.strict) this.active.strict = true
+            if (options.oneGo) {
+                this.active.oneGo = true
+                this.hurry?.()
+            }
         }
         const run = this.running.then(() =>
             this.drain(options).catch((error: unknown) => {
@@ -297,28 +321,42 @@ export class Flusher {
         return run
     }
 
-    /** After the worker restarted: the memo is reset and every pending entry is sent again. */
+    /**
+     * After the worker restarted: the memo is reset, and every pending entry is sent again, after
+     * the entries only the old worker's in-memory store held.
+     */
     restarted() {
         this.extractor.reset()
         this.knownMedia.clear()
+        for (const session of this.sessions) {
+            session.pending.unshift(...session.memoryOnly)
+            session.memoryOnly.length = 0
+        }
         return this.flush()
     }
 
-    private async drain(options: { strict?: boolean; oneGo?: boolean }) {
-        for (const session of [...this.sessions]) {
-            while (this.flushable(session)) {
-                const stored = await this.flushBatch(session, options)
-                if (!stored) {
-                    this.retire()
-                    // Storing is paused or the worker failed: try again later, less often.
-                    this.retryMs = Math.min(Math.max(this.retryMs * 2, RETRY_MS), RETRY_MAX_MS)
-                    this.schedule(this.retryMs)
-                    return
+    private async drain(options: FlushOptions) {
+        const active = { strict: !!options.strict, oneGo: !!options.oneGo }
+        this.active = active
+        try {
+            // A fork joins the list while it runs, and is reached in turn.
+            for (const session of this.sessions) {
+                while (this.flushable(session)) {
+                    const stored = await this.flushBatch(session, active)
+                    if (!stored) {
+                        this.retire()
+                        // Storing is paused or the worker failed: try again later, less often.
+                        this.retryMs = Math.min(Math.max(this.retryMs * 2, RETRY_MS), RETRY_MAX_MS)
+                        this.schedule(this.retryMs)
+                        return
+                    }
                 }
             }
+            this.retryMs = 0
+            this.retire()
+        } finally {
+            this.active = undefined
         }
-        this.retryMs = 0
-        this.retire()
     }
 
     /** Sessions replaced and fully stored are let go: their locks released. */
@@ -327,7 +365,8 @@ export class Flusher {
             if (session === this.current) continue
             // A blank start never edited stores nothing (§1.3.6).
             if (!this.flushable(session)) session.pending.length = 0
-            if (session.pending.length) continue
+            // Held in memory only: kept, so a worker restart can send it again.
+            if (session.pending.length || session.memoryOnly.length) continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             session.done?.()
         }
@@ -335,7 +374,7 @@ export class Flusher {
 
     private async flushBatch(
         session: FlushSession,
-        options: { strict?: boolean; oneGo?: boolean },
+        options: { strict: boolean; oneGo: boolean },
     ): Promise<boolean> {
         await session.ready
         for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -364,23 +403,30 @@ export class Flusher {
     private async attempt(
         session: FlushSession,
         batch: ChunkBatch,
-        { strict = false, oneGo = false }: { strict?: boolean; oneGo?: boolean },
+        options: { strict: boolean; oneGo: boolean },
     ): Promise<'stored' | 'retry'> {
         const slices: number[] = []
         const plans: SnapshotPlan[] = []
         const take = session.pending.slice(0, BATCH_ENTRIES)
         for (const entry of take) {
             const job = this.extractor.plan(entry.state, batch)
-            if (oneGo) {
+            if (options.oneGo) {
                 const start = performance.now()
                 plans.push(runToEnd(job))
                 slices.push(performance.now() - start)
             } else
-                plans.push(
-                    await (this.deps.runJob ?? runSliced)(job, {
-                        onSlice: (ms) => slices.push(ms),
-                    }),
-                )
+                try {
+                    plans.push(
+                        await (this.deps.runJob ?? runSliced)(job, {
+                            onSlice: (ms) => slices.push(ms),
+                            hurry: (finish) => {
+                                this.hurry = finish
+                            },
+                        }),
+                    )
+                } finally {
+                    this.hurry = undefined
+                }
             if (batch.size > BATCH_TEXT) break
         }
         const entries = take.slice(0, plans.length)
@@ -439,7 +485,7 @@ export class Flusher {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const lastPlan = plans.at(-1)!
         const isStrict =
-            strict || media.length > 0 || (!session.stored && this.storesAtOnce(session))
+            options.strict || media.length > 0 || (!session.stored && this.storesAtOnce(session))
         const view = this.deps.view?.()
         const wire: FlushBatch = {
             session: {
@@ -447,6 +493,7 @@ export class Flusher {
                 chainId: session.chainId,
                 origin: session.origin,
                 startedAt: session.startedAt,
+                ...(session.parent ? { parent: session.parent } : {}),
             },
             chain: {
                 docId: session.docId,
@@ -460,7 +507,7 @@ export class Flusher {
             snapshots,
             reused: [...reused.values()].map(({ memo, hash }) => ({
                 hash,
-                epoch: memo.epoch ?? -1,
+                ...(memo.known ? { known: memo.known } : {}),
             })),
             entries: entries.map((entry, i) => ({
                 seq: entry.seq,
@@ -477,16 +524,21 @@ export class Flusher {
             durability: isStrict ? 'strict' : 'relaxed',
         }
         const mainMs = slices.reduce((sum, ms) => sum + ms, 0) + performance.now() - start
+        // Read before the buffer is transferred.
+        const textBytes = text.length
 
         const result = await this.deps.transport(wire, [text.buffer])
         switch (result.kind) {
             case 'stored': {
-                this.extractor.settle(batch, result.chunks, result.epoch)
+                this.extractor.settle(batch, result.chunks, result.known)
                 this.extractor.confirm(
                     [...reused.values()].map(({ memo }) => memo),
-                    result.epoch,
+                    result.known,
                 )
-                session.pending.splice(0, entries.length)
+                const acknowledged = session.pending.splice(0, entries.length)
+                if (result.memory) session.memoryOnly.push(...acknowledged)
+                // A database holds them now: moved by Try Again, or sent again after a restart.
+                else for (const each of this.sessions) each.memoryOnly.length = 0
                 session.stored = true
                 for (const item of media) this.knownMedia.add(item.hash)
                 for (const hash of [...media.map((item) => item.hash), ...held])
@@ -495,7 +547,7 @@ export class Flusher {
                     sessionId: session.id,
                     entries: entries.length,
                     newChunks: batch.texts.length,
-                    textBytes: text.length,
+                    textBytes,
                     mainMs,
                     slices,
                     strict: isStrict,
@@ -510,13 +562,44 @@ export class Flusher {
                 for (const hash of result.media) this.resendMedia.add(hash)
                 return 'retry'
             case 'notHead':
-                // Another tab continued the chain: this session becomes a fork (§1.3.1).
+                // Another tab continued the chain: further entries go to a fork (§1.3.1, D10).
                 this.extractor.fail(batch, new Error('Not the head'))
-                session.forkOf = session.chainId
-                session.chainId = this.newId()
-                session.docId = this.newId()
-                this.deps.onFork?.(session)
-                return 'retry'
+                this.fork(session, result.lastSeq)
+                return 'stored'
         }
+    }
+
+    /**
+     * Moves a session's pending entries to a new session in a new chain, copied from the old
+     * chain's record, whose parent is the stored session (D10). A stored session never changes
+     * chain, so the chain that continued it keeps its whole history.
+     */
+    private fork(from: FlushSession, lastSeq: number | undefined) {
+        // Entries a kill after commit already stored stay the stored session's.
+        const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
+        from.pending.length = 0
+        const id = this.newId()
+        const lock = this.deps.lockSession?.(id)
+        const fork: FlushSession = {
+            id,
+            chainId: this.newId(),
+            docId: this.newId(),
+            lineageId: from.lineageId,
+            // Without a stored row there is nothing to continue: it keeps its own origin.
+            origin: lastSeq === undefined ? from.origin : 'continued',
+            startedAt: this.now(),
+            ...(from.sourceName === undefined ? {} : { sourceName: from.sourceName }),
+            forkOf: from.chainId,
+            ...(lastSeq === undefined ? {} : { parent: { id: from.id, uptoSeq: lastSeq } }),
+            stored: false,
+            nextSeq: moving.length + 1,
+            pending: moving.map((entry, i) => ({ ...entry, seq: i + 1 })),
+            memoryOnly: [],
+            ready: lock?.ready ?? Promise.resolve(),
+            ...(lock ? { done: lock.done } : {}),
+        }
+        this.sessions.splice(this.sessions.indexOf(from) + 1, 0, fork)
+        if (this.current === from) this.current = fork
+        this.deps.onFork?.(fork, from)
     }
 }

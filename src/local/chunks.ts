@@ -1,6 +1,7 @@
 import type { State } from '../state'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { Store } from '../state/store'
+import type { KnownAt } from './flushWrite'
 import { toHex } from './hash'
 import type { RecordValue } from './records/canonical'
 import {
@@ -89,8 +90,8 @@ export class ChunkBatch {
 export type ChunkMemo = {
     readonly members: readonly object[]
     hash?: Uint8Array
-    /** The epoch at which it was last known stored (§1.6.6). */
-    epoch?: number
+    /** The database and epoch at which it was last known stored (§1.6.6). */
+    known?: KnownAt
     pending?: {
         readonly batch: ChunkBatch
         readonly id: number
@@ -191,15 +192,15 @@ export class Extractor {
         return { t: 'pending', memo: created }
     }
 
-    /** A batch was stored: its chunks' hashes, and the epoch its transaction read. */
-    settle(batch: ChunkBatch, hashes: readonly Uint8Array[], epoch: number) {
+    /** A batch was stored: its chunks' hashes, and the database and epoch its transaction read. */
+    settle(batch: ChunkBatch, hashes: readonly Uint8Array[], known: KnownAt) {
         for (const memo of batch.introduced) {
             const pending = memo.pending
             if (!pending) continue
             const hash = hashes[pending.id]
             if (!hash) throw new Error('A stored batch is missing a chunk hash')
             memo.hash = hash
-            memo.epoch = epoch
+            memo.known = known
             memo.pending = undefined
             pending.resolve(hash)
         }
@@ -215,9 +216,9 @@ export class Extractor {
         }
     }
 
-    /** Marks reused chunks as checked at an epoch: the worker found them stored. */
-    confirm(memos: Iterable<ChunkMemo>, epoch: number) {
-        for (const memo of memos) if (memo.hash) memo.epoch = epoch
+    /** Marks reused chunks as checked in a database at an epoch: the worker found them stored. */
+    confirm(memos: Iterable<ChunkMemo>, known: KnownAt) {
+        for (const memo of memos) if (memo.hash) memo.known = known
     }
 
     /** Forgets the memo entries for hashes the closure check found missing. */
@@ -468,17 +469,37 @@ type IdleScope = {
 /**
  * Runs a job in slices of about 8 ms: `requestIdleCallback` deadlines where there are any,
  * `setTimeout` slices otherwise (Safari has none). Each slice's length goes to `onSlice`.
+ * `hurry` is handed a function that runs the rest at once, as a hide needs (§1.6.4).
  */
 export const runSliced = <T>(
     job: Generator<void, T>,
     {
         onSlice,
+        hurry,
         now = () => performance.now(),
-    }: { onSlice?: (ms: number) => void; now?: () => number } = {},
+    }: {
+        onSlice?: (ms: number) => void
+        hurry?: (finish: () => void) => void
+        now?: () => number
+    } = {},
 ): Promise<T> =>
     new Promise<T>((resolve, reject) => {
         const idle = (globalThis as IdleScope).requestIdleCallback
+        let settled = false
+        hurry?.(() => {
+            if (settled) return
+            settled = true
+            const start = now()
+            try {
+                const value = runToEnd(job)
+                onSlice?.(now() - start)
+                resolve(value)
+            } catch (error) {
+                reject(error instanceof Error ? error : new Error(String(error)))
+            }
+        })
         const slice = (deadline?: IdleDeadline) => {
+            if (settled) return
             const start = now()
             // Half the slice, leaving room for the last step and a collection to run past it.
             const budget = Math.min(SLICE_MS / 2, deadline ? deadline.timeRemaining() : SLICE_MS)
@@ -486,6 +507,7 @@ export const runSliced = <T>(
                 for (;;) {
                     const step = job.next()
                     if (step.done) {
+                        settled = true
                         onSlice?.(now() - start)
                         resolve(step.value)
                         return
@@ -493,6 +515,7 @@ export const runSliced = <T>(
                     if (now() - start >= Math.max(budget, 1)) break
                 }
             } catch (error) {
+                settled = true
                 reject(error instanceof Error ? error : new Error(String(error)))
                 return
             }

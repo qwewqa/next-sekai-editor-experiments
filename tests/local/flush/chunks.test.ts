@@ -46,7 +46,7 @@ const store = () => {
                 texts.set(toHex(hash), text)
                 return hash
             })
-            extractor.settle(batch, hashes, epoch)
+            extractor.settle(batch, hashes, { db: 'test', epoch })
             return hashes
         },
         /** A plan's header and chunk texts, kind by kind, once its batch is settled. */

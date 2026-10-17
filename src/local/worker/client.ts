@@ -4,9 +4,11 @@ import { connect, RpcError, type CallOptions, type Client } from './rpc'
 import type { StorageHandlers } from './storage.worker'
 
 // The page's end of the storage worker (Part 1 §1.6.5). It watches onerror and unanswered calls
-// (10 s, non-bulk) and restarts the worker from a Blob URL of its script fetched at startup, so a
-// later deploy can't 404 it. The session locks live on the page, so a restart loses none; the
-// flush re-sends its pending entries on `restarted`. A restart that fails pauses storing.
+// (10 s, non-bulk, longer for calls that carry more work) and restarts the worker from a Blob URL
+// of its script fetched at startup, so a later deploy can't 404 it. An unanswered call first
+// pings the worker: one that answers and has made progress is slow, not hung, and is waited for.
+// The session locks live on the page, so a restart loses none; the flush re-sends its pending
+// entries on `restarted`. A restart that fails pauses storing.
 
 export type WorkerScript = {
     url: string
@@ -19,6 +21,11 @@ export type WorkerScript = {
 type Listener<T> = (value: T) => void
 
 const INIT_TIMEOUT_MS = 30_000
+
+/** A call's timeout when none is given. */
+const CALL_TIMEOUT_MS = 10_000
+/** How long the ping that asks a busy worker for its progress may take. */
+const PROBE_MS = 5000
 
 /** Restarts allowed within a minute before storing pauses for good. */
 const MAX_RESTARTS = 3
@@ -77,14 +84,67 @@ export class StorageWorker {
         options?: CallOptions,
     ): Promise<Awaited<ReturnType<StorageHandlers[K]>>> {
         await this.ready
-        if (this.dead || !this.client)
+        const client = this.client
+        if (this.dead || !client)
             throw new RpcError('WorkerFailedError', 'The storage worker stopped')
-        const call = this.client.call as (
+        const call = client.call as (
             method: string,
             arg: unknown,
             options?: CallOptions,
         ) => Promise<Awaited<ReturnType<StorageHandlers[K]>>>
-        return call(method, arg, options)
+        if (options?.bulk) return call(method, arg, options)
+        return this.watch(
+            call(method, arg, { bulk: true }),
+            options?.timeoutMs ?? this.options.timeoutMs ?? CALL_TIMEOUT_MS,
+            client,
+        )
+    }
+
+    /**
+     * A call's watchdog: unanswered within its timeout, the worker is pinged for its progress
+     * count. Answering with progress since the last ping, it's slow, not hung, and is waited for
+     * again (the first ping only has to answer); otherwise it's restarted. So a long write that
+     * keeps moving is never cut off.
+     */
+    private watch<T>(reply: Promise<T>, ms: number, client: Client<StorageHandlers>): Promise<T> {
+        const generation = this.generation
+        return new Promise<T>((resolve, reject) => {
+            let done = false
+            let timer: ReturnType<typeof setTimeout> | undefined
+            let last: number | undefined
+            const check = async () => {
+                let progress: number | undefined
+                try {
+                    progress = await client.call('ping', undefined, {
+                        timeoutMs: Math.min(PROBE_MS, ms),
+                    })
+                } catch {
+                    progress = undefined
+                }
+                if (done) return
+                if (progress !== undefined && progress !== last) {
+                    last = progress
+                    timer = setTimeout(() => void check(), ms)
+                    return
+                }
+                done = true
+                reject(new RpcError('TimeoutError', 'The storage worker stopped answering'))
+                this.restart(generation)
+            }
+            timer = setTimeout(() => void check(), ms)
+            reply.then(
+                (value) => {
+                    done = true
+                    clearTimeout(timer)
+                    resolve(value)
+                },
+                (error: unknown) => {
+                    done = true
+                    clearTimeout(timer)
+                    reject(error instanceof Error ? error : new Error(String(error)))
+                },
+            )
+        })
     }
 
     private setStatus(status: StorageStatus) {

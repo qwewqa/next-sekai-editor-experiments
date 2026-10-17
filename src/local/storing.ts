@@ -4,6 +4,7 @@ import { onHistoryAction } from '../history/actions'
 import { session as currentSession } from '../history/session'
 import { appVersion, platform } from '../platform'
 import { Flusher, type FlushReport } from './flush'
+import type { FlushBatch } from './flushWrite'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
 import type { StorageWorker } from './worker/client'
@@ -43,6 +44,11 @@ export const watchLifecycle = () => {
     })
 }
 
+/** A flush's timeout: the default, and a second per MB it carries, as a large BGM needs. */
+export const flushTimeoutMs = (batch: FlushBatch) =>
+    10_000 +
+    (batch.text.byteLength + batch.media.reduce((n, m) => n + m.bytes.byteLength, 0)) / 1000
+
 export const startStoring = (worker: StorageWorker, status: StorageStatus, test: boolean) => {
     const reports: FlushReport[] = []
     const errors: unknown[] = []
@@ -59,16 +65,25 @@ export const startStoring = (worker: StorageWorker, status: StorageStatus, test:
 
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        transport: (batch, list) => worker.call('flush', transfer(batch, list)),
+        transport: (batch, list) =>
+            worker.call('flush', transfer(batch, list), { timeoutMs: flushTimeoutMs(batch) }),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),
             ...(view.groupId === undefined ? {} : { group: view.groupId }),
             ...(view.stageId === undefined ? {} : { stage: view.stageId }),
         }),
-        onFork: (forked) => {
-            if (currentSession.value.sessionId === forked.id)
-                currentSession.value = { ...currentSession.value, docId: forked.docId }
+        lockSession: (id) => {
+            const lock = holdSessionLock(locks, id)
+            return { ready: lock.granted.catch(() => undefined), done: lock.release }
+        },
+        onFork: (fork, from) => {
+            if (currentSession.value.sessionId === from.id)
+                currentSession.value = {
+                    ...currentSession.value,
+                    sessionId: fork.id,
+                    docId: fork.docId,
+                }
         },
         onFlushed: (report) => {
             if (test) reports.push(report)
