@@ -1,6 +1,6 @@
 // The support gate (Part 1 §1.6.10): a classic script that runs before the bundle and, when the
-// browser lacks a feature the editor needs, stops the page and shows a plain one instead. It
-// offers the work stored by earlier versions as downloads. Plain ES5 with no imports: it can't use
+// browser lacks a feature the editor needs, shows a plain page instead and flags the bundle's
+// entry (src/support.ts) to stop. It offers the work stored by earlier versions as downloads. Plain ES5 with no imports: it can't use
 // the bundle, and it must run in browsers the bundle can't. English only (the locale files load
 // with the bundle).
 ;(function (root) {
@@ -215,10 +215,8 @@
         var style = doc.documentElement.style
         style.colorScheme = 'light dark'
         var body = doc.body
-        if (!body) {
-            body = doc.createElement('body')
-            doc.documentElement.appendChild(body)
-        }
+        // The stylesheet's reset (when it has loaded) leaves buttons bare, and the page can't scroll.
+        body.style.touchAction = 'auto'
         body.style.margin = '0'
         body.style.fontFamily = 'system-ui, -apple-system, sans-serif'
         var main = doc.createElement('main')
@@ -237,6 +235,11 @@
             button.style.margin = '0.75rem 0'
             button.style.padding = '0.625rem 1rem'
             button.style.font = 'inherit'
+            button.style.color = 'inherit'
+            button.style.background = 'transparent'
+            button.style.border = '1px solid currentColor'
+            button.style.borderRadius = '0.5rem'
+            button.style.cursor = 'pointer'
             button.addEventListener('click', function () {
                 download(win, file)
             })
@@ -245,8 +248,8 @@
         body.appendChild(main)
     }
 
-    // Returns true when the page was stopped. An insecure context skips the check: storage is
-    // unavailable there anyway (§1.6.5).
+    // Returns true when the browser is unsupported. An insecure context skips the check: storage
+    // is unavailable there anyway (§1.6.5).
     function run(win) {
         if (win.isSecureContext === false) return false
         var missing = missingFeatures(win)
@@ -257,14 +260,16 @@
         } catch (error) {
             // Storage can be unavailable or damaged; the message still shows.
         }
-        // The bundle's script tag follows this one, so stopping the parser keeps it from loading.
-        try {
-            win.stop()
-        } catch (error) {
-            // Not every browser lets a script stop its own page.
-        }
-        win.document.documentElement.setAttribute('data-gate', 'unsupported')
-        show(win, message(win), files)
+        // The bundle's entry is the next script and throws at once on this flag (src/support.ts).
+        win.nseUnsupported = true
+        var doc = win.document
+        doc.documentElement.setAttribute('data-gate', 'unsupported')
+        // The body isn't parsed yet: the page goes in once it is.
+        if (doc.readyState === 'loading')
+            doc.addEventListener('DOMContentLoaded', function () {
+                show(win, message(win), files)
+            })
+        else show(win, message(win), files)
         return true
     }
 

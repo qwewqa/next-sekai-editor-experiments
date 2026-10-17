@@ -121,7 +121,7 @@ watch(root, (element, _, onCleanup) => {
         class="flex h-screen w-screen overflow-hidden"
         :class="
             isSafeMode &&
-            'mt-10 !h-[calc(100vh-2.5rem)] [@media(pointer:coarse)]:mt-12 [@media(pointer:coarse)]:!h-[calc(100vh-3rem)]'
+            'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(100vh_-_var(--safe-bar-height,2.5rem))]'
         "
     >
         <WorkspaceDock side="left" />

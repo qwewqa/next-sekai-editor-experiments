@@ -37,7 +37,7 @@ test('a browser without a needed feature gets the plain page and its downloads, 
 }) => {
     const violations: string[] = []
     const errors: string[] = []
-    // A bundle that ran would throw: the page has no editor root.
+    // The bundle's entry stops at once; one that ran on would throw something else.
     page.on('pageerror', (error) => errors.push(error.message))
     await page.addInitScript(
         ({ prefix, autoSave }) => {
@@ -53,8 +53,7 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     page.on('console', (message) => {
         if (message.text().startsWith('csp ')) violations.push(message.text())
     })
-    // The page is stopped, so its load never comes.
-    await page.goto('/', { waitUntil: 'commit' })
+    await page.goto('/')
     await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
     await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
     const button = page.getByRole('button', { name: 'Download Your Last Auto Save' })
@@ -65,10 +64,10 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     expect(file.suggestedFilename()).toBe('coconut.nsld')
     const path = await file.path()
     expect((await readFile(path)).equals(gz)).toBe(true)
-    // The bundle never ran, and the page made nothing the policy blocks.
+    // The bundle never mounted, and the page made nothing the policy blocks.
     await page.waitForTimeout(500)
-    expect(errors).toEqual([])
-    await expect(page.locator('script[type="module"]')).toHaveCount(0)
+    expect(errors).toEqual(['This browser is not supported.'])
+    await expect(page.locator('#app')).toBeEmpty()
     expect(violations).toEqual([])
 })
 

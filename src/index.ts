@@ -1,5 +1,7 @@
 import 'pixi.js/unsafe-eval'
 import './csp'
+// Stops the bundle before the app's modules where the support gate has shown its page.
+import './support'
 // Before anything imports the settings: it snapshots the stored keys (Part 1 §1.7.3).
 import './launch'
 

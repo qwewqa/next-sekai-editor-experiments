@@ -408,11 +408,11 @@ const fakeWindow = (
         userAgent?: string
         storage?: MemoryStorage | 'throws'
         secure?: boolean
-        body?: boolean
+        /** The page is still being parsed: its body isn't there until DOMContentLoaded. */
+        loading?: boolean
     } = {},
 ) => {
     const clicks: { href: string; download: string }[] = []
-    const stops: number[] = []
     const blobs = new Map<string, Blob>()
     const revoked: string[] = []
     const timers: { delay: number; run: () => void }[] = []
@@ -444,13 +444,14 @@ const fakeWindow = (
         return self
     }
     const documentElement = element('html')
+    const parsed: (() => void)[] = []
     const document = {
         documentElement,
-        body: options.body === false ? null : element('body'),
-        createElement: (tag: string) => {
-            const created = element(tag)
-            if (tag === 'body') document.body = created
-            return created
+        readyState: options.loading ? 'loading' : 'complete',
+        body: element('body'),
+        createElement: element,
+        addEventListener: (type: string, listener: () => void) => {
+            if (type === 'DOMContentLoaded') parsed.push(listener)
         },
     }
     const win = {
@@ -462,7 +463,6 @@ const fakeWindow = (
             if (options.storage === 'throws') throw new DOMException('denied', 'SecurityError')
             return options.storage ?? new MemoryStorage()
         },
-        stop: () => stops.push(1),
         Blob,
         URL: {
             createObjectURL: (blob: Blob) => {
@@ -474,7 +474,19 @@ const fakeWindow = (
         },
         setTimeout: (run: () => void, delay: number) => timers.push({ run, delay }),
     }
-    return Object.assign(win, { clicks, stops, blobs, revoked, timers, documentElement })
+    return Object.assign(win, {
+        clicks,
+        blobs,
+        revoked,
+        timers,
+        documentElement,
+        nseUnsupported: undefined as boolean | undefined,
+        /** The parser reaches the end of the page. */
+        finishParsing: () => {
+            document.readyState = 'complete'
+            for (const listener of parsed) listener()
+        },
+    })
 }
 
 // A page that lacks navigator.locks, as Safari 15 does.
@@ -485,7 +497,7 @@ const noLocks = (extra: Parameters<typeof fakeWindow>[0] = {}) => {
 }
 
 const buttonsOf = (win: ReturnType<typeof fakeWindow>) =>
-    (win.document.body?.children[0]?.children ?? []).filter((child) => child.tag === 'button')
+    (win.document.body.children[0]?.children ?? []).filter((child) => child.tag === 'button')
 
 test('a supported browser is left alone: no storage read, no page change', () => {
     const win = fakeWindow()
@@ -495,42 +507,42 @@ test('a supported browser is left alone: no storage read, no page change', () =>
         },
     })
     assert.equal(gate.run(win), false)
-    assert.equal(win.stops.length, 0)
-    assert.equal(win.document.body?.children.length, 0)
+    assert.equal(win.nseUnsupported, undefined)
+    assert.equal(win.document.body.children.length, 0)
     assert.equal(win.documentElement.attributes['data-gate'], undefined)
 })
 
 test('an insecure context skips the check', () => {
     const win = noLocks({ secure: false })
     assert.equal(gate.run(win), false)
-    assert.equal(win.stops.length, 0)
+    assert.equal(win.nseUnsupported, undefined)
     assert.equal(gate.run(noLocks({ secure: true })), true)
 })
 
-test('an unsupported browser stops the page and says why', () => {
+test('an unsupported browser flags the bundle to stop and says why', () => {
     const win = noLocks({ userAgent: uas.windowsChrome })
     assert.equal(gate.run(win), true)
-    assert.equal(win.stops.length, 1)
+    assert.equal(win.nseUnsupported, true)
     assert.equal(win.documentElement.attributes['data-gate'], 'unsupported')
-    const main = win.document.body?.children[0]
+    const main = win.document.body.children[0]
     assert.equal(main?.tag, 'main')
     assert.equal(main?.children[0]?.textContent, 'This browser is too old for the editor.')
     assert.equal(buttonsOf(win).length, 0)
     const iphone = noLocks({ userAgent: uas.iphoneSafari })
     gate.run(iphone)
     assert.equal(
-        iphone.document.body?.children[0]?.children[0]?.textContent,
+        iphone.document.body.children[0]?.children[0]?.textContent,
         'This editor needs Safari 17 or later.',
     )
 })
 
-test('the page is built even without a body, and when the page cannot be stopped', () => {
-    const win = noLocks({ body: false })
-    win.stop = () => {
-        throw new Error('not allowed')
-    }
+test('the page goes in once the body is parsed, the flag at once', () => {
+    const win = noLocks({ loading: true })
     assert.equal(gate.run(win), true)
-    assert.equal(win.document.body?.children[0]?.tag, 'main')
+    assert.equal(win.nseUnsupported, true)
+    assert.equal(win.document.body.children.length, 0)
+    win.finishParsing()
+    assert.equal(win.document.body.children[0]?.tag, 'main')
     assert.equal(win.documentElement.attributes['data-gate'], 'unsupported')
 })
 
@@ -539,7 +551,7 @@ test('unavailable storage still shows the message', () => {
     assert.equal(gate.run(win), true)
     assert.equal(buttonsOf(win).length, 0)
     assert.equal(
-        win.document.body?.children[0]?.children[0]?.textContent,
+        win.document.body.children[0]?.children[0]?.textContent,
         'This browser is too old for the editor.',
     )
 })
@@ -579,7 +591,7 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     assert.deepEqual(downloads[1]?.bytes, Buffer.from(JSON.parse(v1).levelData as string, 'base64'))
     assert.deepEqual(downloads[2]?.bytes, Buffer.from(ordinary.levelDataGz, 'base64'))
     // The links are removed again, and the object URLs freed later.
-    assert.equal(win.document.body?.children.filter((child) => child.tag === 'a').length, 0)
+    assert.equal(win.document.body.children.filter((child) => child.tag === 'a').length, 0)
     assert.equal(win.revoked.length, 0)
     for (const timer of win.timers) timer.run()
     assert.equal(win.revoked.length, 3)

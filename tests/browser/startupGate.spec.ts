@@ -106,7 +106,7 @@ test.describe('the support gate', () => {
     test('a browser without a needed feature gets the plain page, and the bundle never starts', async ({
         page,
     }) => {
-        // A bundle that ran would throw: the page has no editor root.
+        // The bundle's entry stops at once; one that ran on would throw something else.
         const errors: string[] = []
         page.on('pageerror', (error) => errors.push(error.message))
         await page.addInitScript(
@@ -116,15 +116,15 @@ test.describe('the support gate', () => {
             },
             { prefix, legacy },
         )
-        // The page is stopped, so its load never comes.
-        await page.goto('/', { waitUntil: 'commit' })
+        await page.goto('/')
         await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
         await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
         await expect(
             page.getByRole('button', { name: 'Download Your Last Auto Save' }),
         ).toBeVisible()
         await page.waitForTimeout(500)
-        expect(errors).toEqual([])
+        expect(errors).toEqual(['This browser is not supported.'])
+        await expect(page.locator('#app')).toBeEmpty()
         // The development server adds a style element for each stylesheet the bundle imports.
         await expect(page.locator('style[data-vite-dev-id]')).toHaveCount(0)
     })
@@ -137,7 +137,7 @@ test.describe('the support gate', () => {
                     'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
             })
         })
-        await page.goto('/', { waitUntil: 'commit' })
+        await page.goto('/')
         await expect(page.getByText('This editor needs Safari 17 or later.')).toBeVisible()
         await expect(page.getByRole('button')).toHaveCount(0)
     })
