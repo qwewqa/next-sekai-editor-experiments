@@ -460,7 +460,7 @@ export const kinds = {
         ),
     ],
     traceLinear: (color) => [
-        once(shaft(color, { width: 0.55, from: 0.25, to: 1.2, alpha: 0.6, duration: 0.8 })),
+        once(shaft(color, { width: 0.45, from: 0.25, to: 1.1, alpha: 0.5, duration: 0.65 })),
         rising(white, 6, { spread: 0.4, height: 1.2, radius: 0.02, duration: 0.8 }),
     ],
     // Slide ticks, the quietest hit: a small glint and a small frame.

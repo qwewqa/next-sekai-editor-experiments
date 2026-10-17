@@ -50,12 +50,12 @@
             "bytes": 44376
         },
         "public/builtin/effect.scp": {
-            "sha256": "ca80b1618011d61a2943bc30c4c9f331f26e0fe0f6624f744dcecc64c248b615",
-            "bytes": 482082
+            "sha256": "3151e64d8842f7099f8afe025a4698bca67043a2de8247de791405cb0ff0dfb4",
+            "bytes": 356959
         },
         "public/builtin/particle.scp": {
-            "sha256": "03abe250f459ed6b61dd645c11fbe74c2bd3836a85d924350ec53cdd74661014",
-            "bytes": 40985
+            "sha256": "16348bb7868b38254fac4c54785e2d4575a95ecb6403da7f57ac1ef0769b8f95",
+            "bytes": 40980
         },
         "public/builtin/skin.scp": {
             "sha256": "91665f2473dbb71c179d5de7431fd98847c6fc1b042e50ca1a7f15fc93b03452",
@@ -87,9 +87,9 @@
                 "bytes": 5039
             },
             "data": {
-                "sha1": "171b5bee71b73d3177000a7dab994c5cce43fb9e",
-                "sha256": "a8025ab03d8f0db8349ab1f9108e78f3e4a2c49812de9030faad11214a556c29",
-                "bytes": 18188
+                "sha1": "c3f239dbf7b1c7d5a7f061aacca3dbd174f14397",
+                "sha256": "f00d420568a12c9b4123bfcef2d671e3139d6439ec1e7faf4f58755179565a38",
+                "bytes": 18181
             },
             "texture": {
                 "sha1": "fe38325b5d2e6e4a51fb8c2e63e5da1c56eec8de",
@@ -131,9 +131,9 @@
                 "bytes": 238
             },
             "audio": {
-                "sha1": "ed1b2bb992eadf197cef9af2c187240df60f0f61",
-                "sha256": "0499740281a848c541f52f96d7f961eb5521640fedd33bc1e1e427c3a9853ce9",
-                "bytes": 477021
+                "sha1": "f4274ca7f5e14e2ab6d2b7b16769d30d356d462a",
+                "sha256": "d5b1082c5fa1861704d08ce4fcbb1b4dc99a2028fd210217b8bd03f30018acc4",
+                "bytes": 351900
             }
         }
     },
