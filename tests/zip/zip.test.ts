@@ -10,6 +10,7 @@ import {
     crc32,
     dosFromDate,
     findAmbiguities,
+    inflateExact,
     isIgnoredEntry,
     readDirectory,
     type ZipEntry,
@@ -23,6 +24,9 @@ const rejectsWith = async (promise: Promise<unknown>, code: ZipErrorCode) =>
     assert.rejects(promise, (error: unknown) => error instanceof ZipError && error.code === code)
 
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes)
+
+/** A read cap that every test entry fits under. */
+const cap = { maxSize: 64 * 1024 * 1024 }
 
 test('crc32 matches the zlib CRC', () => {
     assert.equal(crc32(utf8('123456789')), 0xcbf43926)
@@ -60,13 +64,13 @@ test('round trip: STORE and DEFLATE entries, UTF-8 names, empty data', async () 
             'ハロー.txt',
         ],
     )
-    assert.equal(text(await reader.read(reader.get('project.json')!)), '{"format":"nxsp"}')
-    assert.deepEqual(await reader.read(reader.get('level.json')!), big)
-    assert.deepEqual(await reader.read(reader.get('bgm/bgm.mp3')!), binary)
-    assert.deepEqual(await reader.read(reader.get('assets/cover.png')!), binary)
-    assert.equal((await reader.read(reader.get('empty.bin')!)).length, 0)
-    assert.equal((await reader.read(reader.get('empty-stored.bin')!)).length, 0)
-    assert.equal(text(await reader.read(reader.get('ハロー.txt')!)), 'こんにちは')
+    assert.equal(text(await reader.read(reader.get('project.json')!, cap)), '{"format":"nxsp"}')
+    assert.deepEqual(await reader.read(reader.get('level.json')!, cap), big)
+    assert.deepEqual(await reader.read(reader.get('bgm/bgm.mp3')!, cap), binary)
+    assert.deepEqual(await reader.read(reader.get('assets/cover.png')!, cap), binary)
+    assert.equal((await reader.read(reader.get('empty.bin')!, cap)).length, 0)
+    assert.equal((await reader.read(reader.get('empty-stored.bin')!, cap)).length, 0)
+    assert.equal(text(await reader.read(reader.get('ハロー.txt')!, cap)), 'こんにちは')
     assert.equal(reader.get('level.json')!.method, 8)
     assert.equal(reader.get('bgm/bgm.mp3')!.method, 0)
     assert.ok(reader.get('level.json')!.compressedSize < big.length / 10)
@@ -184,14 +188,14 @@ test('reads an archive made by the operating system: DEFLATE, data descriptors, 
     )
     assert.ok(reader.entries.every((entry) => (entry.flags & 8) !== 0 || entry.isDirectory))
     assert.equal(
-        text(await reader.read(reader.get('a.txt')!)),
+        text(await reader.read(reader.get('a.txt')!, cap)),
         'hello hello hello hello hello hello\n',
     )
     assert.equal(
-        text(await reader.read(reader.get('sub/b.json')!)),
+        text(await reader.read(reader.get('sub/b.json')!, cap)),
         '{"k":[1,2,3,1,2,3,1,2,3,1,2,3,1,2,3]}',
     )
-    assert.deepEqual(await reader.read(reader.get('zeros.bin')!), new Uint8Array(3000))
+    assert.deepEqual(await reader.read(reader.get('zeros.bin')!, cap), new Uint8Array(3000))
     assert.deepEqual(
         readDirectory(bytes).map((entry) => entry.name),
         ['a.txt', 'sub/', 'sub/b.json', 'zeros.bin'],
@@ -203,7 +207,7 @@ test('reads an archive that is another tool’s: bytes after the end record, a c
     const archive = rawZip([{ name: 'a.txt', data: utf8('payload') }], { comment })
     const reader = await ZipReader.open(new Blob([archive]))
     assert.equal(reader.recovered, false)
-    assert.equal(text(await reader.read(reader.get('a.txt')!)), 'payload')
+    assert.equal(text(await reader.read(reader.get('a.txt')!, cap)), 'payload')
 
     // Zero padding after the end record, as a tar-style block writer leaves.
     const padded = rawZip([{ name: 'a.txt', data: utf8('payload') }], {
@@ -211,7 +215,7 @@ test('reads an archive that is another tool’s: bytes after the end record, a c
     })
     const second = await ZipReader.open(new Blob([padded]))
     assert.equal(second.recovered, false)
-    assert.equal(text(await second.read(second.get('a.txt')!)), 'payload')
+    assert.equal(text(await second.read(second.get('a.txt')!, cap)), 'payload')
 })
 
 test('reads ZIP64 synthetically: entry fields in an extra field, and a ZIP64 end record', async () => {
@@ -228,9 +232,9 @@ test('reads ZIP64 synthetically: entry fields in an extra field, and a ZIP64 end
             reader.entries.map((entry) => entry.size),
             [11, 12, 11],
         )
-        assert.equal(text(await reader.read(reader.get('a.txt')!)), 'first entry')
-        assert.equal(text(await reader.read(reader.get('b.bin')!)), 'second entry')
-        assert.equal(text(await reader.read(reader.get('c.txt')!)), 'plain entry')
+        assert.equal(text(await reader.read(reader.get('a.txt')!, cap)), 'first entry')
+        assert.equal(text(await reader.read(reader.get('b.bin')!, cap)), 'second entry')
+        assert.equal(text(await reader.read(reader.get('c.txt')!, cap)), 'plain entry')
         assert.deepEqual(
             readDirectory(archive).map((entry) => [entry.name, entry.size, entry.localOffset]),
             reader.entries.map((entry) => [entry.name, entry.size, entry.localOffset]),
@@ -266,7 +270,7 @@ test('a missing central directory falls back to a sequential scan', async () => 
         cut.entries.map((entry) => entry.name),
         ['one.json', 'two.bin', 'three.json'],
     )
-    assert.equal(text(await cut.read(cut.get('two.bin')!)), 'two')
+    assert.equal(text(await cut.read(cut.get('two.bin')!, cap)), 'two')
 
     // The end record's signature damaged.
     const damaged = bytes.slice()
@@ -300,7 +304,7 @@ test('truncated-file recovery: the entries wholly present are kept', async () =>
         cut.entries.map((entry) => entry.name),
         ['project.json', 'level.json'],
     )
-    assert.deepEqual(await cut.read(cut.get('project.json')!), one)
+    assert.deepEqual(await cut.read(cut.get('project.json')!, cap), one)
 
     // Cut in the middle of a header.
     const early = await ZipReader.open(new Blob([bytes.subarray(0, third.localOffset + 10)]))
@@ -347,12 +351,12 @@ test('every read verifies the CRC and the declared size', async () => {
             ]),
         ]),
     )
-    assert.deepEqual(await reader.read(reader.get('good')!), data)
-    await rejectsWith(reader.read(reader.get('bad-store')!), 'crc')
-    await rejectsWith(reader.read(reader.get('bad-deflate')!), 'crc')
-    await rejectsWith(reader.read(reader.get('short')!), 'size')
+    assert.deepEqual(await reader.read(reader.get('good')!, cap), data)
+    await rejectsWith(reader.read(reader.get('bad-store')!, cap), 'crc')
+    await rejectsWith(reader.read(reader.get('bad-deflate')!, cap), 'crc')
+    await rejectsWith(reader.read(reader.get('short')!, cap), 'size')
     // The local header's CRC disagrees with the directory's.
-    await rejectsWith(reader.read(reader.get('directory-crc')!), 'header')
+    await rejectsWith(reader.read(reader.get('directory-crc')!, cap), 'header')
 })
 
 test('inflating past the declared size is damage, and caps refuse before reading', async () => {
@@ -364,8 +368,8 @@ test('inflating past the declared size is damage, and caps refuse before reading
     ])
     const reader = await ZipReader.open(new Blob([archive]))
     // The local header's size differs from the directory's: damage either way.
-    await rejectsWith(reader.read(reader.get('bomb')!), 'header')
-    await rejectsWith(reader.read(reader.get('short')!), 'header')
+    await rejectsWith(reader.read(reader.get('bomb')!, cap), 'header')
+    await rejectsWith(reader.read(reader.get('short')!, cap), 'header')
 
     // With the directory and header agreeing on a size the data does not match.
     const agreeing = rawZip([{ name: 'bomb', data: bomb }])
@@ -374,7 +378,7 @@ test('inflating past the declared size is damage, and caps refuse before reading
     view.setUint32(22, 100, true)
     view.setUint32(directory + 24, 100, true)
     const second = await ZipReader.open(new Blob([agreeing]))
-    await rejectsWith(second.read(second.get('bomb')!), 'size')
+    await rejectsWith(second.read(second.get('bomb')!, cap), 'size')
 
     await rejectsWith(reader.read(reader.get('ok')!, { maxSize: 999_999 }), 'too-large')
     assert.equal((await reader.read(reader.get('ok')!, { maxSize: 1_000_000 })).length, 1_000_000)
@@ -390,7 +394,7 @@ test('a stream with bytes after its end is damage', async () => {
     view.setUint32(18, stored.length, true)
     view.setUint32(directory + 20, stored.length, true)
     const reader = await ZipReader.open(new Blob([archive]))
-    await rejectsWith(reader.read(reader.get('trailing')!), 'size')
+    await rejectsWith(reader.read(reader.get('trailing')!, cap), 'size')
 })
 
 test('duplicate names and overlapping data make a name ambiguous', async () => {
@@ -402,7 +406,7 @@ test('duplicate names and overlapping data make a name ambiguous', async () => {
     const reader = await ZipReader.open(new Blob([archive]))
     assert.deepEqual(reader.duplicates, ['dup'])
     assert.equal(reader.get('dup'), undefined)
-    assert.equal(text(await reader.read(reader.get('fine')!)), '3')
+    assert.equal(text(await reader.read(reader.get('fine')!, cap)), '3')
     assert.equal(reader.entries.length, 3)
 
     // Names that differ only by Unicode normalisation are the same name.
@@ -428,12 +432,12 @@ test('a local header that disagrees with the directory is damage', async () => {
     const view = new DataView(archive.buffer)
     view.setUint32(14, 123, true) // the local CRC
     const reader = await ZipReader.open(new Blob([archive]))
-    await rejectsWith(reader.read(reader.get('a')!), 'header')
+    await rejectsWith(reader.read(reader.get('a')!, cap), 'header')
 
     const renamed = rawZip([{ name: 'a', data, method: 0 }])
     renamed[30] = 'b'.charCodeAt(0)
     const second = await ZipReader.open(new Blob([renamed]))
-    await rejectsWith(second.read(second.get('a')!), 'header')
+    await rejectsWith(second.read(second.get('a')!, cap), 'header')
 })
 
 test('unsupported methods and encrypted entries are refused', async () => {
@@ -445,8 +449,8 @@ test('unsupported methods and encrypted entries are refused', async () => {
             ]),
         ]),
     )
-    await rejectsWith(reader.read(reader.get('bzip')!), 'unsupported')
-    await rejectsWith(reader.read(reader.get('secret')!), 'unsupported')
+    await rejectsWith(reader.read(reader.get('bzip')!, cap), 'unsupported')
+    await rejectsWith(reader.read(reader.get('secret')!, cap), 'unsupported')
 })
 
 test('names: the UTF-8 flag, UTF-8 without it, and CP437', async () => {
@@ -523,3 +527,207 @@ function hasShippedPackages() {
         return false
     }
 }
+
+/** A Blob that records every slice taken from it. */
+const spyBlob = (content: Uint8Array<ArrayBuffer>) => {
+    const blob = new Blob([content])
+    const slices: [number, number][] = []
+    const spy = {
+        size: blob.size,
+        type: '',
+        slice(start: number, end: number) {
+            slices.push([start, end])
+            return blob.slice(start, end)
+        },
+    } as unknown as Blob
+    return { spy, slices }
+}
+
+const le = (bytes: number, value: number) =>
+    Array.from({ length: bytes }, (_, i) => Math.floor(value / 256 ** i) & 0xff)
+
+/** Empty STORE local headers back to back, with no central directory. */
+const bareHeaders = (count: number) => {
+    const one = rawZip([{ name: 'a', data: new Uint8Array(0), method: 0 }]).subarray(0, 31)
+    const out = new Uint8Array(one.length * count)
+    for (let i = 0; i < count; i++) out.set(one, i * one.length)
+    return out
+}
+
+const cutDirectory = (bytes: Uint8Array<ArrayBuffer>) =>
+    bytes.subarray(0, new DataView(bytes.buffer).getUint32(bytes.length - 6, true))
+
+test('more than 65,535 entries is damage, in the directory and in a scan', async () => {
+    const archive = rawZip([{ name: 'a.txt', data: utf8('x') }], { zip64End: true })
+    const view = new DataView(archive.buffer)
+    const zip64End = Number(view.getBigUint64(archive.length - 22 - 20 + 8, true))
+    view.setBigUint64(zip64End + 24, 65_536n, true)
+    view.setBigUint64(zip64End + 32, 65_536n, true)
+    // The cap is not got around by falling back to the scan.
+    await rejectsWith(ZipReader.open(new Blob([archive])), 'limit')
+    assert.throws(() => readDirectory(archive), limit)
+
+    await rejectsWith(ZipReader.open(new Blob([bareHeaders(65_536)])), 'limit')
+    const most = await ZipReader.open(new Blob([bareHeaders(65_535)]))
+    assert.equal(most.recovered, true)
+    assert.equal(most.entries.length, 65_535)
+})
+
+test('a scan reads the file through a window, not slice by slice', async () => {
+    const { spy, slices } = spyBlob(bareHeaders(2000))
+    const reader = await ZipReader.open(spy)
+    assert.equal(reader.entries.length, 2000)
+    assert.ok(slices.length <= 4, `${slices.length} slices`)
+})
+
+test('a directory that claims the whole file is not read at once', async () => {
+    const data = new Uint8Array(3 * 1024 * 1024).map((_, i) => (i * 13) & 0xff)
+    const archive = rawZip([{ name: 'a.bin', data, method: 0 }])
+    const view = new DataView(archive.buffer)
+    view.setUint32(archive.length - 10, archive.length - 22, true) // the directory size
+    view.setUint32(archive.length - 6, 0, true) // the directory offset
+    const { spy, slices } = spyBlob(archive)
+    await ZipReader.open(spy)
+    assert.ok(slices.every(([start, end]) => end - start <= 1024 * 1024))
+})
+
+test('a stored size out of line with the declared size is refused before it is read', async () => {
+    const data = new Uint8Array(100_000).map((_, i) => (i * 7) & 0xff)
+    const archive = rawZip([
+        { name: 'store', data, method: 0 },
+        { name: 'flate', data, method: 0 },
+    ])
+    // The headers and the directory say size 10 for 100,000 stored bytes; the second says DEFLATE.
+    const view = new DataView(archive.buffer)
+    const second = 30 + 5 + data.length
+    const directory = view.getUint32(archive.length - 6, true)
+    const secondRecord = directory + 46 + 5
+    for (const at of [22, second + 22, directory + 24, secondRecord + 24]) {
+        view.setUint32(at, 10, true)
+    }
+    view.setUint16(second + 8, 8, true)
+    view.setUint16(secondRecord + 10, 8, true)
+
+    const { spy, slices } = spyBlob(archive)
+    const reader = await ZipReader.open(spy)
+    slices.length = 0
+    await rejectsWith(reader.read(reader.get('store')!, cap), 'size')
+    await rejectsWith(reader.read(reader.get('flate')!, cap), 'size')
+    assert.deepEqual(slices, [])
+})
+
+test('data hidden in a local extra field that overlaps another entry is ambiguous', async () => {
+    // Entry b's local header sits inside entry a's local extra field, and both name the same data.
+    const data = utf8('data')
+    const crc = crc32(data)
+    const fields = [...le(4, crc), ...le(4, data.length), ...le(4, data.length), ...le(2, 1)]
+    const local = (name: string, extra: number) => [
+        ...le(4, 0x04034b50),
+        ...le(2, 20),
+        ...le(2, 0x0800),
+        ...le(2, 0),
+        ...le(4, 0),
+        ...fields,
+        ...le(2, extra),
+        name.charCodeAt(0),
+    ]
+    const central = (name: string, offset: number) => [
+        ...le(4, 0x02014b50),
+        ...le(2, 20),
+        ...le(2, 20),
+        ...le(2, 0x0800),
+        ...le(2, 0),
+        ...le(4, 0),
+        ...fields,
+        ...le(8, 0),
+        ...le(4, 0),
+        ...le(4, offset),
+        name.charCodeAt(0),
+    ]
+    const locals = concat(local('a', 35), [0, 0, 0, 0], local('b', 0), data)
+    const directory = concat(central('a', 0), central('b', 35))
+    const archive = concat(
+        locals,
+        directory,
+        [...le(4, 0x06054b50), ...le(4, 0), ...le(2, 2), ...le(2, 2)],
+        [...le(4, directory.length), ...le(4, locals.length), ...le(2, 0)],
+    )
+    const reader = await ZipReader.open(new Blob([archive]))
+    // The least ranges do not overlap; the real ones, with the extra field, do.
+    assert.deepEqual(reader.overlapping, [])
+    await rejectsWith(reader.read(reader.get('a')!, cap), 'ambiguous')
+    await rejectsWith(reader.read(reader.get('b')!, cap), 'ambiguous')
+})
+
+test('a STORE entry with a data descriptor and no sizes stops a scan instead of reading empty', async () => {
+    const archive = rawZip([
+        { name: 'kept.txt', data: utf8('kept'), method: 0 },
+        { name: 'a.txt', data: utf8('seventeen bytes!!'), method: 0, flags: 0x0808 },
+    ])
+    const view = new DataView(archive.buffer)
+    const second = 30 + 8 + 4
+    for (const at of [14, 18, 22]) view.setUint32(second + at, 0, true)
+    const cut = cutDirectory(archive)
+    const reader = await ZipReader.open(new Blob([cut]))
+    assert.equal(reader.recovered, true)
+    assert.deepEqual(
+        reader.entries.map((entry) => entry.name),
+        ['kept.txt'],
+    )
+    await rejectsWith(ZipReader.open(new Blob([cut.subarray(second)])), 'truncated')
+})
+
+test('a scan steps over a data descriptor after an entry whose sizes are filled in', async () => {
+    const first = utf8('first')
+    const before = cutDirectory(rawZip([{ name: 'a.txt', data: first, method: 0, flags: 0x0808 }]))
+    const after = cutDirectory(rawZip([{ name: 'b.txt', data: utf8('second'), method: 0 }]))
+    for (const signed of [true, false]) {
+        const descriptor = [
+            ...(signed ? le(4, 0x08074b50) : []),
+            ...le(4, crc32(first)),
+            ...le(4, first.length),
+            ...le(4, first.length),
+        ]
+        const reader = await ZipReader.open(new Blob([concat(before, descriptor, after)]))
+        assert.deepEqual(
+            reader.entries.map((entry) => entry.name),
+            ['a.txt', 'b.txt'],
+            `signed ${signed}`,
+        )
+        assert.equal(text(await reader.read(reader.get('b.txt')!, cap)), 'second')
+    }
+})
+
+test('with a data descriptor, filled-in local fields must still agree with the directory', async () => {
+    const data = utf8('described')
+    const reader = await ZipReader.open(
+        new Blob([rawZip([{ name: 'crc', data, flags: 0x0808, central: { crc32: 1 } }])]),
+    )
+    await rejectsWith(reader.read(reader.get('crc')!, cap), 'header')
+
+    // Zero local fields, as a streaming writer leaves them, are not compared.
+    const archive = rawZip([{ name: 'zeros', data, flags: 0x0808 }])
+    const view = new DataView(archive.buffer)
+    for (const at of [14, 18, 22]) view.setUint32(at, 0, true)
+    const zeros = await ZipReader.open(new Blob([archive]))
+    assert.deepEqual(await zeros.read(zeros.get('zeros')!, cap), data)
+})
+
+test('a DEFLATE stream cut short is truncated', () => {
+    const data = utf8('hello '.repeat(1000))
+    const stream = deflateRawSync(data)
+    assert.throws(
+        () => inflateExact(stream.subarray(0, stream.length - 1), data.length),
+        (error: unknown) => error instanceof ZipError && error.code === 'truncated',
+    )
+    assert.throws(
+        () => inflateExact(new Uint8Array([0xff, 0xff, 0xff]), 10),
+        (error: unknown) => error instanceof ZipError && error.code === 'inflate',
+    )
+})
+
+test('a read needs a cap', async () => {
+    const reader = await ZipReader.open(new Blob([rawZip([{ name: 'a', data: utf8('x') }])]))
+    // @ts-expect-error: maxSize is required.
+    assert.equal(text(await reader.read(reader.get('a')!, {})), 'x')
+})
