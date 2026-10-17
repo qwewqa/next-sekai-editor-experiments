@@ -1,6 +1,6 @@
 import type { LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 import Type from 'typebox'
 import Value from 'typebox/value'
@@ -58,12 +58,12 @@ const refusal = (reason: string, field?: string) => (error: unknown) =>
     error.reason === reason &&
     (field === undefined || error.params[0] === field)
 
-const coconut = () =>
-    parseLevelData(
-        JSON.parse(readFileSync('test_level_data/coconut-next-sekai-24887.json', 'utf8')),
-    ).entities
+// Coconut is local-only (never committed); CI runs these on the committed generated chart.
+const coconutPath = 'test_level_data/coconut-next-sekai-24887.json'
+const coconut = () => parseLevelData(JSON.parse(readFileSync(coconutPath, 'utf8'))).entities
 const generated = () =>
     parseLevelData(JSON.parse(readFileSync('tests/fixtures/generated-large.json', 'utf8'))).entities
+const committed = () => [...(existsSync(coconutPath) ? [coconut()] : []), generated()]
 
 test('the synthetic levels parse and report nothing', () => {
     assert.ok(parse(minimalLevel()).report.isEmpty)
@@ -76,7 +76,7 @@ test('the synthetic levels parse and report nothing', () => {
 })
 
 test('the committed levels report nothing', () => {
-    for (const entities of [coconut(), generated()]) {
+    for (const entities of committed()) {
         const { chart, report } = parse(entities)
         assert.deepEqual(report.entries, [])
         assert.ok(chart.slides.length > 0)
@@ -371,8 +371,7 @@ test('the parser’s reads agree with the declared table', () => {
         reads.set(key, [...(reads.get(key) ?? []), read])
     })
     try {
-        for (const entities of [[...fullLevel(), nestedFolder()], coconut(), generated()])
-            parse(entities)
+        for (const entities of [[...fullLevel(), nestedFolder()], ...committed()]) parse(entities)
     } finally {
         setParserReadHook(undefined)
     }
@@ -434,7 +433,7 @@ test('the compiled checks answer as Value.Check does', () => {
     const schemas = new Set<Type.TSchema>()
     setParserReadHook((read) => read.schema && schemas.add(read.schema))
     try {
-        for (const entities of [fullLevel(), coconut()]) parse(entities)
+        for (const entities of [fullLevel(), ...committed()]) parse(entities)
     } finally {
         setParserReadHook(undefined)
     }
@@ -456,7 +455,7 @@ test('the compiled checks answer as Value.Check does', () => {
 })
 
 test('the editor’s own export of the committed levels reports nothing', () => {
-    for (const entities of [coconut(), generated()]) {
+    for (const entities of committed()) {
         const { chart } = parse(entities)
         const state = createState(chart, 0)
         const exported = serializeToLevelDataEntities(

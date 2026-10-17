@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import { parseLevelDataChart } from '../../../src/chart/parse/levelData'
 import { createState, type State } from '../../../src/state'
@@ -16,9 +16,13 @@ export const readLevelData = (path: string): { bgmOffset: number; entities: neve
     return data as never
 }
 
-/** The sample levels every round trip runs over. */
+/** Coconut, local-only (never committed): tests that need it skip where it is absent. */
+export const coconutPath = 'test_level_data/coconut-next-sekai-24887.json'
+export const hasCoconut = existsSync(coconutPath)
+
+/** The sample levels every round trip runs over; CI has the generated chart and legacy colors. */
 export const samplePaths = [
-    'test_level_data/coconut-next-sekai-24887.json',
+    ...(hasCoconut ? [coconutPath] : []),
     'tests/fixtures/generated-large.json',
     'tests/browser/fixtures/legacy-colors.json',
 ]
