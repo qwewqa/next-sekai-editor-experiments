@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "Buradaki Düzenlemeleri Bul"
+    },
+    "saveAs": {
+      "title": "Farklı Kaydet…"
     }
   },
   "help": {
@@ -1851,7 +1854,8 @@
     "changesAbove": "Yukarıdaki değişiklikler: {0}",
     "changesBelow": "Aşağıdaki değişiklikler: {0}",
     "changesAboveAny": "Yukarıdaki değişiklikler",
-    "changesBelowAny": "Aşağıdaki değişiklikler"
+    "changesBelowAny": "Aşağıdaki değişiklikler",
+    "savesCurrent": "Güncel sürümü kaydeder."
   },
   "save": {
     "fileName": "Dosya Adı",
@@ -1872,7 +1876,36 @@
     "writeFailed": "\"{0}\" yazılamadı.",
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
     "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor.",
-    "saveAs": "Farklı Kaydet…"
+    "title": "Proje Dosyasını Kaydet",
+    "titleAs": "Farklı Kaydet",
+    "history": "Geçmiş",
+    "bgm": "BGM",
+    "placeholder": "Adsız",
+    "exportHint": "Sonolus seviye verisi için Seviye Verisini Dışa Aktar… (Shift+P) kullanın.",
+    "openExport": "Seviye Verisini Dışa Aktar…",
+    "readOnly": "\"{0}\" dosyasına yazılamıyor.",
+    "notProject": "\"{0}\" bir proje dosyası değil.",
+    "notKept": "Kaydedilmedi. \"{0}\" korunamadı.",
+    "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
+    "saved": "{0} dosyasına kaydedildi",
+    "savedWithoutBgm": "{0} dosyasına BGM olmadan kaydedildi; BGM yüklenmemiş",
+    "savedWithoutCover": "{0} dosyasına kapak olmadan kaydedildi; kapak yüklenmemiş",
+    "savedWithoutPreview": "{0} dosyasına önizleme sesi olmadan kaydedildi; önizleme sesi yüklenmemiş",
+    "savedWithoutMedia": "{0} dosyasına yüklenmemiş medya olmadan kaydedildi",
+    "savedWithoutBgmLarge": "{0} dosyasına BGM olmadan kaydedildi",
+    "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",
+    "savedWithoutPreviewLarge": "{0} dosyasına önizleme sesi olmadan kaydedildi",
+    "savedWithoutMediaLarge": "{0} dosyasına medya olmadan kaydedildi",
+    "someStepsNotKept": "{0} dosyasına kaydedildi. Bazı önceki adımlar korunmadı.",
+    "someStepsNotKeptLine": "Bazı önceki adımlar korunmadı.",
+    "tookOver": "{0} dosyasına kaydedildi. Önceki çalışması Son Oturumlar’da.",
+    "noChanges": "{0} indirildiğinden beri değişiklik yok",
+    "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
+    "noChangesOpened": "{0} açıldığından beri değişiklik yok",
+    "downloadAgain": "Yeniden İndir",
+    "unreadable": "\"{0}\" tamamen okunamadı.",
+    "tooLarge": "Tek bir dosya için çok büyük. BGM veya geçmiş işaretini kaldırın.",
+    "restoredName": "{0} ({1} geri yüklendi)"
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
@@ -1881,8 +1914,16 @@
     "replace": "Üzerine Yaz",
     "title": "\"{0}\" Değişti",
     "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
+    "savedOn": "{0} üzerinde kaydedildi, {1} · {2}.",
+    "savedWeb": "Web editöründe ({0}) kaydedildi, {1} · {2}.",
+    "otherProject": "Farklı bir proje dosyası: \"{0}\".",
+    "separate": "Ayrı Dosya Olarak Kaydet",
     "openOther": "Diğer Sürümü Aç",
-    "openOtherNote": "Değişiklikleriniz kaydedilmemiş kalır.",
+    "openOtherNote": "Değişiklikleriniz kaydedilmemiş olarak kalır.",
+    "replaceNote": "Diskteki sürüm Son Oturumlar’a gider.",
+    "keptName": "{0} ({1} değiştirildi)",
+    "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "replaceHoldsEarlier": "Bu tarayıcıda artık bulunmayan önceki adımları içeriyor.",
     "keepEditing": "Düzenlemeye Devam Et"
   },
   "name": {
@@ -1962,6 +2003,7 @@
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
   },
   "file": {
+    "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
     "saved": "{0} · {1} kaydedildi",
     "changedSinceSaved": "{0} · kayıttan sonra değişti",
     "downloaded": "{0} · {1} indirildi",

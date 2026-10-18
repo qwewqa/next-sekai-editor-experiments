@@ -99,7 +99,13 @@ export const openChipDialog = async () => {
             const choice = await showChoice<'saveAs'>({
                 title: () => i18n.value.commands.save.title,
                 message: () => lines(chipSentence(kind), rest),
-                choices: [{ value: 'saveAs', label: () => i18n.value.save.saveAs, default: true }],
+                choices: [
+                    {
+                        value: 'saveAs',
+                        label: () => i18n.value.commands.saveAs.title,
+                        default: true,
+                    },
+                ],
             })
             if (choice === 'saveAs') fileActions.saveAs?.()
             return

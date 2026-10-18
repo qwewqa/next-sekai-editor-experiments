@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "尋找此處的編輯"
+    },
+    "saveAs": {
+      "title": "另存新檔…"
     }
   },
   "help": {
@@ -1851,7 +1854,8 @@
     "changesAbove": "上方的變更：{0}",
     "changesBelow": "下方的變更：{0}",
     "changesAboveAny": "上方的變更",
-    "changesBelowAny": "下方的變更"
+    "changesBelowAny": "下方的變更",
+    "savesCurrent": "儲存目前版本。"
   },
   "save": {
     "fileName": "檔案名稱",
@@ -1872,7 +1876,36 @@
     "writeFailed": "無法寫入 \"{0}\"。",
     "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
     "openedContentGone": "\"{0}\" 已不再包含開啟時的內容。",
-    "saveAs": "另存新檔…"
+    "title": "儲存專案檔案",
+    "titleAs": "另存新檔",
+    "history": "歷史記錄",
+    "bgm": "BGM",
+    "placeholder": "未命名",
+    "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」(Shift+P)。",
+    "openExport": "匯出關卡資料…",
+    "readOnly": "無法寫入 \"{0}\"。",
+    "notProject": "\"{0}\" 不是專案檔案。",
+    "notKept": "未儲存。無法保留 \"{0}\"。",
+    "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
+    "saved": "已儲存到 {0}",
+    "savedWithoutBgm": "已儲存到 {0}，但未包含 BGM，因為 BGM 未載入",
+    "savedWithoutCover": "已儲存到 {0}，但未包含封面，因為封面未載入",
+    "savedWithoutPreview": "已儲存到 {0}，但未包含預覽音訊，因為預覽音訊未載入",
+    "savedWithoutMedia": "已儲存到 {0}，未包含未載入的媒體",
+    "savedWithoutBgmLarge": "已儲存到 {0}，未包含 BGM",
+    "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",
+    "savedWithoutPreviewLarge": "已儲存到 {0}，未包含預覽音訊",
+    "savedWithoutMediaLarge": "已儲存到 {0}，未包含媒體",
+    "someStepsNotKept": "已儲存到 {0}。部分較早的步驟未保留。",
+    "someStepsNotKeptLine": "部分較早的步驟未保留。",
+    "tookOver": "已儲存到 {0}。其先前的工作在「最近的工作階段」中。",
+    "noChanges": "自下載 {0} 以來沒有變更",
+    "noChangesSaved": "自儲存 {0} 以來沒有變更",
+    "noChangesOpened": "自開啟 {0} 以來沒有變更",
+    "downloadAgain": "再次下載",
+    "unreadable": "無法完整讀取 \"{0}\"。",
+    "tooLarge": "對單一檔案而言過大。請取消勾選 BGM 或歷史記錄。",
+    "restoredName": "{0}（{1} 還原）"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",
@@ -1881,8 +1914,16 @@
     "replace": "取代",
     "title": "\"{0}\" 已變更",
     "body": "\"{0}\" 在此處開啟或儲存後已變更。",
+    "savedOn": "儲存於 {0}，{1} · {2}。",
+    "savedWeb": "儲存於網頁編輯器 ({0})，{1} · {2}。",
+    "otherProject": "另一個專案檔案 \"{0}\"。",
+    "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
-    "openOtherNote": "你的變更仍未儲存。",
+    "openOtherNote": "你的變更會保持未儲存。",
+    "replaceNote": "磁碟上的版本會移到「最近的工作階段」。",
+    "keptName": "{0}（{1} 被取代）",
+    "replaceNewer": "由較新版本的 {0} 建立。",
+    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
     "keepEditing": "繼續編輯"
   },
   "name": {
@@ -1962,6 +2003,7 @@
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   },
   "file": {
+    "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
     "saved": "{0} · {1} 已儲存",
     "changedSinceSaved": "{0} · 儲存後已變更",
     "downloaded": "{0} · {1} 已下載",

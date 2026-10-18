@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "ここの変更を探す"
+    },
+    "saveAs": {
+      "title": "名前を付けて保存…"
     }
   },
   "help": {
@@ -1851,7 +1854,8 @@
     "changesAbove": "画面上側の変更：{0}",
     "changesBelow": "画面下側の変更：{0}",
     "changesAboveAny": "画面上側の変更",
-    "changesBelowAny": "画面下側の変更"
+    "changesBelowAny": "画面下側の変更",
+    "savesCurrent": "現在のバージョンを保存します。"
   },
   "save": {
     "fileName": "ファイル名",
@@ -1872,7 +1876,36 @@
     "writeFailed": "「{0}」に書き込めませんでした。",
     "notPutBack": "「{0}」は空になり、元の内容を戻せませんでした。",
     "openedContentGone": "「{0}」には、開いたときの内容がもうありません。",
-    "saveAs": "名前を付けて保存…"
+    "title": "プロジェクトファイルを保存",
+    "titleAs": "名前を付けて保存",
+    "history": "履歴",
+    "bgm": "BGM",
+    "placeholder": "無題",
+    "exportHint": "Sonolus のレベルデータには「レベルデータを出力…」(Shift+P) を使ってください。",
+    "openExport": "レベルデータを出力…",
+    "readOnly": "「{0}」に書き込めません。",
+    "notProject": "「{0}」はプロジェクトファイルではありません。",
+    "notKept": "保存されませんでした。「{0}」を保持できませんでした。",
+    "notKeptSafe": "保存されませんでした。セーフモードではファイルを置き換えられません。",
+    "saved": "{0} に保存しました",
+    "savedWithoutBgm": "{0} に BGM なしで保存しました。BGM は読み込まれていません",
+    "savedWithoutCover": "{0} にカバーなしで保存しました。カバーは読み込まれていません",
+    "savedWithoutPreview": "{0} にプレビュー音声なしで保存しました。プレビュー音声は読み込まれていません",
+    "savedWithoutMedia": "{0} に、読み込まれていないメディアなしで保存しました",
+    "savedWithoutBgmLarge": "{0} に BGM なしで保存しました",
+    "savedWithoutCoverLarge": "{0} にカバーなしで保存しました",
+    "savedWithoutPreviewLarge": "{0} にプレビュー音声なしで保存しました",
+    "savedWithoutMediaLarge": "{0} にメディアなしで保存しました",
+    "someStepsNotKept": "{0} に保存しました。以前の一部のステップは保持されていません。",
+    "someStepsNotKeptLine": "以前の一部のステップは保持されていません。",
+    "tookOver": "{0} に保存しました。以前の作業は「最近のセッション」にあります。",
+    "noChanges": "{0} のダウンロード以降、変更はありません",
+    "noChangesSaved": "{0} の保存以降、変更はありません",
+    "noChangesOpened": "{0} を開いて以降、変更はありません",
+    "downloadAgain": "再ダウンロード",
+    "unreadable": "「{0}」を完全には読み込めませんでした。",
+    "tooLarge": "1 つのファイルには大きすぎます。BGM または履歴のチェックを外してください。",
+    "restoredName": "{0}（{1} に復元）"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",
@@ -1880,9 +1913,17 @@
     "exportBodyOpened": "「{0}」はここで開いた後に変更されています。",
     "replace": "置き換え",
     "title": "「{0}」が変更されました",
-    "body": "「{0}」はここで開いた後または保存した後に変更されています。",
+    "body": "「{0}」はここで開くか保存した後に変更されています。",
+    "savedOn": "{0} で保存、{1} · {2}。",
+    "savedWeb": "Web エディター ({0}) で保存、{1} · {2}。",
+    "otherProject": "別のプロジェクトファイル「{0}」です。",
+    "separate": "別のファイルとして保存",
     "openOther": "もう一方のバージョンを開く",
-    "openOtherNote": "変更は保存されないままです。",
+    "openOtherNote": "変更は保存されないまま残ります。",
+    "replaceNote": "ディスク上のバージョンは「最近のセッション」に移ります。",
+    "keptName": "{0}（{1} に置き換え）",
+    "replaceNewer": "より新しいバージョンの {0} で作成されています。",
+    "replaceHoldsEarlier": "このブラウザーにはもうない以前のステップが含まれています。",
     "keepEditing": "編集を続ける"
   },
   "name": {
@@ -1962,6 +2003,7 @@
     "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
   },
   "file": {
+    "replacedElsewhere": "「{0}」は別のタブまたはウィンドウから置き換えられました。",
     "saved": "{0} · {1}に保存",
     "changedSinceSaved": "{0} · 保存後に変更あり",
     "downloaded": "{0} · {1}にダウンロード",

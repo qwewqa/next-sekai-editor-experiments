@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "查找此处的编辑"
+    },
+    "saveAs": {
+      "title": "另存为…"
     }
   },
   "help": {
@@ -1851,7 +1854,8 @@
     "changesAbove": "上方的更改：{0}",
     "changesBelow": "下方的更改：{0}",
     "changesAboveAny": "上方的更改",
-    "changesBelowAny": "下方的更改"
+    "changesBelowAny": "下方的更改",
+    "savesCurrent": "保存当前版本。"
   },
   "save": {
     "fileName": "文件名",
@@ -1872,7 +1876,36 @@
     "writeFailed": "无法写入“{0}”。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”已不再包含打开时的内容。",
-    "saveAs": "另存为…"
+    "title": "保存项目文件",
+    "titleAs": "另存为",
+    "history": "历史记录",
+    "bgm": "BGM",
+    "placeholder": "未命名",
+    "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”(Shift+P)。",
+    "openExport": "导出关卡数据…",
+    "readOnly": "无法写入“{0}”。",
+    "notProject": "“{0}”不是项目文件。",
+    "notKept": "未保存。无法保留“{0}”。",
+    "notKeptSafe": "未保存。安全模式下无法替换文件。",
+    "saved": "已保存到 {0}",
+    "savedWithoutBgm": "已保存到 {0}，但未包含 BGM，因为 BGM 未加载",
+    "savedWithoutCover": "已保存到 {0}，但未包含封面，因为封面未加载",
+    "savedWithoutPreview": "已保存到 {0}，但未包含预览音频，因为预览音频未加载",
+    "savedWithoutMedia": "已保存到 {0}，未包含未加载的媒体",
+    "savedWithoutBgmLarge": "已保存到 {0}，未包含 BGM",
+    "savedWithoutCoverLarge": "已保存到 {0}，未包含封面",
+    "savedWithoutPreviewLarge": "已保存到 {0}，未包含预览音频",
+    "savedWithoutMediaLarge": "已保存到 {0}，未包含媒体",
+    "someStepsNotKept": "已保存到 {0}。部分较早的步骤未保留。",
+    "someStepsNotKeptLine": "部分较早的步骤未保留。",
+    "tookOver": "已保存到 {0}。其之前的工作在“最近的会话”中。",
+    "noChanges": "自下载 {0} 以来没有更改",
+    "noChangesSaved": "自保存 {0} 以来没有更改",
+    "noChangesOpened": "自打开 {0} 以来没有更改",
+    "downloadAgain": "再次下载",
+    "unreadable": "无法完整读取“{0}”。",
+    "tooLarge": "对单个文件而言过大。请取消勾选 BGM 或历史记录。",
+    "restoredName": "{0}（{1} 恢复）"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",
@@ -1881,8 +1914,16 @@
     "replace": "替换",
     "title": "“{0}”已更改",
     "body": "“{0}”在此处打开或保存后已更改。",
+    "savedOn": "保存于 {0}，{1} · {2}。",
+    "savedWeb": "保存于网页编辑器 ({0})，{1} · {2}。",
+    "otherProject": "另一个项目文件“{0}”。",
+    "separate": "另存为单独文件",
     "openOther": "打开另一个版本",
-    "openOtherNote": "你的更改仍未保存。",
+    "openOtherNote": "你的更改保持未保存。",
+    "replaceNote": "磁盘上的版本会移到“最近的会话”。",
+    "keptName": "{0}（{1} 被替换）",
+    "replaceNewer": "由更新版本的 {0} 创建。",
+    "replaceHoldsEarlier": "它包含此浏览器已不再拥有的较早步骤。",
     "keepEditing": "继续编辑"
   },
   "name": {
@@ -1962,6 +2003,7 @@
     "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"
   },
   "file": {
+    "replacedElsewhere": "“{0}”已从另一个标签页或窗口被替换。",
     "saved": "{0} · {1} 已保存",
     "changedSinceSaved": "{0} · 保存后已更改",
     "downloaded": "{0} · {1} 已下载",

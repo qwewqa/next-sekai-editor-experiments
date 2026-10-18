@@ -603,6 +603,9 @@
         },
         "editsHere": {
             "title": "Find Edits Here"
+        },
+        "saveAs": {
+            "title": "Save As…"
         }
     },
     "help": {
@@ -1851,7 +1854,8 @@
         "changesAbove": "Changes Above: {0}",
         "changesBelow": "Changes Below: {0}",
         "changesAboveAny": "Changes Above",
-        "changesBelowAny": "Changes Below"
+        "changesBelowAny": "Changes Below",
+        "savesCurrent": "Saves the current version."
     },
     "save": {
         "fileName": "File Name",
@@ -1872,7 +1876,36 @@
         "writeFailed": "\"{0}\" could not be written.",
         "notPutBack": "\"{0}\" was emptied, and its content could not be put back.",
         "openedContentGone": "\"{0}\" no longer holds the content you opened.",
-        "saveAs": "Save As…"
+        "title": "Save Project File",
+        "titleAs": "Save As",
+        "history": "History",
+        "bgm": "BGM",
+        "placeholder": "Untitled",
+        "exportHint": "For Sonolus level data, use Export Level Data… (Shift+P).",
+        "openExport": "Export Level Data…",
+        "readOnly": "\"{0}\" cannot be written to.",
+        "notProject": "\"{0}\" is not a project file.",
+        "notKept": "Not saved. \"{0}\" could not be kept.",
+        "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
+        "saved": "Saved to {0}",
+        "savedWithoutBgm": "Saved to {0} without its BGM, which is not loaded",
+        "savedWithoutCover": "Saved to {0} without its cover, which is not loaded",
+        "savedWithoutPreview": "Saved to {0} without its preview audio, which is not loaded",
+        "savedWithoutMedia": "Saved to {0} without media that is not loaded",
+        "savedWithoutBgmLarge": "Saved to {0} without its BGM",
+        "savedWithoutCoverLarge": "Saved to {0} without its cover",
+        "savedWithoutPreviewLarge": "Saved to {0} without its preview audio",
+        "savedWithoutMediaLarge": "Saved to {0} without its media",
+        "someStepsNotKept": "Saved to {0}. Some earlier steps were not kept.",
+        "someStepsNotKeptLine": "Some earlier steps were not kept.",
+        "tookOver": "Saved to {0}. Its earlier work is in Recent Sessions.",
+        "noChanges": "No changes since {0} was downloaded",
+        "noChangesSaved": "No changes since {0} was saved",
+        "noChangesOpened": "No changes since {0} was opened",
+        "downloadAgain": "Download Again",
+        "unreadable": "\"{0}\" could not be read completely.",
+        "tooLarge": "Too large for one file. Untick BGM or history.",
+        "restoredName": "{0} (restored {1})"
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
@@ -1881,8 +1914,16 @@
         "replace": "Replace",
         "title": "\"{0}\" Changed",
         "body": "\"{0}\" changed since you opened or saved it here.",
+        "savedOn": "Saved on {0}, {1} · {2}.",
+        "savedWeb": "Saved in the web editor ({0}), {1} · {2}.",
+        "otherProject": "A different project file, \"{0}\".",
+        "separate": "Save as a Separate File",
         "openOther": "Open the Other Version",
         "openOtherNote": "Your changes stay unsaved.",
+        "replaceNote": "The version on disk goes to Recent Sessions.",
+        "keptName": "{0} (replaced {1})",
+        "replaceNewer": "Made by a newer version of {0}.",
+        "replaceHoldsEarlier": "It holds earlier steps that this browser no longer has.",
         "keepEditing": "Keep Editing"
     },
     "name": {
@@ -1962,6 +2003,7 @@
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."
     },
     "file": {
+        "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
         "saved": "{0} · saved {1}",
         "changedSinceSaved": "{0} · changed since saved",
         "downloaded": "{0} · downloaded {1}",
