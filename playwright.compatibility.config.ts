@@ -16,6 +16,8 @@ const storageSpecs = [
     'journalKill.spec.ts',
     // Startup, the recovery order and the auto save migration (Step 4).
     'startupSessions.spec.ts',
+    // Opening a `.nxsp` and its background import (Step 6).
+    'openProject.spec.ts',
 ]
 
 export default defineConfig({
