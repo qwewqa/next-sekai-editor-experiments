@@ -31,6 +31,7 @@ import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
+import { dropKept } from './open/kept'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
@@ -419,6 +420,9 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
+                // A partial open's kept bytes go with its session (§1.5.4).
+                if (leaving && leaving.chainId !== begun.chainId && !safe)
+                    void dropKept(worker, leaving.chainId)
                 if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return
             }

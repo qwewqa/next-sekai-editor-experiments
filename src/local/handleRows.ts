@@ -10,7 +10,13 @@ export const HANDLES = 'handles'
 /** The chain fields a handle belongs to: the binding and Export's remembered target. */
 export const HANDLE_ROLES = ['file', 'exportTarget'] as const
 
-export type HandleRole = (typeof HANDLE_ROLES)[number]
+export type HandleRole = (typeof HANDLE_ROLES)[number] | typeof KEPT_ROLE
+
+/**
+ * The file a partial or unlinked open came from (§1.5.4, D26), while its session is open: not a
+ * chain field, so a save picker's pick of it is still refused and put back after a reload.
+ */
+export const KEPT_ROLE = 'kept'
 
 /** A `handles` row: the handle (or the specs' token), and its field's name when stored. */
 export type HandleRow = { chainId: string; role: HandleRole; name: string; handle: unknown }
@@ -36,12 +42,22 @@ const hasStore = (tx: KvTx) => {
 
 let reads = 0
 
+/** The kept file's handle row of a chain (`KEPT_ROLE`), with the file's name. */
+export const readKeptRow = async (tx: KvTx, chainId: string) => {
+    if (!hasStore(tx)) return
+    const row = await tx.get(HANDLES, [chainId, KEPT_ROLE])
+    return isRow(row) && typeof row.name === 'string'
+        ? { name: row.name, handle: row.handle }
+        : undefined
+}
+
 /** Test: how many times this worker read a stored handle (D24: never at startup or recovery). */
 export const handleReadsForTests = () => reads
 
 /** The handle stored for a chain's field, while the field still names what it was stored for. */
 export const readHandleRow = async (tx: KvTx, chainId: string, role: HandleRole) => {
     reads++
+    if (role === KEPT_ROLE) return (await readKeptRow(tx, chainId))?.handle
     if (!hasStore(tx)) return
     const chain = await tx.get('chains', chainId)
     const field = isRow(chain) ? chain[role] : undefined
@@ -74,7 +90,8 @@ export const deleteHandleRow = async (tx: KvTx, chainId: string, role: HandleRol
 
 /** Removes every handle of a chain: in the transaction that deletes its record. */
 export const deleteChainHandles = async (tx: KvTx, chainId: string) => {
-    for (const role of HANDLE_ROLES) await deleteHandleRow(tx, chainId, role)
+    for (const role of [...HANDLE_ROLES, KEPT_ROLE] as const)
+        await deleteHandleRow(tx, chainId, role)
 }
 
 /**

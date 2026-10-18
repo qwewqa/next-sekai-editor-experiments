@@ -10,6 +10,7 @@ import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
 import { isImporting, whenImported } from '../../local/open/importLoop'
+import { readKeptCopy } from '../../local/open/kept'
 import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
 import type { BuiltSave } from '../../local/save/execute'
@@ -35,7 +36,7 @@ import { settings } from '../../settings'
 import type { State } from '../../state'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { validName } from '../commands/exportLevel/fileName'
-import { exportMemory, sameEntry } from '../commands/exportLevel/memory'
+import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
 import type { ProjectPick } from '../commands/exportLevel/pick'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
@@ -476,8 +477,8 @@ type Picked =
     | { kind: 'other'; owner: HandleOwner }
     /** An Export target: Export's picker writes it (E1, E2); a project picker refuses it (R7). */
     | { kind: 'target'; owner: HandleOwner }
-    /** `bytes`: those kept at its open, once read (R7). */
-    | { kind: 'refused'; reason: RefusedReason; bytes?: Promise<ArrayBuffer | undefined> }
+    /** `bytes`: those kept at its open, once kept (R7). */
+    | { kind: 'refused'; reason: RefusedReason; bytes?: Promise<Blob | undefined> }
     | { kind: 'unknown' }
 
 /**
@@ -495,14 +496,10 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
             return {
                 kind: 'refused',
                 reason: opened.levelData ? 'levelData' : 'notProject',
-                ...(opened.kept ? { bytes: Promise.resolve(opened.kept) } : {}),
+                ...(opened.kept ? { bytes: Promise.resolve(new Blob([opened.kept])) } : {}),
             }
-        if (opened.partial)
-            return {
-                kind: 'refused',
-                reason: 'notKept',
-                ...(opened.bytes ? { bytes: Promise.resolve(opened.bytes) } : {}),
-            }
+        // Its bytes are awaited: a quick Save never finds them still being read (m8).
+        if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
     }
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)
@@ -518,10 +515,17 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
         const stored = await handleOf(env.worker, owner.chainId, owner.role)
         if (!stored || !(await same(handle, stored))) continue
         if (owner.role === 'exportTarget') return { kind: 'target', owner }
+        // A partial open's file, in this tab after a reload or in another tab (R7, D26).
+        if (owner.role === 'kept')
+            return { kind: 'refused', reason: 'notKept', bytes: readKeptCopy(owner.chainId) }
         return owner.chainId === env.chainId ? { kind: 'own' } : { kind: 'other', owner }
     }
     return { kind: 'unknown' }
 }
+
+/** The bytes a partial open kept, in memory or as an OPFS copy. */
+const kept = async (opened: OpenedSource) =>
+    (await opened.keptCopy) ?? (opened.bytes && new Blob([opened.bytes]))
 
 /** A project picker's pick of an Export target: level data, refused and put back (R7). */
 const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'target' }> =>
@@ -543,7 +547,7 @@ const targetBytes = async (env: Env, owner: HandleOwner) => {
         const { buildLevelData } = await import('../commands/exportLevel/build')
         const bytes = await buildLevelData().arrayBuffer()
         return (await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint
-            ? bytes
+            ? new Blob([bytes])
             : undefined
     } catch {
         return
@@ -649,7 +653,7 @@ type Outcome =
           reason: RefusedReason
           emptied: boolean
           /** The bytes kept at its open, offered as a download when they could not go back. */
-          bytes?: ArrayBuffer
+          bytes?: Blob
       }
     | { kind: 'conflict'; handle: FileSystemFileHandle; binding: Binding }
     | { kind: 'failed'; error: FileError; name: string }
@@ -865,13 +869,7 @@ const afterPick = async (
                 await env.flusher.endSave(reservation)
                 if (await putBack(target, pre.blob)) return { kind: 'conflict', handle, binding }
                 // The version on disk could not go back: offered as a download (R7).
-                return {
-                    kind: 'refused',
-                    name,
-                    reason: 'notKept',
-                    emptied: true,
-                    bytes: await pre.blob.arrayBuffer(),
-                }
+                return { kind: 'refused', name, reason: 'notKept', emptied: true, bytes: pre.blob }
             }
             const options = binding.file?.options ?? { history: true, bgm: request.bgm }
             const history = binding.file ? !!binding.file.entry : options.history
@@ -1542,18 +1540,18 @@ const openExport = async () => {
 }
 
 /** Downloads bytes kept at an open that could not be put back (§1.4.7 R7, Step 1c). */
-const downloadBytes = async (name: string, bytes: ArrayBuffer) => {
+const downloadBytes = async (name: string, bytes: Blob) => {
     try {
         const result = await platform.saveFile({
             kind: 'recovery',
             suggestedName: name,
-            build: () => Promise.resolve(new Blob([bytes])),
+            build: () => Promise.resolve(bytes),
         })
         if (result.status === 'download-started')
             saveUi.saved({
                 kind: 'download',
                 name,
-                size: bytes.byteLength,
+                size: bytes.size,
                 someStepsNotKept: false,
                 tookOver: false,
                 without: [],
@@ -2127,6 +2125,9 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
         if (done.revoked) broadcastUpdated()
         return 'taken'
     }
+    // A partial open's file (E7): refused, and its kept bytes put back.
+    if (picked.kind === 'refused' && picked.reason === 'notKept')
+        return { keep: picked.bytes ?? Promise.resolve(undefined) }
     if (picked.kind !== 'own') return
     const binding = quickBinding(env)
     const file = binding.file

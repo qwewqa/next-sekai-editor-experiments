@@ -8,6 +8,7 @@ import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
+import { sweepKept } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
@@ -305,7 +306,14 @@ export const startStorage = async () => {
             // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
             setSessionContext(deps, recovery)
             // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
-            if (!safe && status.mode === 'stored') resumeAfterStartup(appVersion().appVersion)
+            if (!safe && status.mode === 'stored') {
+                resumeAfterStartup(appVersion().appVersion)
+                // Kept bytes of partial opens no tab holds any more go (§1.5.4).
+                const sweep = () => void sweepKept(worker, platform.locks)
+                if (typeof requestIdleCallback === 'function')
+                    requestIdleCallback(sweep, { timeout: 5000 })
+                else setTimeout(sweep, 1000)
+            }
         } else if (claim.kind === 'reload') claim.lock.release()
     } finally {
         // The tab record names the blank start only now, so a reload meanwhile claims again;

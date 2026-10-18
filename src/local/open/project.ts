@@ -23,6 +23,7 @@ import type { StateBatch } from '../stateBatch'
 import { flusher, journalWriter } from '../storing'
 import type { EarlierChain } from './decide'
 import { resumeImports, startImport, type ImportOutcome } from './importLoop'
+import { keepCopy } from './kept'
 import type { OpenReadReply } from './opened'
 
 // The page's side of opening a `.nxsp` (Part 1 §1.5.4 step 3 on): the new chain and session stored
@@ -207,7 +208,7 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
             currentSession.value = { ...currentSession.value, copyOf: open.copyOf }
             writeTabRecord({ sessionId, start: 'stored', copyOf: open.copyOf })
         }
-        keepOpenedBytes(open, !open.bind)
+        keepOpenedBytes(open, chainId, !open.bind)
         const job =
             stored.batches > 0
                 ? startImport({
@@ -306,23 +307,21 @@ export const storeKept = async (keep: KeepVersion) => {
 }
 
 /**
- * The bytes read at the open, kept with its handle (§1.5.4, D5): a save picker that empties a file
- * the editor won't write over puts them back. In memory up to 64 MB.
+ * The bytes read at the open, kept with its handle (§1.5.4, D5, D26): a save picker that empties a
+ * file the editor won't write over puts them back, after a reload too.
  */
-const keepOpenedBytes = (open: StoreOpen, keep: boolean) => {
-    if (open.handle) keepBytes(open.file, open.handle, keep)
+const keepOpenedBytes = (open: StoreOpen, chainId: string, keep: boolean) => {
+    if (open.handle) keepBytes(open.file, open.handle, chainId, keep)
 }
 
-const keepBytes = (file: Blob, handle: FileSystemFileHandle, keep: boolean) => {
-    exportMemory.opened = { handle, levelData: false, partial: keep, project: true }
-    if (!keep || file.size > KEPT_BYTES_LIMIT) return
-    const opened = exportMemory.opened
-    void file.arrayBuffer().then(
-        (bytes) => {
-            if (exportMemory.opened === opened) opened.bytes = bytes
-        },
-        () => undefined,
-    )
+const keepBytes = (file: Blob, handle: FileSystemFileHandle, chainId: string, keep: boolean) => {
+    exportMemory.opened = {
+        handle,
+        levelData: false,
+        partial: keep,
+        project: true,
+        ...(keep ? { keptCopy: keepCopy(context().open.worker, chainId, file, handle) } : {}),
+    }
 }
 
 /**
@@ -354,7 +353,8 @@ const unlinkedSession = (
         writeTabRecord({ sessionId, start: 'stored', copyOf })
         exportMemory.partial = true
         rememberExport()
-        if (kept) keepBytes(kept.file, kept.handle, true)
+        const chainId = record.chainId
+        if (kept && typeof chainId === 'string') keepBytes(kept.file, kept.handle, chainId, true)
     }
     if (!first) return
     // Its notice: a card after an open, a load notice after a resume (§1.4.3).

@@ -57,7 +57,13 @@ const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer): Pr
  * chain's own file written again (`own`), or not (`show` tells why); another chain's file or
  * Export target taken over (`taken`).
  */
-export type ProjectPick = 'own' | 'taken' | { show: () => Promise<void> } | undefined
+export type ProjectPick =
+    | 'own'
+    | 'taken'
+    | { show: () => Promise<void> }
+    /** A partial open's file, never written over: its kept bytes go back (R7). */
+    | { keep: Promise<Blob | undefined> }
+    | undefined
 
 let projectCheck: ((handle: FileSystemFileHandle) => Promise<ProjectPick>) | undefined
 
@@ -106,6 +112,17 @@ export const refusePick = async (target: FileTarget): Promise<RefusedPick | unde
     if (target.kind !== 'handle') return
     // A bound project file (E4, E5): this chain's own is written back and refused.
     const project = await projectCheck?.(target.handle)
+    if (typeof project === 'object' && 'keep' in project) {
+        const kept = await project.keep
+        const bytes = kept ? await kept.arrayBuffer() : new ArrayBuffer(0)
+        const { name } = target.handle
+        return {
+            name,
+            reason: 'notLevelData',
+            left: kept ? await putBack(target, name, bytes) : 'empty',
+            bytes,
+        }
+    }
     if (project === 'own' || typeof project === 'object')
         return {
             name: target.handle.name,

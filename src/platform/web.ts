@@ -176,14 +176,12 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         // sync client's write after the pick is never overwritten (R9), and to its end once
         // accepted, cancel or not.
         const empty = await inspect(target, req.kind)
-        if (empty === 'missing')
-            throw new FileError('not-found', `${accepted.name} cannot be found`)
-        if (empty.size !== 0)
+        if (empty !== 'missing' && empty.size !== 0)
             throw new FileError('conflict', `${accepted.name} changed`, empty, 'check')
         const picked: SaveRequest = {
             ...req,
             target,
-            expected: empty,
+            expected: empty === 'missing' ? 'absent' : empty,
             signal: undefined,
             build: () => Promise.resolve(blob),
         }

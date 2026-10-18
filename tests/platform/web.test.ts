@@ -275,6 +275,8 @@ test('level data builds before opening the save picker, with the picker’s id a
     browser.window.showSaveFilePicker = (options) => {
         pickers.push(options)
         events.push('picker')
+        // A save picker empties the file it returns (D5).
+        handle.setContent(new Blob([]))
         return Promise.resolve(handle)
     }
     try {
@@ -308,6 +310,45 @@ test('level data builds before opening the save picker, with the picker’s id a
                 excludeAcceptAllOption: false,
             },
         ])
+    } finally {
+        delete browser.window.showSaveFilePicker
+    }
+})
+
+test('a picked file filled after the pick is never written over, all under the pick’s lock', async () => {
+    const events: string[] = []
+    const handle = recordingHandle(events)
+    browser.window.showSaveFilePicker = () => {
+        handle.setContent(new Blob([]))
+        return Promise.resolve(handle)
+    }
+    const lock: string[] = []
+    try {
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'LevelData',
+                picker: { id: 'levelData', types: [] },
+                build: levelData(events),
+                // A sync client writes into it after the pick.
+                picked: () => {
+                    lock.push('picked')
+                    handle.setContent(new Blob([new Uint8Array([1, 2, 3])]))
+                    return Promise.resolve(true)
+                },
+                lock: async (run) => {
+                    lock.push('held')
+                    try {
+                        return await run()
+                    } finally {
+                        lock.push('released')
+                    }
+                },
+            }),
+            { code: 'conflict' },
+        )
+        assert.ok(!events.includes('create'))
+        assert.deepEqual(lock, ['held', 'picked', 'released'])
     } finally {
         delete browser.window.showSaveFilePicker
     }

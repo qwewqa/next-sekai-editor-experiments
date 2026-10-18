@@ -33,6 +33,11 @@ export type OpenedSource = {
     /** A `.nxsp` (§1.5.4): whole, it's the chain's own bound file; partial, it's never written over. */
     project?: true
     /**
+     * A partial or unlinked `.nxsp` open's bytes, kept for a picker that empties the file (D26):
+     * resolves once they're kept, whatever their size.
+     */
+    keptCopy?: Promise<Blob | undefined>
+    /**
      * The bytes read, for the project picker (R7): it never writes over level data or a chart,
      * which Export may (§1.4.7).
      */
