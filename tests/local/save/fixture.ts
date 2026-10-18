@@ -25,7 +25,14 @@ import {
 } from '../../../src/local/save/execute'
 import { pendingInput } from '../../../src/local/save/pending'
 import { createWorld, type Tab, type World } from '../../../src/local/testing/world'
-import { BLOCK_SLOTS, blockRow, storedWindow, type ReplaySlot } from '../../../src/local/timeline'
+import {
+    BLOCK_SLOTS,
+    blockRow,
+    replay,
+    ReplayError,
+    storedWindow,
+    type ReplaySlot,
+} from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import { workerCore } from '../flush/harness'
 import { BGM, BGM_2, chartWith, COVER, COVER_2, PREVIEW, sha256Hex } from '../nxsp/helpers'
@@ -596,4 +603,52 @@ export const checkFiles = async (files: readonly Blob[]) => {
     } finally {
         rmSync(dir, { recursive: true, force: true })
     }
+}
+
+/**
+ * "Replay defines the stack" (§1.3.9) for a written file: its undo stack is a window of replay of
+ * its own chronology, numbered from its first entry; when replay can't follow the chronology (a
+ * session removed from its middle), the stack is the head alone.
+ */
+export const checkStack = async (blob: Blob) => {
+    const { history } = await heldRows(blob)
+    const { undoStack } = history
+    const entries = history.entries.map((entry, seq) => ({
+        seq,
+        kind: entry.kind,
+        label: entry.label,
+        snapshot: fromHex16(entry.snapshot),
+        ...(entry.stack
+            ? {
+                  stack: {
+                      keep: entry.stack.keep,
+                      push: entry.stack.push.map((slot) => ({
+                          snapshot: fromHex16(slot.snapshot),
+                          label: slot.label,
+                      })),
+                      index: entry.stack.index,
+                  },
+              }
+            : {}),
+    }))
+    let replayed: ReturnType<typeof replay> | undefined
+    try {
+        replayed = replay(entries)
+    } catch (error) {
+        if (!(error instanceof ReplayError)) throw error
+    }
+    if (!replayed) {
+        assert.equal(undoStack.slots.length, 1, 'a stack replay cannot follow is the head alone')
+        assert.equal(undoStack.base, 0)
+        assert.equal(undoStack.index, 0)
+        assert.equal(undoStack.slots[0]?.snapshot, history.entries.at(-1)?.snapshot)
+        return 'head'
+    }
+    assert.equal(undoStack.index, replayed.index, 'the stack’s index is replay’s')
+    for (const [i, slot] of undoStack.slots.entries()) {
+        const expected = replayed.slots[undoStack.base + i]
+        assert.ok(expected, `slot ${undoStack.base + i} is outside replay’s stack`)
+        assert.equal(slot.snapshot, toHex(expected.snapshot))
+    }
+    return 'replay'
 }
