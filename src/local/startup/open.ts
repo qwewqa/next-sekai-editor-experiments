@@ -73,6 +73,8 @@ export type Shown = {
     state: State
     /** §1.6.11.2's `view`, as the session last left it. */
     view?: unknown
+    /** The stored stack starts after the session's first slot: earlier steps are in History. */
+    earlier?: true
 }
 
 /** What opening a session needs of the storing side (`storing.ts`). */
@@ -228,6 +230,7 @@ export const openStored = async (
         at,
         state: shown,
         view: session.view,
+        ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
     })
     if (how.mode === 'resume') {
         flusher.resumeSession({

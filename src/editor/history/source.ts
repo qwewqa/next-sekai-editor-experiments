@@ -57,8 +57,22 @@ const pendingEntries = (): Entry[] => {
 export const entries = computed((): Entry[] => {
     const read = loadedFor.value === session.value.sessionId ? stored.value : []
     const have = new Set(read.map(entryId))
-    return [...pendingEntries().filter((entry) => !have.has(entryId(entry))), ...read]
+    const all = [...pendingEntries().filter((entry) => !have.has(entryId(entry))), ...read]
+    // A continuation not stored yet divides from the entry it continues: the next older one.
+    return all.map((entry, i) =>
+        entry.pending && entry.kind === 'continue' && entry.from === undefined && all[i + 1]
+            ? { ...entry, from: all[i + 1]?.time }
+            : entry,
+    )
 })
+
+/** Where the open session's chain is read from: a session not stored yet reads its parent's. */
+const startOf = (id: string) => {
+    const open = flusher?.session
+    return open?.id === id && !open.stored && open.parent
+        ? { sessionId: open.parent.id, before: open.parent.uptoSeq + 1 }
+        : { sessionId: id }
+}
 
 /** Reads the newest page again, keeping the older pages already loaded. */
 export const refresh = async () => {
@@ -67,7 +81,7 @@ export const refresh = async () => {
     if (!worker) return
     let page
     try {
-        page = await worker.call('readTimeline', { sessionId: id, limit: PAGE })
+        page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
     } catch {
         return
     }

@@ -1853,7 +1853,8 @@
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
-    "openHistory": "Geçmişi Aç"
+    "openHistory": "Geçmişi Aç",
+    "earlierInHistory": "Önceki adımlar Geçmiş’te"
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",

@@ -18,8 +18,8 @@ const restoreView = (stored: unknown, state: State) => {
 }
 
 /** Shows an opened session: its stack with the head loaded, then its view. */
-export const showSession = ({ descriptor, slots, at, state, view: stored }: Shown) => {
-    openStoredState(descriptor, slots, at, state)
+export const showSession = ({ descriptor, slots, at, state, view: stored, earlier }: Shown) => {
+    openStoredState(descriptor, slots, at, state, earlier)
     restoreView(stored, state)
 }
 

@@ -36,6 +36,12 @@ const pendingMove = ref(0)
 
 export const canUndo = computed(() => index.value + pendingMove.value > 0)
 
+/**
+ * Whether steps before the stack's first slot are in History: a stored stack is capped
+ * (§1.6.4 #6), so Undo past it after a reload says so.
+ */
+export const earlierSteps = ref(false)
+
 /** Whether the stack holds only its first state: nothing done, nothing to redo. */
 export const isPristine = computed(() => states.length <= 1)
 
@@ -302,6 +308,7 @@ export const markFileEvent = (
 /** Replaces the whole history with one entry, leaving any peek. */
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
     cancelPendingMoves()
+    earlierSteps.value = false
     peek.value = undefined
     index.value = 0
     publish(entry.state)
@@ -321,10 +328,16 @@ export type RestoredSlot = { snapshot?: Uint8Array; label: string; isDirty: bool
  * reload, a new visit, an open, Restore Session). Nothing is emitted: the storage side starts
  * the session itself, with the entry each of those appends.
  */
-export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: State) => {
+export const restoreStates = (
+    slots: readonly RestoredSlot[],
+    at: number,
+    head: State,
+    earlier = false,
+) => {
     const slot = slots[at]
     if (!slot) throw new RangeError('The index is outside the stack')
     cancelPendingMoves()
+    earlierSteps.value = earlier
     peek.value = undefined
     loadedRestored.length = 0
     const restored: Slot[] = slots.map(({ snapshot, label, isDirty }) => ({

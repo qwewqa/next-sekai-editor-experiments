@@ -1853,7 +1853,8 @@
     "chooseAudio": "Choisir l’audio…",
     "newLevel": "Nouveau niveau",
     "reopen": "Rouvrir \"{0}\"",
-    "openHistory": "Ouvrir l’historique"
+    "openHistory": "Ouvrir l’historique",
+    "earlierInHistory": "Les étapes précédentes sont dans l’historique"
   },
   "entry": {
     "exported": "{0} exporté",

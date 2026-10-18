@@ -1853,7 +1853,8 @@
     "chooseAudio": "오디오 선택…",
     "newLevel": "새 레벨",
     "reopen": "\"{0}\" 다시 열기",
-    "openHistory": "기록 열기"
+    "openHistory": "기록 열기",
+    "earlierInHistory": "이전 단계는 기록에 있습니다"
   },
   "entry": {
     "exported": "{0} 내보냄",

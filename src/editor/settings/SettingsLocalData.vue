@@ -9,6 +9,7 @@ import { FileError, platform } from '../../platform'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { showHistory } from '../history/state'
 import { loadNotices, notify } from '../notification'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
@@ -136,12 +137,24 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
 const buttonClass =
     'inline-flex h-9 max-w-full items-center rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11'
 
+// For people with customised toolbars: closes Settings first, so History is not behind it.
+const openHistory = () => {
+    closeSettings()
+    showHistory()
+}
+
 const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.length > 0)
 </script>
 
 <template>
     <SettingsSection id="localData" :title="strings.title">
         <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
+
+        <div>
+            <button type="button" :class="buttonClass" data-open-history @click="openHistory">
+                {{ strings.openHistory }}
+            </button>
+        </div>
 
         <div v-if="hasRecovery" class="flex flex-col gap-3" data-local-data-recovery>
             <h3 class="text-sm font-bold opacity-75">{{ strings.recoveryHeading }}</h3>

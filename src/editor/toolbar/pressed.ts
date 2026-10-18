@@ -1,10 +1,10 @@
 import { settings } from '../../settings'
 import type { CommandName } from '../commands'
 import { toolName, tools, type ToolName } from '../tools'
-import { isHistoryOpen } from '../workspace'
 import { defaultNotePropertiesPresetIndex } from '../tools/note'
 import { defaultSlidePropertiesPresetIndex } from '../tools/slide'
 import { view } from '../view'
+import { isHistoryOpen } from '../workspace'
 
 const eventTools: readonly ToolName[] = [
     'cameraEvent',

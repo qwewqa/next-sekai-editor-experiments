@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef, shallowRef } from 'vue'
+import { computed, useId, useTemplateRef } from 'vue'
 import { i18n } from '../../i18n'
 import { isCoarsePointer, getPanelSide } from '../workspace'
 import RecentSessionsTab from './RecentSessionsTab.vue'
@@ -25,28 +25,7 @@ const filterTitle = (filter: Filter) =>
 // Rows are one line in the top dock and two in the side docks.
 const twoLine = computed(() => getPanelSide('history') !== 'top')
 
-const root = useTemplateRef<HTMLElement>('root')
 const tablist = useTemplateRef<HTMLElement>('tablist')
-
-// The filter takes its own band when the panel is too narrow to share the tabs' row.
-const wide = shallowRef(true)
-let observer: ResizeObserver | undefined
-onMounted(() => {
-    const element = root.value
-    if (!element) return
-    const measure = (width: number) => {
-        // Hysteresis keeps a width on the edge from flipping the layout.
-        wide.value = width >= (wide.value ? 430 : 450)
-    }
-    measure(element.clientWidth)
-    observer = new ResizeObserver(([entry]) => {
-        if (entry) measure(entry.contentRect.width)
-    })
-    observer.observe(element)
-})
-onBeforeUnmount(() => {
-    observer?.disconnect()
-})
 
 const select = (tab: HistoryTab) => {
     historyTab.value = tab
@@ -79,14 +58,14 @@ const segment =
 </script>
 
 <template>
-    <div ref="root" class="history-panel flex h-full min-h-0 flex-col bg-modal text-fg">
+    <div class="history-panel flex h-full min-h-0 flex-col bg-modal text-fg">
         <div
             class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 bg-header px-1.5 py-1 [@media(pointer:coarse)]:py-0.5"
         >
             <div
                 ref="tablist"
                 role="tablist"
-                class="flex min-w-0 flex-1 rounded-full bg-recess p-0.5 shadow-track"
+                class="flex min-w-0 flex-[3_1_15rem] rounded-full bg-recess p-0.5 shadow-track"
                 :aria-label="i18n.history.title"
             >
                 <button
@@ -111,8 +90,7 @@ const segment =
             <div
                 v-if="historyTab === 'timeline'"
                 role="group"
-                class="flex min-w-0 shrink rounded-full bg-recess p-0.5 shadow-track"
-                :class="wide ? '' : 'w-full'"
+                class="flex min-w-0 flex-[1_1_auto] rounded-full bg-recess p-0.5 shadow-track"
                 :aria-label="i18n.history.timeline"
             >
                 <button
@@ -126,7 +104,7 @@ const segment =
                     <span
                         :class="[
                             segment,
-                            'text-xs',
+                            'filter-segment',
                             { 'history-segment-on': historyFilter === filter },
                         ]"
                         ><span class="truncate">{{ filterTitle(filter) }}</span></span
@@ -147,6 +125,10 @@ const segment =
 </template>
 
 <style scoped>
+.filter-segment {
+    @apply h-6 text-xs [@media(pointer:coarse)]:h-8;
+}
+
 .history-segment-on {
     @apply bg-button shadow-md;
 }

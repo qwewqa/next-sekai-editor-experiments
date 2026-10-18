@@ -1853,7 +1853,8 @@
     "chooseAudio": "音声を選択…",
     "newLevel": "新しい譜面",
     "reopen": "「{0}」を再び開く",
-    "openHistory": "履歴を開く"
+    "openHistory": "履歴を開く",
+    "earlierInHistory": "それ以前の操作は履歴にあります"
   },
   "entry": {
     "exported": "{0} を出力",

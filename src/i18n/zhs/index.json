@@ -1853,7 +1853,8 @@
     "chooseAudio": "选择音频…",
     "newLevel": "新关卡",
     "reopen": "重新打开“{0}”",
-    "openHistory": "打开历史记录"
+    "openHistory": "打开历史记录",
+    "earlierInHistory": "更早的步骤在历史记录中"
   },
   "entry": {
     "exported": "已导出 {0}",

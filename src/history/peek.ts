@@ -22,9 +22,10 @@ export const onPeekRefused = (fn: (message: () => string) => void) => {
 /** Reads an entry's state: from memory when it is still waiting to be stored, else from storage. */
 const stateOf = async (key: EntryKey): Promise<State> => {
     const { flusher } = await import('../local/storing')
-    const pending = flusher?.session?.id === key.sessionId
-        ? flusher.session.pending.find((entry) => entry.seq === key.seq)
-        : undefined
+    const pending =
+        flusher?.session?.id === key.sessionId
+            ? flusher.session.pending.find((entry) => entry.seq === key.seq)
+            : undefined
     if (pending?.state) return pending.state
     const { storageWorker } = await import('../local/start')
     const { decodeSnapshot } = await import('../local/records/snapshot')

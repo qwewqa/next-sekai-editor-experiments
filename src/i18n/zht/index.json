@@ -1853,7 +1853,8 @@
     "chooseAudio": "選擇音訊…",
     "newLevel": "新關卡",
     "reopen": "重新開啟 \"{0}\"",
-    "openHistory": "開啟歷史記錄"
+    "openHistory": "開啟歷史記錄",
+    "earlierInHistory": "更早的步驟在歷史記錄中"
   },
   "entry": {
     "exported": "已匯出 {0}",

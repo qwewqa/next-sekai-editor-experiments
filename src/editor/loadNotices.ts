@@ -3,6 +3,7 @@ import { formatDate } from '../i18n/when'
 import { loadEvents, onLoadEvent, type LoadEvent, type ShownName } from '../local/startup/events'
 import { interpolate, interpolateRaw } from '../utils/interpolate'
 import { changeBgm } from './commands/bgm'
+import { openHistoryAction } from './history/openHistory'
 import { LOAD_ORDER } from './loadOrder'
 import { addLoadNotice, setLocalDataOpener, type NoticeAction } from './notification'
 import { openSettings } from './settings/openSettings'
@@ -10,8 +11,8 @@ import { shownName } from './shownName'
 import { restoreCopy } from './switch'
 
 // What this load found (the events of `local/startup/events.ts`) as the start-up pill's load
-// notices, with their actions (Part 1 §1.4.3). Restore Session (Step 7) and Open History (Step 5)
-// are left out until those steps add them.
+// notices, with their actions (Part 1 §1.4.3). Restore Session (Step 7) is left out until that step
+// adds it.
 
 const quoted = (name: ShownName) => () => shownName(name)
 
@@ -53,6 +54,7 @@ export const loadNoticeOf: Handlers = {
             name.name.kind === 'date'
                 ? () => interpolateRaw(load().continuedUntitled, formatDate(from))
                 : () => interpolateRaw(load().continued, shownName(name), formatDate(from)),
+        action: { ...openHistoryAction(), label: () => load().openHistory },
     }),
     storageCleared: () => ({ order: LOAD_ORDER.storageCleared, message: () => load().cleared }),
     journalKept: (event) => ({

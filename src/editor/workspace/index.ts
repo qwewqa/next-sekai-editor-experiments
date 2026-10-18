@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 import { isResettingSettings, settings } from '../../settings'
 import { isCommandName } from '../commands'
+import { backToNow } from '../history/selection'
 import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
     panelPositions as allPanelPositions,
@@ -110,7 +111,7 @@ export const setPanelPosition = (id: PanelId, position: PanelPosition) => {
 export const isPanelEnabled = (id: PanelId) => getPanelPosition(id) !== 'disabled'
 
 /** The positions a panel can take: History, which the toolbar opens, is never Disabled. */
-export const panelPositionsOf = (id: PanelId) =>
+export const panelPositionsOf = (id: PanelId): readonly PanelPosition[] =>
     id === transientPanel
         ? allPanelPositions.filter((position) => position !== 'disabled')
         : allPanelPositions
@@ -257,6 +258,8 @@ const apply = (action: WorkspaceAction) => {
     // Folding and closing leave the saved workspace as it is, defaults included.
     if (result.saved !== toggleState.value) commit(result.saved)
     layer.value = result.transient
+    // History displaced or closed: the peek ends with it.
+    if (!result.transient) backToNow()
 }
 
 // Saves the open states shown by default, so later window sizes keep them.
@@ -287,6 +290,7 @@ export const openHistory = () => {
 /** Drops the layer: the saved workspace shows again, exactly as it was. */
 export const closeHistory = () => {
     layer.value = undefined
+    backToNow()
 }
 
 export const toggleHistory = () => {

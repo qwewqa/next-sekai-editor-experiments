@@ -15,6 +15,7 @@ import { isDirty, resetStates, restoreStates, type RestoredSlot } from './stack'
 export { markExported, markSaved } from './markers'
 export {
     canUndo,
+    earlierSteps,
     isDirty,
     isPeeking,
     isPristine,
@@ -118,10 +119,11 @@ export const openStoredState = (
     slots: readonly RestoredSlot[],
     at: number,
     head: State,
+    earlier = false,
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = descriptor
-    restoreStates(slots, at, head)
+    restoreStates(slots, at, head, earlier)
     setLevelDataHandle(undefined)
     cleanupWaveform()
     switchToolTo('select')
