@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { startupGate } from '../startup/gate'
+import { downArrowClearance } from './history/changes'
 import NoticeCard from './NoticeCard.vue'
 import { cardInDialog, holdNotice, noticeCard, notification, quickInDialog } from './notification'
 import QuickNotice from './QuickNotice.vue'
@@ -63,6 +64,9 @@ watch(
     { flush: 'post' },
 )
 
+// The change view's down arrow sits at the chart's bottom edge; notices stay above it (the main pane only).
+const arrowClear = computed(() => (props.pane === 'main' ? downArrowClearance.value : 0))
+
 // The start-up notice waits for the startup gate to lift. What was raised over a blocking dialog shows there.
 const quick = computed(() =>
     !!notification.value.message &&
@@ -89,8 +93,8 @@ const card = computed(() => {
             paddingBottom:
                 sheet?.side === 'bottom'
                     ? `${sheet.size + 2 * gap}px`
-                    : !top && card
-                      ? `${clearance + gap}px`
+                    : !top && (card || arrowClear)
+                      ? `${Math.max(card ? clearance : 0, arrowClear) + gap}px`
                       : undefined,
             paddingRight: sheet?.side === 'right' ? `${sheet.size + 2 * gap}px` : undefined,
         }"

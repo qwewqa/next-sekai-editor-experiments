@@ -504,3 +504,27 @@ test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => 
     await expect(peekLine(page)).toHaveText('1 change')
     expect(await changes(page)).toMatchObject({ rings: 1, dimmed: false })
 })
+
+test('a notice card stays above the down arrow', async ({ page }) => {
+    await edit(page, 'Added 2 notes', { kind: 'add', beats: [2, 3] })
+    await stored(page)
+    await viewAt(page, 60)
+    await openTab(page)
+    await row(page, 'Added 2 notes').click()
+    await expect(arrow(page, 'down')).toBeVisible()
+    await page.evaluate(async () => {
+        const { notify } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        notify(() => 'Nothing to undo', { action: { label: () => 'Open History', run: () => {} } })
+    })
+    const card = page.locator('[data-notice-card]')
+    await expect(card).toBeVisible()
+    await expect(async () => {
+        const [cardBox, arrowBox] = await Promise.all([
+            card.boundingBox(),
+            arrow(page, 'down').boundingBox(),
+        ])
+        expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(arrowBox!.y)
+    }).toPass()
+})

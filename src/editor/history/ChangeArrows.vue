@@ -8,12 +8,12 @@ import { view } from '../view'
 import { isCoarsePointer } from '../workspace'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import {
+    ARROW_GAP,
+    arrowsShown,
     changeBand,
     countsShown,
-    hasPlaces,
     offBand,
     showChangeToward,
-    shownChange,
 } from './changes'
 import { peekedInfo } from './selection'
 
@@ -70,8 +70,6 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 watch([isPeeking, peekedInfo, sheetBox, () => view.h, () => view.w], () => void nextTick(observe))
 
-const shown = computed(() => isPeeking.value && hasPlaces.value && !!shownChange.value)
-
 const labelOf = (direction: 'up' | 'down') => {
     const strings = i18n.value.peek
     const count = direction === 'up' ? offBand.value.above : offBand.value.below
@@ -84,7 +82,7 @@ const labelOf = (direction: 'up' | 'down') => {
 }
 
 const arrows = computed(() => {
-    if (!shown.value) return []
+    if (!arrowsShown.value) return []
     const list: { direction: 'up' | 'down'; count: number }[] = []
     if (offBand.value.above) list.push({ direction: 'up', count: offBand.value.above })
     if (offBand.value.below) list.push({ direction: 'down', count: offBand.value.below })
@@ -102,8 +100,8 @@ const arrows = computed(() => {
             :class="isCoarsePointer ? 'min-h-11 min-w-11' : ''"
             :style="
                 direction === 'up'
-                    ? { top: `${changeBand.top + 4}px` }
-                    : { bottom: `${changeBand.bottom + 4}px` }
+                    ? { top: `${changeBand.top + ARROW_GAP}px` }
+                    : { bottom: `${changeBand.bottom + ARROW_GAP}px` }
             "
             :aria-label="labelOf(direction)"
             :title="labelOf(direction)"

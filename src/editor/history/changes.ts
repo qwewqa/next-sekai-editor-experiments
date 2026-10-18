@@ -32,6 +32,7 @@ import { beatToTime } from '../../state/integrals/bpms'
 import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
+import { isCoarsePointer } from '../workspace'
 import {
     countOff,
     nearestStop,
@@ -338,6 +339,9 @@ watch([changeMarks, settledKey, isPeeking], () => {
 /** The chart pane's band clear of the peek bar above and the toolbar or sheet below, in px. */
 export const changeBand = shallowRef({ top: 0, bottom: 0 })
 
+/** An edge arrow's distance from the band's edge, in px. */
+export const ARROW_GAP = 4
+
 /** Pane y to chart time. */
 const timeAt = (y: number) => (0.5 * view.h - y) / settings.pps + view.time
 
@@ -363,6 +367,16 @@ const places = computed((): Place[] => {
 
 /** Changes beyond the band's top and bottom edges. */
 export const offBand = computed(() => countOff(places.value, bandTimes()))
+
+/** Whether the edge arrows show at all. */
+export const arrowsShown = computed(() => isPeeking.value && hasPlaces.value && !!shownChange.value)
+
+/** How far above the pane's bottom the down arrow's top edge is (0 when it is not shown), in px. */
+export const downArrowClearance = computed(() =>
+    arrowsShown.value && offBand.value.below
+        ? changeBand.value.bottom + ARROW_GAP + (isCoarsePointer.value ? 44 : 24)
+        : 0,
+)
 
 /** Whether the arrows carry counts: not past the limit. */
 export const countsShown = computed(
