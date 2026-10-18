@@ -47,14 +47,36 @@ const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer): Pr
     return holds(target, bytes)
 }
 
+/** What a pick is to the project picker's rules (§1.4.7 R3–R5), as the Save core tells. */
+export type ProjectPick = 'own' | 'taken' | undefined
+
+let projectCheck: ((handle: FileSystemFileHandle) => Promise<ProjectPick>) | undefined
+
+/**
+ * Set by the Save core: a pick of this chain's own bound `.nxsp` is rewritten keeping its
+ * identity and refused (`own`); another chain's is taken over and written (`taken`).
+ */
+export const setProjectPickCheck = (check: typeof projectCheck) => {
+    projectCheck = check
+}
+
 /**
  * Refuses a pick of the file this session was opened from when that was not complete level data
  * (a chart, another engine's level, or a level with parts left out), putting its bytes back.
  */
 export const refusePick = async (target: FileTarget): Promise<RefusedPick | undefined> => {
+    if (target.kind !== 'handle') return
+    // A bound project file (E4, E5): this chain's own is written back and refused.
+    if ((await projectCheck?.(target.handle)) === 'own')
+        return {
+            name: target.handle.name,
+            reason: 'notLevelData',
+            left: 'restored',
+            bytes: new ArrayBuffer(0),
+        }
     const { opened } = exportMemory
     const bytes = opened?.bytes
-    if (target.kind !== 'handle' || !opened || !bytes) return
+    if (!opened || !bytes) return
     if (!(await sameEntry(target.handle, opened.handle))) return
     const { name } = target.handle
     return {

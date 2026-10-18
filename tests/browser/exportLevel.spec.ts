@@ -333,20 +333,26 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
 
-    // p suggests the copy's name, and refuses the original too.
+    // p saves a project file: its picker refuses the opened level data too, and puts it back
+    // (§1.4.7 R7), with the Export hint.
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
+    await saveProjectFile(page)
+    await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
     await expect(dialog(page)).toContainText(
-        '"LevelData" has parts this version of the editor does not support.',
+        'For Sonolus level data, use Export Level Data… (Shift+P).',
     )
-    expect((await pickerCalls(page)).at(-1)).toMatchObject({
-        picker: 'save',
-        id: 'levelData',
-        suggestedName: 'LevelData (2)',
-    })
+    expect((await pickerCalls(page)).at(-1)).toMatchObject({ picker: 'save', id: 'nse-project' })
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
+
+/** Presses Save in the Save dialog p opens on an unbound session. */
+const saveProjectFile = async (page: Page) => {
+    const save = dialog(page).filter({ hasText: 'Save Project File' })
+    await expect(save).toBeVisible()
+    await save.getByRole('button', { name: 'Save', exact: true }).click()
+}
 
 type Writes = { held?: boolean; release?: () => void; aborted?: boolean; failing?: boolean }
 
@@ -435,6 +441,7 @@ test('p’s failed download of a refused pick’s bytes says so in its own words
     await holdWrites(page, 'fail')
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
+    await saveProjectFile(page)
     await expect(
         page.getByText('"LevelData" was emptied, and its content could not be put back.'),
     ).toBeVisible()
@@ -546,7 +553,7 @@ test('while peeking, Export says it exports the current version', async ({ page 
     await expect(dialog(page).getByText('Exports the current version.')).toBeVisible()
 })
 
-test('an opened gzipped LevelData saved with p then exported with Shift+P has no conflict', async ({
+test('an opened gzipped LevelData: p saves a project file, and Shift+P exports to the target', async ({
     page,
 }) => {
     await start(page, opfs)
@@ -558,14 +565,18 @@ test('an opened gzipped LevelData saved with p then exported with Shift+P has no
             bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
         })
     })
+    // p never writes level data (§1.4.7): its picker suggests a project file.
+    await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('p')
-    await expect(notice(page)).toHaveText('Saved level')
-    expect(await readFile(page, 'LevelData')).toBe(2)
+    await saveProjectFile(page)
+    await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
+    expect(await readFile(page, 'LevelData')).toBe(0)
 
     await openExport(page)
     await page.keyboard.press('Enter')
     await expect(notice(page)).toHaveText('Exported to LevelData')
     await expect(dialog(page)).toHaveCount(0)
+    expect(await readFile(page, 'LevelData')).toBe(2)
 })
 
 test('on a download browser, an imported LevelData keeps its own name', async ({ page }) => {
@@ -673,11 +684,8 @@ test('Shift+P exports; p with Caps Lock still saves', async ({ page }) => {
     await start(page, opfs)
     // Caps Lock reports an uppercase key without Shift.
     await page.keyboard.press('P')
-    await expect(notice(page)).toHaveText('Saved level')
-    await expect(dialog(page)).toHaveCount(0)
-    expect(await pickerCalls(page)).toEqual([
-        { picker: 'save', id: 'levelData', suggestedName: 'LevelData' },
-    ])
+    await expect(dialog(page).filter({ hasText: 'Save Project File' })).toBeVisible()
+    expect(await pickerCalls(page)).toEqual([])
 })
 
 test('the P default stays unbound where the user already took the key', async ({ page }) => {

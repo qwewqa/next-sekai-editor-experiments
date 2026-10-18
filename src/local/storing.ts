@@ -1,4 +1,5 @@
 import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
+import { setProjectPickCheck } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
 import { markedSeq, removeMarker } from '../editor/save/env'
@@ -415,8 +416,9 @@ export const startStoring = (
     // takeovers show here as they happen (R6).
     void afterReplay.then(() => applyRevocations(worker))
     watchBindings(worker, () => flusher)
-    // The file state's dialogs run the Save flows, loaded on first use.
+    // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
+    setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
