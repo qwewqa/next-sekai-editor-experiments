@@ -163,8 +163,11 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
                 future: { carried: true },
                 name: 'Golden',
                 file: { name: 'golden.nxsp', event: 'saved', at: 1, hash: new Uint8Array(16) },
-                exportTarget: { name: 'LevelData' },
+                // D17's two fields: Export's target opened, not exported to yet, and the
+                // partial import's flag.
+                exportTarget: { name: 'LevelData', opened: true },
                 exportName: 'LevelData',
+                partialImport: true,
                 replaced: { by: 'x', at: 1, name: 'golden.nxsp' },
             })
         }),
@@ -179,6 +182,8 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     assert.equal(chain.head, continuation.id)
     assert.deepEqual(chain.future, { carried: true })
     assert.equal((chain.file as { name: string }).name, 'golden.nxsp')
+    assert.deepEqual(chain.exportTarget, { name: 'LevelData', opened: true })
+    assert.equal(chain.partialImport, true)
 
     // A fork copies it by exclusion: the unknown field carries; the binding and its kin don't.
     const third = await openPage(world, world.tab('third'))
@@ -189,6 +194,7 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     const forked = rows(world, 'chains').get(fork.chainId)!
     assert.equal(forked.head, fork.id)
     assert.deepEqual(forked.future, { carried: true })
+    assert.equal(forked.partialImport, true)
     assert.equal(forked.name, 'Golden (2)')
     for (const field of ['file', 'exportTarget', 'exportName', 'replaced'])
         assert.equal(field in forked, false, field)

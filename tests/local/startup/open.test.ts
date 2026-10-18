@@ -531,3 +531,22 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     )
     lock.release()
 })
+
+test('Duplicate Tab of an unstored continuation forks what it continued', async () => {
+    const world = createWorld({ seed: 15 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const parent = beginSession(first, a)
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const visit = await load(world, 'visit', storage)
+    const continuation = openSession(visit)
+    // The live tab holds its continuation; its copy has the same tab record.
+    const copy = await load(world, 'copy', storage, { tab: new Map(visit.tab) })
+    assert.equal(copy.claim.kind, 'duplicate')
+    const fork = openSession(copy)
+    assert.notEqual(fork.forkOf, undefined)
+    assert.equal(fork.parent?.id, parent.id)
+    assert.notEqual(fork.id, continuation.id)
+})
