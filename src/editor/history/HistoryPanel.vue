@@ -29,7 +29,7 @@ import {
     type HistoryTab,
 } from './state'
 import TimelineList from './TimelineList.vue'
-import type { HistoryPresentation } from './presentation'
+import type { GoToView, HistoryPresentation } from './presentation'
 
 // The History panel (Part 1 §1.4.10), in a dock or in the dialog: one band with the two tabs,
 // Timeline and Recent Sessions, and Go To; then the list. There is no action bar in it: the peek's
@@ -37,7 +37,7 @@ import type { HistoryPresentation } from './presentation'
 
 const props = withDefaults(
     defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
-    { surface: 'panel' },
+    { surface: 'panel', presentation: undefined },
 )
 const emit = defineEmits<{ close: []; chrome: [height: number] }>()
 
@@ -94,8 +94,11 @@ watch(
     { flush: 'post' },
 )
 
-const goToPopover = useTemplateRef<InstanceType<typeof GoToPopover>>('goToPopover')
-const goToList = useTemplateRef<InstanceType<typeof GoToList>>('goToList')
+const goToPopover = useTemplateRef<{
+    captureView: () => Pick<GoToView, 'top' | 'focus'>
+    restoreScroll: () => void
+}>('goToPopover')
+const goToList = useTemplateRef<{ activeId: () => string | undefined }>('goToList')
 const savedGoTo = shallowRef(props.presentation?.takeGoTo())
 let goToGeneration = historyViewGeneration()
 defineExpose({
@@ -145,7 +148,13 @@ const closeGoTo = (restoreFocus: boolean) => {
     savedGoTo.value = undefined
     if (restoreFocus) void nextTick(() => goToButton.value?.focus({ preventScroll: true }))
 }
-watch(historyViewGeneration, () => closeGoTo(false), { flush: 'sync' })
+watch(
+    historyViewGeneration,
+    () => {
+        closeGoTo(false)
+    },
+    { flush: 'sync' },
+)
 watch(
     [historyFilter, hereRange],
     () => {
