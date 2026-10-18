@@ -29,7 +29,7 @@ const frame = computed(() =>
     !sheet.value
         ? 'inset-x-0 bottom-2 mx-auto max-h-[70%] w-[calc(100%-1rem)] max-w-md'
         : sheetSide.value === 'right'
-          ? 'bottom-2 right-2 top-[3.75rem] w-[min(20rem,45%)]'
+          ? 'bottom-2 right-2 top-[3.75rem] w-[min(22rem,62%)]'
           : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-[40rem]',
 )
 const label = ref('')

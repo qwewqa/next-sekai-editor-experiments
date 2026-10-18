@@ -342,6 +342,9 @@ export const changeBand = shallowRef({ top: 0, bottom: 0 })
 /** An edge arrow's distance from the band's edge, in px. */
 export const ARROW_GAP = 4
 
+/** The gap on a touch screen: a little more, so the chip does not touch the toolbar or the bar. */
+export const arrowGap = computed(() => ARROW_GAP + (isCoarsePointer.value ? 4 : 0))
+
 /** Pane y to chart time. */
 const timeAt = (y: number) => (0.5 * view.h - y) / settings.pps + view.time
 
@@ -374,7 +377,7 @@ export const arrowsShown = computed(() => isPeeking.value && hasPlaces.value && 
 /** How far above the pane's bottom the down arrow's top edge is (0 when it is not shown), in px. */
 export const downArrowClearance = computed(() =>
     arrowsShown.value && offBand.value.below
-        ? changeBand.value.bottom + ARROW_GAP + (isCoarsePointer.value ? 44 : 24)
+        ? changeBand.value.bottom + arrowGap.value + (isCoarsePointer.value ? 44 : 24)
         : 0,
 )
 

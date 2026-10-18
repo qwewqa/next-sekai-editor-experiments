@@ -8,7 +8,7 @@ import { view } from '../view'
 import { isCoarsePointer } from '../workspace'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import {
-    ARROW_GAP,
+    arrowGap,
     arrowsShown,
     changeBand,
     countsShown,
@@ -100,8 +100,8 @@ const arrows = computed(() => {
             :class="isCoarsePointer ? 'min-h-11 min-w-11' : ''"
             :style="
                 direction === 'up'
-                    ? { top: `${changeBand.top + ARROW_GAP}px` }
-                    : { bottom: `${changeBand.bottom + ARROW_GAP}px` }
+                    ? { top: `${changeBand.top + arrowGap}px` }
+                    : { bottom: `${changeBand.bottom + arrowGap}px` }
             "
             :aria-label="labelOf(direction)"
             :title="labelOf(direction)"
