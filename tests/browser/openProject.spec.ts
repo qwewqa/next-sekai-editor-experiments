@@ -112,8 +112,18 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
         options: { history: true, bgm: true },
         entry: { sessionId: session.sessionId, seq: 4, count: 4, notKept: 0 },
     })
-    // A real OPFS handle never reaches IndexedDB under the override (D16).
-    expect((chain.file as Row).handle).toMatchObject({ testHandle: expect.any(String) })
+    // The handle has its own store (D24); a real OPFS handle never reaches IndexedDB under the
+    // override (D16).
+    expect((chain.file as Row).handle).toBeUndefined()
+    const { handles } = await rows(page, ['handles'])
+    expect(handles!.map((row) => row.value)).toEqual([
+        {
+            chainId: chain.chainId,
+            role: 'file',
+            name: 'coconut.nxsp',
+            handle: { testHandle: 'coconut.nxsp' },
+        },
+    ])
     expect(chain.edited).toBeUndefined()
     expect(sessions!.find((row) => row.value.id === session.sessionId)!.value.origin).toBe('nxsp')
     const own = entries!
@@ -213,6 +223,28 @@ const chainOf = async (page: Page, sessionId: string) => {
     return chains!.find((row) => row.value.head === sessionId)!.value
 }
 
+/** The token stored for a chain's handle under the override (D24). */
+const handleToken = async (page: Page, chainId: string, role: string) => {
+    const { handles } = await rows(page, ['handles'])
+    const row = handles!.find((each) => each.value.chainId === chainId && each.value.role === role)
+    return (row?.value.handle as { testHandle: string }).testHandle
+}
+
+/** How many stored handles the storage worker has read since it started. */
+const handleReads = (page: Page) =>
+    page.evaluate(() => window.nseStorageTest!.worker.call('testHandleReads') as Promise<number>)
+
+/** A chain's binding or Export target handle, read as a Save or an Export reads it. */
+const storedHandleName = (page: Page, chainId: string, role: 'file' | 'exportTarget') =>
+    page.evaluate(
+        async ({ chainId, role }) => {
+            const { handleOf } =
+                (await import('/src/local/handles.ts')) as typeof import('../../src/local/handles')
+            return (await handleOf(window.nseStorageTest!.worker, chainId, role))?.name
+        },
+        { chainId, role },
+    )
+
 const ownRows = async (page: Page, sessionId: string) => {
     const { entries } = await rows(page, ['entries'])
     return entries!.map((row) => row.value).filter((row) => row.sessionId === sessionId)
@@ -270,7 +302,7 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     const chain = await chainOf(page, session.sessionId)
-    const token = ((chain.file as Row).handle as { testHandle: string }).testHandle
+    const token = await handleToken(page, chain.chainId as string, 'file')
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     await page.addInitScript(
         ({ token, name }) => {
@@ -297,6 +329,63 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
         [4, true],
         [5, true],
     ])
+})
+
+test('a reload reads no stored handle at startup; a Save or an Export reads it after', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const session = await sessionOf(page)
+    const chain = await chainOf(page, session.sessionId)
+    await page.reload()
+    await waitForStartup(page)
+    expect((await sessionOf(page)).sessionId).toBe(session.sessionId)
+    // Startup, recovery and the idle resume check read none (D24).
+    await page.waitForTimeout(500)
+    expect(await handleReads(page)).toBe(0)
+    expect(await storedHandleName(page, chain.chainId as string, 'file')).toBe('coconut.nxsp')
+    expect(await handleReads(page)).toBe(1)
+})
+
+test('Export’s target keeps its handle across a reload, read when Export opens', async ({
+    page,
+}) => {
+    await start(page)
+    // This chart's level data, gzipped, opened from a file: the opened file is Export's target.
+    await page.evaluate(async () => {
+        const { buildLevelData } =
+            (await import('/src/editor/commands/exportLevel/build.ts')) as typeof import('../../src/editor/commands/exportLevel/build')
+        const bytes = await new Response(buildLevelData()).arrayBuffer()
+        const root = await navigator.storage.getDirectory()
+        const writable = await (
+            await root.getFileHandle('LevelData', { create: true })
+        ).createWritable()
+        await writable.write(bytes)
+        await writable.close()
+    })
+    await openFile(page, 'LevelData')
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+    const session = await sessionOf(page)
+    await expect
+        .poll(async () => {
+            const chain = await chainOf(page, session.sessionId)
+            return handleToken(page, chain.chainId as string, 'exportTarget').catch(() => undefined)
+        })
+        .toBe('LevelData')
+    expect(((await chainOf(page, session.sessionId)).exportTarget as Row).handle).toBeUndefined()
+    await page.reload()
+    await waitForStartup(page)
+    expect((await sessionOf(page)).sessionId).toBe(session.sessionId)
+    expect(await handleReads(page)).toBe(0)
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').locator('[data-export-target-name]')).toHaveText(
+        'LevelData (the file you opened)',
+    )
+    expect(await handleReads(page)).toBe(1)
 })
 
 test('a reload mid-import without a handle marks the rows that never arrived kept: false', async ({
