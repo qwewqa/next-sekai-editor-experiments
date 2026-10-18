@@ -195,7 +195,7 @@ test.describe('load notices in the start-up pill', () => {
         const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
         const events = [
             { kind: 'storageCleared' },
-            { kind: 'migrated', name, sessionId: 'a' },
+            { kind: 'migrated', name, sessionId: 'a', opened: true },
             { kind: 'journalLater' },
         ]
         for (const event of events) await addEvent(page, event)
