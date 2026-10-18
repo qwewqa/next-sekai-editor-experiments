@@ -47,9 +47,11 @@ export const chartWith = ({
     extraNotes = 0,
 }: { bgm?: typeof BGM; cover?: typeof COVER; extraNotes?: number } = {}): FixtureChart => {
     const fixture = goldenChart()
+    const { levelInfo } = fixture.extras
+    if (!levelInfo) throw new Error('The golden chart has level info')
     fixture.extras = {
         ...fixture.extras,
-        levelInfo: { ...fixture.extras.levelInfo, cover: cover.ref, preview: PREVIEW.ref },
+        levelInfo: { ...levelInfo, cover: cover.ref, preview: PREVIEW.ref },
         bgm: { ...bgm.ref, durationMs: 1000 },
     }
     for (let i = 0; i < extraNotes; i++) fixture.chart.slides.push([note(64 + i)])

@@ -407,11 +407,17 @@ const readHistory = async (
         if (!checked.part) return { items: issuesToItems(checked.issues) }
 
         const chunksEntry = entryOf(pointers.chunks)
-        if (chunksEntry.size > cap.chunksBin)
+        // Its caps are checked before any of it is read, since it is read lazily.
+        if (
+            chunksEntry.size > cap.chunksBin ||
+            (chunksEntry.method === 0
+                ? chunksEntry.compressedSize !== chunksEntry.size
+                : chunksEntry.compressedSize > chunksEntry.size * 2 + 1024)
+        )
             throw new ReadFailure({
                 reason: 'damaged',
                 path: chunksEntry.name,
-                detail: 'over the chunks.bin cap',
+                detail: 'past the chunks.bin caps',
             })
         const combined = combineParts(segments, checked.part as ManifestForm, {
             entries: pointers.entries,
