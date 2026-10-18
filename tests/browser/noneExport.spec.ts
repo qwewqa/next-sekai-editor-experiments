@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { gunzipSync } from 'node:zlib'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 
 type LevelData = { entities: { data: { name: string; value?: number }[] }[] }
@@ -128,30 +129,26 @@ test('copy writes None as NONE and In Step as IN_STEP, and pastes each back', as
 })
 
 test('the journal writes None as NONE and In Step as IN_STEP', async ({ page }) => {
-    await page.evaluate(async () => {
+    // The journal written on hide, read at once: a strict commit clears it soon after.
+    const levelDataGz = await page.evaluate(async () => {
         const { history, store } = window.editorTest
         const { editSelectedEditableEntities } =
             await import('/src/editor/sidebars/default/index.ts')
+        const { session } = await import('/src/history/session.ts')
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         editSelectedEditableEntities({ size: 3 })
         // Hiding the page journals the edit at once (Part 1 §1.6.4 #7).
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
         document.dispatchEvent(new Event('visibilitychange'))
+        const text = localStorage.getItem(
+            `sonolus-next-sekai-editor.journal.${session.value.sessionId}`,
+        )
+        return text ? (JSON.parse(text) as { levelDataGz: string }).levelDataGz : undefined
     })
-    const saved = async () =>
-        page.evaluate(async () => {
-            const { session } = await import('/src/history/session.ts')
-            const text = localStorage.getItem(
-                `sonolus-next-sekai-editor.journal.${session.value.sessionId}`,
-            )
-            if (!text) return
-            const { levelDataGz } = JSON.parse(text) as { levelDataGz: string }
-            const bytes = Uint8Array.from(atob(levelDataGz), (c) => c.charCodeAt(0))
-            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
-            return JSON.parse(await new Response(stream).text()) as LevelData
-        })
-    await expect.poll(async () => (await saved())?.entities.length ?? 0).toBeGreaterThan(0)
+    expect(levelDataGz).toBeDefined()
+    const saved = () =>
+        JSON.parse(gunzipSync(Buffer.from(levelDataGz!, 'base64')).toString()) as LevelData
     const values = easeValues((await saved())!)
     expect(values).toEqual(expect.arrayContaining([0, 38]))
 })

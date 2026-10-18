@@ -321,7 +321,7 @@ export const startStoring = (
                 })
                 if (first && action.origin === 'new') initialSession = begun
                 // Reopen offers the session left, once its strict commit holds (§1.4.1).
-                if (leaving && leaving !== initialSession && (leaving.stored || leaving.edited)) {
+                if (leaving && (leaving.stored || leaving.edited)) {
                     const state = [...leaving.pending].reverse().find((entry) => entry.state)?.state
                     leftSession(
                         leaving.id,

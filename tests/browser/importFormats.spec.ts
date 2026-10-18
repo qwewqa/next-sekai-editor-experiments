@@ -158,6 +158,8 @@ const notes = (page: Page) =>
     })
 
 const open = async (page: Page, name: string, buffer: Buffer) => {
+    // Input reaches the editor once the startup gate lifts (Part 1 §1.4.2).
+    await waitForStartup(page)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
     await (await opening).setFiles({ name, mimeType: 'application/octet-stream', buffer })
@@ -312,6 +314,8 @@ const levelWithValue = async (page: Page) => {
 }
 
 test('level data with a value its format refuses names it, and is refused', async ({ page }) => {
+    // Each reload starts blank, not the session it continues (Part 1 §1.4.2's test hook).
+    await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
     const withValue = await levelWithValue(page)
     for (const [name, value, message] of [
         ['connectorEase', 99, 'Invalid level: unknown value for connectorEase'],
@@ -327,6 +331,8 @@ test('level data with a value its format refuses names it, and is refused', asyn
 })
 
 test('refusals read in the chosen language', async ({ page }) => {
+    // Each reload starts blank, not the session it continues (Part 1 §1.4.2's test hook).
+    await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
     const withValue = await levelWithValue(page)
     const dialog = page.getByRole('dialog')
     for (const [name, buffer, message] of [

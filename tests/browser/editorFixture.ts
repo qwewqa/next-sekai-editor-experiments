@@ -151,6 +151,18 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
         return pathname
     }
     const appImport = <T>(pathname: string): Promise<T> => import(resolve(pathname))
+    // The startup gate swallows input until the session is open (Part 1 §1.4.2), and a chart
+    // shown before then would be replaced by the stored session it opens.
+    const { startupGate } =
+        await appImport<typeof import('../../src/startup/gate')>('/src/startup/gate.ts')
+    // A spec that holds startup open (the gate's own) drives it itself.
+    const held = /"hold":true/.test(
+        sessionStorage.getItem('nse.test.startup') ??
+            localStorage.getItem('nse.test.startup') ??
+            '',
+    )
+    for (let waited = 0; !held && startupGate.phase === 'opening' && waited < 20_000; waited += 20)
+        await new Promise((resolve) => setTimeout(resolve, 20))
     if (window.installEditorRendering) {
         // Use the exact module instance the app loaded, including a Vite HMR
         // timestamp. Importing during addInitScript could create a second class

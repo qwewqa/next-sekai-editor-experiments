@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { waitForStartup } from './editorFixture'
 
 declare global {
     interface Window {
@@ -57,6 +58,7 @@ test.beforeEach(async ({ page }) => {
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
     await page.evaluate(async () => {
         const { showModal } = await import('/src/modals/index.ts')
         const { default: component } =

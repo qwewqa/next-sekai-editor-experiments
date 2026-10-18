@@ -101,9 +101,7 @@ const settled = (page: Page) =>
         .poll(() =>
             page.evaluate(() => {
                 const flusher = window.nseFlushTest!.flusher
-                return (
-                    !flusher.hasPending && (!flusher.session || !flusher.unflushed(flusher.session))
-                )
+                return !flusher.hasPending && !!flusher.session?.stored
             }),
         )
         .toBe(true)
@@ -128,22 +126,24 @@ const loadEvents = (page: Page) =>
 
 const claimOf = (page: Page) => page.evaluate(() => window.nseStartupTest?.claim)
 
-/** Binds the open session's chain to an OPFS file, as a Save would (Step 6 writes the file). */
+/**
+ * Binds the open session's chain to a file, as a Save would (Step 6 writes the file). Without a
+ * handle: Playwright's Chromium kills a page that reads an OPFS handle back from IndexedDB.
+ */
 const bind = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
-        const root = await navigator.storage.getDirectory()
-        const handle = await root.getFileHandle(name, { create: true })
-        return window.nseFlushTest!.flusher.setChainFields({
-            file: {
-                name,
-                handle,
-                event: 'saved',
-                at: Date.now(),
-                hash: new Uint8Array(16),
-                options: { history: true, bgm: true },
-            },
-        })
-    }, name)
+    page.evaluate(
+        (name) =>
+            window.nseFlushTest!.flusher.setChainFields({
+                file: {
+                    name,
+                    event: 'saved',
+                    at: Date.now(),
+                    hash: new Uint8Array(16),
+                    options: { history: true, bgm: true },
+                },
+            }),
+        name,
+    )
 
 const stallFlushes = (page: Page) =>
     page.evaluate(() => {
@@ -227,7 +227,7 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     expect(sessions.map((row) => row.id)).toEqual([sessionId])
     expect(entries.at(-1)?.kind).toBe('recovered')
     // A discard or a crash keeps the binding too: it's on the chain record.
-    expect((await flushSession(next)).file).toEqual({ name: 'kill.nxsp', handle: true })
+    expect((await flushSession(next)).file).toEqual({ name: 'kill.nxsp', handle: false })
 })
 
 test('Duplicate Tab of a live tab forks into a separate copy without the binding', async ({
@@ -239,7 +239,7 @@ test('Duplicate Tab of a live tab forks into a separate copy without the binding
     expect(await bind(page, 'coconut.nxsp')).toBe(true)
     await settled(page)
     const original = await flushSession(page)
-    expect(original.file).toEqual({ name: 'coconut.nxsp', handle: true })
+    expect(original.file).toEqual({ name: 'coconut.nxsp', handle: false })
     const duplicate = await withTabRecord(context, await tabRecord(page))
     await visit(duplicate)
     expect(await claimOf(duplicate)).toBe('duplicate')
@@ -282,7 +282,7 @@ test('a new visit continues the most recent session with its binding', async ({
     const continued = await flushSession(next)
     expect(continued.id).not.toBe(original.id)
     expect(continued.chainId).toBe(original.chainId)
-    expect(continued.file).toEqual({ name: 'coconut.nxsp', handle: true })
+    expect(continued.file).toEqual({ name: 'coconut.nxsp', handle: false })
     // A new visit adds no entry until the first edit; that edit moves the chain's head.
     await next.waitForTimeout(1500)
     expect(continued.stored).toBe(false)
@@ -598,7 +598,8 @@ test.describe('storage unavailable', () => {
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             return (await recoveryItems()).map((item) => item.kind)
         })
-        expect(items).toEqual(['journal'])
+        // The legacy slot, written from the journal, is offered for Download too.
+        expect(items).toEqual(['journal', 'legacy'])
     })
 })
 
@@ -618,7 +619,10 @@ test('a journal written while storage was unavailable becomes a session at a loa
     await hide(page)
     await page.close({ runBeforeUnload: false })
     const next = await context.newPage()
-    await next.addInitScript(() => sessionStorage.setItem('withStorage', 'true'))
+    await next.addInitScript(() => {
+        sessionStorage.setItem('withStorage', 'true')
+        localStorage.removeItem('nse.test.noStorage')
+    })
     await visit(next)
     expect(await loadEvents(next)).toEqual(['unsavedRecovered', 'continued'])
     expect(await lifeOf(next)).toBe(990)
@@ -628,4 +632,44 @@ test('a journal written while storage was unavailable becomes a session at a loa
         ),
     ).toEqual([])
     await context.close()
+})
+
+test('one load runs the recovery order: the canary, a journal, then the old auto save', async ({
+    page,
+    context,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    await stallFlushes(page)
+    await edit(page, 980)
+    await hide(page)
+    await page.close({ runBeforeUnload: false })
+    // Before the next load: another database's canary, and an old auto save from before the update.
+    const other = await context.newPage()
+    await other.goto('/privacy/')
+    await other.evaluate((prefix) => {
+        localStorage.setItem(`${prefix}canary`, JSON.stringify('another database'))
+        localStorage.setItem(
+            `${prefix}autoSave.levelData`,
+            JSON.stringify({
+                bgmOffset: 0,
+                entities: [
+                    { archetype: 'Initialization', data: [] },
+                    {
+                        archetype: '#BPM_CHANGE',
+                        data: [
+                            { name: '#BEAT', value: 0 },
+                            { name: '#BPM', value: 150 },
+                        ],
+                    },
+                ],
+            }),
+        )
+    }, prefix)
+    await visit(other)
+    expect(await loadEvents(other)).toEqual(['storageCleared', 'journalRecovered', 'migrated'])
+    // The migrated session is the newest: this load continues it.
+    const { sessions } = await rows(other, ['sessions'])
+    expect(sessions.map((row) => row.origin).sort()).toEqual(['migrated', 'new'])
 })
