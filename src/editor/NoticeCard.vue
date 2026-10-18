@@ -212,7 +212,7 @@ const closeClass =
                     class="min-w-0 whitespace-break-spaces py-1.5"
                     :class="
                         notice.action
-                            ? 'mr-auto max-w-[22rem] flex-[1_1_12rem]'
+                            ? 'mr-auto max-w-[22rem] flex-auto max-sm:flex-[1_1_12rem]'
                             : 'max-w-[32rem] flex-1'
                     "
                 >
