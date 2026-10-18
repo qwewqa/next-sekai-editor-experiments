@@ -781,7 +781,7 @@
   "settings": {
     "title": "设置",
     "resetSettings": "重置设置",
-    "resetSettingsHint": "恢复默认设置，保留键盘快捷键。",
+    "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
     "resetKeybinds": "重置快捷键",
     "editor": {
       "title": "编辑器",
@@ -1167,7 +1167,7 @@
     "journalKept": "无法应用对“{0}”的更改，已将其保留为单独的会话。",
     "fallback": "已恢复以往访问中未保存的内容。",
     "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
-    "migrationFailed": "无法恢复旧的自动保存。",
+    "migrationFailed": "无法还原旧的自动保存。",
     "autoSave": "已从自动保存继续“{0}”。",
     "journal": "已恢复对“{0}”的最后更改。",
     "journalLater": "已恢复的更改需要更新版本的编辑器。",
@@ -1806,7 +1806,7 @@
     "notLocal": "“{0}”尚不在此设备上。",
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
-    "notPutBack": "“{0}”已被清空，且无法恢复其内容。",
+    "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”已不再包含打开时的内容。"
   },
   "conflict": {

@@ -781,7 +781,7 @@
   "settings": {
     "title": "Paramètres",
     "resetSettings": "Réinitialiser les paramètres",
-    "resetSettingsHint": "Rétablir les paramètres par défaut en conservant les raccourcis clavier.",
+    "resetSettingsHint": "Restaurer les paramètres par défaut en conservant les raccourcis clavier.",
     "resetKeybinds": "Réinitialiser les raccourcis",
     "editor": {
       "title": "Éditeur",

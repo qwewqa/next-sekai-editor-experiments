@@ -925,18 +925,18 @@
     "sections": "セクション",
     "localData": {
       "title": "ローカルデータ",
-      "recoveryHeading": "復元",
+      "recoveryHeading": "回復",
       "discard": "破棄…",
       "discardConfirm": "破棄",
       "cannotOpen": "(このバージョンでは開けません)",
       "discardAutoSave": "以前の自動保存 ({0}) を破棄しますか？",
-      "discardUnreadable": "{0}の読み取れない復元済みの作業 ({1}) を破棄しますか？",
+      "discardUnreadable": "{0}の読み取れない回復済みの作業 ({1}) を破棄しますか？",
       "recovery": {
         "journal": "以前の訪問時の未保存の作業、{0} · {1}",
         "journalUndated": "以前の訪問時の未保存の作業 · {0}",
-        "legacy": "従来の復元用コピー · {0}",
+        "legacy": "従来の回復用コピー · {0}",
         "autoSave": "以前の自動保存 · {0}",
-        "unreadable": "読み取れない復元済みの作業、{0} · {1}",
+        "unreadable": "読み取れない回復済みの作業、{0} · {1}",
         "atLoad": "今回の読み込み："
       }
     }
@@ -1165,18 +1165,18 @@
     "continuedUntitled": "{0}のセッションを続行しました。",
     "cleared": "以前の訪問時の作業が見つかりません。ブラウザーがこのサイトのストレージを消去しました。",
     "journalKept": "「{0}」への変更を適用できなかったため、別のセッションとして保持しました。",
-    "fallback": "以前の訪問時の未保存の作業を復元しました。",
+    "fallback": "以前の訪問時の未保存の作業を回復しました。",
     "fallbackLocal": "以前の訪問時の未保存の作業がローカルデータにあります。",
     "migrationFailed": "以前の自動保存を復元できませんでした。",
     "autoSave": "「{0}」を自動保存から続行しました。",
-    "journal": "「{0}」への最後の変更を復元しました。",
-    "journalLater": "復元された変更には、より新しいバージョンのエディターが必要です。",
+    "journal": "「{0}」への最後の変更を回復しました。",
+    "journalLater": "回復された変更には、より新しいバージョンのエディターが必要です。",
     "openElsewhere": "「{0}」は別のタブまたはウィンドウで開かれています。",
     "restoreAsCopy": "コピーとして復元",
     "sessionDeleted": "このセッションは別のタブまたはウィンドウで削除されました。",
     "autoSaveKept": "自動保存の「{0}」を別のセッションとして保持しました。",
     "autoSaveOpened": "以前の自動保存を開きました。",
-    "journalFailed": "復元された変更を保存できませんでした。次回の読み込みで再試行します。",
+    "journalFailed": "回復された変更を保存できませんでした。次回の読み込みで再試行します。",
     "journalsFull": "以前の訪問時の未保存の作業がこのブラウザーの容量を圧迫しています。",
     "sessionLater": "このセッションには、より新しいバージョンのエディターが必要です。",
     "sessionDamaged": "このセッションを開けませんでした。",
@@ -1833,10 +1833,10 @@
     "exported": "{0} を出力",
     "saved": "{0} を保存",
     "downloaded": "{0} をダウンロード",
-    "recovered": "最後の変更を復元",
-    "recoveredDropped": "最後の変更を復元。元に戻す操作 {0} 件は破棄されました。",
+    "recovered": "最後の変更を回復",
+    "recoveredDropped": "最後の変更を回復。元に戻す操作 {0} 件は破棄されました。",
     "continued": "続行",
-    "migrated": "自動保存から復元"
+    "migrated": "自動保存から回復"
   },
   "session": {
     "untitled": "無題 · {0}"

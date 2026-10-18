@@ -925,18 +925,18 @@
     "sections": "分區",
     "localData": {
       "title": "本機資料",
-      "recoveryHeading": "還原",
+      "recoveryHeading": "恢復",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
       "discardAutoSave": "要捨棄舊的自動儲存（{0}）嗎？",
-      "discardUnreadable": "要捨棄 {0} 無法讀取的已還原內容（{1}）嗎？",
+      "discardUnreadable": "要捨棄 {0} 無法讀取的已恢復內容（{1}）嗎？",
       "recovery": {
         "journal": "先前造訪中未儲存的內容，{0} · {1}",
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
-        "legacy": "舊版還原副本 · {0}",
+        "legacy": "舊版恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
-        "unreadable": "無法讀取的已還原內容，{0} · {1}",
+        "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "atLoad": "本次載入："
       }
     }
@@ -1165,18 +1165,18 @@
     "continuedUntitled": "已繼續 {0} 的工作階段。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
     "journalKept": "無法套用對 \"{0}\" 的變更，已將其保留為獨立的工作階段。",
-    "fallback": "已還原先前造訪中未儲存的內容。",
+    "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
     "migrationFailed": "無法還原舊的自動儲存。",
     "autoSave": "已從自動儲存繼續 \"{0}\"。",
-    "journal": "已還原對 \"{0}\" 的最後變更。",
-    "journalLater": "已還原的變更需要較新版本的編輯器。",
+    "journal": "已恢復對 \"{0}\" 的最後變更。",
+    "journalLater": "已恢復的變更需要較新版本的編輯器。",
     "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟。",
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
-    "journalFailed": "無法儲存已還原的變更。下次載入時將重試。",
+    "journalFailed": "無法儲存已恢復的變更。下次載入時將重試。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",
@@ -1833,10 +1833,10 @@
     "exported": "已匯出 {0}",
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
-    "recovered": "已還原最後的變更",
-    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟已捨棄。",
+    "recovered": "已恢復最後的變更",
+    "recoveredDropped": "已恢復最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
-    "migrated": "已從自動儲存還原"
+    "migrated": "已從自動儲存恢復"
   },
   "session": {
     "untitled": "未命名 · {0}"

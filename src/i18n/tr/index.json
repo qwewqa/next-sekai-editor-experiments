@@ -1167,7 +1167,7 @@
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
-    "migrationFailed": "Eski otomatik kaydetme verisi kurtarılamadı.",
+    "migrationFailed": "Eski otomatik kaydetme verisi geri yüklenemedi.",
     "autoSave": "\"{0}\", otomatik kaydetmeden devam ettirildi.",
     "journal": "\"{0}\" üzerindeki son değişiklik kurtarıldı.",
     "journalLater": "Kurtarılan bir değişiklik için editörün daha yeni bir sürümü gerekiyor.",
