@@ -133,7 +133,9 @@ const submit = () => {
     })
 }
 
-const cancel = () => emit('close', undefined)
+const cancel = () => {
+    emit('close', undefined)
+}
 
 onBeforeUnmount(() => {
     closed = true

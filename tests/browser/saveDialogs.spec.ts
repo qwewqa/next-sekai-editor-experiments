@@ -34,12 +34,12 @@ const visit = async (page: Page) => {
 }
 
 declare global {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface Window {
-        seen: { result?: unknown; done?: boolean; estimate?: (value: unknown) => void } & Record<
-            string,
-            unknown
-        >
+        saveSeen: {
+            result?: unknown
+            done?: boolean
+            estimate?: (value: unknown) => void
+        } & Record<string, unknown>
     }
 }
 
@@ -74,7 +74,7 @@ const openSave = (
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
             const { estimate, lines, storageLine, ...rest } = input
-            window.seen = {}
+            window.saveSeen = {}
             const sizes = (estimate && typeof estimate === 'object' ? estimate : {}) as {
                 cached?: never
                 value?: never
@@ -90,21 +90,23 @@ const openSave = (
                         load: () =>
                             estimate === 'held'
                                 ? new Promise((resolve) => {
-                                      window.seen.estimate = resolve as never
+                                      window.saveSeen.estimate = resolve as never
                                   })
                                 : Promise.resolve(sizes.value),
                     },
                 })
                 .then((result) => {
-                    window.seen.result = result ?? null
-                    window.seen.done = true
+                    window.saveSeen.result = result ?? null
+                    window.saveSeen.done = true
                 })
         },
         { base: { ...base, estimate: undefined }, input },
     )
 
 const result = (page: Page) =>
-    page.evaluate(() => window.seen.done).then(() => page.evaluate(() => window.seen.result))
+    page
+        .evaluate(() => window.saveSeen.done)
+        .then(() => page.evaluate(() => window.saveSeen.result))
 
 const dialog = (page: Page) => page.getByRole('dialog')
 const guard = (page: Page) => page.waitForTimeout(400)
@@ -203,7 +205,7 @@ test.describe('the Save dialog', () => {
         await page.keyboard.press('Enter')
         await expect(dialog(page).locator('[data-save-problem]')).toBeVisible()
         await expect(dialog(page)).toBeVisible()
-        expect(await page.evaluate(() => window.seen.done)).toBeUndefined()
+        expect(await page.evaluate(() => window.saveSeen.done)).toBeUndefined()
     })
 
     test('the rows show their steps, then their sizes and a total that follows the ticks', async ({
@@ -223,7 +225,7 @@ test.describe('the Save dialog', () => {
         await expect(history.getByText('Anyone with the file can see every step.')).toBeVisible()
         await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
 
-        await page.evaluate((sizes) => window.seen.estimate!(sizes), estimateOf)
+        await page.evaluate((sizes) => window.saveSeen.estimate!(sizes), estimateOf)
         await expect(history).toContainText('1,840 steps · 3.1 MB')
         await expect(bgm).toContainText('coconut.mp3 · 4.2 MB')
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 7.6 MB')
@@ -385,11 +387,11 @@ const open = (page: Page, source: string) =>
     page.evaluate(async (source) => {
         const { saveUi, defaultSaveUi } =
             (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-        window.seen = {}
+        window.saveSeen = {}
         const run = new Function('saveUi', 'defaultSaveUi', `return (${source})`)
         void Promise.resolve(run(saveUi, defaultSaveUi) as unknown).then((result) => {
-            window.seen.result = result ?? null
-            window.seen.done = true
+            window.saveSeen.result = result ?? null
+            window.saveSeen.done = true
         })
     }, source)
 
@@ -403,33 +405,37 @@ test.describe('the Preparing dialog', () => {
         await page.evaluate(async () => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-            window.seen = {}
+            window.saveSeen = {}
             const preparing = saveUi.preparing('coconut.nxsp')
-            window.seen.preparing = preparing
-            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
+            window.saveSeen.preparing = preparing
+            preparing.signal.addEventListener('abort', () => (window.saveSeen.aborted = true))
         })
         await expect(dialog(page)).toContainText('Preparing coconut.nxsp…')
         await expect(dialog(page).getByRole('button', { name: 'Cancel' })).toBeVisible()
         await page.evaluate(() =>
             (
-                window.seen.preparing as { importing: (p: { done: number; total: number }) => void }
+                window.saveSeen.preparing as {
+                    importing: (p: { done: number; total: number }) => void
+                }
             ).importing({ done: 20, total: 80 }),
         )
         await expect(dialog(page).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
         await page.evaluate(() =>
-            (window.seen.preparing as { built: (size: number) => void }).built(12_400_000),
+            (window.saveSeen.preparing as { built: (size: number) => void }).built(12_400_000),
         )
         await expect(dialog(page)).toContainText('Preparing coconut.nxsp… 12.4 MB')
         await page.evaluate(() => {
-            void (window.seen.preparing as { ready: (a: string, s: number) => Promise<boolean> })
+            void (
+                window.saveSeen.preparing as { ready: (a: string, s: number) => Promise<boolean> }
+            )
                 .ready('download', 12_400_000)
-                .then((go) => (window.seen.result = go))
+                .then((go) => (window.saveSeen.result = go))
         })
         const button = dialog(page).getByRole('button', { name: 'Download' })
         await expect(button).toBeFocused()
         await guard(page)
         await button.click()
-        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe(true)
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(true)
     })
 
     test('Save is the button when the picker is next, and Cancel aborts the build', async ({
@@ -441,16 +447,16 @@ test.describe('the Preparing dialog', () => {
         await page.evaluate(async () => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-            window.seen = {}
+            window.saveSeen = {}
             const preparing = saveUi.preparing('coconut.nxsp')
-            window.seen.preparing = preparing
-            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
-            void preparing.ready('save', 3_000_000).then((go) => (window.seen.result = go))
+            window.saveSeen.preparing = preparing
+            preparing.signal.addEventListener('abort', () => (window.saveSeen.aborted = true))
+            void preparing.ready('save', 3_000_000).then((go) => (window.saveSeen.result = go))
         })
         await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeFocused()
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe(false)
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(false)
     })
 
     test('Cancel before it is ready stops the Save', async ({ page, context }) => {
@@ -459,13 +465,13 @@ test.describe('the Preparing dialog', () => {
         await page.evaluate(async () => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-            window.seen = {}
+            window.saveSeen = {}
             const preparing = saveUi.preparing('coconut.nxsp')
-            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
+            preparing.signal.addEventListener('abort', () => (window.saveSeen.aborted = true))
         })
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.aborted)).toBe(true)
+        await expect.poll(() => page.evaluate(() => window.saveSeen.aborted)).toBe(true)
     })
 })
 
@@ -505,7 +511,7 @@ test.describe('the conflict dialog', () => {
         ).toBeVisible()
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Replace' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('replace')
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe('replace')
     })
 
     test('names a web version, another project, or nothing', async ({ page, context }) => {
@@ -575,7 +581,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await expect(dialog(page).getByRole('button', { name: 'Try Again' })).toBeFocused()
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Try Again' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('tryAgain')
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe('tryAgain')
     })
 
     test('read-only: Save As… is focused', async ({ page, context }) => {
@@ -620,7 +626,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('export')
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe('export')
     })
 
     test('a refused partial open and safe mode name why', async ({ page, context }) => {
@@ -742,12 +748,12 @@ test.describe('the feedback after a write', () => {
         await page.evaluate(async () => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-            window.seen = {}
-            saveUi.noChanges('coconut.nxsp', 'downloaded', () => (window.seen.again = true))
+            window.saveSeen = {}
+            saveUi.noChanges('coconut.nxsp', 'downloaded', () => (window.saveSeen.again = true))
         })
         await expect(notice(page)).toContainText('No changes since coconut.nxsp was downloaded')
         await page.waitForTimeout(400)
         await page.getByRole('button', { name: 'Download Again' }).click()
-        await expect.poll(() => page.evaluate(() => window.seen.again)).toBe(true)
+        await expect.poll(() => page.evaluate(() => window.saveSeen.again)).toBe(true)
     })
 })
