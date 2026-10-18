@@ -245,7 +245,7 @@
       "importedChcy": "已匯入 Chart Cyanvas 關卡",
       "importedUsc": "已匯入 USC 譜面",
       "importedSus": "已匯入 SUS 譜面",
-      "unsupported": "不支援的檔案。請開啟關卡資料、Chart Cyanvas 關卡，或 USC、SUS 譜面。",
+      "unsupported": "不支援的檔案。請開啟專案檔案、關卡資料、Chart Cyanvas 關卡，或 USC、SUS 譜面。",
       "invalidLevel": "無效的關卡：{0}",
       "invalidChart": "無效的譜面：{0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "此處沒有編輯",
     "checking": "正在檢查更早的步驟…",
     "notChecked": "有 {0} 步無法檢查",
-    "announceViewingChange": "正在檢視 {0}，{1}"
+    "announceViewingChange": "正在檢視 {0}，{1}",
+    "openedFile": "已開啟 {0}"
   },
   "modals": {
     "close": "關閉",
@@ -1892,7 +1893,8 @@
     "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",
     "openHistory": "開啟歷史記錄",
-    "earlierInHistory": "更早的步驟在歷史記錄中"
+    "earlierInHistory": "更早的步驟在歷史記錄中",
+    "bgmNotLoaded": "BGM 未載入"
   },
   "entry": {
     "exported": "已匯出 {0}",
@@ -1902,7 +1904,8 @@
     "recoveredDropped": "已恢復最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
     "migrated": "已從自動儲存恢復",
-    "restoredTo": "已還原到 {0}"
+    "restoredTo": "已還原到 {0}",
+    "changedOutside": "在編輯器外變更"
   },
   "session": {
     "untitled": "未命名 · {0}"
@@ -1917,5 +1920,32 @@
     "notInFile": "未儲存到檔案",
     "separateCopy": "{0} 的獨立副本",
     "opensLevelInfo": "開啟關卡資訊"
+  },
+  "open": {
+    "notProject": "此 ZIP 不是專案檔案。",
+    "damagedUnopened": "此檔案已損毀，無法開啟。",
+    "damaged": "此檔案已損毀。已在不含歷史記錄的情況下開啟。",
+    "historyUnreadable": "無法讀取此檔案的歷史記錄。儲存時會建立獨立的檔案。",
+    "newerVersion": "由較新版本的 {0} 建立。儲存時會建立獨立的檔案。",
+    "newerRefused": "由較新版本的 {0} 建立。",
+    "mediaBad": "無法讀取此檔案的{0}。儲存時會建立獨立的檔案。",
+    "media": {
+      "bgm": "BGM",
+      "cover": "封面",
+      "preview": "預覽音訊"
+    },
+    "newerMajor": "由較新版本的 {0} 建立。",
+    "newerMajorNote": "只能從中開啟關卡。",
+    "openLevel": "開啟關卡",
+    "newerValues": {
+      "title": "\"{0}\" 使用了較新的功能",
+      "body": "此版本的編輯器不支援此關卡中的部分值。將開啟一個獨立的副本，其中這些值已取代為預設值。",
+      "openCopy": "開啟副本"
+    },
+    "unsavedChanges": "已開啟 {0}。你在 {1} 對它有未儲存的變更。",
+    "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在最近工作階段中。",
+    "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在最近工作階段中。",
+    "restoreIt": "還原工作階段",
+    "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   }
 }

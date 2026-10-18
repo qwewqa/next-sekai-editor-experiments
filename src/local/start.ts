@@ -8,6 +8,7 @@ import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
+import { resumeAfterStartup } from './open/project'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
@@ -303,6 +304,8 @@ export const startStorage = async () => {
             open = await openAtStart(deps, claim)
             // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
             setSessionContext(deps, recovery)
+            // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
+            if (!safe && status.mode === 'stored') resumeAfterStartup(appVersion().appVersion)
         } else if (claim.kind === 'reload') claim.lock.release()
     } finally {
         // The tab record names the blank start only now, so a reload meanwhile claims again;

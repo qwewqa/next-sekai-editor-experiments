@@ -310,6 +310,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.space',
         'modals.form.key.names.tab',
         'modals.info.ok',
+        // "BGM" as in its other BGM strings.
+        'open.media.bgm',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'utilities.previewEditor.bgm',
@@ -340,6 +342,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.tab',
         'modals.form.listJoin',
         'modals.form.sentenceJoin',
+        // "BGM" as in its other BGM strings.
+        'open.media.bgm',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -396,6 +400,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.shift',
         'modals.form.key.names.space',
         'modals.form.key.names.tab',
+        // "BGM" as in its other BGM strings.
+        'open.media.bgm',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
@@ -424,6 +430,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.shift',
         'modals.form.key.names.space',
         'modals.form.key.names.tab',
+        // "BGM" as in its other BGM strings.
+        'open.media.bgm',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'utilities.previewEditor.bgm',

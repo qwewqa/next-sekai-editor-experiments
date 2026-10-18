@@ -194,7 +194,7 @@ test('an opened gzipped LevelData is the target, and the dialog shows only the T
     await writeFile(page, 'LevelData', { bgmOffset: 0 })
     await page.keyboard.press('Enter')
     await expect(notice(page)).toHaveText('Exported to LevelData')
-    expect(await pickerCalls(page)).toEqual([{ picker: 'open', id: 'levelData' }])
+    expect(await pickerCalls(page)).toEqual([{ picker: 'open', id: 'nse-open' }])
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
 

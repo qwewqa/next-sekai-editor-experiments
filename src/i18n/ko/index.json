@@ -245,7 +245,7 @@
       "importedChcy": "Chart Cyanvas 레벨 가져옴",
       "importedUsc": "USC 채보 가져옴",
       "importedSus": "SUS 채보 가져옴",
-      "unsupported": "지원하지 않는 파일입니다. 레벨 데이터, Chart Cyanvas 레벨, USC 또는 SUS 채보를 여세요.",
+      "unsupported": "지원하지 않는 파일입니다. 프로젝트 파일, 레벨 데이터, Chart Cyanvas 레벨, USC 또는 SUS 채보를 여세요.",
       "invalidLevel": "잘못된 레벨: {0}",
       "invalidChart": "잘못된 채보: {0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "여기에 편집 없음",
     "checking": "이전 단계 확인 중…",
     "notChecked": "{0}단계를 확인할 수 없음",
-    "announceViewingChange": "{0} 보는 중, {1}"
+    "announceViewingChange": "{0} 보는 중, {1}",
+    "openedFile": "{0} 열림"
   },
   "modals": {
     "close": "닫기",
@@ -1892,7 +1893,8 @@
     "restoredTo": "{0} 시점으로 복원됨",
     "alreadyMatches": "이미 현재 채보와 같음",
     "openHistory": "기록 열기",
-    "earlierInHistory": "이전 단계는 기록에 있습니다"
+    "earlierInHistory": "이전 단계는 기록에 있습니다",
+    "bgmNotLoaded": "BGM을 불러오지 않음"
   },
   "entry": {
     "exported": "{0} 내보냄",
@@ -1902,7 +1904,8 @@
     "recoveredDropped": "마지막 변경 복구됨. 되돌리기 단계 {0}개가 삭제되었습니다.",
     "continued": "이어서 열림",
     "migrated": "자동 저장에서 복구됨",
-    "restoredTo": "{0} 시점으로 복원됨"
+    "restoredTo": "{0} 시점으로 복원됨",
+    "changedOutside": "편집기 밖에서 변경됨"
   },
   "session": {
     "untitled": "제목 없음 · {0}"
@@ -1917,5 +1920,32 @@
     "notInFile": "파일에 저장되지 않음",
     "separateCopy": "{0}의 별도 사본",
     "opensLevelInfo": "레벨 정보를 엽니다"
+  },
+  "open": {
+    "notProject": "이 ZIP은 프로젝트 파일이 아닙니다.",
+    "damagedUnopened": "이 파일은 손상되어 열 수 없었습니다.",
+    "damaged": "이 파일은 손상되었습니다. 기록 없이 열었습니다.",
+    "historyUnreadable": "이 파일의 기록을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",
+    "newerVersion": "더 새로운 버전의 {0}에서 만들어졌습니다. 저장하면 별도의 파일이 만들어집니다.",
+    "newerRefused": "더 새로운 버전의 {0}에서 만들어졌습니다.",
+    "mediaBad": "이 파일의 {0} 항목을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",
+    "media": {
+      "bgm": "BGM",
+      "cover": "커버",
+      "preview": "미리 듣기 오디오"
+    },
+    "newerMajor": "더 새로운 버전의 {0}에서 만들어졌습니다.",
+    "newerMajorNote": "이 파일에서는 레벨만 열 수 있습니다.",
+    "openLevel": "레벨 열기",
+    "newerValues": {
+      "title": "\"{0}\"은(는) 새로운 기능을 사용합니다",
+      "body": "이 버전의 편집기는 이 레벨의 일부 값을 지원하지 않습니다. 해당 값을 기본값으로 바꾼 별도의 사본이 열립니다.",
+      "openCopy": "사본 열기"
+    },
+    "unsavedChanges": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있습니다.",
+    "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
+    "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",
+    "restoreIt": "세션 복원",
+    "damagedHistory": "\"{0}\"의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."
   }
 }

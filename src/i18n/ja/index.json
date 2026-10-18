@@ -245,7 +245,7 @@
       "importedChcy": "Chart Cyanvas の譜面をインポートしました",
       "importedUsc": "USC 譜面をインポートしました",
       "importedSus": "SUS 譜面をインポートしました",
-      "unsupported": "対応していないファイルです。レベルデータ、Chart Cyanvas の譜面、USC または SUS 譜面を開いてください。",
+      "unsupported": "対応していないファイルです。プロジェクトファイル、レベルデータ、Chart Cyanvas の譜面、USC または SUS 譜面を開いてください。",
       "invalidLevel": "無効な譜面：{0}",
       "invalidChart": "無効な譜面：{0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "ここの変更はありません",
     "checking": "以前の操作を確認中…",
     "notChecked": "{0} 操作を確認できませんでした",
-    "announceViewingChange": "{0} を表示中、{1}"
+    "announceViewingChange": "{0} を表示中、{1}",
+    "openedFile": "{0} を開きました"
   },
   "modals": {
     "close": "閉じる",
@@ -1892,7 +1893,8 @@
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",
     "openHistory": "履歴を開く",
-    "earlierInHistory": "それ以前の操作は履歴にあります"
+    "earlierInHistory": "それ以前の操作は履歴にあります",
+    "bgmNotLoaded": "BGM が読み込まれていません"
   },
   "entry": {
     "exported": "{0} を出力",
@@ -1902,7 +1904,8 @@
     "recoveredDropped": "最後の変更を回復。元に戻す操作 {0} 件は破棄されました。",
     "continued": "続行",
     "migrated": "自動保存から回復",
-    "restoredTo": "{0} の状態に復元"
+    "restoredTo": "{0} の状態に復元",
+    "changedOutside": "エディターの外部で変更"
   },
   "session": {
     "untitled": "無題 · {0}"
@@ -1917,5 +1920,32 @@
     "notInFile": "ファイルに保存されていません",
     "separateCopy": "{0} の別コピー",
     "opensLevelInfo": "譜面情報を開きます"
+  },
+  "open": {
+    "notProject": "この ZIP はプロジェクトファイルではありません。",
+    "damagedUnopened": "このファイルは破損しているため、開けませんでした。",
+    "damaged": "このファイルは破損しています。履歴なしで開きました。",
+    "historyUnreadable": "このファイルの履歴を読み込めませんでした。保存すると別のファイルになります。",
+    "newerVersion": "より新しいバージョンの {0} で作成されています。保存すると別のファイルになります。",
+    "newerRefused": "より新しいバージョンの {0} で作成されています。",
+    "mediaBad": "このファイルの{0}を読み込めませんでした。保存すると別のファイルになります。",
+    "media": {
+      "bgm": "BGM",
+      "cover": "ジャケット",
+      "preview": "プレビュー音声"
+    },
+    "newerMajor": "より新しいバージョンの {0} で作成されています。",
+    "newerMajorNote": "このファイルからは譜面だけを開けます。",
+    "openLevel": "譜面を開く",
+    "newerValues": {
+      "title": "「{0}」は新しい機能を使用しています",
+      "body": "このバージョンのエディターは、この譜面の一部の値に対応していません。それらを既定値に置き換えた別のコピーを開きます。",
+      "openCopy": "コピーを開く"
+    },
+    "unsavedChanges": "{0} を開きました。このファイルには {1} からの未保存の変更があります。",
+    "unsavedEarlier": "{0} の以前のバージョンへの未保存の変更（{1}）が最近のセッションにあります。",
+    "olderVersion": "これは {0} の古いバージョンです。{1} の新しいバージョンが最近のセッションにあります。",
+    "restoreIt": "セッションを復元",
+    "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
   }
 }
