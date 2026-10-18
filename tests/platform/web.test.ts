@@ -575,15 +575,26 @@ test('an AbortError with no cancel is a failure naming the file, never a cancel'
     assert.deepEqual(await parsed(await handle.getFile()), levelJson(0))
 })
 
-test('write plans wait for Step 6; inspect and read take handles', async () => {
-    await assert.rejects(
-        platform.saveFile({
-            kind: 'image',
-            suggestedName: 'cover.png',
-            build: () => Promise.resolve({ kind: 'plan' }),
-        }),
-        /before Step 6/,
-    )
+test('a write plan is executed before it is handed over; inspect and read take handles', async () => {
+    const result = await platform.saveFile({
+        kind: 'image',
+        suggestedName: 'cover.png',
+        build: () =>
+            Promise.resolve({
+                kind: 'zip',
+                plan: {
+                    modified: { dosTime: 0, dosDate: 33 },
+                    entries: [
+                        {
+                            name: 'a',
+                            method: 0,
+                            parts: [{ kind: 'bytes', data: new Uint8Array([1]) }],
+                        },
+                    ],
+                },
+            }),
+    })
+    assert.deepEqual(result, { status: 'download-started', name: 'cover.png' })
     await assert.rejects(platform.inspect({ kind: 'path', path: 'a' }), /No file paths/)
 
     const handle = recordingHandle([], { initial: levelBlob(3) })

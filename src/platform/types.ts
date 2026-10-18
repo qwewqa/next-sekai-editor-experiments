@@ -1,6 +1,8 @@
 // The platform interface (Part 0 §0.9.1). Step 1a implements pickFiles, saveFile for downloads
 // and handles, onCloseRequested, onLifecycle, openExternal, fetchServer and diagnostics; Step 1c
-// inspect, read and expected for level data; later steps fill the rest.
+// inspect, read and expected for level data; Step 6 `.nxsp` revisions, plans and source integrity.
+
+import type { WritePlan } from '../local/nxsp/plan'
 
 export type PlatformKind = 'web' | 'native'
 
@@ -51,19 +53,26 @@ export type OpenedFile = {
     native?: NativeRef
 }
 
-/** A source pinned at the changed-on-disk check (Part 1 §1.6.11.7). */
+/**
+ * A source pinned at the changed-on-disk check (Part 0 §0.9.1, source integrity): the `File` the
+ * check read, which every later read of the existing file goes through. On the web, Chromium
+ * throws `NotReadableError` on reading it once the file changed, which is a `conflict`.
+ */
 export type PinnedSource = {
+    /** Names the source in a plan's copies. */
+    token: string
+    /** The file being replaced or appended to. */
+    role: 'target' | 'base'
     target: FileTarget
     file: Blob
     disk: DiskState
 }
 
-/** The shared writer's plan (Part 1 §1.6.11.7); arrives with Step 6. */
-export type WritePlan = {
-    kind: 'plan'
-}
+/** A `.nxsp` built as a plan for the platform to execute (Part 1 §1.6.11.7). */
+export type ZipBody = { kind: 'zip'; plan: WritePlan }
 
-export type FileBody = Blob | WritePlan
+/** What a build returns: a Blob (as `{ kind: 'blob' }` or bare), or a plan. */
+export type FileBody = Blob | { kind: 'blob'; blob: Blob } | ZipBody
 
 export type SaveKind = 'nxsp' | 'nsld' | 'archive' | 'audio' | 'image' | 'recovery'
 
@@ -206,7 +215,8 @@ export type Platform = {
     pickFiles: (opts: PickOptions) => Promise<OpenedFile[]>
     /** Every file the editor writes. */
     saveFile: (req: SaveRequest) => Promise<SaveResult>
-    inspect: (target: FileTarget) => Promise<DiskState | 'missing'>
+    /** The changed-on-disk check; `nxsp` reads the revision id and `<cd>` (level data by default). */
+    inspect: (target: FileTarget, kind?: SaveKind) => Promise<DiskState | 'missing'>
     read: (target: FileTarget) => Promise<Blob>
     onOpenFiles: (handler: (files: OpenedFile[]) => void) => void
 

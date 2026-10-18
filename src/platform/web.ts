@@ -2,8 +2,8 @@ import { storageJournalStore } from '../local/journal/store'
 import { webLockService } from '../local/locks'
 import { storageKey } from '../storage'
 import { allowsFileSystemAccess, detection, isStandalone, usesOpfsPickers } from './detect'
-import { levelDataDiskState } from './fingerprint'
 import {
+    diskStateOf,
     fileErrorOf,
     handOver,
     isAbort,
@@ -21,6 +21,7 @@ import type {
     PickOptions,
     Platform,
     PlatformCapabilities,
+    SaveKind,
     SavePicker,
     SaveRequest,
     SaveResult,
@@ -116,14 +117,14 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         if (req.expected !== undefined) return writeHandle(req, req.target.handle, permission)
         return writeHandle(req, req.target.handle, permission).catch(async () => {
             signal?.throwIfAborted()
-            const blob = toBlob(await req.build([]))
+            const blob = await toBlob(await req.build([]))
             await verifyBuilt(req.kind, blob)
             return handOver(blob, req.suggestedName, startedAt, req.ready)
         })
     }
 
     // The picker empties the file it returns, so the body is built and checked before it (D5).
-    const blob = toBlob(await req.build([]))
+    const blob = await toBlob(await req.build([]))
     signal?.throwIfAborted()
     await verifyBuilt(req.kind, blob)
     signal?.throwIfAborted()
@@ -167,10 +168,10 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     }
 }
 
-const inspect = async (target: FileTarget): Promise<DiskState | 'missing'> => {
+const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> => {
     if (target.kind !== 'handle') throw new Error('No file paths on the web')
     try {
-        return await levelDataDiskState(await target.handle.getFile())
+        return await diskStateOf(kind ?? 'nsld', await target.handle.getFile())
     } catch (error) {
         const failure = fileErrorOf(error)
         if (failure.code === 'not-found') return 'missing'

@@ -1,7 +1,7 @@
 import { MemoryStorage, storageJournalStore, type JournalStorage } from '../local/journal/store'
 import { FakeLockManager } from '../local/testing/locks'
-import { levelDataDiskState, sameContent } from './fingerprint'
-import { notYet } from './stubs'
+import { levelDataDiskState, nxspDiskState, sameContent } from './fingerprint'
+import { toBlob } from './handover'
 import {
     FileError,
     type DiagnosticInfo,
@@ -10,18 +10,29 @@ import {
     type LifecycleEvent,
     type LockService,
     type OpenedFile,
+    type PinnedSource,
     type Platform,
     type PlatformCapabilities,
     type PlatformKind,
     type PlatformOs,
+    type SaveKind,
     type SaveRequest,
     type SaveResult,
     type ServerFetchInit,
 } from './types'
 
 // The in-memory platform for tests, injected with setPlatformForTests. Step 1a covers the 1a
-// subset; Step 1c adds inspect, read and expected with level data's sha256 fingerprint, and
-// Step 6 revision semantics and faults.
+// subset; Step 1c adds inspect, read and expected with level data's sha256 fingerprint; Step 6
+// the `.nxsp` revision semantics (the revision id and `<cd>`, Part 0 §0.9.6), pinned sources whose
+// reads fail once the file changed, as Chromium's do (§0.9.1), plans, and fault points.
+
+/** Where a write can be interrupted: after its first check, after the build, before `close()`, after it. */
+export type MockPoint = 'checked' | 'built' | 'beforeClose' | 'closed'
+
+/** A crash at a fault point: the write stops there, as a killed tab's would. */
+export class MockCrash extends Error {
+    override name = 'MockCrash'
+}
 
 export type MockPlatformOptions = {
     /** The kind it simulates. */
@@ -50,6 +61,14 @@ export type MockPlatform = Platform & {
     readonly calls: string[]
     /** Called just before a write commits, so a test can change the file under it. */
     beforeCommit?: (name: string) => void
+    /**
+     * A fault at a point of each write: change the file (`writeFile`), throw a `FileError` (a
+     * placeholder's `not-local`, `no-space`), or throw `MockCrash` to stop there. A crash before
+     * `close()` leaves the file as it was, as the browser's swap file does.
+     */
+    fault?: (point: MockPoint, name: string) => void | Promise<void>
+    /** Each file's version, bumped by every write: a pinned read fails once it moves. */
+    readonly versions: Map<string, number>
     /** Asks every close handler, as closing the tab or window does; true when all allow it. */
     requestClose: () => Promise<boolean>
     emitLifecycle: (e: LifecycleEvent) => Promise<void>
@@ -128,14 +147,23 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
     const lifecycleHandlers = new Set<(e: LifecycleEvent) => void | Promise<void>>()
     let clock = 1_700_000_000_000
 
+    const versions = new Map<string, number>()
+
     const writeFile = (name: string, blob: Blob) => {
         files.set(name, blob)
         modified.set(name, (clock += 1000))
+        versions.set(name, (versions.get(name) ?? 0) + 1)
     }
 
+    /**
+     * The file as `getFile()` gives it: a snapshot whose reads fail with `NotReadableError` once
+     * the file changed, as Chromium's do (Part 0 §0.9.1).
+     */
     const fileOf = (name: string) => {
         const blob = files.get(name)
-        return blob && new File([blob], name, { type: blob.type, lastModified: modified.get(name) })
+        if (!blob) return
+        const version = versions.get(name)
+        return pinnedFile(blob, name, modified.get(name) ?? 0, () => versions.get(name) === version)
     }
 
     const createHandle = (name: string, options: MockHandleOptions = {}): FileSystemFileHandle => {
@@ -173,14 +201,18 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         return handle as unknown as FileSystemFileHandle
     }
 
-    const diskOf = async (name: string): Promise<DiskState | undefined> => {
+    const diskOf = async (
+        name: string,
+        kind: SaveKind = 'nsld',
+    ): Promise<DiskState | undefined> => {
         const file = fileOf(name)
-        return file && (await levelDataDiskState(file))
+        if (!file) return
+        return kind === 'nxsp' ? nxspDiskState(file, file.lastModified) : levelDataDiskState(file)
     }
 
     // The precondition, as the web checks it: content, not time.
-    const check = async (name: string, expected: DiskState | 'absent') => {
-        const disk = await diskOf(name)
+    const check = async (name: string, expected: DiskState | 'absent', kind: SaveKind) => {
+        const disk = await diskOf(name, kind)
         if (expected === 'absent') {
             if (disk) throw new FileError('conflict', `${name} exists`, disk)
         } else if (!disk) {
@@ -191,9 +223,13 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         return disk
     }
 
+    const point = async (at: MockPoint, name: string) => {
+        await mock.fault?.(at, name)
+    }
+
     // Honours the signal at the same points as the web, in the same order.
     const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
-        const { signal } = req
+        const { signal, kind } = req
         if (req.target) {
             // The gesture's first call, as on the web.
             const permission =
@@ -208,23 +244,46 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             signal?.throwIfAborted()
             const name = targetKey(req.target)
             const { expected } = req
-            const pinned = expected === undefined ? undefined : await check(name, expected)
+            // Source integrity: the File taken at the check is the only source of the old bytes.
+            const file = fileOf(name)
+            const pinned = expected === undefined ? undefined : await check(name, expected, kind)
             signal?.throwIfAborted()
-            const file = pinned && fileOf(name)
-            const body = await req.build(
-                pinned && file ? [{ target: req.target, file, disk: pinned }] : [],
-            )
-            if (!(body instanceof Blob)) throw notYet('Write plans', 'Step 6')
+            const sources: PinnedSource[] =
+                pinned && file
+                    ? [{ token: 'target', role: 'target', target: req.target, file, disk: pinned }]
+                    : []
+            await point('checked', name)
+            let body: Blob
+            try {
+                body = await toBlob(await req.build(sources), sources, async () => {
+                    const now = await diskOf(name, kind)
+                    return now?.fingerprint ?? 'missing'
+                })
+            } catch (error) {
+                if (error instanceof DOMException && error.name === 'NotReadableError')
+                    throw new FileError(
+                        'conflict',
+                        `${name} changed on disk`,
+                        await diskOf(name, kind),
+                    )
+                throw error
+            }
             signal?.throwIfAborted()
+            await point('built', name)
             mock.beforeCommit?.(name)
-            if (expected !== undefined) await check(name, expected)
+            await point('beforeClose', name)
+            if (expected !== undefined) {
+                const now = await check(name, expected, kind)
+                // Checked again just before close(): a `.nxsp` by the pinned File's fingerprint.
+                if (kind === 'nxsp' && pinned && now?.fingerprint !== pinned.fingerprint)
+                    throw new FileError('conflict', `${name} changed on disk`, now)
+            }
             signal?.throwIfAborted()
-            return commit(req.target, name, body)
+            return commit(req.target, name, body, kind)
         }
 
         // Built before the pick, as the picker empties what it returns (D5).
-        const body = await req.build([])
-        if (!(body instanceof Blob)) throw notYet('Write plans', 'Step 6')
+        const body = await toBlob(await req.build([]))
         signal?.throwIfAborted()
         const target = saveTargets.shift() ?? 'download'
         if (target === 'cancel') return { status: 'cancelled' }
@@ -238,17 +297,24 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         // Accepted: written to its end, cancel or not.
         const name = targetKey(target)
         mock.beforeCommit?.(name)
-        return commit(target, name, body)
+        await point('beforeClose', name)
+        return commit(target, name, body, kind)
     }
 
-    const commit = async (target: FileTarget, name: string, body: Blob): Promise<SaveResult> => {
+    const commit = async (
+        target: FileTarget,
+        name: string,
+        body: Blob,
+        kind: SaveKind,
+    ): Promise<SaveResult> => {
         calls.push(`write:${name}`)
         writeFile(name, body)
-        return { status: 'saved', target, name, disk: await diskOf(name) }
+        await point('closed', name)
+        return { status: 'saved', target, name, disk: await diskOf(name, kind) }
     }
 
-    const inspect = async (target: FileTarget): Promise<DiskState | 'missing'> =>
-        (await diskOf(targetKey(target))) ?? 'missing'
+    const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> =>
+        (await diskOf(targetKey(target), kind)) ?? 'missing'
 
     const read = (target: FileTarget): Promise<Blob> => {
         const file = fileOf(targetKey(target))
@@ -275,6 +341,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         downloads,
         external,
         calls,
+        versions,
 
         pickFiles: () => Promise.resolve(picks.shift() ?? []),
         saveFile,
@@ -314,4 +381,43 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         writeFile,
     }
     return mock
+}
+
+/** A Blob whose reads fail with `NotReadableError` once `current` turns false. */
+class PinnedBlob extends Blob {
+    constructor(
+        parts: BlobPart[],
+        options: BlobPropertyBag,
+        private readonly current: () => boolean,
+    ) {
+        super(parts, options)
+    }
+
+    private changed() {
+        return this.current()
+            ? undefined
+            : new DOMException('The file changed after it was read', 'NotReadableError')
+    }
+
+    override slice(start?: number, end?: number, type?: string): Blob {
+        const changed = this.changed()
+        if (changed) throw changed
+        return new PinnedBlob([super.slice(start, end, type)], { type: type ?? '' }, this.current)
+    }
+
+    override arrayBuffer() {
+        const changed = this.changed()
+        return changed ? Promise.reject(changed) : super.arrayBuffer()
+    }
+
+    override text() {
+        const changed = this.changed()
+        return changed ? Promise.reject(changed) : super.text()
+    }
+}
+
+/** A `File` snapshot of `blob` that stops reading once the file changed. */
+const pinnedFile = (blob: Blob, name: string, lastModified: number, current: () => boolean) => {
+    const pinned = new PinnedBlob([blob], { type: blob.type }, current)
+    return Object.assign(pinned, { name, lastModified, webkitRelativePath: '' }) as unknown as File
 }

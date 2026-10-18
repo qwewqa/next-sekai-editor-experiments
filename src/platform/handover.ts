@@ -1,7 +1,7 @@
 import { ungzip } from 'pako'
+import { ExecutionError, executePlan, type ExecutionSource } from '../local/nxsp/execute'
 import { detection, hasActivation, isStandalone, reportsActivation } from './detect'
-import { levelDataDiskState, sameContent, sha256Hex } from './fingerprint'
-import { notYet } from './stubs'
+import { levelDataDiskState, nxspDiskState, sameContent, sha256Hex } from './fingerprint'
 import {
     FileError,
     type DiskState,
@@ -45,9 +45,37 @@ export const fileErrorOf = (error: unknown, disk?: DiskState): FileError => {
     return new FileError(code, message, code === 'conflict' ? disk : undefined)
 }
 
-export const toBlob = (body: FileBody) => {
-    if (body instanceof Blob) return body
-    throw notYet('Write plans', 'Step 6')
+const isBlob = (body: FileBody): body is Blob => body instanceof Blob
+
+/**
+ * A build's file as a Blob: a Blob as it is, or a plan executed over the pinned sources (Part 1
+ * §1.6.11.7). A copy that fails with its source changed is a `conflict`; any other failure is `io`.
+ */
+export const toBlob = async (
+    body: FileBody,
+    sources: readonly PinnedSource[] = [],
+    readAgain?: (source: PinnedSource) => Promise<string>,
+): Promise<Blob> => {
+    if (isBlob(body)) return body
+    if (body.kind === 'blob') return body.blob
+    const executing = new Map<string, ExecutionSource>()
+    for (const source of sources)
+        executing.set(source.token, {
+            file: source.file,
+            fingerprint: source.disk.fingerprint,
+            role: source.role,
+            readFingerprint: () =>
+                readAgain ? readAgain(source) : Promise.resolve(source.disk.fingerprint),
+        })
+    try {
+        return await executePlan(body.plan, executing)
+    } catch (error) {
+        if (error instanceof ExecutionError) {
+            if (error.code === 'conflict') throw new FileError('conflict', error.message)
+            throw new FileError('io', error.message, undefined, 'build')
+        }
+        throw error
+    }
 }
 
 /** Built level data is gunzipped and parsed before it is handed over or written. */
@@ -85,15 +113,27 @@ export const requestWrite = (handle: FileSystemFileHandle): Promise<PermissionSt
     }
 }
 
+/** A file's disk state by its kind: a `.nxsp` by revision id and `<cd>`, anything else by sha256. */
+export const diskStateOf = (kind: SaveRequest['kind'], file: File) =>
+    kind === 'nxsp' ? nxspDiskState(file, file.lastModified) : levelDataDiskState(file)
+
+type Found = { file: File; disk: DiskState | undefined } | undefined
+
 /**
- * The file as it is now, measured against `expected`: `disk` is undefined when the file differs
- * in size or exists where none should, since a change needs no hash and a large file no read.
+ * The file as it is now, measured against `expected`: for level data `disk` is undefined when
+ * the file differs in size or exists where none should, since a change needs no hash and a large
+ * file no read; a `.nxsp` always reads its revision id and `<cd>` (Part 0 §0.9.6).
  */
-const readDisk = async (handle: FileSystemFileHandle, expected: DiskState | 'absent') => {
+const readDisk = async (
+    kind: SaveRequest['kind'],
+    handle: FileSystemFileHandle,
+    expected: DiskState | 'absent',
+): Promise<Found> => {
     try {
         const file = await handle.getFile()
-        if (expected === 'absent' || file.size !== expected.size) return { file, disk: undefined }
-        return { file, disk: await levelDataDiskState(file) }
+        if (expected === 'absent') return { file, disk: undefined }
+        if (kind !== 'nxsp' && file.size !== expected.size) return { file, disk: undefined }
+        return { file, disk: await diskStateOf(kind, file) }
     } catch (error) {
         if (errorName(error) === 'NotFoundError') return
         throw fileErrorOf(error)
@@ -101,14 +141,12 @@ const readDisk = async (handle: FileSystemFileHandle, expected: DiskState | 'abs
 }
 
 /** Whether the file found still matches `expected`. */
-const matches = (
-    found: Awaited<ReturnType<typeof readDisk>>,
-    expected: DiskState | 'absent',
-): boolean => (expected === 'absent' ? !found : !!found?.disk && sameContent(found.disk, expected))
+const matches = (found: Found, expected: DiskState | 'absent'): boolean =>
+    expected === 'absent' ? !found : !!found?.disk && sameContent(found.disk, expected)
 
 const changedError = (
     handle: FileSystemFileHandle,
-    found: Awaited<ReturnType<typeof readDisk>>,
+    found: Found,
     expected: DiskState | 'absent',
 ) => {
     if (!found) return new FileError('not-found', `${handle.name} cannot be found`)
@@ -117,12 +155,22 @@ const changedError = (
     return new FileError('conflict', message, found.disk)
 }
 
+/** The file's fingerprint now, through a new `getFile()`: a change after pinning is a conflict. */
+const fingerprintNow = async (kind: SaveRequest['kind'], handle: FileSystemFileHandle) => {
+    try {
+        return (await diskStateOf(kind, await handle.getFile())).fingerprint
+    } catch {
+        // Gone or unreadable: changed, the safe side.
+        return 'changed'
+    }
+}
+
 const writeTo = async (
     req: SaveRequest,
     handle: FileSystemFileHandle,
     permission: Promise<PermissionState>,
 ): Promise<SaveResult & { status: 'saved' }> => {
-    const { signal, expected } = req
+    const { signal, expected, kind } = req
     const target: FileTarget = { kind: 'handle', handle }
     let state: PermissionState
     try {
@@ -134,24 +182,36 @@ const writeTo = async (
         throw new FileError('denied', `Writing to ${handle.name} was not allowed`)
     signal?.throwIfAborted()
 
+    // Source integrity (Part 0 §0.9.1): everything the write reads of the existing file comes
+    // from the File taken at this check.
     const sources: PinnedSource[] = []
+    let pinned: DiskState | undefined
     if (expected !== undefined) {
-        const found = await readDisk(handle, expected)
+        const found = await readDisk(kind, handle, expected)
         signal?.throwIfAborted()
         if (!matches(found, expected)) throw changedError(handle, found, expected)
-        if (found?.disk) sources.push({ target, file: found.file, disk: found.disk })
+        if (found?.disk) {
+            pinned = found.disk
+            sources.push({
+                token: 'target',
+                role: 'target',
+                target,
+                file: found.file,
+                disk: found.disk,
+            })
+        }
     }
 
     let blob: Blob
     try {
-        blob = toBlob(await req.build(sources))
+        blob = await toBlob(await req.build(sources), sources, () => fingerprintNow(kind, handle))
     } catch (error) {
         // Reading the pinned file failed: it changed after the check.
-        if (errorName(error) === 'NotReadableError') throw fileErrorOf(error)
+        if (errorName(error) === 'NotReadableError') throw fileErrorOf(error, pinned)
         throw error
     }
     signal?.throwIfAborted()
-    await verifyBuilt(req.kind, blob)
+    await verifyBuilt(kind, blob)
     const written = await sha256Hex(blob)
     signal?.throwIfAborted()
 
@@ -162,10 +222,14 @@ const writeTo = async (
         await writable.write(blob)
         signal?.throwIfAborted()
         if (expected !== undefined) {
-            // Checked again just before the commit (Part 0 §0.9.6).
-            const found = await readDisk(handle, expected)
+            // Checked again just before the commit (Part 0 §0.9.6); a `.nxsp` by the whole
+            // fingerprint of the File pinned at the first check, so a change during the build or
+            // the write is never overwritten unseen.
+            const found = await readDisk(kind, handle, expected)
             signal?.throwIfAborted()
             if (!matches(found, expected)) throw changedError(handle, found, expected)
+            if (kind === 'nxsp' && pinned && found?.disk?.fingerprint !== pinned.fingerprint)
+                throw new FileError('conflict', `${handle.name} changed on disk`, found?.disk)
         }
         await writable.close()
         writable = undefined
@@ -177,13 +241,21 @@ const writeTo = async (
         throw fileErrorOf(error)
     }
 
+    // The read-back: `saved` means the file holds exactly the bytes built.
     let disk: DiskState
     try {
-        disk = await levelDataDiskState(await handle.getFile())
+        const file = await handle.getFile()
+        disk = await levelDataDiskState(file)
+        if (kind === 'nxsp' && disk.fingerprint === `sha256:${written}`)
+            disk = await nxspDiskState(file, file.lastModified)
     } catch (error) {
         throw fileErrorOf(error)
     }
-    if (disk.fingerprint !== `sha256:${written}`)
+    if (
+        kind === 'nxsp'
+            ? !disk.fingerprint.startsWith('zip:')
+            : disk.fingerprint !== `sha256:${written}`
+    )
         throw new FileError(
             'io',
             `${handle.name} did not read back as written`,
