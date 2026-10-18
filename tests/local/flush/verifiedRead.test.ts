@@ -11,7 +11,12 @@ import {
 } from '../../../src/history/stack'
 import { hashKey } from '../../../src/local/db'
 import { toHex } from '../../../src/local/hash'
-import { createPeekSource, readStoredState, slotLoader } from '../../../src/local/peekSource'
+import {
+    createPeekSource,
+    readStoredState,
+    rememberRoots,
+    slotLoader,
+} from '../../../src/local/peekSource'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot, type EncodedSnapshot } from '../../../src/local/records/snapshot'
 import { createWorld } from '../../../src/local/testing/world'
@@ -158,6 +163,21 @@ test('a malformed root or node row reads damaged', async () => {
     const row = await getRow(page, 'nodes', hashKey(node!.hash))
     await putRow(page, 'nodes', hashKey(node!.hash), { ...row, refs: new Uint8Array(17) })
     assert.deepEqual(await read(hexOf(c)), { kind: 'damaged' })
+})
+
+test('Already matches compares known roots, hashing neither chart', () => {
+    const source = createPeekSource({} as StorageWorker, () => undefined)
+    // Not charts at all: hashing either would throw.
+    const fake = () => ({ store: {}, bgm: { offset: 0 }, selectedEntities: [] }) as unknown as State
+    const [x, y, z] = [fake(), fake(), fake()]
+    const root = (byte: number) => new Uint8Array(16).fill(byte)
+    rememberRoots([
+        [x, root(1)],
+        [y, root(1)],
+        [z, root(2)],
+    ])
+    assert.equal(source.sameSnapshot(x, y), true)
+    assert.equal(source.sameSnapshot(x, z), false)
 })
 
 test('storing loads restored undo slots through the verified read', () => {

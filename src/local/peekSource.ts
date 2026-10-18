@@ -43,14 +43,15 @@ const sameMedia = (a: BgmMeta | undefined, b: BgmMeta | undefined) =>
  */
 const rootsByStore = new WeakMap<object, { state: State; hex: string }[]>()
 
+const remember = (state: State, hex: string) => {
+    const known = rootsByStore.get(state.store) ?? []
+    if (known.some((each) => each.hex === hex && sameParts(each.state, state))) return
+    // A store's states rarely differ in their header; a few are kept.
+    rootsByStore.set(state.store, [{ state, hex }, ...known].slice(0, 4))
+}
+
 export const rememberRoots = (roots: readonly (readonly [State, Uint8Array])[]) => {
-    for (const [state, hash] of roots) {
-        const hex = toHex(hash)
-        const known = rootsByStore.get(state.store) ?? []
-        if (known.some((each) => each.hex === hex && sameParts(each.state, state))) continue
-        // A store's states rarely differ in their header; a few are kept.
-        rootsByStore.set(state.store, [{ state, hex }, ...known].slice(0, 4))
-    }
+    for (const [state, hash] of roots) remember(state, toHex(hash))
 }
 
 const rootOf = (state: State) =>
@@ -111,10 +112,13 @@ export const createPeekSource = (
 ): PeekSource => {
     const build = async (hex: string, kept: boolean) => {
         const held = heldState(hex, flusher())
-        if (held) return held
-        const read = await readStoredState((hex) => worker.call('readSnapshotVerified', hex), hex)
+        const read = held
+            ? { kind: 'found' as const, state: held }
+            : await readStoredState((hex) => worker.call('readSnapshotVerified', hex), hex)
         if (read.kind === 'missing') throw new PeekError(kept ? 'damaged' : 'removed')
         if (read.kind === 'damaged') throw new PeekError('damaged')
+        // Restore compares by root when both are known, with no hashing.
+        remember(read.state, hex)
         return read.state
     }
     return {
@@ -133,6 +137,12 @@ export const createPeekSource = (
             if (!info) throw new PeekError('missing')
             return { state: await build(info.snapshot, info.kept), time: info.time }
         },
-        sameSnapshot: (a, b) => sameParts(a, b) || rootHex(a) === rootHex(b),
+        sameSnapshot: (a, b) => {
+            if (sameParts(a, b)) return true
+            const root = rootOf(a)
+            const other = root && rootOf(b)
+            // Hashing two whole charts is the fallback, for a state not stored or read.
+            return other ? root === other : rootHex(a) === rootHex(b)
+        },
     }
 }

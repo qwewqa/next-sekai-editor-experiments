@@ -59,6 +59,7 @@ let effects: PeekEffects | undefined
 export const setPeekSource = (next: PeekSource | undefined) => {
     source = next
     cache.clear()
+    loading.clear()
 }
 
 export const setPeekEffects = (next: PeekEffects | undefined) => {
@@ -95,6 +96,9 @@ const remember = (key: EntryKey, entry: PeekedEntry) => {
     }
 }
 
+/** Loads in flight, so Restore during a peek's load reads the entry once. */
+const loading = new Map<EntryKey, Promise<PeekedEntry>>()
+
 const loadEntry = async (key: EntryKey) => {
     const held = cache.get(key)
     if (held) {
@@ -102,8 +106,16 @@ const loadEntry = async (key: EntryKey) => {
         return held
     }
     if (!source) throw new PeekError('missing')
-    const entry = await source.load(key)
-    remember(key, entry)
+    const inFlight = loading.get(key)
+    if (inFlight) return inFlight
+    const from = source
+    const load = from.load(key).finally(() => {
+        if (loading.get(key) === load) loading.delete(key)
+    })
+    loading.set(key, load)
+    const entry = await load
+    // A source replaced meanwhile holds other states.
+    if (source === from) remember(key, entry)
     return entry
 }
 
@@ -285,5 +297,6 @@ export const refuseWhilePeeking = (refusal: PeekRefusal = {}) => {
 export const resetPeekForTests = () => {
     leavePeek()
     cache.clear()
+    loading.clear()
     lastRequestAt = -Infinity
 }

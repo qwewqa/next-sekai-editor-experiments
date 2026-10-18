@@ -224,6 +224,15 @@ test('Restore pushes a restore entry with the snapshot’s chart and offset and 
     assert.equal(nameOf(liveState.value), 'live')
 })
 
+test('Restore while the peek still loads reads the entry once', async () => {
+    const loads = source({ [key(1)]: { state: fake('old'), time: 1 } })
+    const peeking = peekEntry(key(1))
+    await restoreEntry(key(1))
+    await peeking
+    assert.deepEqual(loads, [key(1)])
+    assert.equal(nameOf(liveState.value), 'old')
+})
+
 test('Restore of what the chart already is pushes nothing', async () => {
     source({ [key(1)]: { state: fake('live'), time: 1 } })
     const actions: HistoryAction[] = []
