@@ -468,3 +468,21 @@ test('Replace writes the chain’s chronology with `replaces`, and the line when
     assert.equal(read.project?.revision?.replaces, 'theirs')
     assert.equal(read.project?.revision?.completeFrom, plan.revisionId)
 })
+
+test('an append that meets damage in the chain’s own file writes nothing and says so', async () => {
+    const { fixture, file } = await bound()
+    await fixture.edit(2)
+    await fixture.flush()
+    // A byte of chunks.bin's data goes bad; the central directory, and so `<cd>`, stay.
+    const { ZipReader } = await import('../../../src/zip/reader')
+    const reader = await ZipReader.open(file)
+    const entry = reader.get('history/chunks.bin')
+    assert.ok(entry)
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const at = entry.localOffset + 30 + entry.name.length + 1
+    bytes[at] = (bytes[at] ?? 0) ^ 0xff
+    const damaged = new File([bytes], file.name, { lastModified: file.lastModified })
+    const { built } = await writeBack(fixture, damaged)
+    assert.ok('refused' in built)
+    assert.equal(built.refused, 'damagedSource')
+})
