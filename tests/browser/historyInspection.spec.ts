@@ -294,7 +294,7 @@ test('property inspection keeps exact chronological values, whitespace and the l
     await page.keyboard.press('Escape')
 })
 
-for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
+for (const width of [160, 179, 180, 240, 319, 320, 390]) {
     test(`secondary History controls keep exact geometry at pane ${width}`, async ({
         page,
     }, testInfo) => {
@@ -316,7 +316,7 @@ for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
         })
         expect(boxes.row.height).toBe(32)
         expect(boxes.row.width).toBe(Math.min(384, width - 16))
-        expect(boxes.row.y).toBe(boxes.main.bottom)
+        expect(boxes.row.y - boxes.main.bottom).toBe(8)
         for (const box of boxes.controls) {
             expect(box.height).toBe(32)
             expect(box.x).toBeGreaterThanOrEqual(boxes.pane.x)
@@ -326,7 +326,7 @@ for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
             expect(boxes.controls[index]!.x).toBeGreaterThanOrEqual(
                 boxes.controls[index - 1]!.right,
             )
-        const arrowWidth = width < 168 ? 44 : 56
+        const arrowWidth = width < 180 ? 44 : 56
         for (const arrow of boxes.controls.slice(-2)) expect(arrow.width).toBe(arrowWidth)
         if (width < 320) {
             await expect(page.locator('[data-show-edits], [data-property-summary]')).toHaveCount(0)
@@ -335,9 +335,28 @@ for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
             await expect(page.locator('[data-change-options]')).toHaveCount(0)
             expect(boxes.controls[0]!.width).toBe(32)
             expect(boxes.controls[1]!.width).toBe(
-                width === 320 ? 144 : Math.min(384, width - 16) - 160,
+                width === 320 ? 132 : Math.min(384, width - 16) - 172,
             )
         }
+        const styles = await navigation.evaluate((element) => {
+            const style = getComputedStyle(element)
+            const glyph = element.querySelector('[data-change-arrow] svg')!
+            const controlStyles = [...element.querySelectorAll('[data-change-arrow], [data-property-summary]')].map((control) => {
+                const style = getComputedStyle(control)
+                return { background: style.backgroundColor, shadow: style.boxShadow, opacity: style.opacity }
+            })
+            const gapTarget = document.elementFromPoint(element.getBoundingClientRect().x + 2, element.getBoundingClientRect().y - 4)
+            const faceTarget = document.elementFromPoint(element.getBoundingClientRect().x + 2, element.getBoundingClientRect().y + 16)
+            return { radius: style.borderRadius, padding: style.paddingLeft, font: style.fontSize, background: style.backgroundColor,
+                glyph: glyph.getBoundingClientRect().width, controls: controlStyles,
+                gapIsChart: !!gapTarget?.closest('.editor'), faceIsStrip: faceTarget === element }
+        })
+        expect(styles).toMatchObject({ radius: '8px', padding: '4px', font: '12px', glyph: width < 180 ? 12 : 16, gapIsChart: true, faceIsStrip: true })
+        expect(styles.background).not.toBe('rgba(0, 0, 0, 0)')
+        for (const style of styles.controls) expect(style).toEqual({ background: 'rgba(0, 0, 0, 0)', shadow: 'none', opacity: '1' })
+        const beforePress = await page.evaluate(() => ({ state: window.editorTest.snapshot(), time: window.editorTest.view.time, lane: window.editorTest.view.lane }))
+        await navigation.click({ position: { x: 2, y: 16 } })
+        expect(await page.evaluate(() => ({ state: window.editorTest.snapshot(), time: window.editorTest.view.time, lane: window.editorTest.view.lane }))).toEqual(beforePress)
         await page.screenshot({ path: testInfo.outputPath(`navigation-${width}.png`) })
         if (width < 320) {
             await page.locator('[data-change-options]').click()
@@ -448,7 +467,8 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
     await page.evaluate(() => window.historyInspectionTest.hold(2))
     await select(page, 2, 1)
-    await expect(page.locator('[data-peek-change]')).toHaveText('Loading changes…')
+    await expect(page.locator('[data-peek-change]')).toHaveText('Loading…')
+    await expect(page.locator('[data-peek-change]').locator('..')).toHaveAccessibleName('Loading changes…')
     expect(await bounds()).toEqual(before)
     await expect(page.locator('[data-property-summary]')).toHaveCount(0)
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
