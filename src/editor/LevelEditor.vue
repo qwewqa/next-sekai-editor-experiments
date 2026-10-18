@@ -252,8 +252,8 @@ const stageCount = computed(() =>
 
 <template>
     <!-- An own stacking context keeps editor overlays below docks and their popups. -->
-    <div class="isolate flex flex-col">
-        <div ref="host" class="relative flex min-h-0 flex-grow select-none overflow-hidden">
+    <div ref="host" class="isolate flex flex-col">
+        <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
                 ref="container"
