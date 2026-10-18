@@ -275,7 +275,7 @@ test('hiding during a mouse drag cancels the edit and editing recovers', async (
 test('visibility masks keep the authoring target, history and the status bar target', async ({
     page,
 }) => {
-    const status = page.locator('.bg-preview:has(> span.flex-grow)')
+    const status = page.locator('[data-status-bar]')
     await expect(status).toContainText('All Groups')
     await expect(status).not.toContainText('1/2')
 
@@ -304,7 +304,12 @@ test('visibility masks keep the authoring target, history and the status bar tar
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 
     await page.keyboard.press('a')
-    await expect(status.locator('span.flex-grow')).toHaveText(/^Note(?: |$)/)
+    const noteFace = page
+        .locator('.chart-pane [data-editor-toolbar]')
+        .locator(':scope > div > div > button')
+        .and(page.getByTitle(/^Note(?: |$)/))
+    await expect(noteFace).toBeVisible()
+    await expect(noteFace).toHaveAttribute('aria-pressed', 'true')
     const target = await point(page, -6, 9)
     await page.mouse.click(target.x, target.y)
     await settle(page)

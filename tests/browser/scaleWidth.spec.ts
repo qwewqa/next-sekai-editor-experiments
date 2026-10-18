@@ -189,7 +189,7 @@ test('middle drag moves the entire selection and respects lane snapping', async 
         window.editorTest.view.laneSnapping = 'absolute'
     })
     await open(page)
-    await drag(page, -3, -2.63)
+    await drag(page, -3, -2.68)
     await expectWidths(page, [
         [-3.75, 2],
         [0.25, 2],
