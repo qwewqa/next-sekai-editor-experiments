@@ -1360,7 +1360,9 @@ test('the current row keeps a mark in high contrast', async ({ page }) => {
 test.describe('touch', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-    test('a narrow status bar shortens the folder first and keeps the count', async ({ page }) => {
+    test('a narrow status bar keeps the target above its shortened folder and exact count', async ({
+        page,
+    }) => {
         await seedGroups(page, [['Default'], ['Lead Synth Layer', 'An Extremely Long Folder Name']])
         await page.evaluate(() => {
             const { view } = window.editorTest
@@ -1372,21 +1374,40 @@ test.describe('touch', () => {
         const parts = await chip.evaluate((element) => {
             const box = element.getBoundingClientRect()
             const folder = element.querySelector<HTMLElement>('.status-folder')!
-            const spans = [...element.querySelectorAll<HTMLElement>('span')]
-            const name = spans.find((span) => span.textContent === 'Lead Synth Layer')!
-            const count = spans.find((span) => span.textContent.startsWith('· '))!
+            const name = element.querySelector<HTMLElement>('[data-status-part="name"]')!
+            const count = element.querySelector<HTMLElement>('[data-status-count]')!
+            const prefix = document.createRange()
+            prefix.setStart(name.firstChild!, 0)
+            prefix.setEnd(name.firstChild!, 4)
+            const nameBox = name.getBoundingClientRect()
+            const folderBox = folder.getBoundingClientRect()
+            const countBox = count.getBoundingClientRect()
+            const folderPrefix = document.createRange()
+            folderPrefix.setStart(folder.firstChild!, 0)
+            folderPrefix.setEnd(folder.firstChild!, 'An Extremely'.length)
             return {
                 folderTruncated: folder.scrollWidth > folder.clientWidth,
                 folderWidth: folder.clientWidth,
+                folderVisible:
+                    folderPrefix.getBoundingClientRect().left >= folderBox.left &&
+                    folderPrefix.getBoundingClientRect().right <= folderBox.right - 12,
                 nameWidth: name.clientWidth,
-                countInside: count.getBoundingClientRect().right <= box.right + 0.5,
-                countWidth: count.getBoundingClientRect().width,
+                nameVisible: prefix.getBoundingClientRect().right <= nameBox.right - 12,
+                separateLines: nameBox.bottom <= folderBox.top,
+                folderBeforeCount: folderBox.right <= countBox.left,
+                countInside: countBox.right <= box.right + 0.5,
+                countWhole: count.scrollWidth <= count.clientWidth,
+                countWidth: countBox.width,
             }
         })
         expect(parts.folderTruncated).toBe(true)
-        // The folder gave way first: the name keeps more room than the folder.
-        expect(parts.nameWidth).toBeGreaterThan(parts.folderWidth)
+        expect(parts.folderVisible).toBe(true)
+        expect(parts.nameWidth).toBeGreaterThan(48)
+        expect(parts.nameVisible).toBe(true)
+        expect(parts.separateLines).toBe(true)
+        expect(parts.folderBeforeCount).toBe(true)
         expect(parts.countInside).toBe(true)
+        expect(parts.countWhole).toBe(true)
         expect(parts.countWidth).toBeGreaterThan(0)
         // The status bar's division, not the toolbar's.
         const bar = chip.locator('..')

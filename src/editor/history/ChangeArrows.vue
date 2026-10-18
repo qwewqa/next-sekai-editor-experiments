@@ -1,10 +1,30 @@
-﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import { isPeeking } from '../../history/peek'
 import { i18n } from '../../i18n'
+import { modals, showModal } from '../../modals'
 import { interpolateRaw } from '../../utils/interpolate'
+import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
-import { changeLine, comparisonStatus, countsShown, offBand, showChangeToward } from './changes'
+import HiddenIcon from '../workspace/manager/icons/HiddenIcon.vue'
+import MoreIcon from '../workspace/manager/icons/MoreIcon.vue'
+import VisibleIcon from '../workspace/manager/icons/VisibleIcon.vue'
+import {
+    canInspectProperties,
+    changeLine,
+    comparisonStatus,
+    countsShown,
+    offBand,
+    openPropertyInspection,
+    propertyInspection,
+    showChangeToward,
+    shownChange,
+    showEdits,
+    toggleShowEdits,
+    usableBand,
+} from './changes'
+import ChangeOptionsMenu from './ChangeOptionsMenu.vue'
+import PropertyChangesModal from './PropertyChangesModal.vue'
 import { peekedInfo } from './selection'
 
 const delayed = ref(false)
@@ -27,9 +47,86 @@ onBeforeUnmount(() => {
 const line = computed(
     () => changeLine.value ?? (delayed.value ? i18n.value.peek.loadingChanges : ''),
 )
+const compact = computed(() => view.w < 320)
+const narrowArrows = computed(() => view.w < 168)
+const options = useTemplateRef<HTMLButtonElement>('options')
+const summary = useTemplateRef<HTMLButtonElement>('summary')
+const eye = useTemplateRef<HTMLButtonElement>('eye')
+const summaryId = useId()
+const menuOpen = ref(false)
+let inspecting = false
+const restoreFocus = (opener: HTMLElement | undefined | null) => {
+    const target =
+        opener?.isConnected && opener.getClientRects().length
+            ? opener
+            : compact.value
+              ? options.value
+              : (summary.value ?? eye.value)
+    if (
+        target?.isConnected &&
+        target.getClientRects().length &&
+        !modals.some((modal) => modal.presentation !== 'tool')
+    )
+        target.focus({ preventScroll: true })
+}
+const closeMenu = (focus: boolean) => {
+    const request = peekedInfo.value
+    const opener = options.value
+    menuOpen.value = false
+    if (focus)
+        void nextTick(() => {
+            if (peekedInfo.value === request && isPeeking.value) restoreFocus(opener)
+        })
+}
+const toggleFromMenu = () => {
+    toggleShowEdits()
+    closeMenu(true)
+}
+watch(
+    [peekedInfo, isPeeking],
+    () => {
+        menuOpen.value = false
+    },
+    { flush: 'sync' },
+)
+watch(
+    () => view.w,
+    () => {
+        if (menuOpen.value) closeMenu(true)
+    },
+)
+const inspect = async (opener: HTMLElement | null) => {
+    if (inspecting || !canInspectProperties.value) return
+    const comparison = shownChange.value
+    if (!comparison) return
+    const request = peekedInfo.value
+    menuOpen.value = false
+    openPropertyInspection()
+    if (propertyInspection.value?.comparison !== comparison) return
+    inspecting = true
+    try {
+        await showModal(
+            PropertyChangesModal,
+            { comparison, summary: line.value },
+            { size: 'large' },
+        )
+    } finally {
+        inspecting = false
+        if (peekedInfo.value === request && isPeeking.value) restoreFocus(opener)
+    }
+}
+const inspectFromMenu = () => {
+    const opener = options.value
+    const request = peekedInfo.value
+    closeMenu(true)
+    void nextTick(() => {
+        if (peekedInfo.value === request && isPeeking.value) void inspect(opener)
+    })
+}
 const directions = ['up', 'down'] as const
 const countOf = (direction: 'up' | 'down') =>
     direction === 'up' ? offBand.value.above : offBand.value.below
+const enabled = (direction: 'up' | 'down') => usableBand.value && countOf(direction) > 0
 const labelOf = (direction: 'up' | 'down') => {
     const strings = i18n.value.peek
     return countsShown.value
@@ -46,38 +143,117 @@ const labelOf = (direction: 'up' | 'down') => {
 <template>
     <div
         v-if="isPeeking"
-        class="pointer-events-auto flex h-[52px] w-full max-w-lg items-center gap-1 rounded-3xl bg-modal p-1 pl-4 text-sm text-fg shadow-md"
+        class="pointer-events-none flex h-8 w-full max-w-96 items-center justify-center gap-1 text-sm text-fg"
         data-peek-navigation
+        :data-change-options-mode="compact || undefined"
     >
-        <span class="min-w-0 flex-1 truncate" :title="line" :aria-label="line" data-peek-change>{{
-            line
-        }}</span>
+        <template v-if="!compact">
+            <button
+                ref="eye"
+                type="button"
+                class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full shadow-md"
+                :class="showEdits ? 'bg-accent text-on-accent' : 'bg-button'"
+                :aria-label="i18n.peek.showEdits"
+                :title="i18n.peek.showEdits"
+                :aria-pressed="showEdits"
+                data-show-edits
+                @click="toggleShowEdits"
+            >
+                <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon
+                    v-else
+                    class="size-4 fill-current"
+                />
+            </button>
+            <button
+                v-if="canInspectProperties"
+                ref="summary"
+                type="button"
+                class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-full bg-button px-3 shadow-md"
+                :title="line"
+                :aria-label="i18n.historyChanges.view"
+                :aria-describedby="summaryId"
+                data-property-summary
+                @click="inspect(summary)"
+            >
+                <span :id="summaryId" class="min-w-0 flex-1 truncate" data-peek-change>{{
+                    line
+                }}</span
+                ><ChevronIcon class="size-4 shrink-0" direction="right" />
+            </button>
+            <span
+                v-else
+                class="pointer-events-auto flex h-8 min-w-0 flex-1 items-center rounded-full bg-modal px-3 shadow-md"
+                :title="line"
+                :aria-label="line"
+                ><span class="min-w-0 truncate" data-peek-change>{{ line }}</span></span
+            >
+        </template>
         <button
-            v-for="direction in directions"
-            :key="direction"
+            v-else
+            ref="options"
             type="button"
-            class="change-arrow flex h-11 w-16 shrink-0 items-center justify-center gap-1 rounded-full bg-button text-xs tabular-nums outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
-            :aria-disabled="!countOf(direction)"
-            :aria-label="labelOf(direction)"
-            :title="labelOf(direction)"
-            :data-change-arrow="direction"
-            :data-count="countsShown ? countOf(direction) : undefined"
-            @click="countOf(direction) && showChangeToward(direction)"
+            class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full bg-button shadow-md"
+            :aria-label="i18n.peek.changeOptions"
+            :title="i18n.peek.changeOptions"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen"
+            data-change-options
+            @click="menuOpen = !menuOpen"
+            @keydown.down.prevent="menuOpen = true"
         >
-            <ChevronIcon :direction="direction" /><span class="w-6 text-center">{{
-                countsShown && countOf(direction) ? countOf(direction) : ''
-            }}</span>
+            <MoreIcon class="size-4 fill-current" />
         </button>
+        <div class="flex shrink-0 gap-1" :class="compact ? '' : 'ml-1'">
+            <button
+                v-for="direction in directions"
+                :key="direction"
+                type="button"
+                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center gap-1 rounded-full bg-button text-xs tabular-nums shadow-md"
+                :class="narrowArrows ? 'w-11' : 'w-14'"
+                :aria-disabled="!enabled(direction)"
+                :aria-label="labelOf(direction)"
+                :title="labelOf(direction)"
+                :data-change-arrow="direction"
+                :data-count="countsShown ? countOf(direction) : undefined"
+                @click="enabled(direction) && showChangeToward(direction)"
+            >
+                <ChevronIcon class="size-4" :direction="direction" /><span
+                    class="w-6 text-center"
+                    >{{ countsShown && countOf(direction) ? countOf(direction) : '' }}</span
+                >
+            </button>
+        </div>
+        <ChangeOptionsMenu
+            v-if="menuOpen && options"
+            :anchor="options"
+            :summary="line"
+            :checked="showEdits"
+            :inspectable="canInspectProperties"
+            @close="closeMenu"
+            @toggle="toggleFromMenu"
+            @inspect="inspectFromMenu"
+        />
     </div>
 </template>
 
 <style scoped>
+.change-control {
+    outline-offset: -3px;
+}
+.change-control:focus-visible {
+    outline: 2px solid currentColor;
+}
 .change-arrow[aria-disabled='true'] {
     opacity: 0.45;
 }
 @media (forced-colors: active) {
-    .change-arrow {
+    .change-control {
         border: 1px solid ButtonText;
+    }
+    .change-control[aria-pressed='true'] {
+        color: HighlightText;
+        background: Highlight;
+        border-color: Highlight;
     }
     .change-arrow[aria-disabled='true'] {
         color: GrayText;

@@ -20,6 +20,7 @@ import PeekBar from './history/PeekBar.vue'
 import ChangeBand from './history/ChangeBand.vue'
 import FileChip from './file/FileChip.vue'
 import StatusLabel from './StatusLabel.vue'
+import StatusScope from './StatusScope.vue'
 import { groupScope, stageScope } from './scope'
 import LevelEditorToolbar from './toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from './EditorToolModalHost.vue'
@@ -38,6 +39,13 @@ useControlLifecycle()
 const container: Ref<HTMLDivElement | null> = useTemplateRef('container')
 const host = useTemplateRef<HTMLDivElement>('host')
 const hostWidth = ref(0)
+const compactStatus = computed(() => hostWidth.value < 768)
+const narrowStatus = computed(() => hostWidth.value < 560)
+const statusItems = computed(() =>
+    narrowStatus.value
+        ? (['label', 'warning', 'break', 'tool', 'group', 'stage', 'division'] as const)
+        : (['tool', 'label', 'warning', 'group', 'stage', 'division'] as const),
+)
 watch(host, (element, _, cleanup) => {
     if (!element) return
     const update = () => {
@@ -195,15 +203,28 @@ const stage = computed((): NamePart[] =>
           ]),
 )
 
-/** How a run of a scope name shrinks: the folder first, then the name; text stays. */
-const partClass = ({ text, role }: NamePart) =>
-    role === 'folder'
-        ? text.length > 2
-            ? 'status-folder min-w-[2em] truncate'
-            : 'shrink-0'
-        : role === 'name'
-          ? 'min-w-0 truncate'
-          : 'shrink-0 whitespace-pre'
+const groupTarget = computed(() =>
+    view.groupId === undefined
+        ? group.value
+        : templateParts(i18n.value.statusBar.group.one, [
+              [{ text: groups.value.get(view.groupId)?.name ?? '', role: 'name' }],
+          ]),
+)
+const stageTarget = computed(() =>
+    view.stageId === undefined
+        ? stage.value
+        : templateParts(i18n.value.statusBar.stage.one, [
+              [{ text: stages.value.get(view.stageId)?.name ?? '', role: 'name' }],
+          ]),
+)
+const groupFolder = computed(() => {
+    const id = view.groupId === undefined ? undefined : groups.value.get(view.groupId)?.folderId
+    return id === undefined ? undefined : groupFolders.value.get(id)?.name
+})
+const stageFolder = computed(() => {
+    const id = view.stageId === undefined ? undefined : stages.value.get(view.stageId)?.folderId
+    return id === undefined ? undefined : stageFolders.value.get(id)?.name
+})
 
 // Shown separately from the authoring target, and only while something is hidden.
 const shownCount = (shown: number, total: number, message: string) => {
@@ -231,8 +252,8 @@ const stageCount = computed(() =>
 
 <template>
     <!-- An own stacking context keeps editor overlays below docks and their popups. -->
-    <div class="isolate flex flex-col">
-        <div ref="host" class="relative flex min-h-0 flex-grow select-none overflow-hidden">
+    <div ref="host" class="isolate flex flex-col">
+        <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
                 ref="container"
@@ -279,99 +300,78 @@ const stageCount = computed(() =>
             </div>
             <LevelEditorContextMenu />
         </div>
-        <!-- Chrome: Meta text in white/80, 24px tall (32px on coarse pointers). -->
+        <!-- Touch-capable rows reserve their full target height before a warning arrives. -->
         <div
-            class="z-10 flex gap-4 bg-preview px-2 py-1 text-xs text-white/80 [@media(pointer:coarse)]:py-2"
+            class="status-bar z-10 flex shrink-0 bg-preview text-xs text-white/80"
+            :class="[
+                compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2',
+                narrowStatus ? 'status-bar-narrow flex-wrap' : '',
+            ]"
+            data-status-bar
         >
-            <span class="min-w-12 shrink-[1000] flex-grow truncate">{{ tool.title() }}</span>
-            <StatusLabel />
-            <FileChip />
-            <!-- The scope chips open their managers. Long names truncate while the
-            shown count stays visible. -->
-            <button
-                type="button"
-                class="status-chip relative flex min-w-0 max-w-[40%] px-1"
-                :title="i18n.commands.manageGroups.title"
-                @click="onStatusChip($event, 'groups')"
-            >
-                <span class="flex min-w-0">
-                    <span v-for="(part, i) in group" :key="i" :class="partClass(part)">{{
-                        part.text
-                    }}</span>
-                </span>
+            <template v-for="item in statusItems" :key="item">
+                <StatusLabel
+                    v-if="item === 'label'"
+                    :compact="compactStatus"
+                    :narrow="narrowStatus"
+                />
+                <FileChip v-else-if="item === 'warning'" :compact="compactStatus" />
                 <span
-                    v-if="groupCount"
-                    class="ml-1 shrink-0 whitespace-nowrap"
-                    :title="groupCount.label"
-                >
-                    <span aria-hidden="true">· {{ groupCount.short }}</span>
-                    <span class="sr-only">{{ groupCount.label }}</span>
-                </span>
-            </button>
-            <button
-                v-if="isDynamicStages"
-                type="button"
-                class="status-chip relative flex min-w-0 max-w-[40%] px-1"
-                :title="i18n.commands.manageStages.title"
-                @click="onStatusChip($event, 'stages')"
-            >
-                <span class="flex min-w-0">
-                    <span v-for="(part, i) in stage" :key="i" :class="partClass(part)">{{
-                        part.text
-                    }}</span>
-                </span>
+                    v-else-if="item === 'break'"
+                    class="h-0 basis-full"
+                    aria-hidden="true"
+                    data-status-break
+                />
                 <span
-                    v-if="stageCount"
-                    class="ml-1 shrink-0 whitespace-nowrap"
-                    :title="stageCount.label"
+                    v-else-if="item === 'tool'"
+                    class="min-w-12 self-center truncate"
+                    :class="narrowStatus ? 'w-12 flex-none' : 'shrink-[1000000] flex-grow'"
+                    data-status-tool
+                    >{{ tool.title() }}</span
                 >
-                    <span aria-hidden="true">· {{ stageCount.short }}</span>
-                    <span class="sr-only">{{ stageCount.label }}</span>
-                </span>
-            </button>
-            <span class="shrink-0">1/{{ view.division }}</span>
+                <StatusScope
+                    v-else-if="item === 'group' || (item === 'stage' && isDynamicStages)"
+                    :compact="compactStatus"
+                    :parts="item === 'group' ? group : stage"
+                    :target="item === 'group' ? groupTarget : stageTarget"
+                    :folder="item === 'group' ? groupFolder : stageFolder"
+                    :count="item === 'group' ? groupCount : stageCount"
+                    :class="
+                        narrowStatus
+                            ? 'min-w-0 flex-1 basis-0'
+                            : compactStatus
+                              ? 'min-w-28'
+                              : 'min-w-0 max-w-[40%]'
+                    "
+                    :title="
+                        item === 'group'
+                            ? i18n.commands.manageGroups.title
+                            : i18n.commands.manageStages.title
+                    "
+                    @click="onStatusChip($event, item === 'group' ? 'groups' : 'stages')"
+                />
+                <span
+                    v-else-if="item === 'division'"
+                    class="shrink-0 self-center"
+                    data-status-division
+                    >1/{{ view.division }}</span
+                >
+            </template>
         </div>
     </div>
 </template>
 
 <style scoped>
-/* A long folder name gives way long before the target's own name. */
-.status-folder {
-    flex-shrink: 1000;
+.status-bar {
+    --status-row-height: 24px;
+    height: var(--status-row-height);
 }
 
-.status-chip {
-    border-radius: 9999px;
-    transition: color 150ms;
+.status-bar-compact {
+    --status-row-height: 32px;
 }
 
-/* The hit area fills the bar's height (24px, or 32px on coarse pointers)
- * without making the chip or the bar taller. */
-.status-chip::before {
-    content: '';
-    position: absolute;
-    inset: -0.25rem;
-}
-
-@media (pointer: coarse) {
-    .status-chip::before {
-        inset-block: -0.5rem;
-    }
-}
-
-.status-chip:active {
-    color: theme('colors.white');
-}
-
-/* The transparent outline is the ring high contrast paints. */
-.status-chip:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: 0 0 0 2px theme('colors.accent');
-}
-
-@media (hover: hover) {
-    .status-chip:hover {
-        color: theme('colors.white');
-    }
+.status-bar-narrow {
+    height: calc(2 * var(--status-row-height));
 }
 </style>

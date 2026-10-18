@@ -838,7 +838,7 @@
         "measure": "Ölçü",
         "both": "Her İkisi"
       },
-      "dimUnchangedObjects": "Değişmeyen Nesneleri Soluklaştır"
+      "dimUnchangedObjects": "Değişiklikleri Varsayılan Olarak Göster"
     },
     "keyboardShortcuts": {
       "title": "Klavye Kısayolları"
@@ -1253,7 +1253,8 @@
     "checking": "Eski adımlar denetleniyor…",
     "notChecked": "{0} adım denetlenemedi",
     "announceViewingChange": "{0} görüntüleniyor, {1}",
-    "openedFile": "{0} açıldı"
+    "openedFile": "{0} açıldı",
+    "viewChart": "Çizelgeyi Görüntüle"
   },
   "modals": {
     "close": "Kapat",
@@ -1861,7 +1862,9 @@
     "changesBelow": "Aşağıdaki değişiklikler: {0}",
     "changesAboveAny": "Yukarıdaki değişiklikler",
     "changesBelowAny": "Aşağıdaki değişiklikler",
-    "savesCurrent": "Güncel sürümü kaydeder."
+    "savesCurrent": "Güncel sürümü kaydeder.",
+    "showEdits": "Değişiklikleri Göster",
+    "changeOptions": "Değişiklik Seçenekleri"
   },
   "save": {
     "fileName": "Dosya Adı",
@@ -2065,5 +2068,39 @@
   },
   "notSaving": {
     "bar": "Değişiklikler bu tarayıcıda saklanmıyor."
+  },
+  "historyChanges": {
+    "title": "Özellik Değişiklikleri",
+    "view": "Özellik Değişikliklerini Görüntüle",
+    "before": "Önce",
+    "after": "Sonra",
+    "notSet": "Ayarlanmamış",
+    "empty": "Boş",
+    "notPresent": "Yok",
+    "added": "Eklendi",
+    "removed": "Kaldırıldı",
+    "order": "Sıra",
+    "folder": "Klasör",
+    "groupFolders": "Grup Klasörleri",
+    "stageFolders": "Sahne Klasörleri",
+    "levelInfo": "Seviye Bilgileri",
+    "fields": {
+      "title": "Başlık",
+      "artists": "Sanatçılar",
+      "author": "Yapımcı",
+      "description": "Açıklama",
+      "tags": "Etiketler",
+      "rating": "Zorluk",
+      "cover": "Kapak",
+      "previewAudio": "Önizleme Sesi",
+      "duration": "Süre",
+      "size": "Boyut",
+      "type": "Tür",
+      "icon": "Simge"
+    },
+    "contentsChanged": "İçerik değişti",
+    "showMore": "Daha Fazla Göster",
+    "shown": "Özellikler: {0}/{1}",
+    "itemsShown": "Öğeler: {0}/{1}"
   }
 }

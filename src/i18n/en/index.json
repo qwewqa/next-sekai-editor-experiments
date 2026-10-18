@@ -838,7 +838,7 @@
                 "measure": "Measure",
                 "both": "Both"
             },
-            "dimUnchangedObjects": "Dim Unchanged Objects"
+            "dimUnchangedObjects": "Show Edits by Default"
         },
         "keyboardShortcuts": {
             "title": "Keyboard Shortcuts"
@@ -1253,7 +1253,8 @@
         "checking": "Checking older steps…",
         "notChecked": "{0} step could not be checked|{0} steps could not be checked",
         "announceViewingChange": "Viewing {0}, {1}",
-        "openedFile": "Opened {0}"
+        "openedFile": "Opened {0}",
+        "viewChart": "View Chart"
     },
     "modals": {
         "close": "Close",
@@ -1861,7 +1862,9 @@
         "changesBelow": "Changes Below: {0}",
         "changesAboveAny": "Changes Above",
         "changesBelowAny": "Changes Below",
-        "savesCurrent": "Saves the current version."
+        "savesCurrent": "Saves the current version.",
+        "showEdits": "Show Edits",
+        "changeOptions": "Change Options"
     },
     "save": {
         "fileName": "File Name",
@@ -2065,5 +2068,39 @@
     },
     "notSaving": {
         "bar": "Changes are not being stored in this browser."
+    },
+    "historyChanges": {
+        "title": "Property Changes",
+        "view": "View Property Changes",
+        "before": "Before",
+        "after": "After",
+        "notSet": "Not set",
+        "empty": "Empty",
+        "notPresent": "Not present",
+        "added": "Added",
+        "removed": "Removed",
+        "order": "Order",
+        "folder": "Folder",
+        "groupFolders": "Group Folders",
+        "stageFolders": "Stage Folders",
+        "levelInfo": "Level Info",
+        "fields": {
+            "title": "Title",
+            "artists": "Artists",
+            "author": "Author",
+            "description": "Description",
+            "tags": "Tags",
+            "rating": "Rating",
+            "cover": "Cover",
+            "previewAudio": "Preview Audio",
+            "duration": "Duration",
+            "size": "Size",
+            "type": "Type",
+            "icon": "Icon"
+        },
+        "contentsChanged": "Contents changed",
+        "showMore": "Show More",
+        "shown": "Properties: {0}/{1}",
+        "itemsShown": "Items: {0}/{1}"
     }
 }

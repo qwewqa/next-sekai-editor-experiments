@@ -503,7 +503,7 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     )
 })
 
-test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => {
+test('Show Edits default off leaves the chart undimmed and unmarked', async ({ page }) => {
     await edit(page, 'Moved 1 note', { kind: 'move', beats: [5] })
     await stored(page)
     await page.evaluate(() => {
@@ -512,7 +512,11 @@ test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => 
     await openTab(page)
     await row(page, 'Moved 1 note').click()
     await expect(peekLine(page)).toHaveText('1 change')
-    expect(await changes(page)).toMatchObject({ rings: 1, dimmed: false })
+    expect(await changes(page)).toMatchObject({
+        rings: undefined,
+        ghosts: undefined,
+        dimmed: false,
+    })
 })
 
 test('a notice card stays clear of the adjacent spatial controls', async ({ page }) => {
@@ -764,7 +768,15 @@ test('Find Edits Here measures the live chart before and after peeking', async (
     await stored(page)
     await openTab(page)
     await row(page, 'Add').click()
-    await expect.poll(async () => (await changes(page)).band.top).toBeGreaterThan(100)
+    const barBottom = await page
+        .locator('[data-peek-bar]')
+        .evaluate(
+            (bar) =>
+                bar.getBoundingClientRect().bottom -
+                bar.closest('.chart-pane')!.getBoundingClientRect().top,
+        )
+    expect(barBottom).toBeGreaterThan(0)
+    await expect.poll(async () => (await changes(page)).band.top).toBe(barBottom)
     await page.locator('[data-peek-back]').click()
     await expect.poll(async () => (await changes(page)).band.top).toBe(0)
     const result = await page.evaluate(async () => {

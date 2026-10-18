@@ -838,7 +838,7 @@
         "measure": "마디",
         "both": "둘 다"
       },
-      "dimUnchangedObjects": "변경되지 않은 객체 흐리게 표시"
+      "dimUnchangedObjects": "기본적으로 변경 사항 표시"
     },
     "keyboardShortcuts": {
       "title": "키보드 단축키"
@@ -1253,7 +1253,8 @@
     "checking": "이전 단계 확인 중…",
     "notChecked": "{0}단계를 확인할 수 없음",
     "announceViewingChange": "{0} 보는 중, {1}",
-    "openedFile": "{0} 열림"
+    "openedFile": "{0} 열림",
+    "viewChart": "채보 보기"
   },
   "modals": {
     "close": "닫기",
@@ -1861,7 +1862,9 @@
     "changesBelow": "아래쪽의 변경: {0}",
     "changesAboveAny": "위쪽의 변경",
     "changesBelowAny": "아래쪽의 변경",
-    "savesCurrent": "현재 버전을 저장합니다."
+    "savesCurrent": "현재 버전을 저장합니다.",
+    "showEdits": "변경 사항 표시",
+    "changeOptions": "변경 사항 표시 옵션"
   },
   "save": {
     "fileName": "파일 이름",
@@ -2065,5 +2068,39 @@
   },
   "notSaving": {
     "bar": "변경 사항이 이 브라우저에 보관되고 있지 않습니다."
+  },
+  "historyChanges": {
+    "title": "속성 변경 사항",
+    "view": "속성 변경 사항 보기",
+    "before": "이전",
+    "after": "이후",
+    "notSet": "설정되지 않음",
+    "empty": "빈 값",
+    "notPresent": "없음",
+    "added": "추가됨",
+    "removed": "삭제됨",
+    "order": "순서",
+    "folder": "폴더",
+    "groupFolders": "그룹 폴더",
+    "stageFolders": "스테이지 폴더",
+    "levelInfo": "레벨 정보",
+    "fields": {
+      "title": "제목",
+      "artists": "아티스트",
+      "author": "제작자",
+      "description": "설명",
+      "tags": "태그",
+      "rating": "난이도",
+      "cover": "재킷",
+      "previewAudio": "미리 듣기",
+      "duration": "길이",
+      "size": "크기",
+      "type": "유형",
+      "icon": "아이콘"
+    },
+    "contentsChanged": "내용이 변경됨",
+    "showMore": "더 보기",
+    "shown": "속성: {0}/{1}",
+    "itemsShown": "항목: {0}/{1}"
   }
 }

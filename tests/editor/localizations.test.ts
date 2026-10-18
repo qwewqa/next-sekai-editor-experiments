@@ -244,6 +244,10 @@ const identicalToEnglish: Record<string, string[]> = {
         'elevation.auto',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // These French labels have the same spelling as English.
+        'historyChanges.fields.description',
+        'historyChanges.fields.tags',
+        'historyChanges.fields.type',
         // French spells "Version" the same.
         'load.version',
         'modals.form.bpm.label',

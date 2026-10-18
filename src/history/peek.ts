@@ -57,6 +57,7 @@ let effects: PeekEffects | undefined
 
 /** Set once storing has started: entries can be peeked from then on. */
 export const setPeekSource = (next: PeekSource | undefined) => {
+    leavePeek()
     source = next
     cache.clear()
     loading.clear()
@@ -70,9 +71,13 @@ export const setPeekEffects = (next: PeekEffects | undefined) => {
 export const isPeeking: Readonly<Ref<boolean>> = peeking
 
 const requested = shallowRef<EntryKey>()
+const displayed = shallowRef<EntryKey>()
 
 /** The entry last asked for, shown or still loading; undefined when not peeking. */
 export const peekedKey: Readonly<Ref<EntryKey | undefined>> = computed(() => requested.value)
+
+/** The loaded endpoint actually shown; the initial live placeholder is not ready. */
+export const displayedPeekKey: Readonly<Ref<EntryKey | undefined>> = computed(() => displayed.value)
 
 /** True once a peek has waited about 150 ms for its state: the peek bar's spinner. */
 export const peekLoading: Readonly<Ref<boolean>> = computed(() => spinning.value)
@@ -162,6 +167,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
     settlePrevious = undefined
     requested.value = key
     if (!peek.value) {
+        displayed.value = undefined
         // Drags and sessions end on the live state, before anything is peeked.
         for (const listener of [...startListeners]) listener()
         peek.value = { source: key, state: shown(liveState.value) }
@@ -200,6 +206,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
             settlePrevious = undefined
             stopTimers()
             peek.value = { source: key, state: shown(entry.state) }
+            displayed.value = key
             resolve()
         }
         if (quick) timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
@@ -234,6 +241,7 @@ export const leavePeek = () => {
     settlePrevious?.()
     settlePrevious = undefined
     requested.value = undefined
+    displayed.value = undefined
     if (!peek.value) return
     peek.value = undefined
     for (const listener of [...leftListeners]) listener()
@@ -243,6 +251,7 @@ export const leavePeek = () => {
 watch(
     peek,
     (value) => {
+        if (!value) displayed.value = undefined
         if (value || !requested.value) return
         generation++
         stopTimers()

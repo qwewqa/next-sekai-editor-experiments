@@ -10,6 +10,7 @@ const prefix = 'sonolus-next-sekai-editor.'
 /** Seeds every page of the context: the storage hooks, a fixed version, and the panels away. */
 const seed = (context: BrowserContext, extra: Record<string, string> = {}) =>
     context.addInitScript((extra) => {
+        if (location.href === 'about:blank') return
         performance.setResourceTimingBufferSize(5000)
         localStorage.setItem('nse.test.storage', '{}')
         localStorage.setItem(

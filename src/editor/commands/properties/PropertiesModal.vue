@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { i18n } from '../../../i18n'
 import FormModal from '../../../modals/form/FormModal.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
+import { statusName } from '../../labelText'
 
 const props = defineProps<{
     initialLife: number
@@ -23,6 +24,12 @@ const model = ref(props.initialLife)
         @close="$emit('close')"
         @submit="$emit('close', model)"
     >
+        <p
+            class="min-w-0 select-text whitespace-pre-wrap [overflow-wrap:anywhere]"
+            data-status-summary
+        >
+            {{ statusName }}
+        </p>
         <fieldset class="contents" :disabled="readOnly">
             <NumberField
                 v-model="model"
