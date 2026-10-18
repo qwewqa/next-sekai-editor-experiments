@@ -297,8 +297,14 @@ export const markFileEvent = (
     emitHistoryAction({ kind, state: currentState.value, name, isDirty })
 }
 
+/** Counts the stacks replaced (a reset, a stored stack): what an entry's Restore is relative to. */
+let stacks = 0
+
+export const stackGeneration = () => stacks
+
 /** Replaces the whole history with one entry, leaving any peek. */
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
+    stacks++
     cancelPendingMoves()
     peek.value = undefined
     index.value = 0
@@ -322,6 +328,7 @@ export type RestoredSlot = { snapshot?: Uint8Array; label: string; isDirty: bool
 export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: State) => {
     const slot = slots[at]
     if (!slot) throw new RangeError('The index is outside the stack')
+    stacks++
     cancelPendingMoves()
     peek.value = undefined
     loadedRestored.length = 0

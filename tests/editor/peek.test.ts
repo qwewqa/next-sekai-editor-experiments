@@ -283,3 +283,12 @@ test('runCommand refuses edits while peeking and says why; Open, New, Undo and R
     assert.deepEqual(edit.runs, [false])
     stop()
 })
+
+test('a Restore whose session a New replaced meanwhile pushes nothing', async () => {
+    source({ [key(1)]: { state: fake('old'), time: 1 } })
+    const restoring = restoreEntry(key(1))
+    resetStates({ isDirty: false, name: () => 'new', state: fake('new') })
+    await restoring
+    assert.equal(nameOf(liveState.value), 'new')
+    assert.deepEqual(notices, [])
+})

@@ -1,6 +1,6 @@
 import { computed, shallowRef, watch, type Ref } from 'vue'
 import type { State } from '../state'
-import { liveState, peek, isPeeking as peeking, pushState } from './stack'
+import { liveState, peek, isPeeking as peeking, pushState, stackGeneration } from './stack'
 
 // Peek (Part 1 §1.4.11): a History entry's state shown read-only in place of the current one,
 // and Restore (§1.4.10.5). Writers read `liveState`, so nothing peeked reaches storage or files.
@@ -244,7 +244,10 @@ watch(
  * the current chart, nothing is pushed.
  */
 export const restoreEntry = async (key: EntryKey): Promise<void> => {
+    const stack = stackGeneration()
     const entry = await loadEntry(key)
+    // A New or an open meanwhile replaced the session it belongs to.
+    if (stackGeneration() !== stack) return
     leavePeek()
     const live = liveState.value
     const restored: State = {
