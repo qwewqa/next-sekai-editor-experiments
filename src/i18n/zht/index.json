@@ -1729,6 +1729,8 @@
       "duplicated": "已為 {0} 資料夾建立複本"
     },
     "manager": {
+      "currentGroup": "目前圖層",
+      "currentStage": "目前舞台",
       "show": "顯示 {0}",
       "hide": "隱藏 {0}",
       "actions": "{0} 的更多操作",
@@ -1838,6 +1840,8 @@
     "unsupportedParts": "\"{0}\" 包含此版本編輯器不支援的部分。"
   },
   "peek": {
+    "loadingShort": "載入中…",
+    "unavailableShort": "無法取得",
     "settingsChanged": "設定已變更",
     "initialState": "初始狀態",
     "unavailable": "無法取得變更",
@@ -1991,6 +1995,7 @@
     "leaveAnyway": "仍然離開"
   },
   "status": {
+    "separateCopyShort": "獨立副本",
     "notInFile": "未儲存到檔案",
     "separateCopy": "{0} 的獨立副本",
     "opensLevelInfo": "開啟關卡資訊",

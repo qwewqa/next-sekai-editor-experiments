@@ -1729,6 +1729,8 @@
       "duplicated": "Dossier {0} dupliqué"
     },
     "manager": {
+      "currentGroup": "Groupe actuel",
+      "currentStage": "Scène actuelle",
       "show": "Afficher {0}",
       "hide": "Masquer {0}",
       "actions": "Plus d’actions pour {0}",
@@ -1838,6 +1840,8 @@
     "unsupportedParts": "\"{0}\" contient des parties que cette version de l’éditeur ne prend pas en charge."
   },
   "peek": {
+    "loadingShort": "Chargement…",
+    "unavailableShort": "Indisponible",
     "settingsChanged": "Paramètres modifiés",
     "initialState": "État initial",
     "unavailable": "Modifications indisponibles",
@@ -1991,6 +1995,7 @@
     "leaveAnyway": "Quitter quand même"
   },
   "status": {
+    "separateCopyShort": "Copie séparée",
     "notInFile": "Non sauvegardé dans un fichier",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau",

@@ -1729,6 +1729,8 @@
       "duplicated": "已为 {0} 文件夹创建副本"
     },
     "manager": {
+      "currentGroup": "当前群组",
+      "currentStage": "当前舞台",
       "show": "显示 {0}",
       "hide": "隐藏 {0}",
       "actions": "{0} 的更多操作",
@@ -1838,6 +1840,8 @@
     "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
   },
   "peek": {
+    "loadingShort": "加载中…",
+    "unavailableShort": "无法获取",
     "settingsChanged": "设置已更改",
     "initialState": "初始状态",
     "unavailable": "无法获取更改",
@@ -1991,6 +1995,7 @@
     "leaveAnyway": "仍然离开"
   },
   "status": {
+    "separateCopyShort": "单独副本",
     "notInFile": "未保存到文件",
     "separateCopy": "{0} 的单独副本",
     "opensLevelInfo": "打开关卡信息",
