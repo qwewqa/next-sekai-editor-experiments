@@ -84,7 +84,6 @@ const pendingEntries = (): Entry[] => {
 
 /** Every entry newest first: those waiting to be stored, then the stored ones; after a jump, the window. */
 export const entries = computed((): Entry[] => {
-    if (historyFilter.value === 'here') return [...here.matches]
     const read = loadedFor.value === session.value.sessionId ? stored.value : []
     if (newer.value) return [...read]
     const have = new Set(read.map(entryId))
@@ -96,6 +95,11 @@ export const entries = computed((): Entry[] => {
             : entry,
     )
 })
+
+/** What the Timeline lists: Edits Here's matches while it filters, else every entry. */
+export const listedEntries = computed((): Entry[] =>
+    historyFilter.value === 'here' ? [...here.matches] : entries.value,
+)
 
 const isJumped = () => newer.value !== undefined
 

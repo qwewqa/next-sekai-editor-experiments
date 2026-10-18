@@ -51,6 +51,7 @@ import {
     followEntries,
     gap,
     here,
+    listedEntries,
     jumpTo as jumpToEntry,
     jumpToOldest,
     loadingMore,
@@ -95,7 +96,7 @@ const tickClock = () => {
 tickClock()
 
 const built = computed(() =>
-    buildRows(entries.value, {
+    buildRows(listedEntries.value, {
         filter: historyFilter.value,
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
@@ -260,7 +261,7 @@ watch([peekedKey, () => rows.value], () => {
 
 /** What a peek of an entry names, and what it is compared with: before `oldest`, its run's. */
 const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
-    const previous = previousOf(entries.value, oldest)
+    const previous = previousOf(listedEntries.value, oldest)
     return {
         key: keyOf(entry),
         time: entry.time,
