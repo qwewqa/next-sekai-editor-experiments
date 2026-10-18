@@ -486,3 +486,15 @@ test('an append that meets damage in the chain’s own file writes nothing and s
     assert.ok('refused' in built)
     assert.equal(built.refused, 'damagedSource')
 })
+
+test('a file past a reader cap is refused with the cap named, nothing built', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.flush()
+    // Unknown project.json keys carried back past project.json's 1 MB cap.
+    await fixture.putChain({ extra: { zz: 'x'.repeat(1_100_000) } })
+    const { built } = await save(fixture, { kind: 'copy' }, { event: 'downloaded' })
+    assert.ok('refused' in built)
+    assert.equal(built.refused, 'plan')
+    assert.equal(built.limit, 'project')
+})

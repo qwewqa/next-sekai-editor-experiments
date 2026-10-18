@@ -13,7 +13,7 @@ import {
 } from '../nxsp/build'
 import { isObject } from '../nxsp/json'
 import type { EntryForm } from '../nxsp/manifest'
-import { PlanError, type PinnedSource, type WritePlan } from '../nxsp/plan'
+import { PlanError, type PinnedSource, type PlanLimit, type WritePlan } from '../nxsp/plan'
 import { placedCompleteFrom, type DeviceForm, type RevisionForm } from '../nxsp/project'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
@@ -138,7 +138,12 @@ export type SaveRefusalReason =
     /** A plan error: a bug, or a file past a reader cap. */
     | 'plan'
 
-export type SaveRefusal = { refused: SaveRefusalReason; message?: string }
+export type SaveRefusal = {
+    refused: SaveRefusalReason
+    message?: string
+    /** With `plan`: the reader cap the file would pass, for the Save's message (else a bug). */
+    limit?: PlanLimit
+}
 
 /** The identity unit a write that binds commits after it (§1.3.2, §1.6.11.6). */
 export type SaveIdentity = {
@@ -180,9 +185,10 @@ export const setSaveHooksForTests = (next: Hooks) => {
     hooks = next
 }
 
-const refuse = (refused: SaveRefusalReason, message?: string): SaveRefusal => ({
+const refuse = (refused: SaveRefusalReason, message?: string, limit?: PlanLimit): SaveRefusal => ({
     refused,
     ...(message === undefined ? {} : { message }),
+    ...(limit === undefined ? {} : { limit }),
 })
 
 export const isRefusal = (value: unknown): value is SaveRefusal =>
@@ -563,6 +569,7 @@ export const planSave = async (
         editor: headInput.editor,
         summary: headInput.summary,
         levelInfo: headInput.levelInfo,
+        headBgm: headInput.bgm?.hash ?? null,
         media,
         ...(chain.extra ? { extra: chain.extra } : {}),
         ...(history ? { history } : {}),
@@ -580,7 +587,7 @@ export const planSave = async (
     } catch (error) {
         if (error instanceof PlanError) {
             console.error('A save plan failed', error)
-            return refuse('plan', error.message)
+            return refuse('plan', error.message, error.limit)
         }
         throw error
     }
