@@ -148,7 +148,11 @@ test('a download browser never requests nse-bind', async ({ page }) => {
         const names: string[] = []
         ;(window as { lockNames?: string[] }).lockNames = names
         const request = LockManager.prototype.request
-        LockManager.prototype.request = function (name: string, ...rest: unknown[]) {
+        LockManager.prototype.request = function (
+            this: LockManager,
+            name: string,
+            ...rest: unknown[]
+        ) {
             names.push(name)
             return (request as (...args: unknown[]) => Promise<unknown>).call(this, name, ...rest)
         } as typeof request
