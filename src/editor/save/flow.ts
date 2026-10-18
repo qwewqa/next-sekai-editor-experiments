@@ -36,7 +36,13 @@ import { settings } from '../../settings'
 import type { State } from '../../state'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { validName } from '../commands/exportLevel/fileName'
-import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
+import {
+    clearExportDestination,
+    exportMemory,
+    sameEntry,
+    type OpenedSource,
+} from '../commands/exportLevel/memory'
+import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import type { ProjectPick } from '../commands/exportLevel/pick'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
@@ -285,6 +291,7 @@ const fromOf = (env: Env): IdentityUnit['from'] => {
 const unitOf = (env: Env, built: BuiltSave, file: Row): IdentityUnit => {
     const from = fromOf(env)
     return {
+        ...(built.identity.clearExport ? { clearExport: true } : {}),
         docId: built.identity.docId,
         revision: built.identity.revision,
         file,
@@ -314,6 +321,7 @@ const markerOf = (
     },
     parent,
     unit: {
+        ...(built.identity.clearExport ? { clearExport: true } : {}),
         docId: built.identity.docId,
         revision: built.identity.revision,
         file: markerFile(file),
@@ -345,6 +353,7 @@ const bindWrite = async (
         unitOf(env, built, file),
     )
     if (currentSession.value.sessionId === reservation.session.id) {
+        if (built.identity.clearExport) clearExportDestination()
         const { copyOf: _copy, ...rest } = currentSession.value
         currentSession.value = { ...rest, docId: built.identity.docId }
         bindFile(
@@ -1116,6 +1125,8 @@ const ownCompletedSave = async (
         })
         .catch(() => false)
     if (!done) return false
+    if (unit.clearExport && currentSession.value.sessionId === env.session.id)
+        clearExportDestination()
     removeMarker(env.chainId, marker.entry.revisionId)
     rememberHandle(env.chainId, handle)
     const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
@@ -2126,6 +2137,13 @@ export const endExportRead = () => {
     exportRead = undefined
 }
 
+/** A destination never registered here still cannot write over another known owner. */
+export const exportTargetAvailable = async (handle: FileSystemFileHandle) => {
+    const env = environment()
+    if (!env) return true
+    return knownTargetAvailable(env.worker, env.chainId, handle)
+}
+
 /**
  * A pick in Export's picker, under `nse-bind` exclusive held across Export's write (§1.4.8): this
  * chain's own `.nxsp` is written again keeping its identity (from the bytes read first, R2) and
@@ -2141,6 +2159,7 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
         (picked.kind === 'target' && picked.owner.chainId !== env.chainId)
     ) {
         const done = await revoke(env, picked.owner, undefined)
+        if (!done.ok) return { show: () => afterOutcome(env, notTakenOver(handle.name)) }
         if (done.revoked) broadcastUpdated()
         return 'taken'
     }

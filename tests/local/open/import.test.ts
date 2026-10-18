@@ -451,3 +451,24 @@ test('an import abandoned before its rows batch never lets a later Save carry th
         false,
     )
 })
+
+test('a refused media Blob preserves the imported history and reports missing media', async () => {
+    const s = await setup(112)
+    const { file, hashes } = await freshFile()
+    const reply = nxsp(await s.run(() => s.open.openRead(file)))
+    s.world.memory.faults.refuseBlobs = true
+    const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
+    assert.equal(stored.kind, 'stored')
+    if (stored.kind !== 'stored') return
+    await runAll(s, reply.id, stored.batches)
+    assert.equal(s.page.core.status.mode, 'stored')
+    assert.equal(s.page.core.status.reason, undefined)
+    assert.equal(s.page.core.status.mediaPending?.length, 2)
+    assert.equal(rows(s.world, 'media').size, 0)
+    assert.equal(sessionRow(s.world)?.importPending, undefined)
+    assert.equal(sessionEntries(s.world).length, 5)
+    for (const hash of hashes) {
+        assert.ok(storedRecords(s.world, fromHex16(hash)))
+        assert.equal((await s.run(() => s.peek.readSnapshotVerified(hash))).kind, 'found')
+    }
+})

@@ -313,12 +313,20 @@ export const heldMediaOf = (state: State): BatchMedia[] => {
 }
 
 /** The unit as a batch carries it. */
-const unitOf = ({ docId, revision, file, marks, from }: PendingIdentity): IdentityUnit => ({
+const unitOf = ({
+    docId,
+    revision,
+    file,
+    marks,
+    from,
+    clearExport,
+}: PendingIdentity): IdentityUnit => ({
     docId,
     revision,
     file,
     marks,
     ...(from ? { from } : {}),
+    ...(clearExport ? { clearExport } : {}),
 })
 
 /** Recent Sessions' summary of a head (§1.6.11.2). */
@@ -598,6 +606,19 @@ export class Flusher {
         return session
     }
 
+    /** Commits file ownership only now, after earlier identity changes, never on a later retry. */
+    async setChainFieldsNow(fields: Record<string, unknown>): Promise<boolean> {
+        const session = this.current
+        if (!session) return false
+        if (!session.stored || session.identity || this.active) {
+            session.atOnce = true
+            await this.flush({ strict: true })
+        }
+        if (this.current !== session || !session.stored || session.identity || this.noDatabase)
+            return false
+        return this.setChainFields(fields, false)
+    }
+
     /**
      * Sets chain fields of the current session (§1.3.1: a rename, Export's target and name),
      * `undefined` removing one. A session not stored yet commits its first row with them, as a
@@ -605,9 +626,14 @@ export class Flusher {
      * and one that isn't the head any more goes on as a fork, which takes them. Resolves whether
      * they're stored.
      */
-    setChainFields(fields: Record<string, unknown>): Promise<boolean> {
+    setChainFields(fields: Record<string, unknown>, defer = true): Promise<boolean> {
         const session = this.current
         if (!session) return Promise.resolve(false)
+        // A first write already in flight must settle before deciding how to store fields.
+        if (!session.stored && this.active)
+            return this.running.then(() =>
+                this.current === session ? this.setChainFields(fields, defer) : false,
+            )
         const set: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(fields)) set[key] = value ?? null
         const chain: Record<string, unknown> = { ...session.chain }
@@ -621,7 +647,8 @@ export class Flusher {
             return this.flush({ strict: true }).then(() => target.stored && !target.chainSet)
         }
         const writeChain = this.deps.writeChain
-        if (!session.stored || !writeChain) return viaFirstWrite(session)
+        if (!session.stored || !writeChain)
+            return defer ? viaFirstWrite(session) : Promise.resolve(false)
         const run = this.running.then(async (): Promise<boolean> => {
             await session.ready
             let result: ChainWriteResult
@@ -653,7 +680,7 @@ export class Flusher {
                         head.hash,
                         false,
                     )
-                void viaFirstWrite(fork)
+                if (defer) void viaFirstWrite(fork)
             }
             return false
         })
@@ -737,7 +764,15 @@ export class Flusher {
             const added: PendingEntry = { ...entry, seq, kind: 'save', dirty: false }
             if (at === -1) session.pending.push(added)
             else session.pending.splice(at, 0, added)
-            if (identity) session.identity = { ...identity, seq }
+            if (identity) {
+                session.identity = { ...identity, seq }
+                if (identity.clearExport) {
+                    delete session.chain?.exportTarget
+                    delete session.chain?.exportName
+                    delete session.chainSet?.exportTarget
+                    delete session.chainSet?.exportName
+                }
+            }
         } else if (keep) (session.gaps ??= new Set()).add(seq)
         else if (session.nextSeq - 1 === seq) session.nextSeq--
         return this.flush({ strict: true })

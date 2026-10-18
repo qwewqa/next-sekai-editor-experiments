@@ -9,7 +9,7 @@ import { putChunk } from './putChunk'
 import { nodeRow, rootRow, type NodesRow } from './records/rows'
 import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
-import { storeMarks, unitApplies, type IdentityUnit } from './save/commit'
+import { clearIdentityExport, storeMarks, unitApplies, type IdentityUnit } from './save/commit'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
 import {
@@ -697,6 +697,7 @@ export const writeFlush = async (
             chainValue.docId = batch.identity.docId
             chainValue.revision = batch.identity.revision
             chainValue.file = own.file
+            await clearIdentityExport(tx, chainId, chainValue, batch.identity)
             delete chainValue.replaced
         }
     }

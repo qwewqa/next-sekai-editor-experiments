@@ -59,6 +59,24 @@ export const exportMemory: ExportMemory = {}
 
 /** The stored target as read, while this tab has not read its handle: kept as it is. */
 let storedTarget: ExportChainFields['exportTarget'] | undefined
+const registered = new WeakMap<ExportTarget, { name: string; fingerprint: string }>()
+
+/** A rewrite retains its last stored ownership even when the next metadata write fails. */
+export const replaceExportTarget = async (target: ExportTarget) => {
+    const previous = exportMemory.target
+    const registration = previous && registered.get(previous)
+    if (registration && (await sameEntry(previous.handle, target.handle)))
+        registered.set(target, registration)
+    exportMemory.target = target
+}
+
+/** Drops the destination and name after a new-identity Save As. */
+export const clearExportDestination = () => {
+    storedTarget = undefined
+    delete exportMemory.target
+    delete exportMemory.exportName
+    delete exportMemory.sourceName
+}
 
 /** Forgets the target and names, as a new chart does. */
 export const clearExportMemory = () => {
@@ -81,7 +99,8 @@ export type ExportChainFields = {
     partialImport: true
 }
 
-let persist: ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => void) | undefined
+let persist:
+    ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => Promise<boolean>) | undefined
 
 /** Where the memory is stored: the open session's chain record, set once storing starts. */
 export const setExportPersister = (fn: typeof persist) => {
@@ -96,10 +115,10 @@ export const setExportHandleReader = (fn: typeof readHandle) => {
 }
 
 /** Stores the memory on the chain record, as it is now. */
-export const rememberExport = () => {
+export const rememberExport = async () => {
     const { target, exportName, partial } = exportMemory
     const handle = target && storableHandleNow(target.handle)
-    persist?.({
+    const stored = await persist?.({
         // A target read back whose handle this tab hasn't read stays as it is, its handle too.
         ...(target || !storedTarget
             ? {
@@ -116,6 +135,46 @@ export const rememberExport = () => {
         exportName,
         partialImport: partial ? true : undefined,
     })
+    if (stored && target)
+        registered.set(target, { name: target.name, fingerprint: target.disk.fingerprint })
+}
+
+let readTarget: (() => Promise<unknown>) | undefined
+let unregisteredCheck: ((target: ExportTarget) => Promise<boolean>) | undefined
+
+export const setUnregisteredTargetCheck = (check: typeof unregisteredCheck) => {
+    unregisteredCheck = check
+}
+
+export const setExportTargetReader = (read: typeof readTarget) => {
+    readTarget = read
+}
+
+/** Rechecks ownership; a failed read never authorizes a previously registered destination. */
+export const ownsExportTarget = async (target: ExportTarget) => {
+    if (exportMemory.target !== target) return false
+    if (!readTarget) return true
+    const record = await readTarget().catch(() => undefined)
+    if (isObject(record) && isObject(record.exportTarget)) {
+        const current = record.exportTarget
+        const expected = registered.get(target) ?? {
+            name: target.name,
+            fingerprint: target.disk.fingerprint,
+        }
+        if (
+            current.name === expected.name &&
+            isObject(current.disk) &&
+            current.disk.fingerprint === expected.fingerprint
+        ) {
+            registered.set(target, expected)
+            return true
+        }
+    }
+    if (!registered.has(target) && (!unregisteredCheck || (await unregisteredCheck(target))))
+        return true
+    if (exportMemory.target === target) delete exportMemory.target
+    storedTarget = undefined
+    return false
 }
 
 const hasTarget = () => exportMemory.target !== undefined
@@ -126,7 +185,10 @@ const hasTarget = () => exportMemory.target !== undefined
  */
 export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
     const stored = storedTarget
-    if (exportMemory.target || !stored || !readHandle) return exportMemory.target
+    if (exportMemory.target) {
+        return (await ownsExportTarget(exportMemory.target)) ? exportMemory.target : undefined
+    }
+    if (!stored || !readHandle) return
     const handle = await readHandle().catch(() => undefined)
     // An Export or a new chart meanwhile has its own target.
     if (handle && !hasTarget() && storedTarget === stored) {
@@ -136,7 +198,12 @@ export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
             disk: stored.disk,
             exported: stored.opened !== true,
         }
+        registered.set(exportMemory.target, {
+            name: stored.name,
+            fingerprint: stored.disk.fingerprint,
+        })
         storedTarget = undefined
+        if (!(await ownsExportTarget(exportMemory.target))) return
     }
     return exportMemory.target
 }

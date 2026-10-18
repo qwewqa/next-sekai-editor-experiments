@@ -185,6 +185,7 @@ export type SaveRefusal = {
 
 /** The identity unit a write that binds commits after it (§1.3.2, §1.6.11.6). */
 export type SaveIdentity = {
+    clearExport?: true
     docId: string
     revision: { id: string; n: number; ancestors: string[] }
     /** As written, placed; absent without history. */
@@ -725,7 +726,7 @@ export const planSave = async (
         id: docId,
         lineageId: chain.lineageId,
         ...(chain.name === undefined ? {} : { name: chain.name }),
-        ...(chain.exportName === undefined ? {} : { exportName: chain.exportName }),
+        ...(fresh || chain.exportName === undefined ? {} : { exportName: chain.exportName }),
         revision: {
             parent,
             n,
@@ -791,6 +792,7 @@ export const planSave = async (
         without,
         tooLarge,
         identity: {
+            ...(fresh ? { clearExport: true as const } : {}),
             docId,
             revision: { id: revisionId, n, ancestors },
             ...(writtenFrom === undefined ? {} : { completeFrom: writtenFrom }),

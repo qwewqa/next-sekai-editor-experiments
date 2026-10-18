@@ -4,6 +4,7 @@ import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { createWorld } from '../../../src/local/testing/world'
+import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
@@ -210,4 +211,142 @@ test('an identity unit whose binding was taken over meanwhile is dropped, never 
     // Dropped from memory too, while the `save` entry is stored.
     assert.equal(session.identity, undefined)
     assert.ok([...rows(world, 'entries').values()].some((row) => row.kind === 'save'))
+})
+
+test('Export fields set while the first write is in flight survive its acknowledgement', async () => {
+    const world = createWorld({ seed: 117 })
+    let reached!: () => void
+    let release!: () => void
+    const atTransport = new Promise<void>((resolve) => {
+        reached = resolve
+    })
+    const hold = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    let first = true
+    const page = await openPage(world, world.tab('a'), {
+        transport: async (batch) => {
+            const result = await page.tab.run(() => page.handlers.flush(batch))
+            if (first) {
+                first = false
+                reached()
+                await hold
+            }
+            return result
+        },
+        writeChain: (request) =>
+            page.tab.run(() =>
+                startupHandlers({
+                    core: page.core,
+                    test: true,
+                    emit: () => undefined,
+                }).writeChainFields(request),
+            ),
+    })
+    begin(page, stateOf(goldenChart()))
+    const writing = page.flusher.flush()
+    await atTransport
+    const metadata = page.flusher.setChainFields({
+        exportName: 'Coconut',
+        exportTarget: {
+            name: 'LevelData',
+            handle: { testHandle: 'LevelData' },
+            disk: { fingerprint: 'abc', size: 12, lastModified: 0 },
+        },
+    })
+    release()
+    await writing
+    assert.equal(await metadata, true)
+    const [chain] = rows(world, 'chains').values()
+    assert.equal(chain!.exportName, 'Coconut')
+    assert.equal((chain!.exportTarget as Record<string, unknown>).name, 'LevelData')
+    assert.equal(rows(world, 'handles').size, 1)
+})
+
+const exportFields = {
+    exportName: 'New export',
+    exportTarget: {
+        name: 'NewLevelData',
+        handle: { testHandle: 'NewLevelData' },
+        disk: { fingerprint: 'abc', size: 12, lastModified: 0 },
+    },
+}
+
+const metadataPage = async (seed: number) => {
+    const world = createWorld({ seed })
+    let fail = false
+    const page = await openPage(world, world.tab('a'), {
+        transport: (batch) => {
+            if (fail) return Promise.reject(new Error('Storage paused'))
+            return page.tab.run(() => page.handlers.flush(batch))
+        },
+        writeChain: (request) =>
+            page.tab.run(() =>
+                startupHandlers({
+                    core: page.core,
+                    test: true,
+                    emit: () => undefined,
+                }).writeChainFields(request),
+            ),
+    })
+    return {
+        world,
+        page,
+        fail: (value: boolean) => {
+            fail = value
+        },
+    }
+}
+
+test('failed first Export registration is never deferred into an ordinary retry flush', async () => {
+    const { world, page, fail } = await metadataPage(118)
+    const session = begin(page, stateOf(goldenChart()))
+    fail(true)
+    assert.equal(await page.flusher.setChainFieldsNow(exportFields), false)
+    assert.equal(session.chainSet?.exportTarget, undefined)
+    fail(false)
+    await page.flusher.flush()
+    const [chain] = rows(world, 'chains').values()
+    assert.equal(chain!.exportTarget, undefined)
+    assert.equal(rows(world, 'handles').size, 0)
+    assert.equal(await page.flusher.setChainFieldsNow(exportFields), true)
+    assert.equal(rows(world, 'handles').size, 1)
+})
+
+test('new Export metadata commits after a pending Save As identity and survives later flushes', async () => {
+    const { world, page, fail } = await metadataPage(119)
+    const state = stateOf(goldenChart())
+    const session = begin(page, state)
+    await page.flusher.flush()
+    await page.flusher.setChainFieldsNow({ ...exportFields, exportName: 'Old export' })
+    const reservation = page.flusher.reserveSave()!
+    fail(true)
+    await page.flusher.endSave(
+        reservation,
+        {
+            wall: reservation.wall,
+            label: () => 'Saved copy',
+            state,
+            revisionId: 'new-revision',
+            device: DEVICE,
+        },
+        {
+            clearExport: true,
+            docId: 'new-document',
+            revision: { id: 'new-revision', n: 1, ancestors: [] },
+            file: { name: 'copy.nxsp', at: reservation.wall },
+            marks: [],
+        },
+    )
+    assert.equal(session.identity?.clearExport, true)
+    fail(false)
+    assert.equal(await page.flusher.setChainFieldsNow(exportFields), true)
+    assert.equal(session.identity, undefined)
+    page.flusher.append('edit', () => 'Later edit', widen(state), true)
+    await page.flusher.flush()
+    const [chain] = rows(world, 'chains').values()
+    assert.equal(chain!.docId, 'new-document')
+    assert.equal(chain!.exportName, 'New export')
+    assert.equal((chain!.exportTarget as Record<string, unknown>).name, 'NewLevelData')
+    assert.equal(rows(world, 'handles').size, 1)
 })

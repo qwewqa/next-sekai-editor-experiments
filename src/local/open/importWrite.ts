@@ -69,6 +69,7 @@ export type OpenStoreRequest = {
 }
 
 export type OpenStoreResult = {
+    mediaFailed?: string[]
     kind: 'stored'
     /** The live state's root: the binding's `hash`. */
     head: Uint8Array
@@ -325,12 +326,14 @@ export const writeOpenHead = async (
     const day = await countDayOfUse(tx, now)
 
     let ownBytes = 0
+    let mediaFailed: string[] | undefined
     if (prepared.foreign) {
         const roots = history ? [fromHex16(history.head)] : []
         const result = await writeForeign(tx, prepared.foreign, roots, day)
         // The reader resolved every part of the head, so nothing can be missing but by a bug.
         if (result.kind !== 'stored')
             throw new Error(`The opened file’s head lacks ${result.hashes.join(', ')}`)
+        mediaFailed = result.mediaFailed
         for (const chunk of prepared.foreign.chunks.values()) ownBytes += chunk.stored.length
     }
     ownBytes += await putRecords(tx, prepared.records, day)
@@ -456,7 +459,14 @@ export const writeOpenHead = async (
     }
     await tx.put('chains', chain)
     await writeMeta(tx, 'maxSeenTime', maxSeen)
-    return { kind: 'stored', head: head.slice(), lastSeq: seq, chain, importPending }
+    return {
+        kind: 'stored',
+        head: head.slice(),
+        lastSeq: seq,
+        chain,
+        importPending,
+        ...(mediaFailed ? { mediaFailed } : {}),
+    }
 }
 
 export type BatchOutcome =

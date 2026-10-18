@@ -9,7 +9,6 @@ import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
-import { sweepKept } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
@@ -309,9 +308,8 @@ export const startStorage = async () => {
             // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
-                // Kept bytes no tab holds (§1.5.4) and markers of deleted chains go.
+                // Only markers of definitely deleted chains can be reclaimed here.
                 const sweep = () => {
-                    void sweepKept(worker, platform.locks)
                     void sweepMarkers(worker)
                 }
                 if (typeof requestIdleCallback === 'function')

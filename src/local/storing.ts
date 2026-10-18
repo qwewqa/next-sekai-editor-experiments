@@ -1,8 +1,14 @@
-import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
+import {
+    setExportHandleReader,
+    setExportPersister,
+    setExportTargetReader,
+    setUnregisteredTargetCheck,
+} from '../editor/commands/exportLevel/memory'
 import {
     setExportReads,
     setPickLock,
     setProjectPickCheck,
+    setTargetLock,
 } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
@@ -32,7 +38,6 @@ import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
-import { dropKept } from './open/kept'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
@@ -197,18 +202,6 @@ export const LEGACY_IDLE_MS = 45_000
 const whenIdle = (fn: () => void) => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 5000 })
     else setTimeout(fn, 0)
-}
-
-/** The fields that differ from a chain record's, `undefined` meaning absent. */
-const changedFields = (
-    chain: Record<string, unknown> | undefined,
-    fields: Record<string, unknown>,
-) => {
-    const changed: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(fields))
-        if (value === undefined ? chain !== undefined && key in chain : chain?.[key] !== value)
-            changed[key] = value
-    return changed
 }
 
 export type StoringOptions = {
@@ -378,9 +371,13 @@ export const startStoring = (
     })
 
     // Export's target and name are the open chain's fields (§1.4.8).
-    setExportPersister((fields) => {
-        const changed = changedFields(instance.session?.chain, fields)
-        if (Object.keys(changed).length) void instance.setChainFields(changed)
+    setExportPersister((fields) => instance.setChainFieldsNow(fields))
+    setExportTargetReader(async () => {
+        const session = instance.session
+        if (!session?.stored) return
+        const record = await worker.call('readChainRecord', session.chainId)
+        if (instance.session !== session) return {}
+        return record
     })
     // Its handle is the chain's too, read when Export needs it (D24).
     checkPrivateWindow()
@@ -422,9 +419,6 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                // A partial open's kept bytes go with its session (§1.5.4).
-                if (leaving && leaving.chainId !== begun.chainId && !safe)
-                    void dropKept(worker, leaving.chainId)
                 if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return
             }
@@ -462,8 +456,12 @@ export const startStoring = (
     watchBindings(worker, () => flusher)
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
+    setUnregisteredTargetCheck(async (target) =>
+        (await flows()).exportTargetAvailable(target.handle),
+    )
     setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
     setPickLock((run) => withBind('exclusive', run))
+    setTargetLock((run) => withBind('shared', run))
     setExportReads({
         start: () =>
             void flows().then((flow) => {

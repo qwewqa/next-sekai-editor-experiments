@@ -352,7 +352,7 @@ const unlinkedSession = (
         currentSession.value = { ...rest, docId, copyOf }
         writeTabRecord({ sessionId, start: 'stored', copyOf })
         exportMemory.partial = true
-        rememberExport()
+        void rememberExport()
         const chainId = record.chainId
         if (kept && typeof chainId === 'string') keepBytes(kept.file, kept.handle, chainId, true)
     }

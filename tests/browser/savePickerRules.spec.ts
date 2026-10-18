@@ -259,31 +259,73 @@ test('a version on disk that cannot be put back is offered as a download', async
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
 })
 
-test('a partial open’s file is refused and put back after a reload too', async ({ page }) => {
-    await start(page)
-    const file = await crafted((items) => {
-        items.push({ name: 'video/clip.mp4', data: new Uint8Array([1, 2, 3]), method: 'store' })
+for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
+    test(`a partial original survives ${lifecycle} and is restored after the picker`, async ({
+        page,
+        context,
+    }) => {
+        const other = lifecycle === 'reload gap' ? await context.newPage() : undefined
+        if (other) {
+            await other.addInitScript(() => {
+                const idle = window.requestIdleCallback
+                window.requestIdleCallback = (callback, options) => {
+                    if (callback.name !== 'sweep') return idle(callback, options)
+                    callback({ didTimeout: false, timeRemaining: () => 50 })
+                    return 0
+                }
+            })
+            await start(other)
+            await edit(other, 9)
+            await flushed(other)
+        }
+        await start(page)
+        const file = await crafted((items) => {
+            items.push({ name: 'video/clip.mp4', data: new Uint8Array([1, 2, 3]), method: 'store' })
+        })
+        const bytes = [...new Uint8Array(await file.arrayBuffer())]
+        await writeFile(page, 'coconut.nxsp', bytes)
+        await queuePicks(page, ['coconut.nxsp'])
+        await page.keyboard.press('o')
+        await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+        await edit(page, 3)
+        await flushed(page)
+        if (lifecycle === 'switch and reopen') {
+            const originalDoc = (await sessionOf(page)).docId
+            await page.keyboard.press('n')
+            await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+            await page.getByRole('button', { name: /^Reopen / }).click()
+            await expect.poll(async () => (await sessionOf(page)).docId).toBe(originalDoc)
+            await edit(page, 3.5)
+            await flushed(page)
+        }
+        const opened = (await sessionOf(page)).sessionId
+        if (other) {
+            await page.goto('about:blank')
+            await other.reload()
+            await waitForStartup(other)
+            expect(
+                await other.evaluate(
+                    async (id) =>
+                        (await navigator.locks.query()).held?.some(
+                            (lock) => lock.name === `nse-session:${id}`,
+                        ),
+                    opened,
+                ),
+            ).toBe(false)
+            await page.goto('/')
+        } else await page.reload()
+        await waitForStartup(page)
+        expect((await sessionOf(page)).sessionId).toBe(opened)
+        await edit(page, 4)
+        await queuePicks(page, ['coconut.nxsp'])
+        await pressSave(page)
+        await submitSave(page)
+        await expect(page.getByRole('dialog')).toContainText(
+            'Not saved. "coconut.nxsp" could not be kept.',
+        )
+        expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })
-    const bytes = [...new Uint8Array(await file.arrayBuffer())]
-    await writeFile(page, 'coconut.nxsp', bytes)
-    await queuePicks(page, ['coconut.nxsp'])
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
-    await edit(page, 3)
-    await flushed(page)
-    const opened = (await sessionOf(page)).sessionId
-    await page.reload()
-    await waitForStartup(page)
-    expect((await sessionOf(page)).sessionId).toBe(opened)
-    await edit(page, 4)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pressSave(page)
-    await submitSave(page)
-    await expect(page.getByRole('dialog')).toContainText(
-        'Not saved. "coconut.nxsp" could not be kept.',
-    )
-    expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
-})
+}
 
 test('a takeover that localStorage refuses outside safe mode says the file was not written', async ({
     context,
@@ -343,35 +385,48 @@ test('a Save that throws while reserved leaves the next Save able to run', async
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 })
 
-test('Export’s picker: another chain’s Export target is taken over, and that chain loses it', async ({
-    context,
-}) => {
-    const a = await context.newPage()
-    await start(a)
-    await edit(a, 1)
-    await queuePicks(a, ['LevelData'])
-    await a.keyboard.press('Shift+P')
-    await expect(a.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await a.keyboard.press('Enter')
-    await expect(notice(a).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
-    await flushed(a)
-    await expect
-        .poll(async () => (await chainOf(a)).exportTarget)
-        .toMatchObject({ name: 'LevelData' })
-    const aChain = await chainOf(a)
-
-    const b = await context.newPage()
-    await start(b)
-    await edit(b, 2)
-    await queuePicks(b, ['LevelData'])
-    await b.keyboard.press('Shift+P')
-    await expect(b.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await b.keyboard.press('Enter')
-    await expect(notice(b).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
-    await expect
-        .poll(async () => (await chainById(b, aChain.chainId))?.exportTarget)
-        .toBeUndefined()
-})
+for (const dialogOpen of [false, true]) {
+    test(`Export takeover revokes identical bytes with old dialog ${dialogOpen ? 'open' : 'closed'}`, async ({
+        context,
+    }) => {
+        const a = await context.newPage()
+        await start(a)
+        await edit(a, 1)
+        await queuePicks(a, ['LevelData'])
+        await a.keyboard.press('Shift+P')
+        await expect(a.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+        await a.keyboard.press('Enter')
+        await expect(notice(a).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+        const original = await readFile(a, 'LevelData')
+        const aChain = await chainOf(a)
+        await edit(a, 2)
+        if (dialogOpen) {
+            await a.keyboard.press('Shift+P')
+            await expect(a.getByRole('dialog').locator('[data-export-target-name]')).toBeVisible()
+        }
+        const b = await context.newPage()
+        await start(b)
+        await edit(b, 1)
+        await queuePicks(b, ['LevelData'])
+        await b.keyboard.press('Shift+P')
+        await expect(b.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+        await b.keyboard.press('Enter')
+        await expect(notice(b).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+        expect(await readFile(b, 'LevelData')).toEqual(original)
+        expect((await chainById(b, aChain.chainId))?.exportTarget).toBeUndefined()
+        await a.bringToFront()
+        await queuePicks(a, ['OtherLevelData'])
+        if (!dialogOpen) {
+            await a.keyboard.press('Shift+P')
+            await expect(a.getByRole('dialog').getByRole('textbox')).toBeVisible()
+        }
+        await a.keyboard.press('Enter')
+        await expect(notice(a).filter({ hasText: 'Exported to OtherLevelData' })).toBeVisible()
+        expect(await readFile(b, 'LevelData')).toEqual(original)
+        expect(await readFile(a, 'OtherLevelData')).not.toEqual(original)
+        expect((await chainOf(a)).exportTarget).toMatchObject({ name: 'OtherLevelData' })
+    })
+}
 
 test('Export’s picker: the chain’s own file changed on disk is put back, and the conflict dialog opens', async ({
     page,
@@ -459,3 +514,136 @@ test('in safe mode Save writes from this tab, refusing only to take over another
         .toBeGreaterThan(0)
     await expect(b.getByRole('dialog')).toHaveCount(0)
 })
+
+test('ordinary Save As clears Export destination and name in the file and after reload', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+    await page.getByRole('dialog').getByRole('textbox').fill('Old export')
+    await page.keyboard.press('Enter')
+    await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+    const original = await readFile(page, 'LevelData')
+    expect((await chainOf(page)).exportName).toBe('Old export')
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs)
+    })
+    await queuePicks(page, ['copy.nxsp'])
+    await submitSave(page, 'copy', 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to copy.nxsp' })).toBeVisible()
+    expect((await projectOf(page, 'copy.nxsp')).exportName).toBeUndefined()
+    expect((await chainOf(page)).exportTarget).toBeUndefined()
+    expect((await chainOf(page)).exportName).toBeUndefined()
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.reload()
+    await waitForStartup(page)
+    await edit(page, 2)
+    await queuePicks(page, ['CopyLevelData'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(notice(page).filter({ hasText: 'Exported to CopyLevelData' })).toBeVisible()
+    expect(await readFile(page, 'LevelData')).toEqual(original)
+})
+
+test('Export refuses takeover when its revocation cannot be kept', async ({ context }) => {
+    const owner = await context.newPage()
+    await start(owner)
+    await savedTo(owner, 'coconut.nxsp')
+    const exporter = await context.newPage()
+    await exporter.addInitScript(() => {
+        sessionStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
+        const setItem = Storage.prototype.setItem
+        Storage.prototype.setItem = function (key, value) {
+            if (key.includes('.revoke.')) throw new DOMException('Full', 'QuotaExceededError')
+            setItem.call(this, key, value)
+        }
+    })
+    await start(exporter)
+    await edit(exporter, 5)
+    await queuePicks(exporter, ['coconut.nxsp'])
+    await exporter.keyboard.press('Shift+P')
+    await expect(
+        exporter.getByRole('dialog').filter({ hasText: 'Export Level Data' }),
+    ).toBeVisible()
+    await exporter.keyboard.press('Enter')
+    await expect(exporter.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    expect(await readFile(owner, 'coconut.nxsp')).toEqual([])
+    expect((await chainOf(owner)).file).toMatchObject({ name: 'coconut.nxsp' })
+    await owner.bringToFront()
+    await edit(owner, 4)
+    await pressSave(owner)
+    await expect
+        .poll(async () => (await readFile(owner, 'coconut.nxsp'))?.length ?? 0)
+        .toBeGreaterThan(0)
+    expect((await projectOf(owner, 'coconut.nxsp')).id).toBe((await chainOf(owner)).docId)
+})
+
+test('recognizing a completed Save As clears the prior Export suggestion after reload', async ({
+    page,
+}) => {
+    await start(page)
+    await savedTo(page, 'original.nxsp')
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+    await page.getByRole('dialog').getByRole('textbox').fill('Old export')
+    await page.keyboard.press('Enter')
+    await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+    await pauseAt(page, 'closed')
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs)
+    })
+    await queuePicks(page, ['copy.nxsp'])
+    await submitSave(page, 'copy', 'Save As')
+    await reached(page, 'closed')
+    await page.evaluate(() => localStorage.removeItem('nse.test.savePause'))
+    await page.reload()
+    await waitForStartup(page)
+    await pressSave(page)
+    await expect(
+        notice(page).filter({ hasText: 'No changes since copy.nxsp was saved' }),
+    ).toBeVisible()
+    expect((await chainOf(page)).exportName).toBeUndefined()
+    expect((await chainOf(page)).exportTarget).toBeUndefined()
+    await page.keyboard.press('Shift+P')
+    const name = page.getByRole('dialog').getByRole('textbox')
+    await expect(name).toBeVisible()
+    await expect(name).not.toHaveValue('Old export')
+})
+
+for (const choice of ['same file', 'cancelled']) {
+    test(`Save As ${choice} retains its Export destination and name`, async ({ page }) => {
+        await start(page)
+        await savedTo(page, 'coconut.nxsp')
+        const docId = (await chainOf(page)).docId
+        await queuePicks(page, ['LevelData'])
+        await page.keyboard.press('Shift+P')
+        await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+        await page.getByRole('dialog').getByRole('textbox').fill('Old export')
+        await page.keyboard.press('Enter')
+        await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+        await page.evaluate(async () => {
+            const { commands } = await import('/src/editor/commands/index.ts')
+            const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+            void runCommand(commands.saveAs)
+        })
+        await queuePicks(page, [choice === 'same file' ? 'coconut.nxsp' : null])
+        await submitSave(page, undefined, 'Save As')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        expect((await chainOf(page)).docId).toBe(docId)
+        expect((await chainOf(page)).exportName).toBe('Old export')
+        expect((await chainOf(page)).exportTarget).toMatchObject({ name: 'LevelData' })
+        await page.keyboard.press('Shift+P')
+        await expect(page.getByRole('dialog').locator('[data-export-target-name]')).toBeVisible()
+    })
+}
