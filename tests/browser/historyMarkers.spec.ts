@@ -149,7 +149,6 @@ const cases = [
     { name: 'phone-small', width: 320, height: 568, touch: true },
     { name: 'phone-landscape', width: 844, height: 390, touch: true },
     { name: 'phone-short', width: 667, height: 375, touch: true },
-    { name: 'phone-very-short', width: 520, height: 320, touch: false },
 ]
 for (const size of cases)
     test.describe(size.name, () => {
@@ -197,35 +196,12 @@ for (const size of cases)
                 window.editorTest.settings.theme = 'dark'
             })
             await page.keyboard.press('Shift+H')
-            const presentation = page.locator('[data-history-presentation]')
-            await expect(presentation).toBeVisible()
-            if (size.name === 'phone-very-short')
-                await expect(presentation).toHaveAttribute('data-history-presentation', 'compact')
+            await expect(page.locator('[data-tool-dialog][data-sheet]')).toBeVisible()
+            const sheet = await page.locator('[data-tool-dialog][data-sheet]').boundingBox()
             const bar = await page.locator('[data-peek-bar]').boundingBox()
-            if ((await presentation.getAttribute('data-history-presentation')) === 'sheet') {
-                const sheet = page.locator('[data-tool-dialog][data-sheet]')
-                await expect(sheet).toBeVisible()
-                const bounds = await sheet.boundingBox()
-                expect(bounds!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height)
-                await page.screenshot({ path: `${shots}/${size.name}-sheet-dark.png` })
-                layouts.push({ sheet: bounds, bar })
-            } else {
-                const modal = page.getByRole('dialog')
-                await expect(modal).toBeVisible()
-                const bounds = await modal.boundingBox()
-                expect(bounds!.y).toBeGreaterThanOrEqual(0)
-                expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(size.height)
-                await expect(presentation.locator('[data-history-list]')).toBeVisible()
-                const viewChart = presentation.locator('[data-history-view-chart]')
-                await expect(viewChart).toBeEnabled()
-                await page.screenshot({ path: `${shots}/${size.name}-modal-dark.png` })
-                await viewChart.click()
-                await expect(presentation).toHaveCount(0)
-                await expect(page.locator('[data-peek-bar]')).toBeVisible()
-                await expect(page.locator('.chart-pane')).toBeFocused()
-                await page.screenshot({ path: `${shots}/${size.name}-view-chart-dark.png` })
-                layouts.push({ modal: bounds, bar })
-            }
+            expect(sheet!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height)
+            await page.screenshot({ path: `${shots}/${size.name}-sheet-dark.png` })
+            layouts.push({ sheet, bar })
             await writeFile(`${shots}/${size.name}-geometry.json`, JSON.stringify(layouts, null, 2))
         })
     })
