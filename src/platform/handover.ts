@@ -2,6 +2,7 @@ import { ungzip } from 'pako'
 import { ExecutionError, executePlan, type ExecutionSource } from '../local/nxsp/execute'
 import { detection, hasActivation, isStandalone, reportsActivation } from './detect'
 import { levelDataDiskState, nxspDiskState, sameContent, sha256Hex } from './fingerprint'
+import { savePoint } from './testPause'
 import {
     FileError,
     type DiskState,
@@ -224,6 +225,7 @@ const writeTo = async (
         signal?.throwIfAborted()
         await writable.write(blob)
         signal?.throwIfAborted()
+        await savePoint('beforeClose')
         if (expected !== undefined) {
             // Checked again just before the commit (Part 0 §0.9.6); a `.nxsp` by the whole
             // fingerprint of the File pinned at the first check, so a change during the build or

@@ -23,6 +23,7 @@ import {
 import { hasActivation, reportsActivation } from '../../platform/detect'
 import { sameContent } from '../../platform/fingerprint'
 import { requestWrite } from '../../platform/handover'
+import { savePoint } from '../../platform/testPause'
 import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
@@ -143,7 +144,10 @@ const readBinding = async (env: Env) => {
     const record = await env.worker.call('readChainRecord', env.chainId)
     const binding = bindingOf(record, env.session)
     const revoke = readRevocation(env.chainId)
-    if (binding.file && revoke?.fileAt === binding.file.at && !env.session.identity)
+    // A revocation of this binding kept while storage couldn't take it (R11).
+    const revoked =
+        revoke !== undefined && binding.file !== undefined && revoke.fileAt === binding.file.at
+    if (revoke && revoked && !env.session.identity)
         return {
             docId: binding.docId,
             ...(binding.revision ? { revision: binding.revision } : {}),
@@ -619,6 +623,7 @@ const pickAndWrite = async (env: Env, request: PickRequest): Promise<Outcome> =>
         Promise.resolve(undefined),
     ])
     const picked = target
+    await savePoint('picked')
     return withBind('exclusive', () =>
         afterPick(env, reservation, built, state, request, binding, picked, pre),
     )
@@ -718,6 +723,7 @@ const afterPick = async (
                 return { kind: 'refused', name, reason: 'safeMode', emptied: true }
             }
             tookOver = done.revoked
+            await savePoint('revoked')
             break
         }
     }
@@ -726,26 +732,32 @@ const afterPick = async (
         tookOver = done.revoked
     }
 
-    const written = await writeBuilt(env, reservation, built, target, empty, binding)
+    const file =
+        request.dialog === 'saveToFile'
+            ? undefined
+            : await bindingFile(built, reservation, {
+                  name,
+                  event: 'saved',
+                  handle,
+                  options: {
+                      history: !!built.identity.entry,
+                      bgm:
+                          picked.kind === 'own'
+                              ? (binding.file?.options.bgm ?? request.bgm)
+                              : request.bgm,
+                  },
+              })
+    const written = await writeBuilt(env, reservation, built, target, empty, binding, file)
     if (written.kind !== 'saved') return written.outcome
+    await savePoint('closed')
     rememberHandle(env.chainId, handle)
     if (tookOver) broadcastUpdated()
-    if (request.dialog !== 'saveToFile') {
-        const file = await bindingFile(built, reservation, {
-            name,
-            event: 'saved',
-            handle,
-            disk: written.disk,
-            options: {
-                history: !!built.identity.entry,
-                bgm:
-                    picked.kind === 'own'
-                        ? (binding.file?.options.bgm ?? request.bgm)
-                        : request.bgm,
-            },
+    if (file)
+        await bindWrite(env, reservation, built, state, {
+            ...file,
+            ...(written.disk ? { disk: written.disk } : {}),
         })
-        await bindWrite(env, reservation, built, state, file)
-    }
+    else await env.flusher.endSave(reservation)
     feedback(built, 'saved', name, tookOver)
     return { kind: 'done' }
 }
@@ -763,10 +775,11 @@ const writeBuilt = async (
     target: FileTarget & { kind: 'handle' },
     expected: DiskState,
     binding: Binding,
+    file: Row | undefined,
 ): Promise<Written> => {
     const name = target.handle.name
     const parent = built.identity.revision.ancestors.length ? (binding.revision?.id ?? null) : null
-    writeMarker(markerOf(env, built, reservation, parent, { name, hash: headHashOf(built) }))
+    if (file) writeMarker(markerOf(env, built, reservation, parent, file))
     let result: SaveResult
     try {
         result = await platform.saveFile({
@@ -971,6 +984,7 @@ const writeBack = async (
     const state = savedState()
     const slot = preparingFor(file.name)
     let built: BuiltSave | undefined
+    let bound: Row = {}
     let result: SaveResult
     whenSlow(slot)
     try {
@@ -996,11 +1010,13 @@ const writeBack = async (
                     },
                     source ? [source] : [],
                 )
-                const marked = markerOf(env, built, reservation, binding.revision?.id ?? null, {
+                bound = await bindingFile(built, reservation, {
                     name: file.name,
-                    hash: headHashOf(built),
+                    event: 'saved',
+                    handle,
+                    options: { history: !!built.identity.entry, bgm: file.options.bgm },
                 })
-                writeMarker(marked)
+                writeMarker(markerOf(env, built, reservation, binding.revision?.id ?? null, bound))
                 return { kind: 'blob', blob: built.blob }
             },
         })
@@ -1021,15 +1037,12 @@ const writeBack = async (
         await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
+    await savePoint('closed')
     const done = built
-    const bound = await bindingFile(done, reservation, {
-        name: file.name,
-        event: 'saved',
-        handle,
+    await bindWrite(env, reservation, done, state, {
+        ...bound,
         ...(result.disk ? { disk: result.disk } : {}),
-        options: { history: !!done.identity.entry, bgm: file.options.bgm },
     })
-    await bindWrite(env, reservation, done, state, bound)
     rememberHandle(env.chainId, handle)
     feedback(done, 'saved', file.name)
     return { kind: 'done' }
@@ -1167,6 +1180,7 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
         }
         case 'failed': {
             const { error, name } = outcome
+            console.warn('A Save failed', error)
             const writable = !!platform.pickSaveFile
             let choice: 'saveAs' | 'tryAgain' | undefined
             switch (error.code) {
