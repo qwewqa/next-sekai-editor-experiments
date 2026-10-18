@@ -22,7 +22,7 @@ import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import KindIcon from './KindIcon.vue'
 import WarningIcon from './WarningIcon.vue'
 import { buildRows, selectableRows, type Entry, type EntryRow, type Row } from './rows'
-import { backToNow, damagedEntries, entryKey, peekedInfo, requestPeek, sameKey } from './selection'
+import { backToNow, damagedEntries, keyOf, peekedInfo, requestPeek } from './selection'
 import { canLoadMore, entries, followEntries, loadMore } from './source'
 import { expandedGroups, historyFilter } from './state'
 
@@ -110,17 +110,17 @@ const selectables = computed(() => selectableRows(rows.value))
 const rowById = (id: string) => rows.value.find((row) => row.id === id)
 
 // The peeked entry's row, or its group's while the group is closed.
-const rowOf = (key: ReturnType<typeof entryKey> | undefined) => {
+const rowOf = (key: string | undefined) => {
     if (!key) return rows.value[0]
     const plain = rows.value.find(
-        (row) => row.type === 'entry' && row.child && sameKey(entryKey(row.entry), key),
+        (row) => row.type === 'entry' && row.child && keyOf(row.entry) === key,
     )
     if (plain) return plain
     return rows.value.find(
         (row) =>
             row.type === 'entry' &&
             !row.child &&
-            row.members.some((member) => sameKey(entryKey(member), key)),
+            row.members.some((member) => keyOf(member) === key),
     )
 }
 
@@ -133,13 +133,13 @@ watch([peekedKey, () => rows.value], () => {
     else if (!key) cursorId.value = 'now'
 })
 
-const infoOf = (entry: Entry) => ({ key: entryKey(entry), time: entry.time, label: entry.label })
+const infoOf = (entry: Entry) => ({ key: keyOf(entry), time: entry.time, label: entry.label })
 
-const moveTo = (row: Row | undefined, immediate: boolean) => {
+const moveTo = (row: Row | undefined) => {
     if (!row) return
     cursorId.value = row.id
     if (row.type === 'now') backToNow()
-    else if (row.type === 'entry' && row.selectable) requestPeek(infoOf(row.entry), { immediate })
+    else if (row.type === 'entry' && row.selectable) requestPeek(infoOf(row.entry))
     scrollToRow(row.id)
 }
 
@@ -158,7 +158,7 @@ const scrollToRow = (id: string) => {
 const step = (delta: number) => {
     const at = selectables.value.findIndex((row) => row.id === cursorId.value)
     const next = selectables.value[Math.max(0, Math.min(selectables.value.length - 1, at + delta))]
-    if (next && next.id !== cursorId.value) moveTo(next, false)
+    if (next && next.id !== cursorId.value) moveTo(next)
 }
 
 const toggleGroup = (row: EntryRow, open: boolean) => {
@@ -171,7 +171,7 @@ const toggleGroup = (row: EntryRow, open: boolean) => {
 
 // --- Restore
 const restore = async (row: EntryRow) => {
-    await restoreEntry(entryKey(row.entry))
+    await restoreEntry(keyOf(row.entry))
 }
 
 // --- Menu: Restore, by right click, Shift+F10 or the Menu key.
@@ -199,8 +199,8 @@ const onContextMenu = (event: MouseEvent, row: Row) => {
 
 // --- Pointer
 const onRowClick = (row: Row) => {
-    if (row.type === 'now') moveTo(row, true)
-    else if (row.type === 'entry' && row.selectable) moveTo(row, true)
+    if (row.type === 'now') moveTo(row)
+    else if (row.type === 'entry' && row.selectable) moveTo(row)
     list.value?.focus({ preventScroll: true })
 }
 
@@ -228,11 +228,11 @@ const onKeydown = (event: KeyboardEvent) => {
                 return
             case 'Home':
                 handled()
-                moveTo(rows.value[0], true)
+                moveTo(rows.value[0])
                 return
             case 'End':
                 handled()
-                moveTo(selectables.value.at(-1), false)
+                moveTo(selectables.value.at(-1))
                 return
             case 'Enter':
                 if (row?.type === 'entry' && row.selectable) {
@@ -242,7 +242,7 @@ const onKeydown = (event: KeyboardEvent) => {
                 return
             case 'Escape':
                 handled()
-                if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0], true)
+                if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
                 else closeHistory()
                 return
             case 'ArrowRight':
@@ -263,7 +263,7 @@ const onKeydown = (event: KeyboardEvent) => {
                         )
                         if (group?.type === 'entry') {
                             toggleGroup(group, false)
-                            moveTo(group, false)
+                            moveTo(group)
                         }
                     } else toggleGroup(row, false)
                 }

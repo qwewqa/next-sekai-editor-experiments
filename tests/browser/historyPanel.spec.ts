@@ -713,3 +713,46 @@ test.describe('screenshots', () => {
             await page.screenshot({ path: `${shots}/${name}.png` })
         })
 })
+
+test.describe('with a touch screen', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+
+    test('the peek bar hints that tapping History folds the list, and a mouse is not told', async ({
+        page,
+    }) => {
+        await edit(page, 2)
+        await stored(page)
+        await page.keyboard.press('Shift+H')
+        await row(page, 'Life 1').tap()
+        await expect(peekBar(page)).toBeVisible()
+        await expect(page.locator('[data-peek-hint]')).toHaveText('Tap History to fold the list')
+        // Folded, there is nothing left to tap.
+        await tab(page, 'top', 'History').tap()
+        await expect(page.locator('[data-peek-hint]')).toHaveCount(0)
+        await expect(peekBar(page)).toBeVisible()
+    })
+})
+
+test('a mouse gets no fold hint', async ({ page }) => {
+    await edit(page, 2)
+    await stored(page)
+    await page.keyboard.press('Shift+H')
+    await row(page, 'Life 1').click()
+    await expect(peekBar(page)).toBeVisible()
+    await expect(page.locator('[data-peek-hint]')).toHaveCount(0)
+})
+
+test('New while History is open starts a new Timeline and ends a peek', async ({ page }) => {
+    await edit(page, 3)
+    await stored(page)
+    await page.keyboard.press('Shift+H')
+    await row(page, 'Life 1').click()
+    await expect(peekBar(page)).toBeVisible()
+    await page.evaluate(() => window.editorTest.history.resetState(false))
+    await expect(peekBar(page)).toHaveCount(0)
+    await expect(list(page)).toBeVisible()
+    await expect(list(page).getByRole('option')).toHaveCount(2)
+    await expect(row(page, 'Life 1')).toHaveCount(0)
+    // The new session's first entry, and nothing selected but Now.
+    await expect(list(page).locator('[aria-selected="true"]')).toHaveCount(1)
+})

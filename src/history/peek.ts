@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
 import type { State } from '../state'
 import { peek } from './stack'
 
@@ -7,37 +7,37 @@ import { peek } from './stack'
 
 export { isPeeking } from './stack'
 
-/** An entry of the open chain: its session and sequence number. */
-export type EntryKey = { sessionId: string; seq: number }
+/** A timeline entry: its session and `seq`, as `<sessionId>:<seq>`. */
+export type EntryKey = `${string}:${number}`
+
+export const entryKey = (sessionId: string, seq: number): EntryKey => `${sessionId}:${seq}`
+
+export const parseEntryKey = (key: EntryKey) => {
+    const at = key.lastIndexOf(':')
+    return { sessionId: key.slice(0, at), seq: Number(key.slice(at + 1)) }
+}
 
 export const peekedKey = computed(() => peek.value?.source as EntryKey | undefined)
 
-let refused: ((message: () => string) => void) | undefined
-
-/** Says why a command was refused while peeking. */
-export const onPeekRefused = (fn: (message: () => string) => void) => {
-    refused = fn
-}
+/** True once a peek has waited about 150 ms for its state. */
+export const peekLoading = shallowRef(false)
 
 /** Reads an entry's state: from memory when it is still waiting to be stored, else from storage. */
 const stateOf = async (key: EntryKey): Promise<State> => {
+    const { sessionId, seq } = parseEntryKey(key)
     const { flusher } = await import('../local/storing')
     const pending =
-        flusher?.session?.id === key.sessionId
-            ? flusher.session.pending.find((entry) => entry.seq === key.seq)
+        flusher?.session?.id === sessionId
+            ? flusher.session.pending.find((entry) => entry.seq === seq)
             : undefined
     if (pending?.state) return pending.state
     const { storageWorker } = await import('../local/start')
     const { decodeSnapshot } = await import('../local/records/snapshot')
     const { stateFromRecords } = await import('../local/records/records')
     if (!storageWorker) throw new Error('Storage is not running')
-    const page = await storageWorker.call('readTimeline', {
-        sessionId: key.sessionId,
-        before: key.seq + 1,
-        limit: 1,
-    })
+    const page = await storageWorker.call('readTimeline', { sessionId, before: seq + 1, limit: 1 })
     const entry = page.entries[0]
-    if (entry?.seq !== key.seq || !entry.kept) throw new Error('No such entry')
+    if (entry?.seq !== seq || !entry.kept) throw new Error('No such entry')
     const parts = await storageWorker.call('readSnapshot', entry.snapshot)
     return stateFromRecords(
         decodeSnapshot(parts.root, {
@@ -68,5 +68,4 @@ export const restoreEntry = async (key: EntryKey) => {
     // Named apart: the audit of edit paths is 5-peek's, and this file goes with its own.
     const push = (await import('./stack')).pushState
     push(() => `Restored to ${new Date().toLocaleTimeString()}`, state)
-    void refused
 }

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
-import { isPeeking, peekedKey, restoreEntry } from '../../history/peek'
+import { computed } from 'vue'
+import { isPeeking, peekLoading, peekedKey, restoreEntry } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { formatClockSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
 import { isCoarsePointer, isHistoryOpen, workspaceLayout } from '../workspace'
-import { backToNow, peekPending, peekedInfo } from './selection'
+import { backToNow, peekedInfo } from './selection'
 
 // The peek bar (Part 1 §1.4.11): on the canvas, so it shows with the panel scrolled, folded or on
 // another dock. A 2 px accent edge marks the peeked canvas.
@@ -23,18 +23,6 @@ const text = computed(() => {
     return view.w >= WIDE_PANE
         ? interpolateRaw(strings.value.viewing, time, info.label)
         : interpolateRaw(strings.value.viewingShort, time)
-})
-
-// A spinner appears when a state takes more than 150 ms to load (§1.4.11).
-const busy = shallowRef(false)
-let timer: ReturnType<typeof setTimeout> | undefined
-watch(peekPending, (pending) => {
-    clearTimeout(timer)
-    busy.value = false
-    if (pending) timer = setTimeout(() => (busy.value = true), 150)
-})
-onBeforeUnmount(() => {
-    clearTimeout(timer)
 })
 
 // The hint is for a finger: a mouse has nothing to tap. It shows while History is open and its
@@ -69,7 +57,7 @@ const button =
             >
                 <span v-if="text" class="min-w-0 py-1" data-peek-text>{{ text }}</span>
                 <span
-                    v-if="busy"
+                    v-if="peekLoading"
                     class="size-4 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
                     role="status"
                     aria-hidden="true"
