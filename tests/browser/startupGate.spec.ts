@@ -49,6 +49,8 @@ const bootStalled = async (page: Page, url = '/') => {
     await page.addInitScript(() => sessionStorage.setItem('nse.test.storage', '{}'))
     await boot(page, url)
     await page.evaluate(installEditorFixture)
+    // Safe mode opens the database read-only: nothing is stored, so there's no flusher to hold.
+    if (url.includes('safe')) return
     await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
     await page.evaluate(() => {
         window.nseFlushTest!.stall = true

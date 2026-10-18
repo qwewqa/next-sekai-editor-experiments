@@ -53,7 +53,7 @@ onResetState(clearExportMemory)
 
 /** The chain fields this memory is stored as (§1.6.11.2), `undefined` removing one. */
 export type ExportChainFields = {
-    exportTarget: { name: string; handle: FileSystemFileHandle; disk: DiskState; opened?: true }
+    exportTarget: { name: string; handle?: FileSystemFileHandle; disk: DiskState; opened?: true }
     exportName: string
     /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
     partial: true
@@ -73,7 +73,9 @@ export const rememberExport = () => {
         exportTarget: target
             ? {
                   name: target.name,
-                  handle: target.handle,
+                  // The handle stays in this tab: a page that reads an OPFS handle back from
+                  // IndexedDB is killed in the browsers the specs run (Step 4's report), so the
+                  // stored target names the file and Export asks where after a reload.
                   disk: target.disk,
                   ...(target.exported ? {} : { opened: true }),
               }
