@@ -339,9 +339,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await page.keyboard.press('p')
     await saveProjectFile(page)
     await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
-    await expect(dialog(page)).toContainText(
-        'For Sonolus level data, use Export Level Data… (Shift+P).',
-    )
+    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
     expect((await pickerCalls(page)).at(-1)).toMatchObject({ picker: 'save', id: 'nse-project' })
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     expect(await opfsNames(page)).toEqual(['LevelData'])
@@ -443,7 +441,7 @@ test('p’s failed download of a refused pick’s bytes says so in its own words
     await page.keyboard.press('p')
     await saveProjectFile(page)
     await expect(
-        page.getByText('"LevelData" was emptied, and its content could not be put back.'),
+        page.getByText('"LevelData" was emptied and its contents could not be restored.'),
     ).toBeVisible()
     await page.evaluate(() => {
         URL.createObjectURL = () => {

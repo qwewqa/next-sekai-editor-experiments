@@ -472,7 +472,7 @@
       "resetDefault": "Varsayılana Sıfırla",
       "stored": "Saklanan: {0} öğe, {1}",
       "storedEmpty": "Saklanan öğe yok",
-      "storedUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan öğeler okunamıyor.",
+      "storedUnavailable": "Editör bu tarayıcıda saklanan öğelere erişemiyor.",
       "noun": {
         "skin": "görünüm",
         "particle": "parçacık",
@@ -487,7 +487,7 @@
       },
       "reason": {
         "fileGone": "{0} dosyası artık bu tarayıcıda saklanmıyor.",
-        "storageUnavailable": "Bu tarayıcının depolaması açılamadığı için saklanan {0} okunamıyor.",
+        "storageUnavailable": "Editör bu tarayıcıda saklanan öğeye ({0}) erişemiyor.",
         "serverFailed": "{0}, {1} adresinden yeniden indirilemedi.",
         "invalid": "Saklanan {0} okunamadı.",
         "defaultFailed": "Varsayılan yüklenemedi.",
@@ -537,7 +537,7 @@
         "unreadable": "Bu dosyadaki {1} ({0}) okunamadı.",
         "missing": "Bu dosyadaki {1} ({0}) eksik.",
         "notImage": "Bu dosyadaki {1} ({0}) PNG veya JPEG görseli değil.",
-        "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
+        "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda. Sınır {4} × {4}.",
         "checksum": "Bu dosyadaki {1} ({0}) sağlama toplamıyla eşleşmiyor.",
         "spriteOutside": "Bu dosyadaki veride ({0}) dokunun dışında kalan bir sprite var.",
         "noNoteSprites": "Bu dosyadaki veride ({0}) hiç nota sprite’ı yok.",
@@ -579,7 +579,7 @@
         "unreadable": "Bu öğedeki {1} ({0}) okunamadı.",
         "missing": "Bu öğedeki {1} ({0}) eksik.",
         "notImage": "Bu öğedeki {1} ({0}) PNG veya JPEG görseli değil.",
-        "imageSize": "Bu öğedeki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
+        "imageSize": "Bu öğedeki {1} ({0}) {2} × {3} boyutunda. Sınır {4} × {4}.",
         "spriteOutside": "Bu öğedeki veride ({0}) dokunun dışında kalan bir sprite var.",
         "noNoteSprites": "Bu öğedeki veride ({0}) hiç nota sprite’ı yok.",
         "tooManySprites": "Bu öğedeki veride ({0}) {1} sprite’tan fazlası var.",
@@ -932,7 +932,7 @@
       "privacy": "Gizlilik",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
-      "diagnosticsNote": "Hata iletileri dosya ve klasör adlarını içerebilir. Herkese açık paylaşmadan önce kontrol edin.",
+      "diagnosticsNote": "Tanılama bilgileri dosya ve klasör adlarını içerebilir. Paylaşmadan önce kontrol edin.",
       "copy": "Kopyala",
       "copied": "Kopyalandı"
     },
@@ -951,7 +951,7 @@
         "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
-        "atLoad": "Bu yüklemede"
+        "atLoad": "Başlangıç Bildirimleri"
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor"
@@ -1165,7 +1165,7 @@
     "blank": "Boş Başlat"
   },
   "safe": {
-    "bar": "Güvenli mod: hiçbir şey saklanmıyor.",
+    "bar": "Güvenli mod: değişiklikler saklanmıyor.",
     "leave": "Güvenli Moddan Çık",
     "open": "Güvenli Modda Aç"
   },
@@ -1204,7 +1204,7 @@
   },
   "storage": {
     "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",
-    "unavailable": "Bu tarayıcı editörün hiçbir şey saklamasına izin vermiyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
@@ -1879,11 +1879,11 @@
     "history": "Geçmiş",
     "bgm": "BGM",
     "placeholder": "Adsız",
-    "exportHint": "Sonolus seviye verisi için Seviye Verisini Dışa Aktar… (Shift+P) kullanın.",
+    "exportHint": "Sonolus için Seviye Verisini Dışa Aktar… komutunu kullanın.",
     "openExport": "Seviye Verisini Dışa Aktar…",
     "readOnly": "\"{0}\" dosyasına yazılamıyor.",
     "notProject": "\"{0}\" bir proje dosyası değil.",
-    "notKept": "Kaydedilmedi. \"{0}\" korunamadı.",
+    "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
     "saved": "{0} dosyasına kaydedildi",
     "savedWithoutBgm": "{0} dosyasına BGM olmadan kaydedildi; BGM yüklenmemiş",
@@ -1902,20 +1902,20 @@
     "noChangesOpened": "{0} açıldığından beri değişiklik yok",
     "downloadAgain": "Tekrar İndir",
     "unreadable": "\"{0}\" tamamen okunamadı.",
-    "tooLarge": "Tek bir dosya için çok büyük. BGM veya geçmiş işaretini kaldırın.",
+    "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
-    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… (Shift+P) kullanın.",
+    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… komutunu kullanın.",
     "include": "Dahil Edilecekler",
     "historySteps": "{0} adım",
     "historySize": "{0} adım · {1}",
-    "historyNote": "Dosyaya sahip herkes her adımı görebilir.",
+    "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
     "noBgm": "BGM yok",
     "bgmNotLoaded": "BGM yüklenmedi",
     "bgmSize": "{0} · {1}",
     "keptOptions": "Zaten {0} içinde",
     "downloadNote": "Her kaydetme yeni bir kopya indirir.",
-    "noHistoryHere": "Bu bağlantıda geçmiş eklenemez.",
+    "noHistoryHere": "Geçmiş için güvenli bir bağlantı gerekir.",
     "sizeTotal": "Toplam: yaklaşık {0}",
     "sizePending": "Boyut tahmin ediliyor…"
   },
@@ -1932,7 +1932,7 @@
     "separate": "Ayrı Dosya Olarak Kaydet",
     "openOther": "Diğer Sürümü Aç",
     "openOtherNote": "Değişiklikleriniz kaydedilmemiş olarak kalır.",
-    "replaceNote": "Diskteki sürüm Son Oturumlar’a gider.",
+    "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
     "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
     "replaceHoldsEarlier": "Bu tarayıcıda artık bulunmayan önceki adımları içeriyor.",
@@ -1976,7 +1976,7 @@
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
-    "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız kaybolur.",
+    "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız bu değişiklikler kaybolur.",
     "save": "Kaydet",
     "leaveAnyway": "Yine de Ayrıl"
   },
@@ -2006,7 +2006,7 @@
     "openLevel": "Seviyeyi Aç",
     "newerValues": {
       "title": "\"{0}\" Daha Yeni Özellikler Kullanıyor",
-      "body": "Editörün bu sürümü bu seviyedeki bazı değerleri desteklemiyor. Bu değerlerin varsayılanlarla değiştirildiği ayrı bir kopya açılır.",
+      "body": "Bu seviye, editörün bu sürümünün desteklemediği değerler kullanıyor. Ayrı bir kopya açıldığında bu değerler varsayılanlarla değiştirilir.",
       "openCopy": "Kopya Aç"
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",

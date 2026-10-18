@@ -293,7 +293,7 @@ test('oversized images are refused from their headers alone', async () => {
         'skin',
         valid('skin', { resources: { texture: pngHeader(8192, 8192) } }),
         'imageSize',
-        'This file’s skin texture is 8192 × 8192; the limit is 4096 × 4096.',
+        'This file’s skin texture is 8192 × 8192. The limit is 4096 × 4096.',
     )
     await expectRefused(
         'particle',
@@ -304,20 +304,20 @@ test('oversized images are refused from their headers alone', async () => {
         'background',
         valid('background', { resources: { image: jpegHeader(5000, 3000) } }),
         'imageSize',
-        'This file’s background image is 5000 × 3000; the limit is 4096 × 4096.',
+        'This file’s background image is 5000 × 3000. The limit is 4096 × 4096.',
     )
     await expectRefused(
         'skin',
         valid('skin', { resources: { thumbnail: pngHeader(2000, 2000) } }),
         'imageSize',
-        'This file’s skin thumbnail is 2000 × 2000; the limit is 1024 × 1024.',
+        'This file’s skin thumbnail is 2000 × 2000. The limit is 1024 × 1024.',
     )
     // The device's own limit applies when it is smaller.
     await expectRefused(
         'skin',
         valid('skin', { resources: { texture: pngHeader(4096, 4096) } }),
         'imageSize',
-        'This file’s skin texture is 4096 × 4096; the limit is 2048 × 2048.',
+        'This file’s skin texture is 4096 × 4096. The limit is 2048 × 2048.',
         { maxTextureSide: 2048 },
     )
     await expectRefused(

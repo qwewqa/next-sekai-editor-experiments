@@ -42,7 +42,7 @@ for (const where of ['entity', 'data', 'value and ref'])
         await pressSave(page)
         await submitSave(page)
         await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. "coconut.nxsp" could not be kept.',
+            'Not saved. "coconut.nxsp" could not be read completely.',
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })

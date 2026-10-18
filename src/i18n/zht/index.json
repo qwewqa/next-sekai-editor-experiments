@@ -472,7 +472,7 @@
       "resetDefault": "重置為預設",
       "stored": "已存放：{0} 項，{1}",
       "storedEmpty": "沒有已存放的項目",
-      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的項目。",
+      "storedUnavailable": "編輯器無法存取此瀏覽器中已存放的項目。",
       "noun": {
         "skin": "外觀",
         "particle": "粒子",
@@ -487,7 +487,7 @@
       },
       "reason": {
         "fileGone": "{0}檔案已不再存放在此瀏覽器中。",
-        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的{0}。",
+        "storageUnavailable": "編輯器無法存取此瀏覽器中已存放的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已存放的{0}。",
         "defaultFailed": "無法載入預設項。",
@@ -537,7 +537,7 @@
         "unreadable": "無法讀取此檔案的{0}{1}。",
         "missing": "此檔案缺少{0}{1}。",
         "notImage": "此檔案的{0}{1}不是 PNG 或 JPEG 圖片。",
-        "imageSize": "此檔案的{0}{1}為 {2} × {3}，上限為 {4} × {4}。",
+        "imageSize": "此檔案的{0}{1}為 {2} × {3}。上限為 {4} × {4}。",
         "checksum": "此檔案的{0}{1}與其檢查碼不符。",
         "spriteOutside": "此檔案的{0}資料中有位於紋理之外的精靈。",
         "noNoteSprites": "此檔案的{0}資料中沒有音符精靈。",
@@ -579,7 +579,7 @@
         "unreadable": "無法讀取此項目的{0}{1}。",
         "missing": "此項目缺少{0}{1}。",
         "notImage": "此項目的{0}{1}不是 PNG 或 JPEG 圖片。",
-        "imageSize": "此項目的{0}{1}為 {2} × {3}，上限為 {4} × {4}。",
+        "imageSize": "此項目的{0}{1}為 {2} × {3}。上限為 {4} × {4}。",
         "spriteOutside": "此項目的{0}資料中有位於紋理之外的精靈。",
         "noNoteSprites": "此項目的{0}資料中沒有音符精靈。",
         "tooManySprites": "此項目的{0}資料中的精靈超過 {1} 個。",
@@ -932,7 +932,7 @@
       "privacy": "隱私",
       "diagnostics": "複製診斷資訊…",
       "diagnosticsTitle": "診斷資訊",
-      "diagnosticsNote": "其中的錯誤訊息可能包含檔案名稱與資料夾名稱。公開張貼前請先檢查。",
+      "diagnosticsNote": "診斷資訊可能包含檔案名稱與資料夾名稱。分享前請先檢查。",
       "copy": "複製",
       "copied": "已複製"
     },
@@ -951,7 +951,7 @@
         "legacy": "舊版本的恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
-        "atLoad": "本次載入"
+        "atLoad": "啟動通知"
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更"
@@ -1165,7 +1165,7 @@
     "blank": "從空白開始"
   },
   "safe": {
-    "bar": "安全模式：不存放任何內容。",
+    "bar": "安全模式：變更不會被存放。",
     "leave": "結束安全模式",
     "open": "以安全模式開啟"
   },
@@ -1204,7 +1204,7 @@
   },
   "storage": {
     "reload": "請重新載入以繼續存放變更。",
-    "unavailable": "此瀏覽器不允許編輯器存放任何內容。請將內容儲存到檔案中以保留。",
+    "unavailable": "編輯器無法在此瀏覽器中存放變更。請儲存到檔案中以保留您的工作。",
     "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
     "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
     "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
@@ -1879,11 +1879,11 @@
     "history": "歷史記錄",
     "bgm": "BGM",
     "placeholder": "未命名",
-    "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」(Shift+P)。",
+    "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」。",
     "openExport": "匯出關卡資料…",
     "readOnly": "無法寫入 \"{0}\"。",
     "notProject": "\"{0}\" 不是專案檔案。",
-    "notKept": "未儲存。無法保留 \"{0}\"。",
+    "notKept": "未儲存。無法完整讀取 \"{0}\"。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
     "saved": "已儲存到 {0}",
     "savedWithoutBgm": "已儲存到 {0}，但未包含 BGM，因為 BGM 未載入",
@@ -1902,20 +1902,20 @@
     "noChangesOpened": "自開啟 {0} 以來沒有變更",
     "downloadAgain": "再次下載",
     "unreadable": "無法完整讀取 \"{0}\"。",
-    "tooLarge": "對單一檔案而言過大。請取消勾選 BGM 或歷史記錄。",
+    "tooLarge": "檔案過大。",
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
-    "unavailable": "未儲存。請使用「匯出關卡資料…」(Shift+P)。",
+    "unavailable": "未儲存。請使用「匯出關卡資料…」。",
     "include": "包含",
     "historySteps": "{0} 步",
     "historySize": "{0} 步 · {1}",
-    "historyNote": "擁有該檔案的人可以看到每一步。",
+    "historyNote": "擁有該檔案的人可以查看其中的歷史記錄。",
     "noBgm": "無 BGM",
     "bgmNotLoaded": "BGM 未載入",
     "bgmSize": "{0} · {1}",
     "keptOptions": "已在 {0} 中",
     "downloadNote": "每次儲存都會下載一份新副本。",
-    "noHistoryHere": "此連線無法包含歷史記錄。",
+    "noHistoryHere": "包含歷史記錄需要安全連線。",
     "sizeTotal": "總計：約 {0}",
     "sizePending": "正在估算大小…"
   },
@@ -1932,7 +1932,7 @@
     "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
     "openOtherNote": "你的變更會保持未儲存。",
-    "replaceNote": "磁碟上的版本會移到「最近工作階段」。",
+    "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
     "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
@@ -1976,7 +1976,7 @@
   },
   "prompt": {
     "title": "變更未存放",
-    "notStored": "變更未存放在此瀏覽器中。離開會遺失這些變更。",
+    "notStored": "變更未存放在此瀏覽器中。離開後這些變更將遺失。",
     "save": "儲存",
     "leaveAnyway": "仍然離開"
   },
@@ -2002,11 +2002,11 @@
       "preview": "預覽音訊"
     },
     "newerMajor": "由較新版本的 {0} 建立。",
-    "newerMajorNote": "只能從中開啟關卡。",
+    "newerMajorNote": "只能開啟此檔案中的關卡。",
     "openLevel": "開啟關卡",
     "newerValues": {
       "title": "\"{0}\" 使用了較新的功能",
-      "body": "此版本的編輯器不支援此關卡中的部分值。將開啟一個獨立的副本，其中這些值已取代為預設值。",
+      "body": "此關卡使用了此版本編輯器不支援的值。開啟獨立的副本時，這些值會改為預設值。",
       "openCopy": "開啟副本"
     },
     "unsavedChanges": "已開啟 {0}。你在 {1} 對它有未儲存的變更。",

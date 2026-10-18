@@ -222,7 +222,7 @@ test.describe('the Save dialog', () => {
         await expect(history).not.toContainText(/\d [kM]B/)
         await expect(bgm).toContainText('coconut.mp3')
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Estimating size…')
-        await expect(history.getByText('Anyone with the file can see every step.')).toBeVisible()
+        await expect(history.getByText('Anyone with the file can view its history.')).toBeVisible()
         await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
 
         await page.evaluate((sizes) => window.saveSeen.estimate!(sizes), estimateOf)
@@ -272,7 +272,7 @@ test.describe('the Save dialog', () => {
         const bgm = dialog(page).getByRole('checkbox', { name: 'BGM' })
         await expect(history).toBeDisabled()
         await expect(history).not.toBeChecked()
-        await expect(dialog(page)).toContainText('History cannot be included on this connection.')
+        await expect(dialog(page)).toContainText('History requires a secure connection.')
         await expect(bgm).toBeDisabled()
         await expect(dialog(page).locator('[data-save-row="bgm"]')).toContainText('No BGM')
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
@@ -351,7 +351,7 @@ test.describe('the Save dialog', () => {
             '"coconut.nxsp" was replaced from another tab or window.',
         )
         await expect(dialog(page).locator('[data-save-export]')).toHaveText(
-            'For Sonolus level data, use Export Level Data… (Shift+P).',
+            'For Sonolus, use Export Level Data…',
         )
         await expect(dialog(page).locator('[data-save-download-note]')).toHaveText(
             'Each save downloads a new copy.',
@@ -507,7 +507,7 @@ test.describe('the conflict dialog', () => {
         ).toBeFocused()
         await expect(dialog(page).getByText('Your changes stay unsaved.')).toBeVisible()
         await expect(
-            dialog(page).getByText('The version on disk goes to Recent Sessions.'),
+            dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toBeVisible()
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Replace' }).click()
@@ -549,7 +549,7 @@ test.describe('the conflict dialog', () => {
             'It holds earlier steps that this browser no longer has.',
         )
         await expect(
-            dialog(page).getByText('The version on disk goes to Recent Sessions.'),
+            dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toHaveCount(0)
         await expect(
             dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
@@ -619,9 +619,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await visit(page)
         await open(page, `saveUi.refused('LevelData', 'levelData')`)
         await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
-        await expect(dialog(page)).toContainText(
-            'For Sonolus level data, use Export Level Data… (Shift+P).',
-        )
+        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
         await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
         await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
         await guard(page)
@@ -633,7 +631,9 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await seed(context)
         await visit(page)
         await open(page, `saveUi.refused('melt.nxsp', 'notKept')`)
-        await expect(dialog(page)).toContainText('Not saved. "melt.nxsp" could not be kept.')
+        await expect(dialog(page)).toContainText(
+            'Not saved. "melt.nxsp" could not be read completely.',
+        )
         await expect(buttons(page)).toHaveText(['Cancel', 'Choose Another…'])
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()

@@ -472,7 +472,7 @@
       "resetDefault": "Rétablir par défaut",
       "stored": "Stocké : {0} élément, {1}|Stocké : {0} éléments, {1}",
       "storedEmpty": "Aucun élément stocké",
-      "storedUnavailable": "Les éléments stockés ne peuvent pas être lus tant que le stockage du navigateur ne peut pas être ouvert.",
+      "storedUnavailable": "L’éditeur ne peut pas accéder aux éléments stockés dans ce navigateur.",
       "noun": {
         "skin": "skin",
         "particle": "particule",
@@ -487,7 +487,7 @@
       },
       "reason": {
         "fileGone": "Le fichier {0} n’est plus stocké dans ce navigateur.",
-        "storageUnavailable": "L’élément stocké ({0}) ne peut pas être lu tant que le stockage du navigateur ne peut pas être ouvert.",
+        "storageUnavailable": "L’éditeur ne peut pas accéder à l’élément stocké ({0}) dans ce navigateur.",
         "serverFailed": "Impossible de télécharger à nouveau l’élément ({0}) depuis {1}.",
         "invalid": "L’élément stocké ({0}) n’a pas pu être lu.",
         "defaultFailed": "L’élément par défaut n’a pas pu être chargé.",
@@ -537,7 +537,7 @@
         "unreadable": "Impossible de lire {1} ({0}) dans ce fichier.",
         "missing": "Il manque {1} ({0}) dans ce fichier.",
         "notImage": "Dans ce fichier, {1} ({0}) : image PNG ou JPEG attendue.",
-        "imageSize": "Dans ce fichier, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
+        "imageSize": "Dans ce fichier, {1} ({0}) mesure {2} × {3}. La limite est {4} × {4}.",
         "checksum": "Dans ce fichier, {1} ({0}) : la somme de contrôle ne correspond pas.",
         "spriteOutside": "Dans ce fichier, les données ({0}) contiennent un sprite hors de la texture.",
         "noNoteSprites": "Dans ce fichier, les données ({0}) n’ont aucun sprite de note.",
@@ -579,7 +579,7 @@
         "unreadable": "Impossible de lire {1} ({0}) dans cet élément.",
         "missing": "Il manque {1} ({0}) dans cet élément.",
         "notImage": "Dans cet élément, {1} ({0}) : image PNG ou JPEG attendue.",
-        "imageSize": "Dans cet élément, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
+        "imageSize": "Dans cet élément, {1} ({0}) mesure {2} × {3}. La limite est {4} × {4}.",
         "spriteOutside": "Dans cet élément, les données ({0}) contiennent un sprite hors de la texture.",
         "noNoteSprites": "Dans cet élément, les données ({0}) n’ont aucun sprite de note.",
         "tooManySprites": "Dans cet élément, les données ({0}) contiennent plus de {1} sprites.",
@@ -932,7 +932,7 @@
       "privacy": "Confidentialité",
       "diagnostics": "Copier les informations de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
-      "diagnosticsNote": "Les messages d’erreur de ce texte peuvent inclure des noms de fichiers et de dossiers. Relisez-le avant de le publier.",
+      "diagnosticsNote": "Les informations de diagnostic peuvent inclure des noms de fichiers et de dossiers. Vérifiez-les avant de les partager.",
       "copy": "Copier",
       "copied": "Copié"
     },
@@ -951,7 +951,7 @@
         "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
-        "atLoad": "Lors de ce chargement"
+        "atLoad": "Notifications au démarrage"
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées"
@@ -1165,7 +1165,7 @@
     "blank": "Démarrer à vide"
   },
   "safe": {
-    "bar": "Mode sans échec : rien n’est stocké.",
+    "bar": "Mode sans échec : les modifications ne sont pas stockées.",
     "leave": "Quitter le mode sans échec",
     "open": "Ouvrir en mode sans échec"
   },
@@ -1204,7 +1204,7 @@
   },
   "storage": {
     "reload": "Rechargez la page pour continuer à stocker les modifications.",
-    "unavailable": "Ce navigateur ne laisse pas l’éditeur stocker quoi que ce soit. Sauvegardez dans un fichier pour conserver votre travail.",
+    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
@@ -1879,11 +1879,11 @@
     "history": "Historique",
     "bgm": "BGM",
     "placeholder": "Sans titre",
-    "exportHint": "Pour les données de niveau Sonolus, utilisez Exporter les données de niveau… (Maj+P).",
+    "exportHint": "Pour Sonolus, utilisez Exporter les données de niveau…",
     "openExport": "Exporter les données de niveau…",
     "readOnly": "Impossible d’écrire dans \"{0}\".",
     "notProject": "\"{0}\" n’est pas un fichier de projet.",
-    "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être conservé.",
+    "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être lu entièrement.",
     "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
     "saved": "Sauvegardé dans {0}",
     "savedWithoutBgm": "Sauvegardé dans {0} sans sa BGM, qui n’est pas chargée",
@@ -1902,20 +1902,20 @@
     "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",
     "downloadAgain": "Télécharger à nouveau",
     "unreadable": "\"{0}\" n’a pas pu être lu entièrement.",
-    "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
+    "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau… (Maj+P).",
+    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau…",
     "include": "Inclure",
     "historySteps": "{0} étape|{0} étapes",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
-    "historyNote": "Toute personne disposant du fichier peut voir chaque étape.",
+    "historyNote": "Toute personne disposant du fichier peut consulter son historique.",
     "noBgm": "Pas de BGM",
     "bgmNotLoaded": "BGM non chargée",
     "bgmSize": "{0} · {1}",
     "keptOptions": "Déjà dans {0}",
     "downloadNote": "Chaque sauvegarde télécharge une nouvelle copie.",
-    "noHistoryHere": "L’historique ne peut pas être inclus sur cette connexion.",
+    "noHistoryHere": "L’historique nécessite une connexion sécurisée.",
     "sizeTotal": "Total : environ {0}",
     "sizePending": "Estimation de la taille…"
   },
@@ -1932,7 +1932,7 @@
     "separate": "Sauvegarder dans un fichier séparé",
     "openOther": "Ouvrir l’autre version",
     "openOtherNote": "Vos modifications restent non sauvegardées.",
-    "replaceNote": "La version sur le disque va dans Sessions récentes.",
+    "replaceNote": "La version sur le disque sera conservée dans Sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
     "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus.",
@@ -1976,7 +1976,7 @@
   },
   "prompt": {
     "title": "Modifications non stockées",
-    "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Quitter les perd.",
+    "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
     "leaveAnyway": "Quitter quand même"
   },
@@ -2002,11 +2002,11 @@
       "preview": "l’aperçu audio"
     },
     "newerMajor": "Créé par une version plus récente de {0}.",
-    "newerMajorNote": "Seul le niveau peut en être ouvert.",
+    "newerMajorNote": "Seul le niveau contenu dans ce fichier peut être ouvert.",
     "openLevel": "Ouvrir le niveau",
     "newerValues": {
       "title": "\"{0}\" utilise des fonctionnalités plus récentes",
-      "body": "Cette version de l’éditeur ne prend pas en charge certaines valeurs de ce niveau. Une copie séparée s’ouvre, où elles sont remplacées par les valeurs par défaut.",
+      "body": "Ce niveau utilise des valeurs que cette version de l’éditeur ne prend pas en charge. L’ouverture d’une copie séparée remplace ces valeurs par les valeurs par défaut.",
       "openCopy": "Ouvrir une copie"
     },
     "unsavedChanges": "{0} ouvert. Vous avez des modifications non sauvegardées de ce fichier datant du {1}.",

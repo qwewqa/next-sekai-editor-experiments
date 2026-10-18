@@ -283,7 +283,7 @@ test.describe('safe mode', () => {
     }) => {
         await boot(page, '/?safe')
         const bar = page.locator('[data-safe-bar]')
-        await expect(bar).toContainText('Safe mode: nothing is stored.')
+        await expect(bar).toContainText('Safe mode: changes are not stored.')
         // The editor sits below the bar, not under it.
         const barBox = await bar.boundingBox()
         const editorBox = await page.locator('canvas.editor-chart').boundingBox()
@@ -349,7 +349,7 @@ test.describe('safe mode', () => {
         await leave(page).click()
         const dialog = page.getByRole('dialog', { name: 'Changes Not Stored' })
         await expect(dialog).toContainText(
-            'Your changes are not being stored in this browser. Leaving loses them.',
+            'Your changes are not being stored in this browser. Leaving will discard them.',
         )
         // The safe default is Save, on the right.
         await expect(dialog.getByRole('button', { name: 'Save' })).toBeFocused()
