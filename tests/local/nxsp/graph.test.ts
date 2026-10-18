@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { hash16Sync, toHex } from '../../../src/local/hash'
-import { type ReadHistory } from '../../../src/local/nxsp'
+import type { ReadHistory } from '../../../src/local/nxsp'
 import {
     combineParts,
     distinctRootChunks,
