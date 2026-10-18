@@ -2,9 +2,12 @@ import { i18n } from '../i18n'
 import { formatDate } from '../i18n/when'
 import { loadEvents, onLoadEvent, type LoadEvent, type ShownName } from '../local/startup/events'
 import { interpolate, interpolateRaw } from '../utils/interpolate'
+import { changeBgm } from './commands/bgm'
 import { LOAD_ORDER } from './loadOrder'
-import { addLoadNotice, type NoticeAction } from './notification'
+import { addLoadNotice, setLocalDataOpener, type NoticeAction } from './notification'
+import { openSettings } from './settings/openSettings'
 import { shownName } from './shownName'
+import { restoreCopy } from './switch'
 
 // What this load found (the events of `local/startup/events.ts`) as the start-up pill's load
 // notices, with their actions (Part 1 §1.4.3). Restore Session (Step 7) and Open History (Step 5)
@@ -12,25 +15,24 @@ import { shownName } from './shownName'
 
 const quoted = (name: ShownName) => () => shownName(name)
 
-// These modules load when an action runs, not with the page.
-const localData: NoticeAction = {
-    label: () => i18n.value.load.localData,
-    run: () => {
-        void import('./settings/openSettings').then(({ openSettings }) => openSettings('localData'))
-    },
+const openLocalData = () => {
+    void openSettings('localData')
 }
+setLocalDataOpener(openLocalData)
+
+const localData: NoticeAction = { label: () => i18n.value.load.localData, run: openLocalData }
 
 const restoreAsCopy = (sessionId: string): NoticeAction => ({
     label: () => i18n.value.load.restoreAsCopy,
     run: () => {
-        void import('./switch').then(({ restoreCopy }) => restoreCopy(sessionId))
+        void restoreCopy(sessionId)
     },
 })
 
 const chooseAudio: NoticeAction = {
     label: () => i18n.value.notice.chooseAudio,
     run: () => {
-        void import('./commands/bgm').then(({ changeBgm }) => changeBgm())
+        void changeBgm()
     },
 }
 

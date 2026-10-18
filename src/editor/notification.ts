@@ -111,9 +111,10 @@ export type LoadNotice = { order: number; message: () => string; action?: Notice
 /** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load:". */
 export const loadNotices = shallowRef<readonly LoadNotice[]>([])
 
-// Local Data is a dialog of its own; its module loads when the action runs.
-const openLocalData = () => {
-    void import('./settings/openSettings').then(({ openSettings }) => openSettings('localData'))
+// What "and N more in Local Data" does: set by `loadNotices.ts`, which can import Settings.
+let openLocalData: (() => void) | undefined
+export const setLocalDataOpener = (open: () => void) => {
+    openLocalData = open
 }
 
 const pillLines = (): NoticeLine[] => {
@@ -123,7 +124,12 @@ const pillLines = (): NoticeLine[] => {
     if (notices.length > shown.length)
         lines.push({
             message: interpolate(() => i18n.value.load.more, `${notices.length - shown.length}`),
-            action: { label: () => i18n.value.load.localData, run: openLocalData },
+            action: {
+                label: () => i18n.value.load.localData,
+                run: () => {
+                    openLocalData?.()
+                },
+            },
         })
     return lines
 }

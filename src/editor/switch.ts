@@ -5,6 +5,8 @@ import { previousSession } from '../local/startup/events'
 import { showChoice } from '../modals/choice'
 import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
+import { runCommand } from './commands/runCommand'
+import { save } from './commands/save'
 import { dismissNotification, notification, notify, type NoticeAction } from './notification'
 import { shownName } from './shownName'
 
@@ -18,10 +20,6 @@ import { shownName } from './shownName'
  * follow-up.
  */
 export const promptSaveStub = async () => {
-    const [{ save }, { runCommand }] = await Promise.all([
-        import('./commands/save'),
-        import('./commands/runCommand'),
-    ])
     await runCommand(save)
 }
 
