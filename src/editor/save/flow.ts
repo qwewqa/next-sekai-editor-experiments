@@ -697,6 +697,11 @@ const afterPick = async (
         await env.flusher.endSave(reservation)
         return { kind: 'failed', error: fileError(error), name }
     }
+    // Written since the pick (a sync client): never written over unseen (R9).
+    if (empty.size !== 0) {
+        await env.flusher.endSave(reservation)
+        return { kind: 'conflict', handle, binding }
+    }
     const picked = await identify(env, handle)
     let built = prebuilt
     let tookOver = false
@@ -1809,6 +1814,13 @@ const writeSessionFile = async (
         } catch (error) {
             return { kind: 'failed', error: fileError(error), name: handle.name }
         }
+        // Written since the pick (a sync client): never written over unseen (R9).
+        if (empty.size !== 0)
+            return {
+                kind: 'failed',
+                error: new FileError('conflict', `${handle.name} changed`),
+                name: handle.name,
+            }
         const identity = await identify(env, handle)
         let tookOver = false
         if (identity.kind === 'refused') {

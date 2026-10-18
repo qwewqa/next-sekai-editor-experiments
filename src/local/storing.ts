@@ -26,6 +26,7 @@ import { checkPrivateWindow, handleOf } from './handles'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
+import { isImporting, whenImported } from './open/importLoop'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
@@ -161,6 +162,18 @@ export const watchLifecycle = () => {
 /** Waits while a spec holds flushes, to leave edits only the journal has, as a kill does. */
 const whileStalled = async () => {
     while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
+}
+
+/** How long a slot load waits for the next load's import resume to start (§1.5.4). */
+const RESUME_WAIT_MS = 4000
+
+/** Whether the session's import runs here, or starts within `RESUME_WAIT_MS` (the resume). */
+const importStarted = async (sessionId: string) => {
+    for (let waited = 0; waited < RESUME_WAIT_MS; waited += 100) {
+        if (isImporting(sessionId)) return true
+        await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    return isImporting(sessionId)
 }
 
 /** About every 10 s while storage is unavailable and there are changes (§1.6.7). */
@@ -434,7 +447,22 @@ export const startStoring = (
     })
 
     // A restored undo slot is built from its stored records, verified, when Undo or Redo reaches it.
-    setSlotLoader(slotLoader((hex) => worker.call('readSnapshotVerified', hex)))
+    // Right after a reload, a slot the resumed import hasn't brought yet loads once it has: the
+    // load waits for the resume to start, then for the import, and tries again (§1.5.4).
+    const load = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
+    setSlotLoader(async (snapshot) => {
+        try {
+            return await load(snapshot)
+        } catch (error) {
+            const id = instance.session?.id
+            // Only a session whose open's import hasn't finished waits for it.
+            const pending = id ? await worker.call('openPendingImports').catch(() => []) : []
+            if (!id || !pending.some((each) => each.sessionId === id)) throw error
+            if (!(await importStarted(id))) throw error
+            await whenImported(id)
+            return load(snapshot)
+        }
+    })
 
     // History's entries are peeked from memory or their stored snapshots (§1.4.11).
     setPeekSource(createPeekSource(worker, () => flusher))
