@@ -1,4 +1,5 @@
 import { journalHandlers } from '../journal/handlers'
+import { changeHandlers } from './changeHandlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { peekHandlers } from './peekHandlers'
@@ -26,6 +27,7 @@ const handlers = {
     ...startupHandlers(context),
     ...timelineHandlers(context),
     ...peekHandlers(context),
+    ...changeHandlers(context),
 }
 
 export type StorageHandlers = typeof handlers
