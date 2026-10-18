@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { KeyRange } from '../../../src/local/kv/types'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import { readTimeline } from '../../../src/local/worker/timelineHandlers'
 import { openPage, type Page } from '../flush/harness'
@@ -80,4 +81,28 @@ test('pages continue where the last ended, across the divider', async () => {
         all.entries.map((entry) => `${entry.sessionId}:${entry.seq}`),
     )
     assert.ok(pages >= 3)
+})
+
+test('malformed rows still move the cursor within their session', async () => {
+    const world = createWorld({ seed: 1 })
+    const { next, parent, child } = await chain(world)
+    // The parent's newest two rows can't be read as entries.
+    const rows = await next.tab.run(() =>
+        next.core.read(['entries'], (tx) =>
+            tx.getAll('entries', KeyRange.bound([parent.id, -Infinity], [parent.id, Infinity])),
+        ),
+    )
+    const broken = (rows as { seq: number }[]).sort((a, b) => b.seq - a.seq).slice(0, 2)
+    await next.tab.run(() =>
+        next.core.write(['entries'], async (tx) => {
+            for (const row of broken) await tx.put('entries', { ...row, time: 'broken' })
+        }),
+    )
+    const first = await read(next, { sessionId: child.id, limit: 5 })
+    assert.deepEqual(first.next, { sessionId: parent.id, before: broken[1]!.seq })
+    const rest = await read(next, { ...first.next!, limit: 5 })
+    assert.deepEqual(
+        rest.entries.map((entry) => entry.label),
+        ['One', 'Initialize'],
+    )
 })

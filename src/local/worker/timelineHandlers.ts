@@ -102,9 +102,10 @@ export const readTimeline = async (
             const entry = isRow(value) ? entryOf(value) : undefined
             if (entry) entries.push(entry)
         }
-        const last = entries.at(-1)
+        // From the last row read, not entry: a malformed row still moves the cursor in this session.
+        const last = rows.at(-1)?.primaryKey as [string, number] | undefined
         if (rows.length >= wanted && last) {
-            next = { sessionId: id, before: last.seq }
+            next = { sessionId: id, before: last[1] }
             break
         }
         // The session's first entry is read: on into the session it continued, from where it did.
