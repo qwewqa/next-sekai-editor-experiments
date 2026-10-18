@@ -18,7 +18,7 @@ const edges = (locator: Locator) =>
 test('scrollable dialog bodies fade only toward hidden content', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.keyboard.press(',')
-    const body = page.getByRole('dialog').locator('.scroll-edges')
+    const body = page.getByRole('dialog').locator('.scroll-edges[data-scroll-axis="y"]')
     await expect(body).toBeVisible()
     const height = await body.evaluate((element) => element.clientHeight)
 
