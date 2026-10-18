@@ -414,3 +414,57 @@ const uniqueChunk = async (fixture: Fixture, k: number) => {
     assert.ok(found, `state ${k} shares every chunk`)
     return found
 }
+
+test('a long chain is written in segments of 500, and a write-back copies them whole', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    for (let i = 0; i < 300; i++) {
+        fixture.undo()
+        fixture.redo()
+    }
+    await fixture.flush()
+    const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+    ok(first.built)
+    assert.ok(first.file)
+    const old = await unzip(first.file)
+    const segments = old.items.filter((item) => item.name.startsWith('history/segments/'))
+    assert.equal(segments.length, 1)
+    await fixture.edit(2)
+    await fixture.flush()
+    const { built, file } = await writeBack(fixture, first.file)
+    ok(built)
+    assert.ok(file)
+    const written = await unzip(file)
+    for (const segment of segments)
+        assert.deepEqual(
+            written.items.find((item) => item.name === segment.name)?.data,
+            segment.data,
+        )
+    if (hasUv) {
+        const result = await checkFiles([first.file, file])
+        assert.equal(result.status, 0, result.output)
+    }
+})
+
+test('Replace writes the chain’s chronology with `replaces`, and the line when not carried', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    fixture.undo()
+    await fixture.edit(2)
+    await fixture.flush()
+    ok((await save(fixture, { kind: 'copy' }, { disk: diskOf })).built)
+    assert.equal(await fixture.thin(0, 1), true)
+    const { built, file } = await save(
+        fixture,
+        { kind: 'replace', replaces: 'theirs' },
+        { disk: diskOf },
+    )
+    const plan = ok(built)
+    assert.ok(file)
+    assert.equal(plan.someStepsNotKept, true)
+    const { read } = await heldRows(file)
+    assert.equal(read.project?.revision?.replaces, 'theirs')
+    assert.equal(read.project?.revision?.completeFrom, plan.revisionId)
+})

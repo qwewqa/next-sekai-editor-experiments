@@ -1,6 +1,3 @@
-import { serializeEditorMetadata } from '../../levelData/editorMetadata'
-import { LEVEL_VERSION } from '../../levelData/levelVersion'
-import { serializeToLevelData } from '../../levelData/serialize'
 import { centralDirectoryOf } from '../../platform/fingerprint'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfo, MediaRef } from '../../state/levelInfo'
@@ -17,7 +14,7 @@ import {
 import { isObject } from '../nxsp/json'
 import type { EntryForm } from '../nxsp/manifest'
 import { PlanError, type PinnedSource, type WritePlan } from '../nxsp/plan'
-import { placedCompleteFrom, summaryOf, type DeviceForm, type RevisionForm } from '../nxsp/project'
+import { placedCompleteFrom, type DeviceForm, type RevisionForm } from '../nxsp/project'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
 import { replay, ReplayError, type ReplayEntry, type ReplaySlot } from '../timeline'
@@ -44,6 +41,7 @@ import {
     type ChainRow,
     type WriteStack,
 } from './model'
+import { headInput as headOf } from './pending'
 
 // The shared writer's history half (Part 1 §1.6.11.6): from a chain's consistent cut and the
 // write's kind, it decides what the file holds (an append to the chain's own file at the base,
@@ -234,24 +232,7 @@ const headFromBodies = (bodies: Bodies, hex: string): HeadInput => {
             return JSON.parse(decoder.decode(inflateStrict(chunk.stored))) as unknown
         },
     })
-    const state = stateFromRecords(records)
-    const level = serializeToLevelData(
-        state.initialLife,
-        state.isDynamicStages,
-        state.bgm.offset,
-        state.store,
-        state.groups,
-        state.stages,
-        { groups: state.groupFolders, stages: state.stageFolders },
-    )
-    return {
-        level,
-        editor: serializeEditorMetadata(level.entities, state.store),
-        summary: summaryOf(records),
-        levelInfo: state.levelInfo,
-        ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
-        levelVersion: LEVEL_VERSION,
-    }
+    return headOf(stateFromRecords(records))
 }
 
 const rowSnapshots = (entry: { snapshot: Uint8Array; stack?: EntryRow['stack'] }) => [

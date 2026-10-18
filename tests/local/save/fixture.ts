@@ -25,7 +25,7 @@ import { createWorld, type Tab, type World } from '../../../src/local/testing/wo
 import { BLOCK_SLOTS, blockRow, storedWindow, type ReplaySlot } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import { workerCore } from '../flush/harness'
-import { BGM, chartWith, COVER, PREVIEW, sha256Hex } from '../nxsp/helpers'
+import { BGM, BGM_2, chartWith, COVER, COVER_2, PREVIEW, sha256Hex } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
 
 // Chains written straight into a test profile, as flushes and opens store them, and the Saves
@@ -35,11 +35,18 @@ export const DEVICE = { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web 
 
 const states = new Map<number, { state: State; hex: string }>()
 
-/** State `k`: the golden chart with `k` extra notes, its media the shared items. */
+/** The second media variant: states from `SECOND` on use the second BGM and cover. */
+export const SECOND = 1000
+
+/** State `k`: the golden chart with `k` extra notes (`k - SECOND` with the second media). */
 export const stateAt = (k: number) => {
     let known = states.get(k)
     if (!known) {
-        const state = stateOf(chartWith({ extraNotes: k }))
+        const state = stateOf(
+            k >= SECOND
+                ? chartWith({ extraNotes: k - SECOND, bgm: BGM_2, cover: COVER_2 })
+                : chartWith({ extraNotes: k }),
+        )
         known = { state, hex: toHex(encodeSnapshot(toRecords(state)).root.hash) }
         states.set(k, known)
     }
