@@ -129,6 +129,8 @@ export const openStored = async (
     deps: OpenDeps,
     read: SessionRead & { kind: 'open' },
     how: How,
+    /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
+    { replace = false }: { replace?: boolean } = {},
 ): Promise<State | undefined> => {
     const flusher = deps.flusher()
     const releaseAll = () => {
@@ -141,7 +143,7 @@ export const openStored = async (
     }
     const state = await headState(deps.worker, read.head)
     // Start Blank, or a chart made meanwhile, keeps what's on screen.
-    if (blankRequested || !deps.untouched()) {
+    if (!replace && (blankRequested || !deps.untouched())) {
         releaseAll()
         return
     }
@@ -257,7 +259,10 @@ const holdOwn = (locks: LockService, sessionId: string): HeldLock => {
 }
 
 /** A shared hold on a session, as an unstored continuation keeps its parent (§1.3.6). */
-const holdShared = async (locks: LockService, sessionId: string): Promise<HeldLock | undefined> => {
+export const holdShared = async (
+    locks: LockService,
+    sessionId: string,
+): Promise<HeldLock | undefined> => {
     if (!hasWebLocks()) return noLock(sessionId)
     let release!: () => void
     const held = new Promise<void>((resolve) => {

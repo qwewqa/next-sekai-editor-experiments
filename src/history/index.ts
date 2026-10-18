@@ -138,6 +138,20 @@ export const openStoredState = (
     notifyResetState()
 }
 
+/**
+ * Starts a new session with a whole state brought in (a journal opened from Local Data, §1.6.7):
+ * stored at once, as an import is.
+ */
+export const openState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
+    if (!isElevationSideBySide.value) closeElevationEditor()
+    session.value = createSessionDescriptor(descriptor)
+    resetStates({ isDirty: true, name: () => i18n.value.entry.recovered, state }, 'import')
+    setLevelDataHandle(undefined)
+    cleanupWaveform()
+    switchToolTo('select')
+    notifyResetState()
+}
+
 export const setLevelDataHandle = (handle: FileSystemFileHandle | undefined) => {
     levelDataHandle = handle
 }

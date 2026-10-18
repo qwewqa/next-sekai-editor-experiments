@@ -64,6 +64,38 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                 ...scope,
             }),
 
+        /** The `recovered` store's rows without their bytes (§1.6.11.2), for Local Data. */
+        listRecovered: () =>
+            context.core.read(['recovered'], async (tx) =>
+                (await tx.getAll('recovered')).map((row) => {
+                    const { bytes: _bytes, ...rest } = row as Record<string, unknown>
+                    return rest as {
+                        id: string
+                        source: string
+                        from: string
+                        sessionId?: string
+                        size: number
+                        foundAt: number
+                        appVersion: string
+                    }
+                }),
+            ),
+
+        /** A `recovered` row's bytes as text, for Download; undefined when it's gone. */
+        readRecovered: async (id: string) => {
+            const row = (await context.core.read(['recovered'], (tx) =>
+                tx.get('recovered', id),
+            )) as { bytes?: Blob } | undefined
+            return row?.bytes ? await outside.wait(row.bytes.text()) : undefined
+        },
+
+        /** Discard… on unreadable recovered work (§1.4.14): the only thing that removes a row. */
+        discardRecovered: (id: string, scope?: CallScope) =>
+            context.core.write(['recovered'], (tx) => tx.delete('recovered', id), {
+                durability: 'strict',
+                ...scope,
+            }),
+
         /** The auto save as a session (§1.8), in one strict transaction. */
         migrateAutoSave: async (
             batch: MigrationBatch,

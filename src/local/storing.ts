@@ -20,11 +20,12 @@ import {
 import { toHex } from './hash'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
-import { forkNameOf, namePartsOf } from './names'
+import { displayName, forkNameOf, namePartsOf } from './names'
 import { inspectSnapshot } from './records/inspect'
 import { stateFromRecords } from './records/records'
 import { decodeSnapshot } from './records/snapshot'
 import { holdSessionLock, TabClient } from './sessions'
+import { leftSession } from './startup/api'
 import {
     legacyFromJournal,
     removeLegacyRecovery,
@@ -303,6 +304,7 @@ export const startStoring = (
                 })
                 const first = firstReset
                 firstReset = false
+                const leaving = instance.session
                 const begun = instance.begin({
                     id: descriptor.sessionId,
                     docId: descriptor.docId,
@@ -318,6 +320,21 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
+                // Reopen offers the session left, once its strict commit holds (§1.4.1).
+                if (leaving && leaving !== initialSession && (leaving.stored || leaving.edited)) {
+                    const state = [...leaving.pending].reverse().find((entry) => entry.state)?.state
+                    leftSession(
+                        leaving.id,
+                        displayName(
+                            namePartsOf(
+                                { sourceName: leaving.sourceName, ...leaving.chain },
+                                state,
+                            ),
+                        ),
+                        leaving.startedAt,
+                        instance.outgoing,
+                    )
+                }
                 return
             }
             instance.append(

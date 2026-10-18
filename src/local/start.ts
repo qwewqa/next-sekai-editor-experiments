@@ -8,8 +8,9 @@ import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
+import { setSessionContext } from './startup/api'
 import { addLoadEvent } from './startup/events'
-import { claimTab, openAtStart, type Claim } from './startup/open'
+import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
 import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
 import { flusher, startStoring, tabClient, untouched, watchLifecycle } from './storing'
@@ -237,27 +238,27 @@ export const startStorage = async () => {
     let open = false
     try {
         await recovered
-        if (answered && tabClient)
-            open = await openAtStart(
-                {
-                    worker,
-                    status,
-                    locks: platform.locks,
-                    client: tabClient,
-                    safe,
-                    ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
-                    ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
-                    flusher: () => flusher,
-                    untouched,
-                    labels: {
-                        continued: () => i18n.value.entry.continued,
-                        recoveredHead: () => i18n.value.entry.recovered,
-                    },
-                    events: addLoadEvent,
+        if (answered && tabClient) {
+            const deps: OpenDeps = {
+                worker,
+                status,
+                locks: platform.locks,
+                client: tabClient,
+                safe,
+                ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
+                ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
+                flusher: () => flusher,
+                untouched,
+                labels: {
+                    continued: () => i18n.value.entry.continued,
+                    recoveredHead: () => i18n.value.entry.recovered,
                 },
-                claim,
-            )
-        else if (claim.kind === 'reload') claim.lock.release()
+                events: addLoadEvent,
+            }
+            open = await openAtStart(deps, claim)
+            // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
+            setSessionContext(deps, recovery)
+        } else if (claim.kind === 'reload') claim.lock.release()
     } finally {
         if (test) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
     }
