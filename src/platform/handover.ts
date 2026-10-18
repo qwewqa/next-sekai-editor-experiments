@@ -267,6 +267,7 @@ const writeTo = async (
     }
 
     // The read-back: `saved` means the file holds exactly the bytes built.
+    await savePoint('readBack')
     let disk: DiskState
     try {
         const file = await handle.getFile()

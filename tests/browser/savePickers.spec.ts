@@ -5,11 +5,14 @@ import {
     chainOf,
     edit,
     notice,
+    pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
     queuePicks,
+    reached,
     readFile,
+    release,
     rows,
     saveDialog,
     sessionOf,
@@ -325,19 +328,6 @@ test('Save to File… writes a session that isn’t open as a new file, binding 
     const same = chains!.map((row) => row.value).find((row) => row.chainId === chain.chainId)!
     expect(same.file).toEqual(chain.file)
 })
-
-/** Pauses the next write at a named point (`savePoint`); `release` lets it go on. */
-const pauseAt = (page: Page, point: string) =>
-    page.evaluate((point) => localStorage.setItem('nse.test.savePause', point), point)
-
-const reached = (page: Page, point: string) =>
-    expect.poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain(point)
-
-const release = (page: Page) =>
-    page.evaluate(() => {
-        localStorage.removeItem('nse.test.savePause')
-        window.nseSaveTest?.release()
-    })
 
 test('a sync client writing into the picked file after the pick: nothing is written over it', async ({
     page,

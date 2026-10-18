@@ -1,3 +1,4 @@
+import { hashKey } from '../db'
 import type { WritePlan } from '../nxsp/plan'
 import type { SaveStore } from '../save/bodies'
 import { setSaveHooksForTests, type SaveOptions, type SaveTarget } from '../save/build'
@@ -85,6 +86,22 @@ export const saveHandlers = (context: WorkerContext) => {
         saveNeeds: ({ chainId, media }: { chainId: string; media: string[] }) =>
             readSaveNeeds(store, chainId, media),
 
+        /**
+         * Test: cleanup under pressure, as Step 10's will: a stored row made `kept: false` and its
+         * root removed (the specs' storage-short cases).
+         */
+        testThin: ({ sessionId, seq }: { sessionId: string; seq: number }) => {
+            if (!context.test) throw new Error('Test hooks need a test flag')
+            return context.core.write(['entries', 'nodes'], async (tx) => {
+                const row = (await tx.get('entries', [sessionId, seq])) as
+                    | Record<string, unknown>
+                    | undefined
+                if (!row || !(row.snapshot instanceof Uint8Array)) return false
+                await tx.put('entries', { ...row, kept: false })
+                await tx.delete('nodes', hashKey(row.snapshot))
+                return true
+            })
+        },
         /** Test: alters what the next builds do (the append assertion's and the post-build check's specs). */
         testSaveHooks: ({
             breakAppend: broken,

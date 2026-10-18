@@ -155,3 +155,35 @@ export const flushed = (page: Page) =>
         const flusher = window.nseFlushTest?.flusher
         await flusher?.flush({ strict: true })
     })
+
+/** Pauses the next write at a named point (`savePoint`); `release` lets it go on. */
+export const pauseAt = (page: Page, point: string) =>
+    page.evaluate((point) => localStorage.setItem('nse.test.savePause', point), point)
+
+/** Waits until a page's write reached a point. */
+export const reached = (page: Page, point: string) =>
+    expect.poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain(point)
+
+/** Stops pausing (the key is the context's), leaving a paused write waiting for `release`. */
+export const unpause = (page: Page) =>
+    page.evaluate(() => localStorage.removeItem('nse.test.savePause'))
+
+export const release = (page: Page) =>
+    page.evaluate(() => {
+        localStorage.removeItem('nse.test.savePause')
+        window.nseSaveTest?.release()
+    })
+
+/** Whether closing the page now would raise the browser's prompt (the handler held the event). */
+export const prompts = (page: Page) =>
+    page.evaluate(() => {
+        const event = new Event('beforeunload', { cancelable: true })
+        window.dispatchEvent(event)
+        return event.defaultPrevented
+    })
+
+/** The chain record of a chain, by id. */
+export const chainById = async (page: Page, chainId: unknown) => {
+    const { chains } = await rows(page, ['chains'])
+    return chains!.map((row) => row.value).find((row) => row.chainId === chainId)
+}

@@ -1415,6 +1415,7 @@ const replace = async (
     const stem = shownStem(env, savedState()) || stemOf(handle.name)
     const keptName = interpolateRaw(i18n.value.conflict.keptName, stem, formatDate(Date.now()))
     const kept = await keepReplaced(pinned.file, keptName)
+    await savePoint('kept')
     if (kept !== 'kept') {
         // The file changed while it was being kept: the dialog again, over what's there now.
         const now = await platform
