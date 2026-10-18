@@ -89,7 +89,7 @@ export const load = async (
             applyJournal: (batch) => page.tab.run(() => journal.applyJournal(batch)),
             keepRecovered: (item) => page.tab.run(() => journal.keepRecovered(item)),
             readMetaIds: () => page.tab.run(() => startup.readMetaIds()),
-            isMigrated: (hash) => page.tab.run(() => startup.isMigrated(hash)),
+            migratedBefore: (hash) => page.tab.run(() => startup.migratedBefore(hash)),
             migrateAutoSave: (batch) => page.tab.run(() => startup.migrateAutoSave(batch)),
             ...options.worker,
         },

@@ -131,7 +131,7 @@ const recoveryContext = (
         keepRecovered: (item) =>
             worker.call('keepRecovered', item, { timeoutMs: timeoutFor(item.text.length) }),
         readMetaIds: () => worker.call('readMetaIds'),
-        isMigrated: (hash) => worker.call('isMigrated', hash),
+        migratedBefore: (hash) => worker.call('migratedBefore', hash),
         migrateAutoSave: (batch) =>
             worker.call('migrateAutoSave', transfer(batch, [batch.text.buffer]), {
                 timeoutMs: timeoutFor(batch.text.byteLength),

@@ -3,8 +3,12 @@ import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
 import { serializeToLevelData } from '../../../src/levelData/serialize'
 import type { State } from '../../../src/state'
 
-/** The old auto save's value for a state, as today's editor writes it. */
-export const autoSaveText = (state: State, filename = 'coconut') => {
+/** The old auto save's value for a state, as today's editor writes it; `edit` changes its level data. */
+export const autoSaveText = (
+    state: State,
+    filename = 'coconut',
+    edit?: (levelData: ReturnType<typeof serializeToLevelData>) => void,
+) => {
     const levelData = serializeToLevelData(
         state.initialLife,
         state.isDynamicStages,
@@ -14,6 +18,7 @@ export const autoSaveText = (state: State, filename = 'coconut') => {
         state.stages,
         { groups: state.groupFolders, stages: state.stageFolders },
     )
+    edit?.(levelData)
     return JSON.stringify(
         serializeAutoSave(
             levelData,

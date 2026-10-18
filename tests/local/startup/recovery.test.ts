@@ -3,9 +3,18 @@ import test from 'node:test'
 import { writeMeta } from '../../../src/local/db'
 import { sha256, toHex } from '../../../src/local/hash'
 import { journalHandlers } from '../../../src/local/journal/handlers'
-import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
+import {
+    JOURNAL_TOTAL_LIMIT,
+    MemoryStorage,
+    storageJournalStore,
+} from '../../../src/local/journal/store'
+import { holdSessionLock } from '../../../src/local/sessions'
 import type { LoadEvent } from '../../../src/local/startup/events'
-import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY } from '../../../src/local/startup/legacy'
+import {
+    AUTO_SAVE_KEY,
+    LEGACY_RECOVERY_KEY,
+    writeLegacyRecovery,
+} from '../../../src/local/startup/legacy'
 import { RecoverySteps } from '../../../src/local/startup/recovery'
 import { recoverySteps, runRecovery, type RecoveryContext } from '../../../src/local/startup/steps'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -41,7 +50,7 @@ const loadIn = async (
             applyJournal: (batch) => tab.run(() => journal.applyJournal(batch)),
             keepRecovered: (item) => tab.run(() => journal.keepRecovered(item)),
             readMetaIds: () => tab.run(() => startup.readMetaIds()),
-            isMigrated: (hash) => tab.run(() => startup.isMigrated(hash)),
+            migratedBefore: (hash) => tab.run(() => startup.migratedBefore(hash)),
             migrateAutoSave: (batch) => tab.run(() => startup.migrateAutoSave(batch)),
         },
         status: core.status,
@@ -344,4 +353,113 @@ test('a journal of a chain marked for Delete becomes a recovery session, never s
     assert.ok(outcome && 'result' in outcome && outcome.result.kind === 'recovery')
     assert.equal(rows(world, 'chains').get(outcome.result.chainId)?.head, outcome.result.sessionId)
     assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a slot migrated before is never parsed again: an old tab’s write-back only goes', async () => {
+    const world = createWorld({ seed: 13 })
+    const storage = new MemoryStorage()
+    const text = autoSaveOf(stateOf(goldenChart()))
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    const first = await loadIn(world, world.tab('a'), storage)
+    await runRecovery(first.recovery)
+    assert.ok(first.recovery.migrated)
+    // Written back, with no legacy copy left: the copy is made again before the key goes.
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    storage.removeItem(key(LEGACY_RECOVERY_KEY))
+    const again = await loadIn(world, world.tab('b'), storage)
+    again.recovery.worker.migrateAutoSave = () => {
+        throw new Error('A migrated slot is never prepared again')
+    }
+    await runRecovery(again.recovery)
+    assert.deepEqual(again.events, [])
+    assert.equal(again.recovery.migrated, undefined)
+    assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), text)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})
+
+test('a slot whose batch can’t be made stays, with its load event, and never stops the load', async () => {
+    const world = createWorld({ seed: 14 })
+    const storage = new MemoryStorage()
+    storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
+    const { recovery, events } = await loadIn(world, world.tab('a'), storage, {
+        newId: () => {
+            throw new Error('A bug in the batch')
+        },
+    })
+    const errors = console.error
+    console.error = () => undefined
+    try {
+        await runRecovery(recovery)
+    } finally {
+        console.error = errors
+    }
+    assert.deepEqual(events, [{ kind: 'migrationFailed', unreadable: true }])
+    assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})
+
+test('a migrated auto save from an older engine revision says so (D18)', async () => {
+    const world = createWorld({ seed: 15 })
+    const storage = new MemoryStorage()
+    // The golden chart has elevation, which the revision change can matter to.
+    const text = autoSaveOf(stateOf(goldenChart()), 'coconut', (levelData) => {
+        const [initialization] = levelData.entities
+        if (initialization)
+            initialization.data = initialization.data.filter((data) => data.name !== 'revision')
+    })
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    const { recovery, events } = await loadIn(world, world.tab('a'), storage)
+    await runRecovery(recovery)
+    assert.ok(recovery.migrated)
+    assert.deepEqual(events, [{ kind: 'migratedRevision', sessionId: recovery.migrated.sessionId }])
+})
+
+test('the canary: a database without its meta row where localStorage has an id is cleared too', async () => {
+    const world = createWorld({ seed: 16 })
+    const storage = new MemoryStorage()
+    storage.setItem(key('canary'), JSON.stringify('an earlier database'))
+    const { recovery, events } = await loadIn(world, world.tab('a'), storage)
+    recovery.worker.readMetaIds = () => Promise.resolve({})
+    await runRecovery(recovery)
+    assert.deepEqual(events, [{ kind: 'storageCleared' }])
+})
+
+test('storage unavailable: a live tab’s journal isn’t offered, and earlier journals filling their budget say so', async () => {
+    const world = createWorld({ seed: 17 })
+    const storage = new MemoryStorage()
+    const live = await openJournalPage(world, 'live', storage, {}, { flags: { noStorage: true } })
+    const a = stateOf(goldenChart())
+    const session = beginSession(live, a, 'new')
+    append(live, 'edit', 'Edit', widen(a))
+    assert.equal(live.writer.write(), true)
+    const lock = holdSessionLock(live.tab.locks, session.id)
+    await live.tab.run(() => lock.granted)
+
+    const tab = world.tab('next')
+    const core = workerCore(world, tab, { flags: { noStorage: true } })
+    const first = await loadIn(world, tab, storage, {}, core)
+    await runRecovery(first.recovery)
+    assert.deepEqual(first.recovery.keptForLocalData, [])
+    assert.deepEqual(first.events, [])
+
+    // Earlier visits' journals over half the budget.
+    storage.setItem(key('journal.earlier'), 'x'.repeat(JOURNAL_TOTAL_LIMIT / 2))
+    const second = await loadIn(world, tab, storage, {}, core)
+    await runRecovery(second.recovery)
+    assert.deepEqual(
+        second.events.map((event) => event.kind),
+        ['unsavedInLocalData', 'journalsFull'],
+    )
+    lock.release()
+})
+
+test('the legacy slot counts only when it reads back intact', () => {
+    // A storage that hands back something else than was written.
+    class Changing extends MemoryStorage {
+        override getItem(name: string) {
+            return name.endsWith(LEGACY_RECOVERY_KEY) ? 'other' : super.getItem(name)
+        }
+    }
+    const text = '{"bgmOffset":0,"entities":[]}'
+    assert.equal(writeLegacyRecovery(text, new Changing(), PREFIX), false)
+    assert.equal(writeLegacyRecovery(text, new MemoryStorage(), PREFIX), true)
 })

@@ -43,7 +43,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
             })),
 
         /** Whether `meta.migratedHashes` holds an old auto save's hash (§1.8). */
-        isMigrated: (hash: string) =>
+        migratedBefore: (hash: string) =>
             context.core.read(['meta'], async (tx) =>
                 ((await readMeta(tx, 'migratedHashes')) ?? []).includes(hash),
             ),

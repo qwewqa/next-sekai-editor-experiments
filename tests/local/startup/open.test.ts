@@ -4,6 +4,7 @@ import { toHex } from '../../../src/local/hash'
 import { journalState } from '../../../src/local/journal/content'
 import { readJournal } from '../../../src/local/journal/format'
 import { MemoryStorage } from '../../../src/local/journal/store'
+import type { KvTx } from '../../../src/local/kv/types'
 import { webLockService } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
@@ -14,7 +15,7 @@ import { MARKER_WAIT_MS } from '../../../src/local/startup/tab'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
-import { rows } from '../flush/harness'
+import { rows, workerCore } from '../flush/harness'
 import { append, beginSession, openJournalPage, type JournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { storedEntries, widen } from '../timeline/helpers'
@@ -417,4 +418,116 @@ test('the migrated auto save’s line says whether it’s the session that opene
         visit.events.some((event) => event.kind === 'continued'),
         false,
     )
+})
+
+const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {
+    const tab = world.tab(`tamper-${String(Math.random())}`)
+    const core = workerCore(world, tab)
+    await tab.run(() => core.start())
+    await tab.run(() =>
+        core.write(['sessions', 'chains', 'entries', 'tombstones', 'stackBlocks'], change),
+    )
+}
+
+test('a session this build can’t open is never passed over silently: a reload’s own, and a new visit’s newest', async () => {
+    const world = createWorld({ seed: 12 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const older = beginSession(first, a)
+    await first.flusher.flush({ strict: true })
+    const newer = beginSession(first, widen(a))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const tab: TabStorage = new Map()
+    recordTab(tab, { sessionId: newer.id, start: 'stored' })
+    await tamper(world, async (tx) => {
+        const row = (await tx.get('sessions', newer.id)) as Record<string, unknown>
+        await tx.put('sessions', { ...row, v: 2 })
+    })
+
+    const reload = await load(world, 'reload', storage, { tab })
+    assert.equal(reload.opened, false)
+    assert.deepEqual(reload.events, [{ kind: 'notOpened', which: 'reload', why: 'later' }])
+    reload.page.tab.kill()
+
+    const visit = await load(world, 'visit', storage)
+    assert.equal(openSession(visit).parent?.id, older.id)
+    assert.deepEqual(visit.events[0], { kind: 'notOpened', which: 'newest', why: 'later' })
+})
+
+test('a newer database outside safe mode: a reload continues from its own journal, as with storage unavailable', async () => {
+    const world = createWorld({ seed: 13 })
+    const storage = new MemoryStorage()
+    const readOnly = { flags: { readOnly: true } }
+    const visit = await load(world, 'visit', storage, { core: readOnly })
+    assert.equal(visit.page.core.status.mode, 'readOnly')
+    const a = stateOf(goldenChart())
+    const session = beginSession(visit.page, a, 'new')
+    append(visit.page, 'edit', 'Edit', widen(a))
+    assert.equal(visit.page.writer.write(), true)
+    visit.page.tab.kill()
+    recordTab(visit.tab, { sessionId: session.id, start: 'new' })
+
+    const reload = await load(world, 'reload', storage, { tab: visit.tab, core: readOnly })
+    assert.equal(reload.opened, true)
+    assert.equal(openSession(reload).id, session.id)
+    // A copy of the tab finds it in Local Data.
+    const copy = await load(world, 'copy', storage, { core: readOnly })
+    assert.equal(copy.recovery.keptForLocalData.length, 0)
+})
+
+test('a new visit whose most recent session’s file is bound in another tab’s open session forks it', async () => {
+    const world = createWorld({ seed: 14 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const bound = beginSession(first, a)
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    // Another tab has a different chain open, bound to the same file.
+    const other = await openJournalPage(world, 'other', storage)
+    const lock = holdSessionLock(other.tab.locks, 'other-session')
+    await other.tab.run(() => lock.granted)
+    beginSession(other, widen(a, 2), 'import', { id: 'other-session' })
+    await other.flusher.flush({ strict: true })
+    // The newest chain is the bound one again.
+    await tamper(world, async (tx) => {
+        for (const chainId of [bound.chainId, other.flusher.session!.chainId]) {
+            const chain = (await tx.get('chains', chainId)) as Record<string, unknown>
+            await tx.put('chains', {
+                ...chain,
+                file: { name: 'coconut.nxsp' },
+                ...(chainId === bound.chainId ? { updatedAt: 9_999_999_999_999 } : {}),
+            })
+        }
+    })
+    // Handles aren't stored (D16): the worker's reads carry fake ones, one file for both.
+    const file = { isSameEntry: (other: unknown) => Promise.resolve(other === file) }
+    const withHandle = (value: unknown): unknown => {
+        if (Array.isArray(value)) return value.map(withHandle)
+        if (typeof value !== 'object' || value === null || value instanceof Uint8Array) return value
+        const row = Object.fromEntries(
+            Object.entries(value).map(([key, each]) => [key, withHandle(each)]),
+        )
+        if (typeof row.name === 'string' && row.name === 'coconut.nxsp') row.handle = file
+        return row
+    }
+    const visit = await load(world, 'visit', storage, {
+        call: (method, result) =>
+            method === 'readNewestSession' || method === 'readBindings'
+                ? withHandle(result)
+                : result,
+    })
+    const copy = openSession(visit)
+    assert.notEqual(copy.forkOf, undefined)
+    assert.equal(copy.parent?.id, bound.id)
+    assert.deepEqual(
+        visit.events.find((event) => event.kind === 'separateCopy'),
+        {
+            kind: 'separateCopy',
+            of: { name: 'coconut.nxsp', bound: true },
+        },
+    )
+    lock.release()
 })

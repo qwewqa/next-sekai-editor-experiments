@@ -5,7 +5,7 @@ import { createWorld, type World } from '../../../src/local/testing/world'
 import { openPage, rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { replayed, widen } from '../timeline/helpers'
-import { beginIn, handlersOf } from './harness'
+import { beginIn, continueIn, handlersOf, readOpen } from './harness'
 
 // Reading a stored session to open it (§1.4.2, §1.6.4 #6): its row, chain and stack in one read;
 // a removed or deleted session, or one this build can't read, is never opened; a missing stack is
@@ -115,4 +115,26 @@ test('the most recent session skips chains being deleted and chains this build c
     })
     assert.deepEqual(await newest(), { skipped: 'later' })
     assert.equal(rows(world, 'chains').size, 2)
+})
+
+test('a continuation’s missing stack is rebuilt over its parent’s stored one, not the whole chain’s replay', async () => {
+    const world = createWorld({ seed: 5 })
+    const { page, newer } = await twoChains(world)
+    const read = await readOpen(page, newer.id)
+    const continuation = continueIn(page, read)
+    page.flusher.append('edit', () => 'Again', widen(stateOf(goldenChart()), 5), true)
+    await page.flusher.flush()
+    await tamper(world, async (tx) => {
+        const session = (await tx.get('sessions', continuation.id)) as Record<string, unknown>
+        const rest = { ...session }
+        Reflect.deleteProperty(rest, 'stack')
+        await tx.put('sessions', rest)
+        // The parent's own entries can't be replayed: only its stored stack is read.
+        const first = (await tx.get('entries', [newer.id, 1])) as Record<string, unknown>
+        await tx.put('entries', { ...first, kind: 'edit' })
+    })
+    const rebuilt = await page.tab.run(() => handlersOf(page).readSession(continuation.id))
+    assert.equal(rebuilt.kind, 'open')
+    if (rebuilt.kind !== 'open') return
+    assert.deepEqual(rebuilt.stack.window, { base: 0, length: 3, index: 2 })
 })

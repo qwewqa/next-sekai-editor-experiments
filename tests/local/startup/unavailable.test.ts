@@ -60,7 +60,7 @@ const recover = async (
             applyJournal: (batch) => tab.run(() => journal.applyJournal(batch)),
             keepRecovered: (item) => tab.run(() => journal.keepRecovered(item)),
             readMetaIds: () => tab.run(() => startup.readMetaIds()),
-            isMigrated: (hash) => tab.run(() => startup.isMigrated(hash)),
+            migratedBefore: (hash) => tab.run(() => startup.migratedBefore(hash)),
             migrateAutoSave: (batch) => tab.run(() => startup.migrateAutoSave(batch)),
         },
         status: core.status,

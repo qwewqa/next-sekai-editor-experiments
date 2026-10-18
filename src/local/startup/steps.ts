@@ -30,7 +30,7 @@ import { RecoverySteps } from './recovery'
 export type RecoveryWorker = JournalWorker & {
     readMetaIds: () => Promise<{ dbInstanceId?: string; deviceId?: string }>
     /** Whether `meta.migratedHashes` holds a slot's hash: read before the slot is parsed. */
-    isMigrated: (hash: string) => Promise<boolean>
+    migratedBefore: (hash: string) => Promise<boolean>
     migrateAutoSave: (batch: MigrationBatch) => Promise<MigrationResult>
 }
 
@@ -287,7 +287,7 @@ export const migrationStep = async (context: RecoveryContext) => {
     const hash = toHex(await sha256(new TextEncoder().encode(text)))
     let result: MigrationResult
     // A slot migrated before (an old tab's write-back, a key a kill left) isn't parsed again.
-    if (await context.worker.isMigrated(hash)) result = { kind: 'duplicate' }
+    if (await context.worker.migratedBefore(hash)) result = { kind: 'duplicate' }
     else {
         const made = migrationBatch(context, text, hash)
         if (!made) {
