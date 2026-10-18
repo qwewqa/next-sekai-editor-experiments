@@ -11,6 +11,7 @@ import { isObject, JSON_DEPTH_CAP, JsonError, parseJsonBytes } from './json'
 import {
     checkPart,
     combineParts,
+    distinctRootChunks,
     type HistoryForm,
     type ManifestForm,
     type SegmentForm,
@@ -467,16 +468,8 @@ const readHistory = async (
             return parsed.get(hash)
         }
         try {
-            await parsedChunk(headRoot[1] as string)
-            for (const [, top] of headRoot[2] as [string, string][]) {
-                const node = history.nodes.get(top) ?? []
-                const children = node[2] as string[]
-                const leaves =
-                    node[1] === 0
-                        ? children
-                        : children.flatMap((child) => history.nodes.get(child)?.[2] as string[])
-                for (const chunk of leaves) await parsedChunk(chunk)
-            }
+            for (const chunk of distinctRootChunks(history, [history.head]))
+                await parsedChunk(chunk)
             const headRecords = decodeSnapshot(headRoot, {
                 node: (hash) => history.nodes.get(hash),
                 chunk: (hash) => parsed.get(hash),

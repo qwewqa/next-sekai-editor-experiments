@@ -574,3 +574,33 @@ test('every version tag on an ignored entry is a version that exists', () => {
     for (const since of tags)
         assert.ok(Number.isInteger(since) && since >= 1 && since <= LEVEL_VERSION)
 })
+
+for (const [label, change, field] of [
+    [
+        'entity key',
+        (e: LevelDataEntity) => Object.assign(e, { futureContent: { important: 42 } }),
+        'entity.futureContent',
+    ],
+    [
+        'data key',
+        (e: LevelDataEntity) => Object.assign(e.data[0]!, { futureContent: { important: 43 } }),
+        'data.initialLife.futureContent',
+    ],
+    [
+        'value and ref',
+        (e: LevelDataEntity) => Object.assign(e.data[0]!, { ref: 'unused' }),
+        'data.initialLife.ref',
+    ],
+] as const)
+    test(`unknown ${label} is reported without changing consumed values`, () => {
+        const e: LevelDataEntity = {
+            archetype: 'Initialization',
+            data: [{ name: 'initialLife', value: 1000 }],
+        }
+        change(e)
+        const report = new LevelDataReport()
+        reportLevelDataEntities([e], report)
+        assert.deepEqual(report.entries, [
+            { kind: 'field', archetype: 'Initialization', field, count: 1 },
+        ])
+    })

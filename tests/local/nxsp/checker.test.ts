@@ -333,3 +333,90 @@ test('the checker verifies completeFrom against the file it names', { skip: !has
         rmSync(dir, { recursive: true, force: true })
     }
 })
+
+test(
+    'the checker rejects unresolved orphan references in strict and reader modes',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-orphans-'))
+        try {
+            for (const fault of ['chunk', 'child', 'kind', 'depth']) {
+                const bytes = await craft((items) => {
+                    const manifest = jsonOf(items, 'history/manifest.json')
+                    const put = (node: RecordValue[]) => {
+                        const key = toHex(hash16Sync(canonicalBytes(node)))
+                        manifest.nodes[key] = node
+                        return key
+                    }
+                    const leaf = put([
+                        fault === 'kind' ? 'slides' : 'bpms',
+                        0,
+                        [manifest.chunks[0][0]],
+                    ])
+                    const middle = put(['bpms', 1, [leaf]])
+                    put(
+                        fault === 'chunk'
+                            ? ['bpms', 0, ['c'.repeat(32)]]
+                            : [
+                                  'bpms',
+                                  1,
+                                  [
+                                      fault === 'child'
+                                          ? 'c'.repeat(32)
+                                          : fault === 'depth'
+                                            ? middle
+                                            : leaf,
+                                  ],
+                              ],
+                    )
+                    setJson(items, 'history/manifest.json', manifest)
+                })
+                const path = join(dir, `${fault}.nxsp`)
+                writeFileSync(path, bytes)
+                const strict = check(path)
+                assert.notEqual(strict.status, 0)
+                assert.match(strict.output, /nodes\./)
+                const reader = check('--read', path)
+                assert.equal(reader.status, 0, reader.output)
+                assert.match(reader.output, /"open": "partial"/)
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)
+
+test('the Python reader checks shared graph closure in stored-edge work', { skip: !hasUv }, () => {
+    const script = `
+import runpy, sys
+m = runpy.run_path(sys.argv[1])
+class Edges(list):
+    visits = 0
+    def __iter__(self):
+        for value in super().__iter__():
+            Edges.visits += 1
+            yield value
+repeat = 80
+header, body = "a" * 32, "b" * 32
+key = lambda value: m["hash16"](m["js_json"](value).encode("utf-8"))
+leaf = ["bpms", 0, Edges([body] * repeat)]
+leaf_key = key(leaf)
+top = ["bpms", 1, [leaf_key] * repeat]
+top_key = key(top)
+root = [1, header, [["bpms", top_key]], 0]
+root_key = key(root)
+manifest = dict(version=1, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
+                chunks=[[header, 0, 1], [body, 1, 1]],
+                undoStack=dict(base=0, index=0, slots=[dict(snapshot=root_key, label="")]))
+Edges.visits = 0
+history, issues = m["combine_parts"]([], manifest, 0, 2)
+assert history is not None and not issues, issues
+assert Edges.visits < repeat * 6, Edges.visits
+`
+    const result = spawnSync(
+        'uv',
+        ['run', 'python', '-I', '-c', script, join(repo, 'tools', 'nxsp_check.py')],
+        { encoding: 'utf8' },
+    )
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`)
+})

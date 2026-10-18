@@ -343,6 +343,17 @@ export const combineParts = (
             else damaged(`nodes.${key}`, error instanceof Error ? error.message : undefined)
         }
     }
+    for (const [key, { kind, depth }] of nodeKinds) {
+        for (const child of nodes.get(key)?.[2] as string[]) {
+            if (depth === 0) {
+                if (!index.has(child)) damaged(`nodes.${key}`, `chunk ${child} missing`)
+            } else {
+                const leaf = nodeKinds.get(child)
+                if (leaf?.kind !== kind || leaf.depth !== 0)
+                    damaged(`nodes.${key}`, `child ${child} missing or invalid`)
+            }
+        }
+    }
     for (const [key, json] of roots) {
         const v = rootVersion(json)
         if (v !== undefined && v > RECORDS_V) {
@@ -358,30 +369,12 @@ export const combineParts = (
             else damaged(`roots.${key}`, error instanceof Error ? error.message : undefined)
             continue
         }
-        // The closure: the header chunk, the kind nodes and their chunks.
+        // Every node's direct references were checked once, including orphan nodes.
         const [, header, kinds] = json as [number, string, [KindName, string][]]
         if (!index.has(header)) damaged(`roots.${key}`, `header chunk ${header} missing`)
         for (const [kind, top] of kinds) {
-            const node = nodeKinds.get(top)
-            if (node?.kind !== kind) {
+            if (nodeKinds.get(top)?.kind !== kind)
                 damaged(`roots.${key}`, `node ${top} missing or of another kind`)
-                continue
-            }
-            const children = (nodes.get(top)?.[2] ?? []) as string[]
-            const chunkHashes =
-                node.depth === 0
-                    ? children
-                    : children.flatMap((child) => {
-                          const leaf = nodeKinds.get(child)
-                          if (leaf?.kind !== kind || leaf.depth !== 0) {
-                              damaged(`nodes.${top}`, `child ${child} missing or invalid`)
-                              return []
-                          }
-                          return (nodes.get(child)?.[2] ?? []) as string[]
-                      })
-            for (const chunk of chunkHashes) {
-                if (!index.has(chunk)) damaged(`nodes.${top}`, `chunk ${chunk} missing`)
-            }
         }
     }
 
@@ -414,3 +407,38 @@ const hasUnknownKindName = (json: unknown) =>
     Array.isArray(json) &&
     Array.isArray(json[2]) &&
     (json[2] as unknown[]).some((pair) => isUnknownKind(pair))
+
+/** Distinct chunks in first-use order, visiting each stored node only once. */
+export function* distinctRootChunks(
+    history: Pick<HistoryForm, 'roots' | 'nodes'>,
+    roots: Iterable<string>,
+): Generator<string> {
+    const seenRoots = new Set<string>()
+    const seenNodes = new Set<string>()
+    const seenChunks = new Set<string>()
+    function* node(hash: string): Generator<string> {
+        if (seenNodes.has(hash)) return
+        seenNodes.add(hash)
+        const json = history.nodes.get(hash)
+        if (!json) return
+        for (const child of json[2] as string[]) {
+            if (json[1] === 1) yield* node(child)
+            else if (!seenChunks.has(child)) {
+                seenChunks.add(child)
+                yield child
+            }
+        }
+    }
+    for (const hash of roots) {
+        if (seenRoots.has(hash)) continue
+        seenRoots.add(hash)
+        const root = history.roots.get(hash)
+        if (!root) continue
+        const header = root[1] as string
+        if (!seenChunks.has(header)) {
+            seenChunks.add(header)
+            yield header
+        }
+        for (const [, top] of root[2] as [string, string][]) yield* node(top)
+    }
+}
