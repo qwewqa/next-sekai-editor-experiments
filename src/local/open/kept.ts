@@ -14,8 +14,9 @@ type Worker = Pick<StorageWorker, 'call'>
 
 const DIR = 'nse-kept'
 
-const directory = async () =>
-    (await navigator.storage.getDirectory()).getDirectoryHandle(DIR, { create: true })
+/** The copies' folder: made by the first copy only, so nothing else leaves one behind. */
+const directory = async (create = false) =>
+    (await navigator.storage.getDirectory()).getDirectoryHandle(DIR, { create })
 
 /** A chain's kept bytes as an OPFS file, or undefined when there is none. */
 export const readKeptCopy = async (chainId: string): Promise<Blob | undefined> => {
@@ -52,7 +53,7 @@ export const keepCopy = async (
             .catch(() => undefined)
     let copy: Blob | undefined
     try {
-        const target = await (await directory()).getFileHandle(chainId, { create: true })
+        const target = await (await directory(true)).getFileHandle(chainId, { create: true })
         const writable = await target.createWritable()
         await writable.write(file)
         await writable.close()
