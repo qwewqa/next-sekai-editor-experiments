@@ -622,8 +622,7 @@ test('a group at a page boundary reads the predecessor of its oldest member', as
         const { requestPeek, peekedInfo } = await window.editorTest.appImport<
             typeof import('../../src/editor/history/selection')
         >('/src/editor/history/selection.ts')
-        const { previous: _previous, ...info } = peekedInfo.value!
-        requestPeek(info)
+        requestPeek({ ...peekedInfo.value!, previous: undefined })
     })
     await expect(peekLine(page)).toHaveText('3 changes')
 })
@@ -775,4 +774,25 @@ test('Find Edits Here measures the live chart before and after peeking', async (
         return takeHereRange()
     })
     expect(result.to).toBeGreaterThan(result.from)
+})
+
+test('Find Edits Here follows toolbar stack height without resizing the pane', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    const before = (await changes(page)).band.bottom
+    const expected = await page.evaluate(() => {
+        const pane = document.querySelector('.chart-pane')!
+        const stack = pane.querySelector<HTMLElement>(':scope > [data-editor-toolbar] > div')!
+        stack.style.height = `${stack.getBoundingClientRect().height + 90}px`
+        return pane.getBoundingClientRect().bottom - stack.getBoundingClientRect().top
+    })
+    expect(expected).toBeGreaterThan(before + 80)
+    await expect.poll(async () => (await changes(page)).band.bottom).toBeCloseTo(expected, 0)
+    await page.evaluate(() => {
+        document.querySelector<HTMLElement>(
+            '.chart-pane > [data-editor-toolbar] > div',
+        )!.style.height = ''
+    })
+    await expect.poll(async () => (await changes(page)).band.bottom).toBeCloseTo(before, 0)
+    expect(errors.filter((message) => message.includes('ResizeObserver'))).toEqual([])
 })

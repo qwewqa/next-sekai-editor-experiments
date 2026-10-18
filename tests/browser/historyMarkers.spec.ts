@@ -13,9 +13,11 @@ const boot = async (page: Page) => {
     await page.goto('/')
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
+    const noticeClose = page.locator('[data-notice-close]').first()
+    if (await noticeClose.isVisible()) await noticeClose.click()
 }
-const previewLatest = async (page: Page) => {
-    await page.evaluate(async () => {
+const previewLatest = async (page: Page, label = 'Marker changes') => {
+    await page.evaluate(async (label) => {
         const { appImport } = window.editorTest
         const [{ flusher }, { storageWorker }, { requestPeek, keyOf }] = await Promise.all([
             appImport<typeof import('../../src/local/storing')>('/src/local/storing.ts'),
@@ -31,10 +33,10 @@ const previewLatest = async (page: Page) => {
         requestPeek({
             key: keyOf({ sessionId, seq }),
             time: new Date(2024, 8, 13, 16, 35).getTime(),
-            label: 'Marker changes',
+            label,
             snapshot: entry.snapshot,
         })
-    })
+    }, label)
     await expect(page.locator('[data-peek-change]')).not.toHaveText('')
 }
 const seedNotes = async (page: Page) => {
@@ -402,7 +404,10 @@ test('header-only and unavailable comparisons have explicit stable summaries', a
             { ...history.state.value, initialLife: 1200 },
         )
     })
-    await previewLatest(page)
+    await previewLatest(
+        page,
+        'Modification de la vie initiale et des paramètres du niveau conservés dans cet historique',
+    )
     await page.screenshot({ path: `${shots}/phone-fr-header-only.png` })
     await page.evaluate(async () => {
         const { appImport } = window.editorTest

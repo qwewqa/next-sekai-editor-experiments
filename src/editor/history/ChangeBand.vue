@@ -8,6 +8,7 @@ import { changeBand } from './changes'
 const anchor = useTemplateRef<HTMLElement>('anchor')
 let resize: ResizeObserver | undefined
 let children: MutationObserver | undefined
+const observed = new Set<Element>()
 let frame = 0
 const scheduleMeasure = () => {
     cancelAnimationFrame(frame)
@@ -28,17 +29,30 @@ const measure = () => {
         changeBand.value = { top, bottom }
 }
 const observe = () => {
-    resize?.disconnect()
     const pane = anchor.value?.parentElement
     if (!pane) return
-    for (const element of [
-        pane,
-        pane.querySelector(':scope > [data-peek-bar]'),
-        pane.querySelector(':scope > [data-editor-toolbar]'),
-    ])
-        if (element) resize?.observe(element)
-    measure()
+    const toolbar = pane.querySelector(':scope > [data-editor-toolbar]')
+    const targets = new Set(
+        [
+            pane,
+            pane.querySelector(':scope > [data-peek-bar]'),
+            toolbar,
+            toolbar?.firstElementChild,
+        ].filter((element): element is Element => !!element),
+    )
+    for (const element of observed) {
+        if (targets.has(element)) continue
+        resize?.unobserve(element)
+        observed.delete(element)
+    }
+    for (const element of targets) {
+        if (observed.has(element)) continue
+        resize?.observe(element)
+        observed.add(element)
+    }
+    scheduleMeasure()
 }
+
 onMounted(() => {
     resize = new ResizeObserver(scheduleMeasure)
     children = new MutationObserver(observe)

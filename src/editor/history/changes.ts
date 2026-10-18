@@ -198,6 +198,7 @@ export const changeLine = computed(() => {
         )
     if (comparisonStatus.value === 'initial') return i18n.value.peek.initialState
     if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailable
+    return undefined
 })
 
 /** Whether the change has objects to draw and bring into view. */

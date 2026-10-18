@@ -21,7 +21,9 @@ watch(
     },
     { immediate: true, flush: 'sync' },
 )
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+    clearTimeout(timer)
+})
 const line = computed(
     () => changeLine.value ?? (delayed.value ? i18n.value.peek.loadingChanges : ''),
 )

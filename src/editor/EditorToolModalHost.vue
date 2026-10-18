@@ -33,13 +33,14 @@ const frame = computed(() =>
           : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-[40rem]',
 )
 const sheetStyle = computed(() => {
-    if (!sheet.value) return
+    if (!sheet.value) return undefined
     if (sheetSide.value === 'right') return { top: `${Math.max(60, peekClearance.value + 4)}px` }
     if (peekClearance.value && view.h < 600)
         return {
             height: `${Math.min(view.h * 0.55, Math.max(144, view.h - peekClearance.value - 128))}px`,
             minHeight: '144px',
         }
+    return undefined
 })
 const label = ref('')
 provide(modalTitleKey, label)
