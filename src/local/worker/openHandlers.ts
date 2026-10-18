@@ -1,4 +1,5 @@
 import { FLUSH_STORES, prepareFlush, type FlushBatch } from '../flushWrite'
+import { HANDLES } from '../handleRows'
 import { KeyRange } from '../kv/types'
 import { readEarlierChains } from '../open/earlier'
 import type { ImportTarget } from '../open/importLoop'
@@ -179,7 +180,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
             if (!history || !sessionId) return
             const roots = [...rootsReaching(history, new Set(request.hashes))]
             return context.core.write(
-                ['chains', 'entries'],
+                ['chains', 'entries', HANDLES],
                 (tx) =>
                     writeUnlink(tx, {
                         sessionId,
@@ -209,7 +210,9 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                 const chain = (await tx.get('chains', chainId)) as
                     Record<string, unknown> | undefined
                 if (!chain) return
-                const file = chain.file as ImportTarget['file']
+                // Never its handle: the page reads that through `handleOf` (D24).
+                const bound = chain.file as ImportTarget['file']
+                const file = bound && { name: bound.name, disk: bound.disk }
                 const revision = chain.revision as { id?: unknown } | undefined
                 return {
                     ...(file ? { file } : {}),
@@ -223,7 +226,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
          * from its file event's state, and when it was last edited.
          */
         openEarlierChains: ({ docId, exclude }: { docId: string; exclude: string }) =>
-            context.core.read(['chains', 'sessions', 'stackBlocks'], (tx) =>
+            context.core.read(['chains', 'sessions', 'stackBlocks', HANDLES], (tx) =>
                 readEarlierChains(tx, docId, exclude),
             ),
 

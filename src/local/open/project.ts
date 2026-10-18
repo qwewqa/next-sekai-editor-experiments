@@ -62,8 +62,8 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
             .filter((lock) => own === undefined || lock.clientId !== own)
             .map((lock) => lock.name.slice('nse-session:'.length))
         if (!others.length) return false
-        for (const { file } of await open.worker.call('readBindings', others)) {
-            const other = handleOf(file.handle)
+        for (const { chainId } of await open.worker.call('readBindings', others)) {
+            const other = await handleOf(open.worker, chainId, 'file')
             if (other && (await other.isSameEntry(handle).catch(() => false))) return true
         }
     } catch {

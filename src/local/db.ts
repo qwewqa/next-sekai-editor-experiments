@@ -15,6 +15,8 @@ type StoreSpec = {
 /** Every v1 store with its key and indexes (none unique or multi-entry). */
 export const STORES_V1 = {
     chains: { keyPath: 'chainId', indexes: { updatedAt: 'updatedAt', docId: 'docId' } },
+    // A chain's file handles by role, off its record (D24).
+    handles: { keyPath: ['chainId', 'role'], indexes: {} },
     sessions: { keyPath: 'id', indexes: { updatedAt: 'updatedAt', chainId: 'chainId' } },
     entries: { keyPath: ['sessionId', 'seq'], indexes: {} },
     stackBlocks: { keyPath: ['sessionId', 'block'], indexes: {} },

@@ -1,4 +1,5 @@
 import { CHANNEL_NAME, broadcastChannel } from '../channel'
+import { HANDLES, handleReadsForTests, readHandleRow, type HandleRole } from '../handleRows'
 import { idbFactory } from '../kv/idb'
 import { MemoryKv } from '../kv/memory'
 import { hasWebLocks, webLockService } from '../locks'
@@ -90,6 +91,18 @@ export const createContext = (emit: WorkerContext['emit']) => {
         tryAgain: (_: undefined, scope?: CallScope) => context.core.tryAgain(scope),
         resume: () => context.core.resume(),
 
+        /**
+         * A chain's stored handle for its binding or Export target (D24): only when a Save, an
+         * Export or a resumed import needs it, through the page's `handleOf`.
+         */
+        readHandle: ({ chainId, role }: { chainId: string; role: HandleRole }) =>
+            context.core.read(['chains', HANDLES], (tx) => readHandleRow(tx, chainId, role)),
+
+        /** Test: how many stored handles this worker has read. */
+        testHandleReads: () => {
+            testOnly()
+            return handleReadsForTests()
+        },
         /** Test: writes a meta row `test.<key>` and resolves once committed. */
         testPut: async ({ key, value }: { key: string; value: unknown }) => {
             testOnly()

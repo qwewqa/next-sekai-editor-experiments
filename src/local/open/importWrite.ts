@@ -3,6 +3,7 @@ import { countDayOfUse } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
 import type { BatchMedia, ChainSummary, PreparedFlush } from '../flushWrite'
 import { prepareForeign, writeForeign, type PreparedForeign } from '../foreign'
+import { deleteHandleRow, splitHandles } from '../handleRows'
 import { fromHex16, sha256, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
 import type { ReadHistory } from '../nxsp'
@@ -433,8 +434,9 @@ export const writeOpenHead = async (
         }
         fields.file = { ...file, at: now, hash: head.slice(), entry: cut }
     }
+    // The binding's handle goes in its own store (D24).
     const chain: Row = {
-        ...fields,
+        ...(await splitHandles(tx, chainId, fields)),
         chainId,
         head: sessionId,
         docId,
@@ -640,6 +642,7 @@ export const writeUnlink = async (tx: KvTx, request: UnlinkRequest) => {
         chain.badChunks instanceof Uint8Array ? unpackHashes(chain.badChunks).map(toHex) : []
     const bad = [...new Set([...old, ...request.hashes])].map(fromHex16)
     const { revision: _revision, file: _file, ...rest } = chain
+    await deleteHandleRow(tx, request.chainId, 'file')
     const record: Row = {
         ...rest,
         docId: request.docId,

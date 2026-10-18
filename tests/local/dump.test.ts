@@ -68,26 +68,41 @@ const sampleDump = (): Dump => ({
                               key: ['s1', seq],
                               value: { sessionId: 's1', seq, kind: 'edit', time: seq * 1000 },
                           }))
-                        : name === 'nodes'
-                          ? [1, 2].map((n) => ({ key: hash(n), value: { $u8: b64([n, n]) } }))
-                          : name === 'media'
-                            ? [
-                                  {
-                                      key: hash(3),
-                                      value: {
-                                          blob: { $blob: b64([9, 8, 7]), type: 'audio/mpeg' },
-                                      },
-                                  },
-                              ]
-                            : name === 'meta'
+                        : name === 'handles'
+                          ? [
+                                {
+                                    key: ['c1', 'file'],
+                                    value: {
+                                        chainId: 'c1',
+                                        role: 'file',
+                                        name: 'a.nxsp',
+                                        handle: { $handle: 'file', name: 'a.nxsp' },
+                                    },
+                                },
+                            ]
+                          : name === 'nodes'
+                            ? [1, 2].map((n) => ({ key: hash(n), value: { $u8: b64([n, n]) } }))
+                            : name === 'media'
                               ? [
                                     {
-                                        key: 'dbInstanceId',
-                                        value: { key: 'dbInstanceId', value: 'db-x' },
+                                        key: hash(3),
+                                        value: {
+                                            blob: { $blob: b64([9, 8, 7]), type: 'audio/mpeg' },
+                                        },
                                     },
-                                    { key: 'deviceId', value: { key: 'deviceId', value: 'dev-x' } },
                                 ]
-                              : [],
+                              : name === 'meta'
+                                ? [
+                                      {
+                                          key: 'dbInstanceId',
+                                          value: { key: 'dbInstanceId', value: 'db-x' },
+                                      },
+                                      {
+                                          key: 'deviceId',
+                                          value: { key: 'deviceId', value: 'dev-x' },
+                                      },
+                                  ]
+                                : [],
         })),
     localStorage: {
         'sonolus-next-sekai-editor.canary': '"db-x"',
@@ -108,11 +123,12 @@ const fakeStorage = () => {
 const dumpOf = (tab: Tab, db: KvDatabase) =>
     tab.run(() => dumpDatabase(db, { appVersion: '0.6.0', localStorage: {} }))
 
-/** The dump without the handle, which the seeder leaves out. */
+/** The dump without the handles, which the seeder leaves out: a `handles` row goes whole (D24). */
 const withoutHandle = (dump: Dump) => {
     const copy = structuredClone(dump)
     const chain = copy.stores.find((store) => store.name === 'chains')!.records[0]!
     delete (chain.value as { file: Record<string, unknown> }).file.handle
+    copy.stores.find((store) => store.name === 'handles')!.records = []
     copy.localStorage = {}
     return copy
 }
@@ -135,6 +151,21 @@ test('a seeded dump reads back equal', async () => {
     assert.ok((chain.file as { hash: unknown }).hash instanceof Uint8Array)
     assert.equal(chain.$dollar, 'kept')
     assert.ok('gone' in chain && chain.gone === undefined)
+    await world.idle()
+})
+
+test('a dump from before the handles store seeds a database that has it', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = sampleDump()
+    dump.stores = dump.stores.filter((store) => store.name !== 'handles')
+    assert.deepEqual(await tab.run(() => seedDump(tab.kv, readDump(dump), fakeStorage())), {
+        seeded: true,
+    })
+    const db = await tab.kv.open('nse-local-data', undefined)
+    assert.ok(db.storeNames.includes('handles'))
+    assert.deepEqual([...db.storeNames].sort(), Object.keys(STORES_V1).sort())
+    db.close()
     await world.idle()
 })
 

@@ -1,3 +1,4 @@
+import { hasHandleRow } from '../handleRows'
 import { equalBytes } from '../hash'
 import type { KvTx } from '../kv/types'
 import { blockOf, blockSlot, type StackBlockRow } from '../timeline'
@@ -62,7 +63,9 @@ export const readEarlierChains = async (
                       },
                   }
                 : {}),
-            ...(file ? { bound: { handle: file.handle !== undefined } } : {}),
+            ...(file
+                ? { bound: { handle: await hasHandleRow(tx, String(chain.chainId), 'file') } }
+                : {}),
             changed,
             updatedAt: typeof chain.updatedAt === 'number' ? chain.updatedAt : 0,
         })

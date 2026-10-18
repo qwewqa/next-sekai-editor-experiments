@@ -1,4 +1,5 @@
 import type { FlushSession } from '../../../src/local/flush'
+import { readHandleRow, type HandleRole } from '../../../src/local/handleRows'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import type { MemoryStorage } from '../../../src/local/journal/store'
 import type { JournalWriterDeps } from '../../../src/local/journal/writer'
@@ -121,7 +122,10 @@ export const load = async (
     // The page's own blank start, as the first reset begins it.
     const blank = beginSession(page, stateOf(goldenChart()), 'new')
     options.meanwhile?.(page)
-    const handlers = { ...flush, ...startup, ...journal } as unknown as Record<
+    // The core's own `readHandle`, as `handlers.ts` has it.
+    const readHandle = ({ chainId, role }: { chainId: string; role: HandleRole }) =>
+        page.core.read(['chains', 'handles'], (tx) => readHandleRow(tx, chainId, role))
+    const handlers = { ...flush, ...startup, ...journal, readHandle } as unknown as Record<
         string,
         (arg: unknown) => Promise<unknown>
     >

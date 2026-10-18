@@ -1,4 +1,4 @@
-import { setExportPersister } from '../editor/commands/exportLevel/memory'
+import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
 import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
@@ -18,6 +18,7 @@ import {
     type FlushReport,
     type FlushSession,
 } from './flush'
+import { checkPrivateWindow, handleOf } from './handles'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
@@ -336,6 +337,12 @@ export const startStoring = (
     setExportPersister((fields) => {
         const changed = changedFields(instance.session?.chain, fields)
         if (Object.keys(changed).length) void instance.setChainFields(changed)
+    })
+    // Its handle is the chain's too, read when Export needs it (D24).
+    checkPrivateWindow()
+    setExportHandleReader(async () => {
+        const session = instance.session
+        return session ? handleOf(worker, session.chainId, 'exportTarget') : undefined
     })
 
     let firstReset = true

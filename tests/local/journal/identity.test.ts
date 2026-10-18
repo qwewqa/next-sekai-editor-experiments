@@ -18,13 +18,12 @@ type Row = Record<string, unknown>
 const hash = new Uint8Array(16).fill(7)
 const handle = { kind: 'file', name: 'coconut.nxsp' }
 
-/** The record's binding: saved at 100, with its handle. */
+/** The record's binding: saved at 100, its handle in the `handles` store (D24). */
 const recordFile = {
     name: 'coconut.nxsp',
     event: 'saved',
     at: 100,
     hash,
-    handle,
     options: { history: true, bgm: true },
 }
 
@@ -55,9 +54,16 @@ const replayWith = async (
     const core = workerCore(world, other)
     await other.run(() => core.start())
     await other.run(() =>
-        core.write(['chains'], async (tx) => {
+        core.write(['chains', 'handles'], async (tx) => {
             const chain = (await tx.get('chains', session.chainId)) as Row
             await tx.put('chains', { ...chain, ...record })
+            if ('file' in record)
+                await tx.put('handles', {
+                    chainId: session.chainId,
+                    role: 'file',
+                    name: recordFile.name,
+                    handle,
+                })
         }),
     )
     append(page, 'edit', 'Changed note', widen(a))
@@ -68,7 +74,14 @@ const replayWith = async (
     page.storage.setItem(key, JSON.stringify(journal))
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'applied')
-    return { chain: rows(world, 'chains').get(session.chainId) as Row, session }
+    const stored = [...rows(world, 'handles').values()].find(
+        (row) => row.chainId === session.chainId && row.role === 'file',
+    )
+    return {
+        chain: rows(world, 'chains').get(session.chainId) as Row,
+        handle: stored?.handle,
+        session,
+    }
 }
 
 const bound = { revision: { id: 'r1', n: 1, ancestors: [] }, file: recordFile }
@@ -82,24 +95,25 @@ const writeBack = (descriptor: JournalDescriptor) => {
 }
 
 test('a descending revision takes the identity as one unit, the handle kept for the same file', async () => {
-    const { chain } = await replayWith(1, bound, writeBack)
+    const { chain, handle: kept } = await replayWith(1, bound, writeBack)
     assert.deepEqual(chain.revision, { id: 'r2', n: 2, ancestors: ['r1'] })
     const file = chain.file as Row
     assert.equal(file.at, 200)
     assert.deepEqual(file.hash, new Uint8Array(16).fill(9))
-    assert.deepEqual(file.handle, handle)
+    assert.equal(file.handle, undefined)
+    assert.deepEqual(kept, handle)
     assert.equal(chain.name, 'Coconut (Master)')
     assert.deepEqual(chain.renames, [{ name: 'Coconut', at: 50 }])
 })
 
 test('a binding to another file is taken without the old handle', async () => {
-    const { chain } = await replayWith(2, bound, (descriptor) => {
+    const { chain, handle: kept } = await replayWith(2, bound, (descriptor) => {
         writeBack(descriptor)
         descriptor.file = { ...journalFile, name: 'other.nxsp' }
     })
     const file = chain.file as Row
     assert.equal(file.name, 'other.nxsp')
-    assert.equal(file.handle, undefined)
+    assert.equal(kept, undefined)
 })
 
 for (const [name, record, change] of [
@@ -127,21 +141,21 @@ for (const [name, record, change] of [
     ['a record with a file but no revision', { file: recordFile }, writeBack],
 ] as const)
     test(`${name} never writes the identity over the record`, async () => {
-        const { chain } = await replayWith(3, record, change)
+        const { chain, handle: kept } = await replayWith(3, record, change)
         assert.deepEqual(chain.revision, 'revision' in record ? record.revision : undefined)
         const file = chain.file as Row
         assert.equal(file.at, 100)
-        assert.deepEqual(file.handle, handle)
+        assert.deepEqual(kept, handle)
         // The other known fields are taken all the same: the session is still the head.
         assert.equal(chain.name, 'Coconut (Master)')
     })
 
 test('a record with no revision and no file takes a first Save’s binding (D15)', async () => {
-    const { chain } = await replayWith(5, {}, writeBack)
+    const { chain, handle: kept } = await replayWith(5, {}, writeBack)
     assert.deepEqual(chain.revision, { id: 'r2', n: 2, ancestors: ['r1'] })
     const file = chain.file as Row
     assert.equal(file.at, 200)
-    assert.equal(file.handle, undefined)
+    assert.equal(kept, undefined)
 })
 
 test('a journal of a chain never saved leaves no revision or file field on the record', async () => {

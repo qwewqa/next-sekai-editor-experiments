@@ -1,5 +1,6 @@
 import { readMeta } from '../db'
 import { prepareFlush, type FlushBatch } from '../flushWrite'
+import { HANDLES } from '../handleRows'
 import { directWaiter, type Waiter } from '../scheduler'
 import {
     MIGRATION_STORES,
@@ -65,10 +66,14 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
             request: Parameters<typeof writeChainFields>[1],
             scope?: CallScope,
         ): Promise<ChainFieldsResult> =>
-            context.core.write(['chains', 'sessions'], (tx) => writeChainFields(tx, request), {
-                durability: 'strict',
-                ...scope,
-            }),
+            context.core.write(
+                ['chains', 'sessions', HANDLES],
+                (tx) => writeChainFields(tx, request),
+                {
+                    durability: 'strict',
+                    ...scope,
+                },
+            ),
 
         /** The `recovered` store's rows without their bytes (§1.6.11.2), for Local Data. */
         listRecovered: () =>

@@ -2,6 +2,7 @@ import { forkRecord } from './chainFields'
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
+import { splitHandles } from './handleRows'
 import { fromHex16, hash16, sha256, toHex } from './hash'
 import { KeyRange, type KvTx } from './kv/types'
 import { putChunk } from './putChunk'
@@ -245,6 +246,7 @@ export const FLUSH_STORES = [
     'chunks',
     'media',
     'meta',
+    'handles',
 ] as const
 
 /**
@@ -657,8 +659,11 @@ export const writeFlush = async (
               ...(batch.chain.name === undefined ? {} : { name: batch.chain.name }),
               ...chainFields,
           }
-    // Fields the session set before its first write: written field by field, `null` removing.
-    for (const [key, value] of Object.entries(batch.chain.set ?? {}))
+    // Fields the session set before its first write: written field by field, `null` removing; a
+    // handle goes in its own store (D24).
+    for (const [key, value] of Object.entries(
+        await splitHandles(tx, chainId, batch.chain.set ?? {}),
+    ))
         if (value === null) Reflect.deleteProperty(chainValue, key)
         else chainValue[key] = value
     await tx.put('chains', chainValue)

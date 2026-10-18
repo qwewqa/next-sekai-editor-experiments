@@ -450,7 +450,10 @@ const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {
     const core = workerCore(world, tab)
     await tab.run(() => core.start())
     await tab.run(() =>
-        core.write(['sessions', 'chains', 'entries', 'tombstones', 'stackBlocks'], change),
+        core.write(
+            ['sessions', 'chains', 'entries', 'tombstones', 'stackBlocks', 'handles'],
+            change,
+        ),
     )
 }
 
@@ -516,7 +519,7 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     await other.tab.run(() => lock.granted)
     beginSession(other, widen(a, 2), 'import', { id: 'other-session' })
     await other.flusher.flush({ strict: true })
-    // The newest chain is the bound one again.
+    // The newest chain is the bound one again; both have a stored handle (D24).
     await tamper(world, async (tx) => {
         for (const chainId of [bound.chainId, other.flusher.session!.chainId]) {
             const chain = (await tx.get('chains', chainId)) as Record<string, unknown>
@@ -525,24 +528,18 @@ test('a new visit whose most recent session’s file is bound in another tab’s
                 file: { name: 'coconut.nxsp' },
                 ...(chainId === bound.chainId ? { updatedAt: 9_999_999_999_999 } : {}),
             })
+            await tx.put('handles', {
+                chainId,
+                role: 'file',
+                name: 'coconut.nxsp',
+                handle: { testFile: 'coconut' },
+            })
         }
     })
-    // Handles aren't stored (D16): the worker's reads carry fake ones, one file for both.
+    // The store holds plain values: the reads carry fake handles, one file for both.
     const file = { isSameEntry: (other: unknown) => Promise.resolve(other === file) }
-    const withHandle = (value: unknown): unknown => {
-        if (Array.isArray(value)) return value.map(withHandle)
-        if (typeof value !== 'object' || value === null || value instanceof Uint8Array) return value
-        const row = Object.fromEntries(
-            Object.entries(value).map(([key, each]) => [key, withHandle(each)]),
-        )
-        if (typeof row.name === 'string' && row.name === 'coconut.nxsp') row.handle = file
-        return row
-    }
     const visit = await load(world, 'visit', storage, {
-        call: (method, result) =>
-            method === 'readNewestSession' || method === 'readBindings'
-                ? withHandle(result)
-                : result,
+        call: (method, result) => (method === 'readHandle' && result ? file : result),
     })
     const copy = openSession(visit)
     assert.notEqual(copy.forkOf, undefined)

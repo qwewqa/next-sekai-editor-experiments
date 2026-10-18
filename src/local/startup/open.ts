@@ -368,10 +368,14 @@ const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State) => {
     return { name: shown.kind === 'date' ? '' : shown.text, bound: false }
 }
 
-/** Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). */
+/**
+ * Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). Stored
+ * handles are read only when another tab holds a session bound to a file of the same name, so a
+ * load with no such tab reads none (D24).
+ */
 const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open' }) => {
-    const handle = handleOf((read.chain.file as { handle?: unknown } | undefined)?.handle)
-    if (!handle || !hasWebLocks()) return false
+    const name = (read.chain.file as { name?: unknown } | undefined)?.name
+    if (typeof name !== 'string' || !hasWebLocks()) return false
     try {
         const own = await deps.client.id()
         const snapshot = await deps.locks.query()
@@ -381,10 +385,14 @@ const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open'
             .map((lock) => lock.name.slice('nse-session:'.length))
             .filter((id) => id !== read.session.id)
         if (!others.length) return false
-        const bindings = await deps.worker.call('readBindings', others)
-        for (const { chainId, file } of bindings) {
-            if (chainId === read.chain.chainId) continue
-            const other = handleOf(file.handle)
+        const bindings = (await deps.worker.call('readBindings', others)).filter(
+            ({ chainId, file }) => chainId !== read.chain.chainId && file.name === name,
+        )
+        if (!bindings.length) return false
+        const handle = await handleOf(deps.worker, String(read.chain.chainId), 'file')
+        if (!handle) return false
+        for (const { chainId } of bindings) {
+            const other = await handleOf(deps.worker, chainId, 'file')
             if (other && (await other.isSameEntry(handle).catch(() => false))) return true
         }
     } catch {

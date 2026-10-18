@@ -1,10 +1,12 @@
 import { onResetState } from '../../../history/resetHooks'
+import { storableHandleNow } from '../../../local/handles'
 import type { DiskState } from '../../../platform'
 
 // Export's remembered target and names (Part 1 §1.4.8): this tab's view of the chain's
 // `exportTarget`, `exportName` and the partial import's flag, stored on the chain record
-// (§1.3.1) whenever they change, and read back when a stored session opens. A new chart clears
-// it; a fork drops the target and the name (Step 1c's stub `exportTargetMemory`, retired).
+// (§1.3.1) whenever they change, and read back when a stored session opens. The target's handle
+// is stored apart (D24) and read only when Export needs it. A new chart clears it; a fork drops
+// the target and the name (Step 1c's stub `exportTargetMemory`, retired).
 
 export type ExportTarget = {
     /** The file's name, as shown: "LevelData". */
@@ -40,7 +42,7 @@ export type ExportMemory = {
 
 export const exportMemory: ExportMemory = {}
 
-/** The stored target as read, while this tab has no handle for it: kept as it is. */
+/** The stored target as read, while this tab has not read its handle: kept as it is. */
 let storedTarget: ExportChainFields['exportTarget'] | undefined
 
 /** Forgets the target and names, as a new chart does. */
@@ -57,7 +59,8 @@ onResetState(clearExportMemory)
 
 /** The chain fields this memory is stored as (§1.6.11.2), `undefined` removing one. */
 export type ExportChainFields = {
-    exportTarget: { name: string; handle?: FileSystemFileHandle; disk: DiskState; opened?: true }
+    /** `handle` goes to the `handles` store, never the record (D24). */
+    exportTarget: { name: string; handle?: unknown; disk: DiskState; opened?: true }
     exportName: string
     /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
     partialImport: true
@@ -70,24 +73,57 @@ export const setExportPersister = (fn: typeof persist) => {
     persist = fn
 }
 
+let readHandle: (() => Promise<FileSystemFileHandle | undefined>) | undefined
+
+/** How Export reads the stored target's handle: the open chain's, set once storing starts. */
+export const setExportHandleReader = (fn: typeof readHandle) => {
+    readHandle = fn
+}
+
 /** Stores the memory on the chain record, as it is now. */
 export const rememberExport = () => {
     const { target, exportName, partial } = exportMemory
+    const handle = target && storableHandleNow(target.handle)
     persist?.({
-        exportTarget: target
+        // A target read back whose handle this tab hasn't read stays as it is, its handle too.
+        ...(target || !storedTarget
             ? {
-                  name: target.name,
-                  // The handle stays in this tab: a page that reads an OPFS handle back from
-                  // IndexedDB is killed in the browsers the specs run (D16), so the stored
-                  // target names the file and Export asks where after a reload.
-                  disk: target.disk,
-                  ...(target.exported ? {} : { opened: true }),
+                  exportTarget: target
+                      ? {
+                            name: target.name,
+                            ...(handle ? { handle } : {}),
+                            disk: target.disk,
+                            ...(target.exported ? {} : { opened: true }),
+                        }
+                      : undefined,
               }
-            : // Read back without its handle: this tab never changed it, so it stays.
-              storedTarget,
+            : {}),
         exportName,
         partialImport: partial ? true : undefined,
     })
+}
+
+const hasTarget = () => exportMemory.target !== undefined
+
+/**
+ * The remembered target, its stored handle read when Export needs it (D24); undefined when there
+ * is none, or no handle was stored (a picker then asks where).
+ */
+export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
+    const stored = storedTarget
+    if (exportMemory.target || !stored || !readHandle) return exportMemory.target
+    const handle = await readHandle().catch(() => undefined)
+    // An Export or a new chart meanwhile has its own target.
+    if (handle && !hasTarget() && storedTarget === stored) {
+        exportMemory.target = {
+            name: stored.name,
+            handle,
+            disk: stored.disk,
+            exported: stored.opened !== true,
+        }
+        storedTarget = undefined
+    }
+    return exportMemory.target
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -98,15 +134,8 @@ export const restoreExportMemory = (chain: Record<string, unknown>) => {
     clearExportMemory()
     const target = chain.exportTarget
     if (isObject(target) && typeof target.name === 'string' && isObject(target.disk)) {
-        const handle = target.handle as FileSystemFileHandle | undefined
-        if (handle)
-            exportMemory.target = {
-                name: target.name,
-                handle,
-                disk: target.disk as DiskState,
-                exported: target.opened !== true,
-            }
-        else storedTarget = target as ExportChainFields['exportTarget']
+        // Its handle is read when Export needs it (`loadExportTarget`), never here at startup.
+        storedTarget = target as ExportChainFields['exportTarget']
         // The opened file's own name, which the picker suggests (§1.4.8).
         if (target.opened === true) exportMemory.sourceName = target.name
     }

@@ -48,6 +48,15 @@ export const storedViolations = (rows: Rows): string[] => {
     for (const [id, session] of sessions)
         if (!chains.has(String(session.chainId)))
             violations.push(`session ${id}: chain ${String(session.chainId)} is missing`)
+    // A stored handle belongs to a chain field that exists (D24): deleting a chain deletes them.
+    for (const row of all('handles')) {
+        const handle = record(row.value)
+        const field = chains.get(String(handle.chainId))?.[String(handle.role)]
+        if (field === undefined)
+            violations.push(`handle ${keyText(row.key)}: its chain field is missing`)
+        else if ('handle' in record(field))
+            violations.push(`handle ${keyText(row.key)}: its chain record holds a handle too`)
+    }
     for (const row of all('entries')) {
         const entry = record(row.value)
         if (!sessions.has(String(entry.sessionId)))

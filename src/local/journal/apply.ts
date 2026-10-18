@@ -9,6 +9,7 @@ import {
     type FlushBatch,
     type PreparedFlush,
 } from '../flushWrite'
+import { deleteHandleRow } from '../handleRows'
 import { fromHex16, isHash16Hex, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
 import { putChunk } from '../putChunk'
@@ -439,16 +440,11 @@ export const writeJournalApply = async (
             afterReplaced(descriptor.file, chain.replaced)
         ) {
             const own = chainFieldsOf(descriptor)
-            const handle = isRow(chain.file) ? chain.file.handle : undefined
             fields.revision = own.revision
-            if (own.file === undefined) fields.file = undefined
-            else
-                fields.file = {
-                    ...(own.file as Row),
-                    ...(handle && isRow(own.file) && own.file.name === (chain.file as Row).name
-                        ? { handle }
-                        : {}),
-                }
+            fields.file = own.file
+            // The stored handle stays for the same file only (D24).
+            if (!isRow(own.file) || !isRow(chain.file) || own.file.name !== chain.file.name)
+                await deleteHandleRow(tx, chainId, 'file')
         }
         // Other known chain fields, the session being the head.
         for (const key of ['name', 'renames'] as const)

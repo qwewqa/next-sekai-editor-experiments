@@ -1,5 +1,6 @@
 import { hashKey, readEpoch, readMeta } from '../db'
 import type { KnownAt } from '../flushWrite'
+import { splitHandles } from '../handleRows'
 import { KeyRange, type KvTx } from '../kv/types'
 import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
 import {
@@ -246,14 +247,15 @@ export const writeChainFields = async (
         return { kind: 'notHead', ...(typeof lastSeq === 'number' ? { lastSeq } : {}) }
     }
     const record: Row = { ...chain, appVersion }
-    for (const [key, value] of Object.entries(fields))
+    // A binding's or Export target's handle goes in its own store (D24).
+    for (const [key, value] of Object.entries(await splitHandles(tx, chainId, fields)))
         if (value === null || value === undefined) Reflect.deleteProperty(record, key)
         else record[key] = value
     await tx.put('chains', record)
     return { kind: 'stored', chain: record }
 }
 
-/** Every held session's chain file name and handle, for the bound-elsewhere check (§1.3.2). */
+/** Every held session's chain and binding, for the bound-elsewhere check (§1.3.2). */
 export const readBindings = async (tx: KvTx, sessionIds: readonly string[]) => {
     const found: { sessionId: string; chainId: string; file: Row }[] = []
     for (const sessionId of sessionIds) {

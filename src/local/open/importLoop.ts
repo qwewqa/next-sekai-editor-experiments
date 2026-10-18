@@ -193,9 +193,9 @@ export const startImport = (job: ImportJob): Promise<ImportOutcome> =>
             : runBatches(job),
     )
 
-/** What a resumed import reads of its chain: the binding's handle, `disk` and the revision. */
+/** What a resumed import reads of its chain: the binding's name and `disk`, and the revision. */
 export type ImportTarget = {
-    file?: { name?: unknown; handle?: unknown; disk?: DiskState }
+    file?: { name?: unknown; disk?: DiskState }
     revisionId?: string
 }
 
@@ -217,7 +217,7 @@ export type ResumeDeps = Omit<
  * The next load's resume (§1.5.4): for each session whose open's import a tab didn't finish and
  * whose import lock is free, from the bound handle when it reads without a prompt and still is
  * the file opened; otherwise the rows whose states never arrived become `kept: false`. Runs after
- * startup, so a stored handle is never read during startup or recovery (D16).
+ * startup, so a stored handle is never read during startup or recovery (D16, D24).
  */
 export const resumeImports = async (deps: ResumeDeps) => {
     const { worker, locks } = deps
@@ -226,9 +226,9 @@ export const resumeImports = async (deps: ResumeDeps) => {
         if (running.has(sessionId)) continue
         const resume = async (): Promise<ImportOutcome> => {
             const target = await worker.call('openImportTarget', chainId)
-            const handle = handleOf(target?.file?.handle)
             const disk = target?.file?.disk
-            if (handle && disk && (await readableWithoutPrompt(handle))) {
+            const handle = disk && (await handleOf(worker, chainId, 'file'))
+            if (disk && handle && (await readableWithoutPrompt(handle))) {
                 try {
                     const file = await handle.getFile()
                     const resumed = await worker.call(
