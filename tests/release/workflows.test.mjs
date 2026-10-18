@@ -10,7 +10,7 @@ const check = read('check')
 const job = (name) =>
     pages.match(new RegExp(`^    ${name}:\\n([\\s\\S]*?)(?=^    \\w+:|(?![\\s\\S]))`, 'm'))?.[1]
 const condition = (name) => {
-    const expression = job(name)?.match(/^        if: (.+)$/m)?.[1]
+    const expression = job(name)?.match(/^ {8}if: (.+)$/m)?.[1]
     assert.ok(expression, `${name} has an explicit gate`)
     return expression.replace(/^\$\{\{\s*|\s*\}\}$/g, '')
 }
