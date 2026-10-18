@@ -301,9 +301,7 @@
       "reset": "譜面をリセット"
     },
     "save": {
-      "title": "保存",
-      "exporting": "譜面を出力中…",
-      "saved": "譜面を保存しました"
+      "title": "保存"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        }
+        },
+        "fixedAlias": "{0} でも実行されます (固定)"
       },
       "maskLeft": {
         "label": "マスクのレーン"
@@ -1863,7 +1862,6 @@
     "tryAgain": "再試行",
     "denied": "ブラウザーが {0} への書き込みを許可しませんでした。",
     "notFound": "「{0}」が見つかりません。",
-    "notFoundNote": "移動または名前を変更した場合は、次の画面でそのファイルを選んで確定してください。",
     "downloadStarted": "ダウンロードを開始しました：{0} · {1}",
     "preparing": "{0} を準備中… {1}",
     "download": "ダウンロード",

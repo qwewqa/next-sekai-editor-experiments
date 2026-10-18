@@ -301,9 +301,7 @@
       "reset": "Seviye sıfırlandı"
     },
     "save": {
-      "title": "Kaydet",
-      "exporting": "Seviye dışa aktarılıyor…",
-      "saved": "Seviye kaydedildi"
+      "title": "Kaydet"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        }
+        },
+        "fixedAlias": "{0} ile de çalışır (sabit)"
       },
       "maskLeft": {
         "label": "Maske Şeridi"
@@ -1863,7 +1862,6 @@
     "tryAgain": "Tekrar Dene",
     "denied": "Tarayıcı {0} dosyasına yazmaya izin vermedi.",
     "notFound": "\"{0}\" bulunamıyor.",
-    "notFoundNote": "Taşıdıysanız veya yeniden adlandırdıysanız sonraki adımda seçip onaylayın.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
     "download": "İndir",

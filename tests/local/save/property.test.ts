@@ -8,6 +8,7 @@ import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { commitIdentity, IDENTITY_STORES, type IdentityUnit } from '../../../src/local/save/commit'
 import { buildSave } from '../../../src/local/save/execute'
 import { addRecords, headInput } from '../../../src/local/save/pending'
+import { readReplaceDecision } from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import {
@@ -19,6 +20,7 @@ import {
     Fixture,
     hasUv,
     heldRows,
+    inspectNxsp,
     saveOptions,
     SECOND,
     sourceOf,
@@ -90,7 +92,18 @@ const paused = (store: SaveStore): SaveStore => ({
 
 type Op =
     | { t: 'edit'; k: number; second: boolean }
-    | { t: 'undo' | 'redo' | 'continue' | 'save' | 'download' | 'saveAs' | 'replace' | 'touch' }
+    | {
+          t:
+              | 'undo'
+              | 'redo'
+              | 'continue'
+              | 'save'
+              | 'download'
+              | 'saveAs'
+              | 'replace'
+              | 'touch'
+              | 'pick'
+      }
     | { t: 'pause' | 'resume' }
     | { t: 'saveToFile' | 'delete'; s: number }
     | { t: 'thin' | 'flag'; s: number; r: number }
@@ -336,6 +349,40 @@ class Scenario {
                 if (old) this.files.push({ ...old, file: this.disk })
                 return
             }
+            case 'pick': {
+                // A save picker returns the chain's own file (§1.4.7 R2, R4; D5): it was read
+                // first only when it may hold what storage lacks, then emptied by the picker.
+                if (this.pause || !this.disk) return
+                const old = this.files.find((each) => each.file === this.disk)
+                if (!old) return
+                const disk = await nxspDiskState(this.disk, this.disk.lastModified)
+                const { projectJson } = await inspectNxsp(this.disk, {
+                    token: 'pick',
+                    role: 'target',
+                    fingerprint: disk.fingerprint,
+                })
+                const decision = await readReplaceDecision(
+                    fixture.store,
+                    fixture.chainId,
+                    projectJson,
+                    disk.fingerprint,
+                )
+                const read = decision?.holdsBase === true
+                if (!read) this.disk = undefined
+                await this.write(
+                    read ? { kind: 'append', source: 'target' } : { kind: 'copy' },
+                    'saved',
+                )
+                // No version is lost: the new file holds every row of the picked one, with its state.
+                const n = this.files.at(-1)
+                assert.ok(n)
+                for (const [row, count] of old.rows)
+                    assert.ok(
+                        (n.rows.get(row) ?? 0) >= count,
+                        `a self-pick lost ${row}\n${this.log.join('\n')}`,
+                    )
+                return
+            }
             case 'pause':
                 if (this.pause) return
                 await fixture.flush()
@@ -401,6 +448,7 @@ const op: fc.Arbitrary<Op> = fc.oneof(
     { weight: 8, arbitrary: fc.record({ t: fc.constant('delete'), s: nat(9) }) },
     { weight: 4, arbitrary: fc.record({ t: fc.constant('damage'), i: nat(1000) }) },
     { weight: 3, arbitrary: fc.constant({ t: 'touch' }) },
+    { weight: 6, arbitrary: fc.constant({ t: 'pick' }) },
     { weight: 3, arbitrary: fc.constant({ t: 'pause' }) },
     { weight: 4, arbitrary: fc.constant({ t: 'resume' }) },
 ) as fc.Arbitrary<Op>

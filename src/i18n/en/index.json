@@ -301,9 +301,7 @@
             "reset": "Reset level"
         },
         "save": {
-            "title": "Save",
-            "exporting": "Exporting level…",
-            "saved": "Saved level"
+            "title": "Save"
         },
         "scrolls": {
             "scrollLeft": {
@@ -1515,7 +1513,8 @@
                     "ctrl": "Ctrl",
                     "alt": "Alt",
                     "shift": "Shift"
-                }
+                },
+                "fixedAlias": "Also {0}, fixed"
             },
             "maskLeft": {
                 "label": "Mask Lane"
@@ -1863,7 +1862,6 @@
         "tryAgain": "Try Again",
         "denied": "The browser did not allow writing to {0}.",
         "notFound": "\"{0}\" cannot be found.",
-        "notFoundNote": "If you moved or renamed it, choose it in the next step and confirm.",
         "downloadStarted": "Download started: {0} · {1}",
         "preparing": "Preparing {0}… {1}",
         "download": "Download",

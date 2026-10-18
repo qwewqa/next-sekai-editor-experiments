@@ -251,6 +251,15 @@ test('shared and browser-claiming bindings are named under their rows', async ({
     await expect(shortcutField(page, 'Manage Stages')).not.toContainText('Replaces')
 })
 
+test('Save’s row names its fixed Ctrl+S, until a binding takes that chord', async ({ page }) => {
+    await expect(shortcutField(page, 'Save')).toContainText('Also Ctrl+S, fixed')
+    // Save keeps its one binding (§1.4.6): the alias isn't part of the map.
+    expect(await savedShortcut(page, 'save')).toBe('p')
+    await shortcutButton(page, 'Brush').click()
+    await page.keyboard.press('Control+s')
+    await expect(shortcutField(page, 'Save')).not.toContainText('Ctrl+S')
+})
+
 test.describe('on Apple devices', () => {
     test.beforeEach(async ({ page }) => {
         await page.addInitScript(() => {

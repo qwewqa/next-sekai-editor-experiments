@@ -301,9 +301,7 @@
       "reset": "레벨 초기화"
     },
     "save": {
-      "title": "저장",
-      "exporting": "레벨 내보내는 중…",
-      "saved": "레벨 저장됨"
+      "title": "저장"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        }
+        },
+        "fixedAlias": "{0}(으)로도 실행됩니다 (고정)"
       },
       "maskLeft": {
         "label": "마스크 레인"
@@ -1863,7 +1862,6 @@
     "tryAgain": "다시 시도",
     "denied": "브라우저가 {0}에 쓰기를 허용하지 않았습니다.",
     "notFound": "\"{0}\"을(를) 찾을 수 없습니다.",
-    "notFoundNote": "옮기거나 이름을 바꿨다면 다음 단계에서 파일을 선택하고 확인하세요.",
     "downloadStarted": "다운로드 시작됨: {0} · {1}",
     "preparing": "{0} 준비 중… {1}",
     "download": "다운로드",

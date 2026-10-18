@@ -261,8 +261,9 @@ test.describe('chords', () => {
         expect(await isEdited(page)).toBe(false)
     })
 
+    // Ctrl/Cmd+S is Save's fixed alias (§1.4.6), so g stands for the plain letters here.
     for (const [chord, tool] of [
-        ['Control+s', 'slide'],
+        ['Control+g', 'eraser'],
         ['Meta+b', 'brush'],
     ] as const) {
         test(`${chord} runs the ${tool} tool's plain key and keeps the browser's action out`, async ({
@@ -275,6 +276,30 @@ test.describe('chords', () => {
             expect(await lastDefault(page)).toBe(true)
         })
     }
+
+    test('Ctrl+S is Save’s fixed alias; a chord bound to it runs that command instead', async ({
+        page,
+    }) => {
+        await logDefaults(page)
+        await setTool(page, 'select')
+        await page.keyboard.press('Control+s')
+        await expect(
+            page.getByRole('dialog').filter({ hasText: 'Save Project File' }),
+        ).toBeVisible()
+        expect(await toolName(page)).toBe('select')
+        expect(await lastDefault(page)).toBe(true)
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, brush: 'Mod+s' }
+        })
+        await page.keyboard.press('Control+s')
+        expect(await toolName(page)).toBe('brush')
+        expect(await lastDefault(page)).toBe(true)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
 
     test('Ctrl+Shift+A matches no plain a and keeps the browser default', async ({ page }) => {
         await logDefaults(page)
@@ -405,8 +430,8 @@ test.describe('chords', () => {
         expect(await lastDefault(page)).toBe(false)
 
         // Letters keep it out.
-        await page.keyboard.press('Control+s')
-        expect(await toolName(page)).toBe('slide')
+        await page.keyboard.press('Control+g')
+        expect(await toolName(page)).toBe('eraser')
         expect(await lastDefault(page)).toBe(true)
     })
 
@@ -631,9 +656,9 @@ test.describe('dock', () => {
         await page.keyboard.press('s')
         expect(await toolName(page)).toBe('select')
         await logDefaults(page)
-        await page.keyboard.press('Control+s')
-        expect(await toolName(page)).toBe('slide')
-        // Ctrl+S doesn't also save the page.
+        await page.keyboard.press('Control+g')
+        expect(await toolName(page)).toBe('eraser')
+        // Ctrl+G doesn't also find in the page.
         expect(await lastDefault(page)).toBe(true)
         await page.keyboard.press('Control+Shift+B')
         expect(await toolName(page)).toBe('bpm')

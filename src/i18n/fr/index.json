@@ -301,9 +301,7 @@
       "reset": "Niveau réinitialisé"
     },
     "save": {
-      "title": "Sauvegarder",
-      "exporting": "Exportation du niveau…",
-      "saved": "Niveau sauvegardé"
+      "title": "Sauvegarder"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Maj"
-        }
+        },
+        "fixedAlias": "Aussi {0}, fixe"
       },
       "maskLeft": {
         "label": "Voie du masque"
@@ -1863,7 +1862,6 @@
     "tryAgain": "Réessayer",
     "denied": "Le navigateur n’a pas autorisé l’écriture dans {0}.",
     "notFound": "\"{0}\" est introuvable.",
-    "notFoundNote": "Si vous l’avez déplacé ou renommé, choisissez-le à l’étape suivante et confirmez.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
     "download": "Télécharger",

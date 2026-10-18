@@ -301,9 +301,7 @@
       "reset": "重置關卡"
     },
     "save": {
-      "title": "儲存",
-      "exporting": "正在匯出關卡…",
-      "saved": "已儲存關卡"
+      "title": "儲存"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        }
+        },
+        "fixedAlias": "也可按 {0}（固定）"
       },
       "maskLeft": {
         "label": "遮罩軌道"
@@ -1863,7 +1862,6 @@
     "tryAgain": "重試",
     "denied": "瀏覽器不允許寫入 {0}。",
     "notFound": "找不到 \"{0}\"。",
-    "notFoundNote": "如果已移動或重新命名，請在下一步中選擇它並確認。",
     "downloadStarted": "已開始下載：{0} · {1}",
     "preparing": "正在準備 {0}… {1}",
     "download": "下載",

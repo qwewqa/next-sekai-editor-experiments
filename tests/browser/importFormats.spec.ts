@@ -619,8 +619,12 @@ for (const [label, chart] of [
                 value: undefined,
             })
         })
+        // Level data is Export Level Data's (Shift+P); p saves a project file (§1.4.7).
         const downloading = page.waitForEvent('download')
-        await page.keyboard.press('p')
+        await page.keyboard.press('Shift+P')
+        const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
+        await expect(exporting.locator('[data-export-name]')).toBeFocused()
+        await page.keyboard.press('Enter')
         const saved = readFileSync((await (await downloading).path())!)
         expect(gunzipSync(saved).toString()).not.toContain('null')
 

@@ -78,8 +78,8 @@ export const exportUi: ExportUi = {
     notFound: (name) =>
         showChoice({
             title,
-            message: () =>
-                `${interpolate(() => i18n.value.save.notFound, name)()}\n${i18n.value.save.notFoundNote}`,
+            // No hint to pick the moved file: a save picker would empty it (D5).
+            message: interpolate(() => i18n.value.save.notFound, name),
             choices: [chooseAnother],
         }),
     denied: (name) =>

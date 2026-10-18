@@ -301,9 +301,7 @@
       "reset": "已重置关卡"
     },
     "save": {
-      "title": "保存",
-      "exporting": "正在导出关卡…",
-      "saved": "已保存关卡"
+      "title": "保存"
     },
     "scrolls": {
       "scrollLeft": {
@@ -1515,7 +1513,8 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        }
+        },
+        "fixedAlias": "也可按 {0}（固定）"
       },
       "maskLeft": {
         "label": "遮罩轨道"
@@ -1863,7 +1862,6 @@
     "tryAgain": "重试",
     "denied": "浏览器不允许写入 {0}。",
     "notFound": "找不到“{0}”。",
-    "notFoundNote": "如果已移动或重命名，请在下一步中选择它并确认。",
     "downloadStarted": "已开始下载：{0} · {1}",
     "preparing": "正在准备 {0}… {1}",
     "download": "下载",
