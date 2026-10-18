@@ -187,7 +187,7 @@ export const replayIn = async (
         appVersion: '0.6.0',
         label: (dropped) =>
             dropped
-                ? `Recovered last change. ${dropped} undo step${dropped === 1 ? ' was' : 's were'} not kept.`
+                ? `Recovered last change. ${dropped} undo step${dropped === 1 ? ' was' : 's were'} dropped.`
                 : 'Recovered last change',
         now: () => 1_792_130_500_000,
         worker: {

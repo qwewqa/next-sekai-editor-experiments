@@ -1834,7 +1834,7 @@
     "saved": "{0} を保存",
     "downloaded": "{0} をダウンロード",
     "recovered": "最後の変更を復元",
-    "recoveredDropped": "最後の変更を復元。元に戻す操作 {0} 件は保持されませんでした。",
+    "recoveredDropped": "最後の変更を復元。元に戻す操作 {0} 件は破棄されました。",
     "continued": "続行",
     "migrated": "自動保存から復元"
   },

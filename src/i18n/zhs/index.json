@@ -1834,7 +1834,7 @@
     "saved": "已保存 {0}",
     "downloaded": "已下载 {0}",
     "recovered": "已恢复最后的更改",
-    "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤未保留。",
+    "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤已丢弃。",
     "continued": "已继续",
     "migrated": "已从自动保存恢复"
   },

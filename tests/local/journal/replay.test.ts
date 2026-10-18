@@ -69,7 +69,7 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
     const recovered = entries.at(-1)
     assert.equal(recovered?.kind, 'recovered')
     assert.equal(recovered?.seq, 4)
-    assert.equal(recovered?.label, 'Recovered last change. 1 undo step was not kept.')
+    assert.equal(recovered?.label, 'Recovered last change. 1 undo step was dropped.')
     // The recovered state hashes as the flushed one would: its values survive level data.
     assert.equal(toHex(recovered?.snapshot as Uint8Array), rootOf(states.d))
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 4)

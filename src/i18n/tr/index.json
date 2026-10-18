@@ -1834,7 +1834,7 @@
     "saved": "{0} kaydedildi",
     "downloaded": "{0} indirildi",
     "recovered": "Son değişiklik kurtarıldı",
-    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı.",
+    "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı silindi.",
     "continued": "Devam edildi",
     "migrated": "Otomatik kaydetmeden kurtarıldı"
   },

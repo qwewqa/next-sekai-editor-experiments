@@ -1834,7 +1834,7 @@
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
     "recovered": "已還原最後的變更",
-    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。",
+    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
     "migrated": "已從自動儲存還原"
   },
