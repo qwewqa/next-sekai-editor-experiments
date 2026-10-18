@@ -138,6 +138,7 @@ export const load = async (
             ? { ownRecovery: own.result.sessionId }
             : {}),
         keptForLocalData: recovery.keptForLocalData,
+        retireJournal: (found, by, seq) => page.writer.retire(found, by, seq),
         flusher: () => page.flusher,
         show: (each) => {
             shown.push(each)

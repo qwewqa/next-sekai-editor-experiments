@@ -1,4 +1,4 @@
-import type { JournalStore } from '../../platform/types'
+import type { JournalFound, JournalStore } from '../../platform/types'
 import type { State } from '../../state'
 import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
@@ -63,6 +63,13 @@ export class JournalWriter {
      */
     private readonly covered = new Map<string, number>()
 
+    /**
+     * Journals whose work another session took over, by that session (a reload's own journal it
+     * couldn't apply, §1.6.4): each removed, if unchanged, once the session's own journal verifies
+     * or a strict commit covers the entry that holds the work.
+     */
+    private readonly retiring = new Map<string, { found: JournalFound; seq: number }[]>()
+
     constructor(private readonly deps: JournalWriterDeps) {}
 
     /**
@@ -100,6 +107,7 @@ export class JournalWriter {
         }
         this.written.set(session.id, { seq, verified })
         if (verified) {
+            this.dropRetired(session.id)
             this.dropSuperseded(session.id)
             this.covered.delete(session.id)
             for (const [id, coveredSeq] of this.covered) this.deps.store.clear(id, coveredSeq)
@@ -135,6 +143,7 @@ export class JournalWriter {
         }
         if (seq >= (this.superseded.get(sessionId)?.moved ?? Infinity))
             this.dropSuperseded(sessionId)
+        this.dropRetired(sessionId, seq)
         if (!last || last.seq > seq) return
         this.deps.store.clear(sessionId, seq)
         this.written.delete(sessionId)
@@ -145,6 +154,9 @@ export class JournalWriter {
      * fork's journal takes over the old key, written at once when the fork is the open session.
      */
     forked(from: FlushSession, fork: FlushSession) {
+        const retiring = this.retiring.get(from.id)
+        this.retiring.delete(from.id)
+        if (retiring) this.retiring.set(fork.id, retiring)
         const keys = this.superseded.get(from.id)?.keys ?? []
         this.superseded.delete(from.id)
         const last = this.written.get(from.id)
@@ -153,6 +165,23 @@ export class JournalWriter {
         if (!keys.length) return
         this.superseded.set(fork.id, { keys, moved: fork.nextSeq - 1 })
         if (this.deps.flusher()?.session === fork) this.write()
+    }
+
+    /** `found`'s work is in `by`'s entry `seq`: the key goes once `by` holds it (see `retiring`). */
+    retire(found: JournalFound, by: string, seq: number) {
+        this.retiring.set(by, [...(this.retiring.get(by) ?? []), { found, seq }])
+    }
+
+    private dropRetired(by: string, covered = Infinity) {
+        const list = this.retiring.get(by)
+        if (!list) return
+        const left = list.filter(({ found, seq }) => {
+            if (covered !== Infinity && seq > covered) return true
+            this.deps.store.remove(found)
+            return false
+        })
+        if (left.length) this.retiring.set(by, left)
+        else this.retiring.delete(by)
     }
 
     private dropSuperseded(sessionId: string) {

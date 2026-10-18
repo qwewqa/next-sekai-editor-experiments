@@ -50,10 +50,13 @@ const label = (item: RecoveryItem) => {
     const size = formatSize(item.size)
     const { recovery } = strings.value
     switch (item.kind) {
-        case 'journal':
-            return item.writtenAt === undefined
-                ? interpolateRaw(recovery.journalUndated, size)
-                : interpolateRaw(recovery.journal, formatDate(item.writtenAt), size)
+        case 'journal': {
+            const text =
+                item.writtenAt === undefined
+                    ? interpolateRaw(recovery.journalUndated, size)
+                    : interpolateRaw(recovery.journal, formatDate(item.writtenAt), size)
+            return item.readable ? text : `${text} ${strings.value.cannotOpen}`
+        }
         case 'autoSave': {
             const text = interpolateRaw(recovery.autoSave, size)
             return item.readable ? text : `${text} ${strings.value.cannotOpen}`
@@ -153,7 +156,7 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
                 <span class="flex flex-wrap gap-2">
                     <button
                         v-if="
-                            item.kind === 'journal' || (item.kind === 'autoSave' && item.readable)
+                            (item.kind === 'journal' || item.kind === 'autoSave') && item.readable
                         "
                         type="button"
                         :class="buttonClass"

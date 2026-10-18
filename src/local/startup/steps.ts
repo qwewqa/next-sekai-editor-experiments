@@ -57,9 +57,9 @@ export type RecoveryContext = {
     journalMs?: number
     /** The session the migration made, which this load continues (§1.8), and its name. */
     migrated?: { sessionId: string; name: ShownName }
-    /** Journals of earlier visits left in place while storage is unavailable (§1.6.7). */
+    /** Journals offered in Local Data: earlier visits' (storage unavailable), or what replay left. */
     keptForLocalData: JournalFound[]
-    /** This tab's own journal while storage is unavailable: its reload continues from it. */
+    /** This tab's own journal, unreplayed or left by replay: its reload goes on from it. */
     ownJournal?: JournalFound
     /** What replay did with this tab's own journal, when it had one. */
     ownOutcome?: JournalOutcome
@@ -147,7 +147,8 @@ export const journalsStep = async (context: RecoveryContext) => {
                     .request(sessionLock(found.sessionId), { ifAvailable: true }, (held) =>
                         Promise.resolve(held),
                     )
-                    .catch(() => true))
+                    // A refused request can't tell: left alone, as a live tab's.
+                    .catch(() => false))
             if (!free) continue
             context.keptForLocalData.push(found)
             size += found.from.length + found.text.length
@@ -171,11 +172,18 @@ export const journalsStep = async (context: RecoveryContext) => {
     )
     context.outcomes.push(...outcomes)
     context.journalMs = performance.now() - start
+    // What replay left (a failed apply, a newer build's) is offered in Local Data too, with
+    // Download, and Open when it reads (§1.4.14); a live tab's stays that tab's.
+    const left = await context.journal.read()
+    const live = new Set(
+        outcomes.filter((each) => each.kind === 'live').map((each) => each.sessionId),
+    )
+    for (const found of left) if (!live.has(found.sessionId)) context.keptForLocalData.push(found)
     if (context.own !== undefined) {
         context.ownOutcome = outcomes.find((outcome) => outcome.sessionId === context.own)
-        context.ownLeft = (await context.journal.read()).some(
-            (found) => found.sessionId === context.own,
-        )
+        const own = left.find((found) => found.sessionId === context.own)
+        context.ownLeft = own !== undefined
+        if (own) context.ownJournal = own
     }
     let later = false
     let failed = false

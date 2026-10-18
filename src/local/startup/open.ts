@@ -95,6 +95,8 @@ export type OpenDeps = {
     /** Journals offered in Local Data: the reload's own goes there when it can't load it. */
     keptForLocalData?: JournalFound[]
     flusher: () => import('../flush').Flusher | undefined
+    /** A journal whose work a new session took over: the key goes once that session holds it. */
+    retireJournal?: (found: JournalFound, by: string, seq: number) => void
     /** Shows an opened session in the editor (`show.ts`): the stack, the head, the view. */
     show: (shown: Shown) => void
     /** A session this tab left by Reopen or Restore as a Copy, for Reopen to offer (§1.4.1). */
@@ -156,8 +158,19 @@ export const openStored = async (
     deps: OpenDeps,
     read: SessionRead & { kind: 'open' },
     how: How,
-    /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
-    { replace = false }: { replace?: boolean } = {},
+    {
+        replace = false,
+        recovered,
+    }: {
+        /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
+        replace?: boolean
+        /**
+         * A journal of the session that couldn't be applied but reads: a continuation or fork
+         * starts from its state, an entry over the stored stack, so the newest work is on screen
+         * and stored by its first write (§1.6.4).
+         */
+        recovered?: { found: JournalFound; state: State }
+    } = {},
 ): Promise<State | undefined> => {
     const flusher = deps.flusher()
     const releaseAll = () => {
@@ -182,7 +195,14 @@ export const openStored = async (
         label,
         isDirty: edited,
     }))
-    const at = read.stack.window.index - read.stack.window.base
+    let at = read.stack.window.index - read.stack.window.base
+    const taken = how.mode === 'resume' ? undefined : recovered
+    if (taken) {
+        slots.length = at + 1
+        slots.push({ label: deps.labels.recoveredHead(), isDirty: true })
+        at++
+    }
+    const shown = taken?.state ?? state
     const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
     const sourceName = text(chain.sourceName)
     const lineageId = text(chain.lineageId) ?? newId()
@@ -204,7 +224,7 @@ export const openStored = async (
         }),
         slots,
         at,
-        state,
+        state: shown,
         view: session.view,
     })
     if (how.mode === 'resume') {
@@ -230,7 +250,7 @@ export const openStored = async (
         })
     } else {
         const own = holdOwn(deps.locks, id)
-        flusher.continueSession({
+        const continued = flusher.continueSession({
             id,
             chainId: fork ? newId() : String(chain.chainId),
             docId,
@@ -251,6 +271,10 @@ export const openStored = async (
             done: own.release,
             ...(how.parentLock ? { parentDone: how.parentLock.release } : {}),
         })
+        if (taken) {
+            flusher.append('edit', deps.labels.recoveredHead, taken.state, true)
+            deps.retireJournal?.(taken.found, continued.id, flusher.newestSeq(continued))
+        }
     }
     // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
     restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
@@ -260,8 +284,8 @@ export const openStored = async (
         ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
         ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
     })
-    if (state.bgm.meta && !state.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
-    return state
+    if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
+    return shown
 }
 
 const isParent = (value: unknown): value is { id: string; uptoSeq: number } =>
@@ -390,13 +414,15 @@ const forked = async (
     parentId: string,
     held?: HeldLock,
     copyOf = copyOfOf(read),
+    recovered?: { found: JournalFound; state: State },
 ): Promise<boolean> => {
     const parentLock = held ?? (await holdShared(deps.locks, parentId))
-    const state = await openStored(deps, read, {
-        mode: 'fork',
-        ...(parentLock ? { parentLock } : {}),
-        copyOf,
-    })
+    const state = await openStored(
+        deps,
+        read,
+        { mode: 'fork', ...(parentLock ? { parentLock } : {}), copyOf },
+        recovered ? { recovered } : {},
+    )
     if (state) deps.events({ kind: 'separateCopy', of: copyOf })
     return !!state
 }
@@ -490,19 +516,27 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
             return forked(deps, recovered, deps.ownRecovery, parentLock)
         }
         const read = await deps.worker.call('readSession', record.sessionId)
+        // Its own journal wasn't applied (it failed, or a newer build wrote it): the session is
+        // never appended to, so it continues in a new one, whose first write moves the head
+        // (§1.6.4 step 2). One that reads starts from the journal's state, as the user left it.
+        const journalled = deps.ownLeft && deps.ownJournal && journalledSession(deps.ownJournal)
+        const recovered =
+            journalled && deps.ownJournal
+                ? { found: deps.ownJournal, state: journalled.state }
+                : undefined
         if (read.kind === 'open' && read.isHead) {
-            // Its own journal wasn't applied (it failed, or a newer build wrote it): the session
-            // is never appended to, so it continues in a new one, whose first write moves the
-            // head; the next load keeps the journal as a recovery chain (§1.6.4 step 2).
             if (deps.ownLeft)
-                return !!(await openStored(deps, read, {
-                    mode: 'continue',
-                    parentLock: claim.lock,
-                }))
+                return !!(await openStored(
+                    deps,
+                    read,
+                    { mode: 'continue', parentLock: claim.lock },
+                    recovered ? { recovered } : {},
+                ))
             return !!(await openStored(deps, read, { mode: 'resume', lock: claim.lock }))
         }
         // Continued in another tab during the gap: a fork (§1.4.2).
-        if (read.kind === 'open') return forked(deps, read, record.sessionId, claim.lock)
+        if (read.kind === 'open')
+            return forked(deps, read, record.sessionId, claim.lock, undefined, recovered)
         releaseClaim()
         if (read.kind === 'deleted') {
             deps.events({ kind: 'deletedElsewhere' })

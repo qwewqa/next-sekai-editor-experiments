@@ -16,6 +16,7 @@ import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
 import {
     flusher,
+    journalWriter,
     offerReopen,
     recordBlankStart,
     startStoring,
@@ -269,6 +270,7 @@ export const startStorage = async () => {
                 show: showSession,
                 showState,
                 onLeft: offerReopen,
+                retireJournal: (found, by, seq) => journalWriter?.retire(found, by, seq),
                 untouched,
                 labels: {
                     continued: () => i18n.value.entry.continued,
