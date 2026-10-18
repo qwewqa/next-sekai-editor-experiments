@@ -47,7 +47,8 @@ export type ForeignBatch = {
     media: BatchMedia[]
 }
 
-export type ForeignResult = { kind: 'stored' } | { kind: 'missing'; hashes: string[] }
+export type ForeignResult =
+    { kind: 'stored'; mediaFailed?: string[] } | { kind: 'missing'; hashes: string[] }
 
 /** Bytes from outside that aren't what their hash names: the source's damage. */
 export class ForeignDataError extends Error {
@@ -237,10 +238,11 @@ export const writeForeign = async (
         }
         await tx.put('nodes', { ...row, refs, day }, hashKey(hash))
     }
+    const mediaFailed: string[] = []
     for (const item of prepared.media.values()) {
         const key = hashKey(fromHex16(item.hash))
         if ((await tx.getKey('media', key)) !== undefined) continue
-        await tx.put(
+        const stored = await tx.tryPut(
             'media',
             {
                 blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
@@ -253,8 +255,9 @@ export const writeForeign = async (
             },
             key,
         )
+        if (!stored) mediaFailed.push(item.hash)
     }
-    return { kind: 'stored' }
+    return { kind: 'stored', ...(mediaFailed.length ? { mediaFailed } : {}) }
 }
 
 /** Attempts of one import: the first, then at most two retries with the missing parts. */

@@ -1,3 +1,4 @@
+import { deleteHandleRow } from '../handleRows'
 import type { KvTx } from '../kv/types'
 import type { RowKey, SaveIdentity } from './build'
 
@@ -7,9 +8,10 @@ import type { RowKey, SaveIdentity } from './build'
 // `kept: false`).
 
 /** The stores `commitIdentity` writes and reads. */
-export const IDENTITY_STORES = ['chains', 'sessions', 'entries'] as const
+export const IDENTITY_STORES = ['chains', 'sessions', 'entries', 'handles'] as const
 
 export type IdentityUnit = {
+    clearExport?: true
     docId: string
     revision: SaveIdentity['revision']
     /** The binding as stored (§1.6.11.2), its `entry` complete. */
@@ -63,11 +65,26 @@ export const commitIdentity = async (tx: KvTx, chainId: string, unit: IdentityUn
     const chain = (await tx.get('chains', chainId)) as Record<string, unknown> | undefined
     if (!chain) return false
     if (!(await storeMarks(tx, unit.marks))) return false
-    await tx.put('chains', {
+    const record = {
         ...chain,
         docId: unit.docId,
         revision: unit.revision,
         file: unit.file,
-    })
+    }
+    await clearIdentityExport(tx, chainId, record, unit)
+    await tx.put('chains', record)
     return true
+}
+
+/** Save As drops its Export destination in the identity transaction. */
+export const clearIdentityExport = async (
+    tx: KvTx,
+    chainId: string,
+    chain: Record<string, unknown>,
+    unit: IdentityUnit,
+) => {
+    if (!unit.clearExport) return
+    delete chain.exportTarget
+    delete chain.exportName
+    await deleteHandleRow(tx, chainId, 'exportTarget')
 }

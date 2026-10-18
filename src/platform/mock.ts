@@ -260,58 +260,63 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
                       ).requestPermission({ mode: 'readwrite' })
                     : 'granted'
             if (permission !== 'granted') throw new FileError('denied', 'Not allowed')
-            signal?.throwIfAborted()
-            const name = targetKey(req.target)
-            const { expected } = req
-            // Source integrity: the File taken at the check is the only source of the old bytes.
-            const file = fileOf(name)
-            // A write-back's empty target holds nothing to keep (R9): written, with nothing to copy.
-            const overEmpty = () => !!req.overEmpty && kind === 'nxsp' && fileOf(name)?.size === 0
-            const emptied = overEmpty()
-            const pinned =
-                expected === undefined || emptied
-                    ? undefined
-                    : await check(name, expected, kind, file)
-            signal?.throwIfAborted()
-            const sources: PinnedSource[] =
-                pinned && file
-                    ? [{ token: 'target', role: 'target', target: req.target, file, disk: pinned }]
-                    : []
-            await point('checked', name)
-            let body: Blob
-            try {
-                body = await toBlob(await req.build(sources), sources, async () => {
-                    const now = await diskOf(name, kind)
-                    return now?.fingerprint ?? 'missing'
-                })
-            } catch (error) {
-                if (error instanceof DOMException && error.name === 'NotReadableError')
-                    throw new FileError(
-                        'conflict',
-                        `${name} changed on disk`,
-                        await diskOf(name, kind),
-                    )
-                throw error
+            const target = req.target
+            const write = async () => {
+                signal?.throwIfAborted()
+                const name = targetKey(target)
+                const { expected } = req
+                // Source integrity: the File taken at the check is the only source of the old bytes.
+                const file = fileOf(name)
+                // A write-back's empty target holds nothing to keep (R9): written, with nothing to copy.
+                const overEmpty = () =>
+                    !!req.overEmpty && kind === 'nxsp' && fileOf(name)?.size === 0
+                const emptied = overEmpty()
+                const pinned =
+                    expected === undefined || emptied
+                        ? undefined
+                        : await check(name, expected, kind, file)
+                signal?.throwIfAborted()
+                const sources: PinnedSource[] =
+                    pinned && file
+                        ? [{ token: 'target', role: 'target', target, file, disk: pinned }]
+                        : []
+                await point('checked', name)
+                let body: Blob
+                try {
+                    body = await toBlob(await req.build(sources), sources, async () => {
+                        const now = await diskOf(name, kind)
+                        return now?.fingerprint ?? 'missing'
+                    })
+                } catch (error) {
+                    if (error instanceof DOMException && error.name === 'NotReadableError')
+                        throw new FileError(
+                            'conflict',
+                            `${name} changed on disk`,
+                            await diskOf(name, kind),
+                        )
+                    throw error
+                }
+                signal?.throwIfAborted()
+                await point('built', name)
+                mock.beforeCommit?.(name)
+                await point('beforeClose', name)
+                if (expected !== undefined && !overEmpty()) {
+                    // Filled since it was found empty, or changed: never written over unseen.
+                    if (emptied)
+                        throw new FileError(
+                            'conflict',
+                            `${name} changed on disk`,
+                            await diskOf(name, kind),
+                        )
+                    const now = await check(name, expected, kind)
+                    // Checked again just before close(): a `.nxsp` by the pinned File's fingerprint.
+                    if (kind === 'nxsp' && pinned && now?.fingerprint !== pinned.fingerprint)
+                        throw new FileError('conflict', `${name} changed on disk`, now)
+                }
+                signal?.throwIfAborted()
+                return commit(target, name, body, kind)
             }
-            signal?.throwIfAborted()
-            await point('built', name)
-            mock.beforeCommit?.(name)
-            await point('beforeClose', name)
-            if (expected !== undefined && !overEmpty()) {
-                // Filled since it was found empty, or changed: never written over unseen.
-                if (emptied)
-                    throw new FileError(
-                        'conflict',
-                        `${name} changed on disk`,
-                        await diskOf(name, kind),
-                    )
-                const now = await check(name, expected, kind)
-                // Checked again just before close(): a `.nxsp` by the pinned File's fingerprint.
-                if (kind === 'nxsp' && pinned && now?.fingerprint !== pinned.fingerprint)
-                    throw new FileError('conflict', `${name} changed on disk`, now)
-            }
-            signal?.throwIfAborted()
-            return commit(req.target, name, body, kind)
+            return req.lock ? req.lock(write) : write()
         }
 
         // Built before the pick, as the picker empties what it returns (D5).
@@ -324,13 +329,16 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
             return { status: 'download-started', name: req.suggestedName }
         }
-        if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
-        signal?.throwIfAborted()
-        // Accepted: written to its end, cancel or not.
-        const name = targetKey(target)
-        mock.beforeCommit?.(name)
-        await point('beforeClose', name)
-        return commit(target, name, body, kind)
+        const write = async (): Promise<SaveResult> => {
+            if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+            signal?.throwIfAborted()
+            // Accepted: written to its end, cancel or not.
+            const name = targetKey(target)
+            mock.beforeCommit?.(name)
+            await point('beforeClose', name)
+            return commit(target, name, body, kind)
+        }
+        return req.lock ? req.lock(write) : write()
     }
 
     const commit = async (

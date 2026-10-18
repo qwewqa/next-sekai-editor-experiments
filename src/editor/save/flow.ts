@@ -36,7 +36,12 @@ import { settings } from '../../settings'
 import type { State } from '../../state'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { validName } from '../commands/exportLevel/fileName'
-import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
+import {
+    clearExportDestination,
+    exportMemory,
+    sameEntry,
+    type OpenedSource,
+} from '../commands/exportLevel/memory'
 import type { ProjectPick } from '../commands/exportLevel/pick'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
@@ -285,6 +290,7 @@ const fromOf = (env: Env): IdentityUnit['from'] => {
 const unitOf = (env: Env, built: BuiltSave, file: Row): IdentityUnit => {
     const from = fromOf(env)
     return {
+        ...(built.identity.clearExport ? { clearExport: true } : {}),
         docId: built.identity.docId,
         revision: built.identity.revision,
         file,
@@ -314,6 +320,7 @@ const markerOf = (
     },
     parent,
     unit: {
+        ...(built.identity.clearExport ? { clearExport: true } : {}),
         docId: built.identity.docId,
         revision: built.identity.revision,
         file: markerFile(file),
@@ -345,6 +352,7 @@ const bindWrite = async (
         unitOf(env, built, file),
     )
     if (currentSession.value.sessionId === reservation.session.id) {
+        if (built.identity.clearExport) clearExportDestination()
         const { copyOf: _copy, ...rest } = currentSession.value
         currentSession.value = { ...rest, docId: built.identity.docId }
         bindFile(
@@ -2141,6 +2149,7 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
         (picked.kind === 'target' && picked.owner.chainId !== env.chainId)
     ) {
         const done = await revoke(env, picked.owner, undefined)
+        if (!done.ok) return { show: () => afterOutcome(env, notTakenOver(handle.name)) }
         if (done.revoked) broadcastUpdated()
         return 'taken'
     }

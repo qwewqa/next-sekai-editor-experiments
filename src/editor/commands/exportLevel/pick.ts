@@ -70,6 +70,12 @@ let projectCheck: ((handle: FileSystemFileHandle) => Promise<ProjectPick>) | und
 type PickLock = <T>(run: () => Promise<T>) => Promise<T>
 
 let pickLock: PickLock | undefined
+let targetLock: PickLock | undefined
+
+export const setTargetLock = (lock: PickLock) => {
+    targetLock = lock
+}
+export const withTargetLock: PickLock = (run) => (targetLock ? targetLock(run) : run())
 
 /** Set by the Save core: `nse-bind` exclusive, held from a pick's check to its write (§1.6.6). */
 export const setPickLock = (lock: PickLock) => {
