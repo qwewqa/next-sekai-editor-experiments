@@ -418,10 +418,10 @@ test('Alt+N is ignored in a select and while a blocking dialog is open', async (
     await page.keyboard.press('Alt+KeyN')
     await expect(page.locator('#probe-select')).toBeFocused()
     await page.locator('#probe-select').blur()
-    // The key also ran New, whose notice comes late and must not land while the dialog is open.
+    // The key must not run New either.
     await expect(
         page.locator('.notification, [data-notice-card]').filter({ hasText: 'New level' }),
-    ).toHaveCount(1)
+    ).toHaveCount(0)
 
     await page.evaluate(async () => {
         const { showChoice } =

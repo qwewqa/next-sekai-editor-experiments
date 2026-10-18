@@ -94,7 +94,10 @@ test('plain bindings answer to their key whatever modifiers are held', () => {
         [press('z', 'c'), ['undo']],
         [press('z', 'm'), ['undo']],
         [press('s', 'c'), ['slide']],
-        [press('a', 'a'), ['note']],
+        // Alt+character is never the plain key; AltGr still types it.
+        [press('a', 'a'), []],
+        [press('n', 'a'), []],
+        [press('[', 'a'), []],
         [press('U', 's'), ['flipVertical']],
         [press('U', 'cs'), ['flipVertical']],
         [press('[', 'ca'), ['zoomXOut']],
@@ -117,7 +120,7 @@ test('a chord bound exactly wins over the plain binding of its key', () => {
     assert.deepEqual(match(shortcuts, press('s', 'c')), { names: ['save'], exact: true })
     assert.deepEqual(match(shortcuts, press('s', 'm')), { names: ['save'], exact: true })
     assert.deepEqual(match(shortcuts, press('s')).names, ['slide'])
-    assert.deepEqual(match(shortcuts, press('s', 'a')).names, ['slide'])
+    assert.deepEqual(match(shortcuts, press('s', 'a')).names, [])
     assert.deepEqual(match(shortcuts, press('S', 'cs')).names, [])
     assert.deepEqual(match(shortcuts, press('ArrowUp', 's')), { names: ['jumpUp'], exact: true })
     assert.deepEqual(match(shortcuts, press('ArrowUp', 'c')).names, ['scrollUp'])
