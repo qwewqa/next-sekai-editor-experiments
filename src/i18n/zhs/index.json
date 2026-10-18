@@ -838,7 +838,7 @@
         "measure": "小节",
         "both": "两者"
       },
-      "dimUnchangedObjects": "淡化未更改的对象"
+      "dimUnchangedObjects": "默认显示更改"
     },
     "keyboardShortcuts": {
       "title": "键盘快捷键"
@@ -1253,7 +1253,8 @@
     "checking": "正在检查更早的步骤…",
     "notChecked": "有 {0} 步无法检查",
     "announceViewingChange": "正在查看 {0}，{1}",
-    "openedFile": "已打开 {0}"
+    "openedFile": "已打开 {0}",
+    "viewChart": "查看谱面"
   },
   "modals": {
     "close": "关闭",
@@ -1861,7 +1862,9 @@
     "changesBelow": "下方的更改：{0}",
     "changesAboveAny": "上方的更改",
     "changesBelowAny": "下方的更改",
-    "savesCurrent": "保存当前版本。"
+    "savesCurrent": "保存当前版本。",
+    "showEdits": "显示更改",
+    "changeOptions": "更改显示选项"
   },
   "save": {
     "fileName": "文件名",
@@ -2065,5 +2068,39 @@
   },
   "notSaving": {
     "bar": "更改未存储在此浏览器中。"
+  },
+  "historyChanges": {
+    "title": "属性更改",
+    "view": "查看属性更改",
+    "before": "更改前",
+    "after": "更改后",
+    "notSet": "未设置",
+    "empty": "空",
+    "notPresent": "不存在",
+    "added": "已添加",
+    "removed": "已移除",
+    "order": "顺序",
+    "folder": "文件夹",
+    "groupFolders": "群组文件夹",
+    "stageFolders": "舞台文件夹",
+    "levelInfo": "关卡信息",
+    "fields": {
+      "title": "标题",
+      "artists": "艺术家",
+      "author": "作者",
+      "description": "描述",
+      "tags": "标签",
+      "rating": "难度",
+      "cover": "封面",
+      "previewAudio": "预览音频",
+      "duration": "时长",
+      "size": "大小",
+      "type": "类型",
+      "icon": "图标"
+    },
+    "contentsChanged": "内容已更改",
+    "showMore": "显示更多",
+    "shown": "属性：{0}/{1}",
+    "itemsShown": "项目：{0}/{1}"
   }
 }

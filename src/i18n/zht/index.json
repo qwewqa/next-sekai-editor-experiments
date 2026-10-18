@@ -838,7 +838,7 @@
         "measure": "小節",
         "both": "兩者"
       },
-      "dimUnchangedObjects": "淡化未變更的物件"
+      "dimUnchangedObjects": "預設顯示變更"
     },
     "keyboardShortcuts": {
       "title": "鍵盤快捷鍵"
@@ -1253,7 +1253,8 @@
     "checking": "正在檢查更早的步驟…",
     "notChecked": "有 {0} 步無法檢查",
     "announceViewingChange": "正在檢視 {0}，{1}",
-    "openedFile": "已開啟 {0}"
+    "openedFile": "已開啟 {0}",
+    "viewChart": "檢視譜面"
   },
   "modals": {
     "close": "關閉",
@@ -1861,7 +1862,9 @@
     "changesBelow": "下方的變更：{0}",
     "changesAboveAny": "上方的變更",
     "changesBelowAny": "下方的變更",
-    "savesCurrent": "儲存目前版本。"
+    "savesCurrent": "儲存目前版本。",
+    "showEdits": "顯示變更",
+    "changeOptions": "變更顯示選項"
   },
   "save": {
     "fileName": "檔案名稱",
@@ -2065,5 +2068,39 @@
   },
   "notSaving": {
     "bar": "變更未存放在此瀏覽器中。"
+  },
+  "historyChanges": {
+    "title": "屬性變更",
+    "view": "檢視屬性變更",
+    "before": "變更前",
+    "after": "變更後",
+    "notSet": "未設定",
+    "empty": "空白",
+    "notPresent": "不存在",
+    "added": "已新增",
+    "removed": "已移除",
+    "order": "順序",
+    "folder": "資料夾",
+    "groupFolders": "圖層資料夾",
+    "stageFolders": "舞台資料夾",
+    "levelInfo": "關卡資訊",
+    "fields": {
+      "title": "標題",
+      "artists": "藝術家",
+      "author": "作者",
+      "description": "描述",
+      "tags": "標籤",
+      "rating": "難度",
+      "cover": "封面",
+      "previewAudio": "預覽音訊",
+      "duration": "長度",
+      "size": "大小",
+      "type": "類型",
+      "icon": "圖示"
+    },
+    "contentsChanged": "內容已變更",
+    "showMore": "顯示更多",
+    "shown": "屬性：{0}/{1}",
+    "itemsShown": "項目：{0}/{1}"
   }
 }
