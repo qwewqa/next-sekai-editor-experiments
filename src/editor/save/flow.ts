@@ -462,8 +462,12 @@ const preRead = async (env: Env, binding: Binding): Promise<PreRead | undefined>
         const atBase = !!file.disk && sameContent(disk, file.disk)
         // At the base, with storage holding all it does: nothing to keep.
         if (atBase && !short) return
-        // Into memory: a picker empties the file under any `File` read before.
-        return { blob: new Blob([await found.arrayBuffer()]), disk, atBase }
+        // Into memory: a picker empties the file under any `File` read before. Its time stays,
+        // so the copy has the fingerprint read here.
+        const blob = new File([await found.arrayBuffer()], found.name, {
+            lastModified: found.lastModified,
+        })
+        return { blob, disk, atBase }
     } catch {
         return
     }
