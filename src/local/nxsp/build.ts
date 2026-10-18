@@ -359,7 +359,7 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
             }
             nodes.push(top)
             const children = node[2] as string[]
-            if (node[1] === 0) chunks.push(...children)
+            if (node[1] === 0) pushAll(chunks, children)
             else
                 for (const child of children) {
                     const leaf = nodeOf(child)
@@ -368,7 +368,7 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
                         return
                     }
                     nodes.push(child)
-                    chunks.push(...(leaf[2] as string[]))
+                    pushAll(chunks, leaf[2] as string[])
                 }
         }
         if (chunks.some((chunk) => !placedChunks.has(chunk) && !history.chunks.has(chunk))) return
@@ -420,10 +420,10 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
     if (carried) {
         if (carriedAsSegment) parts.push(carried)
         else {
-            manifestPart.entries.push(...carried.entries)
+            pushAll(manifestPart.entries, carried.entries)
             Object.assign(manifestPart.roots, carried.roots)
             Object.assign(manifestPart.nodes, carried.nodes)
-            manifestPart.chunks.push(...carried.chunks)
+            pushAll(manifestPart.chunks, carried.chunks)
         }
         walkEntries(history.entries, manifestPart)
     } else {
@@ -685,6 +685,11 @@ const METADATA_NAMES = [
     'cover',
     'preview',
 ]
+
+/** Appends one at a time: a spread of a long list would pass the engine's argument limit. */
+const pushAll = <T>(to: T[], from: readonly T[]) => {
+    for (const item of from) to.push(item)
+}
 
 const concat = (chunks: readonly Uint8Array[]) => {
     const out = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0))

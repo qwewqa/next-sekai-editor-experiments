@@ -146,6 +146,22 @@ test('overlapping data ranges are damage', async () => {
     assert.equal(read.history, undefined)
 })
 
+test('real ranges are checked for every entry, ignored ones too', async () => {
+    const { items } = await unzip(await freshFile())
+    const entries = rawOf(items)
+    entries.push({ name: '__MACOSX/a', data: encoder.encode('aaaa'), method: 0 })
+    entries.push({ name: '__MACOSX/b', data: encoder.encode('bbbb'), method: 0 })
+    const zip = rawZip(entries)
+    const v = new DataView(zip.buffer)
+    // `a`'s local header claims an extra field its data then overlaps `b`'s header with.
+    let p = v.getUint32(zip.length - 22 + 16, true)
+    for (let i = 0; i < entries.length - 2; i++) p += 46 + v.getUint16(p + 28, true)
+    v.setUint16(v.getUint32(p + 42, true) + 28, 8, true)
+    const read = nxsp(await readNxsp(new Blob([zip])))
+    assert.deepEqual(reasonsOf(read), ['damaged __MACOSX/a', 'damaged __MACOSX/b'])
+    assert.equal(read.history, undefined)
+})
+
 test('inflating past the declared size is damage', async () => {
     const file = await rawFile((entries) => {
         const manifest = entries.find((e) => e.name === 'history/manifest.json')
@@ -450,6 +466,79 @@ test('a newer manifest version, root v or entry kind: newer history, not read', 
         reasonsOf(rootV).some((line) => line.startsWith('newer-history roots.')),
         reasonsOf(rootV).join(),
     )
+})
+
+test('an unknown entry kind is newer only, whatever fields it carries', async () => {
+    const read = nxsp(
+        await changeManifest((m) => {
+            m.entries[0].kind = 'merge'
+            m.entries[0].revisionId = 'r'
+            m.entries[0].device = { id: 'd', label: 'D' }
+            m.entries[0].stack = { keep: 0, push: [], index: 0 }
+        }),
+    )
+    assert.deepEqual(reasonsOf(read), ['newer-history manifest.entries[0].kind'])
+})
+
+test('a field another entry kind has is an unknown key', async () => {
+    const read = nxsp(
+        await changeManifest((m) => {
+            m.entries[1].revisionId = 'r'
+            m.entries[1].device = { id: 'd', label: 'D' }
+            m.entries[1].stack = { keep: 0, push: [], index: 0 }
+        }),
+    )
+    assert.deepEqual(reasonsOf(read), [
+        'unknown-key manifest.entries[1].revisionId',
+        'unknown-key manifest.entries[1].device',
+        'unknown-key manifest.entries[1].stack',
+    ])
+    assert.equal(read.history, undefined)
+})
+
+test('an entry’s time is a safe integer of at least 0', async () => {
+    for (const time of [1.5, -1, 2 ** 53, '1']) {
+        const read = nxsp(await changeManifest((m) => (m.entries[0].time = time)))
+        assert.deepEqual(
+            reasonsOf(read),
+            ['history-unreadable manifest.entries[0].time'],
+            `${time}`,
+        )
+    }
+    const zero = nxsp(await changeManifest((m) => (m.entries[0].time = 0)))
+    assert.equal(zero.open, 'full')
+})
+
+test('a part with 200,000 entries opens: no argument-list overflow', async () => {
+    const filler = { kind: 'edit', time: 1, label: 'x', snapshot: '0'.repeat(32), noteCount: 0 }
+    const read = nxsp(
+        await readCrafted((items) => {
+            const manifest = jsonOf(items, 'history/manifest.json')
+            const last = manifest.entries.pop()
+            for (let i = 0; i < 200_000; i++) manifest.entries.push({ ...filler, kept: false })
+            manifest.entries.push(last)
+            setJson(items, 'history/manifest.json', manifest)
+            const project = jsonOf(items, 'project.json')
+            project.history.entries = manifest.entries.length
+            setJson(items, 'project.json', project)
+        }),
+    )
+    assert.equal(read.open, 'full', reasonsOf(read).join())
+    assert.equal(read.history?.entries.length, 200_000 + 4)
+})
+
+test('issues are capped: the first 20, then how many more', async () => {
+    const read = nxsp(
+        await changeManifest((m) => {
+            for (let i = 0; i < 1000; i++) m.entries.push({ ...m.entries[0], time: -1 })
+        }),
+    )
+    assert.equal(read.report.length, 21)
+    assert.deepEqual(read.report.at(-1), {
+        reason: 'history-unreadable',
+        path: 'manifest',
+        detail: 'and 980 more',
+    })
 })
 
 test('an unknown key anywhere in the manifest makes the open partial', async () => {

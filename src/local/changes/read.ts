@@ -54,7 +54,7 @@ const kindChunks = async (source: PartSource, a?: string, b?: string) => {
         for (const leaf of only ?? node.children) {
             const found = need(await source.node(leaf))
             if (found.depth !== 0) throw new Unreadable()
-            chunks.push(...found.children)
+            for (const chunk of found.children) chunks.push(chunk)
         }
         return chunks
     }
@@ -87,7 +87,8 @@ export const readCandidates = async (
             const [chunksA, chunksB] = await kindChunks(source, nodeA, nodeB)
             const records = async (chunks: readonly string[]) => {
                 const list: Rec[] = []
-                for (const chunk of chunks) list.push(...need(await source.chunk(chunk)))
+                for (const chunk of chunks)
+                    for (const record of need(await source.chunk(chunk))) list.push(record)
                 return list
             }
             kinds.push({ kind, before: await records(chunksA), after: await records(chunksB) })

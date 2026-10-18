@@ -176,6 +176,8 @@ export const readNxsp = async (
     if (reader.recovered) damaged('', 'central directory')
     for (const name of reader.duplicates) damaged(name, 'two entries with this name')
     for (const name of reader.overlapping) damaged(name, 'overlapping data')
+    for (const name of await reader.realOverlaps())
+        if (!reader.overlapping.includes(name)) damaged(name, 'overlapping data')
 
     try {
         const projectEntry = reader.get('project.json')
@@ -267,7 +269,7 @@ export const readNxsp = async (
             if (project.history && !isDamaged && !newerMinor) {
                 const read = await readHistory(reader, project.history, cap)
                 if ('history' in read) history = read.history
-                else report.push(...read.items)
+                else for (const item of read.items) report.push(item)
             }
         }
 
@@ -427,25 +429,30 @@ const readHistory = async (
         const history = combined.history
         const chunks = chunkAccess(reader, chunksEntry, history.index, cap)
 
-        // What the open checks at once: every header chunk, and the head's chunks, decoded.
-        const parsed = new Map<string, unknown>()
-        const parsedChunk = async (hash: string) => {
-            const known = parsed.get(hash)
-            if (known !== undefined) return known
-            const value = parseJsonBytes(await chunks.read(hash), cap.depth)
-            parsed.set(hash, value)
-            return value
-        }
+        // What the open checks at once: every header chunk (each checked once, then dropped, so
+        // many large headers never stay parsed together), and the head's chunks, decoded.
+        const parseChunk = async (hash: string) =>
+            parseJsonBytes(await chunks.read(hash), cap.depth)
+        const checkedHeaders = new Set<string>()
         for (const [key, root] of history.roots) {
+            const header = root[1] as string
+            if (checkedHeaders.has(header)) continue
             try {
-                checkHeader(await parsedChunk(root[1] as string))
+                checkHeader(await parseChunk(header))
             } catch (error) {
                 return unreadable(`roots.${key}`, describe(error))
             }
+            checkedHeaders.add(header)
         }
         // `combineParts` resolved every reference, so the head's root and nodes are there.
         const headRoot = history.roots.get(history.head) ?? []
+        const parsed = new Map<string, unknown>()
+        const parsedChunk = async (hash: string) => {
+            if (!parsed.has(hash)) parsed.set(hash, await parseChunk(hash))
+            return parsed.get(hash)
+        }
         try {
+            await parsedChunk(headRoot[1] as string)
             for (const [, top] of headRoot[2] as [string, string][]) {
                 const node = history.nodes.get(top) ?? []
                 const children = node[2] as string[]

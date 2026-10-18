@@ -517,27 +517,33 @@ const asciiPart = (text: string) =>
         .replace(/^[ .]+|[ .]+$/g, '')
         .replace(/ +/g, '-')
 
-/** The extension an entry name takes: the original's in ASCII, else the type's, else `bin`. */
-const extensionOf = (filename: string, type: string) => {
+/** The original name's extension, when it is 1–10 ASCII letters and digits. */
+const ownExtension = (filename: string) => {
     const at = filename.lastIndexOf('.')
-    const own = at > 0 ? asciiPart(filename.slice(at + 1)) : ''
-    return own || (TYPE_EXTENSIONS[type] ?? 'bin')
+    const own = at > 0 ? filename.slice(at + 1) : ''
+    return /^[A-Za-z0-9]{1,10}$/.test(own) ? own : undefined
 }
+
+/** The extension an entry name takes: the original's, else the type's, else `bin`. */
+const extensionOf = (filename: string, type: string) =>
+    ownExtension(filename) ?? TYPE_EXTENSIONS[type] ?? 'bin'
 
 /** The longest ASCII stem the writer keeps, so a name stays far below every limit. */
 const STEM_LIMIT = 120
 
 /**
  * The BGM's entry name, `bgm/<stem>.<ext>` (§1.6.11.4): the stem is the original name's ASCII
- * part, with Part 0 §0.9.9's replacement (edge dots dropped, a reserved name given a `-`, a long
- * one cut), or `bgm` when nothing is left.
+ * part (the whole name when it has no extension `extensionOf` takes), with Part 0 §0.9.9's
+ * replacement (edge dots dropped, a reserved name before the first dot given a `-`, a long one
+ * cut at 120 with no ellipsis), or `bgm` when nothing is left.
  */
 export const bgmEntryName = (filename: string, type: string) => {
-    const at = filename.lastIndexOf('.')
-    let stem = asciiPart(at > 0 ? filename.slice(0, at) : filename)
+    const own = ownExtension(filename)
+    let stem = asciiPart(own ? filename.slice(0, -own.length - 1) : filename)
         .slice(0, STEM_LIMIT)
         .replace(/\.+$/, '')
-    if (RESERVED.test(stem)) stem += '-'
+    const device = stem.split('.')[0] ?? ''
+    if (RESERVED.test(device)) stem = `${device}-${stem.slice(device.length)}`
     return `bgm/${stem || 'bgm'}.${extensionOf(filename, type)}`
 }
 
