@@ -145,9 +145,8 @@ const readBinding = async (env: Env) => {
     const binding = bindingOf(record, env.session)
     const revoke = readRevocation(env.chainId)
     // A revocation of this binding kept while storage couldn't take it (R11).
-    const revoked =
-        revoke !== undefined && binding.file !== undefined && revoke.fileAt === binding.file.at
-    if (revoke && revoked && !env.session.identity)
+    const fileAt = binding.file?.at
+    if (revoke && typeof fileAt === 'number' && revoke.fileAt === fileAt && !env.session.identity)
         return {
             docId: binding.docId,
             ...(binding.revision ? { revision: binding.revision } : {}),
