@@ -12,13 +12,13 @@ defineProps<{ label: string }>()
         class="manager-add pointer-events-auto flex items-center rounded-full bg-button p-0.5 pr-4 shadow-md outline-none -outline-offset-2 transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent"
     >
         <span
-            class="flex size-9 shrink-0 items-center justify-center [@media(pointer:coarse)]:size-11"
+            class="flex size-9 shrink-0 items-center justify-center"
         >
             <AddIcon
-                class="size-4 fill-current [@media(pointer:coarse)]:size-5"
+                class="size-4 fill-current"
                 aria-hidden="true"
             />
         </span>
-        <span class="pl-2 [@media(pointer:coarse)]:pl-2.5">{{ label }}</span>
+        <span class="pl-2">{{ label }}</span>
     </button>
 </template>

@@ -30,7 +30,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
             <div class="ml-auto flex shrink-0 items-center gap-1">
                 <button
                     type="button"
-                    class="h-7 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                    class="h-7 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                     data-asset-fallback-open
                     @click="showPreviewAssets(fallback.type)"
                 >
@@ -38,7 +38,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
                 </button>
                 <button
                     type="button"
-                    class="flex size-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
+                    class="flex size-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                     :aria-label="i18n.modals.close"
                     :title="i18n.modals.close"
                     data-asset-fallback-dismiss

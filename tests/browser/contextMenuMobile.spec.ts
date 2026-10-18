@@ -55,7 +55,7 @@ for (const viewport of [
         const items = await menu
             .getByRole('menuitem')
             .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height))
-        expect(items.every((height) => height >= 44)).toBe(true)
+        expect(items.every((height) => height >= 36)).toBe(true)
         await page.screenshot({ path: testInfo.outputPath('mobile-context-menu.png') })
         const remove = menu.getByRole('menuitem', { name: 'Delete', exact: true })
         await remove.scrollIntoViewIfNeeded()

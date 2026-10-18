@@ -925,7 +925,7 @@ for (const [device, options] of Object.entries(viewports)) {
         const coarse = device === 'phone'
 
         const band = (await panel.locator('.manager-band').boundingBox())!
-        expect(band.height).toBe(coarse ? 52 : 48)
+        expect(band.height).toBe(48)
         expect(
             await panel
                 .locator('.manager-all .manager-label')
@@ -936,7 +936,7 @@ for (const [device, options] of Object.entries(viewports)) {
             .evaluateAll((elements) =>
                 elements.map((element) => element.getBoundingClientRect().top),
             )
-        expect(rows[1]! - rows[0]!).toBe(coarse ? 52 : 44)
+        expect(rows[1]! - rows[0]!).toBe(44)
 
         // The All count shares the entries' trailing column.
         await panel.getByRole('button', { name: 'Hide Third', exact: true }).click()
@@ -1463,7 +1463,7 @@ test.describe('menus on a phone', () => {
         const rows = await menu
             .getByRole('menuitem')
             .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height))
-        expect(rows.every((height) => height >= 44)).toBe(true)
+        expect(rows.every((height) => height >= 36)).toBe(true)
         const backdrop = page.locator('.manager-menu-backdrop')
         await expect(backdrop).toBeVisible()
 

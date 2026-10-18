@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
-                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                     :title="i18n.settings.resetSettingsHint"
                     @click="resetSettings"
                 >
@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
                 </button>
                 <button
                     type="button"
-                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                     @click="resetKeybinds"
                 >
                     {{ i18n.settings.resetKeybinds }}

@@ -72,6 +72,7 @@ export type PreviewControlsInput = {
     width: number
     height: number
     aspectRatio: number
+    /** Pointer classification does not change the strip's geometry. */
     coarse: boolean
     /** Whether the time is shown at all. */
     showTime: boolean

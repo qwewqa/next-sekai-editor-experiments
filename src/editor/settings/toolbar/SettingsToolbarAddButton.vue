@@ -5,12 +5,12 @@ import { i18n } from '../../../i18n'
 <template>
     <button
         type="button"
-        class="flex size-8 items-center justify-center rounded-full shadow-md shadow-transparent transition-colors before:absolute before:h-9 before:w-9 hover:bg-button hover:shadow-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:fill-on-accent forced-colors:fill-[ButtonText] [@media(pointer:coarse)]:size-11 [@media(pointer:coarse)]:before:h-12 [@media(pointer:coarse)]:before:w-12"
+        class="flex size-8 items-center justify-center rounded-full shadow-md shadow-transparent transition-colors before:absolute before:h-9 before:w-9 hover:bg-button hover:shadow-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:fill-on-accent forced-colors:fill-[ButtonText]"
         :aria-label="i18n.settings.toolbar.add"
         :title="i18n.settings.toolbar.add"
     >
         <svg
-            class="size-4 [@media(pointer:coarse)]:size-5"
+            class="size-4"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 448 512"
             aria-hidden="true"

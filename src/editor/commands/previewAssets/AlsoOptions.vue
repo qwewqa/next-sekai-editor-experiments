@@ -19,7 +19,7 @@ defineEmits<{
         <label
             v-for="option in options"
             :key="option.type"
-            class="relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:active]:bg-accent has-[:active]:text-on-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover [@media(pointer:coarse)]:min-h-12"
+            class="relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:active]:bg-accent has-[:active]:text-on-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover"
         >
             <input
                 type="checkbox"

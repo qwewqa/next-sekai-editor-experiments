@@ -1055,7 +1055,7 @@ test.describe('preview transport', () => {
         for (const width of [240, 330, 540]) {
             await page.setViewportSize({ width, height: 1000 })
             await page.clock.runFor(32)
-            await expect.poll(() => panel.evaluate((element) => element.clientHeight)).toBe(52)
+            await expect.poll(() => panel.evaluate((element) => element.clientHeight)).toBe(44)
         }
         // At 540 px the six steppers fit on touch, with the time in the corner.
         await expect(page.getByRole('button', { name: 'Back 100 ms', exact: true })).toBeVisible()

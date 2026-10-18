@@ -197,9 +197,9 @@ for (const side of ['left', 'right'] as const) {
 
 for (const { width, height, side, timeInStrip, compact } of [
     { width: 390, height: 844, side: 'top', timeInStrip: true, compact: false },
-    { width: 844, height: 390, side: 'left', timeInStrip: false, compact: true },
+    { width: 844, height: 390, side: 'left', timeInStrip: true, compact: true },
 ] as const) {
-    test(`touch playback controls keep a 44 px Play and 40 px steppers in one row in a ${side} preview at ${width}px`, async ({
+    test(`touch playback controls keep ordinary-sized controls in one row in a ${side} preview at ${width}px`, async ({
         page,
     }) => {
         await page.setViewportSize({ width, height })
@@ -252,10 +252,10 @@ for (const { width, height, side, timeInStrip, compact } of [
         // Play is the frequent control; the steppers and the settings toggle,
         // used less often, are a little smaller. A narrow strip uses the
         // compact stepper rather than wrapping.
-        expect(geometry.play).toEqual([44, 44])
-        expect(geometry.smallest).toBeGreaterThanOrEqual(40)
+        expect(geometry.play).toEqual([36, 36])
+        expect(geometry.smallest).toBeGreaterThanOrEqual(32)
         expect(geometry.rows).toBe(1)
-        expect(geometry.bar).toBe(52)
+        expect(geometry.bar).toBe(44)
         expect(geometry.toggle).toBe(36)
         expect(geometry.stepperHits).toBe(true)
         await expect(page.getByRole('button', { name: /^Step Size: 10 ms$/i })).toBeVisible({

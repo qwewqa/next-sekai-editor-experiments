@@ -800,37 +800,9 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 @media (pointer: coarse) {
-    .manager-icon-button {
-        @apply size-11;
-    }
-
-    .manager-icon {
-        @apply size-5;
-    }
-
-    .manager-icon-spacer {
-        @apply w-11;
-    }
-
-    .manager-name,
-    .manager-rename,
-    .manager-slot {
-        @apply h-11;
-    }
-
-    .manager-name,
-    .manager-rename {
-        @apply px-2.5;
-    }
-
-    .manager-row-indented .manager-name,
-    .manager-row-indented .manager-rename {
-        @apply ml-[1.125rem];
-    }
-
     /* Touch drags by a visible handle so the list keeps scrolling. */
     .manager-grip {
-        @apply flex h-11;
+        @apply flex h-9;
     }
 }
 

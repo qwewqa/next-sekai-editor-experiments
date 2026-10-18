@@ -358,7 +358,7 @@ watch(list, (element, previous) => {
 })
 // The Add item follows the rows; it floats in reach at the bottom of long
 // lists, unless the list is too short to show it beside at least two rows.
-const stickyAdd = computed(() => listHeight.value >= (isCoarse.value ? 176 : 156))
+const stickyAdd = computed(() => listHeight.value >= 156)
 watch(root, (element, previous) => {
     if (previous) observer.unobserve(previous)
     if (element) observer.observe(element)
@@ -369,7 +369,7 @@ onUnmounted(() => {
     forcedColors.removeEventListener('change', measureGutter)
 })
 const inlineMode = computed(() =>
-    width.value < (isCoarse.value ? 320 : 256)
+    width.value < 256
         ? undefined
         : isCoarse.value
           ? ('current' as const)
@@ -1988,7 +1988,7 @@ const folderEyeLabel = (item: FolderItem) =>
         @modalcancel="stopSelecting"
     >
         <div
-            class="manager-band relative z-10 shrink-0 bg-header px-1.5 py-1 [@media(pointer:coarse)]:py-0.5"
+            class="manager-band relative z-10 shrink-0 bg-header px-1.5 py-1"
             :class="{ 'manager-band-raised': scrolled }"
             :style="{ paddingRight: gutterPadding }"
         >
@@ -2189,9 +2189,9 @@ const folderEyeLabel = (item: FolderItem) =>
                     @click="onDone"
                 >
                     <span
-                        class="flex size-9 shrink-0 items-center justify-center [@media(pointer:coarse)]:size-11"
+                        class="flex size-9 shrink-0 items-center justify-center"
                     >
-                        <CloseIcon class="size-3.5 [@media(pointer:coarse)]:size-4" />
+                        <CloseIcon class="size-3.5" />
                     </span>
                     <span
                         class="manager-selection-count truncate pl-1 tabular-nums"
@@ -2310,16 +2310,10 @@ const folderEyeLabel = (item: FolderItem) =>
     padding-bottom: 3.5rem;
 }
 
-@media (pointer: coarse) {
-    .manager-entries-floating {
-        padding-bottom: 4rem;
-    }
-}
-
 /* A round companion to the Add pill, raised the same way. */
 .manager-new-folder,
 .manager-round {
-    @apply pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-button shadow-md transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent [@media(pointer:coarse)]:size-12;
+    @apply pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-button shadow-md transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent;
 }
 
 .manager-round {
@@ -2327,7 +2321,7 @@ const folderEyeLabel = (item: FolderItem) =>
 }
 
 .manager-new-folder-icon {
-    @apply size-4 fill-current [@media(pointer:coarse)]:size-5;
+    @apply size-4 fill-current;
 }
 
 /*
@@ -2423,12 +2417,6 @@ const folderEyeLabel = (item: FolderItem) =>
     /* A selected row's pill is see-through here, so it would dim its stretch. */
     .manager-members > li::before {
         z-index: 1;
-    }
-}
-
-@media (pointer: coarse) {
-    .manager-entries {
-        --guide-x: calc(0.125rem + 2.75rem + 0.625rem + 0.375rem - 1px);
     }
 }
 

@@ -368,7 +368,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
             >
                 <!-- Opaque so the band never shows fields scrolling beneath, and raised
                 while they do. Section headers are occasional toggles, so they are
-                more compact than a panel band: 40px, or 44px on touch. -->
+                more compact than a panel band: 40px. -->
                 <h2
                     class="sticky top-0 z-10 bg-modal transition-shadow"
                     :class="{ 'shadow-band': raisedSection === section }"
@@ -377,7 +377,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                     <button
                         :id="headerId(section)"
                         type="button"
-                        class="flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        class="flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent"
                         :class="{
                             'after:absolute after:inset-x-0 after:-bottom-px after:h-px':
                                 !isExpanded(section) && index < propertiesSections.length - 1,
@@ -456,13 +456,4 @@ const onTabKeydown = (event: KeyboardEvent) => {
     }
 }
 
-@media (pointer: coarse) {
-    .properties-tabs {
-        height: 3.25rem;
-    }
-
-    .properties-tab-active .properties-tab-label::after {
-        @apply -bottom-3.5;
-    }
-}
 </style>

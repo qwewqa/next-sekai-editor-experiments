@@ -254,7 +254,7 @@ test('a choice with a description shows it under its button, and the default is 
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-    test('buttons stack with the safe default on top and Cancel last, at 44 px', async ({
+    test('buttons stack with the safe default on top and Cancel last, at 36 px', async ({
         page,
     }) => {
         await boot(page)
@@ -270,7 +270,10 @@ test.describe('on a phone', () => {
             )
         expect(boxes[0]!.y).toBeLessThan(boxes[1]!.y)
         expect(boxes[1]!.y).toBeLessThan(boxes[2]!.y)
-        for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44)
+        for (const box of boxes) expect(box.height).toBe(36)
+        const close = dialog(page).getByRole('button', { name: 'Close', exact: true })
+        expect((await close.boundingBox())!.width).toBe(36)
+        expect((await close.locator('..').boundingBox())!.height).toBe(48)
         // The declared default keeps focus in the new order, before and after the guard.
         const separate = dialog(page).getByRole('button', { name: 'Save as a Separate File' })
         await expect(separate).toBeFocused()
