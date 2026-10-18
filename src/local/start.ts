@@ -214,7 +214,8 @@ export const startStorage = async () => {
     let answered = true
     try {
         status = await worker.start()
-        sayAtLoad(status)
+        // Safe mode opens read-only on purpose: its bar says so, not a notice about a newer database.
+        if (!safe) sayAtLoad(status)
     } catch {
         // The worker never answered: the client paused storing.
         status = worker.status ?? { mode: 'stored', reason: 'failed' }

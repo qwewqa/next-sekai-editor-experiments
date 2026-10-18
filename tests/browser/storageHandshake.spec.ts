@@ -178,9 +178,12 @@ test('a database newer than this build opens read-only, with its load notice', a
     const old = await context.newPage()
     await boot(old)
     await expect.poll(() => status(old)).toEqual({ mode: 'readOnly' })
-    await expect(old.locator('.notification')).toHaveText(
-        'Next SEKAI Editor\nVersion 0.6.0\nThis version is older than your data. Reload, or save your work to files.',
-    )
+    // One line each: the product, the version, and the load notice.
+    await expect(old.locator('.notification-pill > div')).toHaveText([
+        'Next SEKAI Editor',
+        'Version 0.6.0',
+        'This version is older than your data. Reload, or save your work to files.',
+    ])
     expect(
         await old.evaluate(() => window.nseStorageTest!.worker.call('testGet', 'fromNext')),
     ).toBe('fromNext')

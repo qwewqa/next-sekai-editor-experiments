@@ -713,3 +713,13 @@ test.describe('Settings › Local Data', () => {
         })
     })
 })
+
+test('safe mode opens read-only on purpose, so its pill has no "older than your data" line', async ({
+    page,
+}) => {
+    await page.goto('/?safe')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await opened(page)
+    await expect(page.locator('[data-safe-bar]')).toBeVisible()
+    await expect(page.locator('.notification')).not.toContainText('older than your data')
+})

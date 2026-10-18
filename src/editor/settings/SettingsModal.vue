@@ -80,7 +80,10 @@ const pill =
                 {{ i18n.settings[id].title }}
             </button>
         </nav>
-        <div v-scroll-edges class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2">
+        <div
+            v-scroll-edges
+            class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2"
+        >
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
