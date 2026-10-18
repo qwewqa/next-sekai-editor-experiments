@@ -221,7 +221,7 @@ const settingsToolbarMeets = async (page: Page, wraps = true) => {
     })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await dialog.getByText('Toolbar', { exact: true }).scrollIntoViewIfNeeded()
+    await dialog.getByRole('heading', { name: 'Toolbar', exact: true }).scrollIntoViewIfNeeded()
     const { down, across, wrapped } = await toolbarPairs(page)
     const button = (index: number) => dialog.locator('button').nth(index)
     // A column's add button meets the tool below it, tools meet across columns,
@@ -251,7 +251,7 @@ test.describe('at other root font sizes', () => {
             })
             const dialog = page.getByRole('dialog')
             await expect(dialog).toBeVisible()
-            await dialog.getByText('Toolbar', { exact: true }).scrollIntoViewIfNeeded()
+            await dialog.getByRole('heading', { name: 'Toolbar', exact: true }).scrollIntoViewIfNeeded()
             const { end, across, wrapped } = await toolbarPairs(page)
             const button = (index: number) => dialog.locator('button').nth(index)
             const reach = size / 8
