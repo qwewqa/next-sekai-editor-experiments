@@ -163,6 +163,25 @@ test.describe('the label and the title', () => {
         )
     })
 
+    test('the file name shows once when the name is its stem, as in every file the apps save', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        // An unnamed session saved as coconut-v2.nxsp shows the file name alone.
+        await bindFile(page, { name: 'coconut-v2.nxsp', event: 'saved' })
+        await expect(label(page)).toHaveText('coconut-v2.nxsp')
+        await expect(page).toHaveTitle('coconut-v2.nxsp – Next SEKAI Editor')
+        // A Name equal to the bound file's stem is the same name.
+        await page.evaluate(async () => {
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            session.value = { ...session.value, name: 'coconut-v2' }
+        })
+        await expect(label(page)).toHaveText('coconut-v2.nxsp')
+    })
+
     test('a download browser adds the state, and a download reads "since download"', async ({
         page,
         context,
