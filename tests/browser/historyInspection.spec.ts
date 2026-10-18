@@ -12,7 +12,7 @@ declare global {
             states: Map<number, State>
             refresh: () => void
             select: (seq: number, previous?: number, members?: number[]) => void
-            hold: (seq: number) => void
+            hold: (seq: number) => Promise<void>
             release: (seq: number, fail?: boolean) => void
             pending: Set<number>
             unchanged: () => boolean
@@ -197,9 +197,16 @@ const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
                         ? { members: members.map((member): EntryKey => `inspection:${member}`) }
                         : {}),
                 }),
-            hold: (seq) => {
+            hold: async (seq) => {
                 held.add(seq)
-                source()
+                // Evict cached endpoints through the real LRU without replacing the active source.
+                await Promise.all(
+                    Array.from({ length: peek.PEEK_LRU + 1 }, (_, index) => {
+                        const filler = 100 + index
+                        states.set(filler, before)
+                        return peek.loadEntryState(`inspection:${filler}`)
+                    }),
+                )
             },
             release: (seq, fail = false) => {
                 const release = releases.get(seq)
@@ -415,6 +422,7 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
     })
     const before = await bounds()
     await page.locator('[data-show-edits]').click()
+    await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
     await page.evaluate(() => window.historyInspectionTest.hold(2))
     await select(page, 2, 1)
     await expect(page.locator('[data-peek-change]')).toHaveText('Loading changes…')
