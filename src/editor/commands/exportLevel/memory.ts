@@ -59,7 +59,16 @@ export const exportMemory: ExportMemory = {}
 
 /** The stored target as read, while this tab has not read its handle: kept as it is. */
 let storedTarget: ExportChainFields['exportTarget'] | undefined
-const registered = new WeakSet<ExportTarget>()
+const registered = new WeakMap<ExportTarget, { name: string; fingerprint: string }>()
+
+/** A rewrite retains its last stored ownership even when the next metadata write fails. */
+export const replaceExportTarget = async (target: ExportTarget) => {
+    const previous = exportMemory.target
+    const registration = previous && registered.get(previous)
+    if (registration && (await sameEntry(previous.handle, target.handle)))
+        registered.set(target, registration)
+    exportMemory.target = target
+}
 
 /** Drops the destination and name after a new-identity Save As. */
 export const clearExportDestination = () => {
@@ -91,8 +100,7 @@ export type ExportChainFields = {
 }
 
 let persist:
-    | ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => Promise<boolean> | void)
-    | undefined
+    ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => Promise<boolean>) | undefined
 
 /** Where the memory is stored: the open session's chain record, set once storing starts. */
 export const setExportPersister = (fn: typeof persist) => {
@@ -127,10 +135,16 @@ export const rememberExport = async () => {
         exportName,
         partialImport: partial ? true : undefined,
     })
-    if (stored && target) registered.add(target)
+    if (stored && target)
+        registered.set(target, { name: target.name, fingerprint: target.disk.fingerprint })
 }
 
 let readTarget: (() => Promise<unknown>) | undefined
+let unregisteredCheck: ((target: ExportTarget) => Promise<boolean>) | undefined
+
+export const setUnregisteredTargetCheck = (check: typeof unregisteredCheck) => {
+    unregisteredCheck = check
+}
 
 export const setExportTargetReader = (read: typeof readTarget) => {
     readTarget = read
@@ -143,15 +157,21 @@ export const ownsExportTarget = async (target: ExportTarget) => {
     const record = await readTarget().catch(() => undefined)
     if (isObject(record) && isObject(record.exportTarget)) {
         const current = record.exportTarget
+        const expected = registered.get(target) ?? {
+            name: target.name,
+            fingerprint: target.disk.fingerprint,
+        }
         if (
-            current.name === target.name &&
+            current.name === expected.name &&
             isObject(current.disk) &&
-            current.disk.fingerprint === target.disk.fingerprint
+            current.disk.fingerprint === expected.fingerprint
         ) {
-            registered.add(target)
+            registered.set(target, expected)
             return true
         }
-    } else if (!registered.has(target)) return true
+    }
+    if (!registered.has(target) && (!unregisteredCheck || (await unregisteredCheck(target))))
+        return true
     if (exportMemory.target === target) delete exportMemory.target
     storedTarget = undefined
     return false
@@ -178,7 +198,10 @@ export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
             disk: stored.disk,
             exported: stored.opened !== true,
         }
-        registered.add(exportMemory.target)
+        registered.set(exportMemory.target, {
+            name: stored.name,
+            fingerprint: stored.disk.fingerprint,
+        })
         storedTarget = undefined
         if (!(await ownsExportTarget(exportMemory.target))) return
     }

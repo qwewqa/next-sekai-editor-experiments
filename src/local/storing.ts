@@ -2,6 +2,7 @@ import {
     setExportHandleReader,
     setExportPersister,
     setExportTargetReader,
+    setUnregisteredTargetCheck,
 } from '../editor/commands/exportLevel/memory'
 import {
     setExportReads,
@@ -203,18 +204,6 @@ const whenIdle = (fn: () => void) => {
     else setTimeout(fn, 0)
 }
 
-/** The fields that differ from a chain record's, `undefined` meaning absent. */
-const changedFields = (
-    chain: Record<string, unknown> | undefined,
-    fields: Record<string, unknown>,
-) => {
-    const changed: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(fields))
-        if (value === undefined ? chain !== undefined && key in chain : chain?.[key] !== value)
-            changed[key] = value
-    return changed
-}
-
 export type StoringOptions = {
     /** Safe mode: nothing but settings goes to localStorage, so no journal or legacy slot. */
     safe?: boolean
@@ -382,12 +371,7 @@ export const startStoring = (
     })
 
     // Export's target and name are the open chain's fields (§1.4.8).
-    setExportPersister(async (fields) => {
-        const changed = changedFields(instance.session?.chain, fields)
-        return Object.keys(changed).length
-            ? instance.setChainFields(changed)
-            : !!instance.session?.stored
-    })
+    setExportPersister((fields) => instance.setChainFieldsNow(fields))
     setExportTargetReader(async () => {
         const session = instance.session
         if (!session?.stored) return
@@ -472,6 +456,9 @@ export const startStoring = (
     watchBindings(worker, () => flusher)
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
+    setUnregisteredTargetCheck(async (target) =>
+        (await flows()).exportTargetAvailable(target.handle),
+    )
     setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
     setPickLock((run) => withBind('exclusive', run))
     setTargetLock((run) => withBind('shared', run))

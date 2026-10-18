@@ -31,8 +31,9 @@ test('after a reload, an export by download keeps the stored target it has no ha
     assert.equal(exportMemory.target, undefined)
     assert.equal(exportMemory.partial, true)
     const persisted: Record<string, unknown>[] = []
-    setExportPersister((fields) => {
+    setExportPersister(async (fields) => {
         persisted.push(fields)
+        return true
     })
     exportMemory.exportName = 'Coconut (Master)'
     rememberExport()
@@ -72,8 +73,9 @@ test('the opened file’s target names the picker’s suggestion, and a new char
     assert.equal(exportMemory.sourceName, 'LevelData')
     clearExportMemory()
     const persisted: Record<string, unknown>[] = []
-    setExportPersister((fields) => {
+    setExportPersister(async (fields) => {
         persisted.push(fields)
+        return true
     })
     rememberExport()
     assert.deepEqual(persisted, [
