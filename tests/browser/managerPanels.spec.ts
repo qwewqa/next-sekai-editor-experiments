@@ -28,6 +28,9 @@ const seedGroups = (page: Page, names: string[], dynamicStages = true) =>
             chart.groups = new Map(
                 names.map((name, i) => [(i < 2 ? i + 1 : 1000 + i) as never, { name }]),
             )
+            if (names.length === 1)
+                for (const note of chart.slides.flat())
+                    if (!chart.groups.has(note.groupId)) note.groupId = 1 as typeof note.groupId
             history.resetState(false, chart, 0, { sourceName: 'managers.json' })
             view.groupId = undefined
             view.stageId = undefined
