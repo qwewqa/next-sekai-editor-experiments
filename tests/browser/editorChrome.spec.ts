@@ -317,7 +317,9 @@ test.describe('status bar on a phone', () => {
             expect(item.right).toBeLessThanOrEqual(390)
         }
         // The tool title keeps room to be read.
-        expect((await bar.locator('[data-status-tool]').boundingBox())!.width).toBeGreaterThanOrEqual(48)
+        expect(
+            (await bar.locator('[data-status-tool]').boundingBox())!.width,
+        ).toBeGreaterThanOrEqual(48)
     })
 })
 
@@ -348,14 +350,21 @@ test('a narrow editor host uses compact status text inside a wide fine-pointer v
     const identity = bar.locator('[data-status-label]')
     const original = await identity.elementHandle()
     await identity.focus()
-    for (const [width, height] of [[559, 64], [560, 32], [767, 32], [768, 24]]) {
+    for (const [width, height] of [
+        [559, 64],
+        [560, 32],
+        [767, 32],
+        [768, 24],
+    ]) {
         await page.evaluate((width) => {
             const bar = document.querySelector('[data-status-bar]')!
             ;(bar.parentElement as HTMLElement).style.width = `${width}px`
         }, width!)
         await expect.poll(async () => (await bar.boundingBox())!.height).toBe(height)
         await expect(identity).toBeFocused()
-        expect(await identity.evaluate((element, original) => element === original, original)).toBe(true)
+        expect(await identity.evaluate((element, original) => element === original, original)).toBe(
+            true,
+        )
     }
     await page.evaluate(() => {
         const bar = document.querySelector('[data-status-bar]')!

@@ -1360,7 +1360,9 @@ test('the current row keeps a mark in high contrast', async ({ page }) => {
 test.describe('touch', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-    test('a narrow status bar keeps the target above its shortened folder and exact count', async ({ page }) => {
+    test('a narrow status bar keeps the target above its shortened folder and exact count', async ({
+        page,
+    }) => {
         await seedGroups(page, [['Default'], ['Lead Synth Layer', 'An Extremely Long Folder Name']])
         await page.evaluate(() => {
             const { view } = window.editorTest
@@ -1386,7 +1388,9 @@ test.describe('touch', () => {
             return {
                 folderTruncated: folder.scrollWidth > folder.clientWidth,
                 folderWidth: folder.clientWidth,
-                folderVisible: folderPrefix.getBoundingClientRect().left >= folderBox.left && folderPrefix.getBoundingClientRect().right <= folderBox.right - 12,
+                folderVisible:
+                    folderPrefix.getBoundingClientRect().left >= folderBox.left &&
+                    folderPrefix.getBoundingClientRect().right <= folderBox.right - 12,
                 nameWidth: name.clientWidth,
                 nameVisible: prefix.getBoundingClientRect().right <= nameBox.right - 12,
                 separateLines: nameBox.bottom <= folderBox.top,

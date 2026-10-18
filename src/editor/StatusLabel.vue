@@ -25,12 +25,14 @@ onMounted(async () => {
 })
 
 const describedBy = useId()
-const compactReason = computed(() =>
-    props.compact && !statusLabel.value.file && (keepState.value || !!session.value.copyOf),
+const compactReason = computed(
+    () => props.compact && !statusLabel.value.file && (keepState.value || !!session.value.copyOf),
 )
 const copyParts = computed(() => {
     const copy = session.value.copyOf
-    return copy ? templateParts(i18n.value.status.separateCopy, [[{ text: copy.name, role: 'name' }]]) : undefined
+    return copy
+        ? templateParts(i18n.value.status.separateCopy, [[{ text: copy.name, role: 'name' }]])
+        : undefined
 })
 const onClick = (event: MouseEvent) => {
     openLevelInfoStub()
@@ -45,7 +47,7 @@ const onClick = (event: MouseEvent) => {
         class="status-label relative flex shrink-[1000] items-center px-1"
         :class="[
             compact ? 'min-w-11' : 'min-w-[4.5rem] max-w-[60%]',
-            narrow ? 'basis-0 grow' : '',
+            narrow ? 'grow basis-0' : '',
             { 'text-amber-300': raised.notStored.value },
         ]"
         :aria-label="statusName"
@@ -56,36 +58,46 @@ const onClick = (event: MouseEvent) => {
         <span class="flex min-w-0" aria-hidden="true" data-status-text>
             <span v-if="compactReason" class="min-w-0 text-left" data-status-state>
                 <span v-if="copyParts" class="flex min-w-0 items-center" data-status-copy>
-                    <span v-for="(part, i) in copyParts" :key="i" :class="part.role === 'name' ? 'min-w-0 truncate' : 'max-w-full shrink-0 whitespace-pre-wrap'" :data-status-reason-part="part.role ?? 'fixed'">{{ part.text }}</span>
+                    <span
+                        v-for="(part, i) in copyParts"
+                        :key="i"
+                        :class="
+                            part.role === 'name'
+                                ? 'min-w-0 truncate'
+                                : 'max-w-full shrink-0 whitespace-pre-wrap'
+                        "
+                        :data-status-reason-part="part.role ?? 'fixed'"
+                        >{{ part.text }}</span
+                    >
                 </span>
                 <template v-else>{{ i18n.status.notInFile }}</template>
             </span>
             <template v-else>
-            <span
-                v-if="statusLabel.name && !(compact && statusLabel.file)"
-                class="min-w-0 truncate"
-                :class="statusLabel.file || keepState ? 'shrink-[1000]' : ''"
-                data-status-name
-                >{{ statusLabel.name }}</span
-            >
-            <span
-                v-if="statusLabel.file"
-                class="min-w-0 truncate"
-                :class="statusLabel.name && !compact ? 'ml-1 opacity-70' : ''"
-                data-status-file
-            >
-                {{ statusLabel.name && !compact ? ` · ${statusLabel.file}` : statusLabel.file }}
-            </span>
-            <span
-                v-if="statusLabel.state"
-                class="ml-1 min-w-0 truncate opacity-70"
-                :class="[
-                    keepState && !statusLabel.file ? '' : 'shrink-[10]',
-                    compact && !(keepState && !statusLabel.file) ? 'hidden' : '',
-                ]"
-                data-status-state
-                >{{ ` · ${statusLabel.state}` }}</span
-            >
+                <span
+                    v-if="statusLabel.name && !(compact && statusLabel.file)"
+                    class="min-w-0 truncate"
+                    :class="statusLabel.file || keepState ? 'shrink-[1000]' : ''"
+                    data-status-name
+                    >{{ statusLabel.name }}</span
+                >
+                <span
+                    v-if="statusLabel.file"
+                    class="min-w-0 truncate"
+                    :class="statusLabel.name && !compact ? 'ml-1 opacity-70' : ''"
+                    data-status-file
+                >
+                    {{ statusLabel.name && !compact ? ` · ${statusLabel.file}` : statusLabel.file }}
+                </span>
+                <span
+                    v-if="statusLabel.state"
+                    class="ml-1 min-w-0 truncate opacity-70"
+                    :class="[
+                        keepState && !statusLabel.file ? '' : 'shrink-[10]',
+                        compact && !(keepState && !statusLabel.file) ? 'hidden' : '',
+                    ]"
+                    data-status-state
+                    >{{ ` · ${statusLabel.state}` }}</span
+                >
             </template>
             <span v-if="statusLabel.changed" class="ml-1 shrink-0" data-status-changed>{{
                 ' •'

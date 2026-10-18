@@ -251,56 +251,95 @@ test.describe('the label and the title', () => {
             await expect(page.locator('[data-status-changed]')).toBeVisible()
         })
 
-        test('a compact bound label gives the file its name space and protects the changed bullet', async ({ page, context }) => {
+        test('a compact bound label gives the file its name space and protects the changed bullet', async ({
+            page,
+            context,
+        }) => {
             await page.setViewportSize({ width: 320, height: 568 })
             await seed(context)
             await visit(page)
             await bindFile(page, { name: 'coconut-long-working-copy.nxsp', event: 'saved' })
             await page.evaluate(async () => {
-                const { session } = (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                const { session } =
+                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
                 session.value = { ...session.value, name: 'A Very Long Distinct Display Name' }
             })
             await edit(page, 990)
             await page.evaluate(async () => {
-                const { raised } = (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+                const { raised } =
+                    (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
                 raised.notStored.value = true
             })
             await expect(page.locator('[data-status-name]')).toHaveCount(0)
-            await expect(page.locator('[data-status-file]')).toHaveText('coconut-long-working-copy.nxsp')
+            await expect(page.locator('[data-status-file]')).toHaveText(
+                'coconut-long-working-copy.nxsp',
+            )
             await expect(page.locator('[data-status-changed]')).toBeVisible()
-            await expect(button(page)).toHaveAccessibleName('A Very Long Distinct Display Name, changed since saved to coconut-long-working-copy.nxsp')
+            await expect(button(page)).toHaveAccessibleName(
+                'A Very Long Distinct Display Name, changed since saved to coconut-long-working-copy.nxsp',
+            )
             const geometry = await statusGeometry(page)
             expect(geometry.file).toMatch(/^coconut/)
             expect(geometry.title.width).toBeGreaterThanOrEqual(48)
             expect(geometry.bar.height).toBe(64)
         })
 
-        for (const locale of ['ja', 'tr']) test(`a compact ${locale} separate copy protects its fixed meaning after a long filename`, async ({ page, context }) => {
-            await page.setViewportSize({ width: 320, height: 568 })
-            await seed(context, { os: 'ios', engine: 'webkit' })
-            await visit(page)
-            const expected = await page.evaluate(async (locale) => {
-                const { session } = (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
-                const { settings } = (await import('/src/settings.ts')) as typeof import('../../src/settings')
-                const { i18n } = (await import('/src/i18n/index.ts')) as typeof import('../../src/i18n')
-                const { raised } = (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
-                settings.locale = locale
-                session.value = { ...session.value, name: 'A Long Separate Session Name', copyOf: { name: 'coconut-source-with-an-extremely-long-file-name.nxsp', bound: true } }
-                raised.notStored.value = true
-                return i18n.value.status.separateCopy.replace('{0}', '')
-            }, locale)
-            const fixed = page.locator('[data-status-reason-part="fixed"]')
-            await expect(fixed).toHaveText(expected)
-            const metrics = await fixed.evaluate((element) => {
-                const label = element.closest('button')!.getBoundingClientRect()
-                const range = document.createRange()
-                range.selectNodeContents(element)
-                return [...range.getClientRects()].map((rect) => ({ inside: rect.left >= label.left && rect.right <= label.right && rect.top >= label.top && rect.bottom <= label.bottom }))
+        for (const locale of ['ja', 'tr'])
+            test(`a compact ${locale} separate copy protects its fixed meaning after a long filename`, async ({
+                page,
+                context,
+            }) => {
+                await page.setViewportSize({ width: 320, height: 568 })
+                await seed(context, { os: 'ios', engine: 'webkit' })
+                await visit(page)
+                const expected = await page.evaluate(async (locale) => {
+                    const { session } =
+                        (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                    const { settings } =
+                        (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                    const { i18n } =
+                        (await import('/src/i18n/index.ts')) as typeof import('../../src/i18n')
+                    const { raised } =
+                        (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+                    settings.locale = locale
+                    session.value = {
+                        ...session.value,
+                        name: 'A Long Separate Session Name',
+                        copyOf: {
+                            name: 'coconut-source-with-an-extremely-long-file-name.nxsp',
+                            bound: true,
+                        },
+                    }
+                    raised.notStored.value = true
+                    return i18n.value.status.separateCopy.replace('{0}', '')
+                }, locale)
+                const fixed = page.locator('[data-status-reason-part="fixed"]')
+                await expect(fixed).toHaveText(expected)
+                const metrics = await fixed.evaluate((element) => {
+                    const label = element.closest('button')!.getBoundingClientRect()
+                    const range = document.createRange()
+                    range.selectNodeContents(element)
+                    return [...range.getClientRects()].map((rect) => ({
+                        inside:
+                            rect.left >= label.left &&
+                            rect.right <= label.right &&
+                            rect.top >= label.top &&
+                            rect.bottom <= label.bottom,
+                    }))
+                })
+                expect(metrics.length).toBeGreaterThan(0)
+                expect(metrics.every(({ inside }) => inside)).toBe(true)
+                await expect(button(page)).toHaveAccessibleName(
+                    /coconut-source-with-an-extremely-long-file-name\.nxsp/,
+                )
+                const full = (await button(page).getAttribute('aria-label'))!
+                await button(page).click()
+                await expect(page.locator('[data-status-summary]')).toHaveText(full)
+                await expect(page.locator('[data-status-summary]')).toContainText(
+                    'coconut-source-with-an-extremely-long-file-name.nxsp',
+                )
+                await page.keyboard.press('Escape')
             })
-            expect(metrics.length).toBeGreaterThan(0)
-            expect(metrics.every(({ inside }) => inside)).toBe(true)
-            await expect(button(page)).toHaveAccessibleName(/coconut-source-with-an-extremely-long-file-name\.nxsp/)
-        })
     })
 
     test.describe('touch targets', () => {
@@ -416,6 +455,165 @@ test.describe('the label and the title', () => {
             await expect(chip(page)).toBeHidden()
             expect(await bar.boundingBox()).toEqual(before)
             expect(await page.locator('canvas.editor-chart').boundingBox()).toEqual(chart)
+        })
+    })
+
+    test.describe('full status disclosure', () => {
+        test.use({ viewport: { width: 320, height: 568 }, hasTouch: true })
+
+        test('touch, toolbar and command open the same selectable wrapping identity without an edit', async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            const file = `coconut-${'abcdefghij'.repeat(22)}.nxsp`
+            await bindFile(page, { name: file, event: 'saved' })
+            await page.evaluate(async () => {
+                const { session } =
+                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                const { settings } =
+                    (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                session.value = {
+                    ...session.value,
+                    name: 'A Long Distinct Session Name '.repeat(24).trim(),
+                }
+                settings.toolbar = [['properties']]
+            })
+            await edit(page, 990)
+            const full = (await button(page).getAttribute('aria-label'))!
+            const seq = () =>
+                page.evaluate(() => {
+                    const flusher = window.nseFlushTest!.flusher
+                    return flusher.newestSeq(flusher.session!)
+                })
+            const before = await seq()
+            for (const route of ['status', 'toolbar', 'command']) {
+                if (route === 'status') await button(page).tap()
+                else if (route === 'toolbar')
+                    await page
+                        .locator('[data-editor-toolbar] button[title="Level Properties"]')
+                        .click()
+                else
+                    await page.evaluate(async () => {
+                        const { properties } =
+                            (await import('/src/editor/commands/properties/index.ts')) as typeof import('../../src/editor/commands/properties')
+                        const { runCommand } =
+                            (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
+                        void runCommand(properties)
+                    })
+                const dialog = page.getByRole('dialog', { name: 'Level Properties' })
+                const summary = page.locator('[data-status-summary]')
+                await expect(summary).toHaveText(full)
+                await expect(page.getByRole('dialog')).toHaveCount(1)
+                if (route !== 'command') await expect(dialog).toBeFocused()
+                const metrics = await summary.evaluate((element) => {
+                    const paragraph = element.getBoundingClientRect()
+                    const range = document.createRange()
+                    range.selectNodeContents(element)
+                    const lines = [...range.getClientRects()]
+                    getSelection()!.removeAllRanges()
+                    getSelection()!.addRange(range)
+                    const body = element.closest<HTMLElement>('.overflow-y-auto')!
+                    body.scrollTop = body.scrollHeight
+                    return {
+                        selected: getSelection()!.toString(),
+                        lines: lines.length,
+                        horizontalFit: lines.every(
+                            (rect) =>
+                                rect.left >= paragraph.left - 0.5 &&
+                                rect.right <= paragraph.right + 0.5,
+                        ),
+                        scrollable: body.scrollHeight > body.clientHeight,
+                        reachedEnd: body.scrollTop + body.clientHeight >= body.scrollHeight - 1,
+                        userSelect: getComputedStyle(element).userSelect,
+                        overflowWrap: getComputedStyle(element).overflowWrap,
+                    }
+                })
+                expect(metrics).toMatchObject({
+                    selected: full,
+                    horizontalFit: true,
+                    scrollable: true,
+                    reachedEnd: true,
+                    userSelect: 'text',
+                    overflowWrap: 'anywhere',
+                })
+                expect(metrics.lines).toBeGreaterThan(2)
+                if (route === 'status') await page.keyboard.press('Escape')
+                else if (route === 'toolbar')
+                    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+                else {
+                    await afterGuard(page)
+                    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+                }
+                await expect(page.getByRole('dialog')).toHaveCount(0)
+                expect(await seq()).toBe(before)
+            }
+            await button(page).tap()
+            await page.getByRole('spinbutton').fill('995')
+            await afterGuard(page)
+            await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+            expect(
+                await page.evaluate(
+                    async () =>
+                        (
+                            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                        ).liveState.value.initialLife,
+                ),
+            ).toBe(995)
+            await undo(page)
+            expect(
+                await page.evaluate(
+                    async () =>
+                        (
+                            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                        ).liveState.value.initialLife,
+                ),
+            ).toBe(990)
+        })
+
+        test('a peek discloses the live identity beside disabled historical life without restoring it', async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            await bindFile(page, { name: 'coconut-current-working-copy.nxsp', event: 'saved' })
+            await edit(page, 990)
+            await edit(page, 980)
+            await settled(page)
+            const before = await page.evaluate(async () => {
+                const flusher = window.nseFlushTest!.flusher
+                const { peekEntry, entryKey } =
+                    (await import('/src/history/peek.ts')) as typeof import('../../src/history/peek')
+                const seq = flusher.newestSeq(flusher.session!)
+                await peekEntry(entryKey(flusher.session!.id, seq - 1))
+                return seq
+            })
+            const full = (await button(page).getAttribute('aria-label'))!
+            await button(page).tap()
+            await expect(page.locator('[data-status-summary]')).toHaveText(full)
+            await expect(page.getByRole('spinbutton')).toHaveValue('990')
+            await expect(page.getByRole('spinbutton')).toBeDisabled()
+            expect(
+                await page
+                    .locator('[data-status-summary]')
+                    .evaluate((element) => element.closest('fieldset')),
+            ).toBeNull()
+            await afterGuard(page)
+            await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+            const after = await page.evaluate(async () => {
+                const { state, liveState, isPeeking } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                const flusher = window.nseFlushTest!.flusher
+                return {
+                    shown: state.value.initialLife,
+                    live: liveState.value.initialLife,
+                    peeking: isPeeking.value,
+                    seq: flusher.newestSeq(flusher.session!),
+                }
+            })
+            expect(after).toEqual({ shown: 990, live: 980, peeking: true, seq: before })
         })
     })
 })

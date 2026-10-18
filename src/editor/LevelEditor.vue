@@ -206,16 +206,16 @@ const stage = computed((): NamePart[] =>
 const groupTarget = computed(() =>
     view.groupId === undefined
         ? group.value
-        : templateParts(i18n.value.statusBar.group.one, [[
-              { text: groups.value.get(view.groupId)?.name ?? '', role: 'name' },
-          ]]),
+        : templateParts(i18n.value.statusBar.group.one, [
+              [{ text: groups.value.get(view.groupId)?.name ?? '', role: 'name' }],
+          ]),
 )
 const stageTarget = computed(() =>
     view.stageId === undefined
         ? stage.value
-        : templateParts(i18n.value.statusBar.stage.one, [[
-              { text: stages.value.get(view.stageId)?.name ?? '', role: 'name' },
-          ]]),
+        : templateParts(i18n.value.statusBar.stage.one, [
+              [{ text: stages.value.get(view.stageId)?.name ?? '', role: 'name' }],
+          ]),
 )
 const groupFolder = computed(() => {
     const id = view.groupId === undefined ? undefined : groups.value.get(view.groupId)?.folderId
@@ -310,9 +310,18 @@ const stageCount = computed(() =>
             data-status-bar
         >
             <template v-for="item in statusItems" :key="item">
-                <StatusLabel v-if="item === 'label'" :compact="compactStatus" :narrow="narrowStatus" />
+                <StatusLabel
+                    v-if="item === 'label'"
+                    :compact="compactStatus"
+                    :narrow="narrowStatus"
+                />
                 <FileChip v-else-if="item === 'warning'" :compact="compactStatus" />
-                <span v-else-if="item === 'break'" class="h-0 basis-full" aria-hidden="true" data-status-break />
+                <span
+                    v-else-if="item === 'break'"
+                    class="h-0 basis-full"
+                    aria-hidden="true"
+                    data-status-break
+                />
                 <span
                     v-else-if="item === 'tool'"
                     class="min-w-12 self-center truncate"
@@ -327,11 +336,26 @@ const stageCount = computed(() =>
                     :target="item === 'group' ? groupTarget : stageTarget"
                     :folder="item === 'group' ? groupFolder : stageFolder"
                     :count="item === 'group' ? groupCount : stageCount"
-                    :class="narrowStatus ? 'min-w-11 basis-0 flex-1' : compactStatus ? 'min-w-28' : 'min-w-11 max-w-[40%]'"
-                    :title="item === 'group' ? i18n.commands.manageGroups.title : i18n.commands.manageStages.title"
+                    :class="
+                        narrowStatus
+                            ? 'min-w-11 flex-1 basis-0'
+                            : compactStatus
+                              ? 'min-w-28'
+                              : 'min-w-11 max-w-[40%]'
+                    "
+                    :title="
+                        item === 'group'
+                            ? i18n.commands.manageGroups.title
+                            : i18n.commands.manageStages.title
+                    "
                     @click="onStatusChip($event, item === 'group' ? 'groups' : 'stages')"
                 />
-                <span v-else-if="item === 'division'" class="shrink-0 self-center" data-status-division>1/{{ view.division }}</span>
+                <span
+                    v-else-if="item === 'division'"
+                    class="shrink-0 self-center"
+                    data-status-division
+                    >1/{{ view.division }}</span
+                >
             </template>
         </div>
     </div>
@@ -356,5 +380,4 @@ const stageCount = computed(() =>
         --status-row-height: 44px;
     }
 }
-
 </style>
