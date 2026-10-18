@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
+import { waitForStartup } from './editorFixture'
 
 // Chart Cyanvas level data as its servers serve it (gzipped JSON with named
 // entities), e.g. https://cc.milkbun.org/.
@@ -172,6 +173,7 @@ test.beforeEach(async ({ page }) => {
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
 })
 
 for (const [label, name, buffer] of [

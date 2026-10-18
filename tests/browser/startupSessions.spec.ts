@@ -206,6 +206,7 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
 }) => {
     await visit(page)
     await edit(page, 990)
+    expect(await bind(page, 'kill.nxsp')).toBe(true)
     await settled(page)
     await stallFlushes(page)
     await edit(page, 960)
@@ -225,6 +226,8 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     const { sessions, entries } = await rows(next, ['sessions', 'entries'])
     expect(sessions.map((row) => row.id)).toEqual([sessionId])
     expect(entries.at(-1)?.kind).toBe('recovered')
+    // A discard or a crash keeps the binding too: it's on the chain record.
+    expect((await flushSession(next)).file).toEqual({ name: 'kill.nxsp', handle: true })
 })
 
 test('Duplicate Tab of a live tab forks into a separate copy without the binding', async ({

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { LevelData } from '@sonolus/core'
 import { readFileSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
+import { waitForStartup } from './editorFixture'
 
 const older =
     'This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.'
@@ -177,6 +178,7 @@ test.beforeEach(async ({ page }) => {
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
 })
 
 test('opening an older level with elevation warns, and its save is the latest revision', async ({

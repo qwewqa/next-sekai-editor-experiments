@@ -1,4 +1,4 @@
-import { test, type BrowserContext, type Locator, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test'
 import type { Chart } from '../../src/chart'
 import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
@@ -108,6 +108,23 @@ export const installCanvasCounters = (legacyCanvas = false) => {
         window.editorRenderingReady = Promise.resolve(rendering)
     }
 }
+
+/**
+ * Waits until the startup gate lifts (Part 1 §1.4.2): until the session is open, input is
+ * swallowed. Specs without the fixture hook (`installCanvasCounters`) wait before their first input.
+ */
+export const waitForStartup = (page: Page) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const { startupGate } =
+                        (await import('/src/startup/gate.ts')) as typeof import('../../src/startup/gate')
+                    return startupGate.phase
+                }),
+            { timeout: 20_000 },
+        )
+        .toBe('done')
 
 /** Seeds the platform override (Part 1 §1.6.10): pass it to addInitScript with the override. */
 export const installTestPlatform = (override: PlatformOverride) => {

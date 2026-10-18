@@ -14,6 +14,8 @@ const storageSpecs = [
     'storageFlush.spec.ts',
     // The journal's kill tests (Step 3b): page.close() in Firefox and WebKit.
     'journalKill.spec.ts',
+    // Startup, the recovery order and the auto save migration (Step 4).
+    'startupSessions.spec.ts',
 ]
 
 export default defineConfig({

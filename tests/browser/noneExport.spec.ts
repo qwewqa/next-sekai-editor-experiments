@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { installEditorFixture } from './editorFixture'
+import { installEditorFixture, waitForStartup } from './editorFixture'
 
 type LevelData = { entities: { data: { name: string; value?: number }[] }[] }
 
@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
     })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
     await page.evaluate(installEditorFixture)
     await page.evaluate(() => {
         const { fixtures, show } = window.editorTest
