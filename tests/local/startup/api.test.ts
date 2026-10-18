@@ -9,6 +9,7 @@ import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { holdSessionLock } from '../../../src/local/sessions'
 import {
+    applyPendingJournal,
     discardRecoveryItem,
     leftSession,
     openRecoveryAutoSave,
@@ -271,4 +272,30 @@ test('Reopen over a failed journal a flush covered since takes up the stored ses
     assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), { opened: true })
     assert.equal(rootOf(loaded.page.live.state), stored)
     assert.equal(storage.getItem(`nse.journal.${session.id}`), null)
+})
+
+test('applyPendingJournal applies a dead tab’s journal under the session’s lock, never while another tab holds it', async () => {
+    const world = createWorld({ seed: 9 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    setSessionContext(loaded.deps, loaded.recovery)
+    const dead = await openJournalPage(world, 'dead', storage)
+    const a = stateOf(goldenChart())
+    const lock = holdSessionLock(dead.tab.locks, 'pending')
+    await dead.tab.run(() => lock.granted)
+    const session = beginSession(dead, a, 'import', { id: 'pending' })
+    await dead.flusher.flush({ strict: true })
+    // Open in a live tab, which owns its journal.
+    assert.equal(await loaded.page.tab.run(() => applyPendingJournal(session.id)), 'held')
+    append(dead, 'edit', 'Edit', widen(a))
+    assert.equal(dead.writer.write(), true)
+    dead.tab.kill()
+    const outcome = await loaded.page.tab.run(() => applyPendingJournal(session.id))
+    assert.equal(outcome !== 'held' && outcome?.kind, 'applied')
+    const entries = [...rows(world, 'entries').values()].filter(
+        (row) => row.sessionId === session.id,
+    )
+    assert.equal(entries.at(-1)?.kind, 'recovered')
+    // Nothing pending any more.
+    assert.equal(await loaded.page.tab.run(() => applyPendingJournal(session.id)), undefined)
 })
