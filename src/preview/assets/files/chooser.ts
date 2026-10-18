@@ -8,7 +8,7 @@ import { importItem } from './importer'
 import { LIMITS } from './limits'
 import { openSourcePackage, type ListedItem, type SourcePackage } from './package'
 import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from './store'
-import { rollBack, StoreFailed, storeRecords } from './storeRecords'
+import { StoreFailed, storeRecords } from './storeRecords'
 
 // The chooser's From a File view (Part 2, 2.5.2, 2.6) without its markup: pick a package, list the
 // items of one type, offer the other types' items of the same name, and on Use check, repack and
@@ -32,8 +32,8 @@ export type ChooserDeps = {
     /** The plain message for a package that is refused. */
     describe: (error: AssetImportError) => string
     now?: () => number
-    /** Called after packages were stored, so lists and the footer follow. */
-    onStored?: (metas: UserAssetMeta[]) => void
+    /** Called after a storage attempt settles, so lists and the footer follow. */
+    onStorageChanged?: () => void
 }
 
 export type ChooserPhase = 'idle' | 'reading' | 'listed' | 'working'
@@ -203,6 +203,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         ]
         phase.value = 'working'
         useError.value = undefined
+        let storageAttempted = false
         try {
             const records: UserAssetRecord[] = []
             for (const entry of wanted)
@@ -219,14 +220,11 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // Checked all: only now is anything stored, all in one transaction, so a bad item
             // stores nothing.
             if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-            const { metas, added } = await storeRecords(deps.store, records)
-            // Closed or cancelled while storing: what this Use added goes again.
-            if (mine !== generation) {
-                await rollBack(deps.store, added)
-                return
-            }
+            storageAttempted = true
+            const { metas } = await storeRecords(deps.store, records)
+            if (mine !== generation) return
             deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, storedChoice(meta)])))
-            deps.onStored?.(metas)
+            if (mine !== generation) return
             reset()
             open.value = false
         } catch (failure) {
@@ -237,6 +235,8 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // A refused package is the file's doing, and the message says so; the rest is ours.
             if (!(failure instanceof AssetImportError))
                 console.error('Could not store the preview asset:', failure)
+        } finally {
+            if (storageAttempted) deps.onStorageChanged?.()
         }
     }
 

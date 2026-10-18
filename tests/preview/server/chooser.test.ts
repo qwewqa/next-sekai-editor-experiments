@@ -49,6 +49,11 @@ const merge = (items: [AssetType, ScpOptions?][]) => {
 
 const named = (name: string, title: string): ScpOptions => ({ name, title })
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+const deferred = () => {
+    let resolve!: () => void
+    const promise = new Promise<void>((done) => (resolve = done))
+    return { promise, resolve }
+}
 
 const setup = (
     items: [AssetType, ScpOptions?][],
@@ -564,7 +569,11 @@ test('cancelling while connecting leaves nothing behind', async () => {
 
 test('cancelling during Use stores nothing', async () => {
     const { deps, server, store, applied } = setup(collection())
-    const chooser = createServerChooser('skin', deps('skin'))
+    let refreshed = 0
+    const chooser = createServerChooser('skin', {
+        ...deps('skin'),
+        onStorageChanged: () => refreshed++,
+    })
     chooser.address.value = server.base
     await chooser.connect()
     const using = chooser.use()
@@ -575,6 +584,94 @@ test('cancelling during Use stores nothing', async () => {
     assert.deepEqual(await store.list(), [])
     assert.deepEqual(applied, [])
     assert.equal(chooser.phase.value, 'idle')
+    assert.equal(refreshed, 0)
+})
+
+test('late server cancellation preserves another caller’s verified choice and a newer connection', async (t) => {
+    const { deps, server, store, applied, closed } = setup([['skin', named('neon', 'Neon')]])
+    const reading = deferred()
+    const release = deferred()
+    const remove = t.mock.fn(store.remove)
+    const shared = { ...store, remove }
+    let refreshed = 0
+    const first = createServerChooser('skin', {
+        ...deps('skin'),
+        store: {
+            ...shared,
+            get: async (key) => {
+                const record = await store.get(key)
+                reading.resolve()
+                await release.promise
+                return record
+            },
+        },
+        onStorageChanged: () => refreshed++,
+    })
+    const second = createServerChooser('skin', { ...deps('skin'), store: shared })
+    await first.connectTo(server.base)
+    const using = first.use()
+    await reading.promise
+    await second.connectTo(server.base)
+    await second.use()
+    const choice = applied[0]?.skin
+    assert.ok(choice?.source === 'server')
+    first.cancel()
+    await first.connectTo(server.base)
+    assert.equal(refreshed, 0)
+    release.resolve()
+    await using
+    assert.equal(applied.length, 1)
+    assert.equal(first.phase.value, 'listed')
+    assert.equal(first.selected.value, 'neon')
+    assert.equal(closed.length, 1)
+    assert.equal(refreshed, 1)
+    assert.equal(remove.mock.callCount(), 0)
+    const record = await store.get(choice.key)
+    assert.ok(record)
+    assert.equal(record.bytes.size, record.size)
+    assert.equal(applied[0]?.skin, choice)
+})
+
+test('failed server readback applies nothing and refreshes the retained row', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const { deps, server, store, applied, closed } = setup([['skin', named('neon', 'Neon')]])
+    let refreshed = 0
+    const chooser = createServerChooser('skin', {
+        ...deps('skin'),
+        store: {
+            ...store,
+            get: () => Promise.reject(new Error('Read failed')),
+        },
+        onStorageChanged: () => refreshed++,
+    })
+    await chooser.connectTo(server.base)
+    await chooser.use()
+    assert.deepEqual(applied, [])
+    assert.deepEqual(closed, [])
+    assert.equal(chooser.phase.value, 'listed')
+    assert.deepEqual(chooser.useError.value, {
+        kind: 'item',
+        message: 'This item could not be stored.',
+    })
+    assert.equal((await store.list()).length, 1)
+    assert.equal(refreshed, 1)
+})
+
+test('a new server connection started by apply survives the old Use finishing', async () => {
+    const { deps, server, closed } = setup([['skin', named('neon', 'Neon')]])
+    let connected: Promise<void> | undefined
+    const chooser = createServerChooser('skin', {
+        ...deps('skin'),
+        apply: () => {
+            connected = chooser.connectTo(server.base)
+        },
+    })
+    await chooser.connectTo(server.base)
+    await chooser.use()
+    await connected
+    assert.equal(chooser.phase.value, 'listed')
+    assert.equal(chooser.selected.value, 'neon')
+    assert.deepEqual(closed, [])
 })
 
 /** A client over the server whose other-type lookups never answer until they are stopped. */

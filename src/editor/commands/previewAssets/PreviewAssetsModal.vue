@@ -66,7 +66,7 @@ const choosers = Object.fromEntries(
             apply: (choices) => {
                 settings.previewAssets = { ...settings.previewAssets, ...choices }
             },
-            onStored: () => void refreshStored(),
+            onStorageChanged: () => void refreshStored(),
         }),
     ]),
 ) as Record<AssetType, ReturnType<typeof createAssetChooser>>
@@ -91,7 +91,7 @@ const servers = Object.fromEntries(
             remember: (address) => {
                 settings.recentServers = withRecentServer(settings.recentServers, address)
             },
-            onStored: () => void refreshStored(),
+            onStorageChanged: () => void refreshStored(),
             close: () => {
                 choosers[type].cancel()
             },

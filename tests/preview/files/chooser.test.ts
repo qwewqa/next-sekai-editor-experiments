@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { createAssetChooser, type ChooserDeps } from '../../../src/preview/assets/files/chooser'
+import {
+    createAssetChooser,
+    storedChoice,
+    type ChooserDeps,
+} from '../../../src/preview/assets/files/chooser'
 import type { AssetImportError } from '../../../src/preview/assets/files/errors'
 import {
     formatImportMessage,
@@ -64,6 +68,11 @@ const recordOf = async (bytes: Uint8Array) =>
         now: () => 1,
     })
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+const deferred = () => {
+    let resolve!: () => void
+    const promise = new Promise<void>((done) => (resolve = done))
+    return { promise, resolve }
+}
 
 const collection = () =>
     scpMulti([
@@ -196,8 +205,10 @@ test('Use with nothing ticked stores only the selected item', async () => {
 test('a ticked item that fails stores nothing, and the chooser says why and stays open', async (t) => {
     t.mock.method(console, 'error', () => {})
     const { store, applied, deps } = setup()
+    let refreshed = 0
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
     })
     const bytes = scpMulti([
         ['skin', named('neon', 'Neon')],
@@ -226,6 +237,7 @@ test('a ticked item that fails stores nothing, and the chooser says why and stay
         'This file’s sound effects audio has no usable #PERFECT clip.',
     )
     assert.equal(chooser.error.value, undefined)
+    assert.equal(refreshed, 0)
 })
 
 test('a file that is not a package says so and lists nothing', async () => {
@@ -237,31 +249,36 @@ test('a file that is not a package says so and lists nothing', async () => {
     assert.deepEqual(chooser.items.value, [])
 })
 
-test('cancelling while Use is working stores and applies nothing', async () => {
-    const { applied, deps } = setup()
-    const slow = createMemoryStore()
-    let cancel = () => {}
+test('cancelling after a storage attempt retains its complete package and refreshes after settlement', async () => {
+    const { store, applied, deps } = setup()
+    const started = deferred()
+    const release = deferred()
+    let refreshed = 0
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
         store: {
-            ...slow,
-            // The dialog closes while the packages are being written: they are written anyway.
+            ...store,
             putMany: async (records) => {
-                cancel()
-                await new Promise((resolve) => setTimeout(resolve, 30))
-                return slow.putMany(records)
+                started.resolve()
+                await release.promise
+                return store.putMany(records)
             },
         },
     })
-    cancel = () => chooser.cancel()
-    await chooser.pick(blobOf(collection()), 'neon.scp')
-    await settle()
-    chooser.toggle('particle', true)
-    await chooser.use()
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    const using = chooser.use()
+    await started.promise
+    chooser.cancel()
+    assert.equal(refreshed, 0)
+    release.resolve()
+    await using
     assert.equal(chooser.open.value, false)
     assert.deepEqual(applied, [])
-    // What this Use wrote is removed again.
-    assert.deepEqual(await slow.list(), [])
+    const [meta] = await store.list()
+    assert.ok(meta)
+    assert.equal((await store.get(meta.key))?.bytes.size, meta.size)
+    assert.equal(refreshed, 1)
 })
 
 test('Use stores the ticked items in one write, so a failure stores none of them', async (t) => {
@@ -269,8 +286,10 @@ test('Use stores the ticked items in one write, so a failure stores none of them
     const { applied, deps } = setup()
     const memory = createMemoryStore()
     let writes = 0
+    let refreshed = 0
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
         store: {
             ...memory,
             put: () => Promise.reject(new Error('one at a time is not all or nothing')),
@@ -289,15 +308,18 @@ test('Use stores the ticked items in one write, so a failure stores none of them
     assert.deepEqual(await memory.list(), [])
     assert.deepEqual(applied, [])
     assert.equal(chooser.useError.value, 'This item could not be stored.')
+    assert.equal(refreshed, 1)
 })
 
-test('a package that does not read back as written is not used, and is removed', async (t) => {
+test('a package that does not read back is not used, and refreshes retained uncertain rows', async (t) => {
     t.mock.method(console, 'error', () => {})
     const { applied, deps } = setup()
     const memory = createMemoryStore()
+    let refreshed = 0
     // A store that loses the end of what it writes.
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
         store: {
             ...memory,
             putMany: (records) =>
@@ -315,10 +337,11 @@ test('a package that does not read back as written is not used, and is removed',
     await chooser.use()
     assert.deepEqual(applied, [])
     assert.equal(chooser.useError.value, 'This item could not be stored.')
-    assert.deepEqual(
-        (await memory.list()).map((meta) => meta.key),
-        [before.key],
-    )
+    const stored = await memory.list()
+    assert.equal(stored.length, 3)
+    assert.ok(stored.some((meta) => meta.key === before.key))
+    assert.equal((await memory.get(before.key))?.bytes.size, before.size)
+    assert.equal(refreshed, 1)
 })
 
 test('a file that cannot be read says so, not that storing failed', async (t) => {
@@ -390,4 +413,158 @@ test('a store that refuses is reported as a store problem', async (t) => {
     await chooser.use()
     assert.equal(chooser.useError.value, 'This item could not be stored.')
     assert.equal(chooser.phase.value, 'listed')
+})
+
+test('cancelling during validation makes no storage attempt or refresh', async () => {
+    const { deps, store, applied } = setup()
+    const decoding = deferred()
+    const release = deferred()
+    let writes = 0
+    let refreshed = 0
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        decodeImage: async (bytes) => {
+            decoding.resolve()
+            await release.promise
+            return decodeTestImage(bytes)
+        },
+        store: {
+            ...store,
+            putMany: (records) => {
+                writes++
+                return store.putMany(records)
+            },
+        },
+        onStorageChanged: () => refreshed++,
+    })
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    const using = chooser.use()
+    await decoding.promise
+    chooser.cancel()
+    release.resolve()
+    await using
+    assert.equal(writes, 0)
+    assert.equal(refreshed, 0)
+    assert.deepEqual(applied, [])
+    assert.deepEqual(await store.list(), [])
+})
+
+test('late cancellation preserves a second caller’s verified choice and a newer chooser generation', async (t) => {
+    const { deps, store, applied } = setup()
+    const reading = deferred()
+    const release = deferred()
+    const remove = t.mock.fn(store.remove)
+    const shared = { ...store, remove }
+    let refreshed = 0
+    const first = createAssetChooser('skin', {
+        ...deps,
+        store: {
+            ...shared,
+            get: async (key) => {
+                const record = await store.get(key)
+                reading.resolve()
+                await release.promise
+                return record
+            },
+        },
+        onStorageChanged: () => refreshed++,
+    })
+    const second = createAssetChooser('skin', { ...deps, store: shared })
+    await first.pick(blobOf(scp('skin')), 'first.scp')
+    const using = first.use()
+    await reading.promise
+    await second.pick(blobOf(scp('skin')), 'second.scp')
+    await second.use()
+    const choice = applied[0]?.skin
+    assert.ok(choice?.source === 'file')
+    first.cancel()
+    await first.pick(blobOf(scp('skin', named('new', 'New'))), 'new.scp')
+    release.resolve()
+    await using
+    assert.equal(applied.length, 1)
+    assert.equal(first.open.value, true)
+    assert.equal(first.phase.value, 'listed')
+    assert.equal(first.selected.value, 'new')
+    assert.equal(refreshed, 1)
+    assert.equal(remove.mock.callCount(), 0)
+    const record = await store.get(choice.key)
+    assert.ok(record)
+    assert.equal(record.bytes.size, record.size)
+    assert.equal(applied[0]?.skin, choice)
+})
+
+test('Stored adoption survives late cancellation before its delayed touch', async (t) => {
+    const { deps, store, applied } = setup()
+    const reading = deferred()
+    const release = deferred()
+    const touchRelease = deferred()
+    const remove = t.mock.fn(store.remove)
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        store: {
+            ...store,
+            remove,
+            get: async (key) => {
+                const record = await store.get(key)
+                reading.resolve()
+                await release.promise
+                return record
+            },
+        },
+    })
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    const using = chooser.use()
+    await reading.promise
+    const [meta] = await store.list()
+    assert.ok(meta)
+    const adopted = storedChoice(meta)
+    const touching = (async () => {
+        await touchRelease.promise
+        await store.touch(meta.key)
+    })()
+    chooser.cancel()
+    release.resolve()
+    await using
+    assert.deepEqual(applied, [])
+    assert.equal(adopted.source === 'file' && adopted.key, meta.key)
+    assert.ok(await store.get(meta.key))
+    touchRelease.resolve()
+    await touching
+    assert.ok(await store.get(meta.key))
+    assert.equal(remove.mock.callCount(), 0)
+    await store.remove(meta.key)
+    assert.equal(await store.get(meta.key), undefined)
+})
+
+test('an apply failure retains the checked package and refreshes Stored', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const { deps, store } = setup()
+    let refreshed = 0
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        apply: () => {
+            throw new Error('Apply failed')
+        },
+        onStorageChanged: () => refreshed++,
+    })
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    await chooser.use()
+    assert.equal((await store.list()).length, 1)
+    assert.equal(refreshed, 1)
+    assert.ok(chooser.useError.value)
+})
+
+test('a new file chooser opened by apply stays open after the old Use finishes', async () => {
+    const { deps } = setup()
+    let refreshed = 0
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        apply: () => chooser.show(),
+        onStorageChanged: () => refreshed++,
+    })
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    await chooser.use()
+    assert.equal(chooser.open.value, true)
+    assert.equal(chooser.phase.value, 'idle')
+    assert.equal(refreshed, 1)
 })

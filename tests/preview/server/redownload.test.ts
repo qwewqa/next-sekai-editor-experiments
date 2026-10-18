@@ -256,8 +256,10 @@ test('a downloaded item that does not read back is used this time, and the choic
     assert.deepEqual(result?.status, { active: 'chosen' })
     assert.equal(result?.value.title, 'Neon Skin 2')
     assert.deepEqual(replaced, [])
-    // What did not read back is not kept.
-    assert.deepEqual(await parts.store.list(), [])
+    // An uncertain shared row stays, while this load keeps its independently checked bytes.
+    const [stored] = await parts.store.list()
+    assert.equal(stored?.title, 'Neon Skin 2')
+    assert.notEqual(stored?.key, parts.choice.source === 'server' && parts.choice.key)
 })
 
 test('the choice follows a new key only while it still names the old one', () => {
