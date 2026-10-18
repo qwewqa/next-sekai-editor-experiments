@@ -104,7 +104,7 @@ const classes = (button: ChoiceButton) =>
                 <div class="flex shrink-0 flex-col gap-1" :class="{ 'items-stretch': stacked }">
                     <button
                         type="button"
-                        class="h-9 min-w-24 max-w-full rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg [@media(pointer:coarse)]:h-11"
+                        class="h-9 min-w-24 max-w-full rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg"
                         :class="[
                             classes(button),
                             stacked ? 'w-full' : 'whitespace-nowrap',

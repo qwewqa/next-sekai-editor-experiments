@@ -23,11 +23,10 @@ export type PreviewCanvas = {
 }
 
 /** Sizes of the single-row playback strip, which never wraps. */
-export const previewStripMetrics = (coarse: boolean) => {
-    // Play is the frequent control; on touch the steppers are a little smaller.
-    const button = coarse ? 44 : 36
-    const step = coarse ? 40 : 32
-    const chevron = coarse ? 40 : 36
+export const previewStripMetrics = () => {
+    const button = 36
+    const step = 32
+    const chevron = 36
     const sizeButton = 48
     const pad = 4
     const gap = 4
@@ -96,12 +95,11 @@ export const layoutPreviewControls = ({
     width,
     height,
     aspectRatio,
-    coarse,
     showTime,
     anchor,
     position = 'auto',
 }: PreviewControlsInput): PreviewControlsLayout => {
-    const metrics = previewStripMetrics(coarse)
+    const metrics = previewStripMetrics()
     const g = previewGap
     const stripHeight = metrics.height
     const content = (room: number) => {

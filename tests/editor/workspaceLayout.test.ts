@@ -52,6 +52,16 @@ const positions = (position: PanelPosition): Record<PanelId, PanelPosition> => (
     history: position,
 })
 
+test('pointer class keeps the same rails and preview reservation', () => {
+    for (const [width, height] of [[390, 844], [820, 1180], [1280, 683], [1600, 1000]]) {
+        const base = input({ width, height })
+        assert.deepEqual(
+            computeWorkspaceLayout({ ...base, coarse: true, railSize: coarseRailSize }),
+            computeWorkspaceLayout({ ...base, coarse: false, railSize }),
+        )
+    }
+})
+
 test('auto placement follows the workspace shape rather than width alone', () => {
     assert.equal(resolveAutoSide(1600, 1000, 'preview'), 'left')
     assert.equal(resolveAutoSide(1600, 1000, 'properties'), 'right')
@@ -324,8 +334,9 @@ test('side docks default to 24rem, leaving the toolbar one row between both, nev
         assert.ok(
             width - 2 * railSize - 2 * side(width) >= oneRowToolbarWidth(defaultTools, 16, false),
         )
-    // Touch rails are wider.
-    assert.equal(side(1280, 16, coarseRailSize, true), 296)
+    // Rails share their size while the toolbar retains its pointer-specific layout.
+    assert.equal(coarseRailSize, railSize)
+    assert.equal(side(1280, 16, coarseRailSize, true), 304)
     // The root font size scales the aim and the toolbar's padding.
     assert.equal(side(1920, 20), 480)
     assert.equal(side(1600, 20), 461)
@@ -420,7 +431,7 @@ test('an unsized top dock fits the width Preview has, alone or in a row of tiles
     const tiled = tablet(['preview', 'groups', 'properties', 'stages'])
     assert.deepEqual(tiled?.visible, ['preview', 'groups', 'properties'])
     const preview = tiled?.tiles.find(({ id }) => id === 'preview')
-    assert.ok(preview && preview.size / (16 / 9) + 60 <= (tiled?.size ?? 0))
+    assert.ok(preview && preview.size / (16 / 9) + 52 <= (tiled?.size ?? 0))
     assert.equal(tiled?.size, 300)
     // Alone in the dock, Preview spans it and the default height applies.
     const alone = computeWorkspaceLayout(
@@ -477,8 +488,8 @@ const play = (
 }
 
 const unfolded = { left: false, right: false, top: false }
-const tabletPortrait = { width: 820, height: 1180, coarse: true, railSize: 44 }
-const tabletLandscape = { width: 1180, height: 820, coarse: true, railSize: 44 }
+const tabletPortrait = { width: 820, height: 1180, coarse: true, railSize }
+const tabletLandscape = { width: 1180, height: 820, coarse: true, railSize }
 
 test('hiding one of several shown panels never reveals one it covered', () => {
     // A portrait tablet's top dock fits three panels side by side.
@@ -507,7 +518,7 @@ test('hiding one of several shown panels never reveals one it covered', () => {
 test('closing a panel by key or menu never reveals a covered one either', () => {
     // A phone's top dock fits one panel; Properties starts covered by Preview.
     const { shown, state } = play(
-        { width: 390, height: 844, coarse: true, railSize: 44 },
+        { width: 390, height: 844, coarse: true, railSize },
         {
             open: { preview: true, groups: false, stages: false, properties: true, history: false },
             recency: ['preview', 'properties', 'groups', 'stages'],
@@ -680,8 +691,8 @@ test('groups and stages open by default only where they fit beside preview', () 
     assert.ok(!room({ width: 820, height: 1180 }))
     assert.ok(!room({ width: 390, height: 844 }))
     assert.ok(!room({ width: 844, height: 390 }))
-    // Taller touch controls and a 4:3 preview need more height.
-    assert.ok(!room({ width: 1280, height: 683, coarse: true, railSize: coarseRailSize }))
+    // Pointer class does not inflate panel chrome; a 4:3 preview needs more height.
+    assert.ok(room({ width: 1280, height: 683, coarse: true, railSize: coarseRailSize }))
     assert.ok(!room({ width: 1280, height: 683, previewAspectRatio: 4 / 3 }))
     // An overlaid playback strip needs only Preview's minimum.
     assert.ok(room({ width: 1280, height: 660, previewOverlay: true }))

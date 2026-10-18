@@ -129,9 +129,4 @@ const onTabKeydown = (event: KeyboardEvent) => {
     }
 }
 
-@media (pointer: coarse) {
-    .manager-modal-tab-active .manager-modal-tab-label::after {
-        @apply -bottom-3.5;
-    }
-}
 </style>

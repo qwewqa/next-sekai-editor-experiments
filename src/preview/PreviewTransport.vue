@@ -11,7 +11,7 @@ import { formatTime } from '../utils/format'
 import { interpolateRaw } from '../utils/interpolate'
 import type { PreviewControlsLayout } from './layout'
 import { useTransportInput } from './useTransportInput'
-import { isCoarsePointer, settingsButtonSize } from './usePreviewViewport'
+import { settingsButtonSize } from './usePreviewViewport'
 
 const props = defineProps<{
     layout: PreviewControlsLayout
@@ -132,7 +132,7 @@ const stripStyle = computed(() => ({
 <template>
     <div
         class="preview-transport-root pointer-events-auto absolute inset-0 z-10 touch-pan-y"
-        :class="{ 'is-coarse': isCoarsePointer, 'cursor-ew-resize': isSeekDragging }"
+        :class="{ 'cursor-ew-resize': isSeekDragging }"
         @wheel="onWheel"
         @pointerdown="onSurfacePointerDown"
         @pointermove="onSurfacePointerMove"
@@ -331,19 +331,4 @@ const stripStyle = computed(() => ({
     inset: -0.125rem -0.0625rem;
 }
 
-/* Touch: Play, the frequent control, is 44 px in a 52 px strip; the steppers,
-   used less often, are drawn at 40 px across the track's 44 px. */
-.is-coarse .transport-play {
-    @apply h-11 w-11;
-}
-
-.is-coarse .transport-track .transport-button {
-    @apply h-10;
-}
-
-.is-coarse .transport-step,
-.is-coarse .transport-chevron {
-    width: auto;
-    min-width: 2.5rem;
-}
 </style>

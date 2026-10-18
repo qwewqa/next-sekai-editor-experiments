@@ -366,9 +366,4 @@ const buttonClass =
     }
 }
 
-@media (pointer: coarse) {
-    .preview-assets-tab-active .preview-assets-tab-label::after {
-        @apply -bottom-3.5;
-    }
-}
 </style>
