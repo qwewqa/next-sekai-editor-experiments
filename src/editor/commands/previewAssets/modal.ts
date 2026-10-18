@@ -29,7 +29,7 @@ export const showPreviewAssets = async (tab?: PreviewAssetsTab, options?: { file
                 file,
                 source: held?.source,
             },
-            { size: 'large' },
+            { size: 'large', cap: '34rem' },
         ).finally(() => (isOpen = false))
     } catch (error) {
         isOpen = false

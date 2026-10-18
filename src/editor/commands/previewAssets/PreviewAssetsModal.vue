@@ -10,6 +10,7 @@ import {
     watch,
 } from 'vue'
 import { i18n } from '../../../i18n'
+import { vScrollEdges } from '../../../directives/scrollEdges'
 import BaseModal from '../../../modals/BaseModal.vue'
 import { platform } from '../../../platform'
 import { assetTypes, withRecentServer } from '../../../preview/assets/choice'
@@ -214,7 +215,7 @@ const summary = computed<StoredSummary>(() => ({
 }))
 const storedText = computed(() => storedLine(strings.value.stored, summary.value, formatSize))
 
-// While the shown tab's chooser is open, its Cancel and Use are the actions: the helpers rest.
+// While the shown tab's chooser is open, its Cancel and Use are the actions: the footer goes.
 const choosing = computed(() => isAssetTab(active.value) && choosers[active.value].open.value)
 
 const buttonClass =
@@ -272,7 +273,7 @@ const buttonClass =
             role="tabpanel"
             :aria-labelledby="tabId(active)"
         >
-            <div class="min-h-0 flex-1 overflow-y-auto p-2">
+            <div v-scroll-edges class="min-h-0 flex-1 overflow-y-auto p-2">
                 <AssetSources
                     v-if="isAssetTab(active)"
                     :key="active"
@@ -284,6 +285,7 @@ const buttonClass =
             </div>
 
             <div
+                v-if="!choosing"
                 class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-fg/25 p-3"
                 data-preview-assets-footer
             >
@@ -296,7 +298,7 @@ const buttonClass =
                     <button
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
-                        :disabled="allBuiltin || choosing"
+                        :disabled="allBuiltin"
                         data-use-builtin-all
                         @click="setAll(builtinSource)"
                     >
@@ -306,7 +308,7 @@ const buttonClass =
                         v-if="hasDefault"
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
-                        :disabled="allDefault || choosing"
+                        :disabled="allDefault"
                         data-reset-default
                         @click="setAll('default')"
                     >
