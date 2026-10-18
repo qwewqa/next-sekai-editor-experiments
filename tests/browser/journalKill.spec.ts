@@ -33,7 +33,7 @@ const boot = async (page: Page, flags: Record<string, unknown> = {}) => {
         )
         .toEqual({ mode: 'stored' })
     await expect
-        .poll(() => page.evaluate(() => window.nseStartupTest !== undefined), { timeout: 20_000 })
+        .poll(() => page.evaluate(() => window.nseFlushTest !== undefined), { timeout: 20_000 })
         .toBe(true)
 }
 
