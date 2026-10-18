@@ -124,7 +124,12 @@ const geometry = computed(() => {
         y += heightOf(row)
         return top
     })
-    return { ids: rows.value.map((row) => row.id), offsets, total: y }
+    return {
+        ids: rows.value.map((row) => row.id),
+        kinds: rows.value.map((row) => row.type),
+        offsets,
+        total: y,
+    }
 })
 
 /** The first row reaching below `y`. */
@@ -288,7 +293,7 @@ const scrollRowToTop = (id: string) => {
     const index = rows.value.findIndex((row) => row.id === id)
     if (!element || index === -1) return
     const above = rows.value[index - 1]?.type === 'header' ? index - 1 : index
-    element.scrollTop = Math.max(0, (geometry.value.offsets[above] ?? 0) - PAD_TOP)
+    element.scrollTop = geometry.value.offsets[above] ?? 0
     scrollTop.value = element.scrollTop
 }
 
@@ -367,7 +372,9 @@ watch(
         for (let i = rowAt(previous, top); i < previous.ids.length; i++) {
             const id = previous.ids[i]
             const at = id === undefined ? undefined : index.get(id)
-            if (id === 'now' || id === 'gap' || at === undefined) continue
+            // Headers are no anchor: the span they label grows with newer rows.
+            if (at === undefined || next.kinds[at] === 'now' || next.kinds[at] === 'gap') continue
+            if (next.kinds[at] === 'header') continue
             const shift = (next.offsets[at] ?? 0) - (previous.offsets[i] ?? 0)
             if (shift !== 0) {
                 element.scrollTop = top + shift
@@ -379,17 +386,23 @@ watch(
     { flush: 'post' },
 )
 
-// The gap row loads the newer entries as it comes into view.
+// The gap row loads the newer entries as it comes into view: checked after the anchoring above
+// has moved the list, and never while a jump replaces the rows.
 const gapInView = () => {
+    const element = list.value
     const index = rows.value.findIndex((row) => row.type === 'gap')
     const row = rows.value[index]
-    if (!row) return false
+    if (!element || !row || replacing || loadingNewer.value) return false
     const top = geometry.value.offsets[index] ?? 0
-    return top < scrollTop.value + viewport.value && top + heightOf(row) > scrollTop.value
+    return top < element.scrollTop + element.clientHeight && top + heightOf(row) > element.scrollTop
 }
-watch([() => geometry.value.total, viewport, gap, loadingNewer], () => {
-    if (!loadingNewer.value && gapInView()) void loadNewer()
-})
+watch(
+    [() => geometry.value.total, viewport, gap, loadingNewer],
+    () => {
+        if (gapInView()) void loadNewer()
+    },
+    { flush: 'post' },
+)
 
 const toggleGroup = (row: EntryRow, open: boolean) => {
     if (row.members.length < 2 || row.child) return
@@ -532,7 +545,7 @@ const onScroll = () => {
     scrollTop.value = element.scrollTop
     if (canLoadMore.value && element.scrollTop + element.clientHeight > geometry.value.total - 400)
         void loadMore()
-    if (!loadingNewer.value && gapInView()) void loadNewer()
+    if (gapInView()) void loadNewer()
 }
 // A short list loads on until it fills the pane.
 watch([() => geometry.value.total, viewport, canLoadMore], () => {
