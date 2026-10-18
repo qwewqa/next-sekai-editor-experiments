@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { judgmentLineColors } from '../../src/chart/events/stage/style'
 import type { NoteSfx, NoteType } from '../../src/chart/note'
 import { connectorColors } from '../../src/editor/utils/connectorColors'
 import { flickArrowPoints, flickGlyphPoints } from '../../src/flickArrow'
@@ -40,6 +41,10 @@ test('connector swatches use the styled connector base color', () => {
             .body,
         connectorStyleColor('black'),
     )
+})
+
+test('every judgment line color has a swatch hue', () => {
+    assert.deepEqual([...judgmentLineColors].sort(), Object.keys(guideColors).sort())
 })
 
 test('every note type and SFX has a note pictogram or an empty slot', () => {

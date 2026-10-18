@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import type { JudgmentLineColor } from '../../chart/events/stage/style'
+import { computed, h } from 'vue'
+import { judgmentLineColors, type JudgmentLineColor } from '../../chart/events/stage/style'
 import { i18n } from '../../i18n'
+import JudgmentLineColorSwatch from './JudgmentLineColorSwatch.vue'
 import MultiSelectField from './MultiSelectField.vue'
+import type { OptionGlyph } from './optionGlyph'
 
 const modelValue = defineModel<JudgmentLineColor | undefined>({ required: true })
+
+// Unset, mixed and unknown values have no swatch.
+const glyph = computed(() => judgmentLineColors.find((color) => color === modelValue.value))
+const swatch: OptionGlyph<JudgmentLineColor> = (value) => h(JudgmentLineColorSwatch, { value })
 </script>
 
 <template>
@@ -20,5 +27,8 @@ const modelValue = defineModel<JudgmentLineColor | undefined>({ required: true }
             [i18n.modals.form.judgmentLineColor.cyan, 'cyan'],
             [i18n.modals.form.judgmentLineColor.black, 'black'],
         ]"
-    />
+        :option-glyph="swatch"
+    >
+        <template v-if="glyph" #leading><JudgmentLineColorSwatch :value="glyph" /></template>
+    </MultiSelectField>
 </template>
