@@ -509,3 +509,44 @@ test('a file whose title was edited outside opens with that title and "Changed o
         )
         .not.toBe('Edited Outside')
 })
+
+test('opening a file whose session a dead tab left a journal for: Restore applies the journal first', async ({
+    page,
+    context,
+}) => {
+    await start(page)
+    const other = await context.newPage()
+    await start(other)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    // Storing stalls, so the edit is the journal's alone, written on hide; then the tab dies.
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = true
+    })
+    await edit(page, 555)
+    await page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+        document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await page.close({ runBeforeUnload: false })
+
+    await openFile(other, 'coconut.nxsp')
+    await expect(
+        notice(other).filter({
+            hasText: 'Opened coconut.nxsp. You have unsaved changes to it from',
+        }),
+    ).toBeVisible()
+    await other.getByRole('button', { name: 'Restore Session' }).click()
+    await expect
+        .poll(() =>
+            other.evaluate(async () => {
+                const { state } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                return state.value.initialLife
+            }),
+        )
+        .toBe(555)
+    expect((await sessionOf(other)).file?.name).toBe('coconut.nxsp')
+})

@@ -30,7 +30,7 @@ const readFile = async (file: Blob) => {
 
 const freshFile = () => executePlan(planNxsp(fresh().input).plan, new Map())
 
-test('a fresh file matches its head, so the history’s head is the live state', async () => {
+test('a fresh file matches its head, with thirds of a lane and a default-coloured guide', async () => {
     const { project, level, head } = await readFile(await freshFile())
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
     assert.deepEqual(bindingOptions(project, head), { history: true, bgm: true })

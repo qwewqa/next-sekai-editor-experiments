@@ -74,11 +74,16 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
 
 /** The chains this browser has on the document, as the open's notice reads them (§1.5.4). */
 export const earlierChains = async (docId: string, exclude: string): Promise<EarlierChain[]> => {
-    const { open } = context()
+    const { open, recovery } = context()
     const stored = await open.worker.call('openEarlierChains', { docId, exclude })
+    // A dead tab's pending journal holds changes storage doesn't: Restore applies it first.
+    const journals = new Set(
+        (await recovery.journal.read().catch(() => [])).map((found) => found.sessionId),
+    )
     return Promise.all(
         stored.map(async (chain) => ({
             ...chain,
+            changed: chain.changed || (!!chain.bound && journals.has(chain.sessionId)),
             openElsewhere:
                 hasWebLocks() &&
                 (await open.client.heldElsewhere(sessionLock(chain.sessionId)).catch(() => false)),
