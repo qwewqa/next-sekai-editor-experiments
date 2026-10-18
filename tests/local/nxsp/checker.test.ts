@@ -333,3 +333,55 @@ test('the checker verifies completeFrom against the file it names', { skip: !has
         rmSync(dir, { recursive: true, force: true })
     }
 })
+
+test(
+    'the checker rejects unresolved orphan references in strict and reader modes',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-orphans-'))
+        try {
+            for (const fault of ['chunk', 'child', 'kind', 'depth']) {
+                const bytes = await craft((items) => {
+                    const manifest = jsonOf(items, 'history/manifest.json')
+                    const put = (node: RecordValue[]) => {
+                        const key = toHex(hash16Sync(canonicalBytes(node)))
+                        manifest.nodes[key] = node
+                        return key
+                    }
+                    const leaf = put([
+                        fault === 'kind' ? 'slides' : 'bpms',
+                        0,
+                        [manifest.chunks[0][0]],
+                    ])
+                    const middle = put(['bpms', 1, [leaf]])
+                    put(
+                        fault === 'chunk'
+                            ? ['bpms', 0, ['c'.repeat(32)]]
+                            : [
+                                  'bpms',
+                                  1,
+                                  [
+                                      fault === 'child'
+                                          ? 'c'.repeat(32)
+                                          : fault === 'depth'
+                                            ? middle
+                                            : leaf,
+                                  ],
+                              ],
+                    )
+                    setJson(items, 'history/manifest.json', manifest)
+                })
+                const path = join(dir, `${fault}.nxsp`)
+                writeFileSync(path, bytes)
+                const strict = check(path)
+                assert.notEqual(strict.status, 0)
+                assert.match(strict.output, /nodes\./)
+                const reader = check('--read', path)
+                assert.equal(reader.status, 0, reader.output)
+                assert.match(reader.output, /"open": "partial"/)
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)

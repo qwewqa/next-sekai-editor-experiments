@@ -643,6 +643,13 @@ def check_history(project, history, segments, by_name, summary, rev):
         need(hash16(canonical(node)) == key, f"nodes.{key}: does not hash to its key")
         node_kinds[key] = (node[0], node[1])
 
+    for key, (kind, depth) in node_kinds.items():
+        for child in nodes[key][2]:
+            if depth == 0:
+                need(child in index, f"nodes.{key}: chunk {child} missing")
+            else:
+                need(node_kinds.get(child) == (kind, 0), f"nodes.{key}: child {child} missing or invalid")
+
     parsed, checked = {}, {}
 
     def chunk_json(h, what):
@@ -1441,6 +1448,13 @@ def combine_parts(segments, manifest, expected_entries, chunks_size):
                 issues.add("newer", f"nodes.{key}")
             else:
                 issues.add("damaged", f"nodes.{key}")
+    for key, (kind, depth) in node_kinds.items():
+        for child in nodes[key][2]:
+            if depth == 0:
+                if child not in index:
+                    issues.add("damaged", f"nodes.{key}")
+            elif node_kinds.get(child) != (kind, 0):
+                issues.add("damaged", f"nodes.{key}")
     for key, root in roots.items():
         v = root[0] if isinstance(root, list) and root else None
         if is_safe_int(v) and v > 1:
@@ -1461,20 +1475,6 @@ def combine_parts(segments, manifest, expected_entries, chunks_size):
             if node is None or node[0] != kind:
                 issues.add("damaged", f"roots.{key}")
                 continue
-            children = nodes[top][2]
-            hashes = []
-            if node[1] == 0:
-                hashes = children
-            else:
-                for child in children:
-                    leaf = node_kinds.get(child)
-                    if leaf is None or leaf[0] != kind or leaf[1] != 0:
-                        issues.add("damaged", f"nodes.{top}")
-                        continue
-                    hashes += nodes[child][2]
-            for h in hashes:
-                if h not in index:
-                    issues.add("damaged", f"nodes.{top}")
     for i, e in enumerate(entries):
         if e.get("kept") is False:
             continue

@@ -96,7 +96,8 @@ export const reportLevelDataEntities = (
     report: LevelDataReport,
 ) => {
     const fieldsOf = allowedFields()
-    for (const { archetype, data } of entities) {
+    for (const entity of entities) {
+        const { archetype, data } = entity
         if (
             Object.hasOwn(ignoredArchetypes, archetype) &&
             current(ignoredArchetypes[archetype]?.since)
@@ -109,6 +110,10 @@ export const reportLevelDataEntities = (
             continue
         }
 
+        for (const key of Object.keys(entity))
+            if (!['name', 'archetype', 'data'].includes(key))
+                report.addField(archetype, `entity.${key}`)
+
         const declared = knownArchetypes[archetype]?.fields ?? {}
         const seen = new Set<string>()
         for (const entry of data) {
@@ -120,6 +125,10 @@ export const reportLevelDataEntities = (
             // A field the parser reads from a ref or a value, but not the other kind, or twice.
             const kind = Object.hasOwn(declared, name) ? declared[name]?.kind : undefined
             if (kind && (seen.has(name) || !(kind in entry))) report.addField(archetype, name)
+            if (kind && kind in entry)
+                for (const key of Object.keys(entry))
+                    if (key !== 'name' && key !== kind)
+                        report.addField(archetype, `data.${name}.${key}`)
             seen.add(name)
         }
     }

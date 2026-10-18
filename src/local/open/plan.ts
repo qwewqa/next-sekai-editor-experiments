@@ -1,4 +1,5 @@
 import type { ReadHistory } from '../nxsp'
+import { distinctRootChunks } from '../nxsp/manifest'
 
 // The open's background import (Part 1 §1.5.4, r12-arch-web M9), in batches, each its own
 // transaction: the history's entry rows, the other roots and nodes, then the other chunks (the
@@ -16,29 +17,20 @@ export const BATCH_ROWS = 2000
 export const BATCH_CHUNKS = 2000
 export const BATCH_CHUNK_BYTES = 4 * 1024 * 1024
 
-/** Every chunk a root reaches, in the order the reader resolves them. */
-export const chunksOfRoot = (history: Pick<ReadHistory, 'roots' | 'nodes'>, hex: string) => {
-    const root = history.roots.get(hex)
-    if (!root) return []
-    const out: string[] = [root[1] as string]
-    const node = (hash: string) => {
-        const json = history.nodes.get(hash)
-        if (!json) return
-        for (const child of json[2] as string[]) {
-            if (json[1] === 1) node(child)
-            else out.push(child)
-        }
-    }
-    for (const [, top] of root[2] as [string, string][]) node(top)
-    return out
-}
+/** Distinct chunks a root reaches, in first-use order. */
+export const chunksOfRoot = (history: Pick<ReadHistory, 'roots' | 'nodes'>, hex: string) => [
+    ...distinctRootChunks(history, [hex]),
+]
 
 /** Every node a root reaches, kind nodes at every depth. */
 export const nodesOfRoot = (history: Pick<ReadHistory, 'roots' | 'nodes'>, hex: string) => {
     const root = history.roots.get(hex)
     if (!root) return []
     const out: string[] = []
+    const seen = new Set<string>()
     const node = (hash: string) => {
+        if (seen.has(hash)) return
+        seen.add(hash)
         const json = history.nodes.get(hash)
         if (!json) return
         out.push(hash)
@@ -53,10 +45,14 @@ export const stackOrder = (history: Pick<ReadHistory, 'undoStack'>) => {
     const { base, slots, index } = history.undoStack
     const at = index - base
     const order: string[] = []
+    const seen = new Set<string>()
     for (let step = 0; step < slots.length; step++)
         for (const i of step ? [at - step, at + step] : [at]) {
             const slot = slots[i]
-            if (slot && !order.includes(slot.snapshot)) order.push(slot.snapshot)
+            if (slot && !seen.has(slot.snapshot)) {
+                seen.add(slot.snapshot)
+                order.push(slot.snapshot)
+            }
         }
     return order
 }
@@ -91,8 +87,11 @@ export const planImport = (
         chunks.push(hash)
     }
     // A chunk no root reaches isn't imported (§1.6.11.5).
-    for (const root of [...stackOrder(history), ...history.roots.keys()])
-        for (const hash of chunksOfRoot(history, root)) take(hash)
+    for (const hash of distinctRootChunks(history, [
+        ...stackOrder(history),
+        ...history.roots.keys(),
+    ]))
+        take(hash)
     let batch: string[] = []
     let bytes = 0
     for (const hash of chunks) {
