@@ -9,6 +9,7 @@ import { putChunk } from './putChunk'
 import { nodeRow, rootRow, type NodesRow } from './records/rows'
 import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
+import { storeMarks, type IdentityUnit } from './save/commit'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
 import {
@@ -70,6 +71,9 @@ export type BatchEntry = {
     /** Index into the batch's snapshots, or a stored root: an undo or redo onto a slot not loaded. */
     snapshot: number | Uint8Array
     dirty: boolean
+    /** A `save` entry's revision and device (§1.6.11.2). */
+    revisionId?: string
+    device?: { id: string; label: string }
 }
 
 /** A stack block a batch rewrites (§1.6.4 #6): each slot a snapshot of the batch or a stored root. */
@@ -137,6 +141,11 @@ export type FlushBatch = {
     summary?: ChainSummary
     /** The stack after the last entry; absent when the page couldn't follow its entries. */
     stack?: BatchStack
+    /**
+     * A Save's identity unit (§1.3.2), committed with its marks after the entries, the `save`
+     * entry among them or stored before (`storeMarks`); left in memory when a mark can't be stored.
+     */
+    identity?: IdentityUnit
     durability: 'relaxed' | 'strict'
 }
 
@@ -185,6 +194,8 @@ export type FlushResult =
           stackRemoved?: boolean
           /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
           chain: Record<string, unknown>
+          /** Whether the batch's identity unit was stored. */
+          identity?: boolean
           /**
            * Media refused by the put or that didn't read back right: the entries are stored, the
            * media is not (§1.6.8.4).
@@ -571,6 +582,8 @@ export const writeFlush = async (
             noteCount: root.noteCount,
             dirty: entry.dirty,
             kept: true,
+            ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+            ...(entry.device ? { device: { id: entry.device.id, label: entry.device.label } } : {}),
         }
         await tx.put('entries', row)
         entryRows.push(row)
@@ -666,6 +679,23 @@ export const writeFlush = async (
     ))
         if (value === null) Reflect.deleteProperty(chainValue, key)
         else chainValue[key] = value
+    // A Save's identity unit, after its entry and with its marks (§1.3.2): the binding replaces a
+    // taken-over one's `replaced`.
+    let identity: boolean | undefined
+    if (batch.identity) {
+        identity = await storeMarks(tx, batch.identity.marks)
+        if (identity) {
+            // The cut's session start as stored, which the page may not know.
+            const file = { ...batch.identity.file }
+            if (isRow(file.entry) && file.entry.sessionId === batch.session.id)
+                file.entry = { ...file.entry, startedAt }
+            const own = await splitHandles(tx, chainId, { file })
+            chainValue.docId = batch.identity.docId
+            chainValue.revision = batch.identity.revision
+            chainValue.file = own.file
+            delete chainValue.replaced
+        }
+    }
     await tx.put('chains', chainValue)
     count('chains', chainValue, undefined, !chain)
 
@@ -683,6 +713,7 @@ export const writeFlush = async (
         stackWritten: stack !== undefined,
         ...(stackRemoved ? { stackRemoved } : {}),
         chain: chainValue,
+        ...(identity === undefined ? {} : { identity }),
         stats,
         committed: {
             session: { id: batch.session.id, chainId },

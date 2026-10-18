@@ -18,23 +18,33 @@ export type IdentityUnit = {
 }
 
 /**
- * Stores the identity unit after its marks. Run it in the transaction that stores the write's
- * pending rows, after them: a marked row that isn't stored while its session is commits nothing
- * (false), and the binding stays in memory with its marks until it can be stored with them. A row
- * whose session was deleted needs no mark.
+ * Stores a write's marks: each stored row `kept: false`. False, writing nothing, while a marked
+ * row isn't stored but its session is; a row whose session was deleted needs no mark. The flush
+ * that commits a Save's identity unit runs it first (the seam `commitIdentity` shares).
  */
-export const commitIdentity = async (tx: KvTx, chainId: string, unit: IdentityUnit) => {
+export const storeMarks = async (tx: KvTx, marks: readonly RowKey[]) => {
     const marked: Record<string, unknown>[] = []
-    for (const { sessionId, seq } of unit.marks) {
+    for (const { sessionId, seq } of marks) {
         const stored = (await tx.get('entries', [sessionId, seq])) as
             Record<string, unknown> | undefined
         if (stored) {
             if (stored.kept !== false) marked.push(stored)
         } else if (await tx.get('sessions', sessionId)) return false
     }
+    for (const row of marked) await tx.put('entries', { ...row, kept: false })
+    return true
+}
+
+/**
+ * Stores the identity unit after its marks. Run it in the transaction that stores the write's
+ * pending rows, after them: a marked row that isn't stored while its session is commits nothing
+ * (false), and the binding stays in memory with its marks until it can be stored with them. A row
+ * whose session was deleted needs no mark.
+ */
+export const commitIdentity = async (tx: KvTx, chainId: string, unit: IdentityUnit) => {
     const chain = (await tx.get('chains', chainId)) as Record<string, unknown> | undefined
     if (!chain) return false
-    for (const row of marked) await tx.put('entries', { ...row, kept: false })
+    if (!(await storeMarks(tx, unit.marks))) return false
     await tx.put('chains', {
         ...chain,
         docId: unit.docId,

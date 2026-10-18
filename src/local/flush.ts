@@ -21,6 +21,7 @@ import type {
     WriteStats,
 } from './flushWrite'
 import { toHex } from './hash'
+import type { IdentityUnit } from './save/commit'
 import {
     isEditingKind,
     SessionStack,
@@ -54,6 +55,22 @@ export type PendingEntry = {
     /** That slot's stored root, when there's no state. */
     readonly snapshot?: Uint8Array
     readonly dirty: boolean
+    /** A `save` entry's revision and device (§1.3.3). */
+    readonly revisionId?: string
+    readonly device?: { readonly id: string; readonly label: string }
+}
+
+/** A Save's identity unit waiting for its flush: committed with its `save` entry (§1.3.2). */
+export type PendingIdentity = IdentityUnit & {
+    /** The `save` entry's `seq`: the unit goes with the batch that stores it, or a later one. */
+    readonly seq: number
+}
+
+/** What a Save reserved (§1.6.11.6): its `save` entry's `seq` in the current session. */
+export type SaveReservation = {
+    readonly session: FlushSession
+    readonly seq: number
+    readonly wall: number
 }
 
 export type FlushSession = {
@@ -100,6 +117,15 @@ export type FlushSession = {
     readonly done?: () => void
     /** An unstored continuation's hold on its parent (§1.3.6): released at its first write. */
     parentDone?: () => void
+    /**
+     * A Save's reserved `seq` (§1.6.11.6): entries after it wait until the Save appends its
+     * `save` entry or lets the `seq` go, so the entry is never behind a stored one.
+     */
+    reserved?: number
+    /** `seq`s Saves reserved and kept with no entry (a file that may hold them): never entries. */
+    gaps?: Set<number>
+    /** A Save's identity unit not stored yet (storage paused or full: the binding in memory). */
+    identity?: PendingIdentity
 }
 
 export type SessionStart = {
@@ -208,6 +234,10 @@ export type FlushDeps = {
     forkName?: (from: FlushSession) => string | undefined
     /** The label of a `continue` entry the flusher adds itself. */
     continueLabel?: () => string
+    /** A Save's identity unit was stored in a database. */
+    onIdentity?: (session: FlushSession, identity: PendingIdentity) => void
+    /** A `seq` a Save reserved in this session before a reload: resumed sessions go past it. */
+    reservedSeq?: (sessionId: string) => number | undefined
     /** Writes chain fields of a stored session, checking it's still the chain's head. */
     writeChain?: (request: {
         chainId: string
@@ -279,6 +309,14 @@ export const heldMediaOf = (state: State): BatchMedia[] => {
           ]
         : []
 }
+
+/** The unit as a batch carries it. */
+const unitOf = ({ docId, revision, file, marks }: PendingIdentity): IdentityUnit => ({
+    docId,
+    revision,
+    file,
+    marks,
+})
 
 /** Recent Sessions' summary of a head (§1.6.11.2). */
 export const summaryOf = (state: State, noteCount: number): ChainSummary => {
@@ -476,7 +514,7 @@ export class Flusher {
             ...(start.sourceName === undefined ? {} : { sourceName: start.sourceName }),
             ...(start.parent ? { parent: { ...start.parent } } : {}),
             stored: true,
-            nextSeq: start.lastSeq + 1,
+            nextSeq: Math.max(start.lastSeq, this.deps.reservedSeq?.(start.id) ?? 0) + 1,
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
@@ -659,7 +697,55 @@ export class Flusher {
 
     /** The newest entry's `seq` in memory; 0 before any. */
     newestSeq(session: FlushSession) {
-        return session.nextSeq - 1
+        // A reserved `seq` with no entry yet isn't one, nor is a kept gap.
+        let seq = session.nextSeq - 1
+        while (seq > 0 && (seq === session.reserved || session.gaps?.has(seq))) seq--
+        return seq
+    }
+
+    /**
+     * Reserves the current session's next `seq` for a Save's `save` entry (§1.6.11.6): edits made
+     * while the file is built get later ones, and wait for it. One at a time.
+     */
+    reserveSave(): SaveReservation | undefined {
+        const session = this.current
+        if (!session || session.reserved !== undefined) return
+        const seq = session.nextSeq++
+        session.reserved = seq
+        return { session, seq, wall: this.now() }
+    }
+
+    /**
+     * Ends a reservation: with `entry`, the Save's `save` entry at its `seq`, and `identity`
+     * committed with it; without, the `seq` is let go (a trailing one is used again unless `keep`:
+     * a file that may hold it, for our own completed Save). Resolves once a flush tried it.
+     * Nothing is added to a session that is no longer current (a fork).
+     */
+    endSave(
+        reservation: SaveReservation,
+        entry?: Omit<PendingEntry, 'seq' | 'kind' | 'dirty'>,
+        identity?: IdentityUnit,
+        keep = false,
+    ): Promise<void> {
+        const { session, seq } = reservation
+        if (session.reserved === seq) session.reserved = undefined
+        if (entry && this.current === session && this.sessions.includes(session)) {
+            const at = session.pending.findIndex((each) => each.seq > seq)
+            const added: PendingEntry = { ...entry, seq, kind: 'save', dirty: false }
+            if (at === -1) session.pending.push(added)
+            else session.pending.splice(at, 0, added)
+            if (identity) session.identity = { ...identity, seq }
+        } else if (keep) (session.gaps ??= new Set()).add(seq)
+        else if (session.nextSeq - 1 === seq) session.nextSeq--
+        return this.flush({ strict: true })
+    }
+
+    /** The entries a flush can take: those before a reserved `seq`. */
+    private takeable(session: FlushSession) {
+        const { reserved } = session
+        if (reserved === undefined) return session.pending
+        const at = session.pending.findIndex((entry) => entry.seq > reserved)
+        return at === -1 ? session.pending : session.pending.slice(0, at)
     }
 
     /**
@@ -689,11 +775,12 @@ export class Flusher {
 
     /** Whether a session has anything to store: a new session only from its first own entry. */
     private flushable(session: FlushSession) {
-        if (!session.pending.length) return false
+        const pending = this.takeable(session)
+        if (!pending.length) return false
         if (session.stored || session.atOnce || this.storesAtOnce(session)) return true
         // A fork's entries are all its own edits; a continuation's first is its `continue`.
         if (session.parent && !session.continuation) return true
-        return session.pending.length > 1
+        return pending.length > 1
     }
 
     /** About 1 s after the last change, then through idle slices. */
@@ -860,7 +947,8 @@ export class Flusher {
         for (const session of [...this.sessions]) {
             if (session === this.current) continue
             // A blank start never edited stores nothing (§1.3.6).
-            if (!this.flushable(session)) session.pending.length = 0
+            if (!this.flushable(session) && session.reserved === undefined)
+                session.pending.length = 0
             // Held in memory only: kept, so a worker restart can send it again, while a database
             // may still take it (Try Again).
             if (this.noDatabase) session.memoryOnly.length = 0
@@ -917,7 +1005,7 @@ export class Flusher {
         const slices: number[] = []
         // Each entry's plan, or undefined for one landing on a stored slot.
         const planned: (SnapshotPlan | undefined)[] = []
-        const take = session.pending.slice(0, BATCH_ENTRIES)
+        const take = this.takeable(session).slice(0, BATCH_ENTRIES)
         for (const entry of take) {
             if (!entry.state) {
                 planned.push(undefined)
@@ -1017,8 +1105,14 @@ export class Flusher {
         const last = entries.at(-1)!
         const lastPlan = planned.at(-1)
         const stack = this.planStack(session, entries, snapshotOf, labels)
+        // A Save's identity unit rides with its `save` entry's batch, or a later one.
+        const identity =
+            session.identity && last.seq >= session.identity.seq ? session.identity : undefined
         const isStrict =
-            options.strict || media.length > 0 || (!session.stored && this.storesAtOnce(session))
+            options.strict ||
+            media.length > 0 ||
+            !!identity ||
+            (!session.stored && this.storesAtOnce(session))
         const view = this.deps.view?.()
         const unconfirmed = media.map((item) => item.hash).filter((h) => this.unconfirmed.has(h))
         for (const item of media) this.unconfirmed.add(item.hash)
@@ -1055,6 +1149,8 @@ export class Flusher {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
                 dirty: entry.dirty,
+                ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+                ...(entry.device ? { device: entry.device } : {}),
             })),
             media,
             held,
@@ -1064,6 +1160,7 @@ export class Flusher {
                 ? { summary: summaryOf(last.state, lastPlan.noteCount) }
                 : {}),
             ...(stack ? { stack: stack.wire } : {}),
+            ...(identity ? { identity: unitOf(identity) } : {}),
             durability: isStrict ? 'strict' : 'relaxed',
         }
         const mainMs = slices.reduce((sum, ms) => sum + ms, 0) + performance.now() - start
@@ -1103,6 +1200,11 @@ export class Flusher {
                     }
                 session.stored = true
                 session.chain = result.chain
+                if (identity && result.identity && !result.memory) {
+                    if (session.identity === identity) session.identity = undefined
+                    session.docId = identity.docId
+                    this.deps.onIdentity?.(session, identity)
+                }
                 // Its first row is written: an unstored continuation's hold on its parent goes.
                 session.parentDone?.()
                 session.parentDone = undefined
