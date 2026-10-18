@@ -94,7 +94,7 @@ export const PROJECT_KEYS = [
 
 /** Why part of `project.json` was not read: each makes the open partial. */
 export type ProjectIssue = {
-    reason: 'unknown-key' | 'schema' | 'pointer' | 'limit'
+    reason: 'unknown-key' | 'schema' | 'pointer' | 'limit' | 'damaged'
     path: string
 }
 
@@ -342,7 +342,7 @@ export const readProject = (json: Record<string, unknown>): ProjectRead => {
     // Reserved: any key in `parts` is unknown, and `parts` is never kept.
     const { parts } = json
     if (parts !== undefined) {
-        if (!isObject(parts)) issues.push({ reason: 'schema', path: 'parts' })
+        if (!isObject(parts)) issues.push({ reason: 'damaged', path: 'parts' })
         else
             for (const key of Object.keys(parts))
                 issues.push({ reason: 'unknown-key', path: `parts.${key}` })

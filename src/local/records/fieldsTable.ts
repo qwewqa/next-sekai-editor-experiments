@@ -34,7 +34,11 @@ const stringify = (table: Record<string, unknown>) => {
     return `{\n${items.join(',\n')}\n}\n`
 }
 
-/** The generated files, by path from the repository root, as `npm run format:gen` writes them. */
-export const formatFiles = (): Record<string, string> => ({
-    'src/local/records/fields-v1.json': stringify(fieldsTable()),
-})
+/**
+ * The generated files, by path from the repository root, as `npm run format:gen` writes them: the
+ * table, and the independent checker's copy of it (`tools/nxsp_check.py` shares no code with the app).
+ */
+export const formatFiles = (): Record<string, string> => {
+    const table = stringify(fieldsTable())
+    return { 'src/local/records/fields-v1.json': table, 'tools/fields-v1.json': table }
+}

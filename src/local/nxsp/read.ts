@@ -5,7 +5,7 @@ import { ZipReader } from '../../zip/reader'
 import { CHUNK_CAP, inflateStrict } from '../chunkVerify'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from '../hash'
 import type { SnapshotRecords } from '../records/encode'
-import { checkHeader, SchemaError } from '../records/schema'
+import { checkHeader } from '../records/schema'
 import { decodeSnapshot } from '../records/snapshot'
 import { isObject, JSON_DEPTH_CAP, JsonError, parseJsonBytes } from './json'
 import {
@@ -455,27 +455,13 @@ const readHistory = async (
             })
             return { history: { ...history, chunks, headRecords } }
         } catch (error) {
-            if (
-                error instanceof SchemaError ||
-                error instanceof JsonError ||
-                error instanceof Error
-            )
-                return unreadable(`roots.${history.head}`, describe(error))
+            // A chunk that fails its hash, its JSON or the schema: the head can't be read.
+            if (error instanceof Error) return unreadable(`roots.${history.head}`, describe(error))
             throw error
         }
     } catch (error) {
-        if (error instanceof ReadFailure)
-            return {
-                items: [
-                    {
-                        ...error.item,
-                        reason:
-                            error.item.reason === 'damaged'
-                                ? 'history-unreadable'
-                                : error.item.reason,
-                    },
-                ],
-            }
+        // A part missing is unreadable history; one that fails as a ZIP entry or a cap is damage.
+        if (error instanceof ReadFailure) return { items: [error.item] }
         throw error
     }
 }
