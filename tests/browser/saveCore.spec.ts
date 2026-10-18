@@ -5,10 +5,12 @@ import { waitForStartup } from './editorFixture'
 import {
     chainOf,
     edit,
+    flushed,
     notice,
     pickerCalls,
     pressSave,
     projectOf,
+    queuePicks,
     readFile,
     removeFile,
     rows,
@@ -174,12 +176,21 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
 }) => {
     await start(page)
     await savedOnce(page)
+    // An Export target, which Save As… from here keeps.
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+    await flushed(page)
     const docId = (await chainOf(page)).docId
     await removeFile(page, 'coconut.nxsp')
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
     await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    // No hint to pick the moved file: a save picker would empty it.
+    await expect(dialog).not.toContainText('moved')
     await page.waitForTimeout(350)
     await dialog.getByRole('button', { name: 'Save As…' }).click()
     const saveAs = saveDialog(page, 'Save As')
@@ -189,6 +200,8 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
     const project = await projectOf(page, 'coconut (2).nxsp')
     expect(project.id).toBe(docId)
     expect((await chainOf(page)).docId).toBe(docId)
+    await flushed(page)
+    expect((await chainOf(page)).exportTarget).toMatchObject({ name: 'LevelData' })
 })
 
 test('Save As gives a new docId and a revision with no parent', async ({ page }) => {
@@ -249,9 +262,19 @@ test('a reload after close() and before the binding: the next Save records it an
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
 
+    // Unchanged: the earlier Save is recorded, and nothing is written.
+    await pressSave(page)
+    await expect(
+        notice(page).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
+    ).toBeVisible()
+    expect(((await projectOf(page, 'coconut.nxsp')).revision as Record<string, unknown>).id).toBe(
+        (written.revision as Record<string, unknown>).id,
+    )
+    // The binding keeps its handle: the next Save writes the file in place.
     await edit(page, 3)
     await pressSave(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Download started' })).toHaveCount(0)
     expect(await choice(page).count()).toBe(0)
     const revision = (await projectOf(page, 'coconut.nxsp')).revision as Record<string, unknown>
     const writtenId = (written.revision as Record<string, unknown>).id
@@ -260,4 +283,53 @@ test('a reload after close() and before the binding: the next Save records it an
     const saves = entries!.map((row) => row.value).filter((row) => row.kind === 'save')
     expect(saves.map((row) => row.revisionId)).toContain(writtenId)
     expect(saves).toHaveLength(3)
+})
+
+test('a write that never landed leaves no marker, and a load drops markers of chains that are gone', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    const { chainId } = await chainOf(page)
+    const marker = `sonolus-next-sekai-editor.saving.${String(chainId)}`
+    // Changed just before close(): the write is aborted, so no marker of it stays.
+    await edit(page, 2)
+    await page.evaluate(() => localStorage.setItem('nse.test.savePause', 'beforeClose'))
+    await pressSave(page)
+    await expect
+        .poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? []))
+        .toContain('beforeClose')
+    expect(await page.evaluate((key) => localStorage.getItem(key), marker)).not.toBeNull()
+    await writeFile(page, 'coconut.nxsp', [1, 2, 3])
+    await page.evaluate(() => {
+        localStorage.removeItem('nse.test.savePause')
+        window.nseSaveTest?.release()
+    })
+    await expect(choice(page)).toContainText('"coconut.nxsp" Changed')
+    expect(await page.evaluate((key) => localStorage.getItem(key), marker)).toBeNull()
+
+    // A marker whose chain storage no longer holds goes at a later load.
+    const stale = 'sonolus-next-sekai-editor.saving.gone-chain'
+    await page.evaluate((key) => localStorage.setItem(key, '{}'), stale)
+    await page.reload()
+    await waitForStartup(page)
+    await expect
+        .poll(() => page.evaluate((key) => localStorage.getItem(key), stale), { timeout: 10_000 })
+        .toBeNull()
+})
+
+test('after a reload, the bound file’s handle is read on the first edit, ahead of a Save', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    await page.reload()
+    await waitForStartup(page)
+    const reads = () =>
+        page.evaluate(
+            () => window.nseStorageTest!.worker.call('testHandleReads') as Promise<number>,
+        )
+    expect(await reads()).toBe(0)
+    await edit(page, 2)
+    await expect.poll(reads).toBeGreaterThan(0)
 })
