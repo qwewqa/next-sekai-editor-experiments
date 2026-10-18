@@ -390,11 +390,12 @@ async function checkPages(directory, files, manifest) {
         throw new Error(`index.html does not match the site: ${manifest.site}`)
 }
 
-// The apps' bridge must not reach the web build.
+// The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
 async function checkBundles(directory, files) {
     for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
-        if ((await regularFile(join(directory, file))).includes('__TAURI_INTERNALS__'))
-            throw new Error(`Release contains __TAURI_INTERNALS__: ${file}`)
+        const bytes = await regularFile(join(directory, file))
+        for (const marker of ['__TAURI_INTERNALS__', 'seedSample'])
+            if (bytes.includes(marker)) throw new Error(`Release contains ${marker}: ${file}`)
     }
 }
 

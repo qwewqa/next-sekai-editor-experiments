@@ -17,6 +17,13 @@ import { startsBlankForTests } from './startup/testHook'
 // After App: settings' import cycle must be entered from App's side.
 import './theme'
 
+// Dev builds only: `?seedSample=<name>` seeds a sample before anything opens the database, then
+// reloads (src/local/seed.ts).
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('seedSample')) {
+    const { seedSampleFromUrl } = await import('./local/seed')
+    if (await seedSampleFromUrl()) await new Promise<never>(() => undefined)
+}
+
 installSelectLists()
 
 const root = document.querySelector<HTMLDivElement>('#app')
