@@ -322,7 +322,7 @@ const stripStyle = computed(() => ({
 
 /* Steppers take input across the track's full height and up to their neighbours. */
 .transport-track .transport-button {
-    @apply relative;
+    @apply relative h-8;
 }
 
 .transport-track .transport-button::before {

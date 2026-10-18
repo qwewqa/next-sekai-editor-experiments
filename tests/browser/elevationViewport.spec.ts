@@ -528,15 +528,21 @@ for (const coarse of [false, true])
             const next = await box('.elevation-beat > button:last-child')
             const lock = await box('.elevation-square')
             expect([next.width, next.height, lock.width, lock.height]).toEqual([32, 32, 32, 32])
+            // The narrow header clips the top and extends Next Beat into its 4px row gap.
             const hitReach = await page.evaluate(({ x, y, width, height }) => {
                 const button = document.querySelector('.elevation-beat > button:last-child')!
-                return [-3, -1, height + 1, height + 3].map(
-                    (dy) =>
-                        document.elementFromPoint(x + width / 2, y + dy)?.closest('button') ===
-                        button,
-                )
+                const target = getComputedStyle(button, '::before')
+                return {
+                    inset: [target.top, target.bottom],
+                    below: [1, 3, 5].map(
+                        (dy) =>
+                            document
+                                .elementFromPoint(x + width / 2, y + height + dy)
+                                ?.closest('button') === button,
+                    ),
+                }
             }, next)
-            expect(hitReach).toEqual([false, true, true, false])
+            expect(hitReach).toEqual({ inset: ['-2px', '-4px'], below: [true, true, false] })
             // 0.25rem apart, as in wider headers; Next Beat and 1:1 share the column.
             expect(lock.x - (snap.x + snap.width)).toBeCloseTo(4, 1)
             expect(next.x - (beat.x + beat.width)).toBeCloseTo(4, 1)

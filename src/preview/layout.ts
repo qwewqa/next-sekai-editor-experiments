@@ -25,6 +25,7 @@ export type PreviewCanvas = {
 /** Sizes of the single-row playback strip, which never wraps. */
 export const previewStripMetrics = () => {
     const button = 36
+    // Track controls are 32px high; these are their minimum widths.
     const step = 32
     const chevron = 36
     const sizeButton = 48

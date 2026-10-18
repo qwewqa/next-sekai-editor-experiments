@@ -218,6 +218,8 @@ for (const { width, height, side, timeInStrip, compact } of [
             const play = box(document.querySelector('.transport-play')!)
             const clock = document.querySelector('.transport-corner-time')
             const toggle = box(document.querySelector('.preview-settings-toggle')!)
+            const track = box(document.querySelector('.transport-track')!)
+            const strip = box(document.querySelector('.preview-transport')!)
             return {
                 bar: box(document.querySelector('.preview-transport')!).height,
                 smallest: Math.min(...buttons.flatMap(({ width, height }) => [width, height])),
@@ -228,6 +230,11 @@ for (const { width, height, side, timeInStrip, compact } of [
                     ? box(clock).top + box(clock).height / 2 - (toggle.top + toggle.height / 2)
                     : undefined,
                 toggle: toggle.width,
+                trackHeight: track.height,
+                trackButtonHeights: [...document.querySelectorAll('.transport-track button')].map(
+                    (button) => box(button).height,
+                ),
+                trackInset: [track.top - strip.top, strip.bottom - track.bottom],
                 // Steppers take touches over the track's full height and the gaps between them.
                 stepperHits: [...document.querySelectorAll('.transport-track button')].every(
                     (button, index, buttons) => {
@@ -257,6 +264,11 @@ for (const { width, height, side, timeInStrip, compact } of [
         expect(geometry.rows).toBe(1)
         expect(geometry.bar).toBe(44)
         expect(geometry.toggle).toBe(36)
+        expect(geometry.trackHeight).toBe(36)
+        expect(geometry.trackButtonHeights).toEqual(
+            compact ? [32, 32, 32] : [32, 32, 32, 32, 32, 32],
+        )
+        expect(geometry.trackInset).toEqual([4, 4])
         expect(geometry.stepperHits).toBe(true)
         await expect(page.getByRole('button', { name: /^Step Size: 10 ms$/i })).toBeVisible({
             visible: compact,
