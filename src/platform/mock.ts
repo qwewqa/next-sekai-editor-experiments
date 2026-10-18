@@ -204,15 +204,28 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
     const diskOf = async (
         name: string,
         kind: SaveKind = 'nsld',
+        file = fileOf(name),
     ): Promise<DiskState | undefined> => {
-        const file = fileOf(name)
         if (!file) return
         return kind === 'nxsp' ? nxspDiskState(file, file.lastModified) : levelDataDiskState(file)
     }
 
     // The precondition, as the web checks it: content, not time.
-    const check = async (name: string, expected: DiskState | 'absent', kind: SaveKind) => {
-        const disk = await diskOf(name, kind)
+    /** The precondition over `file`, the snapshot the write then reads (as the web pins it). */
+    const check = async (
+        name: string,
+        expected: DiskState | 'absent',
+        kind: SaveKind,
+        file = fileOf(name),
+    ) => {
+        let disk: DiskState | undefined
+        try {
+            disk = await diskOf(name, kind, file)
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'NotReadableError')
+                throw new FileError('conflict', `${name} changed on disk`, await diskOf(name, kind))
+            throw error
+        }
         if (expected === 'absent') {
             if (disk) throw new FileError('conflict', `${name} exists`, disk)
         } else if (!disk) {
@@ -246,7 +259,8 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             const { expected } = req
             // Source integrity: the File taken at the check is the only source of the old bytes.
             const file = fileOf(name)
-            const pinned = expected === undefined ? undefined : await check(name, expected, kind)
+            const pinned =
+                expected === undefined ? undefined : await check(name, expected, kind, file)
             signal?.throwIfAborted()
             const sources: PinnedSource[] =
                 pinned && file
@@ -383,7 +397,11 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
     return mock
 }
 
-/** A Blob whose reads fail with `NotReadableError` once `current` turns false. */
+/**
+ * A Blob whose reads fail with `NotReadableError` once `current` turns false. A Blob composed from
+ * its slices (an executed plan) still reads after a change, where Chromium's fails at `write()`;
+ * the check just before `close()` catches that change in both.
+ */
 class PinnedBlob extends Blob {
     constructor(
         parts: BlobPart[],
