@@ -314,14 +314,12 @@ test.describe('chords', () => {
         expect(await lastDefault(page)).toBe(true)
     })
 
-    test('AltGr and named keys with Ctrl keep running their bindings, and Alt skips plain letters', async ({
-        page,
-    }) => {
+    test('Alt, AltGr and named keys with Ctrl keep running their bindings', async ({ page }) => {
         await logDefaults(page)
         await setTool(page, 'select')
         await page.keyboard.press('Alt+a')
-        // Alt+letter is not the plain letter; the browser keeps its action.
-        expect(await toolName(page)).toBe('select')
+        expect(await toolName(page)).toBe('note')
+        // Alt keeps the browser's action.
         expect(await lastDefault(page)).toBe(false)
 
         // AltGr arrives as Ctrl+Alt; [ zooms out horizontally.
