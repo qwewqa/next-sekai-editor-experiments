@@ -117,7 +117,5 @@ export const openChipDialog = async () => {
             if (choice === 'saveAs') fileActions.saveAs?.()
             return
         }
-        case 'notStored':
-            return
     }
 }
