@@ -1,6 +1,7 @@
 import type { FlushSession } from '../../../src/local/flush'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import type { MemoryStorage } from '../../../src/local/journal/store'
+import type { JournalWriterDeps } from '../../../src/local/journal/writer'
 import { TabClient } from '../../../src/local/sessions'
 import type { LoadEvent } from '../../../src/local/startup/events'
 import {
@@ -64,6 +65,8 @@ export type LoadOptions = {
     /** Runs between the blank start and the open: an edit made meanwhile, say. */
     meanwhile?: (page: JournalPage) => void
     appVersion?: string
+    /** The page's journal writer's options (D14's no-durability commits, say). */
+    writer?: Partial<JournalWriterDeps>
 }
 
 export type Load = Awaited<ReturnType<typeof load>>
@@ -77,7 +80,13 @@ export const load = async (
 ) => {
     const tab = options.tab ?? new Map<string, string>()
     useTab(tab)
-    const page = await openJournalPage(world, name, storage, {}, options.core ?? {})
+    const page = await openJournalPage(
+        world,
+        name,
+        storage,
+        options.writer ?? {},
+        options.core ?? {},
+    )
     const claim: Claim = await page.tab.run(() => claimTab(page.tab.locks))
     const context = { core: page.core, test: true, emit: () => undefined }
     const journal = journalHandlers(context, page.tab.waiter)

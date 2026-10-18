@@ -11,7 +11,7 @@ import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { holdSessionLock } from '../../../src/local/sessions'
 import { claimTab } from '../../../src/local/startup/open'
 import { journalsStep, type RecoveryContext } from '../../../src/local/startup/steps'
-import { MARKER_WAIT_MS } from '../../../src/local/startup/tab'
+import { claimSessionLock, MARKER_WAIT_MS } from '../../../src/local/startup/tab'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
@@ -636,4 +636,120 @@ test('without Web Locks, a copy of a hidden tab never takes its key: both go on 
     } finally {
         if (navigator) Object.defineProperty(globalThis, 'navigator', navigator)
     }
+})
+
+test('the writer writes again a key removed behind it, even with nothing new to write', async () => {
+    const world = createWorld({ seed: 19 })
+    const storage = new MemoryStorage()
+    const page = await openJournalPage(world, 'page', storage, {}, { flags: { noStorage: true } })
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a, 'new')
+    append(page, 'edit', 'Edit', widen(a))
+    assert.equal(page.writer.write(), true)
+    const key = `nse.journal.${session.id}`
+    const text = storage.getItem(key)
+    // Another page removes it (a copy's Discard, a stale retire): not covered any more.
+    storage.removeItem(key)
+    assert.equal(page.writer.verified(session.id, page.flusher.newestSeq(session)), false)
+    assert.equal(page.writer.write(), true)
+    assert.equal(storage.getItem(key), text)
+})
+
+test('a failed own journal a flush covered since goes, and the reload takes up the newer stored session', async () => {
+    const world = createWorld({ seed: 20 })
+    const storage = new MemoryStorage()
+    const tab: TabStorage = new Map()
+    const page = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a)
+    recordTab(tab, { sessionId: session.id, start: 'stored' })
+    append(page, 'edit', 'E0', widen(a))
+    await page.flusher.flush({ strict: true })
+    // A hide's journal, then edits relaxed flushes stored past it.
+    append(page, 'edit', 'E1', widen(a, 1))
+    assert.equal(page.writer.write(), true)
+    append(page, 'edit', 'E2', widen(a, 2))
+    append(page, 'edit', 'E3', widen(a, 3))
+    await page.flusher.flush()
+    const stored = toHex((await readOpen(page, session.id)).head)
+    page.tab.kill()
+    assert.ok(journalText(storage, session.id))
+
+    const reload = await failedReload(world, storage, tab)
+    assert.equal(reload.recovery.ownOutcome?.kind, 'failed')
+    assert.equal(openSession(reload).id, session.id)
+    assert.equal(rootOf(reload.page.live.state), stored)
+    assert.equal(journalText(storage, session.id), null)
+    assert.deepEqual(reload.recovery.keptForLocalData, [])
+    assert.equal(
+        reload.events.some(
+            (event) => event.kind === 'journalFailed' || event.kind === 'journalRecovered',
+        ),
+        false,
+    )
+})
+
+test('a still-failing second reload of an unstored continuation shows its journal’s state again', async () => {
+    const world = createWorld({ seed: 21 })
+    const storage = new MemoryStorage()
+    const { tab, session, root } = await journalledOnly(world, storage)
+    const reload = await failedReload(world, storage, tab)
+    const continued = openSession(reload)
+    assert.equal(reload.page.writer.write(), true)
+    assert.equal(journalText(storage, session.id), null)
+    reload.page.tab.kill()
+    const again = await failedReload(world, storage, tab)
+    assert.equal(again.recovery.ownOutcome?.kind, 'failed')
+    assert.equal(again.claim.kind === 'reload' && again.claim.record.sessionId, continued.id)
+    assert.equal(rootOf(again.page.live.state), root)
+    assert.equal(openSession(again).parent?.id, session.id)
+    assert.deepEqual(again.recovery.keptForLocalData, [])
+})
+
+test('a never-stored blank start whose own journal fails to apply reopens that work', async () => {
+    const world = createWorld({ seed: 22 })
+    const storage = new MemoryStorage()
+    const tab: TabStorage = new Map()
+    const page = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const blank = beginSession(page, a, 'new')
+    recordTab(tab, { sessionId: blank.id, start: 'blank' })
+    append(page, 'edit', 'Edit', widen(a, 4))
+    assert.equal(page.writer.write(), true)
+    const root = journalRoot(journalText(storage, blank.id) ?? '', blank.id)
+    page.tab.kill()
+    const reload = await failedReload(world, storage, tab)
+    assert.equal(reload.opened, true)
+    assert.equal(rootOf(reload.page.live.state), root)
+    assert.ok(reload.events.some((event) => event.kind === 'journalRecovered'))
+    // Its key goes once the new session holds the work.
+    assert.equal(reload.page.writer.write(), true)
+    assert.equal(journalText(storage, blank.id), null)
+})
+
+test('starting from a failed own journal keeps the session held until its key goes', async () => {
+    const world = createWorld({ seed: 23 })
+    const storage = new MemoryStorage()
+    const { tab, session } = await journalledOnly(world, storage)
+    // Where commits aren't durable on resolve (D14), no commit retires the key.
+    const reload = await quiet(() =>
+        load(world, 'reload', storage, {
+            tab,
+            worker: { applyJournal: () => Promise.reject(new Error('QuotaExceededError')) },
+            writer: { strictCommits: false },
+        }),
+    )
+    // The continuation's first write is in and moved the head; the key is still there.
+    await reload.page.flusher.flush({ strict: true })
+    assert.equal(rows(world, 'chains').get(session.chainId)?.head, openSession(reload).id)
+    assert.ok(journalText(storage, session.id))
+    const other = world.tab('other')
+    assert.equal(await other.run(() => claimSessionLock(other.locks, session.id)), undefined)
+    // Its own journal holds the work: the key goes, and so does the hold.
+    append(reload.page, 'edit', 'More', widen(stateOf(goldenChart()), 9))
+    assert.equal(reload.page.writer.write(), true)
+    assert.equal(journalText(storage, session.id), null)
+    const lock = await other.run(() => claimSessionLock(other.locks, session.id))
+    assert.ok(lock)
+    lock.release()
 })

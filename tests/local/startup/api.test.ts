@@ -29,6 +29,7 @@ import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { autoSaveText } from './autoSaveText'
+import { readOpen } from './harness'
 import { load, openSession } from './load'
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
@@ -243,4 +244,31 @@ test('Reopen of a session whose journal a newer build wrote opens nothing, and s
         why: 'later',
     })
     assert.equal(rootOf(loaded.page.live.state), shown)
+})
+
+test('Reopen over a failed journal a flush covered since takes up the stored session, and the key goes', async () => {
+    const world = createWorld({ seed: 8 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    const other = await openJournalPage(world, 'other', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(other, a, 'import')
+    await other.flusher.flush({ strict: true })
+    append(other, 'edit', 'Journalled', widen(a, 6))
+    assert.equal(other.writer.write(), true)
+    append(other, 'edit', 'Stored past it', widen(a, 7))
+    await other.flusher.flush()
+    const stored = toHex((await readOpen(other, session.id)).head)
+    other.tab.kill()
+    setSessionContext(loaded.deps, {
+        ...loaded.recovery,
+        worker: {
+            ...loaded.recovery.worker,
+            applyJournal: () => Promise.reject(new Error('QuotaExceededError')),
+        },
+    })
+    leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
+    assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), { opened: true })
+    assert.equal(rootOf(loaded.page.live.state), stored)
+    assert.equal(storage.getItem(`nse.journal.${session.id}`), null)
 })
