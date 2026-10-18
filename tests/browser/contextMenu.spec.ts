@@ -217,10 +217,10 @@ test('the menu stays in the viewport and supports keyboard navigation and dismis
     expect(rect!.x + rect!.width).toBeLessThanOrEqual(1600)
     expect(rect!.y + rect!.height).toBeLessThanOrEqual(1000)
     await page.keyboard.press('End')
-    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toBeFocused()
+    await expect(menu.getByRole('menuitem', { name: 'Find Edits Here', exact: true })).toBeFocused()
     // Arrows stop at the ends, as lists do.
     await page.keyboard.press('ArrowDown')
-    await expect(menu.getByRole('menuitem', { name: 'Edit Elevations', exact: true })).toBeFocused()
+    await expect(menu.getByRole('menuitem', { name: 'Find Edits Here', exact: true })).toBeFocused()
     await page.keyboard.press('Home')
     await page.keyboard.press('ArrowUp')
     await expect(menu.getByRole('menuitem').first()).toBeFocused()

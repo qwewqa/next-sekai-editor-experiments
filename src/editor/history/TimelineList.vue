@@ -26,7 +26,16 @@ import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
-import { buildRows, selectableRows, type Entry, type EntryRow, type Header, type Row } from './rows'
+import { changeLine, showChangeOf } from './changes'
+import {
+    buildRows,
+    previousOf,
+    selectableRows,
+    type Entry,
+    type EntryRow,
+    type Header,
+    type Row,
+} from './rows'
 import {
     backToNow,
     damagedEntries,
@@ -34,12 +43,15 @@ import {
     peekedInfo,
     requestPeek,
     requestRestore,
+    type PeekedInfo,
 } from './selection'
 import {
     canLoadMore,
     entries,
     followEntries,
     gap,
+    here,
+    listedEntries,
     jumpTo as jumpToEntry,
     jumpToOldest,
     loadingMore,
@@ -84,7 +96,7 @@ const tickClock = () => {
 tickClock()
 
 const built = computed(() =>
-    buildRows(entries.value, {
+    buildRows(listedEntries.value, {
         filter: historyFilter.value,
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
@@ -96,7 +108,7 @@ const built = computed(() =>
 // A timeline of only its first state says so, under Now.
 const isEmpty = computed(
     () =>
-        status.value !== 'loading' &&
+        (historyFilter.value === 'here' ? !here.scanning : status.value !== 'loading') &&
         gap.value === undefined &&
         !built.value.some(
             (row) =>
@@ -149,6 +161,13 @@ const SKELETON_ROWS = 4
 const MESSAGE = 96
 const FAILED = 132
 const tail = computed(() => {
+    // Edits Here: its scan's progress, then what it could not check.
+    if (historyFilter.value === 'here') {
+        if (isEmpty.value) return { kind: 'empty', height: MESSAGE }
+        if (here.scanning) return { kind: 'checking', height: rowHeight.value }
+        if (here.unreadable) return { kind: 'notChecked', height: rowHeight.value }
+        return { kind: 'none', height: 0 }
+    }
     if (status.value === 'failed') return { kind: 'failed', height: FAILED }
     if (status.value === 'loading')
         return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
@@ -240,7 +259,28 @@ watch([peekedKey, () => rows.value], () => {
     else if (!key) cursorId.value = 'now'
 })
 
-const infoOf = (entry: Entry) => ({ key: keyOf(entry), time: entry.time, label: entry.label })
+/** What a peek of an entry names, and what it is compared with: before `oldest`, its run's. */
+const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
+    const previous = previousOf(listedEntries.value, oldest)
+    return {
+        key: keyOf(entry),
+        time: entry.time,
+        label: entry.label,
+        ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
+        ...(previous
+            ? {
+                  previous: {
+                      key: keyOf(previous),
+                      ...(previous.snapshot ? { snapshot: previous.snapshot } : {}),
+                  },
+              }
+            : {}),
+    }
+}
+
+/** A row's peek: a closed ×N row stands for its run, so it is compared with the entry before it. */
+const rowInfo = (row: EntryRow) =>
+    infoOf(row.entry, row.child ? row.entry : (row.members.at(-1) ?? row.entry))
 
 const moveTo = (row: Row | undefined) => {
     if (!row) return
@@ -251,7 +291,7 @@ const moveTo = (row: Row | undefined) => {
     }
     cursorId.value = row.id
     if (row.type === 'now') backToNow()
-    else if (row.type === 'entry' && row.selectable) requestPeek(infoOf(row.entry))
+    else if (row.type === 'entry' && row.selectable) requestPeek(rowInfo(row))
     scrollToRow(row.id)
 }
 
@@ -323,7 +363,7 @@ const jumpTo = async (target: Target | 'now') => {
             cursorId.value = row.id
             scrollRowToTop(row.id)
         }
-        requestPeek(infoOf(entry))
+        requestPeek(row?.type === 'entry' ? rowInfo(row) : infoOf(entry))
     } catch {
         // The list stays as it was.
     } finally {
@@ -417,31 +457,88 @@ const restore = async (row: EntryRow) => {
     await requestRestore(keyOf(row.entry))
 }
 
-// --- Menu: Restore, by right click, Shift+F10 or the Menu key.
+// --- Menu: Show Change and Restore, by right click, long press, Shift+F10 or the Menu key.
 const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean }>()
-const openMenu = (row: EntryRow, anchor: HTMLElement) => {
+const openMenu = (row: EntryRow, anchor: HTMLElement, touch = false) => {
     if (!row.selectable || menu.value?.row.id === row.id) return
-    menu.value = { row, anchor, touch: false }
+    menu.value = { row, anchor, touch }
 }
 const closeMenu = (restoreFocus: boolean) => {
     if (!menu.value) return
     menu.value = undefined
     if (restoreFocus) list.value?.focus({ preventScroll: true })
 }
-const menuItems = computed(() => [{ key: 'restore', label: i18n.value.peek.restore }])
+const menuItems = computed(() => [
+    { key: 'showChange', label: commands.showChange.title() },
+    { key: 'restore', label: i18n.value.peek.restore },
+])
+// Show Change peeks the row first when it isn't, then brings its nearest change into view.
+const showRowChange = (row: EntryRow) => {
+    const info = rowInfo(row)
+    if (peekedInfo.value?.key !== info.key) moveTo(row)
+    showChangeOf(info.key)
+}
 const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
     closeMenu(keyboard)
-    if (current && key === 'restore') void restore(current.row)
+    if (!current) return
+    if (key === 'restore') void restore(current.row)
+    else if (key === 'showChange') showRowChange(current.row)
+}
+// iOS fires no contextmenu event for a long press: a touch held still opens the menu itself.
+const LONG_PRESS_MS = 500
+const LONG_PRESS_SLOP = 10
+let longPress: { pointerId: number; x: number; y: number; timer: number } | undefined
+let lastPointerType = ''
+// The click that ends a long press must not also pick the row.
+let suppressClick = false
+const cancelLongPress = () => {
+    if (longPress) clearTimeout(longPress.timer)
+    longPress = undefined
+}
+const onRowPointerdown = (event: PointerEvent, row: Row) => {
+    lastPointerType = event.pointerType
+    suppressClick = false
+    cancelLongPress()
+    if (row.type !== 'entry' || event.pointerType !== 'touch' || !event.isPrimary) return
+    if (!settings.touchLongPressContextMenu) return
+    const anchor = event.currentTarget as HTMLElement
+    longPress = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        timer: window.setTimeout(() => {
+            longPress = undefined
+            suppressClick = true
+            openMenu(row, anchor, true)
+        }, LONG_PRESS_MS),
+    }
+}
+const onRowPointermove = (event: PointerEvent) => {
+    if (longPress?.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX - longPress.x, event.clientY - longPress.y) > LONG_PRESS_SLOP)
+        cancelLongPress()
 }
 const onContextMenu = (event: MouseEvent, row: Row) => {
     event.preventDefault()
     if (row.type !== 'entry') return
-    openMenu(row, event.currentTarget as HTMLElement)
+    // Firefox for Android reports a plain MouseEvent: the last pointer tells touch apart.
+    const touch =
+        event instanceof PointerEvent ? event.pointerType === 'touch' : lastPointerType === 'touch'
+    if (touch) {
+        cancelLongPress()
+        if (!settings.touchLongPressContextMenu) return
+        suppressClick = true
+    }
+    openMenu(row, event.currentTarget as HTMLElement, touch)
 }
 
 // --- Pointer
 const onRowClick = (row: Row) => {
+    if (suppressClick) {
+        suppressClick = false
+        return
+    }
     if (row.type === 'now') moveTo(row)
     else if (row.type === 'entry' && row.selectable) moveTo(row)
     list.value?.focus({ preventScroll: true })
@@ -450,7 +547,7 @@ const onRowClick = (row: Row) => {
 // --- Keyboard
 const isApple = isApplePlatform()
 // The keys the editor would run with focus elsewhere: docks pass it only unclaimed chords.
-const passed: CommandName[] = ['history', 'play', 'copy']
+const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
@@ -523,7 +620,7 @@ const onKeydown = (event: KeyboardEvent) => {
         if (row?.type === 'entry' && element) openMenu(row, element)
         return
     }
-    // Keys the list passes on: History, Play and Copy run as they would from the editor.
+    // Keys the list passes on: History, Play, Copy and Show Change run as from the editor.
     const matched = matchBindings(
         Object.fromEntries(
             passed.map((name) => [name, settings.keyboardShortcuts[name]]),
@@ -543,12 +640,17 @@ const onScroll = () => {
     const element = list.value
     if (!element) return
     scrollTop.value = element.scrollTop
-    if (canLoadMore.value && element.scrollTop + element.clientHeight > geometry.value.total - 400)
+    if (
+        historyFilter.value !== 'here' &&
+        canLoadMore.value &&
+        element.scrollTop + element.clientHeight > geometry.value.total - 400
+    )
         void loadMore()
     if (gapInView()) void loadNewer()
 }
 // A short list loads on until it fills the pane.
 watch([() => geometry.value.total, viewport, canLoadMore], () => {
+    if (historyFilter.value === 'here') return
     if (canLoadMore.value && geometry.value.total < viewport.value + 400) void loadMore()
 })
 
@@ -570,6 +672,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     observer?.disconnect()
     clearTimeout(clockTimer)
+    cancelLongPress()
 })
 // A link asks for the list's focus, also from a list that mounts a moment later.
 watch(
@@ -640,14 +743,34 @@ const headerClass = (header: Header) =>
           ? 'font-bold text-fg/80'
           : 'font-medium text-fg/70'
 
-// --- Announcing the peek
-const announcement = computed(() =>
-    peekedInfo.value
-        ? interpolateRaw(
-              i18n.value.history.announceViewing,
-              formatDateTimeSeconds(peekedInfo.value.time),
-          )
-        : '',
+// --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
+const announcement = ref('')
+let announcedAt = 0
+watch(
+    peekedInfo,
+    (info) => {
+        announcedAt = Date.now()
+        announcement.value = info
+            ? interpolateRaw(i18n.value.history.announceViewing, formatDateTimeSeconds(info.time))
+            : ''
+    },
+    { immediate: true },
+)
+watch(changeLine, (line) => {
+    const info = peekedInfo.value
+    if (!line || !info) return
+    announcement.value =
+        Date.now() - announcedAt <= 300
+            ? interpolateRaw(
+                  i18n.value.history.announceViewingChange,
+                  formatDateTimeSeconds(info.time),
+                  line,
+              )
+            : line
+})
+
+const notCheckedText = computed(() =>
+    interpolateRaw(i18n.value.history.notChecked, String(here.unreadable)),
 )
 
 defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, topEntry })
@@ -778,6 +901,10 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                         :style="{ top: `${top}px`, height: `${rowHeight}px` }"
                         @click="onRowClick(row)"
                         @contextmenu="onContextMenu($event, row)"
+                        @pointerdown="onRowPointerdown($event, row)"
+                        @pointermove="onRowPointermove"
+                        @pointerup="cancelLongPress"
+                        @pointercancel="cancelLongPress"
                     >
                         <KindIcon :kind="row.entry.kind" />
                         <span class="min-w-0 flex-1 truncate">{{ labelOf(row) }}</span>
@@ -834,7 +961,33 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                     :style="{ top: `${geometry.total}px`, height: `${MESSAGE}px` }"
                     data-history-empty
                 >
-                    {{ historyFilter === 'saves' ? i18n.history.noSaves : i18n.history.empty }}
+                    <span v-if="historyFilter === 'here'" class="flex flex-col gap-1">
+                        <span>{{ i18n.history.noEditsHere }}</span>
+                        <span v-if="here.unreadable" class="text-xs" data-history-not-checked>{{
+                            notCheckedText
+                        }}</span>
+                    </span>
+                    <template v-else>{{
+                        historyFilter === 'saves' ? i18n.history.noSaves : i18n.history.empty
+                    }}</template>
+                </div>
+                <!-- Edits Here's scan: a passive status row while it runs, then what it left out. -->
+                <div
+                    v-else-if="tail.kind === 'checking' || tail.kind === 'notChecked'"
+                    class="absolute inset-x-2 flex items-center gap-2 px-3 text-xs text-fg/70"
+                    :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
+                    role="status"
+                    data-history-scan
+                    :data-scan="tail.kind"
+                >
+                    <span
+                        v-if="tail.kind === 'checking'"
+                        class="size-3.5 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        aria-hidden="true"
+                    />
+                    <span class="min-w-0 truncate">{{
+                        tail.kind === 'checking' ? i18n.history.checking : notCheckedText
+                    }}</span>
                 </div>
                 <div
                     v-else-if="tail.kind === 'failed'"

@@ -135,5 +135,10 @@ watch(
             v-model="settings.deselectSwitchesToSelect"
             :label="i18n.settings.editor.deselectSwitchesToSelect"
         />
+
+        <ToggleField
+            v-model="settings.dimUnchangedObjects"
+            :label="i18n.settings.editor.dimUnchangedObjects"
+        />
     </SettingsSection>
 </template>

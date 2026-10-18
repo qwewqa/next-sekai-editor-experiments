@@ -1,15 +1,19 @@
-import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { computed, onScopeDispose, ref, shallowReactive, shallowRef, watch } from 'vue'
 import { onHistoryAction } from '../../history/actions'
 import { session } from '../../history/session'
+import { toHex } from '../../local/hash'
 import { storageWorker } from '../../local/start'
 import { flusher } from '../../local/storing'
+import type { EditMatch, FindEditsCursor } from '../../local/worker/changeHandlers'
 import type {
     PathStep,
     TimelineEntry,
     TimelineIndex,
     TimelinePage,
+    TimelinePiece,
 } from '../../local/worker/timelineHandlers'
 import { entryId, type Entry, type Filter } from './rows'
+import { hereRange, historyFilter } from './state'
 
 // The chain's entries for the Timeline (Part 1 §1.4.10.5): a page at a time from storage, newest
 // first, with the open session's entries still waiting to be stored on top. After a jump (Go To,
@@ -56,6 +60,7 @@ const entryOf = (entry: TimelineEntry): Entry => ({
     noteCount: entry.noteCount,
     kept: entry.kept,
     ...(entry.from === undefined ? {} : { from: entry.from }),
+    ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
 })
 
 /** The open session's entries the worker has not acknowledged, newest first. */
@@ -72,6 +77,7 @@ const pendingEntries = (): Entry[] => {
             label: entry.label(),
             kept: true,
             pending: true,
+            ...(entry.snapshot && !entry.state ? { snapshot: toHex(entry.snapshot) } : {}),
         }))
         .reverse()
 }
@@ -90,11 +96,16 @@ export const entries = computed((): Entry[] => {
     )
 })
 
+/** What the Timeline lists: Edits Here's matches while it filters, else every entry. */
+export const listedEntries = computed((): Entry[] =>
+    historyFilter.value === 'here' ? [...here.matches] : entries.value,
+)
+
 const isJumped = () => newer.value !== undefined
 
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
 export const gap = computed(() => {
-    if (!newer.value) return undefined
+    if (!newer.value || historyFilter.value === 'here') return undefined
     void version.value
     return newerCount.value + (flusher?.session?.pending.length ?? 0)
 })
@@ -239,6 +250,7 @@ const indexes = new Map<string, Promise<TimelineIndex>>()
 
 /** The chain's pieces, each a session's entries on one day: saves and exports only while filtering. */
 export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
+    if (filter === 'here') return Promise.resolve({ pieces: piecesOf(here.matches), path: [] })
     const worker = storageWorker
     if (!worker) return Promise.resolve({ pieces: [], path: [] })
     const start = startOf(session.value.sessionId)
@@ -260,6 +272,11 @@ export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
  * the gap between that page and Now. Resolves with the target's entry once it is shown.
  */
 export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | undefined> => {
+    // Edits Here holds all it has found.
+    if (filter === 'here')
+        return here.matches.find(
+            (entry) => entry.sessionId === target.sessionId && entry.seq === target.seq,
+        )
     const worker = storageWorker
     if (!worker) return
     const id = session.value.sessionId
@@ -328,6 +345,7 @@ export const followEntries = () => {
         timer = setTimeout(async () => {
             const before = waiting()
             await refresh()
+            void checkNewer()
             if (waiting() && tries++ < 8) follow()
             else {
                 tries = 0
@@ -337,6 +355,15 @@ export const followEntries = () => {
         }, 1300)
     }
     void refresh()
+    watch(
+        [historyFilter, hereRange, () => session.value.sessionId],
+        () => {
+            if (historyFilter.value !== 'here') stopHere()
+            else if (hereFor === hereKey() && hereDone) void checkNewer()
+            else void scanHere()
+        },
+        { immediate: true },
+    )
     const stop = onHistoryAction((action) => {
         indexes.clear()
         if (action.kind === 'reset') {
@@ -361,5 +388,145 @@ export const followEntries = () => {
     onScopeDispose(() => {
         stop()
         clearTimeout(timer)
+        // A scan stopped part way starts again when the list shows once more.
+        if (here.scanning) {
+            stopHere()
+            hereFor = undefined
+        }
     })
+}
+
+// --- Edits Here (§1.4.10.5): the entries whose change touches a range of beats, found newest
+// first by the worker's scan while the filter is on, and stopped when it goes off or the range
+// changes. Entries stored later are checked on their own and join at the top.
+
+/** Edits Here's matches so far, newest first, and the scan's progress. */
+export const here = shallowReactive({
+    matches: [] as readonly Entry[],
+    scanning: false,
+    /** Entries left out: their state, or the one before, could not be read. */
+    unreadable: 0,
+})
+
+let hereToken = 0
+/** The range and chain the matches are for, and whether their scan reached the start. */
+let hereFor: string | undefined
+let hereDone = false
+/** The newest entry checked: newer ones are checked on their own. */
+let hereTop: { sessionId: string; seq: number } | undefined
+
+const hereKey = () => {
+    const range = hereRange.value
+    return range && `${session.value.sessionId}|${range.from}|${range.to}`
+}
+
+const matchOf = (match: EditMatch, shift = 0): Entry => ({
+    ...entryOf(match),
+    previous: match.previous,
+    pos: match.pos - shift,
+})
+
+const stopHere = () => {
+    hereToken++
+    here.scanning = false
+}
+
+const scanHere = async () => {
+    const mark = ++hereToken
+    const worker = storageWorker
+    const range = hereRange.value
+    here.matches = []
+    here.unreadable = 0
+    hereTop = undefined
+    hereDone = false
+    hereFor = hereKey()
+    if (!worker || !range) {
+        here.scanning = false
+        return
+    }
+    here.scanning = true
+    const start = startOf(session.value.sessionId)
+    let cursor: FindEditsCursor | undefined
+    try {
+        do {
+            const page = await worker.call('findEdits', {
+                ...start,
+                ...range,
+                ...(cursor ? { cursor } : {}),
+            })
+            if (mark !== hereToken) return
+            hereTop ??= page.top
+            if (page.matches.length)
+                here.matches = [...here.matches, ...page.matches.map((match) => matchOf(match))]
+            here.unreadable += page.unreadable
+            cursor = page.cursor
+        } while (cursor)
+        hereDone = true
+    } catch {
+        // What was found stays; choosing Edits Here again scans afresh.
+        hereFor = undefined
+    } finally {
+        if (mark === hereToken) here.scanning = false
+    }
+}
+
+/** Entries stored since the scan began: checked down to where it started. */
+const checkNewer = async () => {
+    const worker = storageWorker
+    const range = hereRange.value
+    const until = hereTop
+    if (!worker || !range || !until || here.scanning || historyFilter.value !== 'here') return
+    const mark = hereToken
+    const start = startOf(session.value.sessionId)
+    const found: EditMatch[] = []
+    let unreadable = 0
+    let top: typeof hereTop
+    let reached = 0
+    let cursor: FindEditsCursor | undefined
+    try {
+        do {
+            const page = await worker.call('findEdits', {
+                ...start,
+                ...range,
+                until,
+                ...(cursor ? { cursor } : {}),
+            })
+            if (mark !== hereToken) return
+            top ??= page.top
+            found.push(...page.matches)
+            unreadable += page.unreadable
+            reached = page.reached ?? reached
+            cursor = page.cursor
+        } while (cursor)
+    } catch {
+        return
+    }
+    if (top) hereTop = top
+    // Places along the chain stay counted from the first scan's newest entry.
+    if (found.length)
+        here.matches = [...found.map((match) => matchOf(match, reached)), ...here.matches]
+    here.unreadable += unreadable
+}
+
+/** Go To's pieces while filtering Edits Here: the matches found so far, by session and day. */
+const piecesOf = (matches: readonly Entry[]): TimelinePiece[] => {
+    const pieces: TimelinePiece[] = []
+    const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+    for (const entry of matches) {
+        const last = pieces.at(-1)
+        if (last?.sessionId === entry.sessionId && dayOf(last.oldest) === dayOf(entry.time)) {
+            last.oldestSeq = entry.seq
+            last.oldest = entry.time
+            last.count++
+        } else
+            pieces.push({
+                sessionId: entry.sessionId,
+                newestSeq: entry.seq,
+                oldestSeq: entry.seq,
+                newest: entry.time,
+                oldest: entry.time,
+                count: 1,
+            })
+    }
+    return pieces
 }

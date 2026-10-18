@@ -597,6 +597,12 @@
     },
     "history": {
       "title": "기록"
+    },
+    "showChange": {
+      "title": "변경 표시"
+    },
+    "editsHere": {
+      "title": "여기의 편집 찾기"
     }
   },
   "help": {
@@ -827,7 +833,8 @@
         "beat": "박",
         "measure": "마디",
         "both": "둘 다"
-      }
+      },
+      "dimUnchangedObjects": "변경되지 않은 객체 흐리게 표시"
     },
     "keyboardShortcuts": {
       "title": "키보드 단축키"
@@ -1233,7 +1240,12 @@
     "damaged": "손상됨",
     "continuedFrom": "{0}에서 이어서",
     "foldHint": "기록을 탭하면 목록이 접힙니다",
-    "announceViewing": "{0} 보는 중"
+    "announceViewing": "{0} 보는 중",
+    "filterHere": "여기의 편집",
+    "noEditsHere": "여기에 편집 없음",
+    "checking": "이전 단계 확인 중…",
+    "notChecked": "{0}단계를 확인할 수 없음",
+    "announceViewingChange": "{0} 보는 중, {1}"
   },
   "modals": {
     "close": "닫기",
@@ -1821,7 +1833,20 @@
     "viewing": "{0} 보는 중 · {1} · 읽기 전용",
     "viewingShort": "{0} 보는 중 · 읽기 전용",
     "backToNow": "현재로 돌아가기",
-    "restore": "복원"
+    "restore": "복원",
+    "changeCount": "{0}개 변경",
+    "noChanges": "변경 없음",
+    "changedLarge": "변경됨: {0}",
+    "notes": "{0}개 노트",
+    "notesOf": "노트 {1}개 중 {0}개",
+    "eventsOf": "이벤트 {1}개 중 {0}개",
+    "bpms": "{0}개 BPM",
+    "timeScales": "{0}개 시간 배율",
+    "events": "{0}개 이벤트",
+    "changesAbove": "위쪽의 변경: {0}",
+    "changesBelow": "아래쪽의 변경: {0}",
+    "changesAboveAny": "위쪽의 변경",
+    "changesBelowAny": "아래쪽의 변경"
   },
   "save": {
     "fileName": "파일 이름",

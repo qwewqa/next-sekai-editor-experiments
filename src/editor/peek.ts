@@ -1,4 +1,5 @@
 import { watch } from 'vue'
+import { bpms } from '../history/bpms'
 import { onPeekLeft, onPeekRefused, onPeekStart, setPeekEffects } from '../history/peek'
 import { onResetState } from '../history/resetHooks'
 import { isPeeking } from '../history/stack'
@@ -6,6 +7,7 @@ import { i18n } from '../i18n'
 import { formatEntryTime } from '../i18n/dateTime'
 import { clearPreviewEdit, previewEdit } from '../preview/edit'
 import { settings } from '../settings'
+import { beatToTime, isSameTempo, timeToBeat } from '../state/integrals/bpms'
 import { interpolate } from '../utils/interpolate'
 import { cancelScalingSession, scalingSession } from './commands/scaleSelection/session'
 import { cancelMouseControls } from './controls/mouse'
@@ -75,6 +77,17 @@ onPeekLeft(() => {
     const beat = reopenAt
     reopenAt = undefined
     openElevationEditor(beat)
+})
+
+// Peek holds the beat (§1.4.11): entering, moving between and leaving peeks keeps the beat at the
+// pane's middle in place, so a section stays put across tempo changes between entries. Edits at
+// Now keep the time, as before.
+watch([bpms, isPeeking], ([next, peeking], [previous, wasPeeking]) => {
+    if ((!peeking && !wasPeeking) || isSameTempo(next, previous)) return
+    const hold = (time: number) => beatToTime(next, timeToBeat(previous, time))
+    view.time = hold(view.time)
+    view.cursorTime = hold(view.cursorTime)
+    if (view.scrollingY?.type === 'ease') view.scrollingY = undefined
 })
 
 // A new chart or stack (New, Open, a reload's) ends the peek with nothing to reopen.

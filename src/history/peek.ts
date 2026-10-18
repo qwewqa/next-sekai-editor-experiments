@@ -119,6 +119,9 @@ const loadEntry = async (key: EntryKey) => {
     return entry
 }
 
+/** An entry's state as peek loads it, through the same LRU and loads in flight: the change view's. */
+export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
+
 /**
  * What a peek shows: no selection at first, since the peeked state holds its own, and the live
  * audio and its waveform, which playback keeps while peeking (§1.4.11).

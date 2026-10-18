@@ -30,6 +30,8 @@ const colors = {
     // Destructive actions and errors.
     danger: color('danger'),
     'on-danger': color('on-danger'),
+    // A History entry's changes, the same in every theme.
+    change: color('change'),
     // White handles: toggle knobs, slider thumbs and resize grabbers.
     knob: color('knob'),
     // Recessed tracks of segmented controls and sliders; carries its own alpha.

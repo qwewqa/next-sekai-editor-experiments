@@ -80,7 +80,12 @@ export type EntityVisibility = {
     scope: ScopeLookup
     visibilities: Record<EntityType, boolean>
     showOtherObjects: boolean
+    /** While a History entry's change is shown, what it changed; the rest dims (§1.4.11). */
+    undimmed?: ReadonlySet<Entity>
 }
+
+/** The dim of other groups and objects, and of what a peeked entry didn't change. */
+export const DIM = 0.25
 
 type ChainType = EventJointEntityType | 'timeScale'
 type ChainKey = StageId | GroupId | undefined
@@ -224,7 +229,10 @@ export const orderEntities = (
             entity: info.entity,
             highlighted: info.isSelected,
             raised: info.tier === 1,
-            opacity: info.isFull ? 1 : 0.25,
+            // A change's dim multiplies the group's, so a dimmed note keeps its own colours.
+            opacity:
+                (info.isFull ? 1 : DIM) *
+                (visibility.undimmed && !visibility.undimmed.has(info.entity) ? DIM : 1),
         }))
 
 export type DrawStep = ReturnType<typeof orderEntities>[number] & { part?: EventPart }

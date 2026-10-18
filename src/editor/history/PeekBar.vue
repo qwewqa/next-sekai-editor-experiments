@@ -6,6 +6,7 @@ import { formatEntryTime } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
 import { isCoarsePointer, isPanelVisible, workspaceLayout } from '../workspace'
+import { changeText, shownChange } from './changes'
 import { backToNow, peekedInfo, requestRestore } from './selection'
 
 // The peek bar (Part 1 §1.4.11): on the canvas, so it shows with the panel scrolled, folded or on
@@ -26,6 +27,16 @@ const text = computed(() => {
     if (view.w >= WIDE_PANE) return interpolateRaw(strings.value.viewing, time, info.label)
     if (view.w >= MEDIUM_PANE) return interpolateRaw(strings.value.viewingShort, time)
     return time
+})
+
+// The second line says what the entry changed (§1.4.11): "8 changes", "No changes", or for a
+// change with no place the entry's label, which narrow bars leave out of the first line.
+const line = computed(() => {
+    const change = shownChange.value
+    if (!change) return
+    const words = changeText(change)
+    if (words) return words
+    return view.w < WIDE_PANE ? peekedInfo.value?.label : undefined
 })
 
 // The hint is for a finger: a mouse has nothing to tap. It shows while the History tab is shown in
@@ -59,7 +70,23 @@ const button =
             <div
                 class="pointer-events-auto flex max-w-full items-center justify-center gap-x-2 rounded-3xl bg-modal py-1 pl-4 pr-1 text-sm text-fg shadow-md"
             >
-                <span v-if="text" class="min-w-0 truncate py-1" data-peek-text>{{ text }}</span>
+                <span v-if="text" class="flex min-w-0 flex-col" :class="line ? '' : 'py-1'">
+                    <span class="truncate" :class="{ 'leading-4': line }" data-peek-text>{{
+                        text
+                    }}</span>
+                    <span
+                        v-if="line"
+                        class="flex min-w-0 items-center gap-1 text-xs leading-4 text-fg/80"
+                        :title="line"
+                        data-peek-change
+                    >
+                        <span
+                            class="size-2 shrink-0 rounded-full bg-change forced-colors:bg-[Highlight]"
+                            aria-hidden="true"
+                        />
+                        <span class="truncate">{{ line }}</span>
+                    </span>
+                </span>
                 <span
                     v-if="peekLoading"
                     class="size-4 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"

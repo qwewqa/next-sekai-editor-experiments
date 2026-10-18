@@ -597,6 +597,12 @@
     },
     "history": {
       "title": "履歴"
+    },
+    "showChange": {
+      "title": "変更を表示"
+    },
+    "editsHere": {
+      "title": "ここの変更を探す"
     }
   },
   "help": {
@@ -827,7 +833,8 @@
         "beat": "拍",
         "measure": "小節",
         "both": "両方"
-      }
+      },
+      "dimUnchangedObjects": "変更のないオブジェクトを暗くする"
     },
     "keyboardShortcuts": {
       "title": "キーボードショートカット"
@@ -1233,7 +1240,12 @@
     "damaged": "破損",
     "continuedFrom": "{0}から続行",
     "foldHint": "履歴をタップすると一覧を折りたためます",
-    "announceViewing": "{0} を表示中"
+    "announceViewing": "{0} を表示中",
+    "filterHere": "ここの変更",
+    "noEditsHere": "ここの変更はありません",
+    "checking": "以前の操作を確認中…",
+    "notChecked": "{0} 操作を確認できませんでした",
+    "announceViewingChange": "{0} を表示中、{1}"
   },
   "modals": {
     "close": "閉じる",
@@ -1821,7 +1833,20 @@
     "viewing": "{0} を表示中 · {1} · 読み取り専用",
     "viewingShort": "{0} を表示中 · 読み取り専用",
     "backToNow": "現在に戻る",
-    "restore": "復元"
+    "restore": "復元",
+    "changeCount": "{0}個の変更",
+    "noChanges": "変更なし",
+    "changedLarge": "変更：{0}",
+    "notes": "{0}個のノーツ",
+    "notesOf": "{1}個中{0}個のノーツ",
+    "eventsOf": "{1}個中{0}個のイベント",
+    "bpms": "{0}個のBPM",
+    "timeScales": "{0}個のハイスピード",
+    "events": "{0}個のイベント",
+    "changesAbove": "画面上側の変更：{0}",
+    "changesBelow": "画面下側の変更：{0}",
+    "changesAboveAny": "画面上側の変更",
+    "changesBelowAny": "画面下側の変更"
   },
   "save": {
     "fileName": "ファイル名",

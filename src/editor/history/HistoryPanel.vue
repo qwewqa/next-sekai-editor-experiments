@@ -7,10 +7,11 @@ import CloseIcon from '../workspace/CloseIcon.vue'
 import GoToIcon from './GoToIcon.vue'
 import GoToList from './GoToList.vue'
 import GoToPopover from './GoToPopover.vue'
+import { hereRangeText } from './editsHere'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import { backToNow, peekedInfo } from './selection'
 import type { Target } from './source'
-import { historyFilter, historyTab, type HistoryTab } from './state'
+import { hereRange, historyFilter, historyTab, type HistoryTab } from './state'
 import TimelineList from './TimelineList.vue'
 
 // The History panel (Part 1 §1.4.10), in a dock or in the dialog: one band with the two tabs,
@@ -65,7 +66,16 @@ const mode = computed<'label' | 'icon' | 'two'>(() => {
     return 'two'
 })
 
-const filtered = computed(() => historyFilter.value === 'saves')
+const filtered = computed(() => historyFilter.value !== 'all')
+// The banner: "Saves and Exports", or "Edits Here · 118.2 – 121.4".
+const filterText = computed(() => {
+    const range = hereRange.value
+    if (historyFilter.value === 'here' && range)
+        return `${i18n.value.history.filterHere} · ${hereRangeText(range)}`
+    return historyFilter.value === 'here'
+        ? i18n.value.history.filterHere
+        : i18n.value.history.filterSaves
+})
 const onTimeline = computed(() => historyTab.value === 'timeline')
 
 // --- Go To
@@ -145,9 +155,7 @@ const segment = computed(
 )
 
 const goToButtonTitle = computed(() =>
-    filtered.value
-        ? `${i18n.value.history.goTo} · ${i18n.value.history.filterSaves}`
-        : i18n.value.history.goTo,
+    filtered.value ? `${i18n.value.history.goTo} · ${filterText.value}` : i18n.value.history.goTo,
 )
 </script>
 
@@ -234,7 +242,7 @@ const goToButtonTitle = computed(() =>
             class="flex h-9 shrink-0 items-center justify-between border-b border-fg/15 pl-5 pr-2 text-xs [@media(pointer:coarse)]:h-11"
             data-history-filter-banner
         >
-            <span class="min-w-0 truncate">{{ i18n.history.filterSaves }}</span>
+            <span class="min-w-0 truncate">{{ filterText }}</span>
             <button
                 type="button"
                 class="flex h-7 shrink-0 items-center rounded-full bg-button px-3 font-bold shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-9"

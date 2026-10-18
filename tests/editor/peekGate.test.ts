@@ -89,6 +89,9 @@ const allowed = [
     'stageAll',
     // The History panel's own command (5-panel).
     'history',
+    // The change view's (Step 5).
+    'showChange',
+    'editsHere',
 ]
 
 /** Leave the peek first, then run: `leavesPeek`. */

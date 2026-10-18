@@ -18,12 +18,18 @@ export type Entry = {
     /** A save's device, when the revision came from another one (§1.3.7). */
     device?: { id: string; name?: string }
     pending?: boolean
+    /** Its snapshot's root, as hex, once stored. */
+    snapshot?: string
+    /** Edits Here's match: the entry it was compared with, and its place along the chain. */
+    previous?: { sessionId: string; seq: number; snapshot: string }
+    pos?: number
 }
 
 export const entryId = (entry: Pick<Entry, 'sessionId' | 'seq'>) =>
     `${entry.sessionId}:${entry.seq}`
 
-export type Filter = 'all' | 'saves'
+/** All, Saves and Exports, or Edits Here: the entries that changed a range of beats. */
+export type Filter = 'all' | 'saves' | 'here'
 
 export type Flags = {
     removed: boolean
@@ -120,9 +126,10 @@ export const buildRows = (
         removed: !entry.kept && !damaged.has(entryId(entry)),
         damaged: damaged.has(entryId(entry)),
     })
-    // The change each entry made: its notes against the next older entry's.
+    // The change each entry made: its notes against the next older entry's, which Edits Here's
+    // matches are not.
     const deltas = new Map<string, number>()
-    for (const [i, entry] of newestFirst.entries()) {
+    for (const [i, entry] of filter === 'here' ? [] : newestFirst.entries()) {
         const older = newestFirst[i + 1]
         if (
             entry.noteCount !== undefined &&
@@ -137,7 +144,7 @@ export const buildRows = (
     const shown = newestFirst.filter(
         (entry) =>
             entry.kind === 'continue' ||
-            filter === 'all' ||
+            filter !== 'saves' ||
             entry.kind === 'save' ||
             entry.kind === 'export',
     )
@@ -149,11 +156,14 @@ export const buildRows = (
             continue
         }
         const flags = flagsOf(entry)
-        const key = filter === 'all' ? groupKey(entry, flags) : undefined
+        const key = filter === 'saves' ? undefined : groupKey(entry, flags)
         const members = [entry]
         while (key !== undefined) {
             const next = shown[i + 1]
             if (!next || groupKey(next, flagsOf(next)) !== key) break
+            // Edits Here collapses only matches next to each other on the chain.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            if (filter === 'here' && next.pos !== members.at(-1)!.pos! + 1) break
             members.push(next)
             i++
         }
@@ -212,6 +222,15 @@ export const buildRows = (
         rows.push(item)
     }
     return rows
+}
+
+/** The entry an entry is compared with: Edits Here's, else the next older one loaded. */
+export const previousOf = (newestFirst: readonly Entry[], entry: Entry) => {
+    if (entry.previous) return entry.previous
+    const at = newestFirst.findIndex(
+        (other) => other.sessionId === entry.sessionId && other.seq === entry.seq,
+    )
+    return at === -1 ? undefined : newestFirst[at + 1]
 }
 
 /** Rows that can hold the cursor, in order: Now, entries not removed or damaged. */

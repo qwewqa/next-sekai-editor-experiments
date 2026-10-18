@@ -16,6 +16,7 @@ import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
 import './peek'
 import LevelEditorNotification from './LevelEditorNotification.vue'
+import ChangeArrows from './history/ChangeArrows.vue'
 import PeekBar from './history/PeekBar.vue'
 import StatusLabel from './StatusLabel.vue'
 import { groupScope, stageScope } from './scope'
@@ -244,6 +245,7 @@ const stageCount = computed(() =>
                     <LevelEditorCanvas />
                 </template>
                 <PeekBar />
+                <ChangeArrows />
                 <LevelEditorNotification pane="main" />
                 <LevelEditorToolbar v-if="!hasToolModal('main')" pane="main" />
                 <EditorToolModalHost pane="main" />

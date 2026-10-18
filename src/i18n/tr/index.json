@@ -597,6 +597,12 @@
     },
     "history": {
       "title": "Geçmiş"
+    },
+    "showChange": {
+      "title": "Değişikliği Göster"
+    },
+    "editsHere": {
+      "title": "Buradaki Düzenlemeleri Bul"
     }
   },
   "help": {
@@ -827,7 +833,8 @@
         "beat": "Vuruş",
         "measure": "Ölçü",
         "both": "Her İkisi"
-      }
+      },
+      "dimUnchangedObjects": "Değişmeyen Nesneleri Soluklaştır"
     },
     "keyboardShortcuts": {
       "title": "Klavye Kısayolları"
@@ -1233,7 +1240,12 @@
     "damaged": "hasarlı",
     "continuedFrom": "{0} tarihinden devam",
     "foldHint": "Listeyi katlamak için Geçmiş’e dokunun",
-    "announceViewing": "{0} görüntüleniyor"
+    "announceViewing": "{0} görüntüleniyor",
+    "filterHere": "Buradaki Düzenlemeler",
+    "noEditsHere": "Burada düzenleme yok",
+    "checking": "Eski adımlar denetleniyor…",
+    "notChecked": "{0} adım denetlenemedi",
+    "announceViewingChange": "{0} görüntüleniyor, {1}"
   },
   "modals": {
     "close": "Kapat",
@@ -1821,7 +1833,20 @@
     "viewing": "{0} görüntüleniyor · {1} · salt okunur",
     "viewingShort": "{0} görüntüleniyor · salt okunur",
     "backToNow": "Şimdiye Dön",
-    "restore": "Geri Yükle"
+    "restore": "Geri Yükle",
+    "changeCount": "{0} değişiklik",
+    "noChanges": "Değişiklik yok",
+    "changedLarge": "Değişenler: {0}",
+    "notes": "{0} nota",
+    "notesOf": "{1} notadan {0}",
+    "eventsOf": "{1} olaydan {0}",
+    "bpms": "{0} BPM değişikliği",
+    "timeScales": "{0} zaman ölçeği",
+    "events": "{0} olay",
+    "changesAbove": "Yukarıdaki değişiklikler: {0}",
+    "changesBelow": "Aşağıdaki değişiklikler: {0}",
+    "changesAboveAny": "Yukarıdaki değişiklikler",
+    "changesBelowAny": "Aşağıdaki değişiklikler"
   },
   "save": {
     "fileName": "Dosya Adı",

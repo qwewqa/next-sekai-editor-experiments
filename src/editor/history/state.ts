@@ -10,6 +10,9 @@ export const historyTab = ref<HistoryTab>('timeline')
 
 export const historyFilter = ref<Filter>('all')
 
+/** Edits Here's beats, taken once as the filter is turned on (Part 1 §1.4.10.5). */
+export const hereRange = shallowRef<{ from: number; to: number }>()
+
 /** The ×N groups shown open, by their newest entry's id. */
 export const expandedGroups = shallowRef<ReadonlySet<string>>(new Set())
 

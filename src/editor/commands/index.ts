@@ -11,6 +11,7 @@ import { deselect } from './deselect'
 import { division } from './divisions'
 import { divisionCustom, laneDivisionCustom } from './divisions/custom'
 import { editorLayout } from './editorLayout'
+import { editsHere } from './editsHere'
 import { elevation } from './elevation'
 import { eraser } from './eraser'
 import { event } from './events'
@@ -56,6 +57,7 @@ import { scrollRight } from './scrolls/scrollRight'
 import { scrollUp } from './scrolls/scrollUp'
 import { select } from './select'
 import { settings } from './settings'
+import { showChange } from './showChange'
 import { createSlide, slide } from './slide'
 import { snapping } from './snapping'
 import { laneSnapping } from './snapping/lane'
@@ -140,6 +142,8 @@ const builtInCommands = {
     undo,
     redo,
     history,
+    showChange,
+    editsHere,
     increaseNoteSize,
     decreaseNoteSize,
 

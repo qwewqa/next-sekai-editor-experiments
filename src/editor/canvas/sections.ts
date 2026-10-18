@@ -314,6 +314,7 @@ export class SectionPlanner {
             scope: visibility.scope,
             visibilities: { ...visibility.visibilities },
             showOtherObjects: visibility.showOtherObjects,
+            ...(visibility.undimmed ? { undimmed: visibility.undimmed } : {}),
         }
         const nextChains: RaisedChains = new Map(
             [...chains].map(([type, keys]) => [type, keys === 'all' ? 'all' : new Set(keys)]),
@@ -322,6 +323,7 @@ export class SectionPlanner {
         const broad =
             this.visibility?.scope !== snapshot.scope ||
             this.visibility.showOtherObjects !== snapshot.showOtherObjects ||
+            this.visibility.undimmed !== snapshot.undimmed ||
             Object.keys(snapshot.visibilities).some(
                 (type) =>
                     this.visibility?.visibilities[type as EntityType] !==

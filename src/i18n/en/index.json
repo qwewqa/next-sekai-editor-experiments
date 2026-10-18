@@ -597,6 +597,12 @@
         },
         "history": {
             "title": "History"
+        },
+        "showChange": {
+            "title": "Show Change"
+        },
+        "editsHere": {
+            "title": "Find Edits Here"
         }
     },
     "help": {
@@ -827,7 +833,8 @@
                 "beat": "Beat",
                 "measure": "Measure",
                 "both": "Both"
-            }
+            },
+            "dimUnchangedObjects": "Dim Unchanged Objects"
         },
         "keyboardShortcuts": {
             "title": "Keyboard Shortcuts"
@@ -1233,7 +1240,12 @@
         "damaged": "damaged",
         "continuedFrom": "Continued from {0}",
         "foldHint": "Tap History to fold the list",
-        "announceViewing": "Viewing {0}"
+        "announceViewing": "Viewing {0}",
+        "filterHere": "Edits Here",
+        "noEditsHere": "No edits here",
+        "checking": "Checking older steps…",
+        "notChecked": "{0} step could not be checked|{0} steps could not be checked",
+        "announceViewingChange": "Viewing {0}, {1}"
     },
     "modals": {
         "close": "Close",
@@ -1821,7 +1833,20 @@
         "viewing": "Viewing {0} · {1} · read-only",
         "viewingShort": "Viewing {0} · read-only",
         "backToNow": "Back to Now",
-        "restore": "Restore"
+        "restore": "Restore",
+        "changeCount": "{0} change|{0} changes",
+        "noChanges": "No changes",
+        "changedLarge": "Changed {0}",
+        "notes": "{0} note|{0} notes",
+        "notesOf": "{0} of {1} notes",
+        "eventsOf": "{0} of {1} events",
+        "bpms": "{0} BPM change|{0} BPM changes",
+        "timeScales": "{0} time scale|{0} time scales",
+        "events": "{0} event|{0} events",
+        "changesAbove": "Changes Above: {0}",
+        "changesBelow": "Changes Below: {0}",
+        "changesAboveAny": "Changes Above",
+        "changesBelowAny": "Changes Below"
     },
     "save": {
         "fileName": "File Name",
