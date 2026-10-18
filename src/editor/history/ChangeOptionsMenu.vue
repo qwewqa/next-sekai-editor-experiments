@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../i18n'
-import { menuKeyIndex } from '../../utils/menuKeys'
+import { holdsCharacter, menuKeyIndex } from '../../utils/menuKeys'
+import { swallowPress } from '../../utils/swallowPress'
 
 const props = defineProps<{ anchor: HTMLElement; summary: string; checked: boolean; inspectable: boolean }>()
 const emit = defineEmits<{ toggle: []; inspect: []; close: [restoreFocus: boolean] }>()
 const menu = useTemplateRef<HTMLDivElement>('menu')
 const summaryId = useId()
+let alive = false
 const position = ref<{ left: number; top: number; maxHeight: number }>()
 const container = computed(() => props.anchor.closest('dialog') ?? 'body')
 const buttons = () => [...(menu.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
@@ -24,9 +26,16 @@ const place = () => {
     position.value = { left: Math.max(8, Math.min(anchor.right - width, viewportWidth - width - 8)), top, maxHeight }
 }
 const outside = (event: PointerEvent) => {
-    if (event.target instanceof Node && !menu.value?.contains(event.target) && !props.anchor.contains(event.target)) emit('close', false)
+    if (event.target instanceof Node && !menu.value?.contains(event.target) && !props.anchor.contains(event.target)) {
+        swallowPress(event)
+        emit('close', false)
+    }
 }
 const keydown = (event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) {
+        event.preventDefault()
+        return
+    }
     if (event.key === 'Escape') { event.preventDefault(); emit('close', true) }
     else if (event.key === 'Tab') emit('close', true)
     else if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
@@ -34,17 +43,22 @@ const keydown = (event: KeyboardEvent) => {
         const list = buttons()
         const index = menuKeyIndex(event.key, list.findIndex((button) => button === document.activeElement), list.length)
         if (index !== undefined) list[index]?.focus()
-    }
+    } else if (holdsCharacter(event)) event.preventDefault()
 }
 watch(() => [props.summary, props.inspectable], () => { void nextTick(place) })
 onMounted(async () => {
+    alive = true
     await nextTick()
+    if (!alive) return
     place()
+    await nextTick()
+    if (!alive || !menu.value) return
     buttons()[0]?.focus({ preventScroll: true })
     window.addEventListener('pointerdown', outside, true)
     window.addEventListener('resize', place)
 })
 onBeforeUnmount(() => {
+    alive = false
     window.removeEventListener('pointerdown', outside, true)
     window.removeEventListener('resize', place)
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import { isPeeking } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { modals, showModal } from '../../modals'
@@ -28,6 +28,7 @@ const narrowArrows = computed(() => view.w < 168)
 const options = useTemplateRef<HTMLButtonElement>('options')
 const summary = useTemplateRef<HTMLButtonElement>('summary')
 const eye = useTemplateRef<HTMLButtonElement>('eye')
+const summaryId = useId()
 const menuOpen = ref(false)
 let inspecting = false
 const restoreFocus = (opener: HTMLElement | undefined | null) => {
@@ -78,8 +79,8 @@ const labelOf = (direction: 'up' | 'down') => {
             <button ref="eye" type="button" class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full shadow-md" :class="showEdits ? 'bg-accent text-on-accent' : 'bg-button'" :aria-label="i18n.peek.showEdits" :title="i18n.peek.showEdits" :aria-pressed="showEdits" data-show-edits @click="toggleShowEdits">
                 <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon v-else class="size-4 fill-current" />
             </button>
-            <button v-if="canInspectProperties" ref="summary" type="button" class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-full bg-button px-3 shadow-md" :title="line" :aria-label="`${i18n.historyChanges.view}: ${line}`" data-property-summary @click="inspect(summary)">
-                <span class="min-w-0 flex-1 truncate" data-peek-change>{{ line }}</span><ChevronIcon class="size-4 shrink-0" direction="right" />
+            <button v-if="canInspectProperties" ref="summary" type="button" class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-full bg-button px-3 shadow-md" :title="line" :aria-label="i18n.historyChanges.view" :aria-describedby="summaryId" data-property-summary @click="inspect(summary)">
+                <span :id="summaryId" class="min-w-0 flex-1 truncate" data-peek-change>{{ line }}</span><ChevronIcon class="size-4 shrink-0" direction="right" />
             </button>
             <span v-else class="pointer-events-auto flex h-8 min-w-0 flex-1 items-center rounded-full bg-modal px-3 shadow-md" :title="line" :aria-label="line"><span class="min-w-0 truncate" data-peek-change>{{ line }}</span></span>
         </template>
