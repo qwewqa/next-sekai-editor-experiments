@@ -254,7 +254,7 @@ test('a version on disk that cannot be put back is offered as a download', async
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
     await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
-    const offer = page.getByRole('dialog').filter({ hasText: 'could not be put back' })
+    const offer = page.getByRole('dialog').filter({ hasText: 'could not be restored' })
     await expect(offer).toContainText('"coconut.nxsp" was emptied')
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
 })
@@ -321,7 +321,7 @@ for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
         await pressSave(page)
         await submitSave(page)
         await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. "coconut.nxsp" could not be kept.',
+            'Not saved. "coconut.nxsp" could not be read completely.',
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })

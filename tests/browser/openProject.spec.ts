@@ -715,7 +715,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
     await openFile(page, 'coconut.nxsp')
     const dialog = page
         .getByRole('dialog')
-        .filter({ hasText: 'Only the level can be opened from it.' })
+        .filter({ hasText: 'Only the level can be opened from this file.' })
     await expect(dialog).toContainText('Made by a newer version of Next SEKAI Editor.')
     await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
     await page.waitForTimeout(400)
