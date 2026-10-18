@@ -162,26 +162,8 @@ onUnmounted(() => {
 
 /* Touch has no hover, so the grabber always shows where to drag. */
 @media (pointer: coarse) {
-    .resize-handle[aria-orientation='vertical'] {
-        width: 1.25rem;
-    }
-
-    .resize-handle[aria-orientation='horizontal'] {
-        height: 1.25rem;
-    }
-
     .resize-grabber {
         opacity: 1;
-    }
-
-    .resize-handle[aria-orientation='vertical'] .resize-grabber {
-        width: 0.3125rem;
-        height: 2.5rem;
-    }
-
-    .resize-handle[aria-orientation='horizontal'] .resize-grabber {
-        width: 2.5rem;
-        height: 0.3125rem;
     }
 }
 </style>

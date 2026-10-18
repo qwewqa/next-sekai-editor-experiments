@@ -11,9 +11,9 @@ export type DockSide = (typeof dockSides)[number]
 
 export const isPanelId = (value: unknown): value is PanelId => panelIds.includes(value as PanelId)
 
-/** Thickness of a dock's tab rail; coarse pointers get larger touch targets. */
+/** Thickness of a dock's tab rail. */
 export const railSize = 36
-export const coarseRailSize = 44
+export const coarseRailSize = railSize
 /**
  * Thickness of the gap between tiles, where the dock's chrome shows through
  * so each panel reads as its own surface.
@@ -33,11 +33,9 @@ const defaultWeights: Record<PanelId, number> = {
     properties: 1.5,
     history: 1,
 }
-// Room reserved for the preview's single-row playback strip beneath its
-// letterboxed canvas; touch screens use taller buttons.
-const previewStrip = (input: WorkspaceLayoutInput) => (input.coarse ? 60 : 52)
-const previewChrome = (input: WorkspaceLayoutInput) =>
-    input.previewOverlay ? 0 : previewStrip(input)
+// Room reserved for the preview's playback strip and its gaps.
+const previewStrip = 52
+const previewChrome = (input: WorkspaceLayoutInput) => (input.previewOverlay ? 0 : previewStrip)
 // Preview's letterboxed image and playback strip, given the dock's thickness.
 const previewNatural = (
     input: WorkspaceLayoutInput,
@@ -66,7 +64,7 @@ export type WorkspaceLayoutInput = {
     /** Collapsed docks show only their rail but keep open states. */
     collapsed?: Partial<Record<DockSide, boolean>>
     railSize?: number
-    /** Touch screens get larger rails and preview controls. */
+    /** Pointer classification retained by existing layout callers. */
     coarse?: boolean
     /** Whether the playback strip always shows over the image, needing no room. */
     previewOverlay?: boolean
@@ -420,7 +418,7 @@ export const computeWorkspaceLayout = (input: WorkspaceLayoutInput): WorkspaceLa
                 )
                 // Never so short that the image is a sliver.
                 const fitted = clamp(
-                    Math.max(Math.min(fallback, natural), previewStrip(input) * 5),
+                    Math.max(Math.min(fallback, natural), previewStrip * 5),
                     min,
                     max,
                 )

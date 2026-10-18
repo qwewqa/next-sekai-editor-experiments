@@ -128,10 +128,4 @@ const onTabKeydown = (event: KeyboardEvent) => {
         @apply bg-header-hover;
     }
 }
-
-@media (pointer: coarse) {
-    .manager-modal-tab-active .manager-modal-tab-label::after {
-        @apply -bottom-3.5;
-    }
-}
 </style>

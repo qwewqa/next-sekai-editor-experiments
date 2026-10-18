@@ -37,7 +37,7 @@ const titleId = useId()
 
 <template>
     <div
-        class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold [@media(pointer:coarse)]:h-[52px]"
+        class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold"
         :class="[modalTitle ? 'text-base' : 'text-lg', slots.header ? 'pl-1.5' : 'pl-4']"
     >
         <span
@@ -50,12 +50,12 @@ const titleId = useId()
         <slot name="header" />
         <button
             type="button"
-            class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
             :aria-label="i18n.modals.close"
             :title="i18n.modals.close"
             @click="$emit('close')"
         >
-            <CloseIcon class="size-4 [@media(pointer:coarse)]:size-5" />
+            <CloseIcon class="size-4" />
         </button>
     </div>
 

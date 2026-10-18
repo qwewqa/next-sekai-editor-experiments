@@ -21,15 +21,17 @@ const controls = (overrides: Partial<Parameters<typeof layoutPreviewControls>[0]
         ...overrides,
     })
 
-test('the strip is one row of constant height: 44 px fine, 52 px coarse', () => {
-    const fine = previewStripMetrics(false)
-    const coarse = previewStripMetrics(true)
-    assert.equal(fine.height, 44)
-    assert.equal(coarse.height, 52)
-    assert.equal(fine.steps, 254)
-    assert.equal(coarse.steps, 310)
-    assert.equal(fine.stepsWithTime, 254 + 4 + 64)
-    assert.equal(coarse.compactWithTime, 192 + 4 + 64)
+test('the strip has a 44 px row and the same geometry on every pointer', () => {
+    const metrics = previewStripMetrics()
+    assert.equal(metrics.height, 44)
+    assert.equal(metrics.steps, 254)
+    assert.equal(metrics.stepsWithTime, 254 + 4 + 64)
+    for (const width of [260, 304, 390, 820])
+        for (const height of [146, 222, 223, 300])
+            assert.deepEqual(
+                controls({ width, height, coarse: true }),
+                controls({ width, height, coarse: false }),
+            )
 })
 
 test('a tall side panel keeps the image at the top with the strip below it', () => {
@@ -55,25 +57,25 @@ test('six steppers come first, and the time joins them only with room to spare',
         ],
     )
     // The compact stepper is only for panels too narrow for six steppers.
-    const fine = previewStripMetrics(false)
+    const fine = previewStripMetrics()
     const compact = controls({ width: fine.steps + 8 - 1 })
     assert.deepEqual([compact.mode, compact.timeInStrip], ['compact', true])
     assert.equal(controls({ width: fine.steps + 8 }).mode, 'steps')
     // Without the time, six steppers need only their own width.
     const noTime = controls({ width: 262, showTime: false })
     assert.deepEqual([noTime.mode, noTime.timeInStrip], ['steps', false])
-    // Too narrow for the time beside a stepper: it moves to the image's corner.
+    // Narrow controls use the compact stepper with the time alongside it.
     const narrow = controls({ width: 260, coarse: true })
-    assert.deepEqual([narrow.mode, narrow.timeInStrip], ['compact', false])
+    assert.deepEqual([narrow.mode, narrow.timeInStrip], ['compact', true])
     assert.equal(narrow.strip.width, 252)
     const phone = controls({ width: 390, height: 300, coarse: true, anchor: 'center' })
-    // A 390 px phone fits the time and six 40 px steppers.
+    // A 390 px phone fits the time and six ordinary steppers.
     assert.deepEqual([phone.mode, phone.timeInStrip], ['steps', true])
 })
 
 test('wide strips stop growing once their steppers reach full size', () => {
     const layout = controls({ width: 820, height: 420, anchor: 'center', position: 'below' })
-    const metrics = previewStripMetrics(false)
+    const metrics = previewStripMetrics()
     assert.equal(layout.placement, 'below')
     assert.equal(layout.mode, 'steps')
     assert.equal(layout.strip.width, metrics.stepsMax + metrics.gap + metrics.time)
@@ -83,7 +85,7 @@ test('wide strips stop growing once their steppers reach full size', () => {
 })
 
 test('a short, wide panel docks the full strip below the image, never beside it', () => {
-    const metrics = previewStripMetrics(false)
+    const metrics = previewStripMetrics()
     const layout = controls({ width: 1600, height: 200, anchor: 'center', position: 'below' })
     assert.equal(layout.placement, 'below')
     assert.deepEqual([layout.mode, layout.timeInStrip], ['steps', true])
@@ -95,7 +97,7 @@ test('a short, wide panel docks the full strip below the image, never beside it'
     const short = controls({ width: 800, height: 146, coarse: true, anchor: 'center' })
     assert.equal(short.placement, 'overlay')
     assert.equal(short.mode, 'steps')
-    assert.equal(short.strip.width, previewStripMetrics(true).stepsMax)
+    assert.equal(short.strip.width, previewStripMetrics().stepsMax)
     assert.equal(short.canvas.left, (800 - short.canvas.width) / 2)
 })
 
@@ -127,8 +129,8 @@ test('Auto docks the strip below only while the image keeps its full fitted size
     }
     // Height-limited panels lose image size to any strip below, so it overlays.
     assert.equal(controls({ width: 1600, height: 380, anchor: 'center' }).placement, 'overlay')
-    assert.equal(controls({ height: threshold, coarse: true }).placement, 'overlay')
-    assert.equal(controls({ height: threshold + 8, coarse: true }).placement, 'below')
+    assert.equal(controls({ height: threshold - 1, coarse: true }).placement, 'overlay')
+    assert.equal(controls({ height: threshold, coarse: true }).placement, 'below')
     // Dock sizes rounded to whole pixels still count as fitting.
     assert.equal(controls({ height: threshold - 0.4 }).placement, 'below')
 })

@@ -179,13 +179,13 @@ const header = useTemplateRef<HTMLDivElement>('header')
 const beatInput = useTemplateRef<HTMLInputElement>('beatInput')
 const headerHeight = ref(80)
 // Header controls follow the workspace chrome language: compact dark icon
-// buttons whose hit area grows to 36px (fine) or 44px (coarse), and white
+// buttons with ordinary gap-filling hit areas, and white
 // pill fields with an accent focus ring on the dark band.
 const headerIconButton =
-    "relative flex size-8 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 [@media(pointer:coarse)]:before:-inset-1.5"
+    "relative flex size-8 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40"
 // 1:1 is a toggle, so it rests as a raised pill, as other buttons and the fields do.
 const headerButton =
-    "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-button text-fg shadow-md outline-none -outline-offset-2 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:shadow-accent focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent [@media(pointer:coarse)]:before:-inset-1.5"
+    "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-button text-fg shadow-md outline-none -outline-offset-2 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:shadow-accent focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent"
 const headerField =
     'elevation-field h-8 w-20 appearance-none rounded-full bg-button px-3 text-base text-fg tabular-nums shadow-md transition-colors hover:shadow-accent outline-none focus:ring-accent active:bg-accent active:text-on-accent'
 let navigation: EditorNavigation | undefined
@@ -2265,10 +2265,8 @@ onUnmounted(() => {
 }
 
 /* Its hit area covers the gap before it. */
-@media not (pointer: coarse) {
-    .elevation-square::before {
-        left: -0.25rem;
-    }
+.elevation-square::before {
+    left: -0.25rem;
 }
 
 /* Pressed, it is filled and glows on hover as the toolbar's active tool does. */

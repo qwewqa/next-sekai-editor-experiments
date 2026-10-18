@@ -5,7 +5,6 @@ import { backToNow } from '../history/selection'
 import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
     carryAcrossShape,
-    coarseRailSize,
     computeWorkspaceLayout,
     dockSides,
     hasRoomFor,
@@ -52,7 +51,7 @@ const collapsedKeys = {
 } as const satisfies Record<DockSide, keyof typeof settings>
 
 const coarseQuery = matchMedia('(pointer: coarse)')
-/** Coarse pointers get larger rails and touch targets. */
+/** The main toolbar and input affordances follow the primary pointer. */
 export const isCoarsePointer = ref(coarseQuery.matches)
 coarseQuery.addEventListener('change', () => {
     isCoarsePointer.value = coarseQuery.matches
@@ -133,7 +132,7 @@ const layoutInput = (state: WorkspaceToggleState) => ({
     },
     weights: panelWeightsDraft.value ?? settings.panelWeights,
     previewAspectRatio: settings.previewAspectRatio,
-    railSize: isCoarsePointer.value ? coarseRailSize : railSize,
+    railSize,
     coarse: isCoarsePointer.value,
     previewOverlay: settings.previewTransportPosition === 'overlay',
     rootFontSize: rootFontSize.value,

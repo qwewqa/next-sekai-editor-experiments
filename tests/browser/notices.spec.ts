@@ -71,12 +71,12 @@ test('a notice with an action sits above the toolbar and runs on click', async (
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-    test('the action button is at least 44 px', async ({ page }) => {
+    test('the action button keeps its ordinary 32 px height', async ({ page }) => {
         await boot(page)
         await notifyWithAction(page, 'Nothing to undo')
         const button = pill(page).getByRole('button', { name: 'Open History' })
         await expect(button).toBeVisible()
-        expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+        expect((await button.boundingBox())!.height).toBe(32)
     })
 })
 
@@ -700,12 +700,12 @@ test.describe('dismissing a card', () => {
     test.describe('on a phone', () => {
         test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-        test('the × is at least 44 px and a tap on it closes the card', async ({ page }) => {
+        test('the × stays 32 px and a tap on it closes the card', async ({ page }) => {
             await boot(page)
             await notifyWithAction(page, 'Nothing to undo')
             const box = (await closeButton(page).boundingBox())!
-            expect(box.width).toBeGreaterThanOrEqual(44)
-            expect(box.height).toBeGreaterThanOrEqual(44)
+            expect(box.width).toBe(32)
+            expect(box.height).toBe(32)
             await closeButton(page).tap()
             await expect(pill(page)).toHaveCount(0)
             expect(await runs(page)).toBe(0)

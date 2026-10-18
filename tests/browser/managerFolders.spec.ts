@@ -950,7 +950,7 @@ for (const { device, viewport, touch } of [
                 const member = (await nameButton(panel(page), 'Fill').boundingBox())!.x
                 const loose = (await nameButton(panel(page), 'Default').boundingBox())!.x
                 const fill = await center('Fill')
-                // Rows are 40px (48px coarse) with a 4px gap: the halves split at the gap's middle.
+                // Rows are 40px with a 4px gap: the halves split at the gap's middle.
                 const half = touch ? 26 : 22
                 await drop('Bass', fill + half - 6, member)
                 expect(await tree(page)).toBe(joined)

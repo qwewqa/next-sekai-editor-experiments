@@ -581,8 +581,7 @@ const onRenameBlur = (event: FocusEvent) => {
  */
 .manager-row-heading.manager-row-current .manager-label-box::after {
     content: '';
-    /* Row 40px (48 coarse), label 24px centered, band padding 4px (2 coarse):
-       the band's lower edge is 14px below the label either way. */
+    /* The 40px row and 4px padding put the band edge 14px below its centered 24px label. */
     @apply pointer-events-none absolute -bottom-3.5 -left-2 -right-2 h-1 rounded-t-full bg-fg;
 }
 
@@ -800,37 +799,9 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 @media (pointer: coarse) {
-    .manager-icon-button {
-        @apply size-11;
-    }
-
-    .manager-icon {
-        @apply size-5;
-    }
-
-    .manager-icon-spacer {
-        @apply w-11;
-    }
-
-    .manager-name,
-    .manager-rename,
-    .manager-slot {
-        @apply h-11;
-    }
-
-    .manager-name,
-    .manager-rename {
-        @apply px-2.5;
-    }
-
-    .manager-row-indented .manager-name,
-    .manager-row-indented .manager-rename {
-        @apply ml-[1.125rem];
-    }
-
     /* Touch drags by a visible handle so the list keeps scrolling. */
     .manager-grip {
-        @apply flex h-11;
+        @apply flex h-9;
     }
 }
 

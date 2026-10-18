@@ -164,7 +164,7 @@ const clear = () => {
             <button
                 ref="addButton"
                 type="button"
-                class="brush-add flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent [@media(pointer:coarse)]:py-2"
+                class="brush-add flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent"
                 :class="addMenu ? 'bg-accent text-on-accent' : 'bg-button'"
                 :title="i18n.tools.brush.add"
                 aria-haspopup="menu"
@@ -188,7 +188,7 @@ const clear = () => {
             />
             <button
                 type="button"
-                class="brush-pick min-w-0 flex-[1_0_auto] truncate rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent [@media(pointer:coarse)]:py-2"
+                class="brush-pick min-w-0 flex-[1_0_auto] truncate rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent"
                 :disabled="!canPick"
                 @click="pick"
             >
@@ -197,7 +197,7 @@ const clear = () => {
             <button
                 v-if="groups.length"
                 type="button"
-                class="brush-clear shrink-0 rounded-full px-4 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover [@media(pointer:coarse)]:py-2"
+                class="brush-clear shrink-0 rounded-full px-4 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
                 @click="clear"
             >
                 {{ i18n.tools.brush.clear }}
@@ -225,7 +225,7 @@ const clear = () => {
                 />
                 <button
                     type="button"
-                    class="brush-remove absolute flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover [@media(pointer:coarse)]:size-11"
+                    class="brush-remove absolute flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
                     :aria-label="
                         interpolateRaw(i18n.tools.brush.remove, fieldLabel(field, i18n, true))
                     "
@@ -250,12 +250,6 @@ const clear = () => {
     container-type: inline-size;
     --remove-size: 2rem;
     --remove-room: calc(1.25rem + var(--remove-size) / 2);
-}
-
-@media (pointer: coarse) {
-    .brush-row {
-        --remove-size: 2.75rem;
-    }
 }
 
 .brush-remove {

@@ -32,13 +32,13 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="bar"
-        class="fixed inset-x-0 top-0 z-[60] flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-header px-3 py-1 text-center text-sm font-bold shadow-band [@media(pointer:coarse)]:min-h-12"
+        class="fixed inset-x-0 top-0 z-[60] flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-header px-3 py-1 text-center text-sm font-bold shadow-band"
         data-safe-bar
     >
         <span class="min-w-0">{{ i18n.safe.bar }}</span>
         <button
             type="button"
-            class="h-8 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-10"
+            class="h-8 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
             @click="void leaveSafeMode()"
         >
             {{ i18n.safe.leave }}
