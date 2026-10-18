@@ -149,7 +149,7 @@ test('a successful Save writes once and binds the picked file', async ({ page })
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('a write that fails before close() aborts, binds nothing and offers Save As…', async ({
+test('a write that fails before close() aborts, stays bound to the emptied file and offers Save As…', async ({
     page,
 }) => {
     await installSave(page, 'writeFailure')
@@ -164,7 +164,8 @@ test('a write that fails before close() aborts, binds nothing and offers Save As
         'abort',
     ])
     expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
-    expect(await bound(page)).toBeUndefined()
+    // The pick emptied the file, so the session is pre-bound to it: the next Save fills it (R9).
+    expect(await bound(page)).toBe('coconut.nxsp')
 })
 
 test('a browser without a save picker downloads, bound by name', async ({ page }) => {

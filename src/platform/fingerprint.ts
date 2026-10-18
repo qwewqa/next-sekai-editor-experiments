@@ -86,6 +86,8 @@ export const centralDirectoryOf = (fingerprint: string) =>
  * its whole fingerprint.
  */
 export const sameContent = (a: DiskState, b: DiskState) => {
+    // Two empty files hold the same nothing, whatever their times (R9).
+    if (a.size === 0 && b.size === 0) return true
     if (a.revisionId !== b.revisionId) return false
     const cdA = centralDirectoryOf(a.fingerprint)
     const cdB = centralDirectoryOf(b.fingerprint)

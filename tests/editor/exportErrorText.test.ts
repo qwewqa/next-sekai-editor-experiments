@@ -16,6 +16,7 @@ test('a failed step names the step, whatever its code', () => {
         read: 'readFailed',
         readBack: 'changedWhileWriting',
         download: 'downloadFailed',
+        check: 'changedWhileWriting',
     }
     for (const [step, key] of Object.entries(steps))
         for (const code of ['io', 'denied'] as const)

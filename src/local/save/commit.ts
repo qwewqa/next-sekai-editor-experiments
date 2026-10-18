@@ -15,6 +15,24 @@ export type IdentityUnit = {
     /** The binding as stored (§1.6.11.2), its `entry` complete. */
     file: Record<string, unknown>
     marks: readonly RowKey[]
+    /**
+     * The record's binding as the Save found it (its `file.at` and `replaced.at`): a record that
+     * changed since, a takeover's revocation, never takes the unit.
+     */
+    from?: { fileAt?: number; replacedAt?: number }
+}
+
+/** Whether a record still holds the binding a unit was made from (no `from`: any). */
+export const unitApplies = (chain: Record<string, unknown>, unit: IdentityUnit) => {
+    const { from } = unit
+    if (!from) return true
+    const at = (field: unknown) =>
+        typeof field === 'object' &&
+        field !== null &&
+        typeof (field as { at?: unknown }).at === 'number'
+            ? (field as { at: number }).at
+            : undefined
+    return at(chain.file) === from.fileAt && at(chain.replaced) === from.replacedAt
 }
 
 /**

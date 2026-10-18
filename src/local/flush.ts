@@ -236,6 +236,8 @@ export type FlushDeps = {
     continueLabel?: () => string
     /** A Save's identity unit was stored in a database. */
     onIdentity?: (session: FlushSession, identity: PendingIdentity) => void
+    /** A Save's identity unit was dropped: its binding was taken over meanwhile. */
+    onStaleIdentity?: (session: FlushSession) => void
     /** A `seq` a Save reserved in this session before a reload: resumed sessions go past it. */
     reservedSeq?: (sessionId: string) => number | undefined
     /** Writes chain fields of a stored session, checking it's still the chain's head. */
@@ -311,11 +313,12 @@ export const heldMediaOf = (state: State): BatchMedia[] => {
 }
 
 /** The unit as a batch carries it. */
-const unitOf = ({ docId, revision, file, marks }: PendingIdentity): IdentityUnit => ({
+const unitOf = ({ docId, revision, file, marks, from }: PendingIdentity): IdentityUnit => ({
     docId,
     revision,
     file,
     marks,
+    ...(from ? { from } : {}),
 })
 
 /** Recent Sessions' summary of a head (§1.6.11.2). */
@@ -1216,6 +1219,11 @@ export class Flusher {
                     if (session.identity === identity) session.identity = undefined
                     session.docId = identity.docId
                     this.deps.onIdentity?.(session, identity)
+                }
+                // Taken over since the Save (R5, R6): the unit goes, and the record stands.
+                if (identity && result.staleIdentity) {
+                    if (session.identity === identity) session.identity = undefined
+                    this.deps.onStaleIdentity?.(session)
                 }
                 // Its first row is written: an unstored continuation's hold on its parent goes.
                 session.parentDone?.()

@@ -2,14 +2,19 @@ import { expect, test, type Page } from '@playwright/test'
 import { crafted } from '../local/nxsp/craft'
 import { waitForStartup } from './editorFixture'
 import {
+    chainById,
     chainOf,
     edit,
     notice,
+    pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
+    prompts,
     queuePicks,
+    reached,
     readFile,
+    release,
     rows,
     saveDialog,
     sessionOf,
@@ -69,9 +74,11 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     expect(revoked.replaced).toMatchObject({ by: aChain.chainId, name: 'coconut.nxsp' })
     expect(revoked.edited).toBe(true)
 
-    // B's label goes, with no notice (the broadcast, or becoming visible).
+    // B's label goes, with no notice (the broadcast, or becoming visible), and B prompts.
     await b.bringToFront()
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
+    await expect(notice(b).filter({ hasText: 'replaced' })).toHaveCount(0)
+    expect(await prompts(b)).toBe(true)
     await pressSave(b)
     const dialog = saveDialog(b)
     await expect(dialog).toContainText('"coconut.nxsp" was replaced from another tab or window.')
@@ -326,19 +333,6 @@ test('Save to File… writes a session that isn’t open as a new file, binding 
     expect(same.file).toEqual(chain.file)
 })
 
-/** Pauses the next write at a named point (`savePoint`); `release` lets it go on. */
-const pauseAt = (page: Page, point: string) =>
-    page.evaluate((point) => localStorage.setItem('nse.test.savePause', point), point)
-
-const reached = (page: Page, point: string) =>
-    expect.poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain(point)
-
-const release = (page: Page) =>
-    page.evaluate(() => {
-        localStorage.removeItem('nse.test.savePause')
-        window.nseSaveTest?.release()
-    })
-
 test('a sync client writing into the picked file after the pick: nothing is written over it', async ({
     page,
 }) => {
@@ -400,7 +394,13 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
     await submitSave(a)
     // A waits on nse-bind while B holds it.
     await a.waitForTimeout(500)
+    expect((await projectOf(b, 'coconut.nxsp').catch(() => undefined))?.id).toBeUndefined()
     await release(b)
+    // B's check of the emptied file goes on without a conflict (R9): its Save lands first.
+    await expect
+        .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
+        .toBe(2)
+    await expect(b.getByRole('dialog')).toHaveCount(0)
     await expect(
         notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
     ).toBeVisible({ timeout: 15_000 })

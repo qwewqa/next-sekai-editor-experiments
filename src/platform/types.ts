@@ -104,6 +104,8 @@ export type SaveRequest = {
     target?: FileTarget
     /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
+    /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written (R9). */
+    overEmpty?: boolean
     replaced?: 'keep' | 'discard'
     replaces?: string
     /** Runs after any pick. */
@@ -114,6 +116,8 @@ export type SaveRequest = {
     picker?: SavePicker
     /** Runs on a picked file before anything is written to it; false writes nothing. */
     picked?: (target: FileTarget) => Promise<boolean>
+    /** Held from `picked` to the end of the picked file's write (`nse-bind`, §1.6.6). */
+    lock?: <T>(run: () => Promise<T>) => Promise<T>
     /** Asks for the tap a download needs when the build outlasted the gesture. */
     ready?: ReadyPrompt
 }
@@ -135,7 +139,7 @@ export type FileErrorCode =
     | 'io'
 
 /** Which step failed, where the code alone does not tell the user. */
-export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download'
+export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download' | 'check'
 
 /** How a file operation fails. */
 export class FileError extends Error {

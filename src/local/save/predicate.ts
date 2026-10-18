@@ -1,4 +1,6 @@
 import { centralDirectoryOf } from '../../platform/fingerprint'
+import { hashKey } from '../db'
+import { fromHex16 } from '../hash'
 import { isObject } from '../nxsp/json'
 import type { SaveStore } from './bodies'
 import { CUT_STORES, readCut, type ChainCut } from './cut'
@@ -129,4 +131,33 @@ export const readReplaceDecision = async (
 ): Promise<ReplaceDecision | undefined> => {
     const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId))
     return cut && replaceDecision(cut, fileFacts(projectJson, fingerprint))
+}
+
+/** What a write from storage would leave out that the chain's own file may hold (R2). */
+export type SaveNeeds = {
+    /** The next write from storage carries the base's `completeFrom` (D25's carry test). */
+    carries: boolean
+    /** Of the head's media given (by hash), those the media store doesn't hold. */
+    lacking: string[]
+}
+
+/**
+ * Whether reading the chain's own file before a picker could keep anything (§1.4.7 R2): rows of
+ * its base storage lacks, or head media storage lacks. Read from storage alone, so a dialog knows
+ * whether to ask for read access before it reads the file.
+ */
+export const readSaveNeeds = async (
+    store: SaveStore,
+    chainId: string,
+    media: readonly string[],
+): Promise<SaveNeeds> => {
+    const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId))
+    const lacking = await store.read(['media'], async (tx) => {
+        const missing: string[] = []
+        for (const hash of media)
+            if ((await tx.getKey('media', hashKey(fromHex16(hash)))) === undefined)
+                missing.push(hash)
+        return missing
+    })
+    return { carries: !cut?.chain.file?.entry || wouldCarry(cut), lacking }
 }

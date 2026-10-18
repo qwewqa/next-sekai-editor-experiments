@@ -1,9 +1,13 @@
 import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
-import { setProjectPickCheck } from '../editor/commands/exportLevel/pick'
+import {
+    setExportReads,
+    setPickLock,
+    setProjectPickCheck,
+} from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
-import { markedSeq, removeMarker } from '../editor/save/env'
-import { applyRevocations, watchBindings } from '../editor/save/watch'
+import { markedSeq, removeMarker, withBind } from '../editor/save/env'
+import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { filename } from '../history/live'
@@ -12,6 +16,7 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
+import { startupGate } from '../startup/gate'
 import type { State } from '../state'
 import { isDurablyStoredWith } from './durable'
 import {
@@ -27,6 +32,7 @@ import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
+import { dropKept } from './open/kept'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
@@ -69,6 +75,12 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
+/**
+ * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
+ * what this tab holds (§1.4.7); no journal, tab record, Reopen or revocation is written.
+ */
+let safeMode = false
+
 /** This tab's journal writer (§1.6.4 #7), once storing started; none in safe mode. */
 export let journalWriter: JournalWriter | undefined
 
@@ -92,6 +104,7 @@ export const untouched = () => {
  * until then the record keeps the session this tab had, so a reload meanwhile claims it again.
  */
 export const recordBlankStart = () => {
+    if (safeMode) return
     const session = flusher?.session
     if (session && session === initialSession)
         writeTabRecord({ sessionId: session.id, start: 'blank' })
@@ -224,11 +237,7 @@ export const startStoring = (
     tabClient = client
     void client.lock.granted.catch(() => undefined)
 
-    if (!(status instanceof Promise) && status.mode === 'readOnly' && safe) {
-        // Safe mode: nothing is written. Earlier actions are let go.
-        onHistoryAction(() => undefined, { replay: true })
-        return
-    }
+    safeMode = safe
 
     const writes: JournalWrite[] = []
     const instance = new Flusher({
@@ -241,6 +250,10 @@ export const startStoring = (
         // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
         onIdentity: (session, identity) => {
             removeMarker(session.chainId, identity.revision.id)
+        },
+        // Taken over while the binding waited in memory (R5, R6): the label follows the record.
+        onStaleIdentity: () => {
+            void refreshBinding(worker, flusher)
         },
         // A Save that may have written its file before a reload keeps its `seq` (§1.6.11.6).
         reservedSeq: markedSeq,
@@ -285,7 +298,13 @@ export const startStoring = (
                 ...(fork.forkName === undefined ? {} : { name: fork.forkName }),
                 copyOf,
             }
-            writeTabRecord({ sessionId: fork.id, start: 'continuation', parent: from.id, copyOf })
+            if (!safe)
+                writeTabRecord({
+                    sessionId: fork.id,
+                    start: 'continuation',
+                    parent: from.id,
+                    copyOf,
+                })
         },
         forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
         writeChain: (request) => worker.call('writeChainFields', request),
@@ -304,6 +323,8 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
+    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
+    if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
     // keeps the open session (§1.6.7).
     void Promise.resolve(status).then((known) => {
@@ -370,6 +391,7 @@ export const startStoring = (
 
     let firstReset = true
     let blankNamed = false
+    let prefetched: FlushSession | undefined
     onHistoryAction(
         (action) => {
             if (action.kind === 'reset') {
@@ -377,7 +399,7 @@ export const startStoring = (
                 const lock = holdSessionLock(locks, descriptor.sessionId)
                 // A New reloads as blank (§1.4.2); the page's own blank start is recorded once
                 // startup opened nothing over it (`recordBlankStart`).
-                if (!firstReset || action.origin !== 'new')
+                if (!safe && (!firstReset || action.origin !== 'new'))
                     writeTabRecord({
                         sessionId: descriptor.sessionId,
                         start: action.origin === 'import' ? 'stored' : 'new',
@@ -400,7 +422,10 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                if (leaving) offerReopen(leaving, instance.outgoing)
+                // A partial open's kept bytes go with its session (§1.5.4).
+                if (leaving && leaving.chainId !== begun.chainId && !safe)
+                    void dropKept(worker, leaving.chainId)
+                if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return
             }
             // Work on the blank start (after Start Blank) names it in the tab record at once, so
@@ -408,6 +433,12 @@ export const startStoring = (
             if (instance.session === initialSession && !blankNamed) {
                 blankNamed = true
                 recordBlankStart()
+            }
+            // The bound file's handle read once the session is edited, so a Save's permission
+            // request isn't behind a storage read (D24: never at startup).
+            if (startupGate.phase === 'done' && prefetched !== instance.session) {
+                prefetched = instance.session
+                void import('../editor/save/flow').then((flow) => flow.prefetchHandle())
             }
             instance.append(
                 action.kind,
@@ -423,15 +454,26 @@ export const startStoring = (
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
         // Storing resumed: revocations kept meanwhile go in (§1.4.7 R11).
-        if (next.mode === 'stored' && !next.reason) void applyRevocations(worker)
+        if (next.mode === 'stored' && !next.reason && !safe) void applyRevocations(worker)
     })
     // At the next start, after the journals and before any cleanup (R11); then other tabs'
     // takeovers show here as they happen (R6).
-    void afterReplay.then(() => applyRevocations(worker))
+    if (!safe) void afterReplay.then(() => applyRevocations(worker))
     watchBindings(worker, () => flusher)
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
     setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
+    setPickLock((run) => withBind('exclusive', run))
+    setExportReads({
+        start: () =>
+            void flows().then((flow) => {
+                flow.startExportRead()
+            }),
+        end: () =>
+            void flows().then((flow) => {
+                flow.endExportRead()
+            }),
+    })
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
@@ -477,7 +519,7 @@ export const startStoring = (
             })
         },
     }
-    if (test)
+    if (test && !safe)
         window.nseFlushTest = {
             flusher: instance,
             reports,
@@ -485,5 +527,6 @@ export const startStoring = (
             journal: { writer: journalWriter, writes },
             isDurablyStored,
         }
-    void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
+    if (!safe)
+        void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
 }

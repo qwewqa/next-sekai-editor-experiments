@@ -79,3 +79,93 @@ test('a download browser: the first Save asks once, later Saves download, unchan
     await expect(saveDialog(page)).toBeVisible()
     await expect(saveDialog(page)).not.toContainText('Each save downloads a new copy.')
 })
+
+test('Download Again pressed after another session opened downloads nothing and binds nothing', async ({
+    page,
+}) => {
+    await start(page, { fileSystemAccess: false })
+    await edit(page, 1)
+    await downloaded(page, async () => {
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+    })
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'downloaded' })
+    // The notice's Download Again, kept to press later.
+    await page.evaluate(async () => {
+        const { setSaveUiForTests } = await import('/src/editor/save/dialogs.ts')
+        setSaveUiForTests({
+            noChanges: (_name, _event, again) => {
+                ;(window as { again?: () => void }).again = again
+            },
+        })
+    })
+    await pressSave(page)
+    await expect
+        .poll(() => page.evaluate(() => typeof (window as { again?: unknown }).again))
+        .toBe('function')
+    // Another session opens in this tab before the press.
+    await page.evaluate(async () => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
+    })
+    await edit(page, 2)
+    let downloads = 0
+    page.on('download', () => downloads++)
+    await page.evaluate(() => (window as { again?: () => void }).again?.())
+    await page.waitForTimeout(1000)
+    expect(downloads).toBe(0)
+    expect((await sessionOf(page)).file).toBeUndefined()
+})
+
+test('opening a file this browser downloaded confirms its downloads', async ({ page }) => {
+    await start(page, {
+        fileSystemAccess: false,
+        override: { os: 'linux', engine: 'firefox' },
+    })
+    await edit(page, 1)
+    const downloading = page.waitForEvent('download')
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    const download = await downloading
+    await expect(page.locator('[data-file-chip="notConfirmed"]')).toBeVisible()
+    const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
+    await page.evaluate(async (bytes) => {
+        const { openProject } = await import('/src/editor/commands/open/project.ts')
+        await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
+    }, bytes)
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    // Later downloads are confirmed: no chip. The first Save after an open asks (§1.4.7).
+    await edit(page, 2)
+    await downloaded(page, async () => {
+        await pressSave(page)
+        await submitSave(page)
+    })
+    await expect(page.locator('[data-file-chip]')).toHaveCount(0)
+})
+
+test('a download browser never requests nse-bind', async ({ page }) => {
+    await page.addInitScript(() => {
+        const names: string[] = []
+        ;(window as { lockNames?: string[] }).lockNames = names
+        const request = LockManager.prototype.request
+        LockManager.prototype.request = function (
+            this: LockManager,
+            name: string,
+            ...rest: unknown[]
+        ) {
+            names.push(name)
+            return (request as (...args: unknown[]) => Promise<unknown>).call(this, name, ...rest)
+        } as typeof request
+    })
+    await start(page, { fileSystemAccess: false })
+    await edit(page, 1)
+    await downloaded(page, async () => {
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+    })
+    await edit(page, 2)
+    await downloaded(page, () => pressSave(page))
+    const names = await page.evaluate(() => (window as { lockNames?: string[] }).lockNames ?? [])
+    expect(names.length).toBeGreaterThan(0)
+    expect(names).not.toContain('nse-bind')
+})

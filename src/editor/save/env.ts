@@ -167,6 +167,27 @@ export const removeMarker = (chainId: string, revisionId?: string) => {
     }
 }
 
+/** Removes the markers of chains storage no longer holds (deleted), at a load's idle time. */
+export const sweepMarkers = async (worker: {
+    call: (method: 'readChainRecord', chainId: string) => Promise<unknown>
+}) => {
+    const prefix = storageKey('saving.')
+    const chains: string[] = []
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key?.startsWith(prefix)) chains.push(key.slice(prefix.length))
+        }
+    } catch {
+        return
+    }
+    for (const chainId of chains) {
+        const record = await worker.call('readChainRecord', chainId).catch(() => null)
+        // Undefined only when the read worked and found no chain.
+        if (record === undefined) removeMarker(chainId)
+    }
+}
+
 /** The `seq` a marker reserved in a session: a resumed session goes past it. */
 export const markedSeq = (sessionId: string) => {
     const prefix = storageKey('saving.')

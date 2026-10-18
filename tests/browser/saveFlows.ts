@@ -155,3 +155,77 @@ export const flushed = (page: Page) =>
         const flusher = window.nseFlushTest?.flusher
         await flusher?.flush({ strict: true })
     })
+
+/** Pauses the next write at a named point (`savePoint`); `release` lets it go on. */
+export const pauseAt = (page: Page, point: string) =>
+    page.evaluate((point) => localStorage.setItem('nse.test.savePause', point), point)
+
+/** Waits until a page's write reached a point. */
+export const reached = (page: Page, point: string) =>
+    expect.poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain(point)
+
+/** Stops pausing (the key is the context's), leaving a paused write waiting for `release`. */
+export const unpause = (page: Page) =>
+    page.evaluate(() => localStorage.removeItem('nse.test.savePause'))
+
+export const release = (page: Page) =>
+    page.evaluate(() => {
+        localStorage.removeItem('nse.test.savePause')
+        window.nseSaveTest?.release()
+    })
+
+/** Whether closing the page now would raise the browser's prompt (the handler held the event). */
+export const prompts = (page: Page) =>
+    page.evaluate(() => {
+        const event = new Event('beforeunload', { cancelable: true })
+        window.dispatchEvent(event)
+        return event.defaultPrevented
+    })
+
+/** The chain record of a chain, by id. */
+export const chainById = async (page: Page, chainId: unknown) => {
+    const { chains } = await rows(page, ['chains'])
+    return chains!.map((row) => row.value).find((row) => row.chainId === chainId)
+}
+
+export const undo = (page: Page) =>
+    page.evaluate(async () => {
+        const { undoState } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        undoState()
+    })
+
+/**
+ * Edits, undoes and edits again, so one state leaves the stack: cleanup could take its row
+ * (`thinUndone`).
+ */
+export const editPastUndo = async (page: Page, beat: number) => {
+    await edit(page, beat)
+    await edit(page, beat + 1)
+    await undo(page)
+    await edit(page, beat + 2)
+}
+
+/** Cleanup under pressure, as a test hook: an undone row (`editPastUndo`) made `kept: false`. */
+export const thinUndone = async (page: Page) => {
+    await flushed(page)
+    const { entries } = await rows(page, ['entries'])
+    const all = entries!
+        .map((row) => row.value)
+        .sort((a, b) =>
+            a.sessionId === b.sessionId
+                ? (a.seq as number) - (b.seq as number)
+                : String(a.sessionId).localeCompare(String(b.sessionId)),
+        )
+    const undone = all.find(
+        (row, i) =>
+            row.kind === 'edit' &&
+            all[i + 1]?.kind === 'undo' &&
+            all[i + 1]?.sessionId === row.sessionId,
+    )
+    expect(undone).toBeDefined()
+    return page.evaluate(
+        (key) => window.nseStorageTest!.worker.call('testThin', key) as Promise<boolean>,
+        { sessionId: undone!.sessionId as string, seq: undone!.seq as number },
+    )
+}

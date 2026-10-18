@@ -19,6 +19,7 @@ export const fileErrorKey = (error: FileError): FileErrorKey => {
         case 'read':
             return 'readFailed'
         case 'readBack':
+        case 'check':
             return 'changedWhileWriting'
         case 'download':
             return 'downloadFailed'

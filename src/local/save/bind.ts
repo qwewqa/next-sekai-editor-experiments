@@ -1,6 +1,13 @@
 import { countDayOfUse } from '../days'
 import { readMeta, writeMeta } from '../db'
-import { deleteHandleRow, HANDLES, splitHandles, withoutHandles } from '../handleRows'
+import {
+    deleteHandleRow,
+    HANDLES,
+    KEPT_ROLE,
+    readKeptRow,
+    splitHandles,
+    withoutHandles,
+} from '../handleRows'
 import { fromHex16 } from '../hash'
 import type { KvTx } from '../kv/types'
 import { clampTime, nextTime } from '../time'
@@ -27,7 +34,8 @@ export const readChainRecord = async (tx: KvTx, chainId: string) => {
 /** A stored binding or Export target: what a pick is compared with (R3), and R1's names. */
 export type HandleOwner = {
     chainId: string
-    role: 'file' | 'exportTarget'
+    /** `kept`: the file a partial open came from, refused and put back (R7). */
+    role: 'file' | 'exportTarget' | typeof KEPT_ROLE
     name: string
     /** The binding's `at`, which a revocation checks is unchanged. */
     at?: number
@@ -68,15 +76,42 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
                 handle: hasStore && (await tx.getKey(HANDLES, [chainId, role])) !== undefined,
             })
         }
+        const kept = hasStore ? await readKeptRow(tx, chainId) : undefined
+        if (kept) owners.push({ chainId, role: KEPT_ROLE, name: kept.name, handle: true })
     }
     return owners
+}
+
+/** Keeps the handle of the file a partial or unlinked open came from (§1.5.4, D26). */
+export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle: unknown) => {
+    if (!isRow(await tx.get('chains', chainId))) return false
+    await tx.put(HANDLES, { chainId, role: KEPT_ROLE, name, handle })
+    return true
+}
+
+/** The chains with a kept file, with their head sessions: what a load's sweep checks. */
+export const listKept = async (tx: KvTx) => {
+    const kept: { chainId: string; head?: string }[] = []
+    for (const value of await tx.getAll('chains')) {
+        if (!isRow(value) || typeof value.chainId !== 'string') continue
+        // By key: a load reads no handle (D24).
+        if ((await tx.getKey(HANDLES, [value.chainId, KEPT_ROLE])) === undefined) continue
+        kept.push({
+            chainId: value.chainId,
+            ...(typeof value.head === 'string' ? { head: value.head } : {}),
+        })
+    }
+    return kept
 }
 
 /** A takeover (R5): another chain's binding or Export target revoked, this chain pre-bound. */
 export type TakeOver = {
     owner?: HandleOwner
-    /** This chain, bound to the picked file in its empty state; none for Save to File…. */
-    preBind?: { chainId: string; file: Row }
+    /**
+     * This chain, bound to the picked file in its empty state; none for Save to File…. Save As…
+     * gives its new `docId`, with no revision yet (the identity fields are one unit, §1.3.2).
+     */
+    preBind?: { chainId: string; file: Row; docId?: string }
     by: string
     at: number
 }
@@ -114,10 +149,18 @@ export const takeOver = async (tx: KvTx, request: TakeOver) => {
     if (request.preBind) {
         const chain = await tx.get('chains', request.preBind.chainId)
         if (isRow(chain)) {
+            const { docId } = request.preBind
             const fields = await splitHandles(tx, request.preBind.chainId, {
                 file: request.preBind.file,
             })
-            await tx.put('chains', { ...chain, file: fields.file })
+            const record: Row = { ...chain, file: fields.file }
+            // Bound again: a revocation it had is over.
+            delete record.replaced
+            if (docId !== undefined) {
+                record.docId = docId
+                delete record.revision
+            }
+            await tx.put('chains', record)
             preBound = true
         }
     }
