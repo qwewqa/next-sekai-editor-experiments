@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { waitForStartup } from './editorFixture'
 
 // Startup (Part 1 §1.4.2, §1.11.4's exit): which session a load opens. A same-tab reload keeps
 // its session, decided by the session lock; a Duplicate Tab forks; a new visit continues the most
@@ -21,18 +22,7 @@ const seed = (context: BrowserContext, extra: Record<string, string> = {}) =>
     }, extra)
 
 /** Waits until startup has opened the session this load continues. */
-const opened = (page: Page) =>
-    expect
-        .poll(
-            () =>
-                page.evaluate(async () => {
-                    const { startupGate } =
-                        (await import('/src/startup/gate.ts')) as typeof import('../../src/startup/gate')
-                    return startupGate.phase
-                }),
-            { timeout: 20_000 },
-        )
-        .toBe('done')
+const opened = waitForStartup
 
 const visit = async (page: Page) => {
     await page.goto('/')
@@ -216,6 +206,10 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     const record = await tabRecord(page)
     const { sessionId } = await sessionOf(page)
     const next = await withTabRecord(context, record)
+    // A tab the browser discarded says so; it's only a hint, and changes nothing (§1.4.2).
+    await next.addInitScript(() => {
+        Object.defineProperty(document, 'wasDiscarded', { configurable: true, value: true })
+    })
     await page.close({ runBeforeUnload: false })
     await visit(next)
     expect(await claimOf(next)).toBe('reload')
@@ -431,13 +425,13 @@ test('Reopen continues the session left by New', async ({ page }) => {
     })
     expect(await lifeOf(page)).toBe(1000)
     const reopened = await page.evaluate(async () => {
-        const api =
-            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
-        await expect_(() => api.previousSession.value !== undefined)
-        return api.reopen()
-        async function expect_(ok: () => boolean) {
+        const until = async (ok: () => boolean) => {
             for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 50))
         }
+        const api =
+            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+        await until(() => api.previousSession.value !== undefined)
+        return api.reopen()
     })
     expect(reopened).toBe(true)
     expect(await lifeOf(page)).toBe(990)
@@ -454,6 +448,15 @@ test('the marker clears when the page shows again, so a later Duplicate Tab isn�
     await page.evaluate(() => {
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
         document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(await marker()).toBeNull()
+    // A page restored from the back-forward cache clears it on `pageshow` (§1.4.2).
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('pagehide'))
+    })
+    expect(await marker()).toBe((await sessionOf(page)).sessionId)
+    await page.evaluate(() => {
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
     })
     expect(await marker()).toBeNull()
 })
@@ -672,4 +675,205 @@ test('one load runs the recovery order: the canary, a journal, then the old auto
     // The migrated session is the newest: this load continues it.
     const { sessions } = await rows(other, ['sessions'])
     expect(sessions.map((row) => row.origin).sort()).toEqual(['migrated', 'new'])
+})
+
+/** The tab's own storage test flags for its next load (a tab's flag comes first). */
+const nextLoadFlags = (page: Page, flags: Record<string, unknown>) =>
+    page.evaluate((text) => {
+        sessionStorage.setItem('nse.test.storage', text)
+    }, JSON.stringify(flags))
+
+const phase = (page: Page) =>
+    page.evaluate(async () => {
+        const { startupGate } =
+            (await import('/src/startup/gate.ts')) as typeof import('../../src/startup/gate')
+        return startupGate.phase
+    })
+
+const gate = (page: Page) => page.locator('dialog[data-startup-gate]')
+
+type Seen = { seen: string[] }
+
+test('a reload during a slow startup claims its session again: the tab record waits for the open', async ({
+    page,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const { sessionId } = await sessionOf(page)
+    page.on('dialog', (dialog) => void dialog.accept())
+    await nextLoadFlags(page, { holdReplayMs: 4000 })
+    await page.reload()
+    // Storing has started (the blank start begun), and the open hasn't come yet.
+    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    expect(await phase(page)).toBe('opening')
+    expect((JSON.parse(await tabRecord(page)) as Row).sessionId).toBe(sessionId)
+    await page.evaluate(() => {
+        sessionStorage.removeItem('nse.test.storage')
+    })
+    await page.reload()
+    await opened(page)
+    expect(await claimOf(page)).toBe('reload')
+    expect((await sessionOf(page)).sessionId).toBe(sessionId)
+    expect(await lifeOf(page)).toBe(990)
+})
+
+test('the gate swallows input until the real startup has opened the session', async ({ page }) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    await page.addInitScript(() => {
+        const seen: string[] = []
+        ;(window as unknown as Seen).seen = seen
+        document.addEventListener('keydown', (event) => seen.push(event.key))
+    })
+    page.on('dialog', (dialog) => void dialog.accept())
+    await nextLoadFlags(page, { holdReplayMs: 2500 })
+    await page.reload()
+    await expect(gate(page)).toBeVisible()
+    await page.keyboard.press('KeyA')
+    await page.keyboard.press('KeyN')
+    expect(await page.evaluate(() => (window as unknown as Seen).seen)).toEqual([])
+    await opened(page)
+    await expect(gate(page)).toHaveCount(0)
+    expect(await lifeOf(page)).toBe(990)
+    expect(await claimOf(page)).toBe('reload')
+    await page.keyboard.press('KeyA')
+    expect(await page.evaluate(() => (window as unknown as Seen).seen)).toEqual(['a'])
+})
+
+test('Start Blank leaves the stored session untouched, and the blank start has its own session', async ({
+    page,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const stored = await flushSession(page)
+    page.on('dialog', (dialog) => void dialog.accept())
+    await nextLoadFlags(page, { holdReplayMs: 3000 })
+    await page.evaluate(() => {
+        sessionStorage.setItem('nse.test.startup', JSON.stringify({ slowMs: 100 }))
+    })
+    await page.reload()
+    await gate(page).getByRole('button', { name: 'Start Blank' }).click()
+    await expect(gate(page)).toHaveCount(0)
+    expect(await lifeOf(page)).toBe(1000)
+    // Startup ends without opening it over the blank start.
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest?.opened)).toBe(false)
+    expect(await lifeOf(page)).toBe(1000)
+    await edit(page, 950)
+    await settled(page)
+    const blank = await flushSession(page)
+    expect(blank.chainId).not.toBe(stored.chainId)
+    const { chains } = await rows(page, ['chains'])
+    expect(chains.find((chain) => chain.chainId === stored.chainId)?.head).toBe(stored.id)
+    // Its reload takes up the blank start's session.
+    await page.evaluate(() => {
+        sessionStorage.removeItem('nse.test.storage')
+        sessionStorage.removeItem('nse.test.startup')
+    })
+    await page.reload()
+    await opened(page)
+    expect((await flushSession(page)).id).toBe(blank.id)
+    expect(await lifeOf(page)).toBe(950)
+})
+
+test('safe mode’s real startup opens blank and read-only, and writes no journal', async ({
+    page,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const stored = await flushSession(page)
+    const canary = await page.evaluate((prefix) => localStorage.getItem(`${prefix}canary`), prefix)
+    page.on('dialog', (dialog) => void dialog.accept())
+    await page.goto('/?safe')
+    await expect(page.locator('[data-safe-bar]')).toBeVisible()
+    await opened(page)
+    expect(await lifeOf(page)).toBe(1000)
+    expect(await page.evaluate(() => window.nseFlushTest === undefined)).toBe(true)
+    await edit(page, 970)
+    await hide(page)
+    await page.waitForTimeout(500)
+    expect(
+        await page.evaluate(() =>
+            Object.keys(localStorage).filter((key) => /\.(journal\.|legacyRecovery)/.test(key)),
+        ),
+    ).toEqual([])
+    expect(await page.evaluate((prefix) => localStorage.getItem(`${prefix}canary`), prefix)).toBe(
+        canary,
+    )
+    const { sessions } = await rows(page, ['sessions'])
+    expect(sessions.map((row) => row.id)).toEqual([stored.id])
+})
+
+/** A page that takes over a tab's sessionStorage with the marker: a closed tab reopened. */
+const reopenedTab = async (context: BrowserContext, record: string) => {
+    const page = await withTabRecord(context, record)
+    await page.addInitScript(
+        ({ key, sessionId }) => {
+            if (!sessionStorage.getItem('marked')) {
+                sessionStorage.setItem(key, sessionId)
+                sessionStorage.setItem('marked', 'true')
+            }
+        },
+        { key: `${prefix}unloaded`, sessionId: (JSON.parse(record) as Row).sessionId as string },
+    )
+    return page
+}
+
+test('Reopen Closed Tab: the lock coming free within the wait is a reload; held past it, a separate copy', async ({
+    page,
+    context,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const record = await tabRecord(page)
+    const { sessionId } = await sessionOf(page)
+
+    // The other tab still holds it past the wait (D19): a fork.
+    const copy = await reopenedTab(context, record)
+    await visit(copy)
+    expect(await claimOf(copy)).toBe('duplicate')
+    expect(await loadEvents(copy)).toEqual(['separateCopy'])
+    await copy.close({ runBeforeUnload: false })
+
+    // It closes within the wait: a reload of the same session.
+    const reopened = await reopenedTab(context, record)
+    const visiting = visit(reopened)
+    await reopened.waitForTimeout(500)
+    await page.close({ runBeforeUnload: false })
+    await visiting
+    expect(await claimOf(reopened)).toBe('reload')
+    expect((await sessionOf(reopened)).sessionId).toBe(sessionId)
+    expect(await lifeOf(reopened)).toBe(990)
+})
+
+test('a late flush landing during the marker’s wait is in the session the reload takes up', async ({
+    page,
+    context,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const record = await tabRecord(page)
+    const { sessionId } = await sessionOf(page)
+    await stallFlushes(page)
+    await edit(page, 960)
+    const reloaded = await reopenedTab(context, record)
+    const visiting = visit(reloaded)
+    await reloaded.waitForTimeout(300)
+    // The unloading page's flush lands while the reload waits, then the page goes.
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = false
+    })
+    await settled(page)
+    await page.close({ runBeforeUnload: false })
+    await visiting
+    expect(await claimOf(reloaded)).toBe('reload')
+    expect((await sessionOf(reloaded)).sessionId).toBe(sessionId)
+    expect(await lifeOf(reloaded)).toBe(960)
+    const { entries } = await rows(reloaded, ['entries'])
+    expect(entries.map((entry) => entry.kind)).toEqual(['init', 'edit', 'edit'])
 })

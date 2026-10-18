@@ -118,8 +118,16 @@ export const waitForStartup = (page: Page) =>
         .poll(
             () =>
                 page.evaluate(async () => {
-                    const { startupGate } =
-                        (await import('/src/startup/gate.ts')) as typeof import('../../src/startup/gate')
+                    // The app's own copy of the module, under the URL it was loaded by.
+                    const url =
+                        performance
+                            .getEntriesByType('resource')
+                            .map((entry) => entry.name)
+                            .find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
+                        '/src/startup/gate.ts'
+                    const { startupGate } = (await import(
+                        url
+                    )) as typeof import('../../src/startup/gate')
                     return startupGate.phase
                 }),
             { timeout: 20_000 },
@@ -155,14 +163,16 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     // shown before then would be replaced by the stored session it opens.
     const { startupGate } =
         await appImport<typeof import('../../src/startup/gate')>('/src/startup/gate.ts')
-    // A spec that holds startup open (the gate's own) drives it itself.
-    const held = /"hold":true/.test(
-        sessionStorage.getItem('nse.test.startup') ??
-            localStorage.getItem('nse.test.startup') ??
-            '',
-    )
+    // A spec that holds startup open, or makes it fail (the gate's own), drives it itself.
+    const flags =
+        sessionStorage.getItem('nse.test.startup') ?? localStorage.getItem('nse.test.startup') ?? ''
+    const held = /"hold":true/.test(flags)
     for (let waited = 0; !held && startupGate.phase === 'opening' && waited < 20_000; waited += 20)
         await new Promise((resolve) => setTimeout(resolve, 20))
+    // A startup that hung or failed never passes unseen, under the fixture hook either.
+    if (!held && !/"fail"/.test(flags) && startupGate.phase !== 'done')
+        throw new Error(`Startup did not finish: ${startupGate.phase}`)
+    if (window.nseStartupError) throw new Error(`Startup failed: ${window.nseStartupError}`)
     if (window.installEditorRendering) {
         // Use the exact module instance the app loaded, including a Vite HMR
         // timestamp. Importing during addInitScript could create a second class

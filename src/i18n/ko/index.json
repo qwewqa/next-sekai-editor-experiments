@@ -1784,7 +1784,7 @@
     "downloaded": "{0} 다운로드됨",
     "recovered": "마지막 변경 복구됨",
     "recoveredDropped": "마지막 변경 복구됨. 되돌리기 단계 {0}개가 유지되지 않았습니다.",
-    "continued": "이어서 계속",
+    "continued": "계속됨",
     "migrated": "자동 저장에서 복구됨"
   }
 }
