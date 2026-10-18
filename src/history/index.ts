@@ -65,7 +65,6 @@ resetStates({
     state: createState(createDefaultChart(), 0),
 })
 
-
 setFileEventMessages(() => i18n.value)
 
 /**
