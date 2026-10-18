@@ -1841,7 +1841,7 @@
     "initialState": "État initial",
     "unavailable": "Modifications indisponibles",
     "loadingChanges": "Chargement des modifications…",
-    "addedRemoved": "{0} ajouts · {1} suppressions",
+    "addedRemoved": "Ajouts : {0} · suppressions : {1}",
     "exportsCurrent": "Exporte la version actuelle.",
     "overlay": "Consultation de l’historique · lecture seule",
     "viewing": "Affichage de {0} · {1} · lecture seule",
