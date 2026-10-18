@@ -186,7 +186,7 @@ test('Japanese units take half-width parentheses', () => {
 
 test('Turkish editor names all use Editör', () => {
     for (const [key, text] of Object.entries(read('tr')))
-        assert.doesNotMatch(text, /Düzenleyici/, key)
+        assert.doesNotMatch(text, /[Dd]üzenleyici/, key)
 })
 
 test('Turkish writes the beats unit one way, lower case as its other units', () => {
@@ -235,12 +235,10 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.events.title',
         'commands.laneDivisions.custom.modal.division',
         'commands.note.title.default',
-        'commands.note.title.preset',
         // French writes "skin", as in its preview strings.
         'commands.previewAssets.noun.skin',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
-        'commands.slide.title.preset',
         'commands.visibilities.toggle.types.bpm',
         'commands.visibilities.toggle.types.note',
         'elevation.auto',

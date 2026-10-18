@@ -39,22 +39,22 @@ const messagesOf = (locale: string) =>
 
 const LOCALES = ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']
 
-test('the recovered entry’s label names the undo steps not kept, in each locale’s plural', () => {
+test('the recovered entry’s label names the dropped undo steps, in each locale’s plural', () => {
     try {
         setInterpolationLocale(() => 'en')
         const en = messagesOf('en')
         assert.equal(recoveredLabel(en, 0), 'Recovered last change')
-        assert.equal(recoveredLabel(en, 1), 'Recovered last change. 1 undo step was not kept.')
-        assert.equal(recoveredLabel(en, 2), 'Recovered last change. 2 undo steps were not kept.')
+        assert.equal(recoveredLabel(en, 1), 'Recovered last change. 1 undo step was dropped.')
+        assert.equal(recoveredLabel(en, 2), 'Recovered last change. 2 undo steps were dropped.')
         setInterpolationLocale(() => 'fr')
         const fr = messagesOf('fr')
         assert.equal(
             recoveredLabel(fr, 1),
-            'Dernière modification récupérée. 1 étape d’annulation n’a pas été conservée.',
+            'Dernière modification récupérée. 1 étape d’annulation a été supprimée.',
         )
         assert.equal(
             recoveredLabel(fr, 3),
-            'Dernière modification récupérée. 3 étapes d’annulation n’ont pas été conservées.',
+            'Dernière modification récupérée. 3 étapes d’annulation ont été supprimées.',
         )
         for (const locale of LOCALES) {
             setInterpolationLocale(() => locale)

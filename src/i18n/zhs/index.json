@@ -28,7 +28,7 @@
       "modal": {
         "file": "文件",
         "offset": "偏移（毫秒）",
-        "loading": "正在载入文件…",
+        "loading": "正在加载文件…",
         "decoding": "正在解码音频…",
         "generating": "正在生成波形…"
       }
@@ -297,8 +297,8 @@
       "redid": "已重做 “{0}”"
     },
     "reset": {
-      "title": "清除谱面",
-      "reset": "已清除谱面"
+      "title": "重置",
+      "reset": "已重置关卡"
     },
     "save": {
       "title": "保存",
@@ -630,7 +630,7 @@
       "selectTool": {
         "title": "选择工具",
         "select": "点击对象即可选择 1 个对象，重复点击可在重叠对象之间切换。",
-        "deselect": "点击空白处取消选择所有对象。",
+        "deselect": "点击空白处即可取消选择所有对象。",
         "move": "拖动对象即可移动多个对象。",
         "selectMultiple": "拖动框选多个对象。",
         "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
@@ -645,7 +645,7 @@
       "brushTool": {
         "title": "笔刷工具",
         "brush": "点击要刷的对象。",
-        "deselect": "点击空白处可取消选择所有对象。",
+        "deselect": "点击空白处即可取消选择所有对象。",
         "brushMultiple": "拖动框选以刷多个对象。",
         "shift": "按住 Shift 键可同时操作同一条长按音符中的其他音符。"
       },
@@ -709,7 +709,7 @@
         "edit": "点击 1 个镜头事件进行编辑。",
         "add": "点击空白处即可添加。",
         "move": "拖动 1 个镜头事件进行移动。",
-        "ctrl": "按下 Ctrl 键即可将对象添加到选择中。",
+        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
         "properties": "再次切换到镜头事件工具即可更改默认属性。"
       },
       "stageMaskEventTool": {
@@ -718,7 +718,7 @@
         "edit": "点击 1 个舞台遮罩事件进行编辑。",
         "add": "点击空白处即可添加。",
         "move": "拖动 1 个舞台遮罩事件进行移动。",
-        "ctrl": "按下 Ctrl 键即可将对象添加到选择中。",
+        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
         "properties": "再次切换到舞台遮罩事件工具即可更改默认属性。"
       },
       "stagePivotEventTool": {
@@ -727,7 +727,7 @@
         "edit": "点击 1 个舞台支点事件进行编辑。",
         "add": "点击空白处即可添加。",
         "move": "拖动 1 个舞台支点事件进行移动。",
-        "ctrl": "按下 Ctrl 键即可将对象添加到选择中。",
+        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
         "properties": "再次切换到舞台支点事件工具即可更改默认属性。"
       },
       "stageStyleEventTool": {
@@ -736,7 +736,7 @@
         "edit": "点击 1 个舞台样式事件进行编辑。",
         "add": "点击空白处即可添加。",
         "move": "拖动 1 个舞台样式事件进行移动。",
-        "ctrl": "按下 Ctrl 键即可将对象添加到选择中。",
+        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
         "properties": "再次切换到舞台样式事件工具即可更改默认属性。"
       },
       "stageTransformEventTool": {
@@ -745,7 +745,7 @@
         "edit": "点击 1 个舞台变换事件进行编辑。",
         "add": "点击空白处即可添加。",
         "move": "拖动 1 个舞台变换事件进行移动。",
-        "ctrl": "按下 Ctrl 键即可将对象添加到选择中。",
+        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
         "properties": "再次切换到舞台变换事件工具即可更改默认属性。"
       }
     },
@@ -781,7 +781,7 @@
   "settings": {
     "title": "设置",
     "resetSettings": "重置设置",
-    "resetSettingsHint": "恢复默认设置，保留键盘快捷键。",
+    "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
     "resetKeybinds": "重置快捷键",
     "editor": {
       "title": "编辑器",
@@ -998,7 +998,7 @@
     },
     "brush": {
       "title": "笔刷",
-      "deselected": "取消选择所有对象",
+      "deselected": "已取消选择所有对象",
       "brushing": "正在刷 {0} 个对象",
       "brushed": "已刷 {0} 个对象",
       "sidebar": {
@@ -1024,7 +1024,7 @@
     },
     "eraser": {
       "title": "橡皮擦",
-      "deselected": "取消选择所有对象",
+      "deselected": "已取消选择所有对象",
       "erasing": "擦除 {0} 个对象",
       "erased": "已擦除 {0} 个对象"
     },
@@ -1064,7 +1064,7 @@
     },
     "select": {
       "title": "选择",
-      "deselected": "取消选择所有对象",
+      "deselected": "已取消选择所有对象",
       "selecting": "选择 {0} 个对象",
       "selected": "已选择 {0} 个对象",
       "moving": "移动 {0} 个对象",
@@ -1167,7 +1167,7 @@
     "journalKept": "无法应用对“{0}”的更改，已将其保留为单独的会话。",
     "fallback": "已恢复以往访问中未保存的内容。",
     "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
-    "migrationFailed": "无法恢复旧的自动保存。",
+    "migrationFailed": "无法还原旧的自动保存。",
     "autoSave": "已从自动保存继续“{0}”。",
     "journal": "已恢复对“{0}”的最后更改。",
     "journalLater": "已恢复的更改需要更新版本的编辑器。",
@@ -1806,7 +1806,7 @@
     "notLocal": "“{0}”尚不在此设备上。",
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
-    "notPutBack": "“{0}”已被清空，且无法恢复其内容。",
+    "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”已不再包含打开时的内容。"
   },
   "conflict": {
@@ -1834,7 +1834,7 @@
     "saved": "已保存 {0}",
     "downloaded": "已下载 {0}",
     "recovered": "已恢复最后的更改",
-    "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤未保留。",
+    "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤已丢弃。",
     "continued": "已继续",
     "migrated": "已从自动保存恢复"
   },

@@ -341,5 +341,5 @@ test('a long stack journalled with keep 0 names its newest dropped steps and cou
     const [recovered] = [...rows(world, 'entries').values()].filter(
         (entry) => entry.sessionId === session.id,
     )
-    assert.equal(recovered?.label, 'Recovered last change. 100 undo steps were not kept.')
+    assert.equal(recovered?.label, 'Recovered last change. 100 undo steps were dropped.')
 })

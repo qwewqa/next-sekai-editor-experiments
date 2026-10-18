@@ -29,7 +29,7 @@
         "file": "檔案",
         "offset": "偏移（毫秒）",
         "loading": "正在載入檔案…",
-        "decoding": "解碼音訊…",
+        "decoding": "正在解碼音訊…",
         "generating": "生成波形…"
       }
     },
@@ -42,16 +42,16 @@
     },
     "copy": {
       "title": "複製",
-      "noSelected": "未選擇要複製的物件",
+      "noSelected": "未選取要複製的物件",
       "copied": "已複製 {0} 個物件"
     },
     "cut": {
       "title": "剪下",
-      "noSelected": "未選擇要剪下的物件",
+      "noSelected": "未選取要剪下的物件",
       "cut": "已剪下 {0} 個物件"
     },
     "deselect": {
-      "title": "取消選擇",
+      "title": "取消選取",
       "deselected": "已取消選取所有物件"
     },
     "laneLimits": {
@@ -95,7 +95,7 @@
     },
     "flip": {
       "title": "水平翻轉",
-      "noSelected": "未選擇要翻轉的物件",
+      "noSelected": "未選取要翻轉的物件",
       "flipped": "已翻轉 {0} 個物件"
     },
     "flipVertical": {
@@ -109,7 +109,7 @@
     },
     "scaleWidth": {
       "title": "縮放寬度",
-      "noSelected": "請選擇具有橫向跨度的物件進行縮放",
+      "noSelected": "請選取具有橫向跨度的物件進行縮放",
       "scaled": "已縮放 {0} 個物件的寬度"
     },
     "scaleElevation": {
@@ -326,8 +326,8 @@
       }
     },
     "select": {
-      "title": "選擇",
-      "switched": "已切換到選擇工具"
+      "title": "選取",
+      "switched": "已切換到選取工具"
     },
     "settings": {
       "title": "設定"
@@ -462,7 +462,7 @@
       "particle": "粒子",
       "background": "背景",
       "effect": "音效",
-      "storedTab": "已儲存",
+      "storedTab": "已存放",
       "effectHint": "用於預覽和播放。",
       "default": "預設",
       "defaultSkin": "預設：Next SEKAI 01",
@@ -471,10 +471,10 @@
       "storedFile": "{0}（檔案）",
       "storedServer": "{0}（伺服器）",
       "useBuiltinAll": "全部使用內建",
-      "resetDefault": "重設為預設",
-      "stored": "已儲存：{0} 項，{1}",
-      "storedEmpty": "沒有已儲存的項目",
-      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的項目。",
+      "resetDefault": "重置為預設",
+      "stored": "已存放：{0} 項，{1}",
+      "storedEmpty": "沒有已存放的項目",
+      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的項目。",
       "noun": {
         "skin": "外觀",
         "particle": "粒子",
@@ -488,10 +488,10 @@
         "rowStored": "正在使用 \"{0}\"。{1}"
       },
       "reason": {
-        "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
-        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的{0}。",
+        "fileGone": "{0}檔案已不再存放在此瀏覽器中。",
+        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
-        "invalid": "無法讀取已儲存的{0}。",
+        "invalid": "無法讀取已存放的{0}。",
         "defaultFailed": "無法載入預設項。",
         "builtinFailed": "無法載入內建項。"
       },
@@ -510,10 +510,10 @@
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
-      "rights": "您載入的項目僅儲存在此瀏覽器中。請只使用您有權使用的項目。",
+      "rights": "您載入的項目僅存放在此瀏覽器中。請只使用您有權使用的項目。",
       "progress": {
         "reading": "正在讀取檔案…",
-        "storing": "正在儲存…",
+        "storing": "正在存放…",
         "connecting": "正在連線…",
         "downloading": "正在下載…"
       },
@@ -551,8 +551,8 @@
         "effectGroups": "此檔案的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
         "noPerfect": "此檔案的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
-        "packageTooLarge": "此項目儲存後超過 {0}。",
-        "storeFailed": "無法儲存此項目。"
+        "packageTooLarge": "此項目存放後超過 {0}。",
+        "storeFailed": "無法存放此項目。"
       },
       "chooseHint": "從檔案或 Sonolus 伺服器",
       "fromFile": "從檔案",
@@ -628,17 +628,17 @@
         "multiple": "按住按鍵可重複滾動、縮放、撤銷、重做，或變更音符尺寸、播放速度、圖層或舞台。"
       },
       "selectTool": {
-        "title": "選擇工具",
-        "select": "點擊以選擇一個物件，在重疊的物件之間循環。",
+        "title": "選取工具",
+        "select": "點選以選取一個物件，在重疊的物件之間循環。",
         "deselect": "點選空白處可取消選取所有物件。",
         "move": "拖曳物件來移動多個物件。",
         "selectMultiple": "拖曳區域以選取多個物件。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。"
       },
       "eraserTool": {
         "title": "橡皮擦工具",
-        "erase": "點擊以擦除物件。",
+        "erase": "點選以擦除物件。",
         "deselect": "點選空白處可取消選取所有物件。",
         "eraseMultiple": "拖曳以刪除多個物件。"
       },
@@ -651,27 +651,27 @@
       },
       "pasteTool": {
         "title": "貼上工具",
-        "paste": "點擊以貼上。",
+        "paste": "點選以貼上。",
         "shift": "使用 Shift 鍵翻轉物件。"
       },
       "noteTool": {
         "title": "音符工具",
-        "select": "點擊音符以選擇一個音符。",
+        "select": "點選音符以選取一個音符。",
         "edit": "點選一個音符進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
         "properties": "再次切換到音符工具以變更預設組或預設屬性。"
       },
       "slideTool": {
         "title": "滑條工具",
-        "select": "點擊音符以選擇一個音符。",
+        "select": "點選音符以選取一個音符。",
         "edit": "點選一個音符進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "connect": "選取一個音符後，點選空白處即可連接。",
         "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
         "properties": "再次切換到滑條工具以變更預設組或預設屬性。"
       },
@@ -687,19 +687,19 @@
       },
       "bpmTool": {
         "title": "BPM工具",
-        "select": "點擊 BPM 以選擇一個 BPM。",
+        "select": "點選 BPM 以選取一個 BPM。",
         "edit": "點選一個 BPM 進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個 BPM 進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。"
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。"
       },
       "timeScaleTool": {
         "title": "時間倍率工具",
-        "select": "點選時間倍率以選擇 1 個時間倍率。",
+        "select": "點選時間倍率以選取一個時間倍率。",
         "edit": "點選一個時間倍率進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個時間倍率進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "markers": "菱形標記使用捲動過渡。虛線上的空心標記會隱藏音符。",
         "ease": "曲線表示到同一圖層中下一個變化的緩動。"
       },
@@ -834,7 +834,7 @@
       "secondaryTool": {
         "title": "輔助工具",
         "eraser": "橡皮擦",
-        "select": "選擇",
+        "select": "選取",
         "selectContextMenu": "選取 + 快顯選單"
       },
       "smoothScrolling": "平滑滾動"
@@ -925,25 +925,25 @@
     "sections": "分區",
     "localData": {
       "title": "本機資料",
-      "recoveryHeading": "還原",
+      "recoveryHeading": "恢復",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
       "discardAutoSave": "要捨棄舊的自動儲存（{0}）嗎？",
-      "discardUnreadable": "要捨棄 {0} 無法讀取的已還原內容（{1}）嗎？",
+      "discardUnreadable": "要捨棄 {0} 無法讀取的已恢復內容（{1}）嗎？",
       "recovery": {
         "journal": "先前造訪中未儲存的內容，{0} · {1}",
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
-        "legacy": "舊版還原副本 · {0}",
+        "legacy": "舊版恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
-        "unreadable": "無法讀取的已還原內容，{0} · {1}",
+        "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "atLoad": "本次載入："
       }
     }
   },
   "sidebars": {
     "default": {
-      "none": "未選擇物件",
+      "none": "未選取物件",
       "edited": "已編輯 {0} 個物件",
       "editedNotes": "已編輯 {0} 個音符",
       "set": "已設定 {0} 個物件的{1}",
@@ -998,7 +998,7 @@
     },
     "brush": {
       "title": "筆刷",
-      "deselected": "取消選取所有物件",
+      "deselected": "已取消選取所有物件",
       "brushing": "正在套用筆刷至 {0} 個物件",
       "brushed": "已套用筆刷至 {0} 個物件",
       "sidebar": {
@@ -1024,7 +1024,7 @@
     },
     "eraser": {
       "title": "橡皮擦",
-      "deselected": "取消選取所有物件",
+      "deselected": "已取消選取所有物件",
       "erasing": "正在刪除 {0} 個物件",
       "erased": "已刪除 {0} 個物件"
     },
@@ -1064,9 +1064,9 @@
     },
     "select": {
       "title": "選取",
-      "deselected": "取消選取所有物件",
-      "selecting": "正在選擇 {0} 個物件",
-      "selected": "已選擇 {0} 個物件",
+      "deselected": "已取消選取所有物件",
+      "selecting": "正在選取 {0} 個物件",
+      "selected": "已選取 {0} 個物件",
       "moving": "正在移動 {0} 個物件",
       "moved": "已移動 {0} 個物件"
     },
@@ -1146,11 +1146,11 @@
     "opening": "正在開啟 \"{0}\"…",
     "openingBlank": "正在開啟…",
     "slow": "耗時比平常更久。",
-    "error": "編輯器無法開啟已儲存的內容。",
+    "error": "編輯器無法開啟已存放的內容。",
     "blank": "從空白開始"
   },
   "safe": {
-    "bar": "安全模式：不儲存任何內容。",
+    "bar": "安全模式：不存放任何內容。",
     "leave": "結束安全模式",
     "open": "以安全模式開啟"
   },
@@ -1158,25 +1158,25 @@
     "version": "版本 {0}",
     "updated": "已更新至版本 {0}",
     "whatsNew": "新功能",
-    "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已儲存的內容。",
+    "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此版本早於資料的版本。請重新載入，或將內容儲存為檔案。",
     "tryAgain": "重試",
     "continued": "已從 {1} 繼續 \"{0}\"。",
     "continuedUntitled": "已繼續 {0} 的工作階段。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
     "journalKept": "無法套用對 \"{0}\" 的變更，已將其保留為獨立的工作階段。",
-    "fallback": "已還原先前造訪中未儲存的內容。",
+    "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
     "migrationFailed": "無法還原舊的自動儲存。",
     "autoSave": "已從自動儲存繼續 \"{0}\"。",
-    "journal": "已還原對 \"{0}\" 的最後變更。",
-    "journalLater": "已還原的變更需要較新版本的編輯器。",
+    "journal": "已恢復對 \"{0}\" 的最後變更。",
+    "journalLater": "已恢復的變更需要較新版本的編輯器。",
     "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟。",
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
-    "journalFailed": "無法儲存已還原的變更。下次載入時將重試。",
+    "journalFailed": "無法存放已恢復的變更。下次載入時將重試。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",
@@ -1187,11 +1187,11 @@
     "localData": "本機資料"
   },
   "storage": {
-    "reload": "請重新載入以繼續儲存變更。",
-    "unavailable": "此瀏覽器不允許編輯器儲存任何內容。請將內容儲存到檔案中以保留。",
-    "private": "如果這是無痕視窗，此處儲存的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
-    "ios": "此瀏覽器會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
-    "safari": "Safari 會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
+    "reload": "請重新載入以繼續存放變更。",
+    "unavailable": "此瀏覽器不允許編輯器存放任何內容。請將內容儲存到檔案中以保留。",
+    "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
+    "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
+    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
     "installedWebkit": "最近的工作階段會保留在此處，直到此圖示從主畫面移除。請將內容儲存到檔案中以保留。",
     "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請將內容儲存到檔案中以保留。",
     "default": "最近的工作階段會保留在此瀏覽器中，空間不足時瀏覽器可能會將其清除。請將內容儲存到檔案中以保留。"
@@ -1833,17 +1833,17 @@
     "exported": "已匯出 {0}",
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
-    "recovered": "已還原最後的變更",
-    "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。",
+    "recovered": "已恢復最後的變更",
+    "recoveredDropped": "已恢復最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
-    "migrated": "已從自動儲存還原"
+    "migrated": "已從自動儲存恢復"
   },
   "session": {
     "untitled": "未命名 · {0}"
   },
   "prompt": {
-    "title": "變更未儲存",
-    "notStored": "變更未儲存在此瀏覽器中。離開會遺失這些變更。",
+    "title": "變更未存放",
+    "notStored": "變更未存放在此瀏覽器中。離開會遺失這些變更。",
     "save": "儲存",
     "leaveAnyway": "仍然離開"
   },
