@@ -247,6 +247,7 @@ const entryPoints = [
     'src/editor/elevation/ElevationEditor.vue',
     'src/editor/history/TimelineList.vue',
     'src/editor/levelInfo.ts',
+    'src/editor/save/flow.ts',
     'src/editor/switch.ts',
     'src/editor/toolbar/LevelEditorToolbar.vue',
     'src/editor/workspace/properties/ViewProperties.vue',
