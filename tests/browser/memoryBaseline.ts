@@ -43,7 +43,9 @@ export const importLevelData = async (
     await page.keyboard.press('o')
     await (await opening).setFiles({ name, mimeType: 'application/json', buffer })
     // The open's notice offers Reopen on the session it replaced (§1.4.1), so only its text counts.
-    await expect(page.locator('.notification').filter({ hasText: /^Opened level/ })).toBeVisible({
+    await expect(
+        page.locator('.notification, .notification-pill').filter({ hasText: /^Opened level/ }),
+    ).toBeVisible({
         timeout: 60_000,
     })
     // Level data from an older engine revision, such as coconut, opens with a warning.

@@ -53,7 +53,9 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     await (
         await opening
     ).setFiles({ name: 'stored.usc', mimeType: 'application/json', buffer: chart })
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(
+        page.locator('.notification, .notification-pill').filter({ hasText: 'Imported USC chart' }),
+    ).toBeVisible()
     await settled(page)
     let stored = await rows(page, ['sessions', 'chains', 'entries'])
     expect(stored.sessions).toHaveLength(1)

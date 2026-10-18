@@ -91,8 +91,8 @@ export const latestNotice = shallowRef<Notice>(first)
 export const cardInDialog = ref(false)
 export const quickInDialog = ref(false)
 let quickAt = 0
-/** A quick notice raised in a dialog moves to the pane when the dialog closes only while it still shows. */
-const QUICK_VISIBLE_MS = 1000
+/** A quick notice fades in 1 s, to the faint text v0.5.22 leaves behind until the next notice. */
+const QUICK_FADE_MS = 1000
 
 let timer: ReturnType<typeof setTimeout> | undefined
 let remaining = 0
@@ -181,6 +181,7 @@ const refreshPill = () => {
         cardInDialog.value = false
         track()
     } else {
+        quickAt = Date.now()
         notification.value = next
     }
 }
@@ -232,6 +233,10 @@ export const notify = (
         })
         cardInDialog.value = isBlockingModalOpen.value
         noticeCard.value = notice
+        // A card replaces the start-up toast and the faint text a finished toast leaves, as any
+        // notice did in v0.5.22.
+        if (notification.value.startup || Date.now() - quickAt > QUICK_FADE_MS)
+            dismissNotification()
         track()
     } else {
         quickInDialog.value = isBlockingModalOpen.value
@@ -300,7 +305,7 @@ watch(
         cardInDialog.value = false
         if (quickInDialog.value) {
             quickInDialog.value = false
-            if (Date.now() - quickAt > QUICK_VISIBLE_MS) dismissNotification()
+            if (Date.now() - quickAt > QUICK_FADE_MS) dismissNotification()
         }
     },
     { flush: 'sync' },

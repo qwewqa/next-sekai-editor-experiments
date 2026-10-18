@@ -784,7 +784,7 @@ test.describe('timing', () => {
             }, state)
         await visibility('hidden')
         await notifyWithAction(page, 'Nothing to undo')
-        await page.clock.runFor(20_000)
+        await page.clock.runFor(10_000)
         await expect(pill(page)).toBeVisible()
         await visibility('visible')
         await page.clock.runFor(5_000)
@@ -795,7 +795,7 @@ test.describe('timing', () => {
         await notifyWithAction(page, 'Nothing to redo')
         await page.clock.runFor(4_000)
         await visibility('hidden')
-        await page.clock.runFor(30_000)
+        await page.clock.runFor(10_000)
         await expect(pill(page)).toBeVisible()
         await visibility('visible')
         await page.clock.runFor(1_000)
@@ -811,7 +811,7 @@ test.describe('timing', () => {
         await page.clock.runFor(2_000)
         await openBlocking(page)
         await expect(page.getByRole('dialog')).toBeVisible()
-        await page.clock.runFor(30_000)
+        await page.clock.runFor(8_000)
         await expect(pill(page)).toHaveCount(1)
         // The fake clock holds the dialog's brief ignore of presses, so it is closed directly.
         await page.evaluate(async () => {

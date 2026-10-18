@@ -76,7 +76,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await (
         await opening
     ).setFiles({ name: 'compatibility.usc', mimeType: 'application/json', buffer: chart })
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(
+        page.locator('.notification, .notification-pill').filter({ hasText: 'Imported USC chart' }),
+    ).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.keyboard.press('f')
     const bounds = await page.locator('canvas.editor-chart').boundingBox()
@@ -173,7 +175,9 @@ test('WebGL2 note rendering works without native Canvas2D shape drawing', async 
     await (
         await opening
     ).setFiles({ name: 'fallback.usc', mimeType: 'application/json', buffer: chart })
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(
+        page.locator('.notification, .notification-pill').filter({ hasText: 'Imported USC chart' }),
+    ).toBeVisible()
     await expect
         .poll(async () => {
             // Read the actual composited output; the native reference canvas
