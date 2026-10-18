@@ -1380,9 +1380,13 @@ test.describe('touch', () => {
             const nameBox = name.getBoundingClientRect()
             const folderBox = folder.getBoundingClientRect()
             const countBox = count.getBoundingClientRect()
+            const folderPrefix = document.createRange()
+            folderPrefix.setStart(folder.firstChild!, 0)
+            folderPrefix.setEnd(folder.firstChild!, 'An Extremely'.length)
             return {
                 folderTruncated: folder.scrollWidth > folder.clientWidth,
                 folderWidth: folder.clientWidth,
+                folderVisible: folderPrefix.getBoundingClientRect().left >= folderBox.left && folderPrefix.getBoundingClientRect().right <= folderBox.right - 12,
                 nameWidth: name.clientWidth,
                 nameVisible: prefix.getBoundingClientRect().right <= nameBox.right - 12,
                 separateLines: nameBox.bottom <= folderBox.top,
@@ -1393,6 +1397,7 @@ test.describe('touch', () => {
             }
         })
         expect(parts.folderTruncated).toBe(true)
+        expect(parts.folderVisible).toBe(true)
         expect(parts.nameWidth).toBeGreaterThan(48)
         expect(parts.nameVisible).toBe(true)
         expect(parts.separateLines).toBe(true)
