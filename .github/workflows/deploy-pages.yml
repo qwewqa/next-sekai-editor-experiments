@@ -17,12 +17,15 @@ concurrency:
 
 jobs:
     check:
+        # Main and PRs already run Check; tags need their own gate before deployment.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: ./.github/workflows/check.yml
         with:
             skip_browser_checks: ${{ github.event_name != 'pull_request' }}
 
     build:
         needs: check
+        if: ${{ !cancelled() && (needs.check.result == 'success' || (needs.check.result == 'skipped' && !startsWith(github.ref, 'refs/tags/'))) }}
         runs-on: ubuntu-latest
         timeout-minutes: 25
         outputs:

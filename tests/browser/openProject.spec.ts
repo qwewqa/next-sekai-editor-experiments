@@ -11,13 +11,41 @@ import { installTestPlatform, waitForStartup } from './editorFixture'
 
 type Row = Record<string, unknown>
 
+const memoryFiles = (page: Page) =>
+    process.env.NSE_TEST_FILE_HANDLES === 'memory' ||
+    page.context().browser()?.browserType().name() === 'webkit'
+
+// WebKit's private profile cannot prepare OPFS files; only the picked handles are fakes.
+const installMemoryFiles = () => {
+    const prefix = 'nse.test.openFile.'
+    window.nseTestHandles = new Map(
+        Object.keys(localStorage)
+            .filter((key) => key.startsWith(prefix))
+            .map((key) => {
+                const name = key.slice(prefix.length)
+                const handle = {
+                    kind: 'file',
+                    name,
+                    getFile: async () =>
+                        new File([new Uint8Array(JSON.parse(localStorage.getItem(key)!))], name, {
+                            lastModified: 0,
+                        }),
+                    queryPermission: async () => 'granted',
+                    requestPermission: async () => 'granted',
+                    isSameEntry: async (other: { name?: string }) => other.name === name,
+                } as unknown as FileSystemFileHandle
+                return [name, handle]
+            }),
+    )
+}
+
 /** A `.nxsp` of the shared test chain (four entries, a BGM and a cover), as bytes. */
 const freshBytes = async () => {
     const file = await executePlan(planNxsp(fresh().input).plan, new Map())
     return [...new Uint8Array(await file.arrayBuffer())]
 }
 
-const start = async (page: Page, fileSystemAccess: boolean | 'opfs' = 'opfs') => {
+const start = async (page: Page, fileSystemAccess: boolean | 'opfs' = 'opfs', url = '/') => {
     await page.addInitScript(() => {
         localStorage.setItem('nse.test.storage', '{}')
         localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
@@ -29,15 +57,27 @@ const start = async (page: Page, fileSystemAccess: boolean | 'opfs' = 'opfs') =>
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     })
+    if (memoryFiles(page)) await page.addInitScript(installMemoryFiles)
     await page.addInitScript(installTestPlatform, { fileSystemAccess })
-    await page.goto('/')
+    await page.goto(url)
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
 }
 
-/** Writes a file into OPFS, where the override's picker finds it. */
-const writeFile = (page: Page, name: string, bytes: number[]) =>
-    page.evaluate(
+/** Prepares picked bytes, with real OPFS except for the explicit memory handle fixture. */
+const writeFile = async (page: Page, name: string, bytes: number[]) => {
+    if (memoryFiles(page)) {
+        expect(bytes.length, 'the cross-tab handle fixture stays small').toBeLessThan(256 * 1024)
+        await page.evaluate(
+            ({ name, bytes }) => {
+                localStorage.setItem(`nse.test.openFile.${name}`, JSON.stringify(bytes))
+            },
+            { name, bytes },
+        )
+        await page.evaluate(installMemoryFiles)
+        return
+    }
+    await page.evaluate(
         async ({ name, bytes }) => {
             const root = await navigator.storage.getDirectory()
             const handle = await root.getFileHandle(name, { create: true })
@@ -47,9 +87,30 @@ const writeFile = (page: Page, name: string, bytes: number[]) =>
         },
         { name, bytes },
     )
+}
 
-/** Opens an OPFS file with Open, as Chromium's picker would. */
+/** Opens the prepared file through the same command as a picker. */
 const openFile = async (page: Page, name: string) => {
+    if (memoryFiles(page)) {
+        await page.evaluate(installMemoryFiles)
+        await page.evaluate(async () => {
+            const { platform, setPlatformForTests } =
+                (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+            setPlatformForTests({
+                ...platform,
+                pickFiles: async () => {
+                    const picks = JSON.parse(
+                        localStorage.getItem('nse.test.picks') ?? '[]',
+                    ) as string[]
+                    const name = picks.shift()
+                    localStorage.setItem('nse.test.picks', JSON.stringify(picks))
+                    const handle = name && window.nseTestHandles?.get(name)
+                    if (!handle) return []
+                    return [{ handle, file: await handle.getFile() }]
+                },
+            })
+        })
+    }
     await page.evaluate((name) => {
         localStorage.setItem('nse.test.picks', JSON.stringify([name]))
     }, name)
@@ -303,22 +364,27 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
     const session = await sessionOf(page)
     const chain = await chainOf(page, session.sessionId)
     const token = (await handleToken(page, chain.chainId as string, 'file'))!
+    await page.addInitScript(() => localStorage.removeItem('nse.test.importDelay'))
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
-    await page.addInitScript(
-        ({ token, name }) => {
-            localStorage.removeItem('nse.test.importDelay')
-            const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
-            const handle = {
-                kind: 'file',
-                name,
-                getFile: async () => (await opfs()).getFile(),
-                queryPermission: () => Promise.resolve('granted'),
-                isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
-            }
-            window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
-        },
-        { token, name: 'coconut.nxsp' },
-    )
+    if (!memoryFiles(page))
+        await page.addInitScript(
+            ({ token, name }) => {
+                localStorage.removeItem('nse.test.importDelay')
+                const opfs = async () =>
+                    (await navigator.storage.getDirectory()).getFileHandle(name)
+                const handle = {
+                    kind: 'file',
+                    name,
+                    getFile: async () => (await opfs()).getFile(),
+                    queryPermission: () => Promise.resolve('granted'),
+                    isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
+                }
+                window.nseTestHandles = new Map([
+                    [token, handle as unknown as FileSystemFileHandle],
+                ])
+            },
+            { token, name: 'coconut.nxsp' },
+        )
     await page.reload()
     await waitForStartup(page)
     await imported(page)
@@ -356,17 +422,12 @@ test('Export’s target keeps its handle across a reload, read when Export opens
 }) => {
     await start(page)
     // This chart's level data, gzipped, opened from a file: the opened file is Export's target.
-    await page.evaluate(async () => {
+    const bytes = await page.evaluate(async () => {
         const { buildLevelData } =
             (await import('/src/editor/commands/exportLevel/build.ts')) as typeof import('../../src/editor/commands/exportLevel/build')
-        const bytes = await new Response(buildLevelData()).arrayBuffer()
-        const root = await navigator.storage.getDirectory()
-        const writable = await (
-            await root.getFileHandle('LevelData', { create: true })
-        ).createWritable()
-        await writable.write(bytes)
-        await writable.close()
+        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
     })
+    await writeFile(page, 'LevelData', bytes)
     await openFile(page, 'LevelData')
     await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
     const session = await sessionOf(page)
@@ -675,6 +736,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
 
 test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thumbs.db, opens whole', async ({
     page,
+    browserName,
 }) => {
     await start(page)
     const bytes = await changedBytes((items) => {
@@ -693,24 +755,18 @@ test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thum
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
     const { media } = await rows(page, ['media'])
-    // The BGM and the cover, stored from the file.
-    expect(media!.length).toBe(2)
+    // Private WebKit refuses media Blobs but keeps the imported chart and history.
+    if (browserName === 'webkit') {
+        expect(media).toHaveLength(0)
+        expect(
+            await page.evaluate(() => window.nseStorageTest!.status()?.mediaPending?.length),
+        ).toBe(2)
+    } else expect(media).toHaveLength(2)
     expect((await ownRows(page, session.sessionId)).every((row) => row.kept)).toBe(true)
 })
 
 test('in safe mode, where nothing is stored, a .nxsp opens its level alone', async ({ page }) => {
-    await page.addInitScript(() => {
-        localStorage.setItem('nse.test.storage', '{}')
-        localStorage.setItem(
-            'nse.test.version',
-            JSON.stringify({ appVersion: '0.6.0', atTag: true }),
-        )
-        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
-    })
-    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
-    await page.goto('/?safe')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await waitForStartup(page)
+    await start(page, 'opfs', '/?safe')
     await writeFile(page, 'coconut.nxsp', await freshBytes())
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()

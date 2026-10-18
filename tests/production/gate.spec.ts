@@ -58,12 +58,15 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
     const button = page.getByRole('button', { name: 'Download Your Last Auto Save' })
     await expect(button).toBeVisible()
-    const download = page.waitForEvent('download')
-    await button.click()
-    const file = await download
-    expect(file.suggestedFilename()).toBe('coconut.nsld')
-    const path = await file.path()
-    expect((await readFile(path)).equals(gz)).toBe(true)
+    for (const input of ['pointer', 'keyboard']) {
+        const download = page.waitForEvent('download')
+        if (input === 'pointer') await button.click()
+        else await button.press('Enter')
+        const file = await download
+        expect(file.suggestedFilename()).toBe('coconut.nsld')
+        const path = await file.path()
+        expect((await readFile(path)).equals(gz)).toBe(true)
+    }
     // The bundle never mounted, and the page made nothing the policy blocks.
     await page.waitForTimeout(500)
     expect(errors).toEqual(['This browser is not supported.'])

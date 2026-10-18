@@ -8,7 +8,7 @@ import {
     type ExportContext,
     type ExportUi,
 } from '../../../src/editor/commands/exportLevel/flow'
-import { clearExportMemory } from '../../../src/editor/commands/exportLevel/memory'
+import { clearExportMemory, exportMemory } from '../../../src/editor/commands/exportLevel/memory'
 import { onHistoryAction, type HistoryAction } from '../../../src/history/actions'
 import { markExported, markSaved, setFileEventMessages } from '../../../src/history/markers'
 import { pushState, resetStates } from '../../../src/history/stack'
@@ -135,6 +135,7 @@ test('Export Level Data… marks each export it completes: in place, picked or d
             disk: await levelDataDiskState(await handle.getFile()),
             exported: false,
         }
+        exportMemory.target = target
         assert.equal(await exportToTarget(context(marked), target), 'done')
         mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Other.nsld') })
         assert.equal(await exportByPicker(context(marked)), 'done')

@@ -3,7 +3,12 @@ import { defineConfig } from '@playwright/test'
 // NSE_DEV_CSP=1 serves the web policy, and editorFixture.ts fails a spec on a violation.
 // Parallel local runs can each choose a free development server port.
 const port = process.env.PLAYWRIGHT_PORT ?? '5210'
-const timingSpecs = ['renderPacing.spec.ts', 'flushTiming.spec.ts', 'journalTiming.spec.ts']
+const timingSpecs = [
+    'renderPacing.spec.ts',
+    'flushTiming.spec.ts',
+    'journalTiming.spec.ts',
+    'touchTiming.spec.ts',
+]
 
 export default defineConfig({
     testDir: './tests/browser',
