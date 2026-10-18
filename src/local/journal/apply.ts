@@ -64,6 +64,9 @@ export type JournalApplyResult =
 
 export const JOURNAL_STORES = [...FLUSH_STORES, 'tombstones'] as const
 
+/** Why a journal of a chain marked for Delete stays: the sweep removes it (Part 0 §0.9.8). */
+export const CHAIN_DELETING = 'its chain is being deleted'
+
 type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
@@ -195,8 +198,7 @@ export const writeJournalApply = async (
         const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
         if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
             return { kind: 'later', why: 'its chain needs a newer version' }
-        if (chain.deleting !== undefined)
-            return { kind: 'later', why: 'its chain is being deleted' }
+        if (chain.deleting !== undefined) return { kind: 'later', why: CHAIN_DELETING }
     }
     if (session) {
         const range = KeyRange.bound([sessionId, -Infinity], [sessionId, Infinity])

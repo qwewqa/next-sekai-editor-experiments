@@ -6,6 +6,7 @@ import { LevelDataReport } from '../../levelData/report'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import { createState } from '../../state'
 import { sha256, toHex } from '../hash'
+import { CHAIN_DELETING } from '../journal/apply'
 import {
     replayJournal,
     replayJournals,
@@ -150,14 +151,16 @@ export const journalsStep = async (context: RecoveryContext) => {
     context.journalMs = performance.now() - start
     let later = false
     for (const outcome of outcomes) {
-        if (outcome.kind === 'later') later = true
         if (!('result' in outcome)) {
+            // Written by a newer build, before its apply was tried.
+            if (outcome.kind === 'later') later = true
             if (outcome.kind === 'failed')
                 console.error('A journal could not be replayed', outcome.error)
             continue
         }
         const { result } = outcome
-        if (result.kind === 'later') later = true
+        // A chain marked for Delete keeps its journal for the sweep: nothing newer about it.
+        if (result.kind === 'later') later ||= result.why !== CHAIN_DELETING
         // This tab's own reload says nothing: it continues where it was.
         else if (result.kind === 'applied' && outcome.sessionId !== context.own)
             context.events(

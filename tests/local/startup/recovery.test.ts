@@ -335,3 +335,25 @@ test('a migrated session’s hash is checked in its transaction: a slot migrated
     assert.equal(recovery.migrated, undefined)
     assert.equal(rows(world, 'sessions').size, 0)
 })
+
+test('a journal of a chain marked for Delete stays for the sweep, with no load event', async () => {
+    const world = createWorld({ seed: 12 })
+    const storage = new MemoryStorage()
+    const killed = await openJournalPage(world, 'killed', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(killed, a)
+    await killed.flusher.flush()
+    append(killed, 'edit', 'Edit', widen(a))
+    assert.equal(killed.writer.write(), true)
+    const tab = world.tab('next')
+    const { recovery, events, core } = await loadIn(world, tab, storage)
+    await tab.run(() =>
+        core.write(['chains'], async (tx) => {
+            const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+            await tx.put('chains', { ...chain, deleting: { at: 1 } })
+        }),
+    )
+    await runRecovery(recovery)
+    assert.deepEqual(events, [])
+    assert.equal((await recovery.journal.read()).length, 1)
+})
