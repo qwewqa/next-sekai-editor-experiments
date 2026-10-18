@@ -23,6 +23,7 @@ const emit = defineEmits<{ toggle: []; inspect: []; close: [restoreFocus: boolea
 const menu = useTemplateRef<HTMLDivElement>('menu')
 const summaryId = useId()
 const alive = ref(false)
+const isAlive = () => alive.value
 const position = ref<{ left: number; top: number; maxHeight: number }>()
 const container = computed(() => props.anchor.closest('dialog') ?? 'body')
 const buttons = () => [...(menu.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
@@ -87,10 +88,10 @@ watch(
 onMounted(async () => {
     alive.value = true
     await nextTick()
-    if (!alive.value) return
+    if (!isAlive()) return
     place()
     await nextTick()
-    if (!alive.value || !menu.value) return
+    if (!isAlive() || !menu.value) return
     buttons()[0]?.focus({ preventScroll: true })
     window.addEventListener('pointerdown', outside, true)
     window.addEventListener('resize', place)
