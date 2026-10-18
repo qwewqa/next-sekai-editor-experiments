@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { computed, useId, useTemplateRef } from 'vue'
 import { i18n } from '../../i18n'
+import { peekedKey } from '../../history/peek'
 import { getPanelSide } from '../workspace'
+import CloseIcon from '../workspace/CloseIcon.vue'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import TimelineList from './TimelineList.vue'
 import type { Filter } from './rows'
+import { backToNow, peekedInfo } from './selection'
 import { historyFilter, historyTab, type HistoryTab } from './state'
 
 // The History panel (Part 1 §1.4.10): two tabs, Timeline and Recent Sessions. There is no action
 // bar in it: the peek's controls are on the canvas (§1.4.11), so the body is all list.
+
+const props = withDefaults(defineProps<{ surface?: 'panel' | 'dialog' }>(), { surface: 'panel' })
+const emit = defineEmits<{ close: [] }>()
 
 const tabs: readonly HistoryTab[] = ['timeline', 'sessions']
 const filters: readonly Filter[] = ['all', 'saves']
@@ -26,6 +32,15 @@ const filterTitle = (filter: Filter) =>
 const twoLine = computed(() => getPanelSide('history') !== 'top')
 
 const tablist = useTemplateRef<HTMLElement>('tablist')
+
+// Outside the list, Escape in the dialog is back to Now first, then close.
+const onEscape = (event: KeyboardEvent) => {
+    if (props.surface !== 'dialog' || event.defaultPrevented) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (peekedKey.value || peekedInfo.value) backToNow()
+    else emit('close')
+}
 
 const select = (tab: HistoryTab) => {
     historyTab.value = tab
@@ -58,7 +73,11 @@ const segment =
 </script>
 
 <template>
-    <div class="history-panel flex h-full min-h-0 flex-col bg-modal text-fg">
+    <div
+        class="history-panel flex h-full min-h-0 flex-col bg-modal text-fg"
+        :data-history-surface="surface"
+        @keydown.esc="onEscape"
+    >
         <div
             class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 bg-header px-1.5 py-1 [@media(pointer:coarse)]:py-0.5"
         >
@@ -111,6 +130,17 @@ const segment =
                     >
                 </button>
             </div>
+            <button
+                v-if="surface === 'dialog'"
+                type="button"
+                class="ml-auto flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
+                :aria-label="i18n.modals.close"
+                :title="i18n.modals.close"
+                data-history-close
+                @click="emit('close')"
+            >
+                <CloseIcon class="size-4 [@media(pointer:coarse)]:size-5" />
+            </button>
         </div>
         <div
             :id="panelId"
@@ -118,7 +148,12 @@ const segment =
             class="min-h-0 flex-1"
             :aria-labelledby="tabId(historyTab)"
         >
-            <TimelineList v-if="historyTab === 'timeline'" :two-line />
+            <TimelineList
+                v-if="historyTab === 'timeline'"
+                :two-line
+                :surface="props.surface"
+                @close="emit('close')"
+            />
             <RecentSessionsTab v-else />
         </div>
     </div>

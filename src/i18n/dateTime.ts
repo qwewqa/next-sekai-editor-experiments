@@ -67,3 +67,7 @@ export const formatDateTime = (locale: string, at: number, now = Date.now()) =>
 /** The time when it was today ("2:41 PM"), the date otherwise ("Oct 14"): a file event's time. */
 export const formatWhen = (locale: string, at: number, now = Date.now()) =>
     sameDay(at, now) ? formatClock(locale, at) : formatDate(locale, at, now)
+
+/** An entry's time to the second: the time when it was today, the date and time otherwise. */
+export const formatEntryTime = (locale: string, at: number, now = Date.now()) =>
+    sameDay(at, now) ? formatClockSeconds(locale, at) : formatDateTimeSeconds(locale, at, now)

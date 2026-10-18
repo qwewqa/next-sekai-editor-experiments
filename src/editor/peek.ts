@@ -3,7 +3,7 @@ import { onPeekLeft, onPeekRefused, onPeekStart, setPeekEffects } from '../histo
 import { onResetState } from '../history/resetHooks'
 import { isPeeking } from '../history/stack'
 import { i18n } from '../i18n'
-import { formatClockSeconds } from '../i18n/dateTime'
+import { formatEntryTime } from '../i18n/dateTime'
 import { clearPreviewEdit, previewEdit } from '../preview/edit'
 import { settings } from '../settings'
 import { interpolate } from '../utils/interpolate'
@@ -24,7 +24,7 @@ import { view } from './view'
 // drags and scaling sessions on entering, and the Elevation Editor closed while peeking unless
 // side by side, then reopened on leaving.
 
-const clock = (time: number) => () => formatClockSeconds(settings.locale, time)
+const clock = (time: number) => () => formatEntryTime(settings.locale, time)
 
 setPeekEffects({
     restoredLabel: (time) => interpolate(() => i18n.value.entry.restoredTo, clock(time)),

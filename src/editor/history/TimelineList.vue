@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    shallowRef,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { peekedKey, restoreEntry } from '../../history/peek'
 import { headName } from '../../history/stack'
 import { session } from '../../history/session'
@@ -20,11 +29,10 @@ import { isCoarsePointer } from '../workspace'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import KindIcon from './KindIcon.vue'
-import WarningIcon from './WarningIcon.vue'
 import { buildRows, selectableRows, type Entry, type EntryRow, type Row } from './rows'
 import { backToNow, damagedEntries, keyOf, peekedInfo, requestPeek } from './selection'
 import { canLoadMore, entries, followEntries, loadMore } from './source'
-import { expandedGroups, historyFilter } from './state'
+import { expandedGroups, historyFilter, listFocus } from './state'
 
 // The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
 // Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
@@ -32,7 +40,11 @@ import { expandedGroups, historyFilter } from './state'
 const props = defineProps<{
     /** Two-line rows, in the side docks; the top dock's rows are one line. */
     twoLine: boolean
+    /** The tab in a dock, or the dialog: each keeps its own scroll and focus rules. */
+    surface: 'panel' | 'dialog'
 }>()
+
+const emit = defineEmits<{ close: [] }>()
 
 const list = useTemplateRef<HTMLDivElement>('list')
 const scrollTop = ref(0)
@@ -243,6 +255,7 @@ const onKeydown = (event: KeyboardEvent) => {
             case 'Escape':
                 handled()
                 if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
+                else if (props.surface === 'dialog') emit('close')
                 else list.value?.blur()
                 return
             case 'ArrowRight':
@@ -318,9 +331,19 @@ onMounted(() => {
     observer.observe(element)
     viewport.value = element.clientHeight
     width.value = element.clientWidth
-    // Keyboard focus starts in the list, at the Now row (§1.4.10.2).
-    element.focus({ preventScroll: true })
+    // The dialog's list takes focus as it opens; the tab's only for a link that asked.
+    if (props.surface === 'dialog') element.focus({ preventScroll: true })
 })
+// A link asks for the list's focus, also from a list that mounts a moment later.
+watch(
+    listFocus,
+    (request) => {
+        if (request?.surface !== props.surface || Date.now() - request.at > 3000) return
+        listFocus.value = undefined
+        void nextTick(() => list.value?.focus({ preventScroll: true }))
+    },
+    { immediate: true },
+)
 onBeforeUnmount(() => {
     observer?.disconnect()
 })
@@ -498,14 +521,6 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                             </span>
                             <span v-if="twoLine" class="timeline-detail">
                                 <span v-if="flagTextOf(row)" class="timeline-flag">
-                                    <WarningIcon
-                                        v-if="
-                                            row.flags.notInUndo &&
-                                            !row.flags.damaged &&
-                                            !row.flags.removed
-                                        "
-                                        class="size-3 shrink-0"
-                                    />
                                     <span class="truncate">{{ flagTextOf(row) }}</span>
                                 </span>
                                 <span v-if="deltaOf(row)">{{ deltaOf(row) }}</span>
@@ -517,14 +532,6 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                                 class="timeline-flag shrink-0"
                                 :title="flagTipOf(row)"
                             >
-                                <WarningIcon
-                                    v-if="
-                                        row.flags.notInUndo &&
-                                        !row.flags.damaged &&
-                                        !row.flags.removed
-                                    "
-                                    class="size-3 shrink-0"
-                                />
                                 <span :class="narrow ? 'sr-only' : 'truncate'">{{
                                     flagTextOf(row)
                                 }}</span>

@@ -9,7 +9,7 @@ import { FileError, platform } from '../../platform'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { showHistory } from '../history/state'
+import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
@@ -140,7 +140,7 @@ const buttonClass =
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {
     closeSettings()
-    showHistory()
+    showHistoryLink()
 }
 
 const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.length > 0)

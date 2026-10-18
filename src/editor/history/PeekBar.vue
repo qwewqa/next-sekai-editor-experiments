@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { isPeeking, peekLoading, peekedKey, restoreEntry } from '../../history/peek'
 import { i18n } from '../../i18n'
-import { formatClockSeconds } from '../../i18n/when'
+import { formatEntryTime } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
 import { isCoarsePointer, isPanelVisible, workspaceLayout } from '../workspace'
@@ -11,18 +11,21 @@ import { backToNow, peekedInfo } from './selection'
 // The peek bar (Part 1 §1.4.11): on the canvas, so it shows with the panel scrolled, folded or on
 // another dock. A 2 px accent edge marks the peeked canvas.
 
-// Wide enough for the whole line beside the buttons; otherwise just the time and "read-only".
-const WIDE_PANE = 640
+// The pane's width decides the text, so the bar stays on one line: under 480 px the time alone,
+// from 480 "Viewing {time} · read-only", from 720 with what the entry is. An entry not from today
+// always carries its date, so an old state never reads as one from this afternoon.
+const MEDIUM_PANE = 480
+const WIDE_PANE = 720
 
 const strings = computed(() => i18n.value.peek)
 
 const text = computed(() => {
     const info = peekedInfo.value
     if (!info) return ''
-    const time = formatClockSeconds(info.time)
-    return view.w >= WIDE_PANE
-        ? interpolateRaw(strings.value.viewing, time, info.label)
-        : interpolateRaw(strings.value.viewingShort, time)
+    const time = formatEntryTime(info.time)
+    if (view.w >= WIDE_PANE) return interpolateRaw(strings.value.viewing, time, info.label)
+    if (view.w >= MEDIUM_PANE) return interpolateRaw(strings.value.viewingShort, time)
+    return time
 })
 
 // The hint is for a finger: a mouse has nothing to tap. It shows while the History tab is shown in
@@ -54,9 +57,9 @@ const button =
             data-peek-bar
         >
             <div
-                class="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-3xl bg-modal px-4 py-1.5 text-sm text-fg shadow-md"
+                class="pointer-events-auto flex max-w-full items-center justify-center gap-x-2 rounded-3xl bg-modal py-1 pl-4 pr-1 text-sm text-fg shadow-md"
             >
-                <span v-if="text" class="min-w-0 py-1" data-peek-text>{{ text }}</span>
+                <span v-if="text" class="min-w-0 truncate py-1" data-peek-text>{{ text }}</span>
                 <span
                     v-if="peekLoading"
                     class="size-4 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"

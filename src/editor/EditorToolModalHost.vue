@@ -8,11 +8,13 @@ import {
     ref,
     useTemplateRef,
     watch,
+    watchEffect,
 } from 'vue'
 import { closeModal, modals } from '../modals'
 import { modalTitleKey } from '../modals/title'
 import { toolName } from './tools/state'
-import type { ToolModalPane } from './toolModals'
+import { sheetBox, type ToolModalPane } from './toolModals'
+import { view } from './view'
 
 const props = defineProps<{ pane: ToolModalPane }>()
 const panel = useTemplateRef<HTMLDivElement>('panel')
@@ -20,6 +22,16 @@ const matching = computed(() =>
     modals.filter((modal) => modal.presentation === 'tool' && modal.pane === props.pane),
 )
 const current = computed(() => matching.value.at(-1))
+// The History sheet: along the pane's bottom, or down its right side in a short landscape pane.
+const sheet = computed(() => !!current.value?.sheet)
+const sheetSide = computed(() => (view.h < 500 && view.w > view.h ? 'right' : 'bottom'))
+const frame = computed(() =>
+    !sheet.value
+        ? 'inset-x-0 bottom-2 mx-auto max-h-[70%] w-[calc(100%-1rem)] max-w-md'
+        : sheetSide.value === 'right'
+          ? 'bottom-2 right-2 top-[3.75rem] w-[min(20rem,45%)]'
+          : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-[40rem]',
+)
 const label = ref('')
 provide(modalTitleKey, label)
 
@@ -56,7 +68,29 @@ watch(current, async (modal) => {
     if (!panel.value?.contains(document.activeElement)) panel.value?.focus({ preventScroll: true })
 })
 watch(toolName, () => {
-    if (current.value) closeModal(current.value)
+    // A sheet stays while the tool changes.
+    if (current.value && !current.value.sheet) closeModal(current.value)
+})
+
+// The notices keep clear of the sheet.
+let sizeObserver: ResizeObserver | undefined
+watchEffect((onCleanup) => {
+    const element = panel.value
+    if (!sheet.value || !element) return
+    const side = sheetSide.value
+    const measure = () => {
+        sheetBox.value = {
+            side,
+            size: side === 'right' ? element.offsetWidth : element.offsetHeight,
+        }
+    }
+    sizeObserver = new ResizeObserver(measure)
+    sizeObserver.observe(element)
+    measure()
+    onCleanup(() => {
+        sizeObserver?.disconnect()
+        sheetBox.value = undefined
+    })
 })
 
 // A closed dialog that held focus gives it back to the tool that opened it, or else to the chart.
@@ -106,7 +140,9 @@ onUnmounted(() => {
         :aria-label="label"
         tabindex="-1"
         data-tool-dialog
-        class="editor-tool-modal absolute inset-x-0 bottom-2 z-30 mx-auto flex max-h-[70%] w-[calc(100%-1rem)] max-w-md flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl outline-none ring-1 ring-fg/10"
+        class="editor-tool-modal absolute z-30 flex flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl outline-none ring-1 ring-fg/10"
+        :class="frame"
+        :data-sheet="sheet ? sheetSide : undefined"
         @keydown="onKeydown"
         @pointerdown.stop
         @mousedown.stop

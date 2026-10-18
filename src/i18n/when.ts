@@ -16,8 +16,5 @@ export const formatClockSeconds = (at: number) => dateTime.formatClockSeconds(se
 export const formatDateTimeSeconds = (at: number) =>
     dateTime.formatDateTimeSeconds(settings.locale, at)
 
-/** A row's time to the second: the time when it was today, the date and time otherwise. */
-export const formatEntryTime = (at: number) =>
-    new Date(at).toDateString() === new Date().toDateString()
-        ? formatClockSeconds(at)
-        : formatDateTimeSeconds(at)
+/** An entry's time to the second: the time when it was today, the date and time otherwise. */
+export const formatEntryTime = (at: number) => dateTime.formatEntryTime(settings.locale, at)

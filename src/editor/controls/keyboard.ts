@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted, watch } from 'vue'
 import { selectedEntities } from '../../history/selectedEntities'
-import { isBlockingModalOpen, isToolModalOpen } from '../../modals'
+import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { holdsTyping } from '../../modals/form/resync'
 import { settings } from '../../settings'
 import { isComposingKey } from '../../utils/composition'
@@ -105,7 +105,7 @@ const returnsDeselect = (element: Element | null) => {
 const onKeydown = (event: KeyboardEvent) => {
     if (isBlockingModalOpen.value || pressesButton(event)) return
     // An open tool dialog takes Escape.
-    if (isToolModalOpen.value && event.key === 'Escape') return
+    if (isToolDialogOpen.value && event.key === 'Escape') return
 
     const commandChord = isCommandChord(event) && isCharacter(event.key)
     const active = document.activeElement
