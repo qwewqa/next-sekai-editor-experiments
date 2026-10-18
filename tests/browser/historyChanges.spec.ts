@@ -803,7 +803,7 @@ test('inactive History band waits for focus and resumes with current layout at N
     await edit(page, 'Moved 1 note', { kind: 'move', beats: [5] })
     await stored(page)
     await openTab(page)
-    await page.evaluate(installCanvasCounters)
+    await page.evaluate(installCanvasCounters, false)
     await page.evaluate(async () => {
         window.installEditorRendering!(
             await window.editorTest.appImport<typeof import('../../src/rendering/context')>(
