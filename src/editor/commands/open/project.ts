@@ -2,7 +2,7 @@ import { AssertError } from 'typebox/value'
 import { parseLevelDataChart } from '../../../chart/parse/levelData'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
-import { isPeeking } from '../../../history'
+import { isPeeking, openState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { formatDate } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
@@ -287,6 +287,15 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
 
     // Earlier sessions on this file, recognised by revision (§1.5.4 step 4).
     const revision = identity ? opened.project?.revision : undefined
+
+    // Nothing can be stored (safe mode, a newer database): the level opens, as an import does.
+    const { storageStatus } = await import('../../../local/startup/events')
+    if (storageStatus.value?.mode === 'readOnly') {
+        cancel()
+        openState(live, { sourceName: file.name })
+        notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
+        return
+    }
 
     let stored: Awaited<ReturnType<typeof project.storeAndShow>> | undefined
     await showModal(LoadingModal, {

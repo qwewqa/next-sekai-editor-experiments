@@ -606,3 +606,25 @@ test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thum
     expect(media!.length).toBe(2)
     expect((await ownRows(page, session.sessionId)).every((row) => row.kept)).toBe(true)
 })
+
+test('in safe mode, where nothing is stored, a .nxsp opens its level alone', async ({ page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('nse.test.storage', '{}')
+        localStorage.setItem(
+            'nse.test.version',
+            JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+        )
+        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+    })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' })
+    await page.goto('/?safe')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const session = await sessionOf(page)
+    expect(session.file).toBeUndefined()
+    expect(session.sourceName).toBe('coconut.nxsp')
+    expect(await noteCount(page)).toBeGreaterThan(0)
+})
