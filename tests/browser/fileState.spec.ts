@@ -309,7 +309,7 @@ test.describe('the label and the title', () => {
                 expect(target.pseudo).toBe('none')
                 if (index) expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
             }
-            const dialogs = ['Level Info', '"coconut.nxsp" Changed', 'Manage Groups', 'Manage Stages']
+            const dialogs = ['Level Properties', '"coconut.nxsp" Changed', 'Manage Groups', 'Manage Stages']
             for (const [index, title] of dialogs.entries()) {
                 const control = buttons.nth(index)
                 for (const edge of ['left', 'center', 'right'] as const) {
