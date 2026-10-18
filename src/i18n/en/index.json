@@ -1892,7 +1892,8 @@
         "restoredTo": "Restored to {0}",
         "alreadyMatches": "Already matches the current chart",
         "openHistory": "Open History",
-        "earlierInHistory": "Earlier steps are in History"
+        "earlierInHistory": "Earlier steps are in History",
+        "bgmNotLoaded": "BGM not loaded"
     },
     "entry": {
         "exported": "Exported {0}",

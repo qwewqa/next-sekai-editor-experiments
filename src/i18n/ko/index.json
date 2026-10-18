@@ -1892,7 +1892,8 @@
     "restoredTo": "{0} 시점으로 복원됨",
     "alreadyMatches": "이미 현재 채보와 같음",
     "openHistory": "기록 열기",
-    "earlierInHistory": "이전 단계는 기록에 있습니다"
+    "earlierInHistory": "이전 단계는 기록에 있습니다",
+    "bgmNotLoaded": "BGM을 불러오지 않음"
   },
   "entry": {
     "exported": "{0} 내보냄",
@@ -1928,7 +1929,7 @@
     "newerRefused": "더 새로운 버전의 {0}에서 만들어졌습니다.",
     "mediaBad": "이 파일의 {0} 항목을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",
     "media": {
-      "bgm": "배경음",
+      "bgm": "BGM",
       "cover": "커버",
       "preview": "미리 듣기 오디오"
     },

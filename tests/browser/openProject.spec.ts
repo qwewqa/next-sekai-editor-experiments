@@ -345,7 +345,9 @@ test('a Save waits for the import: whenImported resolves once the last batch com
         const { whenImported } =
             (await import('/src/local/open/importLoop.ts')) as typeof import('../../src/local/open/importLoop')
         const result = await whenImported(session.value.sessionId)
-        const found = (await window.nseStorageTest!.worker.call('testRows', ['sessions'])) as {
+        const found = (await window.nseStorageTest!.worker.call('testRows', [
+            'sessions',
+        ])) as unknown as {
             sessions: { value: Record<string, unknown> }[]
         }
         return {
@@ -432,4 +434,78 @@ test('opening the same file again: Reopen after editing, Restore after New in be
         )
         .toBe(777)
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+/** A file of the shared chain changed by `change`, as bytes. */
+const changedBytes = async (change: Parameters<typeof crafted>[0]) => {
+    const file = await crafted(change, await executePlan(planNxsp(fresh().input).plan, new Map()))
+    return [...new Uint8Array(await file.arrayBuffer())]
+}
+
+test('a BGM recorded without its bytes opens bound with the BGM not loaded, and Choose Audio…', async ({
+    page,
+}) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        const bgm = { ...(project.bgm as Record<string, string>) }
+        bgm.hash = (bgm.sha256 ?? '').slice(0, 32)
+        delete bgm.sha256
+        delete bgm.file
+        project.bgm = bgm
+        setJson(items, 'project.json', project)
+        return items.filter((item) => !item.name.startsWith('bgm/'))
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'BGM not loaded' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
+    await imported(page)
+    const session = await sessionOf(page)
+    expect(session.file?.name).toBe('coconut.nxsp')
+    const chain = await chainOf(page, session.sessionId)
+    // Included, but not held: the next Save adds it once chosen (§1.5.4 step 5).
+    expect((chain.file as Row).options).toEqual({ history: true, bgm: true })
+})
+
+test('a file whose title was edited outside opens with that title and "Changed outside the editor"', async ({
+    page,
+}) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        project.metadata.title = 'Edited Outside'
+        setJson(items, 'project.json', project)
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const title = await page.evaluate(async () => {
+        const { state } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        return state.value.levelInfo.title
+    })
+    expect(title).toBe('Edited Outside')
+    const session = await sessionOf(page)
+    expect(session.file?.name).toBe('coconut.nxsp')
+    expect((await ownRows(page, session.sessionId)).map((row) => [row.kind, row.label])).toEqual([
+        ['init', 'Imported LevelData'],
+        ['edit', 'Added note'],
+        ['edit', 'Changed BGM'],
+        ['save', 'Saved coconut.nxsp'],
+        ['edit', 'Changed outside the editor'],
+        ['continue', 'Opened coconut.nxsp'],
+    ])
+    // Undo goes back to the history's head, with its own title.
+    await page.keyboard.press('Control+z')
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { state } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                return state.value.levelInfo.title
+            }),
+        )
+        .not.toBe('Edited Outside')
 })

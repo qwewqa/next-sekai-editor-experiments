@@ -1892,7 +1892,8 @@
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",
     "openHistory": "履歴を開く",
-    "earlierInHistory": "それ以前の操作は履歴にあります"
+    "earlierInHistory": "それ以前の操作は履歴にあります",
+    "bgmNotLoaded": "BGM が読み込まれていません"
   },
   "entry": {
     "exported": "{0} を出力",

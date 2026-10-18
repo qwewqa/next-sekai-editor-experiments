@@ -1892,7 +1892,8 @@
     "restoredTo": "Restauré à {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "openHistory": "Ouvrir l’historique",
-    "earlierInHistory": "Les étapes précédentes sont dans l’historique"
+    "earlierInHistory": "Les étapes précédentes sont dans l’historique",
+    "bgmNotLoaded": "BGM non chargée"
   },
   "entry": {
     "exported": "{0} exporté",
@@ -1928,7 +1929,7 @@
     "newerRefused": "Créé par une version plus récente de {0}.",
     "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
     "media": {
-      "bgm": "la musique",
+      "bgm": "la BGM",
       "cover": "la couverture",
       "preview": "l’aperçu audio"
     },

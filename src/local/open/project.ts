@@ -184,7 +184,14 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
         const read = await deps.worker.call('readSession', sessionId)
         if (read.kind !== 'open') throw new Error(`The opened session is ${read.kind}`)
         const leaving = flusher?.session
-        const state = await openStored(deps, read, { mode: 'resume', lock }, { replace: true })
+        // The BGM's "not loaded" is the open's own notice to give (§1.6.8.4), never a load notice.
+        const quiet = {
+            ...deps,
+            events: (event: Parameters<typeof deps.events>[0]) => {
+                if (event.kind !== 'bgmNotLoaded') deps.events(event)
+            },
+        }
+        const state = await openStored(quiet, read, { mode: 'resume', lock }, { replace: true })
         if (!state) throw new Error('The opened session did not open')
         shown = true
         if (leaving && flusher) deps.onLeft?.(leaving, flusher.outgoing)

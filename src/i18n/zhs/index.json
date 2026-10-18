@@ -1892,7 +1892,8 @@
     "restoredTo": "已还原到 {0}",
     "alreadyMatches": "已与当前谱面一致",
     "openHistory": "打开历史记录",
-    "earlierInHistory": "更早的步骤在历史记录中"
+    "earlierInHistory": "更早的步骤在历史记录中",
+    "bgmNotLoaded": "BGM 未加载"
   },
   "entry": {
     "exported": "已导出 {0}",
@@ -1928,7 +1929,7 @@
     "newerRefused": "由更新版本的 {0} 创建。",
     "mediaBad": "无法读取此文件的{0}。保存时会创建单独的文件。",
     "media": {
-      "bgm": "背景音乐",
+      "bgm": "BGM",
       "cover": "封面",
       "preview": "预览音频"
     },

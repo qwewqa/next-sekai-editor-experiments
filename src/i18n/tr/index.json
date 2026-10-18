@@ -1892,7 +1892,8 @@
     "restoredTo": "{0} anına geri yüklendi",
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
     "openHistory": "Geçmişi Aç",
-    "earlierInHistory": "Önceki adımlar Geçmiş’te"
+    "earlierInHistory": "Önceki adımlar Geçmiş’te",
+    "bgmNotLoaded": "BGM yüklenmedi"
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",
@@ -1928,7 +1929,7 @@
     "newerRefused": "Daha yeni bir {0} sürümüyle oluşturuldu.",
     "mediaBad": "Bu dosyanın {0} okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
     "media": {
-      "bgm": "arka plan müziği",
+      "bgm": "BGM’si",
       "cover": "kapak görseli",
       "preview": "önizleme sesi"
     },

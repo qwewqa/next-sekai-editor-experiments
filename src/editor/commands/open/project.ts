@@ -36,6 +36,7 @@ import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { dismissNoticeCard, notify } from '../../notification'
 import { notifyLeft } from '../../switch'
+import { changeBgm } from '../bgm'
 
 // Open File… on a `.nxsp` (Part 1 §1.5.4): read and checked in the storage worker, its level
 // through the level-data path, the confirms first (a newer major version, values this build
@@ -337,6 +338,9 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
               await project.earlierChains(opened.project?.id ?? '', stored.chainId),
           )
         : undefined
+    const bgm = opened.media.bgm
+    const bgmMissing =
+        live.bgm.meta !== undefined && (!bgm || mediaHash(bgm.form) !== live.bgm.meta.hash)
     if (elsewhere)
         notify(
             interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
@@ -345,10 +349,20 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
     else if (line) {
         const message = partialMessage(line)
         notify(() => message, { card: true })
+    } else if (!earlier && bgmMissing) {
+        // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
+        dismissNoticeCard()
+        notify(() => i18n.value.notice.bgmNotLoaded, {
+            action: {
+                label: () => i18n.value.notice.chooseAudio,
+                run: () => {
+                    void changeBgm()
+                },
+            },
+        })
     } else notifyOpened(name, earlier, left)
 
     // The file's BGM decodes in the background (§1.6.8.4).
-    const bgm = opened.media.bgm
     if (bgm && live.bgm.meta?.hash === mediaHash(bgm.form) && !isPeeking.value)
         void project
             .attachOpenedBgm(bgm.bytes, live.bgm.meta.hash, decodeBgm)

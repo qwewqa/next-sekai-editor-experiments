@@ -49,7 +49,8 @@ export const open: Command = {
     async execute() {
         if (!(await confirmSwitch())) return
 
-        const { file, handle } = await pickFileForOpen('levelData')
+        // Unfiltered, keeping the handle where the picker exists (§1.5.3).
+        const { file, handle } = await pickFileForOpen('nse-open')
         if (!file) return
 
         // A failed read here surfaces in the loading modal below.
