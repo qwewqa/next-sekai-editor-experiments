@@ -7,7 +7,8 @@ import { decode, pixelAt } from './pngDecode.mjs'
 // quad's bottom-left corner, after the sprite's transform: [x0, x1, y0, y1]. The targets were
 // measured the same way on the base skin (Next SEKAI 01), so ours draws at its size on screen.
 // Note bodies fill their quads, as the base's opaque bodies do (its dark glow left out), so a note
-// one lane wide on the judge line covers its slot cell; traces and damage keep the base's heights.
+// one lane wide on the judge line covers its slot cell; traces and damage keep the base's heights
+// (damage its bright bar, its dark rim left out).
 const targets = {
     'Sekai Normal Note Left': [0, 1, 0, 1],
     'Sekai Normal Note Middle': [0, 1, 0, 1],
@@ -16,7 +17,7 @@ const targets = {
     'Sekai Normal Trace Note Left Neutral': [0, 1, 0.25, 0.75],
     'Sekai Normal Trace Note Middle Neutral': [0, 1, 0.25, 0.75],
     'Sekai Normal Trace Note Right Neutral': [0, 1, 0.25, 0.75],
-    'Sekai Damage Note Middle': [0, 1, 0.19, 0.81],
+    'Sekai Damage Note Middle': [0, 1, 0.25, 0.75],
     '#SIMULTANEOUS_CONNECTION_NEUTRAL': [0, 1, 0.44, 0.56],
     'Sekai Diamond Green': [-0.12, 1.1, 0.22, 1.12],
     'Sekai Normal Trace Diamond Neutral': [-0.05, 1.05, 0.27, 1.02],

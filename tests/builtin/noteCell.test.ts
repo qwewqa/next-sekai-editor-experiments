@@ -100,11 +100,12 @@ const families: [string, string, number][] = [
     ['Sekai Flick Note', '', 1],
     ['Sekai Slide Note', '', 1],
     ['Sekai Critical Flick Note', ' Purple', 1],
-    // The base's trace bar (its band included) is half the cell's height, its damage bar 0.625.
+    // The base's trace bar (its band included) and its damage bar (its dark rim left out) are half
+    // the cell's height.
     ['Sekai Normal Trace Note', '', 0.5],
     ['Sekai Critical Trace Note', ' Red', 0.5],
-    ['Sekai Damage Note', '', 0.625],
-    ['Sekai Damage Note', ' Blue', 0.625],
+    ['Sekai Damage Note', '', 0.5],
+    ['Sekai Damage Note', ' Blue', 0.5],
 ]
 
 test('a note one lane wide on the judge line covers its slot cell at every stage tilt', () => {

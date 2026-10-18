@@ -119,8 +119,9 @@ const slimVars = {
     top: n(slimTop),
     span: n(slimH - 2 * slimTop),
 }
-// Damage: 62.5% of the height through its middle, as the base's, with a 4 unit rim.
-const damageTop = damageH * 0.1875
+// Damage: half the height through its middle, as the base's bright bar (its dark rim left out),
+// with a 4 unit rim.
+const damageTop = damageH / 4
 const damageVars = {
     h: n(damageH),
     rim: endShape(0, damageTop, damageH - damageTop, 22),
