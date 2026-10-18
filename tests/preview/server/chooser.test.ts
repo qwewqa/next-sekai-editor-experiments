@@ -657,6 +657,23 @@ test('failed server readback applies nothing and refreshes the retained row', as
     assert.equal(refreshed, 1)
 })
 
+test('a new server connection started by apply survives the old Use finishing', async () => {
+    const { deps, server, closed } = setup([['skin', named('neon', 'Neon')]])
+    let connected: Promise<void> | undefined
+    const chooser = createServerChooser('skin', {
+        ...deps('skin'),
+        apply: () => {
+            connected = chooser.connectTo(server.base)
+        },
+    })
+    await chooser.connectTo(server.base)
+    await chooser.use()
+    await connected
+    assert.equal(chooser.phase.value, 'listed')
+    assert.equal(chooser.selected.value, 'neon')
+    assert.deepEqual(closed, [])
+})
+
 /** A client over the server whose other-type lookups never answer until they are stopped. */
 const stuckLookups = (server: ReturnType<typeof setup>['server']) => {
     const stopped: string[] = []

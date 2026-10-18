@@ -205,8 +205,10 @@ test('Use with nothing ticked stores only the selected item', async () => {
 test('a ticked item that fails stores nothing, and the chooser says why and stays open', async (t) => {
     t.mock.method(console, 'error', () => {})
     const { store, applied, deps } = setup()
+    let refreshed = 0
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
     })
     const bytes = scpMulti([
         ['skin', named('neon', 'Neon')],
@@ -235,6 +237,7 @@ test('a ticked item that fails stores nothing, and the chooser says why and stay
         'This file’s sound effects audio has no usable #PERFECT clip.',
     )
     assert.equal(chooser.error.value, undefined)
+    assert.equal(refreshed, 0)
 })
 
 test('a file that is not a package says so and lists nothing', async () => {
@@ -283,8 +286,10 @@ test('Use stores the ticked items in one write, so a failure stores none of them
     const { applied, deps } = setup()
     const memory = createMemoryStore()
     let writes = 0
+    let refreshed = 0
     const chooser = createAssetChooser('skin', {
         ...deps,
+        onStorageChanged: () => refreshed++,
         store: {
             ...memory,
             put: () => Promise.reject(new Error('one at a time is not all or nothing')),
@@ -303,6 +308,7 @@ test('Use stores the ticked items in one write, so a failure stores none of them
     assert.deepEqual(await memory.list(), [])
     assert.deepEqual(applied, [])
     assert.equal(chooser.useError.value, 'This item could not be stored.')
+    assert.equal(refreshed, 1)
 })
 
 test('a package that does not read back is not used, and refreshes retained uncertain rows', async (t) => {
@@ -546,4 +552,19 @@ test('an apply failure retains the checked package and refreshes Stored', async 
     assert.equal((await store.list()).length, 1)
     assert.equal(refreshed, 1)
     assert.ok(chooser.useError.value)
+})
+
+test('a new file chooser opened by apply stays open after the old Use finishes', async () => {
+    const { deps } = setup()
+    let refreshed = 0
+    const chooser = createAssetChooser('skin', {
+        ...deps,
+        apply: () => chooser.show(),
+        onStorageChanged: () => refreshed++,
+    })
+    await chooser.pick(blobOf(scp('skin')), 'skin.scp')
+    await chooser.use()
+    assert.equal(chooser.open.value, true)
+    assert.equal(chooser.phase.value, 'idle')
+    assert.equal(refreshed, 1)
 })
