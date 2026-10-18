@@ -317,9 +317,71 @@ test.describe('status bar on a phone', () => {
             expect(item.right).toBeLessThanOrEqual(390)
         }
         // The tool title keeps room to be read.
-        expect(items[0]!.width).toBeGreaterThanOrEqual(48)
+        expect(
+            (await bar.locator('[data-status-tool]').boundingBox())!.width,
+        ).toBeGreaterThanOrEqual(48)
     })
 })
+
+for (const hasTouch of [false, true]) {
+    test.describe(`status with a ${hasTouch ? 'coarse' : 'fine'} pointer`, () => {
+        test.use({ hasTouch })
+        test('a narrow editor host keeps content and default row heights through its boundaries', async ({
+            page,
+        }) => {
+            await boot(page)
+            await page.evaluate(async () => {
+                const { appImport, history, settings } = window.editorTest
+                const { bindFile, setDiskFinding } = await appImport<
+                    typeof import('../../src/editor/file/state')
+                >('/src/editor/file/state.ts')
+                settings.showPreview = false
+                settings.showSidebar = false
+                bindFile(
+                    { name: 'coconut.nxsp', event: 'saved', at: Date.now() },
+                    history.state.value,
+                )
+                setDiskFinding('newer')
+                const bar = document.querySelector('[data-status-bar]')!
+                ;(bar.parentElement as HTMLElement).style.width = '360px'
+            })
+            const bar = page.locator('[data-status-bar]')
+            await expect(bar.locator('[data-file-chip]')).toHaveText('Newer')
+            await expect(bar).toHaveCSS('column-gap', '4px')
+            expect((await bar.boundingBox())!.width).toBe(360)
+            expect((await bar.boundingBox())!.height).toBe(64)
+            await expect(bar.locator('[data-status-label]')).toHaveCSS('min-width', '0px')
+            const identity = bar.locator('[data-status-label]')
+            const original = await identity.elementHandle()
+            await identity.focus()
+            for (const [width, height] of [
+                [559, 64],
+                [560, 32],
+                [767, 32],
+                [768, 24],
+            ]) {
+                await page.evaluate((width) => {
+                    const bar = document.querySelector('[data-status-bar]')!
+                    ;(bar.parentElement as HTMLElement).style.width = `${width}px`
+                }, width!)
+                await expect.poll(async () => (await bar.boundingBox())!.height).toBe(height)
+                await expect(identity).toBeFocused()
+                expect(
+                    await identity.evaluate((element, original) => element === original, original),
+                ).toBe(true)
+            }
+            await page.evaluate(() => {
+                const bar = document.querySelector('[data-status-bar]')!
+                ;(bar.parentElement as HTMLElement).style.width = '1000px'
+            })
+            await expect(bar.locator('[data-file-chip]')).toHaveText('Newer on disk')
+            await expect(bar).toHaveCSS('column-gap', '16px')
+            expect(
+                (await bar.locator('[data-status-label]').boundingBox())!.width,
+            ).toBeGreaterThanOrEqual(72)
+        })
+    })
+}
 
 test('notifications are announced from one live region', async ({ page }) => {
     await boot(page)
