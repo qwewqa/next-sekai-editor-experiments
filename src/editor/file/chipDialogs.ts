@@ -60,7 +60,14 @@ export const openChipDialog = async () => {
     // Step 8's dialog (§1.6.7), which lists the others by `chip.value.rest`; a session needs no
     // bound file for it.
     if (kind === 'notStored') {
-        fileActions.openNotStored?.()
+        if (fileActions.openNotStored) fileActions.openNotStored()
+        else await showChoice({
+            title: () => i18n.value.prompt.title,
+            message: () => lines(chipSentence(kind), rest),
+            choices: [],
+            cancelIsDefault: true,
+            cancelLabel: () => i18n.value.modals.close,
+        })
         return
     }
     const file = boundFile.value
