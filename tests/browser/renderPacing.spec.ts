@@ -53,7 +53,9 @@ test.beforeEach(async ({ page }) => {
         const { startOrStopPlayer } = (await import(
             urls.get('/src/editor/player.ts')!
         )) as typeof import('../../src/editor/player')
-        const { watch } = await import(urls.get('/node_modules/.vite/deps/vue.js')!)
+        const { watch } = await import(
+            [...urls].find(([path]) => path.endsWith('/deps/vue.js'))![1]
+        )
         window.pacing = { ticks: 0, preview: 0, startOrStopPlayer }
         watch(time, () => window.pacing.ticks++, { flush: 'sync' })
         window.editorTest.settings.showPreview = true

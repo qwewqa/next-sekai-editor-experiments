@@ -75,7 +75,7 @@ for (const toolName of ['note', 'slide', 'select'] as const) {
                             /from (['"])([^'"]+)\1/g,
                             (match, quote: string, specifier: string) => {
                                 if (specifier === 'vue')
-                                    return `from ${quote}${urls.get('/node_modules/.vite/deps/vue.js')}${quote}`
+                                    return `from ${quote}${[...urls].find(([path]) => path.endsWith('/deps/vue.js'))?.[1]}${quote}`
                                 return specifier.startsWith('/')
                                     ? `from ${quote}${urls.get(specifier) ?? location.origin + specifier}${quote}`
                                     : match

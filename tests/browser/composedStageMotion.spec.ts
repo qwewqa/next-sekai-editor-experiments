@@ -116,9 +116,10 @@ const moveOnTicks = (page: Page, step: number, count = Infinity) =>
         async ({ step, count }) => {
             const { view, appImport } = window.editorTest
             const { time } = await appImport<typeof import('../../src/time')>('/src/time.ts')
-            const { watch } = await appImport<typeof import('vue')>(
-                '/node_modules/.vite/deps/vue.js',
-            )
+            const vue = performance
+                .getEntriesByType('resource')
+                .find((entry) => new URL(entry.name).pathname.endsWith('/deps/vue.js'))!.name
+            const { watch } = (await import(vue)) as typeof import('vue')
             window.moving = true
             await new Promise<void>((resolve) => {
                 let left = count
