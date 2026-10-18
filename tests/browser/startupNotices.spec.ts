@@ -551,7 +551,7 @@ test.describe('the not-stored prompt', () => {
         await expect(page.locator('.notification')).toHaveText('New level')
     })
 
-    test('Save runs today’s Save and leaves the switch for the user to repeat', async ({
+    test('Save runs this session’s Save and leaves the switch for the user to repeat', async ({
         page,
     }) => {
         await page.addInitScript(() => {
@@ -563,6 +563,9 @@ test.describe('the not-stored prompt', () => {
         await page.waitForTimeout(400)
         const download = page.waitForEvent('download')
         await prompt(page).getByRole('button', { name: 'Save' }).click()
+        // An unbound session's Save asks for its file first (§1.4.7).
+        const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+        await save.getByRole('button', { name: 'Save', exact: true }).click()
         await download
         await going
         expect(await lifeOf(page)).toBe(990)

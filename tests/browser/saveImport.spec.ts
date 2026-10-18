@@ -38,7 +38,7 @@ const slowImport = (page: Page, ms: number) =>
 const open = async (page: Page, name: string) => {
     await queuePicks(page, [name])
     await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: new RegExp(`${name}`) })).toBeVisible()
+    await expect(notice(page).filter({ hasText: name }).first()).toBeVisible()
 }
 
 const imported = (page: Page) =>
@@ -123,4 +123,46 @@ test('a kill right after the unlink, with a pending journal, comes back unlinked
     expect(chain.docId).toBe(unlinked.docId)
     expect(chain.file).toBeUndefined()
     expect(chain.revision).toBeUndefined()
+})
+
+test('Undo right after a reload mid-import waits for the resumed import', async ({ page }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await slowImport(page, 1500)
+    await open(page, 'coconut.nxsp')
+    const chain = await chainOf(page)
+    const { handles } = await rows(page, ['handles'])
+    const token = (
+        handles!.find((row) => row.value.chainId === chain.chainId)!.value.handle as {
+            testHandle: string
+        }
+    ).testHandle
+    // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
+    await page.addInitScript(
+        ({ token, name }) => {
+            localStorage.setItem('nse.test.importDelay', '300')
+            const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
+            const handle = {
+                kind: 'file',
+                name,
+                getFile: async () => (await opfs()).getFile(),
+                queryPermission: () => Promise.resolve('granted'),
+                isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
+            }
+            window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
+        },
+        { token, name: 'coconut.nxsp' },
+    )
+    await page.reload()
+    await waitForStartup(page)
+    const notes = () =>
+        page.evaluate(async () => {
+            const { state } = await import('/src/history/index.ts')
+            return [...state.value.store.slides.note.values()].flat().length
+        })
+    const before = await notes()
+    // At once: the earlier states' chunks may not be imported yet.
+    await page.keyboard.press('Control+z')
+    await page.keyboard.press('Control+z')
+    await expect.poll(notes, { timeout: 15_000 }).toBe(before - 1)
 })

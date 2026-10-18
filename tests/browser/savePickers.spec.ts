@@ -212,3 +212,113 @@ test('a download browser downloads, binds by name, and offers Download Again unc
     await expect(saveDialog(page)).toHaveCount(0)
     expect(await pickerCalls(page)).toEqual([])
 })
+
+test('a fork has no binding, and its first Save suggests "<name> (2)"', async ({ context }) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+    // Restore as a Copy of B's session, open in B: a fork of B's chain.
+    const { sessionId } = await sessionOf(b)
+    const a = await context.newPage()
+    await start(a)
+    await a.evaluate(async (sessionId) => {
+        const { restoreCopy } = await import('/src/editor/switch.ts')
+        await restoreCopy(sessionId)
+    }, sessionId)
+    await expect.poll(async () => (await sessionOf(a)).copyOf?.name).toBe('coconut.nxsp')
+    expect((await sessionOf(a)).file).toBeUndefined()
+    await edit(a, 4)
+    await pressSave(a)
+    await expect(saveDialog(a).getByRole('textbox')).toHaveValue('coconut (2)')
+})
+
+test('Export’s picker: the chain’s own project file is refused and written again, keeping its identity', async ({
+    page,
+}) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    const before = await projectOf(page, 'coconut.nxsp')
+    await queuePicks(page, ['coconut.nxsp'])
+    await page.keyboard.press('Shift+P')
+    const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
+    await expect(exporting.locator('[data-export-name]')).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" is not level data.')
+    const after = await projectOf(page, 'coconut.nxsp')
+    expect(after.id).toBe(before.id)
+    expect((after.revision as Row).parent).toBe((before.revision as Row).id)
+})
+
+test('with storing paused, a takeover keeps its revocation in localStorage; the next start applies it', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+    const bChain = await chainOf(b)
+
+    const a = await context.newPage()
+    await a.addInitScript(() => {
+        sessionStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
+    })
+    await start(a)
+    await edit(a, 5)
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a)
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const kept = await a.evaluate(
+        (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
+        bChain.chainId as string,
+    )
+    expect(JSON.parse(kept!)).toMatchObject({
+        name: 'coconut.nxsp',
+        fileAt: (bChain.file as Row).at,
+    })
+
+    // The next start applies it, after the journals and before anything else.
+    await b.reload()
+    await expect
+        .poll(async () => {
+            const { chains } = await rows(b, ['chains'])
+            return chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)
+                ?.replaced
+        })
+        .toMatchObject({ name: 'coconut.nxsp' })
+    expect(
+        await b.evaluate(
+            (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
+            bChain.chainId as string,
+        ),
+    ).toBeNull()
+})
+
+test('Save to File… writes a session that isn’t open as a new file, binding nothing', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await savedTo(page, 'coconut.nxsp')
+    const earlier = await sessionOf(page)
+    const chain = await chainOf(page)
+    // Another session in this tab.
+    await page.evaluate(async () => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
+    })
+    await edit(page, 2)
+    await page.evaluate((sessionId) => {
+        void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
+    }, earlier.sessionId)
+    const dialog = saveDialog(page)
+    await expect(dialog.getByRole('textbox')).toHaveValue(/^coconut \(restored .+\)$/)
+    await submitSave(page, 'restored')
+    await expect(notice(page).filter({ hasText: 'Saved to restored.nxsp' })).toBeVisible()
+    const written = await projectOf(page, 'restored.nxsp')
+    expect(written.id).not.toBe(chain.docId)
+    expect((written.revision as Row).parent).toBeNull()
+    // The session's chain is as it was.
+    const { chains } = await rows(page, ['chains'])
+    const same = chains!.map((row) => row.value).find((row) => row.chainId === chain.chainId)!
+    expect(same.file).toEqual(chain.file)
+})
