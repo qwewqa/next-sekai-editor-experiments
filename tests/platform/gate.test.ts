@@ -4,11 +4,11 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { ungzip } from 'pako'
 import { serializeAutoSave } from '../../src/history/autoSave/serialize'
-import { toRecoveryFile } from '../../src/history/autoSave/unreadable'
 import { journalContent, journalLevelData } from '../../src/local/journal/content'
 import { JOURNAL_VERSION, readJournal, type JournalV1 } from '../../src/local/journal/format'
 import { MemoryStorage } from '../../src/local/journal/store'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
+import { toRecoveryFile } from '../../src/local/startup/legacy'
 import { detectFromUa } from '../../src/platform/detect'
 import { storageKey } from '../../src/storage'
 import { goldenChart, stateOf } from '../local/records/charts'
@@ -201,9 +201,7 @@ test('the gate offers an old auto save as the bundle’s recovery file does, in 
         // A level file keeps its `.nsld` or `.json` extension; the rest is the stored text.
         if (real.blob.type === 'text/plain') assert.equal(mine.name, 'Recovery.txt', name)
         assert.equal(mine.type === 'text/plain', real.blob.type === 'text/plain', `${name} type`)
-        if (real.blob.type === 'application/json') assert.equal(mine.name, real.name, name)
-        if (real.blob.type === 'application/octet-stream')
-            assert.equal(mine.name, `${real.name}.nsld`, name)
+        assert.equal(mine.name, real.name, name)
     }
     // The v1 form is the gzipped level data, which decodes to the chart.
     const file = gate.toRecoveryFile(v1)

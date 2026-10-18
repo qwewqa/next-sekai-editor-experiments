@@ -4,12 +4,12 @@ import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
 import { PRODUCT_NAME } from '../product'
+import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
 import { addLoadEvent } from './startup/events'
 import { claimTab, openAtStart, type Claim } from './startup/open'
-import { failed, isSafeMode, opened } from './startup/state'
 import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
 import { flusher, startStoring, tabClient, untouched, watchLifecycle } from './storing'
@@ -167,6 +167,10 @@ declare global {
     }
 }
 
+/**
+ * The startup sequence (§1.4.2): resolves once the session this load continues is open, and
+ * rejects when a journal, a row or the migration triggered a bug; the startup gate follows it.
+ */
 export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
@@ -254,13 +258,7 @@ export const startStorage = async () => {
                 claim,
             )
         else if (claim.kind === 'reload') claim.lock.release()
-    } catch (error) {
-        // A journal, a row or the migration triggered a bug: the gate shows it (§1.4.2).
-        console.error('The stored work could not be opened', error)
-        failed(error)
-        return
     } finally {
         if (test) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
     }
-    opened()
 }

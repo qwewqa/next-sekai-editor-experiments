@@ -20,17 +20,16 @@ const opened = (page: Page) =>
                         performance
                             .getEntriesByType('resource')
                             .map((entry) => entry.name)
-                            .find(
-                                (name) => new URL(name).pathname === '/src/local/startup/state.ts',
-                            ) ?? '/src/local/startup/state.ts'
-                    const { startup } = (await import(
+                            .find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
+                        '/src/startup/gate.ts'
+                    const { startupGate } = (await import(
                         url
-                    )) as typeof import('../../src/local/startup/state')
-                    return startup.value.phase
+                    )) as typeof import('../../src/startup/gate')
+                    return startupGate.phase
                 }),
             { timeout: 20_000 },
         )
-        .toBe('open')
+        .toBe('done')
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

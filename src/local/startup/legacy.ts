@@ -106,12 +106,20 @@ const isGzip = (bytes: Uint8Array) => bytes[0] === 0x1f && bytes[1] === 0x8b
 
 const nameOf = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 
+/** A name any file system takes, as the support gate makes it (§1.6.10). */
+const safeName = (name: string) =>
+    // eslint-disable-next-line no-control-regex
+    name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+
+const withExtension = (name: string, extension: string) =>
+    name.slice(-extension.length).toLowerCase() === extension ? name : name + extension
+
 /**
  * Recovery data as a file to keep (§1.8, §1.6.11.2's `recovered`): a journal's level data as
  * `.nsld`, the old auto save's v1 form as `.nsld`, raw level data as `.json` unchanged, and
  * anything else as the text it is. The names follow the support gate's (§1.6.11.3): the
  * journal's `descriptor.name`, else `descriptor.sourceName`, else "Untitled"; the slot's
- * `filename`, else "Untitled".
+ * `filename`, else "Recovery".
  */
 export const toRecoveryFile = (text: string): { blob: Blob; name: string } => {
     try {
@@ -126,7 +134,7 @@ export const toRecoveryFile = (text: string): { blob: Blob; name: string } => {
                         nameOf(descriptor.name) ?? nameOf(descriptor.sourceName) ?? 'Untitled'
                     return {
                         blob: new Blob([bytes], { type: 'application/octet-stream' }),
-                        name: `${name}.nsld`,
+                        name: `${safeName(name)}.nsld`,
                     }
                 }
             }
@@ -135,13 +143,15 @@ export const toRecoveryFile = (text: string): { blob: Blob; name: string } => {
                 if (isGzip(bytes))
                     return {
                         blob: new Blob([bytes], { type: 'application/octet-stream' }),
-                        name: `${nameOf(value.filename) ?? 'Untitled'}.nsld`,
+                        name: safeName(
+                            withExtension(nameOf(value.filename) ?? 'Recovery', '.nsld'),
+                        ),
                     }
             }
             if ('entities' in value)
                 return {
                     blob: new Blob([text], { type: 'application/json' }),
-                    name: 'Untitled.json',
+                    name: safeName(withExtension(nameOf(value.filename) ?? 'Recovery', '.json')),
                 }
         }
     } catch {

@@ -5,6 +5,7 @@ import { openStoredState } from '../../history'
 import { createSessionDescriptor } from '../../history/session'
 import type { RestoredSlot } from '../../history/stack'
 import type { JournalFound, LockService } from '../../platform/types'
+import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
 import type { FlushSession, StoredStack } from '../flush'
 import { toHex } from '../hash'
@@ -17,7 +18,7 @@ import type { StorageWorker } from '../worker/client'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
 import { journalledSession } from './resume'
-import { blankRequested, openingName, startsBlankForTests } from './state'
+import { blankRequested, startsBlankForTests } from './state'
 import type { SessionRead } from './stored'
 import {
     claimSessionLock,
@@ -320,7 +321,7 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     const read = await deps.worker.call('readNewestSession')
     if (!read || blankRequested) return false
     const name = displayName(namePartsOf(read.chain))
-    if (name.kind !== 'date') openingName(name.text)
+    if (name.kind !== 'date') setOpeningName(name.text)
     const headId = String(read.session.id)
     if (hasWebLocks() && (await deps.client.heldElsewhere(sessionLock(headId)))) {
         const state = await headState(deps.worker, read.head)

@@ -11,6 +11,7 @@ import './themes.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
+import { startsBlankForTests } from './local/startup/state'
 import { installSelectLists } from './modals/form/selectLists'
 import { trackStartup } from './startup/gate'
 // After App: settings' import cycle must be entered from App's side.
@@ -24,10 +25,17 @@ createApp(App).mount(root)
 
 // The storage worker and the local-data modules load after first paint (Part 1 §1.6.5), with
 // a timer, not a frame: an unfocused tab schedules no frames.
-setTimeout(() => {
-    void import('./local/start').then(({ startStorage }) => startStorage())
-}, 0)
+const starting = new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+        import('./local/start').then(({ startStorage }) => startStorage()).then(resolve, reject)
+    }, 0)
+})
 
-// The startup gate (Part 1 §1.4.2) covers what the session's opening takes. Until Step 4's startup
-// sequence (4-core) hands its promise over, nothing waits, as today's editor opens at once.
-trackStartup(Promise.resolve())
+// The startup gate (Part 1 §1.4.2) covers what the session's opening takes: the database, the
+// recovery order and loading the session. Under the fixture hook every load starts blank, at once.
+if (startsBlankForTests()) {
+    trackStartup(Promise.resolve())
+    starting.catch((error: unknown) => {
+        console.error(error)
+    })
+} else trackStartup(starting)

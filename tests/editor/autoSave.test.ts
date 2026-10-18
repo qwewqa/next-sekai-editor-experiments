@@ -82,7 +82,7 @@ test('a recovery file is the journal’s or the slot’s gzipped level data as .
     )
     const raw = JSON.stringify(levelData)
     const fromRaw = toRecoveryFile(raw)
-    assert.equal(fromRaw.name, 'Untitled.json')
+    assert.equal(fromRaw.name, 'Recovery.json')
     assert.equal(await fromRaw.blob.text(), raw)
     assert.equal(toRecoveryFile('{"broken').name, 'Recovery.txt')
 })
