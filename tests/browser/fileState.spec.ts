@@ -296,7 +296,8 @@ test.describe('the label and the title', () => {
                         left: box.left,
                         right: box.right,
                         ownEdges: points.every(
-                            ([x, y]) => document.elementFromPoint(x!, y!)?.closest('button') === element,
+                            ([x, y]) =>
+                                document.elementFromPoint(x!, y!)?.closest('button') === element,
                         ),
                         pseudo: getComputedStyle(element, '::before').content,
                     }
@@ -309,16 +310,28 @@ test.describe('the label and the title', () => {
                 expect(target.pseudo).toBe('none')
                 if (index) expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
             }
-            const dialogs = ['Level Properties', '"coconut.nxsp" Changed', 'Manage Groups', 'Manage Stages']
+            const dialogs = [
+                'Level Properties',
+                '"coconut.nxsp" Changed',
+                'Manage Groups',
+                'Manage Stages',
+            ]
             for (const [index, title] of dialogs.entries()) {
                 const control = buttons.nth(index)
                 for (const edge of ['left', 'center', 'right'] as const) {
                     const box = (await control.boundingBox())!
                     await page.touchscreen.tap(
-                        box.x + (edge === 'left' ? 1 : edge === 'right' ? box.width - 1 : box.width / 2),
+                        box.x +
+                            (edge === 'left'
+                                ? 1
+                                : edge === 'right'
+                                  ? box.width - 1
+                                  : box.width / 2),
                         box.y + box.height / 2,
                     )
-                    await expect(page.getByRole('dialog', { name: title, exact: true })).toBeVisible()
+                    await expect(
+                        page.getByRole('dialog', { name: title, exact: true }),
+                    ).toBeVisible()
                     await page.keyboard.press('Escape')
                     await expect(page.getByRole('dialog')).toHaveCount(0)
                 }
@@ -327,6 +340,9 @@ test.describe('the label and the title', () => {
             await page.keyboard.press('Shift')
             for (const control of await buttons.all()) {
                 await control.focus()
+                await page.keyboard.press('Shift+Tab')
+                await page.keyboard.press('Tab')
+                await expect(control).toBeFocused()
                 expect(
                     await control.evaluate((element) => ({
                         visible: element.matches(':focus-visible'),
