@@ -128,7 +128,7 @@ test.describe('load notices in the start-up pill', () => {
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
         // Its one button is Open History (Step 5), so the pill sits with the action notices.
-        await expect(pill(next).getByRole('button')).toHaveText(['Open History'])
+        await expect(pill(next).locator('[data-notice-action]')).toHaveText(['Open History'])
         // It goes at the first edit.
         await edit(next, 980)
         await expect(pill(next)).toHaveCount(0)
@@ -201,8 +201,7 @@ test.describe('load notices in the start-up pill', () => {
         for (const event of events) await addEvent(page, event)
         const lines = pill(page).locator(':scope > div')
         await expect(lines).toHaveText([
-            'Next SEKAI Editor',
-            'Version 0.6.0',
+            'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'Continued "Coconut (Master)" from auto save.',
             'A recovered change needs a newer version of the editor.',
@@ -224,13 +223,13 @@ test.describe('load notices in the start-up pill', () => {
         ])
             await addEvent(page, event)
         const lines = pill(page).locator(':scope > div')
-        await expect(lines).toHaveCount(6)
-        await expect(lines.nth(2)).toContainText('Work from earlier visits is missing.')
-        await expect(lines.nth(3)).toContainText('The old auto save could not be restored.')
-        await expect(lines.nth(4)).toContainText(
+        await expect(lines).toHaveCount(5)
+        await expect(lines.nth(1)).toContainText('Work from earlier visits is missing.')
+        await expect(lines.nth(2)).toContainText('The old auto save could not be restored.')
+        await expect(lines.nth(3)).toContainText(
             'Recovered your last change to "Coconut (Master)".',
         )
-        await expect(lines.nth(5)).toContainText('and 2 more in Local Data')
+        await expect(lines.nth(4)).toContainText('and 2 more in Local Data')
         // The first action is Local Data, then the last line's.
         await page.keyboard.press('Alt+KeyN')
         await expect(pill(page).getByRole('button', { name: 'Local Data' }).first()).toBeFocused()
@@ -260,6 +259,41 @@ test.describe('load notices in the start-up pill', () => {
         await run(page, 'reset')
         await expect(pill(page)).toHaveCount(0)
         await expect(page.locator('.notification')).toHaveText('New level')
+    })
+
+    test('the card has a ×, goes at a session switch, and a quick toast leaves it', async ({
+        page,
+    }) => {
+        await visit(page)
+        await addEvent(page, { kind: 'storageCleared' })
+        await expect(pill(page)).toBeVisible()
+        // A quick toast shows apart from it.
+        await page.keyboard.press('a')
+        await expect(pill(page)).toBeVisible()
+        await expect(page.locator('.notification:not(.notification-pill)')).toHaveCount(1)
+        // Placed above the toolbar like every card.
+        const box = (await pill(page).boundingBox())!
+        const toolbar = (await page.locator('[data-editor-toolbar] > div').boundingBox())!
+        expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y)
+        await run(page, 'reset')
+        await expect(pill(page)).toHaveCount(0)
+        await addEvent(page, { kind: 'storageCleared' })
+        // Loads add to the card only while it still shows, so a closed card stays closed.
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('the × closes the card with its notices, which stay in Local Data', async ({ page }) => {
+        await visit(page)
+        await addEvent(page, { kind: 'storageCleared' })
+        await expect(pill(page)).toBeVisible()
+        await pill(page).getByRole('button', { name: 'Close' }).click()
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('a version-only start-up is the quick toast, centred, with no ×', async ({ page }) => {
+        await visit(page)
+        await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
+        await expect(page.locator('[data-notice-close]')).toHaveCount(0)
     })
 
     test('every line is read by the one live region', async ({ page }) => {
@@ -415,10 +449,10 @@ test.describe('Reopen', () => {
         await edit(page, 980)
         await run(page, 'undo')
         await run(page, 'undo')
-        await expect(page.locator('.notification')).toHaveText('Nothing to undoOpen History')
-        await expect(page.locator('.notification-pill').getByRole('button')).toHaveText([
-            'Open History',
-        ])
+        // A card, shown apart from the quick "Undid" toasts before it.
+        const card = page.locator('.notification-pill')
+        await expect(card).toContainText('Nothing to undo')
+        await expect(card.locator('[data-notice-action]')).toHaveText(['Open History'])
     })
 
     test('a blank start left by New has nothing to reopen', async ({ page }) => {
