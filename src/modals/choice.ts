@@ -14,6 +14,8 @@ export type Choice<T> = {
     danger?: boolean
     /** The safe default: rightmost, in the accent colour, with focus. */
     default?: boolean
+    /** Shown but not offered; its description says why. */
+    disabled?: boolean
 }
 
 export type ChoiceButton = {
@@ -22,6 +24,7 @@ export type ChoiceButton = {
     description?: () => string
     danger?: boolean
     default?: boolean
+    disabled?: boolean
     cancel?: boolean
 }
 

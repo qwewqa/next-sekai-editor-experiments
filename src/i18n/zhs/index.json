@@ -1905,7 +1905,19 @@
     "downloadAgain": "再次下载",
     "unreadable": "无法完整读取“{0}”。",
     "tooLarge": "对单个文件而言过大。请取消勾选 BGM 或历史记录。",
-    "restoredName": "{0}（{1} 恢复）"
+    "restoredName": "{0}（{1} 恢复）",
+    "include": "包含",
+    "historySteps": "{0} 步",
+    "historySize": "{0} 步 · {1}",
+    "historyNote": "拥有该文件的人可以看到每一步。",
+    "noBgm": "无 BGM",
+    "bgmNotLoaded": "BGM 未加载",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "已在 {0} 中",
+    "downloadNote": "每次保存都会下载一份新副本。",
+    "noHistoryHere": "此连接无法包含历史记录。",
+    "sizeTotal": "总计：约 {0}",
+    "sizePending": "正在估算大小…"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",
@@ -1945,7 +1957,8 @@
     "alreadyMatches": "已与当前谱面一致",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
-    "bgmNotLoaded": "BGM 未加载"
+    "bgmNotLoaded": "BGM 未加载",
+    "savedCurrent": "已将当前版本保存到 {0}"
   },
   "entry": {
     "exported": "已导出 {0}",
@@ -2038,6 +2051,7 @@
     "title": "下载未确认",
     "body": "请确认 {0} 已下载完成（{1}）。",
     "haveFile": "我已有该文件",
-    "downloadAgain": "再次下载"
+    "downloadAgain": "再次下载",
+    "announce": "{0} 以后确认时，请使用状态栏中的“{1}”。"
   }
 }

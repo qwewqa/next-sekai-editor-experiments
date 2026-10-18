@@ -1905,7 +1905,19 @@
     "downloadAgain": "다시 다운로드",
     "unreadable": "\"{0}\"을(를) 완전히 읽지 못했습니다.",
     "tooLarge": "하나의 파일에 담기에는 너무 큽니다. BGM 또는 기록을 선택 해제하세요.",
-    "restoredName": "{0} ({1} 복원)"
+    "restoredName": "{0} ({1} 복원)",
+    "include": "포함",
+    "historySteps": "{0}단계",
+    "historySize": "{0}단계 · {1}",
+    "historyNote": "파일이 있는 사람은 모든 단계를 볼 수 있습니다.",
+    "noBgm": "BGM 없음",
+    "bgmNotLoaded": "BGM을 불러오지 않음",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "이미 {0}에 있음",
+    "downloadNote": "저장할 때마다 새 사본이 다운로드됩니다.",
+    "noHistoryHere": "이 연결에서는 기록을 포함할 수 없습니다.",
+    "sizeTotal": "합계: 약 {0}",
+    "sizePending": "크기 추정 중…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 변경됨",
@@ -1945,7 +1957,8 @@
     "alreadyMatches": "이미 현재 채보와 같음",
     "openHistory": "기록 열기",
     "earlierInHistory": "이전 단계는 기록에 있습니다",
-    "bgmNotLoaded": "BGM을 불러오지 않음"
+    "bgmNotLoaded": "BGM을 불러오지 않음",
+    "savedCurrent": "현재 버전을 {0}에 저장함"
   },
   "entry": {
     "exported": "{0} 내보냄",
@@ -2038,6 +2051,7 @@
     "title": "다운로드 확인되지 않음",
     "body": "{0} 다운로드가 완료되었는지 확인하세요({1}).",
     "haveFile": "파일이 있습니다",
-    "downloadAgain": "다시 다운로드"
+    "downloadAgain": "다시 다운로드",
+    "announce": "{0} 나중에 확인하려면 상태 표시줄의 {1}을(를) 사용하세요."
   }
 }

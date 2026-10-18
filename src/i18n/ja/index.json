@@ -1905,7 +1905,19 @@
     "downloadAgain": "再ダウンロード",
     "unreadable": "「{0}」を完全には読み込めませんでした。",
     "tooLarge": "1 つのファイルには大きすぎます。BGM または履歴のチェックを外してください。",
-    "restoredName": "{0}（{1} に復元）"
+    "restoredName": "{0}（{1} に復元）",
+    "include": "含める",
+    "historySteps": "{0} 操作",
+    "historySize": "{0} 操作 · {1}",
+    "historyNote": "ファイルを持つ人は、すべての操作を見ることができます。",
+    "noBgm": "BGM なし",
+    "bgmNotLoaded": "BGM が読み込まれていません",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "{0} に含まれています",
+    "downloadNote": "保存のたびに新しいコピーがダウンロードされます。",
+    "noHistoryHere": "この接続では履歴を含められません。",
+    "sizeTotal": "合計: 約 {0}",
+    "sizePending": "サイズを見積もり中…"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",
@@ -1945,7 +1957,8 @@
     "alreadyMatches": "すでに現在の譜面と同じです",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
-    "bgmNotLoaded": "BGM が読み込まれていません"
+    "bgmNotLoaded": "BGM が読み込まれていません",
+    "savedCurrent": "現在のバージョンを {0} に保存しました"
   },
   "entry": {
     "exported": "{0} を出力",
@@ -2038,6 +2051,7 @@
     "title": "ダウンロード未確認",
     "body": "{0} のダウンロードが完了したか確認してください（{1}）。",
     "haveFile": "ファイルを確認した",
-    "downloadAgain": "もう一度ダウンロード"
+    "downloadAgain": "もう一度ダウンロード",
+    "announce": "{0} あとで確認するには、ステータスバーの{1}を使ってください。"
   }
 }

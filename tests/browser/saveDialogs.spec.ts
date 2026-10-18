@@ -1,0 +1,753 @@
+import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+
+// Step 6's Save dialogs (Part 1 §1.4.7): the Save and Save As dialog with File Name's rules, the
+// History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
+// not-found, denied and read-only dialogs, and the feedback after a write. They are opened through
+// `saveUi`, as the Save flows call them.
+
+const seed = (context: BrowserContext, platform?: object) =>
+    context.addInitScript((platform) => {
+        localStorage.setItem('nse.test.storage', '{}')
+        localStorage.setItem(
+            'nse.test.version',
+            JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+        )
+        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+        localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
+        localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
+        if (platform) localStorage.setItem('nse.test.platform', JSON.stringify(platform))
+    }, platform)
+
+const visit = async (page: Page) => {
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { startupGate } =
+                    (await import('/src/startup/gate.ts')) as typeof import('../../src/startup/gate')
+                return startupGate.phase
+            }),
+        )
+        .toBe('done')
+    await page.keyboard.press('Escape')
+}
+
+declare global {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        seen: { result?: unknown; done?: boolean; estimate?: (value: unknown) => void } & Record<
+            string,
+            unknown
+        >
+    }
+}
+
+type Input = Parameters<typeof import('../../src/editor/save/dialogs').defaultSaveUi.saveDialog>[0]
+
+const base: Input = {
+    kind: 'save',
+    name: 'Coconut (Master)',
+    lines: [],
+    history: { kind: 'available', ticked: true, locked: false, steps: 1840 },
+    bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: false },
+    exportLine: false,
+    downloadNote: false,
+    peeking: false,
+    estimate: { load: () => Promise.resolve(undefined) },
+}
+
+/**
+ * Opens the Save dialog. The estimate is held until `release`d from the test, or never given;
+ * `lines` and `storageLine` are texts.
+ */
+const openSave = (
+    page: Page,
+    input: Partial<Omit<Input, 'lines' | 'storageLine' | 'estimate'>> & {
+        lines?: string[]
+        storageLine?: string
+        estimate?: 'held' | 'none' | { cached?: object; value?: object }
+    } = {},
+) =>
+    page.evaluate(
+        async ({ base, input }) => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            const { estimate, lines, storageLine, ...rest } = input
+            window.seen = {}
+            const sizes = (estimate && typeof estimate === 'object' ? estimate : {}) as {
+                cached?: never
+                value?: never
+            }
+            void saveUi
+                .saveDialog({
+                    ...base,
+                    ...rest,
+                    lines: (lines ?? []).map((line) => () => line),
+                    ...(storageLine ? { storageLine: () => storageLine } : {}),
+                    estimate: {
+                        cached: sizes.cached,
+                        load: () =>
+                            estimate === 'held'
+                                ? new Promise((resolve) => {
+                                      window.seen.estimate = resolve as never
+                                  })
+                                : Promise.resolve(sizes.value),
+                    },
+                })
+                .then((result) => {
+                    window.seen.result = result ?? null
+                    window.seen.done = true
+                })
+        },
+        { base: { ...base, estimate: undefined }, input },
+    )
+
+const result = (page: Page) =>
+    page.evaluate(() => window.seen.done).then(() => page.evaluate(() => window.seen.result))
+
+const dialog = (page: Page) => page.getByRole('dialog')
+const guard = (page: Page) => page.waitForTimeout(400)
+
+const estimateOf = { steps: 1840, history: 3_100_000, bgm: 4_200_000, base: 300_000 }
+
+test.describe('the Save dialog', () => {
+    test('opens on File Name with the prefill, and Enter saves with the extension', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page)
+        await expect(dialog(page)).toHaveAccessibleName('Save Project File')
+        const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+        await expect(field).toBeFocused()
+        await expect(field).toHaveValue('Coconut (Master)')
+        await expect(dialog(page).getByText('.nxsp', { exact: true })).toBeVisible()
+        await page.keyboard.press('Enter')
+        await expect
+            .poll(() => result(page))
+            .toEqual({
+                action: 'save',
+                fileName: 'Coconut (Master).nxsp',
+                history: true,
+                bgm: true,
+            })
+    })
+
+    test('Save As is titled so, and an empty field saves Untitled.nxsp', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { kind: 'saveAs', name: '' })
+        await expect(dialog(page)).toHaveAccessibleName('Save As')
+        const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+        await expect(field).toHaveValue('')
+        await expect(field).toHaveAttribute('placeholder', 'Untitled')
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Save', exact: true }).click()
+        await expect.poll(() => result(page)).toMatchObject({ fileName: 'Untitled.nxsp' })
+    })
+
+    test('a typed extension is not doubled', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { name: '' })
+        await dialog(page).getByRole('textbox', { name: 'File Name' }).fill('melt.NXSP')
+        await page.keyboard.press('Enter')
+        await expect.poll(() => result(page)).toMatchObject({ fileName: 'melt.nxsp' })
+    })
+
+    test('names are checked as typed: a space mid-name shows nothing, a colon at once', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { name: '' })
+        const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+        const save = dialog(page).getByRole('button', { name: 'Save', exact: true })
+        const problem = dialog(page).locator('[data-save-problem]')
+
+        await field.pressSequentially('Coconut ')
+        // The edge reason waits; Save is disabled meanwhile.
+        await expect(problem).toHaveCount(0)
+        await expect(save).toBeDisabled()
+        await field.pressSequentially('(Master)')
+        await expect(save).toBeEnabled()
+        await expect(problem).toHaveCount(0)
+
+        await field.fill('A:b')
+        await expect(problem).toHaveText('A name cannot contain :')
+        await expect(save).toBeDisabled()
+
+        // The edge reason shows after a pause.
+        await field.fill('Coconut ')
+        await expect(problem).toHaveText('A name cannot start or end with a dot or a space')
+        await expect(save).toBeDisabled()
+        await field.fill('con')
+        await expect(problem).toHaveText('A name cannot be "con"')
+    })
+
+    test('Enter on an invalid name shows its reason and saves nothing', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { name: '' })
+        const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+        await field.fill('.hidden')
+        await page.keyboard.press('Enter')
+        await expect(dialog(page).locator('[data-save-problem]')).toBeVisible()
+        await expect(dialog(page)).toBeVisible()
+        expect(await page.evaluate(() => window.seen.done)).toBeUndefined()
+    })
+
+    test('the rows show their steps, then their sizes and a total that follows the ticks', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { estimate: 'held' })
+        const history = dialog(page).locator('[data-save-row="history"]')
+        const bgm = dialog(page).locator('[data-save-row="bgm"]')
+        // Opens at once; Save works throughout.
+        await expect(history).toContainText('1,840 steps')
+        await expect(history).not.toContainText(/\d [kM]B/)
+        await expect(bgm).toContainText('coconut.mp3')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Estimating size…')
+        await expect(history.getByText('Anyone with the file can see every step.')).toBeVisible()
+        await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+
+        await page.evaluate((sizes) => window.seen.estimate!(sizes), estimateOf)
+        await expect(history).toContainText('1,840 steps · 3.1 MB')
+        await expect(bgm).toContainText('coconut.mp3 · 4.2 MB')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 7.6 MB')
+
+        // Unticking follows at once, with no new estimate.
+        await dialog(page).getByRole('checkbox', { name: 'History' }).uncheck()
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 4.5 MB')
+        await dialog(page).getByRole('checkbox', { name: 'BGM' }).uncheck()
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
+        await page.keyboard.press('Enter')
+        await expect.poll(() => result(page)).toMatchObject({ history: false, bgm: false })
+    })
+
+    test('a cached estimate shows at once', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { estimate: { cached: estimateOf, value: estimateOf } })
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 7.6 MB')
+    })
+
+    test('an estimate that fails shows no sizes and no total', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { estimate: 'none' })
+        await expect(dialog(page).locator('[data-save-row="history"]')).toContainText('1,840 steps')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveCount(0)
+        await expect(dialog(page).locator('[data-save-row="history"]')).not.toContainText(
+            /\d [kM]B/,
+        )
+    })
+
+    test('a row that cannot be included is disabled with its reason and no size', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, {
+            history: { kind: 'insecure' },
+            bgm: { kind: 'none' },
+            estimate: { cached: estimateOf },
+        })
+        const history = dialog(page).getByRole('checkbox', { name: 'History' })
+        const bgm = dialog(page).getByRole('checkbox', { name: 'BGM' })
+        await expect(history).toBeDisabled()
+        await expect(history).not.toBeChecked()
+        await expect(dialog(page)).toContainText('History cannot be included on this connection.')
+        await expect(bgm).toBeDisabled()
+        await expect(dialog(page).locator('[data-save-row="bgm"]')).toContainText('No BGM')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
+    })
+
+    test('a BGM that is not loaded is disabled without a size', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { bgm: { kind: 'notLoaded' }, estimate: { cached: estimateOf } })
+        await expect(dialog(page).getByRole('checkbox', { name: 'BGM' })).toBeDisabled()
+        await expect(dialog(page).locator('[data-save-row="bgm"]')).toContainText('BGM not loaded')
+        await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText(/\d [kM]B/)
+    })
+
+    test('a file that holds history and the BGM locks its rows, ticked, with "Already in"', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, {
+            history: {
+                kind: 'available',
+                ticked: true,
+                locked: true,
+                steps: 1840,
+                keptIn: 'coconut.nxsp',
+            },
+            bgm: {
+                kind: 'held',
+                name: 'coconut.mp3',
+                ticked: true,
+                locked: true,
+                keptIn: 'coconut.nxsp',
+            },
+        })
+        for (const name of ['History', 'BGM']) {
+            const box = dialog(page).getByRole('checkbox', { name })
+            await expect(box).toBeDisabled()
+            await expect(box).toBeChecked()
+        }
+        await expect(dialog(page).locator('[data-save-kept]')).toHaveText([
+            'Already in coconut.nxsp',
+            'Already in coconut.nxsp',
+        ])
+        await page.keyboard.press('Enter')
+        await expect.poll(() => result(page)).toMatchObject({ history: true, bgm: true })
+    })
+
+    test('a BGM the file holds under another head shows no "Already in"', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, {
+            bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: true },
+        })
+        await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText('Already in')
+    })
+
+    test('the notes: the first lines, Export, the download note, the storage line, peeking', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, {
+            lines: ['"coconut.nxsp" was replaced from another tab or window.'],
+            exportLine: true,
+            downloadNote: true,
+            storageLine: 'Safari deletes stored work after 7 days without a visit.',
+            peeking: true,
+        })
+        await expect(dialog(page).locator('[data-save-line]')).toHaveText(
+            '"coconut.nxsp" was replaced from another tab or window.',
+        )
+        await expect(dialog(page).locator('[data-save-export]')).toHaveText(
+            'For Sonolus level data, use Export Level Data… (Shift+P).',
+        )
+        await expect(dialog(page).locator('[data-save-download-note]')).toHaveText(
+            'Each save downloads a new copy.',
+        )
+        await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
+        await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
+            'Saves the current version.',
+        )
+    })
+
+    test('the Export line is a link that closes the dialog for Export', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, { exportLine: true })
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
+        await expect.poll(() => result(page)).toEqual({ action: 'export' })
+    })
+
+    test('Cancel and Escape answer nothing', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page)
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+        await expect.poll(() => result(page)).toBeNull()
+    })
+})
+
+const open = (page: Page, source: string) =>
+    page.evaluate(async (source) => {
+        const { saveUi, defaultSaveUi } =
+            (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+        window.seen = {}
+        const run = new Function('saveUi', 'defaultSaveUi', `return (${source})`)
+        void Promise.resolve(run(saveUi, defaultSaveUi) as unknown).then((result) => {
+            window.seen.result = result ?? null
+            window.seen.done = true
+        })
+    }, source)
+
+test.describe('the Preparing dialog', () => {
+    test('shows the name and size, and its button becomes the new gesture', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            window.seen = {}
+            const preparing = saveUi.preparing('coconut.nxsp')
+            window.seen.preparing = preparing
+            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
+        })
+        await expect(dialog(page)).toContainText('Preparing coconut.nxsp…')
+        await expect(dialog(page).getByRole('button', { name: 'Cancel' })).toBeVisible()
+        await page.evaluate(() =>
+            (
+                window.seen.preparing as { importing: (p: { done: number; total: number }) => void }
+            ).importing({ done: 20, total: 80 }),
+        )
+        await expect(dialog(page).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
+        await page.evaluate(() =>
+            (window.seen.preparing as { built: (size: number) => void }).built(12_400_000),
+        )
+        await expect(dialog(page)).toContainText('Preparing coconut.nxsp… 12.4 MB')
+        await page.evaluate(() => {
+            void (window.seen.preparing as { ready: (a: string, s: number) => Promise<boolean> })
+                .ready('download', 12_400_000)
+                .then((go) => (window.seen.result = go))
+        })
+        const button = dialog(page).getByRole('button', { name: 'Download' })
+        await expect(button).toBeFocused()
+        await guard(page)
+        await button.click()
+        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe(true)
+    })
+
+    test('Save is the button when the picker is next, and Cancel aborts the build', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            window.seen = {}
+            const preparing = saveUi.preparing('coconut.nxsp')
+            window.seen.preparing = preparing
+            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
+            void preparing.ready('save', 3_000_000).then((go) => (window.seen.result = go))
+        })
+        await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeFocused()
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe(false)
+    })
+
+    test('Cancel before it is ready stops the Save', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            window.seen = {}
+            const preparing = saveUi.preparing('coconut.nxsp')
+            preparing.signal.addEventListener('abort', () => (window.seen.aborted = true))
+        })
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.aborted)).toBe(true)
+    })
+})
+
+test.describe('the conflict dialog', () => {
+    const disk = {
+        saved: `{ kind: 'saved', device: { id: 'a', label: 'iPad' }, thisDevice: false, savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(), notes: 1220 }`,
+        web: `{ kind: 'saved', device: { id: 'a', label: 'Web (Chrome)' }, thisDevice: false, savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(), notes: 1 }`,
+        other: `{ kind: 'otherProject', name: 'Melt' }`,
+        unknown: `{ kind: 'unknown' }`,
+    }
+
+    test('offers the four choices, with Save as a Separate File focused', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.saved} })`)
+        await expect(dialog(page)).toHaveAccessibleName('"coconut.nxsp" Changed')
+        await expect(dialog(page)).toContainText(
+            '"coconut.nxsp" changed since you opened or saved it here.',
+        )
+        await expect(dialog(page)).toContainText('Saved on iPad, Oct 16, 2:41 PM · 1,220 notes.')
+        await expect(dialog(page).locator('[data-choice-buttons] button')).toHaveText([
+            // Stacked, the safe default on top and Cancel last.
+            'Save as a Separate File',
+            'Open the Other Version',
+            'Replace',
+            'Cancel',
+        ])
+        await expect(
+            dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+        ).toBeFocused()
+        await expect(dialog(page).getByText('Your changes stay unsaved.')).toBeVisible()
+        await expect(
+            dialog(page).getByText('The version on disk goes to Recent Sessions.'),
+        ).toBeVisible()
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Replace' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('replace')
+    })
+
+    test('names a web version, another project, or nothing', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.web} })`)
+        await expect(dialog(page)).toContainText(
+            'Saved in the web editor (Chrome), Oct 16, 2:41 PM · 1 note.',
+        )
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Close' }).click()
+        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.other} })`)
+        await expect(dialog(page)).toContainText('A different project file, "Melt".')
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Close' }).click()
+        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.unknown} })`)
+        await expect(dialog(page).locator('.whitespace-pre-line')).toHaveText(
+            '"coconut.nxsp" changed since you opened or saved it here.',
+        )
+    })
+
+    test('a Replace that cannot be offered is disabled with its reason', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await open(
+            page,
+            `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.saved}, replaceDisabled: () => 'It holds earlier steps that this browser no longer has.' })`,
+        )
+        const replace = dialog(page).getByRole('button', { name: 'Replace' })
+        await expect(replace).toBeDisabled()
+        await expect(dialog(page)).toContainText(
+            'It holds earlier steps that this browser no longer has.',
+        )
+        await expect(
+            dialog(page).getByText('The version on disk goes to Recent Sessions.'),
+        ).toHaveCount(0)
+        await expect(
+            dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+        ).toBeFocused()
+    })
+})
+
+test.describe('the dialogs for a file that cannot be written', () => {
+    const buttons = (page: Page) => dialog(page).locator('[data-choice-buttons] button')
+
+    test('not found: Save As… is focused, with no hint', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.notFound('coconut.nxsp')`)
+        await expect(dialog(page)).toContainText('"coconut.nxsp" cannot be found.')
+        await expect(dialog(page)).not.toContainText('If you moved or renamed it')
+        await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
+        await expect(dialog(page).getByRole('button', { name: 'Save As…' })).toBeFocused()
+    })
+
+    test('denied: Try Again is focused', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.denied('coconut.nxsp')`)
+        await expect(dialog(page)).toContainText(
+            'The browser did not allow writing to coconut.nxsp.',
+        )
+        await expect(buttons(page)).toHaveText(['Cancel', 'Save As…', 'Try Again'])
+        await expect(dialog(page).getByRole('button', { name: 'Try Again' })).toBeFocused()
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Try Again' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('tryAgain')
+    })
+
+    test('read-only: Save As… is focused', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.readOnly('coconut.nxsp')`)
+        await expect(dialog(page)).toContainText('"coconut.nxsp" cannot be written to.')
+        await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
+        await expect(dialog(page).getByRole('button', { name: 'Save As…' })).toBeFocused()
+    })
+
+    test('other errors give the plain reason, with Save As… where there is another place', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await open(
+            page,
+            `saveUi.failed('coconut.nxsp', () => 'There is not enough space to write coconut.nxsp.', true)`,
+        )
+        await expect(dialog(page)).toContainText('There is not enough space to write coconut.nxsp.')
+        await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+        await open(page, `saveUi.failed('coconut.nxsp', () => 'The download failed.', false)`)
+        await expect(buttons(page)).toHaveText(['OK'])
+    })
+
+    test('a refused pick: the level data one adds the Export hint and its button', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.refused('LevelData', 'levelData')`)
+        await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
+        await expect(dialog(page)).toContainText(
+            'For Sonolus level data, use Export Level Data… (Shift+P).',
+        )
+        await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
+        await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.result)).toBe('export')
+    })
+
+    test('a refused partial open and safe mode name why', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await open(page, `saveUi.refused('melt.nxsp', 'notKept')`)
+        await expect(dialog(page)).toContainText('Not saved. "melt.nxsp" could not be kept.')
+        await expect(buttons(page)).toHaveText(['Cancel', 'Choose Another…'])
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+        await open(page, `saveUi.refused('melt.nxsp', 'safeMode')`)
+        await expect(dialog(page)).toContainText(
+            'Not saved. Files cannot be replaced in safe mode.',
+        )
+    })
+})
+
+test.describe('the feedback after a write', () => {
+    const notice = (page: Page) => page.getByRole('status')
+
+    const feedback = (page: Page, source: string) =>
+        page.evaluate(async (source) => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            saveUi.saved(new Function(`return (${source})`)() as never)
+        }, source)
+
+    const plain = `{ kind: 'saved', name: 'coconut.nxsp', size: 1, someStepsNotKept: false, tookOver: false, without: [], tooLarge: [] }`
+
+    test('says where the file went, and what it left out', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await feedback(page, plain)
+        await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
+        await feedback(page, `({ ...${plain}, someStepsNotKept: true })`)
+        await expect(notice(page)).toHaveText(
+            'Saved to coconut.nxsp. Some earlier steps were not kept.',
+        )
+        await feedback(page, `({ ...${plain}, without: ['bgm'], tooLarge: ['bgm'] })`)
+        await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
+        await feedback(page, `({ ...${plain}, without: ['bgm'], tooLarge: [] })`)
+        await expect(notice(page)).toHaveText(
+            'Saved to coconut.nxsp without its BGM, which is not loaded',
+        )
+        await feedback(page, `({ ...${plain}, tookOver: true })`)
+        await expect(notice(page)).toHaveText(
+            'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
+        )
+    })
+
+    test('a write while viewing history says the current version was saved', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { pushState, state, peek } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            pushState(() => 'Life', { ...state.value, initialLife: 990 })
+            void peek
+        })
+        await feedback(page, plain)
+        await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
+    })
+
+    test('a download not yet confirmed carries I Have the File, which clears the chip', async ({
+        page,
+        context,
+    }) => {
+        await seed(context, { fileSystemAccess: false })
+        await visit(page)
+        await page.evaluate(async () => {
+            const { bindFile } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            const { liveState } =
+                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+            bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
+        })
+        await feedback(
+            page,
+            `({ kind: 'download', name: 'coconut.nxsp', size: 12_400_000, someStepsNotKept: false, tookOver: false, without: [], tooLarge: [] })`,
+        )
+        await expect(notice(page)).toContainText('Download started: coconut.nxsp · 12.4 MB')
+        await expect(notice(page)).toContainText(
+            'To confirm it later, use Download not confirmed in the status bar.',
+        )
+        await page.waitForTimeout(400)
+        await page.getByRole('button', { name: 'I Have the File' }).click()
+        await expect(page.locator('[data-file-chip]')).toHaveCount(0)
+    })
+
+    test('a confirmed download carries no action', async ({ page, context }) => {
+        await seed(context, { fileSystemAccess: false })
+        await visit(page)
+        await page.evaluate(async () => {
+            localStorage.setItem('sonolus-next-sekai-editor.downloadConfirmed', 'true')
+            const { confirmDownloads } =
+                (await import('/src/editor/file/flags.ts')) as typeof import('../../src/editor/file/flags')
+            confirmDownloads()
+            const { bindFile } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            const { liveState } =
+                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+            bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
+        })
+        await feedback(
+            page,
+            `({ kind: 'download', name: 'coconut.nxsp', size: 1_000, someStepsNotKept: true, tookOver: false, without: [], tooLarge: [] })`,
+        )
+        await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
+        await expect(notice(page)).toContainText('Some earlier steps were not kept.')
+        await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)
+    })
+
+    test('"No changes" after a download offers Download Again', async ({ page, context }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            window.seen = {}
+            saveUi.noChanges('coconut.nxsp', 'downloaded', () => (window.seen.again = true))
+        })
+        await expect(notice(page)).toContainText('No changes since coconut.nxsp was downloaded')
+        await page.waitForTimeout(400)
+        await page.getByRole('button', { name: 'Download Again' }).click()
+        await expect.poll(() => page.evaluate(() => window.seen.again)).toBe(true)
+    })
+})

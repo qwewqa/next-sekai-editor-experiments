@@ -1905,7 +1905,19 @@
     "downloadAgain": "Yeniden İndir",
     "unreadable": "\"{0}\" tamamen okunamadı.",
     "tooLarge": "Tek bir dosya için çok büyük. BGM veya geçmiş işaretini kaldırın.",
-    "restoredName": "{0} ({1} geri yüklendi)"
+    "restoredName": "{0} ({1} geri yüklendi)",
+    "include": "Dahil Et",
+    "historySteps": "{0} adım",
+    "historySize": "{0} adım · {1}",
+    "historyNote": "Dosyaya sahip herkes her adımı görebilir.",
+    "noBgm": "BGM yok",
+    "bgmNotLoaded": "BGM yüklenmedi",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "Zaten {0} içinde",
+    "downloadNote": "Her kaydetme yeni bir kopya indirir.",
+    "noHistoryHere": "Bu bağlantıda geçmiş eklenemez.",
+    "sizeTotal": "Toplam: yaklaşık {0}",
+    "sizePending": "Boyut tahmin ediliyor…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
@@ -1945,7 +1957,8 @@
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
-    "bgmNotLoaded": "BGM yüklenmedi"
+    "bgmNotLoaded": "BGM yüklenmedi",
+    "savedCurrent": "Güncel sürüm {0} dosyasına kaydedildi"
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",
@@ -2038,6 +2051,7 @@
     "title": "İndirme Onaylanmadı",
     "body": "{0} dosyasının indirmesinin tamamlandığını kontrol edin ({1}).",
     "haveFile": "Dosya Bende",
-    "downloadAgain": "Tekrar İndir"
+    "downloadAgain": "Tekrar İndir",
+    "announce": "{0} Daha sonra onaylamak için durum çubuğundaki {1} düğmesini kullanın."
   }
 }

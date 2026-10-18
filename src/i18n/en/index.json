@@ -1905,7 +1905,19 @@
         "downloadAgain": "Download Again",
         "unreadable": "\"{0}\" could not be read completely.",
         "tooLarge": "Too large for one file. Untick BGM or history.",
-        "restoredName": "{0} (restored {1})"
+        "restoredName": "{0} (restored {1})",
+        "include": "Include",
+        "historySteps": "{0} step|{0} steps",
+        "historySize": "{0} step · {1}|{0} steps · {1}",
+        "historyNote": "Anyone with the file can see every step.",
+        "noBgm": "No BGM",
+        "bgmNotLoaded": "BGM not loaded",
+        "bgmSize": "{0} · {1}",
+        "keptOptions": "Already in {0}",
+        "downloadNote": "Each save downloads a new copy.",
+        "noHistoryHere": "History cannot be included on this connection.",
+        "sizeTotal": "Total: about {0}",
+        "sizePending": "Estimating size…"
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
@@ -1945,7 +1957,8 @@
         "alreadyMatches": "Already matches the current chart",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
-        "bgmNotLoaded": "BGM not loaded"
+        "bgmNotLoaded": "BGM not loaded",
+        "savedCurrent": "Saved the current version to {0}"
     },
     "entry": {
         "exported": "Exported {0}",
@@ -2038,6 +2051,7 @@
         "title": "Download Not Confirmed",
         "body": "Check that {0} finished downloading ({1}).",
         "haveFile": "I Have the File",
-        "downloadAgain": "Download Again"
+        "downloadAgain": "Download Again",
+        "announce": "{0} To confirm it later, use {1} in the status bar."
     }
 }

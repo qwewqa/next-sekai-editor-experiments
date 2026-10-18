@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
 const accidental = () => performance.now() - openedAt < GUARD_MS
 
 const pick = (button: ChoiceButton) => {
-    if (accidental()) return
+    if (button.disabled || accidental()) return
     emit('close', button.cancel ? undefined : button.value)
 }
 
@@ -105,7 +105,12 @@ const classes = (button: ChoiceButton) =>
                     <button
                         type="button"
                         class="h-9 min-w-24 max-w-full rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg [@media(pointer:coarse)]:h-11"
-                        :class="[classes(button), stacked ? 'w-full' : 'whitespace-nowrap']"
+                        :class="[
+                            classes(button),
+                            stacked ? 'w-full' : 'whitespace-nowrap',
+                            'disabled:pointer-events-none disabled:opacity-40',
+                        ]"
+                        :disabled="button.disabled"
                         :data-autofocus="button.default || undefined"
                         :data-choice="
                             button.cancel ? 'cancel' : button.default ? 'default' : 'other'

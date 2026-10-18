@@ -24,3 +24,7 @@ export const formatSize = (bytes: number, locale: string = currentLocale()) => {
         maximumFractionDigits: value >= 99.95 ? 0 : 1,
     }).format(value)
 }
+
+/** A count in the UI locale's own grouping: "1,840". */
+export const formatCount = (count: number, locale: string = currentLocale()) =>
+    new Intl.NumberFormat(languageTag(locale)).format(count)

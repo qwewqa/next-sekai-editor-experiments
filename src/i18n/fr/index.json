@@ -1905,7 +1905,19 @@
     "downloadAgain": "Télécharger à nouveau",
     "unreadable": "\"{0}\" n’a pas pu être lu entièrement.",
     "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
-    "restoredName": "{0} (restauré le {1})"
+    "restoredName": "{0} (restauré le {1})",
+    "include": "Inclure",
+    "historySteps": "{0} étape|{0} étapes",
+    "historySize": "{0} étape · {1}|{0} étapes · {1}",
+    "historyNote": "Toute personne disposant du fichier peut voir chaque étape.",
+    "noBgm": "Pas de BGM",
+    "bgmNotLoaded": "BGM non chargée",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "Déjà dans {0}",
+    "downloadNote": "Chaque sauvegarde télécharge une nouvelle copie.",
+    "noHistoryHere": "L’historique ne peut pas être inclus sur cette connexion.",
+    "sizeTotal": "Total : environ {0}",
+    "sizePending": "Estimation de la taille…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
@@ -1945,7 +1957,8 @@
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
-    "bgmNotLoaded": "BGM non chargée"
+    "bgmNotLoaded": "BGM non chargée",
+    "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
     "exported": "{0} exporté",
@@ -2038,6 +2051,7 @@
     "title": "Téléchargement non confirmé",
     "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
     "haveFile": "J’ai le fichier",
-    "downloadAgain": "Télécharger à nouveau"
+    "downloadAgain": "Télécharger à nouveau",
+    "announce": "{0} Pour le confirmer plus tard, utilisez {1} dans la barre d’état."
   }
 }
