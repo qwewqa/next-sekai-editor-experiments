@@ -1228,6 +1228,8 @@
     "noSaves": "保存も出力もありません",
     "loadFailed": "タイムラインを読み込めませんでした。",
     "tryAgain": "再試行",
+    "steps": "{0} 操作",
+    "newerSteps": "新しい操作 {0} 件",
     "removedForSpace": "容量節約のため削除",
     "damaged": "破損",
     "continuedFrom": "{0}から続行",

@@ -46,8 +46,15 @@ export type EntryRow = {
     selectable: boolean
 }
 
+/** After a jump: the entries between Now and the loaded window, not read yet. */
+export type GapRow = { type: 'gap'; id: 'gap'; count: number }
+
 export type Row =
-    { type: 'now'; id: 'now' } | EntryRow | { type: 'divider'; id: string; entry: Entry } | Header
+    | { type: 'now'; id: 'now' }
+    | GapRow
+    | EntryRow
+    | { type: 'divider'; id: string; entry: Entry }
+    | Header
 
 /**
  * A label for the rows under it: a minute (this hour), an hour (earlier today, and the days just
@@ -100,12 +107,14 @@ export type BuildOptions = {
     damaged: ReadonlySet<string>
     /** The clock the headers' ages are measured against. */
     now?: number
+    /** After a jump: how many entries lie between Now and the first one given. */
+    gap?: number
 }
 
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    { filter, expanded, damaged, now = Date.now() }: BuildOptions,
+    { filter, expanded, damaged, now = Date.now(), gap }: BuildOptions,
 ): Row[] => {
     const flagsOf = (entry: Entry): Flags => ({
         removed: !entry.kept && !damaged.has(entryId(entry)),
@@ -179,6 +188,7 @@ export const buildRows = (
     }
 
     const rows: Row[] = [{ type: 'now', id: 'now' }]
+    if (gap !== undefined) rows.push({ type: 'gap', id: 'gap', count: gap })
     let previous: Entry | undefined
     let previousKey: string | undefined
     for (const item of items) {

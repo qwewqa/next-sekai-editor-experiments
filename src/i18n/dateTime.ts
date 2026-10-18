@@ -75,3 +75,7 @@ export const formatEntryTime = (locale: string, at: number, now = Date.now()) =>
 /** "1 PM": an hour header's label. */
 export const formatHour = (locale: string, at: number) =>
     formatter(locale, 'hour', { hour: 'numeric' }).format(at)
+
+/** "2:10 – 2:41 PM": a session's stretch of a day in Go To. */
+export const formatClockRange = (locale: string, from: number, to: number) =>
+    formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).formatRange(from, to)

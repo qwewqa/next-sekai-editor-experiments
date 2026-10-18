@@ -8,8 +8,8 @@ import type { Filter } from './rows'
 import { historyFilter } from './state'
 
 // The Go To popover (Part 1 §1.4.10.5): the Show switch, All or Saves and Exports, and under it the
-// jump list. Under 640 px it is the menus' bottom sheet over a dimmed backdrop. The jump list
-// (days, sessions and Now) goes in the default slot, which is empty until the long-history work.
+// jump list, which the default slot holds. Under 640 px it is the menus' bottom sheet over a
+// dimmed backdrop.
 
 const props = defineProps<{ anchor: HTMLElement }>()
 
@@ -60,6 +60,7 @@ const place = () => {
 const radios = () => [...(popover.value?.querySelectorAll<HTMLElement>('[role="radio"]') ?? [])]
 
 let active = true
+let resizer: ResizeObserver | undefined
 
 onMounted(async () => {
     await nextTick()
@@ -72,6 +73,13 @@ onMounted(async () => {
         ?.focus({
             preventScroll: true,
         })
+    // The jump list loads after it opens: placed again as it grows.
+    if (scroller.value?.firstElementChild) {
+        resizer = new ResizeObserver(() => {
+            place()
+        })
+        for (const child of scroller.value.children) resizer.observe(child)
+    }
     window.addEventListener('pointerdown', onOutside, true)
     window.addEventListener('resize', onDismiss)
     window.addEventListener('blur', onDismiss)
@@ -79,6 +87,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     active = false
+    resizer?.disconnect()
     window.removeEventListener('pointerdown', onOutside, true)
     window.removeEventListener('resize', onDismiss)
     window.removeEventListener('blur', onDismiss)
@@ -112,8 +121,18 @@ const onKeydown = (event: KeyboardEvent) => {
         event.preventDefault()
         emit('close', true)
     } else if (event.key === 'Tab') {
-        // Focus returns to the button first, so Tab continues from there.
-        emit('close', true)
+        // Tab goes between the Show switch and the jump list; out of them, focus returns to the
+        // button first, so Tab continues from there.
+        const list = popover.value?.querySelector<HTMLElement>('[data-goto-list]')
+        const inList = !!list && event.target === list
+        if (list && inList === event.shiftKey) {
+            event.preventDefault()
+            if (inList)
+                radios()
+                    .find((radio) => radio.getAttribute('aria-checked') === 'true')
+                    ?.focus()
+            else list.focus()
+        } else emit('close', true)
     } else if (event.target instanceof HTMLElement && event.target.matches('[role="radio"]')) {
         const at = filters.indexOf(historyFilter.value)
         const next = {

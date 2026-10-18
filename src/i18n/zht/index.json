@@ -1228,6 +1228,8 @@
     "noSaves": "沒有儲存或匯出",
     "loadFailed": "無法載入時間軸。",
     "tryAgain": "重試",
+    "steps": "{0} 步",
+    "newerSteps": "{0} 個較新的步驟",
     "removedForSpace": "已為節省空間而移除",
     "damaged": "已損毀",
     "continuedFrom": "從 {0} 繼續",

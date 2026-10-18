@@ -20,3 +20,6 @@ export const formatDateTimeSeconds = (at: number) =>
 export const formatEntryTime = (at: number) => dateTime.formatEntryTime(settings.locale, at)
 
 export const formatHour = (at: number) => dateTime.formatHour(settings.locale, at)
+
+export const formatClockRange = (from: number, to: number) =>
+    dateTime.formatClockRange(settings.locale, from, to)

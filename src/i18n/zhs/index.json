@@ -1228,6 +1228,8 @@
     "noSaves": "没有保存或导出",
     "loadFailed": "无法加载时间线。",
     "tryAgain": "重试",
+    "steps": "{0} 步",
+    "newerSteps": "{0} 个较新的步骤",
     "removedForSpace": "已为节省空间而移除",
     "damaged": "已损坏",
     "continuedFrom": "从 {0} 继续",

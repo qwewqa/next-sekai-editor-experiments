@@ -221,3 +221,23 @@ test('a continuation is a divider, never a peekable row', () => {
         false,
     )
 })
+
+test('a window after a jump: Now, the gap row, then the window’s rows under their own day', () => {
+    seq = 0
+    const at = (hour: number, minute: number) => new Date(2026, 9, 14, hour, minute).getTime()
+    const rows = buildRows(
+        newestFirst(entry('edit', 'Added notes', at(16, 40)), entry('save', 'Saved', at(17, 2))),
+        { ...options, gap: 1206 },
+    )
+    assert.deepEqual(
+        rows.map((row) => (row.type === 'gap' ? `gap ${row.count}` : row.type)),
+        ['now', 'gap 1206', 'header', 'entry', 'header', 'entry'],
+    )
+    assert.deepEqual(headers(rows), ['hour+day', 'hour'])
+    // The gap row never holds the cursor.
+    assert.deepEqual(
+        selectableRows(rows).map((row) => row.type),
+        ['now', 'entry', 'entry'],
+    )
+    assert.ok(!buildRows([], options).some((row) => row.type === 'gap'))
+})

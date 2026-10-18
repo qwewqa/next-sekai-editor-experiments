@@ -1,5 +1,8 @@
 import { i18n } from '../../i18n'
+import { languageTag } from '../../i18n/plural'
 import { formatClock, formatDate, formatHour } from '../../i18n/when'
+import { settings } from '../../settings'
+import { interpolateRaw } from '../../utils/interpolate'
 import type { Header } from './rows'
 
 // What a header says: "2:40 PM", "1 PM", "Yesterday · 9 PM", "Oct 2".
@@ -30,3 +33,12 @@ export const pinnedText = (header: Header) =>
     header.level === 'day' || header.withDay
         ? headerText(header)
         : `${dayLabel(header.time)} · ${ownLabel(header)}`
+
+const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+
+/** "58 steps": Go To's counts. */
+export const stepsText = (value: number) => interpolateRaw(i18n.value.history.steps, count(value))
+
+/** "1,206 newer steps": the gap row after a jump. */
+export const newerStepsText = (value: number) =>
+    interpolateRaw(i18n.value.history.newerSteps, count(value))

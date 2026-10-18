@@ -25,7 +25,7 @@ import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
-import { headerText, pinnedText } from './labels'
+import { headerText, newerStepsText, pinnedText } from './labels'
 import { buildRows, selectableRows, type Entry, type EntryRow, type Header, type Row } from './rows'
 import {
     backToNow,
@@ -35,7 +35,22 @@ import {
     requestPeek,
     requestRestore,
 } from './selection'
-import { canLoadMore, entries, followEntries, loadingMore, loadMore, retry, status } from './source'
+import {
+    canLoadMore,
+    entries,
+    followEntries,
+    gap,
+    jumpTo as jumpToEntry,
+    jumpToOldest,
+    loadingMore,
+    loadingNewer,
+    loadMore,
+    loadNewer,
+    resetToNewest,
+    retry,
+    status,
+    type Target,
+} from './source'
 import { expandedGroups, historyFilter, listFocus } from './state'
 
 // The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
@@ -74,6 +89,7 @@ const built = computed(() =>
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
         now: clock.value,
+        gap: gap.value,
     }),
 )
 
@@ -81,6 +97,7 @@ const built = computed(() =>
 const isEmpty = computed(
     () =>
         status.value !== 'loading' &&
+        gap.value === undefined &&
         !built.value.some(
             (row) =>
                 row.type === 'divider' ||
@@ -97,6 +114,7 @@ const DIVIDER = 32
 // The list's padding: 4 px above the first row, 8 px below the last.
 const PAD_TOP = 4
 const PAD_BOTTOM = 8
+// The gap row is a row high.
 const heightOf = (row: Row) =>
     row.type === 'header' ? HEADER : row.type === 'divider' ? DIVIDER : rowHeight.value
 const geometry = computed(() => {
@@ -106,8 +124,20 @@ const geometry = computed(() => {
         y += heightOf(row)
         return top
     })
-    return { offsets, total: y }
+    return { ids: rows.value.map((row) => row.id), offsets, total: y }
 })
+
+/** The first row reaching below `y`. */
+const rowAt = ({ offsets, total }: { offsets: number[]; total: number }, y: number) => {
+    let low = 0
+    let high = offsets.length
+    while (low < high) {
+        const mid = (low + high) >> 1
+        if ((offsets[mid + 1] ?? total) <= y) low = mid + 1
+        else high = mid
+    }
+    return low
+}
 
 // What follows the rows: the first page loading, an empty or failed timeline, an older page loading.
 const SKELETON_ROWS = 4
@@ -209,6 +239,11 @@ const infoOf = (entry: Entry) => ({ key: keyOf(entry), time: entry.time, label: 
 
 const moveTo = (row: Row | undefined) => {
     if (!row) return
+    // After a jump, Now goes back to the newest entries.
+    if (row.type === 'now' && gap.value !== undefined) {
+        void goNow()
+        return
+    }
     cursorId.value = row.id
     if (row.type === 'now') backToNow()
     else if (row.type === 'entry' && row.selectable) requestPeek(infoOf(row.entry))
@@ -229,11 +264,132 @@ const scrollToRow = (id: string) => {
         element.scrollTop = bottom + PAD_BOTTOM - element.clientHeight
 }
 
-const step = (delta: number) => {
-    const at = selectables.value.findIndex((row) => row.id === cursorId.value)
-    const next = selectables.value[Math.max(0, Math.min(selectables.value.length - 1, at + delta))]
+const step = async (delta: number) => {
+    let at = selectables.value.findIndex((row) => row.id === cursorId.value)
+    const clamp = (index: number) => Math.max(0, Math.min(selectables.value.length - 1, index))
+    // Up crosses the gap: the newer page loads, and the cursor goes on into it.
+    if (delta < 0 && at > 0 && clamp(at + delta) === 0 && gap.value !== undefined) {
+        const id = cursorId.value
+        await loadNewer()
+        await nextTick()
+        if (cursorId.value !== id) return
+        at = selectables.value.findIndex((row) => row.id === id)
+    }
+    const next = selectables.value[clamp(at + delta)]
     if (next && next.id !== cursorId.value) moveTo(next)
 }
+
+// --- Jumps: Go To and End read a window at the target, Now and Home go back to the newest.
+let replacing = false
+
+/** Scrolls a row to the top of the list, with its header when one is just above it. */
+const scrollRowToTop = (id: string) => {
+    const element = list.value
+    const index = rows.value.findIndex((row) => row.id === id)
+    if (!element || index === -1) return
+    const above = rows.value[index - 1]?.type === 'header' ? index - 1 : index
+    element.scrollTop = Math.max(0, (geometry.value.offsets[above] ?? 0) - PAD_TOP)
+    scrollTop.value = element.scrollTop
+}
+
+const goNow = async () => {
+    replacing = true
+    try {
+        await resetToNewest()
+        await nextTick()
+    } finally {
+        replacing = false
+    }
+    cursorId.value = 'now'
+    backToNow()
+    scrollToRow('now')
+}
+
+/** Jumps to an entry, or to Now; the entry is peeked and scrolled to the top. */
+const jumpTo = async (target: Target | 'now') => {
+    if (target === 'now') return goNow()
+    replacing = true
+    try {
+        const entry = await jumpToEntry(target, historyFilter.value)
+        if (!entry) return
+        await nextTick()
+        const row = rowOf(keyOf(entry))
+        if (row) {
+            cursorId.value = row.id
+            scrollRowToTop(row.id)
+        }
+        requestPeek(infoOf(entry))
+    } catch {
+        // The list stays as it was.
+    } finally {
+        replacing = false
+    }
+}
+
+/** End: the oldest entry, read directly when it is not loaded. */
+const goOldest = async () => {
+    if (!canLoadMore.value) {
+        moveTo(selectables.value.at(-1))
+        return
+    }
+    replacing = true
+    try {
+        await jumpToOldest(historyFilter.value)
+        await nextTick()
+    } catch {
+        return
+    } finally {
+        replacing = false
+    }
+    moveTo(selectables.value.at(-1))
+}
+
+/** The entry at the top of the list, or Now: Go To's current piece. */
+const topEntry = (): Target | 'now' => {
+    for (let i = Math.max(0, topIndex.value); i < rows.value.length; i++) {
+        const row = rows.value[i]
+        if (row?.type === 'now') return 'now'
+        if (row?.type === 'entry') return { sessionId: row.entry.sessionId, seq: row.entry.seq }
+    }
+    return 'now'
+}
+
+// Rows inserted or removed above the first one on screen move the scroll position by as much,
+// so nothing under the pointer moves (Part 1 §1.4.10.5). At the very top, new rows simply appear.
+watch(
+    geometry,
+    (next, previous) => {
+        const element = list.value
+        if (!element || replacing) return
+        const top = element.scrollTop
+        if (top <= 0 && !previous.ids.includes('gap')) return
+        const index = new Map(next.ids.map((id, i) => [id, i]))
+        for (let i = rowAt(previous, top); i < previous.ids.length; i++) {
+            const id = previous.ids[i]
+            const at = id === undefined ? undefined : index.get(id)
+            if (id === 'now' || id === 'gap' || at === undefined) continue
+            const shift = (next.offsets[at] ?? 0) - (previous.offsets[i] ?? 0)
+            if (shift !== 0) {
+                element.scrollTop = top + shift
+                scrollTop.value = element.scrollTop
+            }
+            return
+        }
+    },
+    { flush: 'post' },
+)
+
+// The gap row loads the newer entries as it comes into view.
+const gapInView = () => {
+    const index = rows.value.findIndex((row) => row.type === 'gap')
+    const row = rows.value[index]
+    if (!row) return false
+    const top = geometry.value.offsets[index] ?? 0
+    return top < scrollTop.value + viewport.value && top + heightOf(row) > scrollTop.value
+}
+watch([() => geometry.value.total, viewport, gap, loadingNewer], () => {
+    if (!loadingNewer.value && gapInView()) void loadNewer()
+})
 
 const toggleGroup = (row: EntryRow, open: boolean) => {
     if (row.members.length < 2 || row.child) return
@@ -298,7 +454,7 @@ const onKeydown = (event: KeyboardEvent) => {
             case 'PageDown':
             case 'PageUp':
                 handled()
-                step({ ArrowDown: 1, ArrowUp: -1, PageDown: 5, PageUp: -5 }[event.key])
+                void step({ ArrowDown: 1, ArrowUp: -1, PageDown: 5, PageUp: -5 }[event.key])
                 return
             case 'Home':
                 handled()
@@ -306,7 +462,7 @@ const onKeydown = (event: KeyboardEvent) => {
                 return
             case 'End':
                 handled()
-                moveTo(selectables.value.at(-1))
+                void goOldest()
                 return
             case 'Enter':
                 if (row?.type === 'entry' && row.selectable) {
@@ -376,6 +532,7 @@ const onScroll = () => {
     scrollTop.value = element.scrollTop
     if (canLoadMore.value && element.scrollTop + element.clientHeight > geometry.value.total - 400)
         void loadMore()
+    if (!loadingNewer.value && gapInView()) void loadNewer()
 }
 // A short list loads on until it fills the pane.
 watch([() => geometry.value.total, viewport, canLoadMore], () => {
@@ -480,7 +637,7 @@ const announcement = computed(() =>
         : '',
 )
 
-defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
+defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, topEntry })
 </script>
 
 <template>
@@ -526,6 +683,34 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         <span class="timeline-time shrink-0">{{
                             formatClockSeconds(nowTime)
                         }}</span>
+                    </div>
+
+                    <!-- After a jump: the newer entries not read yet, read as it comes into view. -->
+                    <div
+                        v-else-if="row.type === 'gap'"
+                        :id="domId(row.id)"
+                        role="option"
+                        aria-disabled="true"
+                        class="timeline-divider items-center justify-center gap-1.5 font-medium text-fg/80"
+                        :class="{ 'motion-safe:animate-pulse': loadingNewer }"
+                        :aria-posinset="positions.map.get(row.id)"
+                        :aria-setsize="positions.size"
+                        :style="{ top: `${top}px`, height: `${rowHeight}px` }"
+                        data-history-gap
+                    >
+                        <svg
+                            class="size-3.5 shrink-0"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
+                        </svg>
+                        <span class="min-w-0 truncate">{{ newerStepsText(row.count) }}</span>
                     </div>
 
                     <!-- A continuation or file open: where one stretch of history ends. -->

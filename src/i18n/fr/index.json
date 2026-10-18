@@ -1228,6 +1228,8 @@
     "noSaves": "Aucune sauvegarde ni export",
     "loadFailed": "La chronologie n’a pas pu être chargée.",
     "tryAgain": "Réessayer",
+    "steps": "{0} étape|{0} étapes",
+    "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
     "continuedFrom": "Reprise du {0}",

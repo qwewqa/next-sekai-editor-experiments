@@ -5,9 +5,11 @@ import { i18n } from '../../i18n'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
 import GoToIcon from './GoToIcon.vue'
+import GoToList from './GoToList.vue'
 import GoToPopover from './GoToPopover.vue'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import { backToNow, peekedInfo } from './selection'
+import type { Target } from './source'
 import { historyFilter, historyTab, type HistoryTab } from './state'
 import TimelineList from './TimelineList.vue'
 
@@ -30,6 +32,13 @@ const title = (tab: HistoryTab) =>
 const band = useTemplateRef<HTMLElement>('band')
 const tablist = useTemplateRef<HTMLElement>('tablist')
 const goToButton = useTemplateRef<HTMLButtonElement>('goToButton')
+// What the Timeline offers Go To.
+type TimelineHandle = {
+    focus: () => void
+    jumpTo: (target: Target | 'now') => Promise<void>
+    topEntry: () => Target | 'now'
+}
+const timeline = useTemplateRef<TimelineHandle>('timeline')
 
 // --- The band: Go To shows its label when it fits beside the tabs, else only its icon, and in a
 // dock too narrow even for that it takes a second line. The dialog's × takes its share.
@@ -61,17 +70,30 @@ const onTimeline = computed(() => historyTab.value === 'timeline')
 
 // --- Go To
 const goToOpen = ref(false)
-const toggleGoTo = () => {
-    goToOpen.value = !goToOpen.value
-}
 const closeGoTo = (restoreFocus: boolean) => {
     goToOpen.value = false
     if (restoreFocus) void nextTick(() => goToButton.value?.focus({ preventScroll: true }))
 }
+// The piece at the top of the list is Go To's current one.
+const goToCurrent = ref<Target | 'now'>()
+const openGoTo = () => {
+    goToCurrent.value = timeline.value?.topEntry()
+    goToOpen.value = true
+}
+const toggleGoTo = () => {
+    if (goToOpen.value) goToOpen.value = false
+    else openGoTo()
+}
+// Picking closes Go To, jumps there and hands the keys to the list.
+const onGoToPick = (target: Target | 'now') => {
+    goToOpen.value = false
+    timeline.value?.focus()
+    void timeline.value?.jumpTo(target)
+}
 const onGoToKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'ArrowDown' || goToOpen.value) return
     event.preventDefault()
-    goToOpen.value = true
+    openGoTo()
 }
 
 // Outside the list, Escape in the dialog is back to Now first, then close.
@@ -229,12 +251,15 @@ const goToButtonTitle = computed(() =>
         >
             <TimelineList
                 v-if="historyTab === 'timeline'"
+                ref="timeline"
                 :surface="props.surface"
                 @close="emit('close')"
             />
             <RecentSessionsTab v-else />
         </div>
-        <GoToPopover v-if="goToOpen && goToButton" :anchor="goToButton" @close="closeGoTo" />
+        <GoToPopover v-if="goToOpen && goToButton" :anchor="goToButton" @close="closeGoTo">
+            <GoToList :current="goToCurrent" @pick="onGoToPick" />
+        </GoToPopover>
     </div>
 </template>
 

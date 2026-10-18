@@ -3,30 +3,49 @@ import { onHistoryAction } from '../../history/actions'
 import { session } from '../../history/session'
 import { storageWorker } from '../../local/start'
 import { flusher } from '../../local/storing'
-import type { TimelineEntry } from '../../local/worker/timelineHandlers'
-import { entryId, type Entry } from './rows'
+import type {
+    PathStep,
+    TimelineEntry,
+    TimelineIndex,
+    TimelinePage,
+} from '../../local/worker/timelineHandlers'
+import { entryId, type Entry, type Filter } from './rows'
 
 // The chain's entries for the Timeline (Part 1 §1.4.10.5): a page at a time from storage, newest
-// first, with the open session's entries still waiting to be stored on top.
+// first, with the open session's entries still waiting to be stored on top. After a jump (Go To,
+// End) the loaded run is a window read at the target: older pages load below it as before, and
+// newer ones into the gap between it and Now, until it reaches the newest entries again.
 
 const PAGE = 100
 
 type Cursor = { sessionId: string; before: number }
 
-/** The newest stored entries, and the older pages loaded so far. */
+/** An entry to jump to. */
+export type Target = { sessionId: string; seq: number }
+
+/** The newest stored entries, and the older pages loaded so far; after a jump, the window. */
 const stored = shallowRef<readonly Entry[]>([])
 /** The session the stored entries were read for. */
 const loadedFor = ref<string>()
 let cursor: Cursor | undefined
+/** Where the next newer page starts after a jump, with the path it reads along. */
+const newer = shallowRef<{ sessionId: string; after: number; path: readonly PathStep[] }>()
+/** The stored entries newer than the window. */
+const newerCount = ref(0)
 /** Whether older entries remain in storage. */
 export const canLoadMore = ref(false)
 /** The first page's read: loading until it lands, failed when it could not be read. */
 export const status = ref<'loading' | 'ready' | 'failed'>('loading')
 /** An older page is being read. */
 export const loadingMore = ref(false)
+/** A newer page is being read into the gap. */
+export const loadingNewer = ref(false)
 let loading: Promise<void> | undefined
+let loadingAbove: Promise<void> | undefined
 /** Bumped by every change of the undo stack, so the entries waiting to be stored are read again. */
 const version = ref(0)
+/** Bumped when the loaded run is replaced: reads begun before it land nowhere. */
+let epoch = 0
 
 const entryOf = (entry: TimelineEntry): Entry => ({
     sessionId: entry.sessionId,
@@ -57,9 +76,10 @@ const pendingEntries = (): Entry[] => {
         .reverse()
 }
 
-/** Every entry newest first: those waiting to be stored, then the stored ones. */
+/** Every entry newest first: those waiting to be stored, then the stored ones; after a jump, the window. */
 export const entries = computed((): Entry[] => {
     const read = loadedFor.value === session.value.sessionId ? stored.value : []
+    if (newer.value) return [...read]
     const have = new Set(read.map(entryId))
     const all = [...pendingEntries().filter((entry) => !have.has(entryId(entry))), ...read]
     // A continuation not stored yet divides from the entry it continues: the next older one.
@@ -70,6 +90,15 @@ export const entries = computed((): Entry[] => {
     )
 })
 
+const isJumped = () => newer.value !== undefined
+
+/** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
+export const gap = computed(() => {
+    if (!newer.value) return undefined
+    void version.value
+    return newerCount.value + (flusher?.session?.pending.length ?? 0)
+})
+
 /** Where the open session's chain is read from: a session not stored yet reads its parent's. */
 const startOf = (id: string) => {
     const open = flusher?.session
@@ -78,8 +107,28 @@ const startOf = (id: string) => {
         : { sessionId: id }
 }
 
+/** After a jump, counts the entries above the window again; joins Now when there are none. */
+const recount = async () => {
+    const worker = storageWorker
+    const at = newer.value
+    if (!worker || !at) return
+    const mark = epoch
+    let page: TimelinePage
+    try {
+        page = await worker.call('readTimeline', { ...at, limit: 0, path: [...at.path] })
+    } catch {
+        return
+    }
+    if (mark !== epoch || newer.value !== at) return
+    if (page.newer) newerCount.value = page.newer.count
+    else {
+        newer.value = undefined
+        await refresh()
+    }
+}
+
 /** Reads the newest page again, keeping the older pages already loaded. */
-export const refresh = async () => {
+export const refresh = async (): Promise<void> => {
     const worker = storageWorker
     const id = session.value.sessionId
     // Without storage the timeline holds what this tab made.
@@ -87,6 +136,14 @@ export const refresh = async () => {
         status.value = 'ready'
         return
     }
+    if (newer.value) {
+        if (loadedFor.value === id) return recount()
+        // Another session's window: its chain is read from the top.
+        epoch++
+        newer.value = undefined
+        newerCount.value = 0
+    }
+    const mark = epoch
     let page
     try {
         page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
@@ -94,8 +151,8 @@ export const refresh = async () => {
         if (loadedFor.value !== id) status.value = 'failed'
         return
     }
-    // The session changed meanwhile: its own refresh follows.
-    if (session.value.sessionId !== id) return
+    // The session changed meanwhile: its own refresh follows. A jump replaced the run: it stays.
+    if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
     const fresh = page.entries.map(entryOf)
     const oldest = fresh.at(-1)
     const at = oldest ? stored.value.findIndex((entry) => entryId(entry) === entryId(oldest)) : -1
@@ -122,11 +179,12 @@ export const loadMore = () => {
     const at = cursor
     if (!worker || !at || loading) return loading
     const id = session.value.sessionId
+    const mark = epoch
     loadingMore.value = true
     loading = (async () => {
         try {
             const page = await worker.call('readTimeline', { ...at, limit: PAGE })
-            if (session.value.sessionId !== id || cursor !== at) return
+            if (session.value.sessionId !== id || cursor !== at || mark !== epoch) return
             stored.value = [...stored.value, ...page.entries.map(entryOf)]
             cursor = page.next
             canLoadMore.value = !!cursor
@@ -138,6 +196,121 @@ export const loadMore = () => {
         }
     })()
     return loading
+}
+
+/** After a jump, loads the next newer page into the gap; the gap goes when it reaches the newest. */
+export const loadNewer = () => {
+    const worker = storageWorker
+    const at = newer.value
+    if (!worker || !at || loadingAbove) return loadingAbove
+    const mark = epoch
+    loadingNewer.value = true
+    loadingAbove = (async () => {
+        try {
+            const page = await worker.call('readTimeline', {
+                ...at,
+                limit: PAGE,
+                path: [...at.path],
+            })
+            if (mark !== epoch || newer.value !== at) return
+            stored.value = [...page.entries.map(entryOf), ...stored.value]
+            if (page.newer) {
+                newer.value = { ...page.newer, path: at.path }
+                newerCount.value = page.newer.count
+            } else {
+                newer.value = undefined
+                newerCount.value = 0
+                await refresh()
+            }
+        } catch {
+            // The next scroll tries again.
+        } finally {
+            loadingAbove = undefined
+            loadingNewer.value = false
+        }
+    })()
+    return loadingAbove
+}
+
+// --- The index Go To lists, read when it opens and kept until the next history action.
+
+const SAVES = ['save', 'export'] as const
+const indexes = new Map<string, Promise<TimelineIndex>>()
+
+/** The chain's pieces, each a session's entries on one day: saves and exports only while filtering. */
+export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
+    const worker = storageWorker
+    if (!worker) return Promise.resolve({ pieces: [], path: [] })
+    const start = startOf(session.value.sessionId)
+    const key = `${start.sessionId}:${start.before ?? ''}:${filter}`
+    let found = indexes.get(key)
+    if (!found) {
+        found = worker.call('readTimelineIndex', {
+            ...start,
+            ...(filter === 'saves' ? { kinds: [...SAVES] } : {}),
+        })
+        indexes.set(key, found)
+        found.catch(() => indexes.delete(key))
+    }
+    return found
+}
+
+/**
+ * Replaces the loaded run with a window at the target: from it down, and a page above it, with
+ * the gap between that page and Now. Resolves with the target's entry once it is shown.
+ */
+export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | undefined> => {
+    const worker = storageWorker
+    if (!worker) return
+    const id = session.value.sessionId
+    const mark = ++epoch
+    const { path } = await readIndex(filter)
+    const [below, above] = await Promise.all([
+        worker.call('readTimeline', {
+            sessionId: target.sessionId,
+            before: target.seq + 1,
+            limit: PAGE,
+        }),
+        worker.call('readTimeline', {
+            sessionId: target.sessionId,
+            after: target.seq,
+            limit: PAGE,
+            path,
+        }),
+    ])
+    if (mark !== epoch || session.value.sessionId !== id) return
+    const window = [...above.entries, ...below.entries].map(entryOf)
+    stored.value = window
+    loadedFor.value = id
+    cursor = below.next
+    canLoadMore.value = !!cursor
+    status.value = 'ready'
+    if (above.newer) {
+        newer.value = { ...above.newer, path }
+        newerCount.value = above.newer.count
+    } else {
+        newer.value = undefined
+        newerCount.value = 0
+        await refresh()
+    }
+    return window.find((entry) => entry.sessionId === target.sessionId && entry.seq === target.seq)
+}
+
+/** Jumps to the oldest entry of the chain (shown with the filter): End. */
+export const jumpToOldest = async (filter: Filter) => {
+    const { pieces } = await readIndex(filter)
+    const oldest = pieces.at(-1)
+    if (!oldest) return
+    return jumpTo({ sessionId: oldest.sessionId, seq: oldest.oldestSeq }, filter)
+}
+
+/** Back to the newest entries after a jump: Now, Home. */
+export const resetToNewest = async () => {
+    if (!newer.value) return
+    epoch++
+    newer.value = undefined
+    newerCount.value = 0
+    await refresh()
 }
 
 /** Entries waiting for the worker. */
@@ -165,9 +338,13 @@ export const followEntries = () => {
     }
     void refresh()
     const stop = onHistoryAction((action) => {
+        indexes.clear()
         if (action.kind === 'reset') {
+            epoch++
             stored.value = []
             cursor = undefined
+            newer.value = undefined
+            newerCount.value = 0
             loadedFor.value = undefined
             canLoadMore.value = false
             status.value = 'loading'

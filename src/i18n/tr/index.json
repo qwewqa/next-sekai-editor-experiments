@@ -1228,6 +1228,8 @@
     "noSaves": "Kaydetme veya dışa aktarma yok",
     "loadFailed": "Zaman çizgisi yüklenemedi.",
     "tryAgain": "Tekrar Dene",
+    "steps": "{0} adım",
+    "newerSteps": "{0} yeni adım",
     "removedForSpace": "yer açmak için kaldırıldı",
     "damaged": "hasarlı",
     "continuedFrom": "{0} tarihinden devam",

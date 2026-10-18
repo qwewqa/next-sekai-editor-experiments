@@ -1228,6 +1228,8 @@
     "noSaves": "저장 또는 내보내기 없음",
     "loadFailed": "타임라인을 불러올 수 없습니다.",
     "tryAgain": "다시 시도",
+    "steps": "{0}단계",
+    "newerSteps": "새 단계 {0}개",
     "removedForSpace": "공간 확보를 위해 제거됨",
     "damaged": "손상됨",
     "continuedFrom": "{0}에서 이어서",
