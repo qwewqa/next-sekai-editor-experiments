@@ -462,7 +462,7 @@
       "particle": "粒子",
       "background": "背景",
       "effect": "音效",
-      "storedTab": "已儲存",
+      "storedTab": "已存放",
       "effectHint": "用於預覽和播放。",
       "default": "預設",
       "defaultSkin": "預設：Next SEKAI 01",
@@ -472,9 +472,9 @@
       "storedServer": "{0}（伺服器）",
       "useBuiltinAll": "全部使用內建",
       "resetDefault": "重設為預設",
-      "stored": "已儲存：{0} 項，{1}",
-      "storedEmpty": "沒有已儲存的項目",
-      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的項目。",
+      "stored": "已存放：{0} 項，{1}",
+      "storedEmpty": "沒有已存放的項目",
+      "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的項目。",
       "noun": {
         "skin": "外觀",
         "particle": "粒子",
@@ -488,10 +488,10 @@
         "rowStored": "正在使用 \"{0}\"。{1}"
       },
       "reason": {
-        "fileGone": "{0}檔案已不再儲存在此瀏覽器中。",
-        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已儲存的{0}。",
+        "fileGone": "{0}檔案已不再存放在此瀏覽器中。",
+        "storageUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
-        "invalid": "無法讀取已儲存的{0}。",
+        "invalid": "無法讀取已存放的{0}。",
         "defaultFailed": "無法載入預設項。",
         "builtinFailed": "無法載入內建項。"
       },
@@ -510,10 +510,10 @@
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
-      "rights": "您載入的項目僅儲存在此瀏覽器中。請只使用您有權使用的項目。",
+      "rights": "您載入的項目僅存放在此瀏覽器中。請只使用您有權使用的項目。",
       "progress": {
         "reading": "正在讀取檔案…",
-        "storing": "正在儲存…",
+        "storing": "正在存放…",
         "connecting": "正在連線…",
         "downloading": "正在下載…"
       },
@@ -551,8 +551,8 @@
         "effectGroups": "此檔案的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
         "noPerfect": "此檔案的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
-        "packageTooLarge": "此項目儲存後超過 {0}。",
-        "storeFailed": "無法儲存此項目。"
+        "packageTooLarge": "此項目存放後超過 {0}。",
+        "storeFailed": "無法存放此項目。"
       },
       "chooseHint": "從檔案或 Sonolus 伺服器",
       "fromFile": "從檔案",
@@ -1146,11 +1146,11 @@
     "opening": "正在開啟 \"{0}\"…",
     "openingBlank": "正在開啟…",
     "slow": "耗時比平常更久。",
-    "error": "編輯器無法開啟已儲存的內容。",
+    "error": "編輯器無法開啟已存放的內容。",
     "blank": "從空白開始"
   },
   "safe": {
-    "bar": "安全模式：不儲存任何內容。",
+    "bar": "安全模式：不存放任何內容。",
     "leave": "結束安全模式",
     "open": "以安全模式開啟"
   },
@@ -1158,7 +1158,7 @@
     "version": "版本 {0}",
     "updated": "已更新至版本 {0}",
     "whatsNew": "新功能",
-    "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已儲存的內容。",
+    "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此版本早於資料的版本。請重新載入，或將內容儲存為檔案。",
     "tryAgain": "重試",
     "continued": "已從 {1} 繼續 \"{0}\"。",
@@ -1176,7 +1176,7 @@
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
-    "journalFailed": "無法儲存已恢復的變更。下次載入時將重試。",
+    "journalFailed": "無法存放已恢復的變更。下次載入時將重試。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",
@@ -1187,11 +1187,11 @@
     "localData": "本機資料"
   },
   "storage": {
-    "reload": "請重新載入以繼續儲存變更。",
-    "unavailable": "此瀏覽器不允許編輯器儲存任何內容。請將內容儲存到檔案中以保留。",
-    "private": "如果這是無痕視窗，此處儲存的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
-    "ios": "此瀏覽器會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
-    "safari": "Safari 會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
+    "reload": "請重新載入以繼續存放變更。",
+    "unavailable": "此瀏覽器不允許編輯器存放任何內容。請將內容儲存到檔案中以保留。",
+    "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
+    "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
+    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
     "installedWebkit": "最近的工作階段會保留在此處，直到此圖示從主畫面移除。請將內容儲存到檔案中以保留。",
     "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請將內容儲存到檔案中以保留。",
     "default": "最近的工作階段會保留在此瀏覽器中，空間不足時瀏覽器可能會將其清除。請將內容儲存到檔案中以保留。"
@@ -1842,8 +1842,8 @@
     "untitled": "未命名 · {0}"
   },
   "prompt": {
-    "title": "變更未儲存",
-    "notStored": "變更未儲存在此瀏覽器中。離開會遺失這些變更。",
+    "title": "變更未存放",
+    "notStored": "變更未存放在此瀏覽器中。離開會遺失這些變更。",
     "save": "儲存",
     "leaveAnyway": "仍然離開"
   },
