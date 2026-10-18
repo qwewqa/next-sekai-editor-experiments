@@ -104,7 +104,8 @@ const swallow = (event: Event) => {
     event.stopImmediatePropagation()
 }
 
-const listening = typeof window !== 'undefined'
+// A shared production chunk can load before support.ts stops the unsupported app.
+const listening = typeof window !== 'undefined' && !window.nseUnsupported
 
 if (listening) {
     for (const type of [...POINTER_EVENTS, ...KEY_EVENTS])
