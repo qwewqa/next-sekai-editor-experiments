@@ -2,7 +2,13 @@ import { i18n } from '../../i18n'
 import { languageTag } from '../../i18n/plural'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
-import { formatPropertyNumber, type PropertyField, type PropertyReference, type PropertySectionKind, type PropertyValue } from './propertyChanges'
+import {
+    formatPropertyNumber,
+    type PropertyField,
+    type PropertyReference,
+    type PropertySectionKind,
+    type PropertyValue,
+} from './propertyChanges'
 
 export const propertySectionLabel = (kind: PropertySectionKind) => {
     const strings = i18n.value
@@ -38,39 +44,65 @@ export const propertyFieldLabel = (field: PropertyField) => {
     }[field]
 }
 
-export const propertyCount = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+export const propertyCount = (value: number) =>
+    new Intl.NumberFormat(languageTag(settings.locale)).format(value)
 
 export const propertyReferenceText = (value: PropertyReference) => {
     const strings = i18n.value
     const name = (entry: { name?: string; id: number; disambiguate: boolean }) => {
-        const text = entry.name === undefined ? strings.historyChanges.notPresent : entry.name || strings.historyChanges.notSet
+        const text =
+            entry.name === undefined
+                ? strings.historyChanges.notPresent
+                : entry.name || strings.historyChanges.notSet
         return entry.disambiguate ? `${text} (#${propertyCount(entry.id)})` : text
     }
-    return value.folder ? interpolateRaw(strings.workspace.folders.path, name(value.folder), name(value)) : name(value)
+    return value.folder
+        ? interpolateRaw(strings.workspace.folders.path, name(value.folder), name(value))
+        : name(value)
 }
 
-export const propertyValueText = (value: Exclude<PropertyValue, { kind: 'list' }>, field?: PropertyField): string => {
+export const propertyValueText = (
+    value: Exclude<PropertyValue, { kind: 'list' }>,
+    field?: PropertyField,
+): string => {
     const strings = i18n.value
     switch (value.kind) {
-        case 'notSet': return strings.historyChanges.notSet
-        case 'empty': return strings.historyChanges.empty
-        case 'notPresent': return strings.historyChanges.notPresent
-        case 'noFolder': return strings.workspace.folders.none
-        case 'text': return value.value
-        case 'reference': return propertyReferenceText(value)
-        case 'boolean': return value.value ? strings.modals.form.toggle.enabled : strings.modals.form.toggle.disabled
-        case 'simLines': return strings.modals.form.generateSimLines[value.value]
+        case 'notSet':
+            return strings.historyChanges.notSet
+        case 'empty':
+            return strings.historyChanges.empty
+        case 'notPresent':
+            return strings.historyChanges.notPresent
+        case 'noFolder':
+            return strings.workspace.folders.none
+        case 'text':
+            return value.value
+        case 'reference':
+            return propertyReferenceText(value)
+        case 'boolean':
+            return value.value
+                ? strings.modals.form.toggle.enabled
+                : strings.modals.form.toggle.disabled
+        case 'simLines':
+            return strings.modals.form.generateSimLines[value.value]
         case 'number': {
             const locale = languageTag(settings.locale)
             const exact = formatPropertyNumber(value.value, locale, value.decimalShift ?? 0)
             if (!value.unit || field === 'offset') return exact
             let inserted = false
-            return new Intl.NumberFormat(locale, { style: 'unit', unit: value.unit === 'bytes' ? 'byte' : 'millisecond', unitDisplay: 'short' }).formatToParts(value.value).map((part) => {
-                if (part.type === 'unit' || part.type === 'literal') return part.value
-                if (inserted) return ''
-                inserted = true
-                return exact
-            }).join('')
+            return new Intl.NumberFormat(locale, {
+                style: 'unit',
+                unit: value.unit === 'bytes' ? 'byte' : 'millisecond',
+                unitDisplay: 'short',
+            })
+                .formatToParts(value.value)
+                .map((part) => {
+                    if (part.type === 'unit' || part.type === 'literal') return part.value
+                    if (inserted) return ''
+                    inserted = true
+                    return exact
+                })
+                .join('')
         }
     }
 }

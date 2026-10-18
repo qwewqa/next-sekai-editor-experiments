@@ -512,7 +512,11 @@ test('Show Edits default off leaves the chart undimmed and unmarked', async ({ p
     await openTab(page)
     await row(page, 'Moved 1 note').click()
     await expect(peekLine(page)).toHaveText('1 change')
-    expect(await changes(page)).toMatchObject({ rings: undefined, ghosts: undefined, dimmed: false })
+    expect(await changes(page)).toMatchObject({
+        rings: undefined,
+        ghosts: undefined,
+        dimmed: false,
+    })
 })
 
 test('a notice card stays clear of the adjacent spatial controls', async ({ page }) => {
