@@ -422,6 +422,34 @@ test.describe('the chip', () => {
             expect(box.x + box.width).toBeLessThanOrEqual(360)
             expect(bar.x + bar.width).toBeLessThanOrEqual(360)
         })
+
+        test('the tool title and the label truncate before the scope chips', async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            await page.evaluate(async () => {
+                const { liveState, replaceState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                replaceState({ ...liveState.value, isDynamicStages: true })
+            })
+            await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
+            await finding(page, 'newer')
+            await expect(page.locator('.status-chip')).toHaveCount(2)
+            const widths = await page.evaluate(() => {
+                const title = document.querySelector('[data-status-label]')!.previousElementSibling!
+                return {
+                    titleCut: title.scrollWidth > title.clientWidth,
+                    chips: [...document.querySelectorAll<HTMLElement>('.status-chip')].map(
+                        (chip) => chip.getBoundingClientRect().width,
+                    ),
+                }
+            })
+            // "Select" gives way first; each scope chip keeps a readable name.
+            expect(widths.titleCut).toBe(true)
+            for (const width of widths.chips) expect(width).toBeGreaterThanOrEqual(40)
+        })
     })
 })
 
