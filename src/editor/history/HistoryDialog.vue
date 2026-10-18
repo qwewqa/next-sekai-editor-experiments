@@ -13,6 +13,8 @@ import { displayedPeekKey, peekedKey } from '../../history/peek'
 import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
 import { modalTitleKey } from '../../modals/title'
+import { settings } from '../../settings'
+import { isApplePlatform, matchBindings } from '../controls/bindings'
 import HistoryPanel from './HistoryPanel.vue'
 import type { HistoryCloseResult, HistoryPresentation } from './presentation'
 import { backToNow, peekedInfo } from './selection'
@@ -48,7 +50,27 @@ const viewChart = () => {
     emit('close', 'view-chart')
 }
 const onEscape = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
+    if (event.defaultPrevented) return
+    if (event.key !== 'Escape') {
+        const target = event.target
+        if (
+            event.isComposing ||
+            target instanceof HTMLInputElement ||
+            target instanceof HTMLTextAreaElement ||
+            (target instanceof HTMLElement && target.isContentEditable) ||
+            event.repeat ||
+            !matchBindings(
+                { history: settings.keyboardShortcuts.history },
+                event,
+                isApplePlatform(),
+            ).names.includes('history')
+        )
+            return
+        event.preventDefault()
+        event.stopPropagation()
+        emit('close')
+        return
+    }
     event.preventDefault()
     event.stopPropagation()
     if (peekedKey.value || peekedInfo.value) backToNow()
@@ -85,7 +107,7 @@ onBeforeUnmount(() => {
         ref="root"
         class="flex h-full min-h-0 flex-col"
         :data-history-presentation="presentation.compact ? 'compact' : 'sheet'"
-        @keydown.esc="onEscape"
+        @keydown="onEscape"
     >
         <span :id="titleId" class="sr-only" data-modal-title>{{ i18n.history.title }}</span>
         <HistoryPanel
