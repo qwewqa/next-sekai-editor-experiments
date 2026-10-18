@@ -52,6 +52,9 @@ const open = async (page: Page, settings: Record<string, unknown> = {}) => {
         // Each head gets a tail, so connector fields show.
         chart.slides = chart.slides.map(([head]) => [head!, { ...head!, beat: head!.beat + 1 }])
         chart.timeScales = structuredClone(fixtures.events.timeScales)
+        // Two stage style events, one cyan and one black.
+        chart.stageStyleEvents = structuredClone(fixtures.events.stageStyleEvents).slice(0, 2)
+        Object.assign(chart.stageStyleEvents[1]!, { judgmentLineColor: 'black' })
         history.resetState(false, chart, 0, { sourceName: 'glyphs.json' })
         Object.assign(window.editorTest.settings, {
             showSidebar: true,
@@ -142,6 +145,27 @@ test('color and flick fields show the current value as the canvas draws it', asy
         field(page, 'Note Color').locator('option', { hasText: 'Purple · 1' }),
     ).toHaveCount(1)
     await expect(field(page, 'Note Color').locator('.form-field-mixed-value')).toHaveCount(2)
+})
+
+test('stage style color fields show the judgment line hue', async ({ page }) => {
+    await open(page)
+    const dot = (label: string) => lead(page, label).locator('circle:not([data-swatch-edge])')
+    await select(page, 'stageStyleEventJoint', [0])
+    await expect(dot('Judgment Line Color')).toHaveAttribute('fill', '#73acd6')
+    const color = field(page, 'Judgment Line Color').locator('select')
+    await expect(color.locator('.select-option-glyph circle:not([data-swatch-edge])')).toHaveCount(
+        8,
+    )
+    await expect(
+        color
+            .getByRole('option', { name: 'Red', exact: true })
+            .locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('fill', '#d6737b')
+    await select(page, 'stageStyleEventJoint', [1])
+    await expect(dot('Judgment Line Color')).toHaveAttribute('fill', '#000000')
+    // Mixed values show no swatch.
+    await select(page, 'stageStyleEventJoint', [0, 1])
+    await expect(lead(page, 'Judgment Line Color')).toHaveCount(0)
 })
 
 test('note type and SFX fields picture the note', async ({ page }) => {

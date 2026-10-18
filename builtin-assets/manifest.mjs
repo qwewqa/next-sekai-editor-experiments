@@ -39,10 +39,10 @@ const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
 const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
 // Slot glows in the base set's glow colours: [at the note, middle, top].
 const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, { stretch: true })
+// Slots fill their lane cell exactly with square corners, the rim on the cell's edge and a soft
+// glow past it, the way the base's do (its 128 px square over the cell's -0.28 to 1.28).
+const slot = (color) => image('slot', { color }, { transform: box(-0.28, 1.28, -0.28, 1.28) })
 const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
-
-// The dark base of the judgment band.
-const judgmentShade = '#0b0c16'
 
 /**
  * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
@@ -77,14 +77,60 @@ const arrow = (direction, accent, width) => {
     return image('arrow', vars, { width: pixels, transform: box(...frame) })
 }
 
-// Note bodies sit 6% over and under their quad, as the base skin's do; their ends stop 0.02 of a
-// lane inside the note, so notes side by side keep a gap. Slim traces keep their height in the art.
-const bodyBox = {
-    Left: box(0.08, 1, -0.06, 1.06),
-    Middle: box(0, 1, -0.06, 1.06),
-    Right: box(0, 0.92, -0.06, 1.06),
+// Note bodies fill their slices' quads exactly, as the base's bodies do (its lower band included):
+// a note one lane wide on the judge line then covers its lane's slot cell, which is the same quad
+// (layout_slot_effect). At stage tilt 0 a note is one lane tall, its end slices 0.25 lane (slim
+// 0.125) wide, so the art is drawn in units square on screen there (192 a lane), its borders even
+// and its corners round; the texture squeezes the units (taller units at other tilts).
+const NOTE_EDGE_W = 0.25
+const NOTE_SLIM_EDGE_W = 0.125
+/** The art's height in units for an end slice `pixels` wide over `edge` lanes. */
+export const unitHeight = (pixels, edge) => pixels / edge
+const bodyH = unitHeight(48, NOTE_EDGE_W)
+const slimH = unitHeight(24, NOTE_SLIM_EDGE_W)
+const damageH = unitHeight(48, NOTE_EDGE_W)
+const n = (value) => Math.round(value * 1000) / 1000
+// A shape from x to the slice's inner end and from top to bottom, its outer corners rounded.
+const endShape = (x, top, bottom, radius, end = 48) =>
+    `M${end} ${n(top)}H${n(x + radius)}A${radius} ${radius} 0 0 0 ${n(x)} ${n(top + radius)}` +
+    `V${n(bottom - radius)}A${radius} ${radius} 0 0 0 ${n(x + radius)} ${n(bottom)}H${end}Z`
+// The base's border is about 0.07 lane at tilt 0; its mark fills the face from the border's inner
+// edge to 0.236 lane in from the note's edge, over the middle third of the face's height, its inner
+// corners a little round.
+const border = 14
+const markEnd = 0.236 * bodyH
+const markShape = (top, bottom, radius = 4) =>
+    `M${border} ${n(top)}H${n(markEnd - radius)}A${radius} ${radius} 0 0 1 ${n(markEnd)} ` +
+    `${n(top + radius)}V${n(bottom - radius)}A${radius} ${radius} 0 0 1 ${n(markEnd - radius)} ` +
+    `${n(bottom)}H${border}Z`
+const bodyVars = {
+    h: n(bodyH),
+    rim: endShape(0, 0, bodyH, border),
+    face: endShape(border, border, bodyH - border, 8),
+    mark: markShape(bodyH / 3, (2 * bodyH) / 3),
+    border,
+    span: n(bodyH - 2 * border),
 }
-const slimBox = { Left: box(0.16, 1, 0, 1), Middle: undefined, Right: box(0, 0.84, 0, 1) }
+// Slim traces: a bar half the note's height through its middle, as the base's.
+const slimTop = slimH / 4
+const slimVars = {
+    h: n(slimH),
+    face: endShape(0, slimTop, slimH - slimTop, 8, 24),
+    top: n(slimTop),
+    span: n(slimH - 2 * slimTop),
+}
+// Damage: half the height through its middle, as the base's bright bar (its dark rim left out),
+// with a 4 unit rim.
+const damageTop = damageH / 4
+const damageVars = {
+    h: n(damageH),
+    rim: endShape(0, damageTop, damageH - damageTop, 22),
+    face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18),
+    top: n(damageTop),
+    span: n(damageH - 2 * damageTop),
+    inset: n(damageTop + 4),
+    inside: n(damageH - 2 * damageTop - 8),
+}
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 // Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
 const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
@@ -95,21 +141,13 @@ const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
     image(
         `note-body-${part.toLowerCase()}`,
-        { outer, inner, accent },
-        { stretch: true, transform: bodyBox[part] },
+        { ...bodyVars, outer, inner, accent },
+        { stretch: true },
     )
 const slimImage = (part, accent) =>
-    image(
-        `note-slim-${part.toLowerCase()}`,
-        { accent },
-        { stretch: true, transform: slimBox[part] },
-    )
+    image(`note-slim-${part.toLowerCase()}`, { ...slimVars, accent }, { stretch: true })
 const damageImage = (part, color, edge) =>
-    image(
-        `note-damage-${part.toLowerCase()}`,
-        { color, edge },
-        { stretch: true, transform: slimBox[part] },
-    )
+    image(`note-damage-${part.toLowerCase()}`, { ...damageVars, color, edge }, { stretch: true })
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -207,20 +245,22 @@ export function skinSprites() {
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
     })
 
-    // Opaque strips and dividers: darker at the stage edges, lighter at the centre, over a dark band.
+    // Opaque strips and dividers in the base's colours: its edge colour at the stage edges and on
+    // the dividers' ends, its centre colour at the centre, over a dark band. Where the base leaves
+    // a sprite out (the coloured bands, the single line, the end caps), the engine's fallback's
+    // colour.
     group('Judgment', () => {
-        add('Sekai Judgment Background', solid(judgmentShade, 0.55))
+        const [shade, alpha] = baseColors.judgmentBand
+        add('Sekai Judgment Background', solid(shade, alpha))
         for (const color of colorNames) {
-            const hue = guideColor(color)
-            const edge = mix(hue, '#000000', 0.2)
-            const centre = mix(hue, '#ffffff', 0.3)
-            add(`Sekai Judgment Background ${color}`, solid(mix(hue, judgmentShade, 0.85), 0.55))
+            const [edge, centre] = baseColors.judgmentLine[color]
+            add(`Sekai Judgment Background ${color}`, solid(shade, alpha))
             add(
                 `Sekai Judgment Gradient ${color}`,
                 image('judgment-gradient', { edge, centre }, { stretch: true }),
             )
             add(`Sekai Judgment Edge ${color}`, solid(edge))
-            add(`Sekai Judgment Single Line ${color}`, solid(mix(hue, '#ffffff', 0.15)))
+            add(`Sekai Judgment Single Line ${color}`, solid(edge))
             add(`Sekai Judgment Edge Left ${color}`, solid(edge, 1, 8, 4))
             add(`Sekai Judgment Center ${color}`, solid(centre))
         }
@@ -316,7 +356,7 @@ export function skinSprites() {
 
     group('Slots and slot glows', () => {
         for (const [family, key, base] of slotFamilies) {
-            add(`Sekai Slot ${family}`, image('slot', { color: bodyColors[key][2] }))
+            add(`Sekai Slot ${family}`, slot(bodyColors[key][2]))
             add(`Sekai Slot Glow ${family}`, glow(baseColors.slotGlow[base]))
         }
         for (const [color, key] of [
@@ -327,7 +367,7 @@ export function skinSprites() {
             ['Yellow Flick', 'critical'],
             ['Yellow Slider', 'critical'],
         ])
-            add(`Sekai Slot ${color}`, image('slot', { color: bodyColors[key][2] }))
+            add(`Sekai Slot ${color}`, slot(bodyColors[key][2]))
         for (const [color, value] of Object.entries(baseColors.slotGlow))
             add(`Sekai Slot Glow ${color}`, glow(value))
         add('Sekai Normal Slide Slot Glow', glow(baseColors.slotGlow['Green Slider Hold']))
@@ -423,7 +463,7 @@ export function skinSprites() {
                 baseColors.style[color]
             const [slotGlow, criticalGlow] = baseColors.styleGlow[color]
             for (const [family] of slotFamilies) {
-                add(`Sekai Slot ${family} ${color}`, image('slot', { color: accent }))
+                add(`Sekai Slot ${family} ${color}`, slot(accent))
                 add(
                     `Sekai Slot Glow ${family} ${color}`,
                     glow(family.startsWith('Critical') ? criticalGlow : slotGlow),
@@ -458,22 +498,27 @@ export function skinSprites() {
     return { sprites, groups }
 }
 
-/** The particle sprites, in the order the effects index them (sprite in particles.mjs). */
+/** The particle sprites, in the order the effects index them (sprite in particles.mjs), and a
+ * width for the soft ones drawn smaller. */
 export const particleSprites = [
-    ['glow', 'particle-glow'],
-    ['frame', 'particle-frame'],
-    ['star', 'particle-star'],
-    ['spark', 'particle-spark'],
-    ['comet', 'particle-comet'],
-    ['bar', 'particle-bar'],
-    ['flash', 'particle-flash'],
-    ['mote', 'particle-circle'],
-    ['diamond', 'particle-diamond'],
-    ['thin', 'particle-frame-thin'],
+    ['glow', 'particle-glow', 96],
+    ['halo', 'particle-halo', 96],
+    ['frame', 'particle-frame-thin'],
     ['line', 'particle-frame-line'],
-    ['beam', 'particle-beam'],
+    ['plate', 'particle-plate'],
+    ['flare', 'particle-flare'],
+    ['sparkle', 'particle-sparkle'],
+    ['mote', 'particle-circle'],
+    ['shard', 'particle-diamond'],
+    ['arc', 'particle-arc'],
+    ['flame', 'particle-flame'],
+    ['needle', 'particle-needle'],
+    ['ring', 'particle-ring'],
+    ['wisp', 'particle-wisp'],
+    ['fan', 'particle-fan'],
+    ['flash', 'particle-flash'],
     ['streak', 'particle-streak'],
-].map(([name, template]) => ({ name, spec: image(template, {}) }))
+].map(([name, template, width]) => ({ name, spec: image(template, {}, width ? { width } : {}) }))
 
 /** The 15 clips of the engine: the name in the data, the file in the audio zip. */
 export const clipFiles = {

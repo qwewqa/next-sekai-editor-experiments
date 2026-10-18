@@ -54,12 +54,12 @@
             "bytes": 353500
         },
         "public/builtin/particle.scp": {
-            "sha256": "e97e58b8f81a36cf01a775b84df7769dd11346b3845c6f40fe4b17e590e306fa",
-            "bytes": 41256
+            "sha256": "c1508a576560d4954bcb8a525f24b2dea768749f6195fc0d048f8d649c0faa2f",
+            "bytes": 93586
         },
         "public/builtin/skin.scp": {
-            "sha256": "b5275d479ebfcabea3cfe13b7dec2f93b3ad356b5cd0187b2acb8a334004fd59",
-            "bytes": 944913
+            "sha256": "221a13740e3f79eb11242ac9b13479557f0f262b19aa5128ef6deccb54247356",
+            "bytes": 955590
         }
     },
     "resources": {
@@ -70,14 +70,14 @@
                 "bytes": 1986
             },
             "data": {
-                "sha1": "5d470f7bce35a42cd80be285475604e67058e0a8",
-                "sha256": "497e7fe30ed7e6b03cbb5c0f3be0d72e51bd1ca974cf75b53aa527888f2a50ea",
-                "bytes": 23277
+                "sha1": "adb592060fa9a8c0a51c500fd6b74c2505f9c8c7",
+                "sha256": "34e293fe05f73792ce7058abda46587d4cf41dc5967892936712f7e2142a2e38",
+                "bytes": 22172
             },
             "texture": {
-                "sha1": "6aeff03e7f34c3d0254f5da97aa5dc239b612a21",
-                "sha256": "e8374d5345f7f61a78aee3e4958d1a1e6a6d7ddbeaaa01978257122626947a2c",
-                "bytes": 917639
+                "sha1": "6fa126aa163e2a50b8cce600c11537ec63cc8237",
+                "sha256": "8e0661b28b64f5d3e1eb1f33b95ddfec91a83e54f954db22851e044545ffb10e",
+                "bytes": 929422
             }
         },
         "particle": {
@@ -87,14 +87,14 @@
                 "bytes": 5039
             },
             "data": {
-                "sha1": "d59b57ab9a8d4ce128f995abcf75ea53b739d831",
-                "sha256": "33287b9880e8e727e0ebfea21bcebfea69701a06f0388510c9c839a29df37f74",
-                "bytes": 18457
+                "sha1": "af824bc415ec6c3041e90bbdc916a81d17185452",
+                "sha256": "274983842e47cc4d53d920da59a5d25c9c2312089d13a9c9655240b79b342057",
+                "bytes": 51956
             },
             "texture": {
-                "sha1": "fe38325b5d2e6e4a51fb8c2e63e5da1c56eec8de",
-                "sha256": "70f6b6e9b21fa95a16259d481dc51f8833efd350b1a707a732ddd51519beb47b",
-                "bytes": 15719
+                "sha1": "3e807633ba397e0862fc21b26540d651cc5ce292",
+                "sha256": "733605019e363fae8d5bbbd0215827811c41921aff0a39bda62b648be4650de5",
+                "bytes": 34556
             }
         },
         "background": {
@@ -149,7 +149,7 @@
     },
     "counts": {
         "skinNames": 1323,
-        "skinImages": 399,
+        "skinImages": 383,
         "particleEffects": 505,
         "clips": 15
     }

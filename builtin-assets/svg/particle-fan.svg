@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96">
+    <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#fff"/>
+        <stop offset="0.35" stop-color="#fff" stop-opacity="0.45"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="b" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <path d="M64 86L114 14Q64 4 14 14Z" fill="url(#g)" filter="url(#b)"/>
+</svg>

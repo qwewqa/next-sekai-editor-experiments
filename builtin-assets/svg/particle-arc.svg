@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 64">
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="56" x2="0" y2="28">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+        <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <filter id="b" x="-20%" y="-30%" width="140%" height="160%">
+        <feGaussianBlur stdDeviation="2.5"/>
+    </filter>
+    <path d="M17 60A47 47 0 0 1 111 60" fill="none" stroke="url(#g)" stroke-width="8" stroke-opacity="0.5" filter="url(#b)"/>
+    <path d="M17 60A47 47 0 0 1 111 60" fill="none" stroke="url(#g)" stroke-width="3"/>
+</svg>

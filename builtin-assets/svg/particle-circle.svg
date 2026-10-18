@@ -1,3 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-    <circle cx="32" cy="32" r="30" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+    <radialGradient id="g">
+        <stop offset="0" stop-color="#fff"/>
+        <stop offset="0.45" stop-color="#fff"/>
+        <stop offset="0.7" stop-color="#fff" stop-opacity="0.35"/>
+        <stop offset="0.88" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <rect width="32" height="32" fill="url(#g)"/>
 </svg>

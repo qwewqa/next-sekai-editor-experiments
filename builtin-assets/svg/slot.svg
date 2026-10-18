@@ -1,3 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 96">
-    <rect x="4" y="4" width="184" height="88" rx="16" fill="var(--color)" fill-opacity="0.35" stroke="var(--color)" stroke-width="8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+    <filter id="b" x="-25%" y="-25%" width="150%" height="150%">
+        <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <rect x="23" y="23" width="82" height="82" fill="none" stroke="var(--color)" stroke-width="6" stroke-opacity="0.7" filter="url(#b)"/>
+    <rect x="23" y="23" width="82" height="82" fill="var(--color)" fill-opacity="0.35"/>
+    <rect x="24.5" y="24.5" width="79" height="79" fill="none" stroke="var(--color)" stroke-width="3"/>
 </svg>

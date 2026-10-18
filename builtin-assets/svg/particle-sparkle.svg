@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <radialGradient id="g">
+        <stop offset="0" stop-color="#fff" stop-opacity="0.8"/>
+        <stop offset="0.3" stop-color="#fff" stop-opacity="0.2"/>
+        <stop offset="0.94" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="b" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="0.9"/>
+    </filter>
+    <rect width="64" height="64" fill="url(#g)"/>
+    <g fill="#fff" filter="url(#b)">
+        <path d="M32 6L35 29L58 32L35 35L32 58L29 35L6 32L29 29Z"/>
+        <path d="M32 32L46 18L34.5 32L46 46L32 34.5L18 46L29.5 32L18 18Z"/>
+        <circle cx="32" cy="32" r="4"/>
+    </g>
+</svg>
