@@ -49,7 +49,7 @@ const positions = (position: PanelPosition): Record<PanelId, PanelPosition> => (
     groups: position,
     stages: position,
     properties: position,
-    history: position === 'disabled' ? 'auto' : position,
+    history: position,
 })
 
 test('auto placement follows the workspace shape rather than width alone', () => {
@@ -135,7 +135,7 @@ test('explicit positions override auto placement and disabled panels have no tab
                 groups: 'disabled',
                 stages: 'top',
                 properties: 'left',
-                history: 'auto',
+                history: 'disabled',
             },
         }),
     )
@@ -707,4 +707,51 @@ test('a manager moved elsewhere opens by default only where it fits', () => {
     assert.ok(hasRoomFor(input({ positions: moved }), ['groups']))
     // A top dock never opens managers by default.
     assert.ok(!hasRoomFor(input({ positions: { ...moved, groups: 'top' } }), ['groups']))
+})
+
+test('History is an ordinary panel: a tab while closed, shown like Groups, gone when Disabled', () => {
+    const phone = (overrides: Partial<WorkspaceLayoutInput> = {}) =>
+        computeWorkspaceLayout(input({ width: 390, height: 844, ...overrides }))
+    // Closed by default: its tab is there and its body is not.
+    const closed = phone()
+    assert.deepEqual(closed.docks.top?.panels, [
+        'preview',
+        'groups',
+        'stages',
+        'properties',
+        'history',
+    ])
+    assert.deepEqual(closed.docks.top?.visible, ['preview'])
+    assert.equal(closed.sides.history, 'top')
+
+    // Opened, it takes the room as Groups would, displacing the open panels it has no room beside.
+    const state: WorkspaceToggleState = {
+        open: { preview: true, groups: false, stages: false, properties: true, history: false },
+        recency: ['preview', 'properties', 'groups', 'stages', 'history'],
+        collapsed: { left: false, right: false, top: false },
+    }
+    const layoutOf = (next: WorkspaceToggleState) => phone({ ...next })
+    const shown = reduceWorkspace(state, { type: 'tab', id: 'history' }, layoutOf)
+    assert.equal(shown.open.history, true)
+    assert.equal(shown.recency[0], 'history')
+    assert.equal(layoutOf(shown).docks.top?.visible.includes('history'), true)
+    const groups = reduceWorkspace(state, { type: 'tab', id: 'groups' }, layoutOf)
+    assert.deepEqual(shown.open, { ...groups.open, groups: false, history: true })
+
+    // As the only panel shown, a second tab click folds the dock and keeps it open.
+    const again = reduceWorkspace(shown, { type: 'tab', id: 'history' }, layoutOf)
+    assert.deepEqual([again.open.history, again.collapsed.top], [true, true])
+    assert.equal(
+        reduceWorkspace(shown, { type: 'close', id: 'history' }, layoutOf).open.history,
+        false,
+    )
+
+    // Auto goes right at 1100, under Properties, and left below.
+    assert.equal(resolveAutoSide(1600, 1000, 'history'), 'right')
+    assert.equal(resolveAutoSide(1000, 700, 'history'), 'left')
+
+    // Disabled takes the tab away, like the other panels.
+    const disabled = phone({ positions: { ...positions('auto'), history: 'disabled' } })
+    assert.equal(disabled.sides.history, undefined)
+    assert.equal(disabled.docks.top?.panels.includes('history'), false)
 })

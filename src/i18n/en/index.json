@@ -1221,7 +1221,6 @@
         "now": "Now",
         "today": "Today",
         "yesterday": "Yesterday",
-        "notStored": "Changes are not being stored in this browser.",
         "notInUndo": "not in undo",
         "notInUndoTip": "Undo cannot reach this.",
         "removedForSpace": "removed to save space",

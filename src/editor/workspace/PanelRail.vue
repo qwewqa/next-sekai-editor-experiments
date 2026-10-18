@@ -17,8 +17,6 @@ import {
     type DockSide,
     type PanelId,
 } from '.'
-import { historyNotStored } from '../history/notStored'
-import WarningIcon from '../history/WarningIcon.vue'
 import ChevronIcon from './ChevronIcon.vue'
 import CloseIcon from './CloseIcon.vue'
 import type { DockLayout } from './layout'
@@ -35,19 +33,11 @@ const vertical = computed(() => props.side !== 'top')
 
 const state = (id: PanelId) => (props.dock.visible.includes(id) ? 'visible' : 'hidden')
 
-// History's tab carries the warning when history is not being saved (Part 1 §1.4.10.1).
-const warns = (id: PanelId) => id === 'history' && historyNotStored.value
-
-const tabTitle = (id: PanelId) => {
-    const title = interpolateRaw(
+const tabTitle = (id: PanelId) =>
+    interpolateRaw(
         isTabHiding(id) ? i18n.value.workspace.hide : i18n.value.workspace.show,
         panelTitle(id),
     )
-    return warns(id) ? `${title}. ${i18n.value.history.notStored}` : title
-}
-
-const tabName = (id: PanelId) =>
-    warns(id) ? `${panelTitle(id)}. ${i18n.value.history.notStored}` : undefined
 
 // Roving focus: the tab strip is one Tab stop, which follows arrow keys and
 // returns to the first visible tab when the dock changes.
@@ -374,7 +364,7 @@ const chevronDirection = computed(() => {
                 class="panel-tab relative flex shrink-0 items-center justify-center whitespace-nowrap rounded transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 :class="[
                     vertical
-                        ? `w-full flex-col px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
+                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
                         : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0 last:before:right-0`,
                     state(id) === 'visible'
                         ? 'bg-white/10 text-white hover:bg-white/20'
@@ -387,7 +377,6 @@ const chevronDirection = computed(() => {
                 :aria-expanded="dock.open.includes(id)"
                 :aria-controls="state(id) === 'visible' ? panelTileId(id) : undefined"
                 :title="tabTitle(id)"
-                :aria-label="tabName(id)"
                 :tabindex="id === rovingId ? 0 : -1"
                 @click="onTab($event, id)"
                 @auxclick="onAuxClick($event, id)"
@@ -405,12 +394,6 @@ const chevronDirection = computed(() => {
                 <span :class="{ '[writing-mode:vertical-rl]': vertical }">{{
                     panelTitle(id)
                 }}</span>
-                <WarningIcon
-                    v-if="warns(id)"
-                    class="size-3 shrink-0 text-accent"
-                    :class="vertical ? 'mt-1' : 'ml-1'"
-                    data-history-warning
-                />
                 <span
                     v-if="state(id) === 'visible'"
                     class="panel-tab-marker pointer-events-none absolute bg-accent forced-colors:bg-[CanvasText]"

@@ -24,9 +24,6 @@ test('a member that keeps the face leaves the face and the displaced face as the
     const group = { face: 'undo', displaced: undefined } as const
     assert.equal(faceAfterPick(group, pick({ name: 'redo', keepsFace: true })), group)
 
-    const open = { kind: 'panel', current: true } as const
-    assert.equal(faceAfterPick(group, pick({ name: 'redo', state: open, keepsFace: true })), group)
-
     const displaced = { face: 'select', displaced: 'undo' } as const
     assert.equal(faceAfterPick(displaced, pick({ name: 'redo', keepsFace: true })), displaced)
 })
@@ -64,8 +61,7 @@ test('a value leaves the face to a tool in use', () => {
     })
 })
 
-test('an open panel shows pressed but never moves the face', () => {
-    assert.equal(movesFace({ kind: 'panel', current: true }), false)
+test('only a member with a state can move the face', () => {
     assert.equal(movesFace({ kind: 'tool', current: true }), true)
     assert.equal(movesFace({ kind: 'value', family: 'division', current: false }), true)
     assert.equal(movesFace(undefined), false)

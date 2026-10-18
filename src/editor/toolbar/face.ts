@@ -16,9 +16,8 @@ export type Pick = {
     toolInUse: boolean
 }
 
-/** Whether a member's state can move the face: a panel shows pressed but never takes it. */
-export const movesFace = (state: CommandState | undefined): state is CommandState =>
-    !!state && state.kind !== 'panel'
+/** Whether a member has a state that can move the face. */
+export const movesFace = (state: CommandState | undefined): state is CommandState => !!state
 
 /** Where picking a member leaves its group's face. */
 export const faceAfterPick = (group: GroupFace, pick: Pick): GroupFace => {

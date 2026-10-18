@@ -4,9 +4,6 @@ import { isPeeking } from '../../history/stack'
 import { settings } from '../../settings'
 import { formatShortcut, isPunctuationShortcut } from '../controls/bindings'
 import { commands, type CommandName } from '../commands'
-import { i18n } from '../../i18n'
-import { historyNotStored } from '../history/notStored'
-import WarningIcon from '../history/WarningIcon.vue'
 import { isCoarsePointer } from '../workspace'
 import { pressedIconProps, type CommandState } from './pressed'
 
@@ -35,11 +32,6 @@ const checked = computed(() => props.state?.kind === 'value' && props.state.curr
 
 const title = computed(() => commands[props.name].title())
 
-// History shows a warning when history is not being saved (Part 1 §1.4.10.1): a glyph, not a dot,
-// which would read as "new". It names itself on the tool, as its tooltip and accessible name.
-const warns = computed(() => props.name === 'history' && historyNotStored.value)
-const warning = computed(() => i18n.value.history.notStored)
-const tooltip = computed(() => (warns.value ? `${title.value}. ${warning.value}` : title.value))
 // A pressed Custom member shows the value in use.
 const iconProps = computed(
     () =>
@@ -70,8 +62,7 @@ const shortcut = computed(() =>
             { '[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3': showLabel },
             { 'opacity-40': refused },
         ]"
-        :title="tooltip"
-        :aria-label="warns ? tooltip : undefined"
+        :title
         :aria-pressed="pressed"
         :aria-disabled="refused || undefined"
     >
@@ -93,16 +84,9 @@ const shortcut = computed(() =>
         <span v-if="showLabel" class="flex w-5 shrink-0 justify-center" data-icon-column>
             <component :is="commands[name].icon.is" class="h-4 w-auto min-w-4" v-bind="iconProps" />
         </span>
-        <span v-else-if="warns" class="relative flex size-4" data-history-warning>
-            <component :is="commands[name].icon.is" class="size-4" v-bind="iconProps" />
-            <WarningIcon
-                class="absolute -right-1.5 -top-1.5 size-3 rounded-full bg-button p-px text-danger"
-            />
-        </span>
         <component :is="commands[name].icon.is" v-else class="size-4" v-bind="iconProps" />
         <template v-if="showLabel">
             <span class="ml-2 flex-grow text-left text-sm">{{ title }}</span>
-            <WarningIcon v-if="warns" class="ml-2 size-3.5 shrink-0 text-danger" />
             <span
                 v-if="shortcut"
                 class="ml-4"

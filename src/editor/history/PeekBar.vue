@@ -5,7 +5,7 @@ import { i18n } from '../../i18n'
 import { formatClockSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
-import { isCoarsePointer, isHistoryOpen, workspaceLayout } from '../workspace'
+import { isCoarsePointer, isPanelVisible, workspaceLayout } from '../workspace'
 import { backToNow, peekedInfo } from './selection'
 
 // The peek bar (Part 1 §1.4.11): on the canvas, so it shows with the panel scrolled, folded or on
@@ -25,13 +25,14 @@ const text = computed(() => {
         : interpolateRaw(strings.value.viewingShort, time)
 })
 
-// The hint is for a finger: a mouse has nothing to tap. It shows while History is open and its
-// dock is not folded away.
-const foldHint = computed(() => {
-    if (!isCoarsePointer.value || !isHistoryOpen.value) return false
-    const side = workspaceLayout.value.sides.history
-    return !!side && !workspaceLayout.value.docks[side]?.collapsed
-})
+// The hint is for a finger: a mouse has nothing to tap. It shows while the History tab is shown in
+// the top dock.
+const foldHint = computed(
+    () =>
+        isCoarsePointer.value &&
+        isPanelVisible('history') &&
+        workspaceLayout.value.sides.history === 'top',
+)
 
 const restore = () => {
     const key = peekedKey.value

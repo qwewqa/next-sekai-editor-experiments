@@ -113,7 +113,6 @@ path = [
     "src/editor/commands/zooms/ZoomYOutIcon.vue",
     "src/editor/settings/toolbar/SettingsToolbarAddButton.vue",
     "src/editor/history/KindIcon.vue",
-    "src/editor/history/WarningIcon.vue",
     "src/editor/toolbar/LevelEditorToolbarTool.vue",
     "src/editor/workspace/ChevronIcon.vue",
     "src/editor/workspace/CloseIcon.vue",

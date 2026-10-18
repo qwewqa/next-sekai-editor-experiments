@@ -6,7 +6,7 @@ import { easeEdits, type EaseEdit } from './ease'
 import type { CommandName } from './editor/commands'
 import { normalizeBinding } from './editor/controls/bindings'
 import { migrateToolbar } from './editor/toolbar/migrate'
-import { isPanelId, savedPanelIds, transientPanel, type PanelId } from './editor/workspace/layout'
+import { isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
 import {
@@ -104,14 +104,6 @@ const defaultNoteSlidePropertiesSchema = Type.Intersect([
 
 export type DefaultNoteSlideProperties = Type.Static<typeof defaultNoteSlidePropertiesSchema>
 
-// History's toolbar tool is its entry point, so its position is never Disabled.
-const historyPanelPosition = Type.Union([
-    Type.Literal('auto'),
-    Type.Literal('left'),
-    Type.Literal('right'),
-    Type.Literal('top'),
-])
-
 const panelPosition = Type.Union([
     Type.Literal('auto'),
     Type.Literal('left'),
@@ -128,7 +120,7 @@ const settingsProperties = {
     groupsPosition: panelPosition,
     stagesPosition: panelPosition,
     propertiesPosition: panelPosition,
-    historyPosition: historyPanelPosition,
+    historyPosition: panelPosition,
 
     showPreview: Type.Boolean({ default: true }),
     // Properties retains the open state saved by the former sidebar.
@@ -136,18 +128,15 @@ const settingsProperties = {
     // Null until the user acts on panels: open where there's room.
     showGroups: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
     showStages: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
+    // History is closed until opened; Disabled hides its tab, and its dialog stays.
+    showHistory: Type.Boolean({ default: false }),
 
     panelRecency: Type.Codec(
         Type.Array(Type.String(), {
             default: ['preview', 'properties', 'groups', 'stages'] satisfies PanelId[],
         }),
     )
-        .Decode((values) => [
-            ...new Set([
-                ...values.filter((id) => isPanelId(id) && id !== transientPanel),
-                ...savedPanelIds,
-            ]),
-        ])
+        .Decode((values) => [...new Set([...values.filter(isPanelId), ...panelIds])])
         .Encode((values) => values),
 
     leftDockWidth: Type.Number({ minimum: 0 }),

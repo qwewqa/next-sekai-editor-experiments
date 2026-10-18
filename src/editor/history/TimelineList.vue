@@ -16,7 +16,7 @@ import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
 import { settings } from '../../settings'
-import { closeHistory, isCoarsePointer } from '../workspace'
+import { isCoarsePointer } from '../workspace'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import KindIcon from './KindIcon.vue'
@@ -243,7 +243,7 @@ const onKeydown = (event: KeyboardEvent) => {
             case 'Escape':
                 handled()
                 if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
-                else closeHistory()
+                else list.value?.blur()
                 return
             case 'ArrowRight':
                 if (row?.type === 'entry' && row.members.length > 1 && !row.child) {
