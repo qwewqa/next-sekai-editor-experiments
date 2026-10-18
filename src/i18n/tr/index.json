@@ -161,8 +161,8 @@
       }
     },
     "generateSlideNotes": {
-      "title": "Kaydırma Notası Oluştur",
-      "switched": "Kaydırma Notası Oluşturma aracına geçildi"
+      "title": "Kaydırma Notaları Oluştur",
+      "switched": "Kaydırma Notaları Oluşturma aracına geçildi"
     },
     "help": {
       "title": "Yardım"
@@ -508,7 +508,7 @@
       "inUse": "Kullanımda",
       "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine Varsayılan kullanılır.",
       "removeFailed": "Bu öğe kaldırılamadı.",
-      "chooseAgain": "Yeniden Seç",
+      "chooseAgain": "Tekrar Seç",
       "noneInFile": "Bu dosyada {0} yok.",
       "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",
       "progress": {
@@ -530,7 +530,7 @@
       "import": {
         "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
         "fileUnreadable": "Bu dosya okunamadı.",
-        "zip64": "Bu dosya, düzenleyicinin okuyamadığı ZIP64 biçimini kullanıyor.",
+        "zip64": "Bu dosya, editörün okuyamadığı ZIP64 biçimini kullanıyor.",
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
         "badName": "Bu dosyada izin verilmeyen bir girdi adı var.",
@@ -565,8 +565,8 @@
       "noneFound": "Öğe bulunamadı",
       "server": {
         "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
-        "auth": "Bu sunucu oturum açmayı gerektiriyor; düzenleyici bunu desteklemiyor.",
-        "insecure": "Bu sunucu http kullanıyor; düzenleyici bunu yükleyemez.",
+        "auth": "Bu sunucu oturum açmayı gerektiriyor; editör bunu desteklemiyor.",
+        "insecure": "Bu sunucu http kullanıyor; editör bunu yükleyemez.",
         "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
         "invalid": "Bu adres bir Sonolus sunucusu değil.",
@@ -680,7 +680,7 @@
         "tail": "Kaydırmanın son notasının kesilecek bağlantısı yoktur."
       },
       "generateSlideNotesTool": {
-        "title": "Kaydırma Notası Oluşturma Aracı",
+        "title": "Kaydırma Notaları Oluşturma Aracı",
         "generate": "Tüm kaydırma boyunca nota oluşturmak için dokunarak veya sürükleyerek 1 nota seçin.",
         "generateMultiple": "Aralarında nota oluşturmak için dokunarak veya sürükleyerek en az 2 nota seçin.",
         "deselect": "Tüm nesnelerin seçimini kaldırmak için boş alana dokunun."
@@ -935,7 +935,7 @@
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
         "legacy": "Eski kurtarma kopyası · {0}",
-        "autoSave": "Eski otomatik kaydetme · {0}",
+        "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "atLoad": "Bu yüklemede:"
       }
@@ -1176,7 +1176,7 @@
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
-    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Sonraki yüklemede yeniden denenecek.",
+    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Sonraki yüklemede tekrar denenecek.",
     "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",

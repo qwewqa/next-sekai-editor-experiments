@@ -235,12 +235,10 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.events.title',
         'commands.laneDivisions.custom.modal.division',
         'commands.note.title.default',
-        'commands.note.title.preset',
         // French writes "skin", as in its preview strings.
         'commands.previewAssets.noun.skin',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
-        'commands.slide.title.preset',
         'commands.visibilities.toggle.types.bpm',
         'commands.visibilities.toggle.types.note',
         'elevation.auto',

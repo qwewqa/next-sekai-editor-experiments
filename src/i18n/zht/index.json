@@ -29,7 +29,7 @@
         "file": "檔案",
         "offset": "偏移（毫秒）",
         "loading": "正在載入檔案…",
-        "decoding": "解碼音訊…",
+        "decoding": "正在解碼音訊…",
         "generating": "生成波形…"
       }
     },
@@ -42,16 +42,16 @@
     },
     "copy": {
       "title": "複製",
-      "noSelected": "未選擇要複製的物件",
+      "noSelected": "未選取要複製的物件",
       "copied": "已複製 {0} 個物件"
     },
     "cut": {
       "title": "剪下",
-      "noSelected": "未選擇要剪下的物件",
+      "noSelected": "未選取要剪下的物件",
       "cut": "已剪下 {0} 個物件"
     },
     "deselect": {
-      "title": "取消選擇",
+      "title": "取消選取",
       "deselected": "已取消選取所有物件"
     },
     "laneLimits": {
@@ -95,7 +95,7 @@
     },
     "flip": {
       "title": "水平翻轉",
-      "noSelected": "未選擇要翻轉的物件",
+      "noSelected": "未選取要翻轉的物件",
       "flipped": "已翻轉 {0} 個物件"
     },
     "flipVertical": {
@@ -109,7 +109,7 @@
     },
     "scaleWidth": {
       "title": "縮放寬度",
-      "noSelected": "請選擇具有橫向跨度的物件進行縮放",
+      "noSelected": "請選取具有橫向跨度的物件進行縮放",
       "scaled": "已縮放 {0} 個物件的寬度"
     },
     "scaleElevation": {
@@ -326,8 +326,8 @@
       }
     },
     "select": {
-      "title": "選擇",
-      "switched": "已切換到選擇工具"
+      "title": "選取",
+      "switched": "已切換到選取工具"
     },
     "settings": {
       "title": "設定"
@@ -471,7 +471,7 @@
       "storedFile": "{0}（檔案）",
       "storedServer": "{0}（伺服器）",
       "useBuiltinAll": "全部使用內建",
-      "resetDefault": "重設為預設",
+      "resetDefault": "重置為預設",
       "stored": "已存放：{0} 項，{1}",
       "storedEmpty": "沒有已存放的項目",
       "storedUnavailable": "無法開啟此瀏覽器的儲存空間，因此無法讀取已存放的項目。",
@@ -628,17 +628,17 @@
         "multiple": "按住按鍵可重複滾動、縮放、撤銷、重做，或變更音符尺寸、播放速度、圖層或舞台。"
       },
       "selectTool": {
-        "title": "選擇工具",
-        "select": "點擊以選擇一個物件，在重疊的物件之間循環。",
+        "title": "選取工具",
+        "select": "點選以選取一個物件，在重疊的物件之間循環。",
         "deselect": "點選空白處可取消選取所有物件。",
         "move": "拖曳物件來移動多個物件。",
         "selectMultiple": "拖曳區域以選取多個物件。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。"
       },
       "eraserTool": {
         "title": "橡皮擦工具",
-        "erase": "點擊以擦除物件。",
+        "erase": "點選以擦除物件。",
         "deselect": "點選空白處可取消選取所有物件。",
         "eraseMultiple": "拖曳以刪除多個物件。"
       },
@@ -651,27 +651,27 @@
       },
       "pasteTool": {
         "title": "貼上工具",
-        "paste": "點擊以貼上。",
+        "paste": "點選以貼上。",
         "shift": "使用 Shift 鍵翻轉物件。"
       },
       "noteTool": {
         "title": "音符工具",
-        "select": "點擊音符以選擇一個音符。",
+        "select": "點選音符以選取一個音符。",
         "edit": "點選一個音符進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
         "properties": "再次切換到音符工具以變更預設組或預設屬性。"
       },
       "slideTool": {
         "title": "滑條工具",
-        "select": "點擊音符以選擇一個音符。",
+        "select": "點選音符以選取一個音符。",
         "edit": "點選一個音符進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "connect": "選取一個音符後，點選空白處即可連接。",
         "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
         "properties": "再次切換到滑條工具以變更預設組或預設屬性。"
       },
@@ -687,19 +687,19 @@
       },
       "bpmTool": {
         "title": "BPM工具",
-        "select": "點擊 BPM 以選擇一個 BPM。",
+        "select": "點選 BPM 以選取一個 BPM。",
         "edit": "點選一個 BPM 進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個 BPM 進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。"
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。"
       },
       "timeScaleTool": {
         "title": "時間倍率工具",
-        "select": "點選時間倍率以選擇 1 個時間倍率。",
+        "select": "點選時間倍率以選取一個時間倍率。",
         "edit": "點選一個時間倍率進行編輯。",
-        "add": "點擊空白處即可新增。",
+        "add": "點選空白處即可新增。",
         "move": "拖曳一個時間倍率進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件新增至選取範圍。",
+        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
         "markers": "菱形標記使用捲動過渡。虛線上的空心標記會隱藏音符。",
         "ease": "曲線表示到同一圖層中下一個變化的緩動。"
       },
@@ -834,7 +834,7 @@
       "secondaryTool": {
         "title": "輔助工具",
         "eraser": "橡皮擦",
-        "select": "選擇",
+        "select": "選取",
         "selectContextMenu": "選取 + 快顯選單"
       },
       "smoothScrolling": "平滑滾動"
@@ -943,7 +943,7 @@
   },
   "sidebars": {
     "default": {
-      "none": "未選擇物件",
+      "none": "未選取物件",
       "edited": "已編輯 {0} 個物件",
       "editedNotes": "已編輯 {0} 個音符",
       "set": "已設定 {0} 個物件的{1}",
@@ -998,7 +998,7 @@
     },
     "brush": {
       "title": "筆刷",
-      "deselected": "取消選取所有物件",
+      "deselected": "已取消選取所有物件",
       "brushing": "正在套用筆刷至 {0} 個物件",
       "brushed": "已套用筆刷至 {0} 個物件",
       "sidebar": {
@@ -1024,7 +1024,7 @@
     },
     "eraser": {
       "title": "橡皮擦",
-      "deselected": "取消選取所有物件",
+      "deselected": "已取消選取所有物件",
       "erasing": "正在刪除 {0} 個物件",
       "erased": "已刪除 {0} 個物件"
     },
@@ -1064,9 +1064,9 @@
     },
     "select": {
       "title": "選取",
-      "deselected": "取消選取所有物件",
-      "selecting": "正在選擇 {0} 個物件",
-      "selected": "已選擇 {0} 個物件",
+      "deselected": "已取消選取所有物件",
+      "selecting": "正在選取 {0} 個物件",
+      "selected": "已選取 {0} 個物件",
       "moving": "正在移動 {0} 個物件",
       "moved": "已移動 {0} 個物件"
     },

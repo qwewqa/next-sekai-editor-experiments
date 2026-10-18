@@ -217,11 +217,11 @@
     "note": {
       "title": {
         "default": "Note",
-        "preset": "Note #{0}"
+        "preset": "Note n° {0}"
       },
-      "switched": "Outil Note #{0} activé",
+      "switched": "Outil Note n° {0} activé",
       "modal": {
-        "title": "Propriétés des notes par défaut"
+        "title": "Propriétés de note par défaut"
       }
     },
     "noteSizes": {
@@ -335,11 +335,11 @@
     "slide": {
       "title": {
         "default": "Slide",
-        "preset": "Slide #{0}"
+        "preset": "Slide n° {0}"
       },
-      "switched": "Outil Slide #{0} activé",
+      "switched": "Outil Slide n° {0} activé",
       "modal": {
-        "title": "Propriétés des slides par défaut"
+        "title": "Propriétés de slide par défaut"
       }
     },
     "snapping": {
@@ -459,7 +459,7 @@
         "title": "Ressources d’aperçu"
       },
       "skin": "Skin",
-      "particle": "Particules",
+      "particle": "Particule",
       "background": "Arrière-plan",
       "effect": "Effets sonores",
       "storedTab": "Stockés",
@@ -506,7 +506,7 @@
       "alsoFile": "Utiliser aussi \"{1}\" ({0}) de ce fichier",
       "remove": "Supprimer",
       "inUse": "Utilisé",
-      "removeInUse": "Supprimer \"{0}\" \u0001 L’élément par défaut est utilisé à la place.",
+      "removeInUse": "Supprimer \"{0}\" ? L’élément par défaut est utilisé à la place.",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
@@ -683,7 +683,7 @@
         "title": "Outil Générer les notes de slide",
         "generate": "Appuyez ou glissez pour sélectionner une note et générer les notes de tout le slide.",
         "generateMultiple": "Appuyez ou glissez pour sélectionner deux notes ou plus et générer les notes entre elles.",
-        "deselect": "Appuyez sur une zone vide pour tout désélectionner."
+        "deselect": "Appuyez sur une zone vide pour désélectionner tous les objets."
       },
       "bpmTool": {
         "title": "Outil BPM",

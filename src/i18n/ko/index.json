@@ -109,8 +109,8 @@
     },
     "scaleWidth": {
       "title": "너비 조절",
-      "noSelected": "가로 폭이 있는 오브젝트를 선택하세요",
-      "scaled": "오브젝트 {0}개의 너비를 조절했습니다"
+      "noSelected": "가로 폭이 있는 객체를 선택하세요",
+      "scaled": "객체 {0}개의 너비를 확대/축소함"
     },
     "scaleElevation": {
       "title": "높이 확대/축소",
@@ -377,7 +377,7 @@
       "title": "{0} 켜기/끄기",
       "toggled": "{0} 음량 전환됨",
       "type": {
-        "bgm": "배경음악",
+        "bgm": "배경음",
         "sfx": "효과음"
       }
     },
@@ -471,7 +471,7 @@
       "storedFile": "{0} (파일)",
       "storedServer": "{0} (서버)",
       "useBuiltinAll": "모두 내장 사용",
-      "resetDefault": "기본으로 되돌리기",
+      "resetDefault": "기본으로 초기화",
       "stored": "보관됨: {0}개, {1}",
       "storedEmpty": "보관된 항목 없음",
       "storedUnavailable": "이 브라우저의 저장 공간을 열 수 없어 보관된 항목을 읽을 수 없습니다.",
@@ -671,7 +671,7 @@
         "add": "빈 공간 탭: 추가",
         "connect": "노트 1개 선택 후 빈 공간 탭: 연결",
         "move": "노트 1개 드래그: 이동",
-        "ctrl": "Ctrl 키: 선택 항목에 개체 추가",
+        "ctrl": "Ctrl 키: 선택 항목에 객체 추가",
         "shift": "Shift 키: 같은 슬라이드의 다른 노트에도 적용",
         "properties": "슬라이드 도구 다시 선택: 프리셋 또는 기본 속성 변경"
       },
@@ -683,7 +683,7 @@
         "title": "슬라이드 노트 생성 도구",
         "generate": "노트 1개를 탭하거나 드래그하여 선택하면 슬라이드 전체에 노트를 생성합니다.",
         "generateMultiple": "노트 2개 이상을 탭하거나 드래그하여 선택하면 선택한 노트 사이에 노트를 생성합니다.",
-        "deselect": "빈 공간을 탭하여 모든 객체의 선택을 해제합니다."
+        "deselect": "빈 곳을 눌러 모든 객체를 선택 해제합니다."
       },
       "bpmTool": {
         "title": "BPM 도구",
@@ -691,7 +691,7 @@
         "edit": "BPM 1개 탭: 편집",
         "add": "빈 공간 탭: 추가",
         "move": "BPM 1개 드래그: 이동",
-        "ctrl": "Ctrl 키: 선택 항목에 개체 추가"
+        "ctrl": "Ctrl 키: 선택 항목에 객체 추가"
       },
       "timeScaleTool": {
         "title": "시간 배율 도구",
@@ -699,7 +699,7 @@
         "edit": "시간 배율 1개 탭: 편집",
         "add": "빈 공간 탭: 추가",
         "move": "시간 배율 1개 드래그: 이동",
-        "ctrl": "Ctrl 키: 선택 항목에 개체 추가",
+        "ctrl": "Ctrl 키: 선택 항목에 객체 추가",
         "markers": "마름모 마커: 스크롤 전환 / 점선 위 빈 마커: 노트 숨기기",
         "ease": "곡선은 같은 그룹의 다음 변화까지의 이징을 보여 줍니다."
       },
@@ -937,7 +937,7 @@
         "legacy": "이전 복구 사본 · {0}",
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
-        "atLoad": "이번 로드:"
+        "atLoad": "이번에 불러올 때:"
       }
     }
   },
@@ -1711,7 +1711,7 @@
     "groups": {
       "deleteFolder": "폴더와 그룹 삭제…",
       "deleteFolderTitle": "폴더와 그룹 삭제",
-      "deleteFolderMessage": "{0} 폴더와 그룹 {1}개, 오브젝트 {2}개를 삭제할까요?",
+      "deleteFolderMessage": "{0} 폴더와 그룹 {1}개, 객체 {2}개를 삭제할까요?",
       "renamed": "{0} 그룹 이름을 {1}(으)로 변경함",
       "all": "모든 그룹",
       "showAll": "모든 그룹 표시",
@@ -1723,8 +1723,8 @@
       "deletedSelectedFolders": "선택한 폴더 {0}개와 그룹 {1}개 삭제됨",
       "deleteSelectedTitle": "그룹 삭제",
       "deleteSelectedFoldersTitle": "폴더와 그룹 삭제",
-      "deleteSelectedMessage": "선택한 그룹 {0}개와 오브젝트 {1}개를 삭제할까요?",
-      "deleteSelectedFoldersMessage": "선택한 폴더 {0}개와 그룹 {1}개, 오브젝트 {2}개를 삭제할까요?",
+      "deleteSelectedMessage": "선택한 그룹 {0}개와 객체 {1}개를 삭제할까요?",
+      "deleteSelectedFoldersMessage": "선택한 폴더 {0}개와 그룹 {1}개, 객체 {2}개를 삭제할까요?",
       "duplicated": "{0} 그룹 복제됨",
       "duplicatedSelected": "선택한 그룹 {0}개 복제됨",
       "duplicatedSelectedFolders": "선택한 폴더 {0}개와 그룹 {1}개 복제됨"
@@ -1732,7 +1732,7 @@
     "stages": {
       "deleteFolder": "폴더와 스테이지 삭제…",
       "deleteFolderTitle": "폴더와 스테이지 삭제",
-      "deleteFolderMessage": "{0} 폴더와 스테이지 {1}개, 오브젝트 {2}개를 삭제할까요?",
+      "deleteFolderMessage": "{0} 폴더와 스테이지 {1}개, 객체 {2}개를 삭제할까요?",
       "renamed": "{0} 스테이지 이름을 {1}(으)로 변경함",
       "all": "모든 스테이지",
       "showAll": "모든 스테이지 표시",
@@ -1746,8 +1746,8 @@
       "deletedSelectedFolders": "선택한 폴더 {0}개와 스테이지 {1}개 삭제됨",
       "deleteSelectedTitle": "스테이지 삭제",
       "deleteSelectedFoldersTitle": "폴더와 스테이지 삭제",
-      "deleteSelectedMessage": "선택한 스테이지 {0}개와 오브젝트 {1}개를 삭제할까요?",
-      "deleteSelectedFoldersMessage": "선택한 폴더 {0}개와 스테이지 {1}개, 오브젝트 {2}개를 삭제할까요?",
+      "deleteSelectedMessage": "선택한 스테이지 {0}개와 객체 {1}개를 삭제할까요?",
+      "deleteSelectedFoldersMessage": "선택한 폴더 {0}개와 스테이지 {1}개, 객체 {2}개를 삭제할까요?",
       "duplicated": "{0} 스테이지 복제됨",
       "duplicatedSelected": "선택한 스테이지 {0}개 복제됨",
       "duplicatedSelectedFolders": "선택한 폴더 {0}개와 스테이지 {1}개 복제됨"
