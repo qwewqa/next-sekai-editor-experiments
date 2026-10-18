@@ -580,6 +580,43 @@ test.describe('a stored item that is gone', () => {
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         expect((await choices(page)).skin?.key).toBe(key)
     })
+
+    test('a stored skin with no note sprites falls back to Default and keeps the setting', async ({
+        page,
+    }) => {
+        await start(page)
+        const skinData = jsonOf<SkinData>(await resourceOf('skin', 'data'))
+        const key = await store(page, {
+            type: 'skin',
+            name: 'neon',
+            title: 'Neon Skin',
+            bytes: await patched('skin', {
+                resources: {
+                    data: gzOf({
+                        ...skinData,
+                        sprites: [{ ...skinData.sprites[0]!, name: 'Not A Note' }],
+                    }),
+                },
+            }),
+        })
+        await page.evaluate((key) => {
+            window.editorTest.settings.previewAssets = {
+                ...window.editorTest.settings.previewAssets,
+                skin: {
+                    source: 'file',
+                    key,
+                    name: 'neon',
+                    title: 'Neon Skin',
+                    author: 'Someone',
+                    origin: 'stored.scp',
+                },
+            } as never
+        }, key)
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            'Skin: using Default. The stored skin could not be read.',
+        )
+        expect((await choices(page)).skin?.key).toBe(key)
+    })
 })
 
 test.describe('storage that cannot be opened', () => {
@@ -877,6 +914,20 @@ test.describe('refusing a file', () => {
             page,
             await patched('skin', { resources: { data: gzOf(skinData) } }),
             'This file’s skin data has a sprite outside its texture.',
+        )
+
+        // A skin with no note body sprite.
+        await refused(
+            page,
+            await patched('skin', {
+                resources: {
+                    data: gzOf({
+                        ...skinData,
+                        sprites: [{ ...skinData.sprites[0]!, name: 'Not A Note' }],
+                    }),
+                },
+            }),
+            'This file’s skin has no note sprites.',
         )
 
         // A particle effect over 512 particles.
