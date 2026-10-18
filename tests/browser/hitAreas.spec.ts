@@ -230,6 +230,7 @@ const settingsToolbarMeets = async (page: Page, wraps = true) => {
     await meet(button(across[0]!), button(across[1]!))
     if (!wraps) return
     expect(wrapped).toBeDefined()
+    await button(wrapped![1]!).scrollIntoViewIfNeeded()
     await meet(button(wrapped![0]!), button(wrapped![1]!))
 }
 
