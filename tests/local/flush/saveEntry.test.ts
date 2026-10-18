@@ -165,3 +165,49 @@ test('a mark the identity unit needs that isn’t stored keeps the binding in me
     // The save entry is stored all the same.
     assert.equal(rows(world, 'entries').size, 2)
 })
+
+test('an identity unit whose binding was taken over meanwhile is dropped, never stored', async () => {
+    const world = createWorld({ seed: 14 })
+    const page = await openPage(world, world.tab('a'))
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    const reservation = page.flusher.reserveSave()!
+    // Another tab's save picker takes the file over while this Save writes (R5).
+    const [chain] = rows(world, 'chains').values()
+    const replaced = { by: 'other-chain', at: 5, name: 'coconut.nxsp' }
+    await page.core.write(['chains'], (tx) =>
+        tx.put('chains', { ...chain, replaced, edited: true, hasContent: true }),
+    )
+    await page.flusher.endSave(
+        reservation,
+        {
+            wall: reservation.wall,
+            label: () => 'Saved coconut.nxsp',
+            state: first,
+            revisionId: 'rev-1',
+            device: DEVICE,
+        },
+        {
+            docId: testId(),
+            revision: { id: 'rev-1', n: 1, ancestors: [] },
+            file: {
+                name: 'coconut.nxsp',
+                event: 'saved',
+                at: reservation.wall,
+                hash: fromHex16(rootOf(first)),
+                options: { history: true, bgm: true },
+            },
+            marks: [],
+            // The record had no binding and no revocation when the Save began.
+            from: {},
+        },
+    )
+    assert.deepEqual(page.errors, [])
+    const [after] = rows(world, 'chains').values()
+    assert.equal(after!.file, undefined)
+    assert.deepEqual(after!.replaced, replaced)
+    // Dropped from memory too, while the `save` entry is stored.
+    assert.equal(session.identity, undefined)
+    assert.ok([...rows(world, 'entries').values()].some((row) => row.kind === 'save'))
+})

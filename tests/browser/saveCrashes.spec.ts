@@ -239,3 +239,32 @@ test('the file replaced between the write and the read-back leaves the binding a
     await expect(saveDialog(page, '"coconut.nxsp" Changed')).toBeVisible()
     expect(await readFile(page, 'coconut.nxsp')).toEqual(other)
 })
+
+test('a frozen clock across two sessions: each its own start, and a write-back holds every row once', async ({
+    context,
+}) => {
+    // The page's clock held far below the times storage has seen.
+    await context.addInitScript(() => {
+        Date.now = () => 1_000_000
+    })
+    const a = await context.newPage()
+    await start(a)
+    await savedTo(a, 'coconut.nxsp')
+    await edit(a, 2)
+    await a.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    const chainId = (await chainOf(a)).chainId
+    await kill(a)
+
+    const b = await visitAgain(context)
+    await edit(b, 3)
+    await pressSave(b)
+    await expect.poll(async () => ((await projectOf(b, 'coconut.nxsp')).revision as Row).n).toBe(2)
+    const { sessions, entries } = await rows(b, ['sessions', 'entries'])
+    const own = sessions!.map((row) => row.value).filter((row) => row.chainId === chainId)
+    expect(own).toHaveLength(2)
+    expect(new Set(own.map((row) => row.startedAt)).size).toBe(2)
+    const ids = new Set(own.map((row) => row.id))
+    const stored = entries!.filter((row) => ids.has(row.value.sessionId))
+    const history = (await projectOf(b, 'coconut.nxsp')).history as Row
+    expect(history.entries).toBe(stored.length)
+})

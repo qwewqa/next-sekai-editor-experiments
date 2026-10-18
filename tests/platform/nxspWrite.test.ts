@@ -360,3 +360,87 @@ test('a pinned file that changes during or after the build is a conflict on the 
     await assert.rejects(after.result, { code: 'conflict' })
     assert.deepEqual(after.events, [])
 })
+
+test('two empty files are the same content, whatever their times (R9)', async () => {
+    assert.equal(
+        sameContent(await nxspDiskState(new Blob([]), 5), await nxspDiskState(new Blob([]), 99)),
+        true,
+    )
+    assert.equal(
+        sameContent(await nxspDiskState(new Blob([]), 5), await nxspDiskState(await built(), 5)),
+        false,
+    )
+})
+
+test('a write-back finds its target emptied, at the check or before close(): it writes, with no source (R9)', async () => {
+    for (const when of ['check', 'beforeClose'] as const) {
+        const events: string[] = []
+        const original = await built()
+        const handle = fileHandle(original, events)
+        const expected = await nxspDiskState(original, 1000)
+        // Emptied by another tab's save picker.
+        if (when === 'check') handle.set(new Blob([]))
+        let seen: PinnedSource[] | undefined
+        const result = await platform.saveFile({
+            kind: 'nxsp',
+            suggestedName: 'coconut.nxsp',
+            target: { kind: 'handle', handle },
+            expected,
+            overEmpty: true,
+            build: (sources) => {
+                seen = sources
+                if (when === 'beforeClose')
+                    queueMicrotask(() => {
+                        handle.set(new Blob([]))
+                    })
+                return sources[0] ? appendPlan(sources[0]) : built()
+            },
+        })
+        assert.equal(result.status, 'saved', when)
+        assert.equal(seen?.length, when === 'check' ? 0 : 1, when)
+        assert.deepEqual(events, ['write', 'close'], when)
+    }
+})
+
+test('a target found empty and filled before close() is never written over', async () => {
+    const events: string[] = []
+    const handle = fileHandle(new Blob([]), events)
+    const filled = await built()
+    const write = platform.saveFile({
+        kind: 'nxsp',
+        suggestedName: 'coconut.nxsp',
+        target: { kind: 'handle', handle },
+        expected: await nxspDiskState(await built(), 1000),
+        overEmpty: true,
+        build: async () => {
+            queueMicrotask(() => {
+                handle.set(filled)
+            })
+            return built()
+        },
+    })
+    await assert.rejects(write, { code: 'conflict' })
+    assert.deepEqual(events.at(-1), 'abort')
+})
+
+test('the mock writes over an emptied target the same way (R9)', async () => {
+    const mock = createMockPlatform()
+    const handle = mock.createHandle('coconut.nxsp')
+    mock.writeFile('coconut.nxsp', await built())
+    const target = { kind: 'handle', handle } as const
+    const expected = await mock.inspect(target, 'nxsp')
+    assert.ok(expected !== 'missing')
+    mock.writeFile('coconut.nxsp', new Blob([]))
+    const result = await mock.saveFile({
+        kind: 'nxsp',
+        suggestedName: 'coconut.nxsp',
+        target,
+        expected,
+        overEmpty: true,
+        build: (sources) => {
+            assert.equal(sources.length, 0)
+            return built()
+        },
+    })
+    assert.equal(result.status, 'saved')
+})

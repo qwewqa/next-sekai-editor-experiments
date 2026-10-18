@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readReplaceDecision } from '../../../src/local/save/predicate'
+import { readReplaceDecision, readSaveNeeds } from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { Fixture, heldRows, inspectNxsp, save, sourceOf } from './fixture'
 
@@ -72,4 +72,15 @@ test('storage short: the file is read first and appended to; declined, the line 
     const declined = await save(fixture, { kind: 'copy' }, { disk: diskOf, binds: false })
     assert.ok(!('refused' in declined.built))
     assert.equal(declined.built.someStepsNotKept, true)
+})
+
+test('whether to read the file first is known from storage alone: rows it lacks, or head media', async () => {
+    const { fixture } = await chainWithFile()
+    const missing = 'ff'.repeat(16)
+    const full = await readSaveNeeds(fixture.store, fixture.chainId, [missing])
+    assert.equal(full.carries, true)
+    // Media the media store doesn't hold is lacking: the file may hold it.
+    assert.deepEqual(full.lacking, [missing])
+    assert.ok(await fixture.thin(0, 2))
+    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
 })
