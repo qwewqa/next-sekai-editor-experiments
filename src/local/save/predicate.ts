@@ -87,8 +87,8 @@ export const baseFacts = (cut: ChainCut): Facts => {
 }
 
 /**
- * Whether the chain's next write that isn't an append would carry its base (the carry test over
- * the stored rows; a build that then finds damage in storage may still not carry).
+ * Whether the chain's next write that isn't an append would carry its base: the build's carry test
+ * (D25) over the stored rows. A build that then finds damage in storage may still not carry.
  */
 export const wouldCarry = (cut: ChainCut) => {
     const entry = cut.chain.file?.entry

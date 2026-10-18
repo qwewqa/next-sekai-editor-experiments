@@ -22,12 +22,20 @@ import { assertAppend, plannedParts, plannedProject, sourceParts } from './asser
 import {
     isWhole,
     loadBodies,
+    takeWhole,
     type Bodies,
     type PendingRecords,
     type SaveStore,
     type SourceKeys,
 } from './bodies'
-import { CUT_STORES, readCut, type ChainCut, type EntryRow } from './cut'
+import {
+    CUT_STORES,
+    readCut,
+    type ChainCut,
+    type ChainRecord,
+    type EntryRow,
+    type StoredBinding,
+} from './cut'
 import { markDamaged } from './mark'
 import { planMediaItem, type HeldMedia, type MediaKind } from './media'
 import {
@@ -69,7 +77,10 @@ export type SaveTarget =
     | { kind: 'copy' }
     | { kind: 'new'; docId: string; sessionId?: string }
 
-/** An entry this tab hasn't flushed yet, after the stored ones of the saved session. */
+/**
+ * An entry this tab hasn't flushed yet, after the stored ones of the saved session. Rows at or
+ * below the session's last stored `seq` are already stored, and are taken from storage only.
+ */
 export type PendingRow = {
     seq: number
     time: number
@@ -80,6 +91,9 @@ export type PendingRow = {
     noteCount: number
     dirty: boolean
     stack?: { keep: number; push: { snapshot: string; label: string }[]; index: number }
+    /** A `save` entry's revision and device. */
+    revisionId?: string
+    device?: { id: string; label: string }
 }
 
 /** This tab's unflushed part of the saved session: its rows, its live stack and their records. */
@@ -88,6 +102,23 @@ export type PendingInput = {
     /** The live undo stack, absolute numbers in the session's numbering. */
     stack?: { base: number; slots: { snapshot: string; label: string }[]; index: number }
     records: PendingRecords
+    /** The saved session's `startedAt`, for when storage holds no row of it. */
+    startedAt?: number
+}
+
+/** A chain entry by its key. */
+export type RowKey = { sessionId: string; seq: number }
+
+/**
+ * The tab's binding while storage is paused or full (§1.3.2: it lives in memory until storing
+ * resumes): used in place of the stored chain's identity and binding.
+ */
+export type IdentityInput = {
+    docId: string
+    revision?: { id: string; n: number; ancestors: string[] }
+    file?: Pick<StoredBinding, 'entry' | 'completeFrom' | 'disk'>
+    /** Rows earlier writes marked `kept: false` whose marks aren't stored yet. */
+    marks?: RowKey[]
 }
 
 /** The head's level data and header, from the page's live state (else decoded from storage). */
@@ -115,6 +146,8 @@ export type SaveOptions = {
     /** The saved session: the chain's head unless given (Save to File… gives its own). */
     sessionId?: string
     pending?: PendingInput
+    /** The binding in memory, while storage is paused or full. */
+    identity?: IdentityInput
     head?: HeadInput
     /** Media this tab holds that storage may not (the head's BGM, cover and preview). */
     media?: HeldMedia[]
@@ -153,6 +186,11 @@ export type SaveIdentity = {
     completeFrom?: string
     /** The cut's counts; the caller adds the `save` entry's `sessionId`, `seq` and `startedAt`. */
     entry?: { count: number; notKept: number }
+    /**
+     * Every row written `kept: false` by a mark (this build's and `options.identity`'s): committed
+     * with the binding, in its transaction, so a binding is never stored without them (D25).
+     */
+    marks: RowKey[]
 }
 
 export type SavePlan = {
@@ -165,6 +203,8 @@ export type SavePlan = {
     someStepsNotKept: boolean
     /** Media written as metadata only (the "without its …" lines), in BGM, cover, preview order. */
     without: MediaKind[]
+    /** Those of `without` this tab holds but that pass the 1 GB media cap: no "which is not loaded". */
+    tooLarge: MediaKind[]
     identity: SaveIdentity
     /** The `save` entry the file ends with. */
     saveEntry: EntryForm
@@ -248,11 +288,6 @@ const rowSnapshots = (entry: { snapshot: Uint8Array; stack?: EntryRow['stack'] }
     ...(entry.stack?.push.map((slot) => toHex(slot.snapshot)) ?? []),
 ]
 
-const pendingSnapshots = (row: PendingRow) => [
-    row.snapshot,
-    ...(row.stack?.push.map((slot) => slot.snapshot) ?? []),
-]
-
 /** The keys an append source's parts hold. */
 const keysOf = (source: PinnedSource): SourceKeys => {
     const keys: SourceKeys = { roots: new Set(), nodes: new Set(), chunks: new Set() }
@@ -279,6 +314,72 @@ const withShift = (stack: EntryForm['stack'], offset: number): EntryForm['stack'
         ? { keep: Math.max(0, stack.keep - offset), push: stack.push, index: stack.index - offset }
         : stack
 
+const keyOf = (row: RowKey) => `${row.sessionId}:${row.seq}`
+
+/** The chain as this write sees it: its stored identity and binding, or the tab's in memory. */
+const chainOf = (stored: ChainRecord, identity: IdentityInput | undefined): ChainRecord => {
+    if (!identity) return stored
+    const { revision: _revision, file: _file, ...rest } = stored
+    return {
+        ...rest,
+        docId: identity.docId,
+        ...(identity.revision ? { revision: identity.revision } : {}),
+        ...(identity.file ? { file: { ...identity.file } } : {}),
+    }
+}
+
+/**
+ * The chain's rows with this tab's unflushed ones of the saved session after its stored ones:
+ * only rows above the session's last stored `seq`, so no row is taken twice.
+ */
+const withPending = (
+    cut: ChainCut,
+    rows: readonly ChainRow[],
+    sessionId: string | undefined,
+    pending: PendingInput | undefined,
+    identity: IdentityInput | undefined,
+): ChainRow[] => {
+    if (!pending?.entries.length || sessionId === undefined) return [...rows]
+    const stored = cut.entries.get(sessionId) ?? []
+    const last = stored.reduce((max, entry) => Math.max(max, entry.seq), -Infinity)
+    const entry = identity?.file?.entry
+    const startedAt =
+        cut.sessions.find((session) => session.id === sessionId)?.startedAt ??
+        pending.startedAt ??
+        (entry?.sessionId === sessionId ? entry.startedAt : Number.MAX_SAFE_INTEGER)
+    const added: ChainRow[] = pending.entries
+        .filter((row) => row.seq > last)
+        .map((row) => ({
+            startedAt,
+            entry: {
+                sessionId,
+                seq: row.seq,
+                time: row.time,
+                kind: row.kind,
+                label: row.label,
+                snapshot: fromHex16(row.snapshot),
+                noteCount: row.noteCount,
+                dirty: row.dirty,
+                kept: true,
+                ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
+                ...(row.device ? { device: row.device } : {}),
+                ...(row.stack
+                    ? {
+                          stack: {
+                              keep: row.stack.keep,
+                              push: row.stack.push.map(slotOf),
+                              index: row.stack.index,
+                          },
+                      }
+                    : {}),
+            },
+        }))
+    let at = rows.length
+    while (at > 0 && rows[at - 1]?.entry.sessionId !== sessionId) at--
+    if (!at) at = rows.length
+    return [...rows.slice(0, at), ...added, ...rows.slice(at)]
+}
+
 /**
  * Plans a `.nxsp` write of a chain (§1.6.11.6). `sources` are the pinned sources' metadata
  * (`inspectNxsp`); only `append` reads them, besides the media rule's copies. Damage in storage is
@@ -296,17 +397,23 @@ export const planSave = async (
     // The consistent cut: one read-only transaction.
     const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId, savedSession))
     if (!cut) return refuse('noChain')
-    const { chain } = cut
+    const chain = chainOf(cut.chain, options.identity)
+    const pending = options.pending
     let rows: ChainRow[]
     try {
         checkReadable(cut)
-        rows = chainRows(cut, target.kind === 'new' ? target.sessionId : undefined)
+        rows = withPending(
+            cut,
+            chainRows(cut, target.kind === 'new' ? target.sessionId : undefined),
+            cut.sessionId,
+            pending,
+            options.identity,
+        )
     } catch (error) {
         if (error instanceof ModelError) return refuse(error.reason)
         throw error
     }
     if (cut.sessions.some((session) => session.importPending)) return refuse('importing')
-    const pending = options.pending
 
     // The append source: the chain's own file at the base (its revision id and `<cd>`).
     let source: PinnedSource | undefined
@@ -325,11 +432,19 @@ export const planSave = async (
         )
             return refuse('notAtBase')
     }
-    const appending = target.kind === 'append' && options.history
+    // A write-back's history follows its file, so no option strips it (explicit options apply
+    // to new files only).
+    const history = source ? !!source.manifest : options.history
+    if (source && history !== options.history)
+        console.error('A write-back’s history option differs from its file’s; the file’s is kept', {
+            chainId,
+            history,
+        })
+    const appending = !!source && history
     const cutEntry = chain.file?.entry
     let sourceKeys: SourceKeys | undefined
     if (appending && source) {
-        if (!source.manifest || !cutEntry) return refuse('notAtBase')
+        if (!cutEntry) return refuse('notAtBase')
         try {
             sourceKeys = keysOf(source)
         } catch {
@@ -345,20 +460,32 @@ export const planSave = async (
     if (!headSlot) return refuse('unreadableHead')
     const head = toHex(headSlot.snapshot)
 
+    // Rows flagged before this build: stored `kept: false`, or marked by an earlier write whose
+    // binding is still in memory.
+    const priorMarks = new Set((options.identity?.marks ?? []).map(keyOf))
+    const flaggedBefore = (entry: EntryRow) => !entry.kept || priorMarks.has(keyOf(entry))
+
     // Bodies: every root the rows, their pushes, the stack and the head need, verified.
     const wanted = new Set<string>([head, ...stack.slots.map((slot) => toHex(slot.snapshot))])
-    if (options.history) {
+    if (history)
         for (const { entry } of own)
-            if (entry.kept) for (const hex of rowSnapshots(entry)) wanted.add(hex)
-        for (const row of pending?.entries ?? [])
-            for (const hex of pendingSnapshots(row)) wanted.add(hex)
+            if (!flaggedBefore(entry)) for (const hex of rowSnapshots(entry)) wanted.add(hex)
+    const loadFrom = {
+        ...(pending ? { pending: pending.records } : {}),
+        ...(sourceKeys ? { source: sourceKeys } : {}),
     }
     let bodies: Bodies
     try {
-        bodies = await loadBodies(store, wanted, {
-            ...(pending ? { pending: pending.records } : {}),
-            ...(sourceKeys ? { source: sourceKeys } : {}),
-        })
+        bodies = await loadBodies(store, wanted, loadFrom)
+        // Flagged rows' states too, when storage still holds them whole (H-2); a miss is no damage.
+        const flaggedStates = new Set<string>()
+        if (history)
+            for (const { entry } of own)
+                if (flaggedBefore(entry))
+                    for (const hex of rowSnapshots(entry))
+                        if (!bodies.complete.has(hex)) flaggedStates.add(hex)
+        if (flaggedStates.size)
+            takeWhole(bodies, await loadBodies(store, flaggedStates, loadFrom), flaggedStates)
     } catch (error) {
         if (error instanceof ModelError) return refuse(error.reason)
         throw error
@@ -377,19 +504,20 @@ export const planSave = async (
         }
     } else if (!isWhole(bodies, head)) return refuse('unreadableHead')
 
-    // Damage in storage: stored rows whose state isn't whole become `kept: false`, marked
-    // before the plan is final (§1.6.11.6).
+    // Damage in storage: rows whose state isn't whole become `kept: false`, marked before the
+    // plan is final (§1.6.11.6).
     const needsMark = (entry: EntryRow) =>
-        options.history &&
-        entry.kept &&
+        history &&
+        !flaggedBefore(entry) &&
         rowSnapshots(entry).some((hex) => !bodies.complete.has(hex))
     const markRows = own.filter(({ entry }) => needsMark(entry)).map(({ entry }) => entry)
-    const markedKeys = new Set(markRows.map((entry) => `${entry.sessionId}:${entry.seq}`))
-    const isMarked = (entry: EntryRow) => markedKeys.has(`${entry.sessionId}:${entry.seq}`)
+    const markedKeys = new Set(markRows.map(keyOf))
+    const flagged = (entry: EntryRow) => flaggedBefore(entry) || markedKeys.has(keyOf(entry))
 
     // The media rule.
     const media: BuildInput['media'] = {}
     const without: MediaKind[] = []
+    const tooLarge: MediaKind[] = []
     const damagedMedia: string[] = []
     const items: [MediaKind, MediaRef | undefined][] = [
         ['bgm', options.bgm ? headInput.bgm : undefined],
@@ -398,14 +526,14 @@ export const planSave = async (
     ]
     for (const [kind, ref] of items) {
         if (!ref) continue
+        const held = options.media?.find((each) => each.hash === ref.hash)
         const item = await planMediaItem(store, kind, ref, {
-            ...(options.media?.find((held) => held.hash === ref.hash)
-                ? { held: options.media.find((held) => held.hash === ref.hash) }
-                : {}),
+            ...(held ? { held } : {}),
             ...(source ? { source } : {}),
         })
         media[kind] = item.input satisfies MediaInput
         if (item.without) without.push(kind)
+        if (item.tooLarge) tooLarge.push(kind)
         if (item.damaged) damagedMedia.push(ref.hash)
     }
 
@@ -413,16 +541,22 @@ export const planSave = async (
     let markStored = true
     if (markRows.length || damaged.length)
         markStored = await markDamaged(store, chainId, markRows, damaged)
+    const marks = new Map<string, RowKey>()
+    for (const { sessionId, seq } of [...(options.identity?.marks ?? []), ...markRows])
+        marks.set(keyOf({ sessionId, seq }), { sessionId, seq })
 
-    // `completeFrom`, the carry test and the line (§1.6.11.6).
+    // `completeFrom`, the carry test (D25) and the line (§1.6.11.6).
     const baseHadHistory = !!(chain.revision && cutEntry)
-    const notKept = (row: ChainRow) => !row.entry.kept || isMarked(row.entry)
-    const carried = !appending && !!chain.revision && !!cutEntry && carries(rows, cutEntry, notKept)
+    const carried =
+        !appending &&
+        !!chain.revision &&
+        !!cutEntry &&
+        carries(rows, cutEntry, (row) => flagged(row.entry))
     let completeFrom: string | undefined
     if (appending && source) completeFrom = placedCompleteFrom(sourceRevision(source))
     else if (carried && target.kind !== 'new' && chain.revision)
         completeFrom = chain.file?.completeFrom ?? chain.revision.id
-    const someStepsNotKept = options.history && !appending && baseHadHistory && !carried
+    const someStepsNotKept = history && !appending && baseHadHistory && !carried
 
     // The revision.
     const revisionId = options.context.newId()
@@ -444,8 +578,8 @@ export const planSave = async (
         device: options.context.device,
     }
 
-    let history: HistoryInput | undefined
-    if (options.history) {
+    let historyInput: HistoryInput | undefined
+    if (history) {
         const entries: EntryForm[] = []
         for (const { entry } of own)
             entries.push({
@@ -455,7 +589,7 @@ export const planSave = async (
                 snapshot: toHex(entry.snapshot),
                 noteCount: entry.noteCount,
                 ...(entry.dirty ? { dirty: true as const } : {}),
-                ...(!entry.kept || isMarked(entry) ? { kept: false as const } : {}),
+                ...(flagged(entry) ? { kept: false as const } : {}),
                 ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
                 ...(entry.device ? { device: entry.device } : {}),
                 ...(entry.stack
@@ -471,19 +605,6 @@ export const planSave = async (
                       }
                     : {}),
                 ...(entry.x ? { x: entry.x } : {}),
-            })
-        for (const row of pending?.entries ?? [])
-            entries.push({
-                kind: row.kind as EntryForm['kind'],
-                time: row.time,
-                label: row.label,
-                snapshot: row.snapshot,
-                noteCount: row.noteCount,
-                ...(row.dirty ? { dirty: true as const } : {}),
-                ...(pendingSnapshots(row).some((hex) => !bodies.complete.has(hex))
-                    ? { kept: false as const }
-                    : {}),
-                ...(row.stack ? { stack: row.stack } : {}),
             })
         entries.push(saveEntry)
 
@@ -511,25 +632,39 @@ export const planSave = async (
             for (const part of sourceParts(source)) part.entries.forEach(toReplay)
         entries.forEach(toReplay)
         const offset = renumbering(replayed, cutSlots.index)
-        let base = cutSlots.base - offset
-        let slots = cutSlots.slots
-        if (base < 0) {
-            slots = slots.slice(-base)
-            base = 0
+        let undoStack: WriteStack
+        if (offset === undefined) {
+            // Replay can't follow the chronology (a session removed from its middle): the stack
+            // is cut to its head, so no slot claims a number replay doesn't give.
+            console.warn('A Save could not replay its chronology; its undo stack is the head only', {
+                chainId,
+            })
+            undoStack = { base: 0, slots: [headSlot], index: 0 }
+        } else {
+            let base = cutSlots.base - offset
+            let slots = cutSlots.slots
+            if (base < 0) {
+                slots = slots.slice(-base)
+                base = 0
+            }
+            if (offset)
+                for (const form of entries) if (form.stack) form.stack = withShift(form.stack, offset)
+            undoStack = { base, slots, index: cutSlots.index - offset }
         }
-        if (offset)
-            for (const form of entries) if (form.stack) form.stack = withShift(form.stack, offset)
 
-        history = {
+        historyInput = {
             ...(appending && source ? { append: source.token } : {}),
             entries,
             roots: bodies.roots,
             nodes: bodies.nodes,
             chunks: bodies.chunks,
             undoStack: {
-                base,
-                slots: slots.map((slot) => ({ snapshot: toHex(slot.snapshot), label: slot.label })),
-                index: cutSlots.index - offset,
+                base: undoStack.base,
+                slots: undoStack.slots.map((slot) => ({
+                    snapshot: toHex(slot.snapshot),
+                    label: slot.label,
+                })),
+                index: undoStack.index,
             },
         }
     }
@@ -572,14 +707,14 @@ export const planSave = async (
         headBgm: headInput.bgm?.hash ?? null,
         media,
         ...(chain.extra ? { extra: chain.extra } : {}),
-        ...(history ? { history } : {}),
+        ...(historyInput ? { history: historyInput } : {}),
     }
 
     let plan: WritePlan
     let project: Record<string, unknown>
     let storageChunks: PlannedChunk[]
     try {
-        const result = planNxsp(input, sources)
+        const result = planNxsp(input, source ? [source] : [])
         plan = hooks.plan ? hooks.plan(result.plan) : result.plan
         project = result.project
         storageChunks = result.storageChunks
@@ -592,9 +727,9 @@ export const planSave = async (
         throw error
     }
 
-    // The binding's counts: the file's rows, and those whose state it doesn't hold.
+    // The binding's counts: the file's rows, and those whose root it lacks.
     let entry: SaveIdentity['entry']
-    if (history) {
+    if (historyInput) {
         const parts = plannedParts(plan, appending ? source : undefined)
         const roots = new Set(parts.flatMap((part) => Object.keys(part.roots)))
         let count = 0
@@ -619,11 +754,13 @@ export const planSave = async (
         storageChunks,
         someStepsNotKept,
         without,
+        tooLarge,
         identity: {
             docId,
             revision: { id: revisionId, n, ancestors },
             ...(writtenFrom === undefined ? {} : { completeFrom: writtenFrom }),
             ...(entry ? { entry } : {}),
+            marks: [...marks.values()],
         },
         saveEntry,
         damaged,
