@@ -22,7 +22,7 @@ export const chipText = (kind: ChipKind, short = false) => {
         case 'notConfirmed':
             return short ? state.short.notConfirmed : state.notConfirmed
         case 'notStored':
-            return ''
+            return short ? state.short.notStored : state.notStored
     }
 }
 
@@ -45,7 +45,7 @@ export const chipSentence = (kind: ChipKind) => {
                 file?.at === undefined ? '' : formatWhen(file.at),
             )
         case 'notStored':
-            return ''
+            return i18n.value.notSaving.bar
     }
 }
 
@@ -55,9 +55,16 @@ const lines = (first: string, rest: readonly ChipKind[]) =>
 /** Opens the dialog of the state in the chip slot. */
 export const openChipDialog = async () => {
     const shown = chip.value
-    const file = boundFile.value
-    if (!shown || !file) return
+    if (!shown) return
     const { kind, rest } = shown
+    // Step 8's dialog (§1.6.7), which lists the others by `chip.value.rest`; a session needs no
+    // bound file for it.
+    if (kind === 'notStored') {
+        fileActions.openNotStored?.()
+        return
+    }
+    const file = boundFile.value
+    if (!file) return
     switch (kind) {
         case 'notConfirmed': {
             const choice = await showChoice<'confirm' | 'again'>({

@@ -2042,10 +2042,12 @@
       "fileMissing": "Yok",
       "changedOnDisk": "Değişti",
       "newerOnDisk": "Daha yeni",
-      "notConfirmed": "Onaylanmadı"
+      "notConfirmed": "Onaylanmadı",
+      "notStored": "Saklanmıyor"
     },
     "changedOnDiskName": "\"{0}\": burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
-    "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var."
+    "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var.",
+    "notStored": "Saklanmıyor"
   },
   "confirm": {
     "title": "İndirme Onaylanmadı",
@@ -2053,5 +2055,8 @@
     "haveFile": "Dosya Bende",
     "downloadAgain": "Tekrar İndir",
     "announce": "{0} Daha sonra onaylamak için durum çubuğundaki {1} düğmesini kullanın."
+  },
+  "notSaving": {
+    "bar": "Değişiklikler bu tarayıcıda saklanmıyor."
   }
 }

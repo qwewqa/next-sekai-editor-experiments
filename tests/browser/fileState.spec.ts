@@ -273,6 +273,62 @@ test.describe('the chip', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
     })
 
+    for (const [name, platform] of [
+        ['macOS Safari', { os: 'macos', engine: 'webkit', fileSystemAccess: false }],
+        ['Firefox', { os: 'linux', engine: 'firefox', fileSystemAccess: false }],
+        ['Chromium on Android', { os: 'android', engine: 'chromium', fileSystemAccess: false }],
+    ] as const)
+        test(`${name}: the first download is unconfirmed until one is confirmed in this browser`, async ({
+            page,
+            context,
+        }) => {
+            await seed(context, platform)
+            await visit(page)
+            await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
+            await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
+            expect(await prompts(page)).toBe(true)
+            await chip(page).click()
+            await afterGuard(page)
+            await page
+                .getByRole('dialog', { name: 'Download Not Confirmed' })
+                .getByRole('button', { name: 'I Have the File' })
+                .click()
+            await expect(chip(page)).toBeHidden()
+            await bindFile(page, { name: 'melt.nxsp', event: 'downloaded' })
+            await expect(chip(page)).toBeHidden()
+            await edit(page, 990)
+            await undo(page)
+            expect(await prompts(page)).toBe(false)
+        })
+
+    test('Not stored comes first, and the others are lines for its dialog', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
+        await finding(page, 'changed')
+        await expect(chipShown(page)).toHaveText('Changed on disk')
+        await page.evaluate(async () => {
+            const { raised } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            raised.notStored.value = true
+        })
+        await expect(chipShown(page)).toHaveText('Not stored')
+        await expect(chip(page)).toHaveAccessibleName(
+            'Changes are not being stored in this browser.',
+        )
+        // The label takes the warning colour too.
+        await expect(button(page)).toHaveClass(/text-amber-300/)
+        const rest = await page.evaluate(async () => {
+            const { chip } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            return chip.value?.rest
+        })
+        expect(rest).toEqual(['changedOnDisk'])
+    })
+
     test('an edit moves a download from the chip to "changed since download"', async ({
         page,
         context,

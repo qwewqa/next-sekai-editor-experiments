@@ -2042,10 +2042,12 @@
       "fileMissing": "なし",
       "changedOnDisk": "変更",
       "newerOnDisk": "新しい",
-      "notConfirmed": "未確認"
+      "notConfirmed": "未確認",
+      "notStored": "未保管"
     },
     "changedOnDiskName": "「{0}」: ここで開いた後または保存した後にディスク上で変更されました。",
-    "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。"
+    "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。",
+    "notStored": "未保管"
   },
   "confirm": {
     "title": "ダウンロード未確認",
@@ -2053,5 +2055,8 @@
     "haveFile": "ファイルを確認した",
     "downloadAgain": "もう一度ダウンロード",
     "announce": "{0} あとで確認するには、ステータスバーの{1}を使ってください。"
+  },
+  "notSaving": {
+    "bar": "変更はこのブラウザーに保管されていません。"
   }
 }

@@ -2042,10 +2042,12 @@
       "fileMissing": "丢失",
       "changedOnDisk": "已更改",
       "newerOnDisk": "较新",
-      "notConfirmed": "未确认"
+      "notConfirmed": "未确认",
+      "notStored": "未存储"
     },
     "changedOnDiskName": "“{0}”：自在此处打开或保存后，磁盘上的文件已更改。",
-    "newerOnDiskName": "“{0}”：磁盘上有更新版本。"
+    "newerOnDiskName": "“{0}”：磁盘上有更新版本。",
+    "notStored": "未存储"
   },
   "confirm": {
     "title": "下载未确认",
@@ -2053,5 +2055,8 @@
     "haveFile": "我已有该文件",
     "downloadAgain": "再次下载",
     "announce": "{0} 以后确认时，请使用状态栏中的“{1}”。"
+  },
+  "notSaving": {
+    "bar": "更改未存储在此浏览器中。"
   }
 }
