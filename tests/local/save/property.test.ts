@@ -36,7 +36,8 @@ import {
 //   own root): never a repeated line after nothing was lost;
 // - the undo stack is replay's.
 // Every file passes `tools/nxsp_check.py` at the end of each run. `npm test` runs a few; set
-// NSE_SAVE_RUNS=<n> for more, and NSE_SAVE_SEED=<s> (with NSE_SAVE_PATH=<p>) to replay one.
+// NSE_SAVE_RUNS=<n> for more; NSE_SAVE_SEED, NSE_SAVE_PATH and NSE_SAVE_REPLAY (the commands'
+// replayPath) replay a failure fast-check reports.
 
 type Row = { key: string; kept: boolean; snapshot: string }
 
@@ -407,6 +408,7 @@ const op: fc.Arbitrary<Op> = fc.oneof(
 const runs = Number(process.env.NSE_SAVE_RUNS ?? 3)
 const seed = process.env.NSE_SAVE_SEED
 const path = process.env.NSE_SAVE_PATH
+const replayPath = process.env.NSE_SAVE_REPLAY
 
 test('random edits and Saves never lose a version, over-claim or repeat the line', async () => {
     await fc.assert(
@@ -415,7 +417,7 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
             fc.commands([op.map((each) => new Command(each))], {
                 maxCommands: 40,
                 size: 'max',
-                ...(path ? { replayPath: path } : {}),
+                ...(replayPath ? { replayPath } : {}),
             }),
             async (start, commands) => {
                 const fixture = await Fixture.create()
@@ -427,7 +429,7 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
             },
         ),
         {
-            numRuns: seed ? 1 : runs,
+            numRuns: runs,
             ...(seed ? { seed: Number(seed) } : {}),
             ...(path ? { path } : {}),
         },
