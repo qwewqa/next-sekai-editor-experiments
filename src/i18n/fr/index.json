@@ -838,7 +838,7 @@
         "measure": "Mesure",
         "both": "Les deux"
       },
-      "dimUnchangedObjects": "Estomper les objets inchangés"
+      "dimUnchangedObjects": "Afficher les modifications par défaut"
     },
     "keyboardShortcuts": {
       "title": "Raccourcis clavier"
@@ -1253,7 +1253,8 @@
     "checking": "Vérification des étapes plus anciennes…",
     "notChecked": "{0} étape n’a pas pu être vérifiée|{0} étapes n’ont pas pu être vérifiées",
     "announceViewingChange": "Affichage de {0}, {1}",
-    "openedFile": "{0} ouvert"
+    "openedFile": "{0} ouvert",
+    "viewChart": "Voir la partition"
   },
   "modals": {
     "close": "Fermer",
@@ -1861,7 +1862,9 @@
     "changesBelow": "Modifications en bas : {0}",
     "changesAboveAny": "Modifications en haut",
     "changesBelowAny": "Modifications en bas",
-    "savesCurrent": "Sauvegarde la version actuelle."
+    "savesCurrent": "Sauvegarde la version actuelle.",
+    "showEdits": "Afficher les modifications",
+    "changeOptions": "Options des modifications"
   },
   "save": {
     "fileName": "Nom du fichier",
@@ -2065,5 +2068,39 @@
   },
   "notSaving": {
     "bar": "Les modifications ne sont pas stockées dans ce navigateur."
+  },
+  "historyChanges": {
+    "title": "Modifications des propriétés",
+    "view": "Voir les modifications des propriétés",
+    "before": "Avant",
+    "after": "Après",
+    "notSet": "Non défini",
+    "empty": "Vide",
+    "notPresent": "Absent",
+    "added": "Ajouté",
+    "removed": "Supprimé",
+    "order": "Ordre",
+    "folder": "Dossier",
+    "groupFolders": "Dossiers de groupes",
+    "stageFolders": "Dossiers de scènes",
+    "levelInfo": "Informations du niveau",
+    "fields": {
+      "title": "Titre",
+      "artists": "Artistes",
+      "author": "Auteur",
+      "description": "Description",
+      "tags": "Tags",
+      "rating": "Difficulté",
+      "cover": "Jaquette",
+      "previewAudio": "Extrait audio",
+      "duration": "Durée",
+      "size": "Taille",
+      "type": "Type",
+      "icon": "Icône"
+    },
+    "contentsChanged": "Contenu modifié",
+    "showMore": "Afficher plus",
+    "shown": "Propriétés : {0}/{1}",
+    "itemsShown": "Éléments : {0}/{1}"
   }
 }

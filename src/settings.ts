@@ -282,7 +282,7 @@ const settingsProperties = {
 
     showOtherObjects: Type.Boolean({ default: true }),
 
-    // While peeking, what an entry didn't change dims (Part 1 §1.4.11).
+    // Legacy key: the next peek's Show Edits default; bar choices remain local to that peek.
     dimUnchangedObjects: Type.Boolean({ default: true }),
 
     deselectSwitchesToSelect: Type.Boolean({ default: true }),
