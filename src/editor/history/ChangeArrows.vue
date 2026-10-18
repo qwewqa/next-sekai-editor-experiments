@@ -47,8 +47,15 @@ onBeforeUnmount(() => {
 const line = computed(
     () => changeLine.value ?? (delayed.value ? i18n.value.peek.loadingChanges : ''),
 )
+const visibleLine = computed(() => {
+    if (view.w >= 480) return line.value
+    if (comparisonStatus.value === 'loading')
+        return delayed.value ? i18n.value.peek.loadingShort : ''
+    if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailableShort
+    return line.value
+})
 const compact = computed(() => view.w < 320)
-const narrowArrows = computed(() => view.w < 168)
+const narrowArrows = computed(() => view.w < 180)
 const options = useTemplateRef<HTMLButtonElement>('options')
 const summary = useTemplateRef<HTMLButtonElement>('summary')
 const eye = useTemplateRef<HTMLButtonElement>('eye')
@@ -143,16 +150,21 @@ const labelOf = (direction: 'up' | 'down') => {
 <template>
     <div
         v-if="isPeeking"
-        class="pointer-events-none flex h-8 w-full max-w-96 items-center justify-center gap-1 text-sm text-fg"
+        class="pointer-events-auto flex h-8 w-full max-w-96 items-center gap-2 rounded-lg bg-modal px-1 text-xs text-fg shadow-sm"
         data-peek-navigation
         :data-change-options-mode="compact || undefined"
+        @pointerdown.stop
+        @mousedown.stop
+        @touchstart.stop
+        @wheel.stop
+        @contextmenu.prevent.stop
     >
         <template v-if="!compact">
             <button
                 ref="eye"
                 type="button"
-                class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full shadow-md"
-                :class="showEdits ? 'bg-accent text-on-accent' : 'bg-button'"
+                class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md transition-colors active:bg-accent active:text-on-accent"
+                :class="showEdits ? 'bg-accent text-on-accent hover:bg-accent/80' : 'hover:bg-header-hover'"
                 :aria-label="i18n.peek.showEdits"
                 :title="i18n.peek.showEdits"
                 :aria-pressed="showEdits"
@@ -168,7 +180,7 @@ const labelOf = (direction: 'up' | 'down') => {
                 v-if="canInspectProperties"
                 ref="summary"
                 type="button"
-                class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-full bg-button px-3 shadow-md"
+                class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-md px-2 transition-colors hover:bg-header-hover active:bg-accent active:text-on-accent"
                 :title="line"
                 :aria-label="i18n.historyChanges.view"
                 :aria-describedby="summaryId"
@@ -176,23 +188,23 @@ const labelOf = (direction: 'up' | 'down') => {
                 @click="inspect(summary)"
             >
                 <span :id="summaryId" class="min-w-0 flex-1 truncate" data-peek-change>{{
-                    line
+                    visibleLine
                 }}</span
                 ><ChevronIcon class="size-4 shrink-0" direction="right" />
             </button>
             <span
                 v-else
-                class="pointer-events-auto flex h-8 min-w-0 flex-1 items-center rounded-full bg-modal px-3 shadow-md"
+                class="pointer-events-auto flex h-8 min-w-0 flex-1 items-center px-1"
                 :title="line"
                 :aria-label="line"
-                ><span class="min-w-0 truncate" data-peek-change>{{ line }}</span></span
+                ><span class="min-w-0 truncate" data-peek-change>{{ visibleLine }}</span></span
             >
         </template>
         <button
             v-else
             ref="options"
             type="button"
-            class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full bg-button shadow-md"
+            class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-header-hover active:bg-accent active:text-on-accent"
             :aria-label="i18n.peek.changeOptions"
             :title="i18n.peek.changeOptions"
             aria-haspopup="menu"
@@ -203,13 +215,13 @@ const labelOf = (direction: 'up' | 'down') => {
         >
             <MoreIcon class="size-4 fill-current" />
         </button>
-        <div class="flex shrink-0 gap-1" :class="compact ? '' : 'ml-1'">
+        <div class="flex shrink-0 gap-1" :class="{ 'ml-auto': compact }">
             <button
                 v-for="direction in directions"
                 :key="direction"
                 type="button"
-                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center gap-1 rounded-full bg-button text-xs tabular-nums shadow-md"
-                :class="narrowArrows ? 'w-11' : 'w-14'"
+                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center rounded-md tabular-nums transition-colors"
+                :class="[narrowArrows ? 'w-11 gap-0.5' : 'w-14 gap-1', { 'hover:bg-header-hover active:bg-accent active:text-on-accent': enabled(direction) }]"
                 :aria-disabled="!enabled(direction)"
                 :aria-label="labelOf(direction)"
                 :title="labelOf(direction)"
@@ -217,7 +229,7 @@ const labelOf = (direction: 'up' | 'down') => {
                 :data-count="countsShown ? countOf(direction) : undefined"
                 @click="enabled(direction) && showChangeToward(direction)"
             >
-                <ChevronIcon class="size-4" :direction="direction" /><span
+                <ChevronIcon :class="narrowArrows ? 'size-3' : 'size-4'" :direction="direction" /><span
                     class="w-6 text-center"
                     >{{ countsShown && countOf(direction) ? countOf(direction) : '' }}</span
                 >
@@ -243,7 +255,7 @@ const labelOf = (direction: 'up' | 'down') => {
 .change-control:focus-visible {
     outline: 2px solid currentColor;
 }
-.change-arrow[aria-disabled='true'] {
+.change-arrow[aria-disabled='true'] > * {
     opacity: 0.45;
 }
 @media (forced-colors: active) {
@@ -258,6 +270,8 @@ const labelOf = (direction: 'up' | 'down') => {
     .change-arrow[aria-disabled='true'] {
         color: GrayText;
         border-color: GrayText;
+    }
+    .change-arrow[aria-disabled='true'] > * {
         opacity: 1;
     }
 }

@@ -40,7 +40,7 @@ export const HISTORY_MIN_BODY = 116
 export const prospectivePeekClearance = (width: number, measured = 0, rem = 16) =>
     width < 300 && measured <= 0
         ? undefined
-        : Math.max(measured, (84 / 16 + (width < 640 ? 1.75 : 0.5)) * rem)
+        : Math.max(measured, (92 / 16 + (width < 640 ? 1.75 : 0.5)) * rem)
 
 export const historySheetFits = (input: SheetGeometryInput, chrome: number) =>
     getSheetGeometry(input).height - chrome >= HISTORY_MIN_BODY
