@@ -889,11 +889,14 @@ test('inactive History band waits for focus and resumes with current layout at N
             .toBeCloseTo(result.expected.top, 0)
         await page.evaluate(() => {
             const pane = document.querySelector('.chart-pane')!
-            pane.querySelector<HTMLElement>(':scope > [data-editor-toolbar] > div')!.style.height = ''
+            pane.querySelector<HTMLElement>(':scope > [data-editor-toolbar] > div')!.style.height =
+                ''
             const bar = pane.querySelector<HTMLElement>(':scope > [data-peek-bar]')
             if (bar) bar.style.height = ''
         })
-        await expect.poll(async () => (await changes(page)).band.bottom).toBeCloseTo(before.bottom, 0)
+        await expect
+            .poll(async () => (await changes(page)).band.bottom)
+            .toBeCloseTo(before.bottom, 0)
         await expect.poll(async () => (await changes(page)).band.top).toBeCloseTo(before.top, 0)
     }
 })
