@@ -135,15 +135,19 @@ const closeClass =
         <div
             ref="card"
             data-notice-card
-            class="notification-pill pointer-events-auto touch-none rounded-3xl py-1 pl-4 pr-1 text-sm text-fg outline outline-1 ring-1 ring-[--popup-ring]"
+            class="notification-pill pointer-events-auto rounded-3xl py-1 pl-4 pr-1 text-sm text-fg outline outline-1 ring-1 ring-[--popup-ring]"
             :class="[
                 over
                     ? 'bg-popup shadow-xl outline-[--popup-outline]'
                     : 'bg-modal shadow-md outline-transparent',
+                // The start-up card scrolls when its rows are taller than the room, with its × kept.
                 notice.lines
-                    ? 'flex w-[min(36rem,100%)] flex-col'
+                    ? [
+                          'flex w-[min(36rem,100%)] touch-pan-y flex-col overflow-y-auto overscroll-contain',
+                          over ? 'max-h-[calc(100dvh-2rem)]' : 'max-h-full',
+                      ]
                     : [
-                          'flex max-w-[min(36rem,100%)] items-center justify-end gap-x-2 gap-y-1',
+                          'flex max-w-[min(36rem,100%)] touch-none items-center justify-end gap-x-2 gap-y-1',
                           notice.action ? 'flex-wrap' : '',
                       ],
             ]"
@@ -158,7 +162,10 @@ const closeClass =
             @pointercancel="onCancel"
         >
             <template v-if="notice.lines">
-                <div class="flex items-center gap-2">
+                <div
+                    class="sticky top-0 z-10 flex shrink-0 items-center gap-2"
+                    :class="over ? 'bg-popup' : 'bg-modal'"
+                >
                     <p
                         :id="messageId"
                         class="min-w-0 flex-1 truncate py-1.5 text-xs font-bold text-fg/80"
@@ -180,7 +187,7 @@ const closeClass =
                 <div
                     v-for="(line, i) in rows"
                     :key="i"
-                    class="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 border-t border-fg/15 py-0.5"
+                    class="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 border-t border-fg/15 py-0.5"
                 >
                     <p
                         class="min-w-0 whitespace-break-spaces py-1.5 pr-3"

@@ -232,3 +232,32 @@ test('the Note tool names its moves and elevation changes as the chart does', as
     await settle(page)
     expect(await notice(page)).toBe('Changed elevation of 1 note')
 })
+
+test('a card in the full-screen Elevation Editor sits above its toolbar, and a tap keeps it', async ({
+    page,
+}) => {
+    await page.evaluate(async (path) => {
+        const { notify } = await window.editorTest.appImport<Notification>(path)
+        notify(() => 'Nothing to undo', {
+            action: { label: () => 'Open History', run: () => undefined },
+        })
+    }, notificationPath)
+    const card = page.locator('.elevation-editor [data-notice-card]')
+    await expect(card).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Close' })).toBeVisible()
+    const toolbar = (await page
+        .locator('.elevation-editor [data-editor-toolbar] > div')
+        .boundingBox())!
+    await expect
+        .poll(async () => {
+            const box = await card.boundingBox()
+            return box ? box.y + box.height : Infinity
+        })
+        .toBeLessThanOrEqual(toolbar.y)
+    // Selecting says it as quick feedback and leaves the card.
+    await click(page, -3, 1)
+    expect(await notice(page)).toBe('Selected 1 object')
+    await expect(card).toBeVisible()
+    await card.getByRole('button', { name: 'Close' }).click()
+    await expect(card).toHaveCount(0)
+})

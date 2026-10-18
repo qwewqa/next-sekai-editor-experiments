@@ -296,6 +296,30 @@ test.describe('load notices in the start-up pill', () => {
         await expect(page.locator('[data-notice-close]')).toHaveCount(0)
     })
 
+    test.describe('on a phone', () => {
+        test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+        test('a tall card keeps its × in the pane and above the toolbar', async ({ page }) => {
+            await visit(page)
+            for (const kind of [
+                'storageCleared',
+                'migrationFailed',
+                'journalLater',
+                'bgmNotLoaded',
+            ])
+                await addEvent(page, { kind })
+            await expect(pill(page)).toBeVisible()
+            const close = (await pill(page).getByRole('button', { name: 'Close' }).boundingBox())!
+            const pane = (await page.locator('.chart-pane').boundingBox())!
+            const toolbar = (await page.locator('[data-editor-toolbar] > div').boundingBox())!
+            expect(close.y).toBeGreaterThanOrEqual(pane.y)
+            expect(close.width).toBeGreaterThanOrEqual(44)
+            const card = (await pill(page).boundingBox())!
+            expect(card.y).toBeGreaterThanOrEqual(pane.y)
+            expect(card.y + card.height).toBeLessThanOrEqual(toolbar.y)
+        })
+    })
+
     test('every line is read by the one live region', async ({ page }) => {
         await visit(page)
         await addEvent(page, { kind: 'storageCleared' })
