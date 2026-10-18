@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { isPeeking } from '../../history'
 import { i18n } from '../../i18n'
 import type { SaveSizeEstimate } from '../../local/save/estimate'
 import type { MediaKind } from '../../local/save/media'
@@ -6,7 +7,9 @@ import { showModal } from '../../modals'
 import { showChoice, type Choice } from '../../modals/choice'
 import { PRODUCT_NAME } from '../../product'
 import { interpolate } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
+import { confirmFile, downloadNotConfirmed } from '../file'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
 import SaveDialog from './SaveDialog.vue'
@@ -168,7 +171,7 @@ const describe = (disk: DiskVersion) => {
     const { conflict } = i18n.value
     switch (disk.kind) {
         case 'saved': {
-            const notes = interpolate(() => i18n.value.peek.notes, String(disk.notes))()
+            const notes = interpolate(() => i18n.value.peek.notes, formatCount(disk.notes))()
             const when = formatTime(disk.savedAt)
             return disk.device.label.startsWith('Web')
                 ? interpolate(
@@ -204,6 +207,10 @@ const withoutKey = (feedback: SavedFeedback) => {
           ? save.savedWithoutCover
           : save.savedWithoutPreview
 }
+
+/** A Save with nothing to add to "Saved to {0}". */
+const simple = (feedback: SavedFeedback) =>
+    !feedback.someStepsNotKept && !feedback.tookOver && feedback.without.length === 0
 
 /** The feedback's text: the first line, then "Some earlier steps were not kept." where it applies. */
 export const savedText = (feedback: SavedFeedback) => {
@@ -265,24 +272,19 @@ export const defaultSaveUi: SaveUi = {
         showChoice<ConflictChoice>({
             title: interpolate(() => i18n.value.conflict.title, input.name),
             message: () =>
-                [
-                    interpolate(() => i18n.value.conflict.body, input.name)(),
-                    describe(input.disk),
-                    input.replaceDisabled?.() ?? '',
-                ]
+                [interpolate(() => i18n.value.conflict.body, input.name)(), describe(input.disk)]
                     .filter(Boolean)
                     .join('\n'),
+            // Cancel, Replace (danger), Open the Other Version, then Save as a Separate File,
+            // focused. A Replace that cannot be offered stays, with its reason under it.
             choices: [
-                ...(input.replaceDisabled
-                    ? []
-                    : [
-                          {
-                              value: 'replace' as const,
-                              label: () => i18n.value.conflict.replace,
-                              description: () => i18n.value.conflict.replaceNote,
-                              danger: true,
-                          },
-                      ]),
+                {
+                    value: 'replace',
+                    label: () => i18n.value.conflict.replace,
+                    description: input.replaceDisabled ?? (() => i18n.value.conflict.replaceNote),
+                    danger: true,
+                    ...(input.replaceDisabled ? { disabled: true } : {}),
+                },
                 {
                     value: 'openOther',
                     label: () => i18n.value.conflict.openOther,
@@ -365,7 +367,25 @@ export const defaultSaveUi: SaveUi = {
             ],
         }),
     saved: (feedback) => {
-        notify(() => savedText(feedback))
+        // A download that leaves the session not confirmed carries the chip's action, so the
+        // confirm is where the user is looking (§1.3.4); its announcement names the chip.
+        const unconfirmed = feedback.kind === 'download' && downloadNotConfirmed.value
+        const text =
+            feedback.kind === 'saved' && isPeeking.value && simple(feedback)
+                ? interpolate(() => i18n.value.notice.savedCurrent, feedback.name)
+                : () => savedText(feedback)
+        notify(text, {
+            ...(unconfirmed
+                ? {
+                      action: { label: () => i18n.value.confirm.haveFile, run: confirmFile },
+                      announcement: interpolate(
+                          () => i18n.value.confirm.announce,
+                          text,
+                          () => i18n.value.state.notConfirmed,
+                      ),
+                  }
+                : {}),
+        })
     },
     noChanges: (name, event, downloadAgain) => {
         const key =

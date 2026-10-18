@@ -761,7 +761,10 @@
         "properties": "ステージ変形イベントツールを再選択するとデフォルトの設定を変更できます。"
       }
     },
-    "altN": "Alt+N (macOSではOption+N) を押すと、最新の通知にフォーカスが移ります。続けてEscを押すと閉じます。"
+    "altN": "Alt+N (macOSではOption+N) を押すと、最新の通知にフォーカスが移ります。続けてEscを押すと閉じます。",
+    "fileTitle": "ファイル",
+    "moveBetweenDevices": "作業を別のデバイスに移すには、.nxsp ファイルとして保存し、そのデバイスでファイルを開いてください。",
+    "crswap": "保存中にクラッシュすると、プロジェクトファイルの横に .crswap ファイルが残ることがあります。削除しても問題ありません。"
   },
   "elevation": {
     "edit": "高さを編集",
@@ -952,7 +955,8 @@
         "unreadable": "読み取れない回復済みの作業、{0} · {1}",
         "atLoad": "今回の読み込み"
       },
-      "openHistory": "履歴を開く"
+      "openHistory": "履歴を開く",
+      "confirmClose": "未保存の変更があるときは閉じる前に確認する"
     }
   },
   "sidebars": {
@@ -1903,7 +1907,19 @@
     "tooLarge": "1 つのファイルには大きすぎます。BGM または履歴のチェックを外してください。",
     "restoredName": "{0}（{1} に復元）",
     "fileType": "Next SEKAI プロジェクトファイル",
-    "unavailable": "保存されませんでした。セーフモードでは「レベルデータを出力…」(Shift+P) を使ってください。"
+    "unavailable": "保存されませんでした。セーフモードでは「レベルデータを出力…」(Shift+P) を使ってください。",
+    "include": "含める",
+    "historySteps": "{0} 操作",
+    "historySize": "{0} 操作 · {1}",
+    "historyNote": "ファイルを持つ人は、すべての操作を見ることができます。",
+    "noBgm": "BGM なし",
+    "bgmNotLoaded": "BGM が読み込まれていません",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "{0} に含まれています",
+    "downloadNote": "保存のたびに新しいコピーがダウンロードされます。",
+    "noHistoryHere": "この接続では履歴を含められません。",
+    "sizeTotal": "合計: 約 {0}",
+    "sizePending": "サイズを見積もり中…"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",
@@ -1921,7 +1937,8 @@
     "replaceNote": "ディスク上のバージョンは「最近のセッション」に移ります。",
     "keptName": "{0}（{1} に置き換え）",
     "replaceNewer": "より新しいバージョンの {0} で作成されています。",
-    "replaceHoldsEarlier": "このブラウザーにはもうない以前のステップが含まれています。"
+    "replaceHoldsEarlier": "このブラウザーにはもうない以前のステップが含まれています。",
+    "keepEditing": "編集を続ける"
   },
   "name": {
     "invalidChar": "名前に {0} は使用できません",
@@ -1942,7 +1959,8 @@
     "alreadyMatches": "すでに現在の譜面と同じです",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
-    "bgmNotLoaded": "BGM が読み込まれていません"
+    "bgmNotLoaded": "BGM が読み込まれていません",
+    "savedCurrent": "現在のバージョンを {0} に保存しました"
   },
   "entry": {
     "exported": "{0} を出力",
@@ -1967,7 +1985,10 @@
   "status": {
     "notInFile": "ファイルに保存されていません",
     "separateCopy": "{0} の別コピー",
-    "opensLevelInfo": "譜面情報を開きます"
+    "opensLevelInfo": "譜面情報を開きます",
+    "changedSaved": "{0}、{1} に保存した後に変更あり",
+    "changedDownload": "{0}、{1} をダウンロードした後に変更あり",
+    "changedOpened": "{0}、{1} を開いた後に変更あり"
   },
   "open": {
     "notProject": "この ZIP はプロジェクトファイルではありません。",
@@ -1997,6 +2018,47 @@
     "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
   },
   "file": {
-    "replacedElsewhere": "「{0}」は別のタブまたはウィンドウから置き換えられました。"
+    "replacedElsewhere": "「{0}」は別のタブまたはウィンドウから置き換えられました。",
+    "saved": "{0} · {1}に保存",
+    "changedSinceSaved": "{0} · 保存後に変更あり",
+    "downloaded": "{0} · {1}にダウンロード",
+    "notConfirmed": "未確認",
+    "changedSinceDownload": "{0} · ダウンロード後に変更あり",
+    "opened": "{0} · {1}に開いた",
+    "changedSinceOpened": "{0} · 開いた後に変更あり",
+    "short": {
+      "saved": "保存済み",
+      "changed": "変更あり",
+      "notSaved": "未保存",
+      "downloaded": "ダウンロード済み",
+      "notConfirmed": "未確認",
+      "opened": "開いた"
+    }
+  },
+  "state": {
+    "fileMissing": "ファイルなし",
+    "changedOnDisk": "ディスク上で変更",
+    "newerOnDisk": "ディスク上のほうが新しい",
+    "notConfirmed": "ダウンロード未確認",
+    "short": {
+      "fileMissing": "なし",
+      "changedOnDisk": "変更",
+      "newerOnDisk": "新しい",
+      "notConfirmed": "未確認",
+      "notStored": "未保管"
+    },
+    "changedOnDiskName": "「{0}」: ここで開いた後または保存した後にディスク上で変更されました。",
+    "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。",
+    "notStored": "未保管"
+  },
+  "confirm": {
+    "title": "ダウンロード未確認",
+    "body": "{0} のダウンロードが完了したか確認してください（{1}）。",
+    "haveFile": "ファイルを確認した",
+    "downloadAgain": "もう一度ダウンロード",
+    "announce": "{0} あとで確認するには、ステータスバーの{1}を使ってください。"
+  },
+  "notSaving": {
+    "bar": "変更はこのブラウザーに保管されていません。"
   }
 }

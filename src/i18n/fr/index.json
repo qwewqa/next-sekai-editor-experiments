@@ -761,7 +761,10 @@
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite."
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
+    "fileTitle": "Fichiers",
+    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
+    "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
   },
   "elevation": {
     "edit": "Modifier les élévations",
@@ -952,7 +955,8 @@
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "atLoad": "Lors de ce chargement"
       },
-      "openHistory": "Ouvrir l’historique"
+      "openHistory": "Ouvrir l’historique",
+      "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées"
     }
   },
   "sidebars": {
@@ -1903,7 +1907,19 @@
     "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. En mode sans échec, utilisez Exporter les données de niveau… (Maj+P)."
+    "unavailable": "Non sauvegardé. En mode sans échec, utilisez Exporter les données de niveau… (Maj+P).",
+    "include": "Inclure",
+    "historySteps": "{0} étape|{0} étapes",
+    "historySize": "{0} étape · {1}|{0} étapes · {1}",
+    "historyNote": "Toute personne disposant du fichier peut voir chaque étape.",
+    "noBgm": "Pas de BGM",
+    "bgmNotLoaded": "BGM non chargée",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "Déjà dans {0}",
+    "downloadNote": "Chaque sauvegarde télécharge une nouvelle copie.",
+    "noHistoryHere": "L’historique ne peut pas être inclus sur cette connexion.",
+    "sizeTotal": "Total : environ {0}",
+    "sizePending": "Estimation de la taille…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
@@ -1921,7 +1937,8 @@
     "replaceNote": "La version sur le disque va dans Sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
-    "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus."
+    "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus.",
+    "keepEditing": "Continuer à modifier"
   },
   "name": {
     "invalidChar": "Un nom ne peut pas contenir {0}",
@@ -1942,7 +1959,8 @@
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
-    "bgmNotLoaded": "BGM non chargée"
+    "bgmNotLoaded": "BGM non chargée",
+    "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
     "exported": "{0} exporté",
@@ -1967,7 +1985,10 @@
   "status": {
     "notInFile": "Non sauvegardé dans un fichier",
     "separateCopy": "Copie séparée de {0}",
-    "opensLevelInfo": "Ouvre les informations du niveau"
+    "opensLevelInfo": "Ouvre les informations du niveau",
+    "changedSaved": "{0}, modifié depuis la sauvegarde dans {1}",
+    "changedDownload": "{0}, modifié depuis le téléchargement de {1}",
+    "changedOpened": "{0}, modifié depuis l’ouverture de {1}"
   },
   "open": {
     "notProject": "Ce ZIP n’est pas un fichier de projet.",
@@ -1997,6 +2018,47 @@
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
   },
   "file": {
-    "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre."
+    "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre.",
+    "saved": "{0} · sauvegardé {1}",
+    "changedSinceSaved": "{0} · modifié depuis la sauvegarde",
+    "downloaded": "{0} · téléchargé {1}",
+    "notConfirmed": "non confirmé",
+    "changedSinceDownload": "{0} · modifié depuis le téléchargement",
+    "opened": "{0} · ouvert {1}",
+    "changedSinceOpened": "{0} · modifié depuis l’ouverture",
+    "short": {
+      "saved": "sauvegardé",
+      "changed": "modifié",
+      "notSaved": "non sauvegardé",
+      "downloaded": "téléchargé",
+      "notConfirmed": "non confirmé",
+      "opened": "ouvert"
+    }
+  },
+  "state": {
+    "fileMissing": "Fichier introuvable",
+    "changedOnDisk": "Modifié sur le disque",
+    "newerOnDisk": "Plus récent sur le disque",
+    "notConfirmed": "Téléchargement non confirmé",
+    "short": {
+      "fileMissing": "Introuvable",
+      "changedOnDisk": "Modifié",
+      "newerOnDisk": "Plus récent",
+      "notConfirmed": "Non confirmé",
+      "notStored": "Non stocké"
+    },
+    "changedOnDiskName": "\"{0}\" : modifié sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "newerOnDiskName": "\"{0}\" : une version plus récente est sur le disque.",
+    "notStored": "Non stocké"
+  },
+  "confirm": {
+    "title": "Téléchargement non confirmé",
+    "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
+    "haveFile": "J’ai le fichier",
+    "downloadAgain": "Télécharger à nouveau",
+    "announce": "{0} Pour le confirmer plus tard, utilisez {1} dans la barre d’état."
+  },
+  "notSaving": {
+    "bar": "Les modifications ne sont pas stockées dans ce navigateur."
   }
 }

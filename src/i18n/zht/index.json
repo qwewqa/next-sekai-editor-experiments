@@ -761,7 +761,10 @@
         "properties": "再次切換到舞台變換事件工具以變更預設屬性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。"
+    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
+    "fileTitle": "檔案",
+    "moveBetweenDevices": "要將作品移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
+    "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以放心刪除。"
   },
   "elevation": {
     "edit": "編輯高度",
@@ -952,7 +955,8 @@
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "atLoad": "本次載入"
       },
-      "openHistory": "開啟歷史記錄"
+      "openHistory": "開啟歷史記錄",
+      "confirmClose": "關閉前詢問未儲存的變更"
     }
   },
   "sidebars": {
@@ -1903,7 +1907,19 @@
     "tooLarge": "對單一檔案而言過大。請取消勾選 BGM 或歷史記錄。",
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
-    "unavailable": "未儲存。安全模式下請使用「匯出關卡資料…」(Shift+P)。"
+    "unavailable": "未儲存。安全模式下請使用「匯出關卡資料…」(Shift+P)。",
+    "include": "包含",
+    "historySteps": "{0} 步",
+    "historySize": "{0} 步 · {1}",
+    "historyNote": "擁有該檔案的人可以看到每一步。",
+    "noBgm": "無 BGM",
+    "bgmNotLoaded": "BGM 未載入",
+    "bgmSize": "{0} · {1}",
+    "keptOptions": "已在 {0} 中",
+    "downloadNote": "每次儲存都會下載一份新副本。",
+    "noHistoryHere": "此連線無法包含歷史記錄。",
+    "sizeTotal": "總計：約 {0}",
+    "sizePending": "正在估算大小…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",
@@ -1921,7 +1937,8 @@
     "replaceNote": "磁碟上的版本會移到「最近的工作階段」。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
-    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。"
+    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
+    "keepEditing": "繼續編輯"
   },
   "name": {
     "invalidChar": "名稱不能包含 {0}",
@@ -1942,7 +1959,8 @@
     "alreadyMatches": "已與目前譜面一致",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
-    "bgmNotLoaded": "BGM 未載入"
+    "bgmNotLoaded": "BGM 未載入",
+    "savedCurrent": "已將目前版本儲存到 {0}"
   },
   "entry": {
     "exported": "已匯出 {0}",
@@ -1967,7 +1985,10 @@
   "status": {
     "notInFile": "未儲存到檔案",
     "separateCopy": "{0} 的獨立副本",
-    "opensLevelInfo": "開啟關卡資訊"
+    "opensLevelInfo": "開啟關卡資訊",
+    "changedSaved": "{0}，自儲存到 {1} 後已變更",
+    "changedDownload": "{0}，自下載 {1} 後已變更",
+    "changedOpened": "{0}，自開啟 {1} 後已變更"
   },
   "open": {
     "notProject": "此 ZIP 不是專案檔案。",
@@ -1997,6 +2018,47 @@
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   },
   "file": {
-    "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。"
+    "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
+    "saved": "{0} · {1} 已儲存",
+    "changedSinceSaved": "{0} · 儲存後已變更",
+    "downloaded": "{0} · {1} 已下載",
+    "notConfirmed": "未確認",
+    "changedSinceDownload": "{0} · 下載後已變更",
+    "opened": "{0} · {1} 已開啟",
+    "changedSinceOpened": "{0} · 開啟後已變更",
+    "short": {
+      "saved": "已儲存",
+      "changed": "已變更",
+      "notSaved": "未儲存",
+      "downloaded": "已下載",
+      "notConfirmed": "未確認",
+      "opened": "已開啟"
+    }
+  },
+  "state": {
+    "fileMissing": "檔案遺失",
+    "changedOnDisk": "磁碟上已變更",
+    "newerOnDisk": "磁碟上有較新版本",
+    "notConfirmed": "下載未確認",
+    "short": {
+      "fileMissing": "遺失",
+      "changedOnDisk": "已變更",
+      "newerOnDisk": "較新",
+      "notConfirmed": "未確認",
+      "notStored": "未存放"
+    },
+    "changedOnDiskName": "\"{0}\"：自在此處開啟或儲存後，磁碟上的檔案已變更。",
+    "newerOnDiskName": "\"{0}\"：磁碟上有較新版本。",
+    "notStored": "未存放"
+  },
+  "confirm": {
+    "title": "下載未確認",
+    "body": "請確認 {0} 已下載完成（{1}）。",
+    "haveFile": "我已有該檔案",
+    "downloadAgain": "再次下載",
+    "announce": "{0} 之後要確認時，請使用狀態列中的「{1}」。"
+  },
+  "notSaving": {
+    "bar": "變更未存放在此瀏覽器中。"
   }
 }

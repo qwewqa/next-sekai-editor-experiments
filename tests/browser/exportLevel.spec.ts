@@ -467,6 +467,52 @@ test('Choose Another… on an opened LevelData suggests its own name, "All files
     })
 })
 
+test('Export shows one name: the field and the picker agree, for the source and for an edit', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await writeFile(page, 'LevelData')
+    await openFile(page, 'LevelData')
+    // No target (as after another chain took it): the dialog shows the field.
+    await page.evaluate(async () => {
+        const { exportMemory } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/memory')
+        >('/src/editor/commands/exportLevel/memory.ts')
+        delete exportMemory.target
+    })
+    await openExport(page)
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('LevelData')
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toHaveCount(0)
+    await queuePicks(page, ['Elsewhere'])
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to Elsewhere')
+    // "All files" alone, so the source's own name is suggested as it is.
+    expect((await pickerCalls(page)).at(-1)).toMatchObject({
+        picker: 'save',
+        id: 'levelData',
+        suggestedName: 'LevelData',
+    })
+
+    // The pick became the target; forget it again, then edit the name.
+    await page.evaluate(async () => {
+        const { exportMemory } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/memory')
+        >('/src/editor/commands/exportLevel/memory.ts')
+        delete exportMemory.target
+    })
+    await openExport(page)
+    await field.fill('Coconut Expert')
+    await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
+    await queuePicks(page, ['Elsewhere 2'])
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to Elsewhere 2')
+    const call = (await pickerCalls(page)).at(-1)
+    expect(call).toMatchObject({ picker: 'save', suggestedName: 'Coconut Expert.nsld' })
+    // The `.nsld` type first, which a typed name keeps.
+    expect(JSON.stringify(call?.types)).toContain('.nsld')
+})
+
 test('plain-JSON level data gets no Export target', async ({ page }) => {
     await start(page, opfs)
     const json = await page.evaluate(async () => {

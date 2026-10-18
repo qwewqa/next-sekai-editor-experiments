@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { i18n } from '../../i18n'
+import { platform } from '../../platform'
 import BaseModal from '../../modals/BaseModal.vue'
 import HelpSection from './HelpSection.vue'
 </script>
@@ -33,6 +34,12 @@ import HelpSection from './HelpSection.vue'
             <li>{{ i18n.help.modal.keyboard.single }}</li>
             <li>{{ i18n.help.modal.keyboard.multiple }}</li>
             <li>{{ i18n.help.altN }}</li>
+        </HelpSection>
+
+        <HelpSection :title="i18n.help.fileTitle">
+            <li>{{ i18n.help.moveBetweenDevices }}</li>
+            <!-- Only a browser that writes through a swap file leaves one. -->
+            <li v-if="platform.capabilities.writeBack">{{ i18n.help.crswap }}</li>
         </HelpSection>
 
         <HelpSection :title="i18n.help.modal.selectTool.title" command="select">

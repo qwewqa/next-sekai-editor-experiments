@@ -31,9 +31,10 @@ import { loadBgm } from '../../../player'
 import { PRODUCT_NAME } from '../../../product'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
-import { storageGet, storageSet } from '../../../storage'
+import { storageGet } from '../../../storage'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
+import { confirmDownloads } from '../../file/flags'
 import { dismissNoticeCard, notify } from '../../notification'
 import { notifyLeft } from '../../switch'
 import { changeBgm } from '../bgm'
@@ -114,12 +115,6 @@ const thisDevice = () => {
     const id = storageGet('deviceId', undefined)
     return typeof id === 'string' ? id : undefined
 }
-
-/**
- * A file this browser downloaded confirms its downloads work (§1.3.4): `downloadConfirmed`, the
- * settings flag beside the first-Save flag (§1.5.6).
- */
-export const DOWNLOAD_CONFIRMED_KEY = 'downloadConfirmed'
 
 const restoreAction = (sessionId: string) => ({
     label: () => i18n.value.open.restoreIt,
@@ -336,8 +331,7 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
 
     // A file this browser wrote confirms that its downloads work (§1.3.4); no other row changes.
     const device = opened.project?.revision?.device.id
-    if (identity && device !== undefined && device === thisDevice())
-        storageSet(DOWNLOAD_CONFIRMED_KEY, true)
+    if (identity && device !== undefined && device === thisDevice()) confirmDownloads()
 
     // The session this open left, which Reopen offers.
     const left = previousSession.value?.sessionId

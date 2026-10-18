@@ -123,6 +123,12 @@ const boundFileOf = (chain: Record<string, unknown>) => {
         name: file.name,
         ...(typeof file.event === 'string' ? { event: file.event } : {}),
         ...(typeof file.at === 'number' ? { at: file.at } : {}),
+        ...(file.confirmed === true ? { confirmed: true } : {}),
+        ...(file.hash instanceof Uint8Array
+            ? { hash: toHex(file.hash) }
+            : typeof file.hash === 'string'
+              ? { hash: file.hash }
+              : {}),
     }
 }
 

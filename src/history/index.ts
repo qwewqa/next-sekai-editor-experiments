@@ -4,13 +4,12 @@ import { addDefaultStageToStages, type Stages } from '../chart/stages'
 import { closeElevationEditor, isElevationSideBySide } from '../editor/elevation/state'
 import { switchToolTo } from '../editor/tools'
 import { i18n } from '../i18n'
-import { platform } from '../platform'
 import { createState, type State, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
 import { setFileEventMessages } from './markers'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
-import { isDirty, resetStates, restoreStates, type RestoredSlot } from './stack'
+import { resetStates, restoreStates, type RestoredSlot } from './stack'
 
 export { markExported, markSaved } from './markers'
 export {
@@ -66,13 +65,6 @@ resetStates({
     state: createState(createDefaultChart(), 0),
 })
 
-/**
- * Named stub until Step 6's close prompts: today's leave prompt, on the current slot's `isDirty`,
- * which a slot keeps while its state is unloaded (§1.11.3).
- */
-export const isDirtyCompat = () => !isDirty.value
-
-platform.onCloseRequested(isDirtyCompat)
 
 setFileEventMessages(() => i18n.value)
 

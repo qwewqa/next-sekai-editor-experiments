@@ -18,7 +18,17 @@ export type SessionDescriptor = {
     /** When it started: the date fallback of the displayed name (§1.3.5). */
     readonly startedAt?: number
     /** The file it is bound to, as the chain record has it (§1.3.2), for the status label. */
-    readonly file?: { readonly name: string; readonly event?: string; readonly at?: number }
+    readonly file?: SessionFile
+}
+
+/** The binding as the label reads it: the file event, and the head's hash (hex) at that event. */
+export type SessionFile = {
+    readonly name: string
+    readonly event?: string
+    readonly at?: number
+    /** I Have the File was pressed for this download (§1.3.4). */
+    readonly confirmed?: boolean
+    readonly hash?: string
 }
 
 /** A descriptor with fresh ids for whatever `init` leaves out; text passes the well-formed helper. */

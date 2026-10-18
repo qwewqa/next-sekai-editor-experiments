@@ -287,6 +287,9 @@ const settingsProperties = {
 
     deselectSwitchesToSelect: Type.Boolean({ default: true }),
 
+    // The browser's prompt on closing with changes not in a file (Part 1 §1.4.9).
+    confirmCloseUnsavedFile: Type.Boolean({ default: true }),
+
     toolbarQuickSwitch: Type.Boolean({ default: false }),
 
     toolbar: Type.Codec(

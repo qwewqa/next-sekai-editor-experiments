@@ -761,7 +761,10 @@
                 "properties": "Switch to Stage Transform Event Tool again to change default properties."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it."
+        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
+        "fileTitle": "Files",
+        "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
+        "crswap": "A crash while saving can leave a .crswap file next to the project file. It is safe to delete."
     },
     "elevation": {
         "edit": "Edit Elevations",
@@ -952,7 +955,8 @@
                 "unreadable": "Unreadable recovered work, {0} · {1}",
                 "atLoad": "At this load"
             },
-            "openHistory": "Open History"
+            "openHistory": "Open History",
+            "confirmClose": "Ask Before Closing with Unsaved Changes"
         }
     },
     "sidebars": {
@@ -1903,7 +1907,19 @@
         "tooLarge": "Too large for one file. Untick BGM or history.",
         "restoredName": "{0} (restored {1})",
         "fileType": "Next SEKAI project file",
-        "unavailable": "Not saved. In safe mode, use Export Level Data… (Shift+P)."
+        "unavailable": "Not saved. In safe mode, use Export Level Data… (Shift+P).",
+        "include": "Include",
+        "historySteps": "{0} step|{0} steps",
+        "historySize": "{0} step · {1}|{0} steps · {1}",
+        "historyNote": "Anyone with the file can see every step.",
+        "noBgm": "No BGM",
+        "bgmNotLoaded": "BGM not loaded",
+        "bgmSize": "{0} · {1}",
+        "keptOptions": "Already in {0}",
+        "downloadNote": "Each save downloads a new copy.",
+        "noHistoryHere": "History cannot be included on this connection.",
+        "sizeTotal": "Total: about {0}",
+        "sizePending": "Estimating size…"
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
@@ -1921,7 +1937,8 @@
         "replaceNote": "The version on disk goes to Recent Sessions.",
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "Made by a newer version of {0}.",
-        "replaceHoldsEarlier": "It holds earlier steps that this browser no longer has."
+        "replaceHoldsEarlier": "It holds earlier steps that this browser no longer has.",
+        "keepEditing": "Keep Editing"
     },
     "name": {
         "invalidChar": "A name cannot contain {0}",
@@ -1942,7 +1959,8 @@
         "alreadyMatches": "Already matches the current chart",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
-        "bgmNotLoaded": "BGM not loaded"
+        "bgmNotLoaded": "BGM not loaded",
+        "savedCurrent": "Saved the current version to {0}"
     },
     "entry": {
         "exported": "Exported {0}",
@@ -1967,7 +1985,10 @@
     "status": {
         "notInFile": "Not saved to a file",
         "separateCopy": "Separate copy of {0}",
-        "opensLevelInfo": "Opens Level Info"
+        "opensLevelInfo": "Opens Level Info",
+        "changedSaved": "{0}, changed since saved to {1}",
+        "changedDownload": "{0}, changed since download of {1}",
+        "changedOpened": "{0}, changed since {1} was opened"
     },
     "open": {
         "notProject": "This ZIP is not a project file.",
@@ -1997,6 +2018,47 @@
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."
     },
     "file": {
-        "replacedElsewhere": "\"{0}\" was replaced from another tab or window."
+        "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
+        "saved": "{0} · saved {1}",
+        "changedSinceSaved": "{0} · changed since saved",
+        "downloaded": "{0} · downloaded {1}",
+        "notConfirmed": "not confirmed",
+        "changedSinceDownload": "{0} · changed since download",
+        "opened": "{0} · opened {1}",
+        "changedSinceOpened": "{0} · changed since opened",
+        "short": {
+            "saved": "saved",
+            "changed": "changed",
+            "notSaved": "not saved",
+            "downloaded": "downloaded",
+            "notConfirmed": "not confirmed",
+            "opened": "opened"
+        }
+    },
+    "state": {
+        "fileMissing": "File missing",
+        "changedOnDisk": "Changed on disk",
+        "newerOnDisk": "Newer on disk",
+        "notConfirmed": "Download not confirmed",
+        "short": {
+            "fileMissing": "Missing",
+            "changedOnDisk": "Changed",
+            "newerOnDisk": "Newer",
+            "notConfirmed": "Not confirmed",
+            "notStored": "Not stored"
+        },
+        "changedOnDiskName": "\"{0}\": changed on disk since you opened or saved it here.",
+        "newerOnDiskName": "\"{0}\": a newer version is on disk.",
+        "notStored": "Not stored"
+    },
+    "confirm": {
+        "title": "Download Not Confirmed",
+        "body": "Check that {0} finished downloading ({1}).",
+        "haveFile": "I Have the File",
+        "downloadAgain": "Download Again",
+        "announce": "{0} To confirm it later, use {1} in the status bar."
+    },
+    "notSaving": {
+        "bar": "Changes are not being stored in this browser."
     }
 }
