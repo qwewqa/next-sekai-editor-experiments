@@ -1,8 +1,13 @@
-import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
+import {
+    setExportHandleReader,
+    setExportPersister,
+    setExportTargetReader,
+} from '../editor/commands/exportLevel/memory'
 import {
     setExportReads,
     setPickLock,
     setProjectPickCheck,
+    setTargetLock,
 } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
@@ -32,7 +37,6 @@ import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
-import { dropKept } from './open/kept'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { holdSessionLock, TabClient } from './sessions'
@@ -378,9 +382,18 @@ export const startStoring = (
     })
 
     // Export's target and name are the open chain's fields (§1.4.8).
-    setExportPersister((fields) => {
+    setExportPersister(async (fields) => {
         const changed = changedFields(instance.session?.chain, fields)
-        if (Object.keys(changed).length) void instance.setChainFields(changed)
+        return Object.keys(changed).length
+            ? instance.setChainFields(changed)
+            : !!instance.session?.stored
+    })
+    setExportTargetReader(async () => {
+        const session = instance.session
+        if (!session?.stored) return
+        const record = await worker.call('readChainRecord', session.chainId)
+        if (instance.session !== session) return {}
+        return record
     })
     // Its handle is the chain's too, read when Export needs it (D24).
     checkPrivateWindow()
@@ -422,9 +435,6 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                // A partial open's kept bytes go with its session (§1.5.4).
-                if (leaving && leaving.chainId !== begun.chainId && !safe)
-                    void dropKept(worker, leaving.chainId)
                 if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return
             }
@@ -464,6 +474,7 @@ export const startStoring = (
     const flows = () => import('../editor/save/flow')
     setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
     setPickLock((run) => withBind('exclusive', run))
+    setTargetLock((run) => withBind('shared', run))
     setExportReads({
         start: () =>
             void flows().then((flow) => {

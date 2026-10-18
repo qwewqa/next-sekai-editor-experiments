@@ -135,8 +135,11 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
 
     if (req.target && permission) {
         // A precondition makes a failure the caller's to show; without one, today's download.
-        if (req.expected !== undefined) return writeHandle(req, req.target.handle, permission)
-        return writeHandle(req, req.target.handle, permission).catch(async () => {
+        const handle = req.target.handle
+        const write = () => writeHandle(req, handle, permission)
+        const locked = () => (req.lock ? req.lock(write) : write())
+        if (req.expected !== undefined) return locked()
+        return locked().catch(async () => {
             signal?.throwIfAborted()
             const blob = await toBlob(await req.build([]))
             await verifyBuilt(req.kind, blob)

@@ -4,6 +4,7 @@ import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { createWorld } from '../../../src/local/testing/world'
+import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
@@ -210,4 +211,54 @@ test('an identity unit whose binding was taken over meanwhile is dropped, never 
     // Dropped from memory too, while the `save` entry is stored.
     assert.equal(session.identity, undefined)
     assert.ok([...rows(world, 'entries').values()].some((row) => row.kind === 'save'))
+})
+
+test('Export fields set while the first write is in flight survive its acknowledgement', async () => {
+    const world = createWorld({ seed: 117 })
+    let reached!: () => void
+    let release!: () => void
+    const atTransport = new Promise<void>((resolve) => {
+        reached = resolve
+    })
+    const hold = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    let first = true
+    const page = await openPage(world, world.tab('a'), {
+        transport: async (batch) => {
+            const result = await page.tab.run(() => page.handlers.flush(batch))
+            if (first) {
+                first = false
+                reached()
+                await hold
+            }
+            return result
+        },
+        writeChain: (request) =>
+            page.tab.run(() =>
+                startupHandlers({
+                    core: page.core,
+                    test: true,
+                    emit: () => undefined,
+                }).writeChainFields(request),
+            ),
+    })
+    begin(page, stateOf(goldenChart()))
+    const writing = page.flusher.flush()
+    await atTransport
+    const metadata = page.flusher.setChainFields({
+        exportName: 'Coconut',
+        exportTarget: {
+            name: 'LevelData',
+            handle: { testHandle: 'LevelData' },
+            disk: { fingerprint: 'abc', size: 12, lastModified: 0 },
+        },
+    })
+    release()
+    await writing
+    assert.equal(await metadata, true)
+    const [chain] = rows(world, 'chains').values()
+    assert.equal(chain!.exportName, 'Coconut')
+    assert.equal((chain!.exportTarget as Record<string, unknown>).name, 'LevelData')
+    assert.equal(rows(world, 'handles').size, 1)
 })

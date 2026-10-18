@@ -9,8 +9,8 @@ import {
     type SaveResult,
 } from '../../../platform'
 import { isLevelDataContent, mayBeLevelData } from './content'
-import { exportMemory, rememberExport, type ExportTarget } from './memory'
-import { downloadOpened, refusePick, withPickLock, type RefusedPick } from './pick'
+import { exportMemory, ownsExportTarget, rememberExport, type ExportTarget } from './memory'
+import { downloadOpened, refusePick, withPickLock, withTargetLock, type RefusedPick } from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
 
@@ -81,22 +81,21 @@ const built = (ctx: ExportContext) => {
     }
 }
 
-const remember = (ctx: ExportContext, target: ExportTarget) => {
+const remember = async (ctx: ExportContext, target: ExportTarget) => {
     exportMemory.target = target
     if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
-    rememberExport()
+    await rememberExport()
 }
 
-const saved = (ctx: ExportContext, result: SaveResult & { status: 'saved' }) => {
+const saved = async (ctx: ExportContext, result: SaveResult) => {
+    if (result.status !== 'saved') return
     if (result.target.kind !== 'handle' || !result.disk) throw new Error('Not a handle write')
-    remember(ctx, {
+    await remember(ctx, {
         name: result.name,
         handle: result.target.handle,
         disk: result.disk,
         exported: true,
     })
-    ctx.ui.markExported?.(result.name)
-    ctx.ui.exported(result.name)
 }
 
 type Found =
@@ -175,6 +174,7 @@ export const exportToTarget = async (
     expected: DiskState = target.disk,
 ): Promise<ExportOutcome> => {
     const body = built(ctx)
+    let revoked = false
     let error: FileError
     try {
         const result = await platform.saveFile({
@@ -183,17 +183,29 @@ export const exportToTarget = async (
             target: { kind: 'handle', handle: target.handle },
             expected,
             replaced: 'discard',
+            lock: (run) =>
+                withTargetLock(async () => {
+                    if (!(await ownsExportTarget(target))) {
+                        revoked = true
+                        throw new Error('Export destination was revoked')
+                    }
+                    const result = await run()
+                    await saved(ctx, result as SaveResult)
+                    return result
+                }),
             build: body.build,
             signal: ctx.signal,
         })
         if (result.status === 'saved') {
-            saved(ctx, result)
+            ctx.ui.markExported?.(result.name)
+            ctx.ui.exported(result.name)
             return 'done'
         }
         return 'cancelled'
     } catch (caught) {
         // A cancelled export ends here: no dialog follows the one that closed.
         if (cancelled(ctx)) return 'cancelled'
+        if (revoked) return exportByPicker(ctx)
         error = fileError(caught)
     }
 
@@ -256,7 +268,12 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             suggestedName: ctx.suggestedName,
             picker: { id: 'levelData', types: ctx.types },
             // One writer per file: from the pick's check to its write (§1.4.8, R3, R5).
-            lock: withPickLock,
+            lock: (run) =>
+                withPickLock(async () => {
+                    const result = await run()
+                    await saved(ctx, result as SaveResult)
+                    return result
+                }),
             build: body.build,
             ready: ctx.ready,
             signal: ctx.signal,
@@ -280,13 +297,14 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
 
     switch (result.status) {
         case 'saved':
-            saved(ctx, result)
+            ctx.ui.markExported?.(result.name)
+            ctx.ui.exported(result.name)
             return 'done'
         case 'download-started':
         case 'exported':
             if (ctx.exportName !== undefined) {
                 exportMemory.exportName = ctx.exportName
-                rememberExport()
+                await rememberExport()
             }
             ctx.ui.markExported?.(result.name)
             ctx.ui.downloadStarted(result.name, body.size())

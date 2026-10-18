@@ -11,7 +11,7 @@ import {
 import { fromHex16 } from '../hash'
 import type { KvTx } from '../kv/types'
 import { clampTime, nextTime } from '../time'
-import { storeMarks, type IdentityUnit } from './commit'
+import { clearIdentityExport, storeMarks, type IdentityUnit } from './commit'
 
 // The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
 // chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
@@ -250,6 +250,7 @@ export const finishOwnSave = async (
         revision: unit.revision,
         file: fields.file,
     }
+    await clearIdentityExport(tx, chainId, record, unit)
     delete record.replaced
     await tx.put('chains', record)
     return true

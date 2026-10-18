@@ -226,7 +226,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
         importForeign: async (batch: ForeignBatch, scope?: CallScope): Promise<ForeignResult> => {
             const progress: Progress = scope ?? {}
             const prepared = await prepareForeign(batch, waiterOf(progress))
-            return context.core.write(
+            const result = await context.core.write(
                 ['nodes', 'chunks', 'media', 'meta'],
                 async (tx) =>
                     writeForeign(
@@ -240,6 +240,9 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                     ),
                 { durability: 'strict', ...progress },
             )
+            if (result.kind === 'stored')
+                for (const hash of result.mediaFailed ?? []) context.core.mediaFailed(hash)
+            return result
         },
 
         /** Counts today as a day of use at load (§1.6.8.7). */
