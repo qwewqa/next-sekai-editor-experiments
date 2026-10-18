@@ -134,11 +134,11 @@ test("the context menu's selection says it as Select does, whatever the tool", a
 })
 
 test('an empty tap with the Eraser deselects in its own words', async ({ page }) => {
-    // Japanese words Select's and the Eraser's apart.
-    await page.evaluate(() => (window.editorTest.settings.locale = 'ja'))
+    // The locales word Select's and the Eraser's alike, so the Eraser's is marked here.
     const { eraser, select } = await page.evaluate(async () => {
         const { i18n } =
             await window.editorTest.appImport<typeof import('../../src/i18n')>('/src/i18n/index.ts')
+        i18n.value.tools.eraser.deselected = 'Eraser deselected all objects'
         return {
             eraser: i18n.value.tools.eraser.deselected,
             select: i18n.value.tools.select.deselected,
