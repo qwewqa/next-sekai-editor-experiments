@@ -2,7 +2,7 @@ import { exportMemory, rememberExport } from '../../editor/commands/exportLevel/
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { addLoadNotice, notify } from '../../editor/notification'
 import { session as currentSession } from '../../history/session'
-import { liveState, replaceState } from '../../history/stack'
+import { isPeeking, liveState, replaceState } from '../../history/stack'
 import { i18n } from '../../i18n'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
@@ -337,7 +337,8 @@ export const attachOpenedBgm = async (
     const source = data.slice(0)
     const decoded = await decode(data)
     const live = liveState.value
-    if (live.bgm.meta?.hash !== hash || live.bgm.buffer) return false
+    // A peek holds its own state: the live one isn't replaced under it.
+    if (isPeeking.value || live.bgm.meta?.hash !== hash || live.bgm.buffer) return false
     replaceState({ ...live, bgm: { ...live.bgm, ...decoded, source } })
     return true
 }

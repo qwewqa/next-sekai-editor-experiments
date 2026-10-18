@@ -82,7 +82,9 @@ export const handleOf = (stored: unknown): FileSystemFileHandle | undefined => {
         )
     if (typeof stored !== 'object' || stored === null) return
     const handle = stored as Partial<FileSystemFileHandle>
-    return typeof handle.getFile === 'function' ? (stored as FileSystemFileHandle) : undefined
+    return typeof handle.getFile === 'function' || typeof handle.isSameEntry === 'function'
+        ? (stored as FileSystemFileHandle)
+        : undefined
 }
 
 /** Whether a handle can be read without a prompt: read permission still granted. */

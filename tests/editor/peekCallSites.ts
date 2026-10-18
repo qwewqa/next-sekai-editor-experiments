@@ -74,6 +74,8 @@ export const callSites: Record<string, { push: number; replace: number; gate: Ga
     'src/editor/workspace/manager/objects.ts': { push: 0, replace: 1, gate: 'selection' },
     'src/editor/workspace/manager/stages.ts': { push: 2, replace: 0, gate: 'panel' },
     'src/editor/workspace/properties/selectOnly.ts': { push: 0, replace: 1, gate: 'selection' },
+    // The opened file's BGM attached to the live state once decoded, never while peeking.
+    'src/local/open/project.ts': { push: 0, replace: 1, gate: 'selection' },
     // Enabling dynamic stages, from the stage commands and the stage event tools.
     'src/history/dynamicStages.ts': { push: 1, replace: 0, gate: 'command' },
     'src/history/peek.ts': { push: 1, replace: 0, gate: 'restore' },
