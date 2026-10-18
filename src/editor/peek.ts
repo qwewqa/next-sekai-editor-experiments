@@ -45,6 +45,12 @@ onPeekRefused(() => {
 /** The beat the Elevation Editor showed when a peek closed it; reopened on leaving. */
 let reopenAt: number | undefined
 
+/** History's View Chart defers the fullscreen editor until this peek ends. */
+export const restoreElevationAfterPeek = (beat: number) => {
+    if (isPeeking.value) reopenAt ??= beat
+    else openElevationEditor(beat)
+}
+
 const closeElevationForPeek = () => {
     if (!isElevationEditorOpen.value || isElevationSideBySide.value) return
     reopenAt = elevationBeat.value

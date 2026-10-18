@@ -13,6 +13,13 @@ export const hasToolModal = (pane: ToolModalPane) =>
 export const sheetBox = shallowRef<{ side: 'bottom' | 'right'; size: number }>()
 export const peekClearance = shallowRef(0)
 
+export const prepareToolModal = () => {
+    for (const modal of [...modals]) {
+        if (modal.presentation === 'tool') closeModal(modal)
+    }
+    view.entities = { hovered: [], creating: [] }
+}
+
 /**
  * Shows a tool dialog. A sheet leaves the tool as it is and sits in the main pane: History's,
  * over the live chart.
@@ -22,10 +29,7 @@ export const showToolModal = <T extends Component>(
     props: ModalProps<T>,
     options?: { sheet?: boolean },
 ) => {
-    for (const modal of [...modals]) {
-        if (modal.presentation === 'tool') closeModal(modal)
-    }
-    view.entities = { hovered: [], creating: [] }
+    prepareToolModal()
     return showModal(component, props, {
         presentation: 'tool',
         pane:

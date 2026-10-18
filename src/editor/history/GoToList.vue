@@ -260,7 +260,7 @@ const labelOf = (item: Item) =>
 
 <style scoped>
 .goto-item {
-    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-1.5 transition-colors [@media(pointer:coarse)]:min-h-11;
+    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-1.5 transition-colors;
 }
 
 .goto-item-session {
