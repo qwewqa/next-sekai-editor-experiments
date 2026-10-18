@@ -944,10 +944,10 @@
       "recovery": {
         "journal": "以往访问中未保存的内容，{0} · {1}",
         "journalUndated": "以往访问中未保存的内容 · {0}",
-        "legacy": "旧版恢复副本 · {0}",
+        "legacy": "旧版本的恢复副本 · {0}",
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
-        "atLoad": "本次加载："
+        "atLoad": "本次加载"
       },
       "openHistory": "打开历史记录"
     }

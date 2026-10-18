@@ -18,7 +18,7 @@ export const openSettings = async (section?: SettingsSectionId) => {
     if (opening) return
     opening = true
     try {
-        await showModal(SettingsModal, {}, { size: 'large' })
+        await showModal(SettingsModal, {}, { size: 'large', tall: true })
     } finally {
         opening = false
         requestedSection.value = undefined

@@ -944,10 +944,10 @@
       "recovery": {
         "journal": "Travail non sauvegardé d’une visite précédente, {0} · {1}",
         "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
-        "legacy": "Copie de récupération héritée · {0}",
+        "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
-        "atLoad": "Lors de ce chargement :"
+        "atLoad": "Lors de ce chargement"
       },
       "openHistory": "Ouvrir l’historique"
     }

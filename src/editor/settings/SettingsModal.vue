@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, provide, watch } from 'vue'
+import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { resetKeybinds, resetSettings } from '../../settings'
 import { closeSettingsKey } from './closeSettings'
 import { requestedSection } from './openSettings'
-import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections'
+import type { SettingsSectionId } from './sections'
 import SettingsAbout from './SettingsAbout.vue'
 import SettingsEditor from './SettingsEditor.vue'
+import SettingsIndex from './SettingsIndex.vue'
 import SettingsKeyboardShortcuts from './SettingsKeyboardShortcuts.vue'
 import SettingsLocalData from './SettingsLocalData.vue'
 import SettingsMouse from './SettingsMouse.vue'
@@ -57,33 +58,28 @@ onBeforeUnmount(() => {
     clearTimeout(timer)
 })
 
-const pill =
-    'h-8 shrink-0 rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:px-4'
+// A short screen (a landscape phone) lets the index scroll away with the sections.
+const shortQuery = matchMedia('(max-height: 500px)')
+const short = ref(shortQuery.matches)
+const onShort = () => {
+    short.value = shortQuery.matches
+}
+onMounted(() => {
+    shortQuery.addEventListener('change', onShort)
+})
+onBeforeUnmount(() => {
+    shortQuery.removeEventListener('change', onShort)
+})
 </script>
 
 <template>
     <BaseModal :title="i18n.settings.title" fill @close="emit('close')">
-        <!-- The section index: one row of pills, which stays in reach while the sections scroll. -->
-        <nav
-            :aria-label="i18n.settings.sections"
-            class="flex shrink-0 gap-2 overflow-x-auto px-4 py-2"
-            data-settings-index
-        >
-            <button
-                v-for="id in SETTINGS_SECTIONS"
-                :key="id"
-                type="button"
-                :class="pill"
-                :data-settings-pill="id"
-                @click="goTo(id)"
-            >
-                {{ i18n.settings[id].title }}
-            </button>
-        </nav>
+        <SettingsIndex v-if="!short" class="px-4 py-2" @go="goTo($event)" />
         <div
             v-scroll-edges
             class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2"
         >
+            <SettingsIndex v-if="short" class="py-1" @go="goTo($event)" />
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
