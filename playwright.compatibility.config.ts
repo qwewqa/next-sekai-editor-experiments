@@ -18,6 +18,8 @@ const storageSpecs = [
     'startupSessions.spec.ts',
     // Opening a `.nxsp` and its background import (Step 6).
     'openProject.spec.ts',
+    // Saving where there's no save picker: the download flow (Step 6).
+    'saveDownload.spec.ts',
 ]
 
 export default defineConfig({

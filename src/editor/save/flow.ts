@@ -555,16 +555,28 @@ type Outcome =
     | { kind: 'failed'; error: FileError; name: string }
     | { kind: 'error'; message: () => string }
 
-let busy = false
+let running: Promise<void> | undefined
+let queued = false
 
-/** One Save at a time in a tab. */
+/**
+ * One Save at a time in a tab: a press while one runs waits for it and runs once after (a second
+ * press then finds nothing changed); more presses meanwhile add nothing.
+ */
 const exclusive = async (run: () => Promise<void>) => {
-    if (busy) return
-    busy = true
+    if (running) {
+        if (queued) return
+        queued = true
+        await running
+        queued = false
+    }
+    const current = run().catch((error: unknown) => {
+        console.error('A Save failed', error)
+    })
+    running = current
     try {
-        await run()
+        await current
     } finally {
-        busy = false
+        if (running === current) running = undefined
     }
 }
 
