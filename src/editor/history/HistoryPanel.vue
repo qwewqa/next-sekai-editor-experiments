@@ -5,6 +5,7 @@ import {
     onBeforeUnmount,
     onMounted,
     ref,
+    shallowRef,
     useId,
     useTemplateRef,
     watch,
@@ -22,12 +23,16 @@ import { backToNow, peekedInfo } from './selection'
 import type { Target } from './source'
 import { hereRange, historyFilter, historyTab, type HistoryTab } from './state'
 import TimelineList from './TimelineList.vue'
+import type { HistoryPresentation } from './presentation'
 
 // The History panel (Part 1 §1.4.10), in a dock or in the dialog: one band with the two tabs,
 // Timeline and Recent Sessions, and Go To; then the list. There is no action bar in it: the peek's
 // controls are on the canvas (§1.4.11), so the body is all list.
 
-const props = withDefaults(defineProps<{ surface?: 'panel' | 'dialog' }>(), { surface: 'panel' })
+const props = withDefaults(
+    defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
+    { surface: 'panel' },
+)
 const emit = defineEmits<{ close: []; chrome: [height: number] }>()
 
 const tabs: readonly HistoryTab[] = ['timeline', 'sessions']
@@ -83,7 +88,25 @@ watch(
     { flush: 'post' },
 )
 
-defineExpose({ rememberView: () => timeline.value?.rememberView() })
+const goToPopover = useTemplateRef<InstanceType<typeof GoToPopover>>('goToPopover')
+const goToList = useTemplateRef<InstanceType<typeof GoToList>>('goToList')
+const savedGoTo = shallowRef(props.presentation?.takeGoTo())
+defineExpose({
+    hasGoTo: () => goToOpen.value,
+    rememberView: () => {
+        timeline.value?.rememberView()
+        props.presentation?.rememberGoTo(
+            goToOpen.value
+                ? {
+                      current: goToCurrent.value,
+                      activeId: goToList.value?.activeId(),
+                      ...goToPopover.value?.captureView(),
+                      top: goToPopover.value?.captureView().top ?? 0,
+                  }
+                : undefined,
+        )
+    },
+})
 
 const LABEL_FROM = 362
 const ICON_FROM = 236
@@ -108,14 +131,16 @@ const filterText = computed(() => {
 const onTimeline = computed(() => historyTab.value === 'timeline')
 
 // --- Go To
-const goToOpen = ref(false)
+const goToOpen = ref(!!savedGoTo.value)
 const closeGoTo = (restoreFocus: boolean) => {
     goToOpen.value = false
+    savedGoTo.value = undefined
     if (restoreFocus) void nextTick(() => goToButton.value?.focus({ preventScroll: true }))
 }
 // The piece at the top of the list is Go To's current one.
-const goToCurrent = ref<Target | 'now'>()
+const goToCurrent = ref<Target | 'now'>(savedGoTo.value?.current)
 const openGoTo = () => {
+    savedGoTo.value = undefined
     goToCurrent.value = timeline.value?.topEntry()
     goToOpen.value = true
 }
@@ -126,6 +151,7 @@ const toggleGoTo = () => {
 // Picking closes Go To, jumps there and hands the keys to the list.
 const onGoToPick = (target: Target | 'now') => {
     goToOpen.value = false
+    savedGoTo.value = undefined
     timeline.value?.focus()
     void timeline.value?.jumpTo(target)
 }
@@ -297,8 +323,20 @@ const goToButtonTitle = computed(() =>
             />
             <RecentSessionsTab v-else />
         </div>
-        <GoToPopover v-if="goToOpen && goToButton" :anchor="goToButton" @close="closeGoTo">
-            <GoToList :current="goToCurrent" @pick="onGoToPick" />
+        <GoToPopover
+            v-if="goToOpen && goToButton"
+            ref="goToPopover"
+            :anchor="goToButton"
+            :restore="savedGoTo"
+            @close="closeGoTo"
+        >
+            <GoToList
+                ref="goToList"
+                :current="goToCurrent"
+                :restore-active-id="savedGoTo?.activeId"
+                @pick="onGoToPick"
+                @ready="goToPopover?.restoreScroll()"
+            />
         </GoToPopover>
     </div>
 </template>

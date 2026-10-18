@@ -88,6 +88,7 @@ onMounted(() => {
         const focused = target
             ? root.value.querySelector<HTMLElement>(`[data-history-focus="${target}"]`)
             : undefined
+        if (panel.value?.hasGoTo()) return
         ;(
             focused ??
             root.value.querySelector<HTMLElement>('[data-history-list]') ??
@@ -114,6 +115,7 @@ onBeforeUnmount(() => {
             ref="panel"
             class="min-h-0 flex-1"
             surface="dialog"
+            :presentation="presentation"
             @chrome="presentation.measureChrome"
             @close="emit('close')"
         />

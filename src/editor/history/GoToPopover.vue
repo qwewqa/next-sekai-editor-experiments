@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef } from 'vue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import { swallowPress } from '../../utils/swallowPress'
@@ -7,18 +7,37 @@ import { workspaceDockAttribute } from '../workspace'
 import { filterHere, hereRangeText, takeHereRange } from './editsHere'
 import type { Filter } from './rows'
 import { historyFilter } from './state'
+import type { GoToView } from './presentation'
 
 // The Go To popover (Part 1 §1.4.10.5): the Show list, All, Saves and Exports or Edits Here with
 // the beats it would take, and under it the jump list, which the default slot holds. Under 640 px
 // it is the menus' bottom sheet over a dimmed backdrop.
 
-const props = defineProps<{ anchor: HTMLElement }>()
+const props = defineProps<{ anchor: HTMLElement; restore?: GoToView }>()
+const container = computed(() => props.anchor.closest('dialog') ?? 'body')
 
 const emit = defineEmits<{ close: [restoreFocus: boolean] }>()
 
 const popover = useTemplateRef<HTMLDivElement>('popover')
 const scroller = useTemplateRef<HTMLDivElement>('scroller')
 const headingId = useId()
+let scrollRestored = false
+const restoreScroll = () => {
+    if (!props.restore || !scroller.value || scrollRestored) return
+    scroller.value.scrollTop = props.restore.top
+    scrollRestored = true
+}
+defineExpose({
+    restoreScroll,
+    captureView: () => ({
+        top: scroller.value?.scrollTop ?? 0,
+        focus:
+            document.activeElement instanceof HTMLElement
+                ? (document.activeElement.dataset.gotoFilter ??
+                  (document.activeElement.hasAttribute('data-goto-list') ? 'list' : undefined))
+                : undefined,
+    }),
+})
 
 const filters: readonly Filter[] = ['all', 'saves', 'here']
 const filterTitle = (filter: Filter) =>
@@ -76,11 +95,16 @@ onMounted(async () => {
     // Hidden elements cannot take focus, so wait for the placed popover to show.
     await nextTick()
     if (!active) return
-    radios()
-        .find((radio) => radio.getAttribute('aria-checked') === 'true')
-        ?.focus({
-            preventScroll: true,
-        })
+    const focus = props.restore?.focus
+    const target =
+        focus === 'list'
+            ? popover.value?.querySelector<HTMLElement>('[data-goto-list]')
+            : radios().find((radio) =>
+                  focus
+                      ? radio.dataset.gotoFilter === focus
+                      : radio.getAttribute('aria-checked') === 'true',
+              )
+    target?.focus({ preventScroll: true })
     // The jump list loads after it opens: placed again as it grows.
     if (scroller.value?.firstElementChild) {
         resizer = new ResizeObserver(() => {
@@ -173,7 +197,7 @@ const onKeydown = (event: KeyboardEvent) => {
 </script>
 
 <template>
-    <Teleport to="body">
+    <Teleport :to="container">
         <div
             class="manager-menu-backdrop fixed inset-0 z-40 bg-black/30 sm:hidden"
             aria-hidden="true"

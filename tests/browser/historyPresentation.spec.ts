@@ -349,10 +349,12 @@ test('promotion waits for an interrupted Edits Here scan before restoring its an
     await page.keyboard.press('PageDown')
     await expect.poll(async () => (await selected(page)).displayed).toBeTruthy()
     await page.keyboard.press('PageDown')
-    await expect.poll(async () => {
-        const current = await selected(page)
-        return current.requested === current.displayed
-    }).toBe(true)
+    await expect
+        .poll(async () => {
+            const current = await selected(page)
+            return current.requested === current.displayed
+        })
+        .toBe(true)
     const before = await selected(page)
     const top = await list(page).evaluate((element) => element.scrollTop)
     expect(top).toBeGreaterThan(0)
@@ -394,4 +396,58 @@ test.describe('touch compact History', () => {
         await expect(presentation(page)).toHaveCount(0)
         expect(await selected(page)).toEqual(before)
     })
+    test('Go To remains reachable in the compact dialog top layer', async ({ page }) => {
+        await open(page)
+        await presentation(page).getByRole('button', { name: 'Go To', exact: true }).tap()
+        const goTo = page.locator('[data-history-goto]')
+        expect(await goTo.evaluate((element) => !!element.closest('dialog[open]'))).toBe(true)
+        await goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }).tap()
+        await expect(
+            goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }),
+        ).toHaveAttribute('aria-checked', 'true')
+        await goTo.getByRole('radio', { name: 'All', exact: true }).tap()
+        await goTo.getByRole('option', { name: 'Now', exact: true }).tap()
+        await expect(goTo).toHaveCount(0)
+        await expect(list(page)).toBeFocused()
+    })
+})
+
+test('compact Go To supports pointer filters and keyboard picks inside the native dialog', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 520, height: 320 })
+    await open(page)
+    await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
+    const goTo = page.locator('[data-history-goto]')
+    expect(await goTo.evaluate((element) => !!element.closest('dialog[open]'))).toBe(true)
+    await goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }).click()
+    await expect(
+        goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true')
+    await goTo.getByRole('radio', { name: 'All', exact: true }).click()
+    await page.keyboard.press('Tab')
+    await expect(goTo.locator('[data-goto-list]')).toBeFocused()
+    await page.keyboard.press('Home')
+    await page.keyboard.press('Enter')
+    await expect(goTo).toHaveCount(0)
+    await expect(list(page)).toBeFocused()
+    await expect(list(page).getByRole('option', { selected: true })).toContainText('Now')
+})
+
+test('filter-driven promotion retains an open Go To chooser, while window resize still dismisses it', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 667, height: 375 })
+    await open(page)
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
+    await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
+    const goTo = page.locator('[data-history-goto]')
+    await goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }).click()
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
+    await expect(goTo).toHaveCount(1)
+    await expect(goTo.getByRole('radio', { name: 'Saves and Exports', exact: true })).toBeFocused()
+    expect(await goTo.evaluate((element) => !!element.closest('dialog[open]'))).toBe(true)
+    await page.setViewportSize({ width: 668, height: 375 })
+    await expect(goTo).toHaveCount(0)
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
 })
