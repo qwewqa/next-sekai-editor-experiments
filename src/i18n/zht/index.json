@@ -2045,7 +2045,7 @@
       "notConfirmed": "未確認",
       "notStored": "未存放"
     },
-    "changedOnDiskName": "\"{0}\"：自在此處開啟或儲存後，磁碟上的檔案已變更。",
+    "changedOnDiskName": "\"{0}\"：自你在此處開啟或儲存後，磁碟上的檔案已變更。",
     "newerOnDiskName": "\"{0}\"：磁碟上有較新版本。",
     "notStored": "未存放"
   },

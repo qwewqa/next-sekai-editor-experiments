@@ -2010,8 +2010,8 @@
       "openCopy": "コピーを開く"
     },
     "unsavedChanges": "{0} を開きました。このファイルには {1} からの未保存の変更があります。",
-    "unsavedEarlier": "{0} の以前のバージョンへの未保存の変更（{1}）が最近のセッションにあります。",
-    "olderVersion": "これは {0} の古いバージョンです。{1} の新しいバージョンが最近のセッションにあります。",
+    "unsavedEarlier": "{0} の以前のバージョンへの未保存の変更（{1}）が「最近のセッション」にあります。",
+    "olderVersion": "これは {0} の古いバージョンです。{1} の新しいバージョンが「最近のセッション」にあります。",
     "restoreIt": "セッションを復元",
     "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
   },
@@ -2040,7 +2040,7 @@
     "notConfirmed": "ダウンロード未確認",
     "short": {
       "fileMissing": "ファイルなし",
-      "changedOnDisk": "変更",
+      "changedOnDisk": "変更あり",
       "newerOnDisk": "新しい",
       "notConfirmed": "未確認",
       "notStored": "未保管"

@@ -1888,11 +1888,11 @@
     "saved": "{0}에 저장됨",
     "savedWithoutBgm": "{0}에 BGM 없이 저장됨. BGM을 불러오지 않았습니다",
     "savedWithoutCover": "{0}에 커버 없이 저장됨. 커버를 불러오지 않았습니다",
-    "savedWithoutPreview": "{0}에 미리 듣기 오디오 없이 저장됨. 미리 듣기 오디오를 불러오지 않았습니다",
+    "savedWithoutPreview": "{0}에 미리보기 오디오 없이 저장됨. 미리보기 오디오를 불러오지 않았습니다",
     "savedWithoutMedia": "{0}에 불러오지 않은 미디어 없이 저장됨",
     "savedWithoutBgmLarge": "{0}에 BGM 없이 저장됨",
     "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
-    "savedWithoutPreviewLarge": "{0}에 미리 듣기 오디오 없이 저장됨",
+    "savedWithoutPreviewLarge": "{0}에 미리보기 오디오 없이 저장됨",
     "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
     "someStepsNotKept": "{0}에 저장됨. 이전 단계 일부는 보존되지 않았습니다.",
     "someStepsNotKeptLine": "이전 단계 일부는 보존되지 않았습니다.",
@@ -1999,7 +1999,7 @@
     "media": {
       "bgm": "BGM",
       "cover": "커버",
-      "preview": "미리 듣기 오디오"
+      "preview": "미리보기 오디오"
     },
     "newerMajor": "더 새로운 버전의 {0}에서 만들어졌습니다.",
     "newerMajorNote": "이 파일에서는 레벨만 열 수 있습니다.",
@@ -2042,7 +2042,7 @@
       "fileMissing": "파일 없음",
       "changedOnDisk": "변경됨",
       "newerOnDisk": "더 새로움",
-      "notConfirmed": "확인 안 됨",
+      "notConfirmed": "확인되지 않음",
       "notStored": "보관되지 않음"
     },
     "changedOnDiskName": "\"{0}\": 여기서 열거나 저장한 후 디스크에서 변경되었습니다.",

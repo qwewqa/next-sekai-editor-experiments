@@ -2018,7 +2018,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
     "saved": "{0} · {1} kaydedildi",
-    "changedSinceSaved": "{0} · kayıttan sonra değişti",
+    "changedSinceSaved": "{0} · kaydedildikten sonra değişti",
     "downloaded": "{0} · {1} indirildi",
     "notConfirmed": "onaylanmadı",
     "changedSinceDownload": "{0} · indirmeden sonra değişti",
