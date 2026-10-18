@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="96" viewBox="0 0 48 var(--h)" preserveAspectRatio="none">
     <path d="var(--rim)" fill="var(--outer)"/>
     <path d="var(--face)" fill="var(--inner)"/>
-    <rect x="16" y="var(--mark)" width="24" height="var(--tall)" fill="var(--accent)"/>
+    <path d="var(--mark)" fill="var(--accent)"/>
 </svg>
