@@ -50,6 +50,9 @@ const current = computed(() => states[index.value]!)
 
 export const isDirty = computed(() => (current.value as Slot | undefined)?.isDirty ?? false)
 
+/** The current slot's stored root, when it has one: a restored slot, or one a flush has stored. */
+export const headSnapshot = computed(() => (current.value as Slot | undefined)?.snapshot)
+
 /** The name of the step that made the current state: the Timeline's Now row. */
 export const headName = computed(() => (current.value as Slot | undefined)?.name() ?? '')
 

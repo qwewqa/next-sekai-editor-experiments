@@ -2,6 +2,7 @@
 import { useTemplateRef, watch } from 'vue'
 import { contextMenu } from './editor/contextMenu'
 import './editor/documentTitle'
+import './editor/file/closePrompt'
 import LevelEditor from './editor/LevelEditor.vue'
 import './editor/loadNotices'
 import NoticeHost from './editor/NoticeHost.vue'

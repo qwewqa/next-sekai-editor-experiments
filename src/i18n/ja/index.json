@@ -758,7 +758,10 @@
         "properties": "ステージ変形イベントツールを再選択するとデフォルトの設定を変更できます。"
       }
     },
-    "altN": "Alt+N (macOSではOption+N) を押すと、最新の通知にフォーカスが移ります。続けてEscを押すと閉じます。"
+    "altN": "Alt+N (macOSではOption+N) を押すと、最新の通知にフォーカスが移ります。続けてEscを押すと閉じます。",
+    "fileTitle": "ファイル",
+    "moveBetweenDevices": "作業を別のデバイスに移すには、.nxsp ファイルとして保存し、そのデバイスでファイルを開いてください。",
+    "crswap": "保存中にクラッシュすると、プロジェクトファイルの横に .crswap ファイルが残ることがあります。削除しても問題ありません。"
   },
   "elevation": {
     "edit": "高さを編集",
@@ -949,7 +952,8 @@
         "unreadable": "読み取れない回復済みの作業、{0} · {1}",
         "atLoad": "今回の読み込み"
       },
-      "openHistory": "履歴を開く"
+      "openHistory": "履歴を開く",
+      "confirmClose": "未保存の変更があるときは閉じる前に確認する"
     }
   },
   "sidebars": {
@@ -1867,13 +1871,19 @@
     "noSpace": "{0} を書き込むための空き容量が足りません。",
     "writeFailed": "「{0}」に書き込めませんでした。",
     "notPutBack": "「{0}」は空になり、元の内容を戻せませんでした。",
-    "openedContentGone": "「{0}」には、開いたときの内容がもうありません。"
+    "openedContentGone": "「{0}」には、開いたときの内容がもうありません。",
+    "saveAs": "名前を付けて保存…"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",
     "exportBody": "「{0}」は前回の出力後に変更されています。",
     "exportBodyOpened": "「{0}」はここで開いた後に変更されています。",
-    "replace": "置き換え"
+    "replace": "置き換え",
+    "title": "「{0}」が変更されました",
+    "body": "「{0}」はここで開いた後または保存した後に変更されています。",
+    "openOther": "もう一方のバージョンを開く",
+    "openOtherNote": "変更は保存されないままです。",
+    "keepEditing": "編集を続ける"
   },
   "name": {
     "invalidChar": "名前に {0} は使用できません",
@@ -1919,7 +1929,10 @@
   "status": {
     "notInFile": "ファイルに保存されていません",
     "separateCopy": "{0} の別コピー",
-    "opensLevelInfo": "譜面情報を開きます"
+    "opensLevelInfo": "譜面情報を開きます",
+    "changedSaved": "{0}、{1} に保存した後に変更あり",
+    "changedDownload": "{0}、{1} をダウンロードした後に変更あり",
+    "changedOpened": "{0}、{1} を開いた後に変更あり"
   },
   "open": {
     "notProject": "この ZIP はプロジェクトファイルではありません。",
@@ -1947,5 +1960,42 @@
     "olderVersion": "これは {0} の古いバージョンです。{1} の新しいバージョンが最近のセッションにあります。",
     "restoreIt": "セッションを復元",
     "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
+  },
+  "file": {
+    "saved": "{0} · {1}に保存",
+    "changedSinceSaved": "{0} · 保存後に変更あり",
+    "downloaded": "{0} · {1}にダウンロード",
+    "notConfirmed": "未確認",
+    "changedSinceDownload": "{0} · ダウンロード後に変更あり",
+    "opened": "{0} · {1}に開いた",
+    "changedSinceOpened": "{0} · 開いた後に変更あり",
+    "short": {
+      "saved": "保存済み",
+      "changed": "変更あり",
+      "notSaved": "未保存",
+      "downloaded": "ダウンロード済み",
+      "notConfirmed": "未確認",
+      "opened": "開いた"
+    }
+  },
+  "state": {
+    "fileMissing": "ファイルなし",
+    "changedOnDisk": "ディスク上で変更",
+    "newerOnDisk": "ディスク上のほうが新しい",
+    "notConfirmed": "ダウンロード未確認",
+    "short": {
+      "fileMissing": "なし",
+      "changedOnDisk": "変更",
+      "newerOnDisk": "新しい",
+      "notConfirmed": "未確認"
+    },
+    "changedOnDiskName": "「{0}」: ここで開いた後または保存した後にディスク上で変更されました。",
+    "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。"
+  },
+  "confirm": {
+    "title": "ダウンロード未確認",
+    "body": "{0} のダウンロードが完了したか確認してください（{1}）。",
+    "haveFile": "ファイルを確認した",
+    "downloadAgain": "もう一度ダウンロード"
   }
 }

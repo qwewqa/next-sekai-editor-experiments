@@ -3,11 +3,12 @@ import { onMounted, ref, useId } from 'vue'
 import { i18n } from '../i18n'
 import { readBrowserFacts } from './settings/storageLine'
 import { openLevelInfoStub } from './levelInfo'
-import { statusLabel, statusText } from './labelText'
+import { statusLabel, statusName } from './labelText'
 
 // The status bar's label (Part 1 §1.3.4): the displayed name, then the bound file or why there is
-// none. It opens Level Info. On phones the reason is left out first, except where it is the
-// lasting sign that stored work can be deleted: a suspected private window, Safari, iPhone and iPad.
+// none, and a "•" when the file has changes. It opens Level Info. On phones the reason is left
+// out first, except where it is the lasting sign that stored work can be deleted: a suspected
+// private window, Safari, iPhone and iPad.
 const keepState = ref(false)
 onMounted(async () => {
     const facts = await readBrowserFacts()
@@ -29,7 +30,7 @@ const onClick = (event: MouseEvent) => {
     <button
         type="button"
         class="status-label relative flex min-w-[4.5rem] max-w-[60%] shrink-[1000] px-1"
-        :aria-label="statusText"
+        :aria-label="statusName"
         :aria-describedby="describedBy"
         data-status-label
         @click="onClick"
@@ -49,10 +50,13 @@ const onClick = (event: MouseEvent) => {
             <span
                 v-if="statusLabel.state"
                 class="ml-1 min-w-0 shrink-[10] truncate opacity-70"
-                :class="keepState ? '' : 'max-md:hidden'"
+                :class="keepState && !statusLabel.file ? '' : 'max-md:hidden'"
                 data-status-state
                 >{{ ` · ${statusLabel.state}` }}</span
             >
+            <span v-if="statusLabel.changed" class="ml-1 shrink-0" data-status-changed>{{
+                ' •'
+            }}</span>
         </span>
         <span :id="describedBy" class="sr-only">{{ i18n.status.opensLevelInfo }}</span>
     </button>

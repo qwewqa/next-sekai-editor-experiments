@@ -758,7 +758,10 @@
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite."
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
+    "fileTitle": "Fichiers",
+    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
+    "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
   },
   "elevation": {
     "edit": "Modifier les élévations",
@@ -949,7 +952,8 @@
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "atLoad": "Lors de ce chargement"
       },
-      "openHistory": "Ouvrir l’historique"
+      "openHistory": "Ouvrir l’historique",
+      "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées"
     }
   },
   "sidebars": {
@@ -1867,13 +1871,19 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert."
+    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert.",
+    "saveAs": "Sauvegarder sous…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
     "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",
     "exportBodyOpened": "\"{0}\" a changé depuis que vous l’avez ouvert ici.",
-    "replace": "Remplacer"
+    "replace": "Remplacer",
+    "title": "\"{0}\" a changé",
+    "body": "\"{0}\" a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "openOther": "Ouvrir l’autre version",
+    "openOtherNote": "Vos modifications restent non sauvegardées.",
+    "keepEditing": "Continuer à modifier"
   },
   "name": {
     "invalidChar": "Un nom ne peut pas contenir {0}",
@@ -1919,7 +1929,10 @@
   "status": {
     "notInFile": "Non sauvegardé dans un fichier",
     "separateCopy": "Copie séparée de {0}",
-    "opensLevelInfo": "Ouvre les informations du niveau"
+    "opensLevelInfo": "Ouvre les informations du niveau",
+    "changedSaved": "{0}, modifié depuis la sauvegarde dans {1}",
+    "changedDownload": "{0}, modifié depuis le téléchargement de {1}",
+    "changedOpened": "{0}, modifié depuis l’ouverture de {1}"
   },
   "open": {
     "notProject": "Ce ZIP n’est pas un fichier de projet.",
@@ -1947,5 +1960,42 @@
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
+  },
+  "file": {
+    "saved": "{0} · sauvegardé {1}",
+    "changedSinceSaved": "{0} · modifié depuis la sauvegarde",
+    "downloaded": "{0} · téléchargé {1}",
+    "notConfirmed": "non confirmé",
+    "changedSinceDownload": "{0} · modifié depuis le téléchargement",
+    "opened": "{0} · ouvert {1}",
+    "changedSinceOpened": "{0} · modifié depuis l’ouverture",
+    "short": {
+      "saved": "sauvegardé",
+      "changed": "modifié",
+      "notSaved": "non sauvegardé",
+      "downloaded": "téléchargé",
+      "notConfirmed": "non confirmé",
+      "opened": "ouvert"
+    }
+  },
+  "state": {
+    "fileMissing": "Fichier introuvable",
+    "changedOnDisk": "Modifié sur le disque",
+    "newerOnDisk": "Plus récent sur le disque",
+    "notConfirmed": "Téléchargement non confirmé",
+    "short": {
+      "fileMissing": "Introuvable",
+      "changedOnDisk": "Modifié",
+      "newerOnDisk": "Plus récent",
+      "notConfirmed": "Non confirmé"
+    },
+    "changedOnDiskName": "\"{0}\" : modifié sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "newerOnDiskName": "\"{0}\" : une version plus récente est sur le disque."
+  },
+  "confirm": {
+    "title": "Téléchargement non confirmé",
+    "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
+    "haveFile": "J’ai le fichier",
+    "downloadAgain": "Télécharger à nouveau"
   }
 }

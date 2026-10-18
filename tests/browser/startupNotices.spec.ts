@@ -71,21 +71,22 @@ const hide = (page: Page) =>
         document.dispatchEvent(new Event('visibilitychange'))
     })
 
-/** Binds the open session's chain to a file, as a Save would (Step 6 writes the file). */
+/** Binds the open session's chain to a file, as a Save would: its hash is the head's. */
 const bind = (page: Page, name: string) =>
-    page.evaluate(
-        (name) =>
-            window.nseFlushTest!.flusher.setChainFields({
-                file: {
-                    name,
-                    event: 'saved',
-                    at: Date.now(),
-                    hash: new Uint8Array(16),
-                    options: { history: true, bgm: true },
-                },
-            }),
-        name,
-    )
+    page.evaluate(async (name) => {
+        const { flusher } = window.nseFlushTest!
+        await flusher.flush({ strict: true })
+        const committed = flusher.session!.stack.committed
+        return flusher.setChainFields({
+            file: {
+                name,
+                event: 'saved',
+                at: Date.now(),
+                hash: committed.at(committed.index)?.hash ?? new Uint8Array(16),
+                options: { history: true, bgm: true },
+            },
+        })
+    }, name)
 
 const pill = (page: Page) => page.locator('.notification-pill')
 

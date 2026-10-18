@@ -758,7 +758,10 @@
         "properties": "기본 속성을 변경하려면 스테이지 변형 이벤트 도구를 다시 선택합니다."
       }
     },
-    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림으로 포커스가 이동합니다. 이어서 Esc를 누르면 닫힙니다."
+    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림으로 포커스가 이동합니다. 이어서 Esc를 누르면 닫힙니다.",
+    "fileTitle": "파일",
+    "moveBetweenDevices": "작업을 다른 기기로 옮기려면 .nxsp 파일로 저장한 다음 그 기기에서 파일을 여세요.",
+    "crswap": "저장 중 충돌이 발생하면 프로젝트 파일 옆에 .crswap 파일이 남을 수 있습니다. 삭제해도 안전합니다."
   },
   "elevation": {
     "edit": "높이 편집",
@@ -949,7 +952,8 @@
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
         "atLoad": "이번에 불러올 때"
       },
-      "openHistory": "기록 열기"
+      "openHistory": "기록 열기",
+      "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인"
     }
   },
   "sidebars": {
@@ -1867,13 +1871,19 @@
     "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
     "writeFailed": "\"{0}\"에 쓰지 못했습니다.",
     "notPutBack": "\"{0}\"이(가) 비워졌으며 원래 내용을 되돌리지 못했습니다.",
-    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다."
+    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다.",
+    "saveAs": "다른 이름으로 저장…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 변경됨",
     "exportBody": "\"{0}\"이(가) 마지막으로 내보낸 후 변경되었습니다.",
     "exportBodyOpened": "\"{0}\"이(가) 여기서 연 후 변경되었습니다.",
-    "replace": "교체"
+    "replace": "교체",
+    "title": "\"{0}\" 변경됨",
+    "body": "\"{0}\"이(가) 여기서 열거나 저장한 후 변경되었습니다.",
+    "openOther": "다른 버전 열기",
+    "openOtherNote": "변경 사항은 저장되지 않은 상태로 유지됩니다.",
+    "keepEditing": "계속 편집"
   },
   "name": {
     "invalidChar": "이름에 {0}을(를) 포함할 수 없습니다",
@@ -1919,7 +1929,10 @@
   "status": {
     "notInFile": "파일에 저장되지 않음",
     "separateCopy": "{0}의 별도 사본",
-    "opensLevelInfo": "레벨 정보를 엽니다"
+    "opensLevelInfo": "레벨 정보를 엽니다",
+    "changedSaved": "{0}, {1}에 저장한 후 변경됨",
+    "changedDownload": "{0}, {1} 다운로드 후 변경됨",
+    "changedOpened": "{0}, {1}을(를) 연 후 변경됨"
   },
   "open": {
     "notProject": "이 ZIP은 프로젝트 파일이 아닙니다.",
@@ -1947,5 +1960,42 @@
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",
     "restoreIt": "세션 복원",
     "damagedHistory": "\"{0}\"의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."
+  },
+  "file": {
+    "saved": "{0} · {1} 저장됨",
+    "changedSinceSaved": "{0} · 저장 후 변경됨",
+    "downloaded": "{0} · {1} 다운로드됨",
+    "notConfirmed": "확인되지 않음",
+    "changedSinceDownload": "{0} · 다운로드 후 변경됨",
+    "opened": "{0} · {1} 열림",
+    "changedSinceOpened": "{0} · 연 후 변경됨",
+    "short": {
+      "saved": "저장됨",
+      "changed": "변경됨",
+      "notSaved": "저장 안 됨",
+      "downloaded": "다운로드됨",
+      "notConfirmed": "확인되지 않음",
+      "opened": "열림"
+    }
+  },
+  "state": {
+    "fileMissing": "파일 없음",
+    "changedOnDisk": "디스크에서 변경됨",
+    "newerOnDisk": "디스크에 더 새로운 버전 있음",
+    "notConfirmed": "다운로드 확인되지 않음",
+    "short": {
+      "fileMissing": "없음",
+      "changedOnDisk": "변경됨",
+      "newerOnDisk": "더 새로움",
+      "notConfirmed": "확인 안 됨"
+    },
+    "changedOnDiskName": "\"{0}\": 여기서 열거나 저장한 후 디스크에서 변경되었습니다.",
+    "newerOnDiskName": "\"{0}\": 디스크에 더 새로운 버전이 있습니다."
+  },
+  "confirm": {
+    "title": "다운로드 확인되지 않음",
+    "body": "{0} 다운로드가 완료되었는지 확인하세요({1}).",
+    "haveFile": "파일이 있습니다",
+    "downloadAgain": "다시 다운로드"
   }
 }

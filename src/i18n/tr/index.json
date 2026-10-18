@@ -758,7 +758,10 @@
         "properties": "Varsayılan Özellikleri değiştirmek için tekrar Sahne Dönüşüm Olayı aracına geçin."
       }
     },
-    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır."
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
+    "fileTitle": "Dosyalar",
+    "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
+    "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",
@@ -949,7 +952,8 @@
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "atLoad": "Bu yüklemede"
       },
-      "openHistory": "Geçmişi Aç"
+      "openHistory": "Geçmişi Aç",
+      "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor"
     }
   },
   "sidebars": {
@@ -1867,13 +1871,19 @@
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "\"{0}\" yazılamadı.",
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
-    "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor."
+    "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor.",
+    "saveAs": "Farklı Kaydet…"
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
     "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
     "exportBodyOpened": "\"{0}\", burada açtığınızdan bu yana değişti.",
-    "replace": "Üzerine Yaz"
+    "replace": "Üzerine Yaz",
+    "title": "\"{0}\" Değişti",
+    "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
+    "openOther": "Diğer Sürümü Aç",
+    "openOtherNote": "Değişiklikleriniz kaydedilmemiş kalır.",
+    "keepEditing": "Düzenlemeye Devam Et"
   },
   "name": {
     "invalidChar": "Ad {0} içeremez",
@@ -1919,7 +1929,10 @@
   "status": {
     "notInFile": "Dosyaya kaydedilmedi",
     "separateCopy": "{0} için ayrı kopya",
-    "opensLevelInfo": "Seviye bilgisini açar"
+    "opensLevelInfo": "Seviye bilgisini açar",
+    "changedSaved": "{0}, {1} dosyasına kaydedildikten sonra değişti",
+    "changedDownload": "{0}, {1} indirildikten sonra değişti",
+    "changedOpened": "{0}, {1} açıldıktan sonra değişti"
   },
   "open": {
     "notProject": "Bu ZIP bir proje dosyası değil.",
@@ -1947,5 +1960,42 @@
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
+  },
+  "file": {
+    "saved": "{0} · {1} kaydedildi",
+    "changedSinceSaved": "{0} · kayıttan sonra değişti",
+    "downloaded": "{0} · {1} indirildi",
+    "notConfirmed": "onaylanmadı",
+    "changedSinceDownload": "{0} · indirmeden sonra değişti",
+    "opened": "{0} · {1} açıldı",
+    "changedSinceOpened": "{0} · açıldıktan sonra değişti",
+    "short": {
+      "saved": "kaydedildi",
+      "changed": "değişti",
+      "notSaved": "kaydedilmedi",
+      "downloaded": "indirildi",
+      "notConfirmed": "onaylanmadı",
+      "opened": "açıldı"
+    }
+  },
+  "state": {
+    "fileMissing": "Dosya yok",
+    "changedOnDisk": "Diskte değişti",
+    "newerOnDisk": "Diskte daha yeni",
+    "notConfirmed": "İndirme onaylanmadı",
+    "short": {
+      "fileMissing": "Yok",
+      "changedOnDisk": "Değişti",
+      "newerOnDisk": "Daha yeni",
+      "notConfirmed": "Onaylanmadı"
+    },
+    "changedOnDiskName": "\"{0}\": burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
+    "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var."
+  },
+  "confirm": {
+    "title": "İndirme Onaylanmadı",
+    "body": "{0} dosyasının indirmesinin tamamlandığını kontrol edin ({1}).",
+    "haveFile": "Dosya Bende",
+    "downloadAgain": "Tekrar İndir"
   }
 }

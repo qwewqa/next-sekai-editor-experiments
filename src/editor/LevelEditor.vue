@@ -18,6 +18,7 @@ import './peek'
 import LevelEditorNotification from './LevelEditorNotification.vue'
 import ChangeArrows from './history/ChangeArrows.vue'
 import PeekBar from './history/PeekBar.vue'
+import FileChip from './file/FileChip.vue'
 import StatusLabel from './StatusLabel.vue'
 import { groupScope, stageScope } from './scope'
 import LevelEditorToolbar from './toolbar/LevelEditorToolbar.vue'
@@ -284,6 +285,7 @@ const stageCount = computed(() =>
         >
             <span class="min-w-12 flex-grow truncate">{{ tool.title() }}</span>
             <StatusLabel />
+            <FileChip />
             <!-- The scope chips open their managers. Long names truncate while the
             shown count stays visible. -->
             <button

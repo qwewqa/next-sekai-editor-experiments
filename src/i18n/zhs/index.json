@@ -758,7 +758,10 @@
         "properties": "再次切换到舞台变换事件工具即可更改默认属性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。"
+    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。",
+    "fileTitle": "文件",
+    "moveBetweenDevices": "要将作品移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
+    "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以放心删除。"
   },
   "elevation": {
     "edit": "编辑高度",
@@ -949,7 +952,8 @@
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
         "atLoad": "本次加载"
       },
-      "openHistory": "打开历史记录"
+      "openHistory": "打开历史记录",
+      "confirmClose": "关闭前询问未保存的更改"
     }
   },
   "sidebars": {
@@ -1867,13 +1871,19 @@
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
-    "openedContentGone": "“{0}”已不再包含打开时的内容。"
+    "openedContentGone": "“{0}”已不再包含打开时的内容。",
+    "saveAs": "另存为…"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",
     "exportBody": "“{0}”在上次导出后已更改。",
     "exportBodyOpened": "“{0}”在此处打开后已更改。",
-    "replace": "替换"
+    "replace": "替换",
+    "title": "“{0}”已更改",
+    "body": "“{0}”在此处打开或保存后已更改。",
+    "openOther": "打开另一个版本",
+    "openOtherNote": "你的更改仍未保存。",
+    "keepEditing": "继续编辑"
   },
   "name": {
     "invalidChar": "名称不能包含 {0}",
@@ -1919,7 +1929,10 @@
   "status": {
     "notInFile": "未保存到文件",
     "separateCopy": "{0} 的单独副本",
-    "opensLevelInfo": "打开关卡信息"
+    "opensLevelInfo": "打开关卡信息",
+    "changedSaved": "{0}，自保存到 {1} 后已更改",
+    "changedDownload": "{0}，自下载 {1} 后已更改",
+    "changedOpened": "{0}，自打开 {1} 后已更改"
   },
   "open": {
     "notProject": "此 ZIP 不是项目文件。",
@@ -1947,5 +1960,42 @@
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在最近会话中。",
     "restoreIt": "还原会话",
     "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"
+  },
+  "file": {
+    "saved": "{0} · {1} 已保存",
+    "changedSinceSaved": "{0} · 保存后已更改",
+    "downloaded": "{0} · {1} 已下载",
+    "notConfirmed": "未确认",
+    "changedSinceDownload": "{0} · 下载后已更改",
+    "opened": "{0} · {1} 已打开",
+    "changedSinceOpened": "{0} · 打开后已更改",
+    "short": {
+      "saved": "已保存",
+      "changed": "已更改",
+      "notSaved": "未保存",
+      "downloaded": "已下载",
+      "notConfirmed": "未确认",
+      "opened": "已打开"
+    }
+  },
+  "state": {
+    "fileMissing": "文件丢失",
+    "changedOnDisk": "磁盘上已更改",
+    "newerOnDisk": "磁盘上有更新版本",
+    "notConfirmed": "下载未确认",
+    "short": {
+      "fileMissing": "丢失",
+      "changedOnDisk": "已更改",
+      "newerOnDisk": "较新",
+      "notConfirmed": "未确认"
+    },
+    "changedOnDiskName": "“{0}”：自在此处打开或保存后，磁盘上的文件已更改。",
+    "newerOnDiskName": "“{0}”：磁盘上有更新版本。"
+  },
+  "confirm": {
+    "title": "下载未确认",
+    "body": "请确认 {0} 已下载完成（{1}）。",
+    "haveFile": "我已有该文件",
+    "downloadAgain": "再次下载"
   }
 }

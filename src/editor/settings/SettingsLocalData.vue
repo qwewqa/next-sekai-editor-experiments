@@ -5,7 +5,10 @@ import { formatDate } from '../../i18n/when'
 import { storageStatus } from '../../local/startup/events'
 import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
+import ToggleField from '../../modals/form/ToggleField.vue'
 import { FileError, platform } from '../../platform'
+import { detection } from '../../platform/detect'
+import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -134,6 +137,9 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
+// iPhone and iPad never show the close prompt (§1.4.9), so the setting isn't offered there.
+const showsClosePrompt = detection().os !== 'ios'
+
 const buttonClass =
     'inline-flex h-9 max-w-full items-center rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11'
 
@@ -150,6 +156,12 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
     <SettingsSection id="localData" :title="strings.title">
         <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
 
+        <ToggleField
+            v-if="showsClosePrompt"
+            v-model="settings.confirmCloseUnsavedFile"
+            :label="strings.confirmClose"
+            data-confirm-close
+        />
         <div>
             <button type="button" :class="buttonClass" data-open-history @click="openHistory">
                 {{ strings.openHistory }}
