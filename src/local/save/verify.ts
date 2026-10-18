@@ -50,7 +50,8 @@ export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChun
     }
     const history = project.history
     if (!isObject(history)) return
-    const names = [...(Array.isArray(history.segments) ? history.segments : []), history.manifest]
+    const segments: unknown[] = Array.isArray(history.segments) ? history.segments : []
+    const names = [...segments, history.manifest]
     for (const name of names) {
         const part = json(name)
         if (!isObject(part)) return fail(String(name))

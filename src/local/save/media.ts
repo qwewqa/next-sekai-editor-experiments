@@ -74,7 +74,7 @@ export const planMediaItem = async (
         ...(damaged ? { damaged } : {}),
     })
     if (ref.size > NXSP_CAPS.media) return metadataOnly()
-    if (held && held.hash === ref.hash) {
+    if (held?.hash === ref.hash) {
         const digest = await sha256(held.bytes)
         if (hex(digest).startsWith(ref.hash))
             return {

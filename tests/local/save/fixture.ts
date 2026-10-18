@@ -128,7 +128,7 @@ export class Fixture {
     }
 
     /** Starts a session: `init` with state `k`, or a continuation of the last one. */
-    async start(k = 0) {
+    async start(k: number | State = 0) {
         const last = this.sessions.at(-1)
         const session: FixtureSession = {
             id: nextId('s-'),
@@ -146,7 +146,9 @@ export class Fixture {
         this.sessions.push(session)
         if (last) this.add('continue', 'Continued', fromHex16(this.head))
         else {
-            const { hex } = await this.body(k)
+            const { hex } = await (typeof k === 'number'
+                ? this.body(k)
+                : this.store_({ state: k, hex: toHex(encodeSnapshot(toRecords(k)).root.hash) }))
             session.slots = [{ snapshot: fromHex16(hex), label: 'Imported' }]
             this.add('init', 'Imported', fromHex16(hex))
         }
@@ -173,8 +175,12 @@ export class Fixture {
     }
 
     /** Stores state `k`'s bodies, once. */
-    async body(k: number) {
-        const known = stateAt(k)
+    body(k: number) {
+        return this.store_(stateAt(k))
+    }
+
+    /** Stores a state's bodies, once. */
+    async store_(known: { state: State; hex: string }) {
         if (this.written.has(known.hex)) return known
         const snapshot = encodeSnapshot(toRecords(known.state))
         const chunks = await Promise.all(
@@ -196,13 +202,24 @@ export class Fixture {
         return known
     }
 
-    async edit(k: number, label = `Edit ${k}`) {
-        const { hex } = await this.body(k)
+    /** An edit to any state. */
+    async editState(state: State, label: string) {
+        const hex = toHex(encodeSnapshot(toRecords(state)).root.hash)
+        await this.store_({ state, hex })
+        this.push(hex, label)
+    }
+
+    private push(hex: string, label: string) {
         const session = this.session
         session.slots.length = session.index + 1
         session.slots.push({ snapshot: fromHex16(hex), label })
         session.index++
         this.add('edit', label, fromHex16(hex))
+    }
+
+    async edit(k: number, label = `Edit ${k}`) {
+        const { hex } = await this.body(k)
+        this.push(hex, label)
     }
 
     undo() {
@@ -343,7 +360,7 @@ export class Fixture {
                             bytes: item.bytes.slice().buffer,
                             type: item.ref.type,
                             filename: item.ref.filename,
-                            kind: 'bgm',
+                            kind: item === BGM || item === BGM_2 ? 'bgm' : 'cover',
                             sha256: hexBytes(item.sha256),
                         },
                         1,
@@ -448,7 +465,8 @@ export const commit = async (
     await fixture.flush()
     const { identity } = built
     const chain = await fixture.chain()
-    const { replaced: _replaced, ...rest } = chain
+    const rest = { ...chain }
+    delete rest.replaced
     await fixture.putChain({
         ...rest,
         docId: identity.docId,

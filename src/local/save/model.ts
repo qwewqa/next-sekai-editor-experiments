@@ -125,8 +125,12 @@ export const cutStack = (stack: WriteStack, held: (slot: ReplaySlot) => boolean)
     const at = stack.index - stack.base
     let first = at
     let end = at + 1
-    while (first > 0 && held(stack.slots[first - 1] as ReplaySlot)) first--
-    while (end < stack.slots.length && held(stack.slots[end] as ReplaySlot)) end++
+    const heldAt = (i: number) => {
+        const slot = stack.slots[i]
+        return !!slot && held(slot)
+    }
+    while (first > 0 && heldAt(first - 1)) first--
+    while (end < stack.slots.length && heldAt(end)) end++
     return { base: stack.base + first, slots: stack.slots.slice(first, end), index: stack.index }
 }
 

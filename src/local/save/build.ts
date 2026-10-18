@@ -333,7 +333,9 @@ export const planSave = async (
     const own = appending && cutEntry ? rows.filter((row) => isLater(row, cutEntry)) : rows
     const stack = writeStack(cut, rows, pending)
     if (!stack) return refuse('unreadableHead')
-    const head = toHex((stack.slots[stack.index - stack.base] as ReplaySlot).snapshot)
+    const headSlot = stack.slots[stack.index - stack.base]
+    if (!headSlot) return refuse('unreadableHead')
+    const head = toHex(headSlot.snapshot)
 
     // Bodies: every root the rows, their pushes, the stack and the head need, verified.
     const wanted = new Set<string>([head, ...stack.slots.map((slot) => toHex(slot.snapshot))])
@@ -407,7 +409,7 @@ export const planSave = async (
     // `completeFrom`, the carry test and the line (§1.6.11.6).
     const baseHadHistory = !!(chain.revision && cutEntry)
     const notKept = (row: ChainRow) => !row.entry.kept || isMarked(row.entry)
-    const carried = !appending && baseHadHistory && !!cutEntry && carries(rows, cutEntry, notKept)
+    const carried = !appending && !!chain.revision && !!cutEntry && carries(rows, cutEntry, notKept)
     let completeFrom: string | undefined
     if (appending && source) completeFrom = placedCompleteFrom(sourceRevision(source))
     else if (carried && target.kind !== 'new' && chain.revision)

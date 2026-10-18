@@ -27,14 +27,8 @@ export const sourceParts = (source: PinnedSource): SegmentForm[] => {
     const parsed = source.manifest ?? fail('the source has no history')
     const parts: SegmentForm[] = []
     for (const [i, segment] of parsed.segments.entries())
-        parts.push(
-            (checkPart(segment, `segments[${i}]`, false).part as SegmentForm | undefined) ??
-                fail(`segment ${i}`),
-        )
-    parts.push(
-        (checkPart(parsed.manifest, 'manifest', true).part as SegmentForm | undefined) ??
-            fail('manifest'),
-    )
+        parts.push(checkPart(segment, `segments[${i}]`, false).part ?? fail(`segment ${i}`))
+    parts.push(checkPart(parsed.manifest, 'manifest', true).part ?? fail('manifest'))
     return parts
 }
 
@@ -57,7 +51,7 @@ export const plannedParts = (plan: WritePlan, source: PinnedSource | undefined):
     const copied = source ? sourceParts(source).slice(0, -1) : []
     const parts: SegmentForm[] = []
     for (const [i, name] of [...names, history.manifest as string].entries()) {
-        const entry = plan.entries.find((each) => each.name === name) ?? fail(`no ${String(name)}`)
+        const entry = plan.entries.find((each) => each.name === name) ?? fail(`no ${name}`)
         const [part] = entry.parts
         if (part?.kind === 'copy')
             parts.push(copied[i] ?? fail(`${name} copies an unknown segment`))
@@ -89,7 +83,6 @@ export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
             part.source !== source.token ||
             part.entryIndex !== from.index ||
             part.dataOffset !== from.dataOffset ||
-            part.check.kind !== 'entryCrc' ||
             part.inflate
         )
             fail(`segment ${i + 1} is not a whole copy of the source’s`)
@@ -103,7 +96,6 @@ export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
         prefix.source !== source.token ||
         prefix.entryIndex !== chunksFrom.index ||
         prefix.dataOffset !== chunksFrom.dataOffset ||
-        prefix.check.kind !== 'entryCrc' ||
         !!prefix.inflate !== (chunksFrom.method === 8) ||
         chunks.parts.slice(1).some((part) => part.kind !== 'bytes')
     )

@@ -3,6 +3,7 @@ import { changeHandlers } from './changeHandlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { peekHandlers } from './peekHandlers'
+import { saveHandlers } from './saveHandlers'
 import { serve, type Endpoint } from './rpc'
 import { startupHandlers } from './startupHandlers'
 import { timelineHandlers } from './timelineHandlers'
@@ -28,6 +29,7 @@ const handlers = {
     ...timelineHandlers(context),
     ...peekHandlers(context),
     ...changeHandlers(context),
+    ...saveHandlers(context),
 }
 
 export type StorageHandlers = typeof handlers
