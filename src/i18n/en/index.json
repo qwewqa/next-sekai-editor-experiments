@@ -919,6 +919,24 @@
             "diagnosticsNote": "Error messages in it can include file and folder names. Check it before posting it publicly.",
             "copy": "Copy",
             "copied": "Copied"
+        },
+        "sections": "Sections",
+        "localData": {
+            "title": "Local Data",
+            "recoveryHeading": "Recovery",
+            "discard": "Discard…",
+            "discardConfirm": "Discard",
+            "cannotOpen": "(cannot be opened in this version)",
+            "discardAutoSave": "Discard the old auto save ({0})?",
+            "discardUnreadable": "Discard the unreadable recovered work from {0} ({1})?",
+            "recovery": {
+                "journal": "Unsaved work from an earlier visit, {0} · {1}",
+                "journalUndated": "Unsaved work from an earlier visit · {0}",
+                "legacy": "Legacy recovery copy · {0}",
+                "autoSave": "Old auto save · {0}",
+                "unreadable": "Unreadable recovered work, {0} · {1}",
+                "atLoad": "At this load:"
+            }
         }
     },
     "sidebars": {
@@ -1140,10 +1158,33 @@
         "whatsNew": "What’s New",
         "upgradeBlocked": "Close other {0} tabs to open your stored work.",
         "olderVersion": "This version is older than your data. Reload, or save your work to files.",
-        "tryAgain": "Try Again"
+        "tryAgain": "Try Again",
+        "continued": "Continued \"{0}\" from {1}.",
+        "continuedUntitled": "Continued your session from {0}.",
+        "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
+        "journalKept": "A change to \"{0}\" could not be applied, so it was kept as a separate session.",
+        "fallback": "Recovered unsaved work from an earlier visit.",
+        "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
+        "migrationFailed": "The old auto save could not be restored.",
+        "autoSave": "Continued \"{0}\" from auto save.",
+        "journal": "Recovered your last change to \"{0}\".",
+        "journalLater": "A recovered change needs a newer version of the editor.",
+        "openElsewhere": "\"{0}\" is open in another tab or window.",
+        "restoreAsCopy": "Restore as a Copy",
+        "sessionDeleted": "This session was deleted in another tab or window.",
+        "bgmNotLoaded": "The BGM is not loaded.",
+        "more": "and {0} more in Local Data",
+        "localData": "Local Data"
     },
     "storage": {
-        "reload": "Reload to keep storing changes."
+        "reload": "Reload to keep storing changes.",
+        "unavailable": "This browser is not letting the editor store anything. Save to a file to keep your work.",
+        "private": "If this is a private window, everything stored here is lost when it closes. Save to a file to keep your work.",
+        "ios": "This browser deletes stored work after 7 days without a visit. Save to a file to keep your work.",
+        "safari": "Safari deletes stored work after 7 days without a visit. Save to a file to keep your work.",
+        "installedWebkit": "Recent Sessions are kept here until this icon is removed from the Home Screen. Save to a file to keep your work.",
+        "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to a file to keep your work.",
+        "default": "Recent Sessions are kept in this browser, which may clear them if space runs low. Save to a file to keep your work."
     },
     "player": {
         "started": "Started playing",
@@ -1152,10 +1193,6 @@
     },
     "history": {
         "initialize": "Initialize",
-        "changes": {
-            "title": "Changes",
-            "message": "Changes to the chart may be lost. Continue?"
-        },
         "dynamicStages": {
             "title": "Dynamic Stages",
             "message": "This feature requires dynamic stages. Do you want to enable dynamic stages?",
@@ -1776,7 +1813,11 @@
         "tooLong": "The name is too long"
     },
     "notice": {
-        "useOpenFile": "To open a file, use Open."
+        "useOpenFile": "To open a file, use Open.",
+        "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
+        "chooseAudio": "Choose Audio…",
+        "newLevel": "New level",
+        "reopen": "Reopen \"{0}\""
     },
     "entry": {
         "exported": "Exported {0}",
@@ -1786,5 +1827,19 @@
         "recoveredDropped": "Recovered last change. {0} undo step was not kept.|Recovered last change. {0} undo steps were not kept.",
         "continued": "Continued",
         "migrated": "Recovered from auto save"
+    },
+    "session": {
+        "untitled": "Untitled · {0}"
+    },
+    "prompt": {
+        "title": "Changes Not Stored",
+        "notStored": "Your changes are not being stored in this browser. Leaving loses them.",
+        "save": "Save",
+        "leaveAnyway": "Leave Anyway"
+    },
+    "status": {
+        "notInFile": "Not saved to a file",
+        "separateCopy": "Separate copy of {0}",
+        "opensLevelInfo": "Opens Level Info"
     }
 }

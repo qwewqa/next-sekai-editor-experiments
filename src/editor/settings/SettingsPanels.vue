@@ -9,7 +9,7 @@ import SettingsSection from './SettingsSection.vue'
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.panels.title">
+    <SettingsSection id="panels" :title="i18n.settings.panels.title">
         <SelectField
             v-for="id in panelIds"
             :key="id"

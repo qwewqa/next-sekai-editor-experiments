@@ -26,6 +26,7 @@ import { stateFromRecords } from './records/records'
 import { decodeSnapshot } from './records/snapshot'
 import { holdSessionLock, TabClient } from './sessions'
 import { leftSession } from './startup/api'
+import { previousSession } from './startup/events'
 import {
     legacyFromJournal,
     removeLegacyRecovery,
@@ -217,8 +218,10 @@ export const startStoring = (
                           name: currentSession.value.name ?? '',
                           bound: false,
                       })
+            // The fork has no binding, so no file in the label.
+            const { file: _unbound, ...unbound } = currentSession.value
             currentSession.value = {
-                ...currentSession.value,
+                ...unbound,
                 sessionId: fork.id,
                 docId: fork.docId,
                 ...(fork.forkName === undefined ? {} : { name: fork.forkName }),
@@ -320,11 +323,18 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                // Reopen offers the session left, once its strict commit holds (§1.4.1).
-                if (leaving && (leaving.stored || leaving.edited)) {
+                // Reopen offers the session left, once its strict commit holds (§1.4.1): an
+                // unstored, unedited continuation stands for the session it continues.
+                const reopenable =
+                    leaving && (leaving.stored || leaving.edited)
+                        ? leaving.id
+                        : leaving?.continuation
+                          ? leaving.parent?.id
+                          : undefined
+                if (leaving && reopenable) {
                     const state = [...leaving.pending].reverse().find((entry) => entry.state)?.state
                     leftSession(
-                        leaving.id,
+                        reopenable,
                         displayName(
                             namePartsOf(
                                 { sourceName: leaving.sourceName, ...leaving.chain },
@@ -334,7 +344,7 @@ export const startStoring = (
                         leaving.startedAt,
                         instance.outgoing,
                     )
-                }
+                } else if (leaving) previousSession.value = undefined
                 return
             }
             instance.append(

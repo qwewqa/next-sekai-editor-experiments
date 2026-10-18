@@ -919,6 +919,24 @@
       "diagnosticsNote": "其中的错误信息可能包含文件名和文件夹名。公开发布前请先检查。",
       "copy": "复制",
       "copied": "已复制"
+    },
+    "sections": "分区",
+    "localData": {
+      "title": "本地数据",
+      "recoveryHeading": "恢复",
+      "discard": "放弃…",
+      "discardConfirm": "放弃",
+      "cannotOpen": "（此版本无法打开）",
+      "discardAutoSave": "要放弃旧的自动保存（{0}）吗？",
+      "discardUnreadable": "要放弃 {0} 无法读取的已恢复内容（{1}）吗？",
+      "recovery": {
+        "journal": "以往访问中未保存的内容，{0} · {1}",
+        "journalUndated": "以往访问中未保存的内容 · {0}",
+        "legacy": "旧版恢复副本 · {0}",
+        "autoSave": "旧的自动保存 · {0}",
+        "unreadable": "无法读取的已恢复内容，{0} · {1}",
+        "atLoad": "本次加载："
+      }
     }
   },
   "sidebars": {
@@ -1140,10 +1158,33 @@
     "whatsNew": "新功能",
     "upgradeBlocked": "请关闭其他 {0} 标签页，以打开已存储的内容。",
     "olderVersion": "此版本早于数据的版本。请重新加载，或将内容保存为文件。",
-    "tryAgain": "重试"
+    "tryAgain": "重试",
+    "continued": "已从 {1} 继续“{0}”。",
+    "continuedUntitled": "已继续 {0} 的会话。",
+    "cleared": "以往访问的内容已丢失。浏览器清除了此网站的存储。",
+    "journalKept": "无法应用对“{0}”的更改，已将其保留为单独的会话。",
+    "fallback": "已恢复以往访问中未保存的内容。",
+    "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
+    "migrationFailed": "无法恢复旧的自动保存。",
+    "autoSave": "已从自动保存继续“{0}”。",
+    "journal": "已恢复对“{0}”的最后更改。",
+    "journalLater": "已恢复的更改需要更新版本的编辑器。",
+    "openElsewhere": "“{0}”已在另一个标签页或窗口中打开。",
+    "restoreAsCopy": "还原为副本",
+    "sessionDeleted": "此会话已在另一个标签页或窗口中删除。",
+    "bgmNotLoaded": "BGM 未加载。",
+    "more": "另有 {0} 条在本地数据中",
+    "localData": "本地数据"
   },
   "storage": {
-    "reload": "请重新加载以继续存储更改。"
+    "reload": "请重新加载以继续存储更改。",
+    "unavailable": "此浏览器不允许编辑器存储任何内容。请将内容保存到文件中以保留。",
+    "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请将内容保存到文件中以保留。",
+    "ios": "此浏览器会在 7 天未访问后删除已存储的内容。请将内容保存到文件中以保留。",
+    "safari": "Safari 会在 7 天未访问后删除已存储的内容。请将内容保存到文件中以保留。",
+    "installedWebkit": "最近的会话会保留在此处，直到此图标从主屏幕移除。请将内容保存到文件中以保留。",
+    "persisted": "除非清除此浏览器的数据，否则最近的会话会保留在其中。请将内容保存到文件中以保留。",
+    "default": "最近的会话会保留在此浏览器中，空间不足时浏览器可能会将其清除。请将内容保存到文件中以保留。"
   },
   "player": {
     "started": "开始播放",
@@ -1152,10 +1193,6 @@
   },
   "history": {
     "initialize": "初始化",
-    "changes": {
-      "title": "更改",
-      "message": "谱面更改可能会丢失。是否继续？"
-    },
     "dynamicStages": {
       "title": "动态舞台",
       "message": "此功能需要动态舞台。是否启用动态舞台？",
@@ -1776,7 +1813,11 @@
     "tooLong": "名称过长"
   },
   "notice": {
-    "useOpenFile": "要打开文件，请使用“打开”。"
+    "useOpenFile": "要打开文件，请使用“打开”。",
+    "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
+    "chooseAudio": "选择音频…",
+    "newLevel": "新关卡",
+    "reopen": "重新打开“{0}”"
   },
   "entry": {
     "exported": "已导出 {0}",
@@ -1786,5 +1827,19 @@
     "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤未保留。",
     "continued": "已继续",
     "migrated": "已从自动保存恢复"
+  },
+  "session": {
+    "untitled": "未命名 · {0}"
+  },
+  "prompt": {
+    "title": "更改未存储",
+    "notStored": "更改未存储在此浏览器中。离开会丢失这些更改。",
+    "save": "保存",
+    "leaveAnyway": "仍然离开"
+  },
+  "status": {
+    "notInFile": "未保存到文件",
+    "separateCopy": "{0} 的单独副本",
+    "opensLevelInfo": "打开关卡信息"
   }
 }

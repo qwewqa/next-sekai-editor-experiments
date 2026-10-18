@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../../i18n/dateTime'
 import { languageTag } from '../../../i18n/plural'
 import { settings } from '../../../settings'
 
@@ -19,10 +20,4 @@ export const formatSize = (bytes: number) => {
 }
 
 /** A file time as "Oct 16, 2:41 PM". */
-export const formatTime = (ms: number) =>
-    new Intl.DateTimeFormat(tag(), {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(ms)
+export const formatTime = (ms: number) => formatDateTime(settings.locale, ms)

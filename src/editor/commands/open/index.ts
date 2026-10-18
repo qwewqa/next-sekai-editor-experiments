@@ -8,7 +8,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { checkState, resetState, setLevelDataHandle } from '../../../history'
+import { resetState, setLevelDataHandle } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -26,7 +26,7 @@ import { parseUsc } from '../../../usc/parse'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
-import { notify } from '../../notification'
+import { confirmSwitch, notifyLeft } from '../../switch'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, rememberExport } from '../exportLevel/memory'
 import { installDropGuard } from './dropGuard'
@@ -41,7 +41,7 @@ export const open: Command = {
     },
 
     async execute() {
-        if (!(await checkState())) return
+        if (!(await confirmSwitch())) return
 
         const { file, handle } = await pickFileForOpen('levelData')
         if (!file) return
@@ -165,7 +165,8 @@ export const open: Command = {
 
                 // The target and the partial flag are the new chain's (§1.4.8).
                 rememberExport()
-                notify(() => i18n.value.commands.open[openedMessages[type]])
+                // With Reopen while the session left can be reopened (Part 1 §1.4.1).
+                notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
             },
         })
         if (!warning) return

@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import type { DisplayName } from '../names'
+import type { StorageStatus } from '../worker/core'
 
 // What this load found (Part 1 §1.4.3's table), as data: the UI turns each into its load notice
 // with its action, most important first. Kept for the page's life, so Settings › Local Data ›
@@ -53,3 +54,15 @@ export const onLoadEvent = (listener: (event: LoadEvent) => void) => {
         listeners.delete(listener)
     }
 }
+
+/**
+ * The session this tab left last by New, an open or a restore, while it can be reopened
+ * (Part 1 §1.4.1). Here, not in `api.ts`, so the commands that show Reopen stay light.
+ */
+export const previousSession = shallowRef<{ sessionId: string; name: ShownName } | undefined>()
+
+/**
+ * What storing can do in this tab; undefined until the worker answers. Here, not in `start.ts`,
+ * so Settings › Local Data can follow it without loading the storage modules.
+ */
+export const storageStatus = shallowRef<StorageStatus | undefined>()

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { startupGate } from '../startup/gate'
 import { holdNotice, notification } from './notification'
 import { hasToolModal, type ToolModalPane } from './toolModals'
 
@@ -58,6 +59,13 @@ watch(
     { flush: 'post' },
 )
 
+// The start-up pill waits for the startup gate to lift.
+const shown = computed(
+    () =>
+        !!notification.value.message &&
+        (!notification.value.startup || startupGate.phase === 'done'),
+)
+
 const pause = (source: 'hover' | 'focus', held: boolean) => {
     holdNotice(source, held)
 }
@@ -75,14 +83,43 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
         }"
     >
         <div
-            v-if="notification.message && !notification.action && !notification.held"
+            v-if="shown && !notification.action && !notification.held"
             :key="notification.id"
             class="notification whitespace-break-spaces rounded-full px-6 py-2 text-center"
         >
-            {{ notification.message() }}
+            {{ notification.message?.() }}
         </div>
         <div
-            v-else-if="notification.message"
+            v-else-if="shown && notification.lines"
+            :key="notification.id"
+            class="notification notification-pill pointer-events-auto flex max-w-full flex-col gap-0.5 rounded-3xl py-1.5 shadow-md"
+            :class="notification.action ? 'pl-5 pr-2' : 'px-5 text-center'"
+            @pointerenter="pause('hover', true)"
+            @pointerleave="pause('hover', false)"
+            @focusin="pause('focus', true)"
+            @focusout="pause('focus', false)"
+        >
+            <div
+                v-for="(line, i) in notification.lines"
+                :key="i"
+                class="flex min-w-0 items-center gap-3"
+            >
+                <span class="min-w-0 flex-1 whitespace-break-spaces py-1">{{
+                    line.message()
+                }}</span>
+                <button
+                    v-if="line.action"
+                    type="button"
+                    data-notice-action
+                    class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"
+                    @click="line.action.run()"
+                >
+                    {{ line.action.label() }}
+                </button>
+            </div>
+        </div>
+        <div
+            v-else-if="shown"
             :key="notification.id"
             class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 shadow-md"
             :class="notification.action ? 'pr-2' : 'pr-5 text-center'"
@@ -91,7 +128,7 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
             @focusin="pause('focus', true)"
             @focusout="pause('focus', false)"
         >
-            <span class="min-w-0 whitespace-break-spaces py-1">{{ notification.message() }}</span>
+            <span class="min-w-0 whitespace-break-spaces py-1">{{ notification.message?.() }}</span>
             <button
                 v-if="notification.action"
                 type="button"

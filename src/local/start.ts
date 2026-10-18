@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue'
+import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
@@ -9,7 +9,7 @@ import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { recoveredLabel } from './journal/label'
 import { setSessionContext } from './startup/api'
-import { addLoadEvent } from './startup/events'
+import { addLoadEvent, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
 import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
@@ -35,8 +35,7 @@ type StorageTestFlags = TestFlags & {
     holdReplayMs?: number
 }
 
-/** What storing can do in this tab; undefined until the worker answers. */
-export const storageStatus = shallowRef<StorageStatus | undefined>()
+export { storageStatus }
 
 /** This tab's storage worker, once started. */
 export let storageWorker: StorageWorker | undefined
@@ -90,8 +89,9 @@ const tryAgain = async () => {
 
 const sayAtLoad = (status: StorageStatus) => {
     if (status.mode === 'memory' && status.reason === 'olderTabs')
-        addLoadNotice(upgradeBlocked, tryAgainAction)
-    else if (status.mode === 'readOnly') addLoadNotice(olderVersion)
+        addLoadNotice(upgradeBlocked, tryAgainAction, LOAD_ORDER.handshake)
+    else if (status.mode === 'readOnly')
+        addLoadNotice(olderVersion, undefined, LOAD_ORDER.handshake)
 }
 
 declare global {

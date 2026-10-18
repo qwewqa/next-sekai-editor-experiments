@@ -15,6 +15,7 @@ import { activateEditorNavigation, useControlLifecycle } from './controls'
 import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
 import LevelEditorNotification from './LevelEditorNotification.vue'
+import StatusLabel from './StatusLabel.vue'
 import { groupScope, stageScope } from './scope'
 import LevelEditorToolbar from './toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from './EditorToolModalHost.vue'
@@ -277,6 +278,7 @@ const stageCount = computed(() =>
             class="z-10 flex gap-4 bg-preview px-2 py-1 text-xs text-white/80 [@media(pointer:coarse)]:py-2"
         >
             <span class="min-w-12 flex-grow truncate">{{ tool.title() }}</span>
+            <StatusLabel />
             <!-- The scope chips open their managers. Long names truncate while the
             shown count stays visible. -->
             <button

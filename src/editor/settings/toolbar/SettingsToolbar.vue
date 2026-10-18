@@ -31,7 +31,7 @@ const onAddGroup = async () => {
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.toolbar.title">
+    <SettingsSection id="toolbar" :title="i18n.settings.toolbar.title">
         <!-- Centred pseudo-elements fill each column and half the gaps around it; the faces stay unpositioned. -->
         <div class="flex flex-wrap items-end justify-center gap-1">
             <!-- Names not registered yet stay in the group but are not shown. -->

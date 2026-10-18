@@ -21,7 +21,7 @@ const openAssets = () => {
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.preview.title">
+    <SettingsSection id="preview" :title="i18n.settings.preview.title">
         <!-- Choosing the skin and the rest has a dialog of its own. -->
         <BaseField
             :label="i18n.settings.preview.assets"

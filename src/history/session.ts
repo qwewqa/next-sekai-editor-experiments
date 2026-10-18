@@ -15,6 +15,10 @@ export type SessionDescriptor = {
      * the status label's "Separate copy of …".
      */
     readonly copyOf?: { readonly name: string; readonly bound: boolean }
+    /** When it started: the date fallback of the displayed name (§1.3.5). */
+    readonly startedAt?: number
+    /** The file it is bound to, as the chain record has it (§1.3.2), for the status label. */
+    readonly file?: { readonly name: string; readonly event?: string; readonly at?: number }
 }
 
 /** A descriptor with fresh ids for whatever `init` leaves out; text passes the well-formed helper. */
@@ -26,6 +30,8 @@ export const createSessionDescriptor = (
     ...(init.name === undefined ? {} : { name: toWellFormed(init.name) }),
     ...(init.sourceName === undefined ? {} : { sourceName: toWellFormed(init.sourceName) }),
     ...(init.copyOf === undefined ? {} : { copyOf: init.copyOf }),
+    startedAt: init.startedAt ?? Date.now(),
+    ...(init.file === undefined ? {} : { file: init.file }),
 })
 
 export const session = shallowRef<SessionDescriptor>(createSessionDescriptor())

@@ -919,6 +919,24 @@
       "diagnosticsNote": "其中的錯誤訊息可能包含檔案名稱與資料夾名稱。公開張貼前請先檢查。",
       "copy": "複製",
       "copied": "已複製"
+    },
+    "sections": "分區",
+    "localData": {
+      "title": "本機資料",
+      "recoveryHeading": "還原",
+      "discard": "捨棄…",
+      "discardConfirm": "捨棄",
+      "cannotOpen": "（此版本無法開啟）",
+      "discardAutoSave": "要捨棄舊的自動儲存（{0}）嗎？",
+      "discardUnreadable": "要捨棄 {0} 無法讀取的已還原內容（{1}）嗎？",
+      "recovery": {
+        "journal": "先前造訪中未儲存的內容，{0} · {1}",
+        "journalUndated": "先前造訪中未儲存的內容 · {0}",
+        "legacy": "舊版還原副本 · {0}",
+        "autoSave": "舊的自動儲存 · {0}",
+        "unreadable": "無法讀取的已還原內容，{0} · {1}",
+        "atLoad": "本次載入："
+      }
     }
   },
   "sidebars": {
@@ -1140,10 +1158,33 @@
     "whatsNew": "新功能",
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已儲存的內容。",
     "olderVersion": "此版本早於資料的版本。請重新載入，或將內容儲存為檔案。",
-    "tryAgain": "重試"
+    "tryAgain": "重試",
+    "continued": "已從 {1} 繼續 \"{0}\"。",
+    "continuedUntitled": "已繼續 {0} 的工作階段。",
+    "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
+    "journalKept": "無法套用對 \"{0}\" 的變更，已將其保留為獨立的工作階段。",
+    "fallback": "已還原先前造訪中未儲存的內容。",
+    "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
+    "migrationFailed": "無法還原舊的自動儲存。",
+    "autoSave": "已從自動儲存繼續 \"{0}\"。",
+    "journal": "已還原對 \"{0}\" 的最後變更。",
+    "journalLater": "已還原的變更需要較新版本的編輯器。",
+    "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟。",
+    "restoreAsCopy": "還原為副本",
+    "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
+    "bgmNotLoaded": "BGM 未載入。",
+    "more": "另有 {0} 則在本機資料中",
+    "localData": "本機資料"
   },
   "storage": {
-    "reload": "請重新載入以繼續儲存變更。"
+    "reload": "請重新載入以繼續儲存變更。",
+    "unavailable": "此瀏覽器不允許編輯器儲存任何內容。請將內容儲存到檔案中以保留。",
+    "private": "如果這是無痕視窗，此處儲存的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
+    "ios": "此瀏覽器會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
+    "safari": "Safari 會在 7 天未造訪後刪除已儲存的內容。請將內容儲存到檔案中以保留。",
+    "installedWebkit": "最近的工作階段會保留在此處，直到此圖示從主畫面移除。請將內容儲存到檔案中以保留。",
+    "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請將內容儲存到檔案中以保留。",
+    "default": "最近的工作階段會保留在此瀏覽器中，空間不足時瀏覽器可能會將其清除。請將內容儲存到檔案中以保留。"
   },
   "player": {
     "started": "開始播放",
@@ -1152,10 +1193,6 @@
   },
   "history": {
     "initialize": "初始化",
-    "changes": {
-      "title": "更改",
-      "message": "譜面的變更可能會遺失。是否繼續？"
-    },
     "dynamicStages": {
       "title": "動態舞台",
       "message": "此功能需要動態舞台。要啟用動態舞台嗎？",
@@ -1776,7 +1813,11 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用 \"開啟\"。"
+    "useOpenFile": "要開啟檔案，請使用 \"開啟\"。",
+    "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "chooseAudio": "選擇音訊…",
+    "newLevel": "新關卡",
+    "reopen": "重新開啟 \"{0}\""
   },
   "entry": {
     "exported": "已匯出 {0}",
@@ -1786,5 +1827,19 @@
     "recoveredDropped": "已還原最後的變更。{0} 個撤銷步驟未保留。",
     "continued": "已繼續",
     "migrated": "已從自動儲存還原"
+  },
+  "session": {
+    "untitled": "未命名 · {0}"
+  },
+  "prompt": {
+    "title": "變更未儲存",
+    "notStored": "變更未儲存在此瀏覽器中。離開會遺失這些變更。",
+    "save": "儲存",
+    "leaveAnyway": "仍然離開"
+  },
+  "status": {
+    "notInFile": "未儲存到檔案",
+    "separateCopy": "{0} 的獨立副本",
+    "opensLevelInfo": "開啟關卡資訊"
   }
 }
