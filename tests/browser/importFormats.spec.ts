@@ -212,7 +212,7 @@ test('USC and SUS charts import with their own messages', async ({ page }) => {
 test('an unsupported file explains what can be opened', async ({ page }) => {
     await open(page, 'notes.txt', Buffer.from('not a chart'))
     await expect(page.getByRole('dialog')).toContainText(
-        'Unsupported file. Open level data, a Chart Cyanvas level, or a USC or SUS chart.',
+        'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
     )
     await expect(page.getByRole('dialog')).not.toContainText('Error:')
 })
@@ -228,7 +228,7 @@ for (const [label, content] of [
     test(`a file that is ${label} explains what can be opened`, async ({ page }) => {
         await open(page, 'chart.json', Buffer.from(JSON.stringify(content)))
         await expect(page.getByRole('dialog')).toContainText(
-            'Unsupported file. Open level data, a Chart Cyanvas level, or a USC or SUS chart.',
+            'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
         )
         await expect(page.getByRole('dialog')).not.toContainText('Error')
     })
@@ -257,7 +257,7 @@ test('a file picked after a garbage collection still opens', async ({ page }) =>
     })
     expect(picked).toBe(true)
     await expect(page.getByRole('dialog')).toContainText(
-        'Unsupported file. Open level data, a Chart Cyanvas level, or a USC or SUS chart.',
+        'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
     )
 })
 
@@ -328,7 +328,8 @@ test('level data with a value its format refuses names it, and is refused', asyn
     await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
     const withValue = await levelWithValue(page)
     for (const [name, value, message] of [
-        ['connectorEase', 99, 'Invalid level: unknown value for connectorEase'],
+        // A value of a choice field this build doesn't know asks first (Step 6, §1.5.4).
+        ['connectorEase', 99, '"level-data" Uses Newer Features'],
         ['#BEAT', -1, 'Invalid level: invalid value for #BEAT'],
     ] as const) {
         await page.reload()
@@ -346,11 +347,7 @@ test('refusals read in the chosen language', async ({ page }) => {
     const withValue = await levelWithValue(page)
     const dialog = page.getByRole('dialog')
     for (const [name, buffer, message] of [
-        [
-            'level-data',
-            withValue('connectorEase', 99),
-            'Niveau non valide : valeur inconnue pour connectorEase',
-        ],
+        ['level-data', withValue('#BEAT', -1), 'Niveau non valide : valeur non valide pour #BEAT'],
         [
             'chart.sus',
             Buffer.from(sus.replace('ticks_per_beat 480', 'ticks_per_beat 1e999')),
