@@ -365,5 +365,4 @@ const buttonClass =
         @apply bg-header-hover;
     }
 }
-
 </style>

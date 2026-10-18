@@ -531,7 +531,9 @@ for (const coarse of [false, true])
             const hitReach = await page.evaluate(({ x, y, width, height }) => {
                 const button = document.querySelector('.elevation-beat > button:last-child')!
                 return [-3, -1, height + 1, height + 3].map(
-                    (dy) => document.elementFromPoint(x + width / 2, y + dy)?.closest('button') === button,
+                    (dy) =>
+                        document.elementFromPoint(x + width / 2, y + dy)?.closest('button') ===
+                        button,
                 )
             }, next)
             expect(hitReach).toEqual([false, true, true, false])

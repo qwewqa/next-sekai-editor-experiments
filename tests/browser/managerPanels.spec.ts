@@ -347,16 +347,24 @@ for (const [device, options] of Object.entries(viewports)) {
             expect((await groupState(page)).names).toEqual(['Default', 'Third', 'Other group'])
         })
 
-        test('ordinary manager widths keep inline and touch-grip boundaries distinct', async ({ page }) => {
+        test('ordinary manager widths keep inline and touch-grip boundaries distinct', async ({
+            page,
+        }) => {
             await seedGroups(page, ['Default', 'Other group', 'Third'])
             await page.evaluate(() => {
-                Object.assign(window.editorTest.settings, { groupsPosition: 'left', leftDockWidth: 300 })
+                Object.assign(window.editorTest.settings, {
+                    groupsPosition: 'left',
+                    leftDockWidth: 300,
+                })
             })
             const panel = await openGroups(page)
             await press(nameButton(panel, 'Third'))
             const row = entryRow(panel, 'Third')
             for (const width of [255, 256, 299, 300]) {
-                await page.evaluate((width) => (window.editorTest.settings.leftDockWidth = width), width)
+                await page.evaluate(
+                    (width) => (window.editorTest.settings.leftDockWidth = width),
+                    width,
+                )
                 await expect.poll(async () => (await panel.boundingBox())!.width).toBe(width)
                 await nameButton(panel, 'Third').focus()
                 await expect(row.locator('.manager-inline')).toBeVisible({ visible: width >= 256 })
@@ -368,7 +376,9 @@ for (const [device, options] of Object.entries(viewports)) {
             await expect(page.getByRole('dialog')).toContainText('Group Properties')
         })
 
-        test('ordinary manager heights switch Add at 156 px and keep it usable', async ({ page }) => {
+        test('ordinary manager heights switch Add at 156 px and keep it usable', async ({
+            page,
+        }) => {
             await seedGroups(page, ['Default', 'Other group', 'Third'])
             const panel = await openGroups(page)
             const root = panel.locator('.manager-list')
@@ -378,8 +388,14 @@ for (const [device, options] of Object.entries(viewports)) {
                     element.style.flex = 'none'
                     element.style.height = `${height + 48}px`
                 }, height)
-                await expect.poll(async () => (await panel.locator('.manager-entries').boundingBox())!.height).toBe(height)
-                await expect(panel.locator('.manager-footer-floating')).toHaveCount(height >= 156 ? 1 : 0)
+                await expect
+                    .poll(
+                        async () => (await panel.locator('.manager-entries').boundingBox())!.height,
+                    )
+                    .toBe(height)
+                await expect(panel.locator('.manager-footer-floating')).toHaveCount(
+                    height >= 156 ? 1 : 0,
+                )
                 await panel.getByRole('button', { name: 'Add Group', exact: true }).click()
                 await page.keyboard.press('Escape')
                 await expect(panel.locator('.manager-entry')).toHaveCount(++count)

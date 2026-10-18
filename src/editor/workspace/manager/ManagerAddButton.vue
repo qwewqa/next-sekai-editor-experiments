@@ -11,13 +11,8 @@ defineProps<{ label: string }>()
         type="button"
         class="manager-add pointer-events-auto flex items-center rounded-full bg-button p-0.5 pr-4 shadow-md outline-none -outline-offset-2 transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent"
     >
-        <span
-            class="flex size-9 shrink-0 items-center justify-center"
-        >
-            <AddIcon
-                class="size-4 fill-current"
-                aria-hidden="true"
-            />
+        <span class="flex size-9 shrink-0 items-center justify-center">
+            <AddIcon class="size-4 fill-current" aria-hidden="true" />
         </span>
         <span class="pl-2">{{ label }}</span>
     </button>

@@ -369,11 +369,7 @@ onUnmounted(() => {
     forcedColors.removeEventListener('change', measureGutter)
 })
 const inlineMode = computed(() =>
-    width.value < 256
-        ? undefined
-        : isCoarse.value
-          ? ('current' as const)
-          : ('hover' as const),
+    width.value < 256 ? undefined : isCoarse.value ? ('current' as const) : ('hover' as const),
 )
 /** Touch drag handles, where names keep enough room beside them. */
 const hasGrip = computed(() => width.value >= 300)
@@ -2188,9 +2184,7 @@ const folderEyeLabel = (item: FolderItem) =>
                     :title="i18n.workspace.manager.stopSelecting"
                     @click="onDone"
                 >
-                    <span
-                        class="flex size-9 shrink-0 items-center justify-center"
-                    >
+                    <span class="flex size-9 shrink-0 items-center justify-center">
                         <CloseIcon class="size-3.5" />
                     </span>
                     <span

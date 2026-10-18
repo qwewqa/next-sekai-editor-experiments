@@ -35,8 +35,7 @@ const defaultWeights: Record<PanelId, number> = {
 }
 // Room reserved for the preview's playback strip and its gaps.
 const previewStrip = 52
-const previewChrome = (input: WorkspaceLayoutInput) =>
-    input.previewOverlay ? 0 : previewStrip
+const previewChrome = (input: WorkspaceLayoutInput) => (input.previewOverlay ? 0 : previewStrip)
 // Preview's letterboxed image and playback strip, given the dock's thickness.
 const previewNatural = (
     input: WorkspaceLayoutInput,
@@ -419,7 +418,7 @@ export const computeWorkspaceLayout = (input: WorkspaceLayoutInput): WorkspaceLa
                 )
                 // Never so short that the image is a sliver.
                 const fitted = clamp(
-                    Math.max(Math.min(fallback, natural), previewStrip(input) * 5),
+                    Math.max(Math.min(fallback, natural), previewStrip * 5),
                     min,
                     max,
                 )

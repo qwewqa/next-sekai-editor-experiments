@@ -330,5 +330,4 @@ const stripStyle = computed(() => ({
     position: absolute;
     inset: -0.125rem -0.0625rem;
 }
-
 </style>

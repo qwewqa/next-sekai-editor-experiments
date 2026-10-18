@@ -53,7 +53,12 @@ const positions = (position: PanelPosition): Record<PanelId, PanelPosition> => (
 })
 
 test('pointer class keeps the same rails and preview reservation', () => {
-    for (const [width, height] of [[390, 844], [820, 1180], [1280, 683], [1600, 1000]]) {
+    for (const [width, height] of [
+        [390, 844],
+        [820, 1180],
+        [1280, 683],
+        [1600, 1000],
+    ]) {
         const base = input({ width, height })
         assert.deepEqual(
             computeWorkspaceLayout({ ...base, coarse: true, railSize: coarseRailSize }),
@@ -432,7 +437,7 @@ test('an unsized top dock fits the width Preview has, alone or in a row of tiles
     assert.deepEqual(tiled?.visible, ['preview', 'groups', 'properties'])
     const preview = tiled?.tiles.find(({ id }) => id === 'preview')
     assert.ok(preview && preview.size / (16 / 9) + 52 <= (tiled?.size ?? 0))
-    assert.equal(tiled?.size, 300)
+    assert.equal(tiled?.size, 260)
     // Alone in the dock, Preview spans it and the default height applies.
     const alone = computeWorkspaceLayout(
         input({
@@ -444,7 +449,7 @@ test('an unsized top dock fits the width Preview has, alone or in a row of tiles
     ).docks.top
     assert.equal(alone?.size, 420)
     // Switching the shown tab keeps the height.
-    assert.equal(tablet(['groups', 'properties', 'preview', 'stages'])?.size, 300)
+    assert.equal(tablet(['groups', 'properties', 'preview', 'stages'])?.size, 260)
 })
 
 test('a stacked Preview fits its image, plus the playback strip unless it overlays', () => {

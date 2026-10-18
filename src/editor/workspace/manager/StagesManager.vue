@@ -43,9 +43,7 @@ const onEnable = async (event: MouseEvent) => {
         />
         <div v-else class="manager-disabled relative flex min-h-0 flex-1 flex-col text-fg">
             <!-- The band stays so the panel keeps its shape, muted while unavailable. -->
-            <div
-                class="manager-band shrink-0 bg-header px-1.5 py-1"
-            >
+            <div class="manager-band shrink-0 bg-header px-1.5 py-1">
                 <ManagerRow
                     class="manager-all"
                     heading
