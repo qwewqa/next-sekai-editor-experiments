@@ -43,6 +43,8 @@ type StorageTestFlags = TestFlags & {
     rpcTimeoutMs?: number
     /** Holds journal replay at load this long, for the spec of a hide meanwhile. */
     holdReplayMs?: number
+    /** Holds the worker's start this long, for the spec of Start Blank's work before it answers. */
+    holdStartMs?: number
 }
 
 export { storageStatus }
@@ -113,6 +115,8 @@ declare global {
         nseJournalTest?: { outcomes: RecoveryContext['outcomes']; ms: number }
     }
 }
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** A call's timeout: the usual 10 s and a second more per MB, as a flush's. */
 const timeoutFor = (bytes: number) => 10_000 + bytes / 1000
@@ -191,7 +195,7 @@ export const startStorage = async () => {
     const safe = isSafeMode()
     if (safe) flags.readOnly = true
     const deviceId = storageGet('deviceId', undefined)
-    const { rpcTimeoutMs, holdReplayMs, ...workerFlags } = flags
+    const { rpcTimeoutMs, holdReplayMs, holdStartMs, ...workerFlags } = flags
     const dev = import.meta.env.DEV
     const worker = new StorageWorker(
         { url: storageWorkerUrl, type: dev ? 'module' : 'classic', blobRestart: !dev },
@@ -221,36 +225,52 @@ export const startStorage = async () => {
 
     // Reload or Duplicate Tab, by the session lock, before the recovery order (§1.4.2).
     const claiming = claimTab(platform.locks).catch((): Claim => ({ kind: 'none' }))
-    let status: StorageStatus
-    let answered = true
-    try {
-        status = await worker.start()
-        // Safe mode opens read-only on purpose: its bar says so, not a notice about a newer database.
-        if (!safe) sayAtLoad(status)
-    } catch {
-        // The worker never answered: the client paused storing.
-        status = worker.status ?? { mode: 'stored', reason: 'failed' }
-        answered = false
-    }
-    const claim = await claiming
-    if (!safe) watchMarker(() => currentSession.value.sessionId)
-    const recovery = recoveryContext(worker, status, safe, claim)
-    // Storing starts first, so a hide meanwhile writes this tab's journal; its flushes wait for
-    // the recovery order, which runs before any session opens (Part 0 §0.9.8).
-    const recover = async () => {
+    const starting = (holdStartMs ? wait(holdStartMs) : Promise.resolve())
+        .then(() => worker.start())
+        .then(
+            (status) => {
+                // Safe mode opens read-only on purpose: its bar says so, not a notice about a
+                // newer database.
+                if (!safe) sayAtLoad(status)
+                return { status, answered: true }
+            },
+            // The worker never answered: the client paused storing.
+            () => ({
+                status: worker.status ?? { mode: 'stored', reason: 'failed' },
+                answered: false,
+            }),
+        )
+    let claim = { kind: 'none' } as Claim
+    let recovery: RecoveryContext | undefined
+    // The recovery order, once the worker answered; every flush waits for it (Part 0 §0.9.8).
+    const recovered = (async () => {
+        const { status, answered } = await starting
+        claim = await claiming
+        if (!safe) watchMarker(() => currentSession.value.sessionId)
+        const context = recoveryContext(worker, status, safe, claim)
+        recovery = context
         if (!answered) return
-        await runRecovery(recovery)
-        if (test)
-            window.nseJournalTest = { outcomes: recovery.outcomes, ms: recovery.journalMs ?? 0 }
-    }
-    const recovered = holdReplayMs
-        ? new Promise((resolve) => setTimeout(resolve, holdReplayMs)).then(recover)
-        : recover()
-    startStoring(worker, status, test, recovered, { safe })
+        if (holdReplayMs) await wait(holdReplayMs)
+        await runRecovery(context)
+        if (test) window.nseJournalTest = { outcomes: context.outcomes, ms: context.journalMs ?? 0 }
+    })()
+    // Storing starts before the worker answers, so a hide while it doesn't (Start Blank's work)
+    // writes this tab's journal: no edit is ever without one. Safe mode writes none, and starts
+    // once it knows whether the database opened read-only.
+    if (safe) startStoring(worker, (await starting).status, test, recovered, { safe })
+    else
+        startStoring(
+            worker,
+            starting.then(({ status }) => status),
+            test,
+            recovered,
+            { safe },
+        )
+    const { status, answered } = await starting
     let open = false
     try {
         await recovered
-        if (answered && tabClient) {
+        if (answered && tabClient && recovery) {
             const own = recovery.ownOutcome
             const deps: OpenDeps = {
                 worker,
@@ -287,6 +307,6 @@ export const startStorage = async () => {
     } finally {
         // The tab record names the blank start only now, so a reload meanwhile claims again.
         if (!open) recordBlankStart()
-        if (test) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
+        if (test && recovery) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
     }
 }

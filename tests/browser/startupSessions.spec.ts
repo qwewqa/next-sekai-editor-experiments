@@ -912,3 +912,29 @@ test('Start Blank, edits, then a reload while startup still runs brings back the
     expect(await lifeOf(page)).toBe(940)
     expect((await flushSession(page)).chainId).not.toBe(stored.chainId)
 })
+
+test('Start Blank’s edits while the worker hasn’t answered have a journal: a kill keeps them', async ({
+    page,
+    context,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    page.on('dialog', (dialog) => void dialog.accept())
+    await nextLoadFlags(page, { holdStartMs: 15_000 })
+    await page.evaluate(() => {
+        sessionStorage.setItem('nse.test.startup', JSON.stringify({ slowMs: 100 }))
+    })
+    await page.reload()
+    await gate(page).getByRole('button', { name: 'Start Blank' }).click()
+    await expect(gate(page)).toHaveCount(0)
+    await edit(page, 930)
+    // The worker still hasn't answered; the hide's journal, then a kill.
+    expect(await page.evaluate(() => window.nseStorageTest?.status())).toBeUndefined()
+    await hide(page)
+    const record = await tabRecord(page)
+    const next = await withTabRecord(context, record)
+    await page.close({ runBeforeUnload: false })
+    await visit(next)
+    expect(await lifeOf(next)).toBe(930)
+})

@@ -192,7 +192,8 @@ export type StoringOptions = {
  */
 export const startStoring = (
     worker: StorageWorker,
-    status: StorageStatus,
+    /** What storing can do: a promise while the worker hasn't answered yet (outside safe mode). */
+    status: StorageStatus | Promise<StorageStatus>,
     test: boolean,
     replayed: Promise<unknown> = Promise.resolve(),
     { safe = false }: StoringOptions = {},
@@ -206,7 +207,7 @@ export const startStoring = (
     tabClient = client
     void client.lock.granted.catch(() => undefined)
 
-    if (status.mode === 'readOnly' && safe) {
+    if (!(status instanceof Promise) && status.mode === 'readOnly' && safe) {
         // Safe mode: nothing is written. Earlier actions are let go.
         onHistoryAction(() => undefined, { replay: true })
         return
@@ -281,7 +282,9 @@ export const startStoring = (
     storingWorker = worker
     // A newer database stores nothing from this build: as with storage unavailable, the journal
     // keeps the open session (§1.6.7).
-    if (status.mode === 'readOnly') instance.withoutDatabase()
+    void Promise.resolve(status).then((known) => {
+        if (known.mode === 'readOnly') instance.withoutDatabase()
+    })
     const version = appVersion().appVersion
     const legacy = !safe && writesLegacySlot(version)
     if (!safe && !legacy) removeLegacyRecovery()
@@ -322,10 +325,12 @@ export const startStoring = (
         }, LEGACY_IDLE_MS)
 
     // While storage is unavailable the journal is also written about every 10 s (§1.6.7).
-    if (status.mode !== 'stored' && journalWriter)
+    void Promise.resolve(status).then((known) => {
+        if (known.mode === 'stored' || !journalWriter) return
         setInterval(() => {
             whenIdle(() => journalWriter?.write())
         }, IDLE_JOURNAL_MS)
+    })
 
     // Export's target and name are the open chain's fields (§1.4.8).
     setExportPersister((fields) => {
@@ -421,5 +426,5 @@ export const startStoring = (
             journal: { writer: journalWriter, writes },
             isDurablyStored,
         }
-    void worker.call('countDay').catch(() => undefined)
+    void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
 }
