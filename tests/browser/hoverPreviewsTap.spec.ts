@@ -114,12 +114,59 @@ const read = async (
 const keys = (page: Page, of: 'hovered' | 'selected', initial?: Baseline) =>
     read(page, { of, initial })
 
-const points = (page: Page) =>
+const originalPoints = (page: Page) =>
     page.evaluate(() => {
         const result = []
         for (let lane = -2.5; lane <= 3.5; lane += 0.35)
             for (const beat of [3.9, 3.97, 4, 4.03, 4.08, 4.12])
                 result.push(window.editorTest.point(lane, beat))
+        return result
+    })
+
+const points = (page: Page) =>
+    page.evaluate(() => {
+        const { point } = window.editorTest
+        const result: { name: string; x: number; y: number; expected?: string[] }[] = []
+        const add = (name: string, lane: number, beat = 4, dx = 0, dy = 0, expected?: string[]) => {
+            const at = point(lane, beat)
+            result.push({ name, x: at.x + dx, y: at.y + dy, expected })
+        }
+        // Keep the horizontal ranking transitions; probe boundaries in CSS pixels.
+        for (let lane = -2.5; lane <= 3.5; lane += 0.35) add(`horizontal ${lane}`, lane)
+        for (const [name, lane] of [
+            ['first left', -2],
+            ['first right', 1],
+            ['second left', -1],
+            ['second right', 2],
+            ['third left', 0],
+            ['narrow minimum left', 2.05],
+            ['narrow minimum right', 3.55],
+            ['outer left reach', -2.25],
+            ['outer right reach', 3.8],
+        ] as const)
+            for (const dx of [-1, 1])
+                add(
+                    `${name} ${dx}`,
+                    lane,
+                    4,
+                    dx,
+                    0,
+                    name === 'outer left reach'
+                        ? dx < 0
+                            ? []
+                            : ['note:4:-2']
+                        : name === 'outer right reach'
+                          ? dx > 0
+                              ? []
+                              : ['note:4:2.3']
+                          : undefined,
+                )
+        for (const dy of [-23, -21, 21, 23])
+            add(`vertical reach ${dy}`, -1.7, 4, 0, dy, Math.abs(dy) === 23 ? [] : ['note:4:-2'])
+        for (const dx of [-1, 1])
+            add(`diagonal ${dx}`, -2.25, 4, dx, 21, dx < 0 ? [] : ['note:4:-2'])
+        add('early interior', 0.5, 3.9)
+        add('late interior', 0.5, 4.12)
         return result
     })
 
@@ -191,9 +238,10 @@ test('Select: the hover is what a tap selects, cycling, with or without a select
             check?.(await select(page, which, undefined, initial))
             await hoverAt(page, point)
             const hovered = await keys(page, 'hovered', initial)
+            if (point.expected) expect(hovered, point.name).toEqual(point.expected)
             await page.mouse.click(point.x, point.y)
             check = (selected) =>
-                expect(selected, `${which} at ${point.x},${point.y}`).toEqual(hovered)
+                expect(selected, `${which} ${point.name} at ${point.x},${point.y}`).toEqual(hovered)
             recordHits(seen, hovered)
         }
     }
@@ -248,7 +296,7 @@ test('Select with Ctrl: the hover is every object a Ctrl-tap adds or removes', a
     }
     await page.keyboard.up('Control')
     const outcomes = new Set<string>()
-    for (const point of (await points(page)).filter((_, i) => i % 3 === 0)) {
+    for (const point of (await originalPoints(page)).filter((_, i) => i % 3 === 0)) {
         await select(page, 'outside', undefined, initial)
         await page.keyboard.down('Control')
         await hoverAt(page, point)
@@ -374,7 +422,7 @@ test('Eraser and Note tool: the hover is what a tap removes or selects, and the 
     })
     let added = 0
     const outcomes = new Set<string>()
-    for (const point of (await points(page)).filter((_, i) => i % 2 === 0)) {
+    for (const point of await points(page)) {
         for (const which of ['none', 'inStack'] as const) {
             await select(page, which, 'eraser')
             await hoverAt(page, point)
@@ -465,13 +513,65 @@ test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page
         const layout = elevationLayout.value
         const middle = layout.rows.find((row) => row.note.elevation === 2.1)!
         const isolated = layout.rows.find((row) => row.note.left === 2.3)!
-        const result = []
-        for (let lane = -2.5; lane <= 3.5; lane += 0.35)
-            for (const dy of [-30, -15, -5, 0, 5, 15, 30])
-                result.push({
-                    x: elevationBounds.x + layout.xAt(lane),
-                    y: elevationBounds.y + middle.y + dy,
-                })
+        const result: { name: string; x: number; y: number; expected?: string[] }[] = []
+        const add = (name: string, lane: number, y: number, dx = 0, dy = 0, expected?: string[]) =>
+            result.push({
+                name,
+                x: elevationBounds.x + layout.xAt(lane) + dx,
+                y: elevationBounds.y + y + dy,
+                expected,
+            })
+        for (let lane = -2.5; lane <= 3.5; lane += 0.35) add(`horizontal ${lane}`, lane, middle.y)
+        for (const dy of [-30, -15, -5, 0, 5, 15, 30])
+            add(`vertical overlap ${dy}`, 1.7, middle.y, 0, dy)
+        const scale = layout.laneScale
+        for (const row of [layout.rows.find((row) => row.note.left === -2)!, isolated]) {
+            const lane = row.note.left + row.note.size / 2
+            const half = Math.max(row.w, 1.5 * scale) / 2
+            for (const side of [-1, 1])
+                for (const delta of [-1, 1]) {
+                    add(
+                        `${row.note.left} direct span ${side} ${delta}`,
+                        lane,
+                        row.y,
+                        side * half + delta,
+                    )
+                    add(
+                        `${row.note.left} side reach ${side} ${delta}`,
+                        lane,
+                        row.y,
+                        side * (half + 10) + delta,
+                        0,
+                        row === isolated && side === 1
+                            ? delta < 0
+                                ? ['note:3:2.3']
+                                : []
+                            : row !== isolated && side === -1
+                              ? delta > 0
+                                  ? ['note:3:-2']
+                                  : []
+                              : undefined,
+                    )
+                    add(
+                        `${row.note.left} vertical reach ${side} ${delta}`,
+                        lane,
+                        row.y,
+                        0,
+                        side * Math.max(14, scale * 0.3 + 10) + delta,
+                        row === isolated
+                            ? side * delta < 0
+                                ? ['note:3:2.3']
+                                : []
+                            : side === 1
+                              ? delta < 0
+                                  ? ['note:3:-2']
+                                  : []
+                              : undefined,
+                    )
+                }
+        }
+        add('diagonal inside', -2, middle.y, -9, 21, ['note:3:-2'])
+        add('diagonal outside', -2, middle.y, -11, 23, [])
         return {
             grid: result,
             anchors: {
@@ -504,9 +604,10 @@ test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page
             check?.(await select(page, which, undefined, initial))
             await hoverAt(page, point)
             const hovered = await keys(page, 'hovered', initial)
+            if (point.expected) expect(hovered, point.name).toEqual(point.expected)
             await page.mouse.click(point.x, point.y)
             check = (selected) =>
-                expect(selected, `${which} at ${point.x},${point.y}`).toEqual(hovered)
+                expect(selected, `${which} ${point.name} at ${point.x},${point.y}`).toEqual(hovered)
             recordHits(seen, hovered)
         }
     }
