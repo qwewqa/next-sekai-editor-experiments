@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { waitForStartup } from './editorFixture'
 import {
     chainOf,
     edit,
@@ -321,4 +322,118 @@ test('Save to File… writes a session that isn’t open as a new file, binding 
     const { chains } = await rows(page, ['chains'])
     const same = chains!.map((row) => row.value).find((row) => row.chainId === chain.chainId)!
     expect(same.file).toEqual(chain.file)
+})
+
+/** Pauses the next write at a named point (`savePoint`); `release` lets it go on. */
+const pauseAt = (page: Page, point: string) =>
+    page.evaluate((point) => localStorage.setItem('nse.test.savePause', point), point)
+
+const reached = (page: Page, point: string) =>
+    expect.poll(() => page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain(point)
+
+const release = (page: Page) =>
+    page.evaluate(() => {
+        localStorage.removeItem('nse.test.savePause')
+        window.nseSaveTest?.release()
+    })
+
+test('a sync client writing into the picked file after the pick: nothing is written over it', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await pauseAt(page, 'picked')
+    await queuePicks(page, ['coconut.nxsp'])
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await reached(page, 'picked')
+    await writeFile(page, 'coconut.nxsp', [1, 2, 3, 4])
+    await release(page)
+    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    expect(await readFile(page, 'coconut.nxsp')).toEqual([1, 2, 3, 4])
+})
+
+test('a kill after the revocation: the reload is bound to the emptied file, and Save fills it', async ({
+    context,
+}) => {
+    const a = await context.newPage()
+    await start(a)
+    await edit(a, 1)
+    await pauseAt(a, 'revoked')
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a, 'coconut')
+    await reached(a, 'revoked')
+    expect(await readFile(a, 'coconut.nxsp')).toEqual([])
+    await a.evaluate(() => localStorage.removeItem('nse.test.savePause'))
+    await a.close({ runBeforeUnload: false })
+
+    const next = await context.newPage()
+    await next.goto('/')
+    await waitForStartup(next)
+    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
+    await pressSave(next)
+    await expect(notice(next).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await expect(next.getByRole('dialog')).toHaveCount(0)
+    expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
+})
+
+test('B mid-write: A’s pick waits for B to finish, then takes the file over', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+    const bChain = await chainOf(b)
+    await edit(b, 2)
+    await pauseAt(b, 'beforeClose')
+    await pressSave(b)
+    await reached(b, 'beforeClose')
+
+    const a = await context.newPage()
+    await start(a)
+    await edit(a, 5)
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a)
+    // A waits on nse-bind while B holds it.
+    await a.waitForTimeout(500)
+    await release(b)
+    await expect(
+        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
+    ).toBeVisible({ timeout: 15_000 })
+    expect((await projectOf(a, 'coconut.nxsp')).id).toBe((await chainOf(a)).docId)
+    const { chains } = await rows(a, ['chains'])
+    const revoked = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
+    expect(revoked.file).toBeUndefined()
+})
+
+test('B frozen while A takes its file: once shown, B’s label goes and its Save asks', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+    const cdp = await context.newCDPSession(b)
+    await cdp.send('Page.setWebLifecycleState', { state: 'frozen' })
+
+    const a = await context.newPage()
+    await start(a)
+    await edit(a, 5)
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a)
+    await expect(
+        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
+    ).toBeVisible()
+
+    await cdp.send('Page.setWebLifecycleState', { state: 'active' })
+    await b.bringToFront()
+    await b.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+    await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
+    await edit(b, 3)
+    await pressSave(b)
+    await expect(saveDialog(b)).toContainText(
+        '"coconut.nxsp" was replaced from another tab or window.',
+    )
 })
