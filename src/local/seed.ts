@@ -77,7 +77,10 @@ export const seedDump = async (
     return { seeded: true }
 }
 
-/** The dev page's half: seeds the sample the URL names, then reloads without the parameter. */
+/**
+ * The dev page's half: seeds the sample the URL names, then reloads without the parameter. A
+ * refusal leaves the URL as it is, and the editor loads as usual.
+ */
 export const seedSampleFromUrl = async (): Promise<boolean> => {
     const url = new URL(location.href)
     const name = url.searchParams.get('seedSample')
@@ -92,7 +95,6 @@ export const seedSampleFromUrl = async (): Promise<boolean> => {
         const result = await seedDump(idbFactory(indexedDB), dump, localStorage)
         if (!result.seeded) {
             console.warn(`${tag} Refused, nothing changed. ${result.reason}`)
-            history.replaceState(history.state, '', url)
             return false
         }
         console.info(`${tag} Seeded ${name}; reloading.`)
@@ -100,7 +102,6 @@ export const seedSampleFromUrl = async (): Promise<boolean> => {
         return true
     } catch (error) {
         console.error(`${tag} Failed, nothing changed.`, error)
-        history.replaceState(history.state, '', url)
         return false
     }
 }
