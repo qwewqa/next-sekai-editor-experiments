@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { deflateChunk, verifyChunk } from '../../../src/local/chunkVerify'
 import { hashKey } from '../../../src/local/db'
 import { mediaRow } from '../../../src/local/flushWrite'
@@ -278,26 +282,29 @@ export class Fixture {
         )) as Row[]
     }
 
-    /** Cleanup under pressure, as Step 10's: the row `kept: false` and its root removed. */
+    /**
+     * Cleanup under pressure, as Step 10's: a row whose state nothing else needs is made
+     * `kept: false` and its root removed. False when another row or a slot still needs it.
+     */
     async thin(sessionIndex: number, rowIndex: number) {
         const row = this.sessions[sessionIndex]?.rows[rowIndex]
-        if (!row) return
+        if (!row) return false
+        const hex = toHex(row.snapshot)
+        const needed = this.sessions.some(
+            (session) =>
+                session.rows.some(
+                    (other) => other !== row && other.kept && toHex(other.snapshot) === hex,
+                ) || session.slots.some((slot) => toHex(slot.snapshot) === hex),
+        )
+        if (needed) return false
         row.kept = false
         await this.store.write(['entries', 'nodes'], async (tx) => {
             const stored = (await tx.get('entries', [row.sessionId, row.seq])) as Row | undefined
             if (stored) await tx.put('entries', { ...stored, kept: false })
-            // Only when no other kept row or slot needs the root.
-            const needed = this.sessions.some(
-                (session) =>
-                    session.rows.some(
-                        (other) => other.kept && toHex(other.snapshot) === toHex(row.snapshot),
-                    ) || session.slots.some((slot) => toHex(slot.snapshot) === toHex(row.snapshot)),
-            )
-            if (!needed) {
-                await tx.delete('nodes', hashKey(row.snapshot))
-                this.written.delete(toHex(row.snapshot))
-            }
+            await tx.delete('nodes', hashKey(row.snapshot))
         })
+        this.written.delete(hex)
+        return true
     }
 
     /** Deletes a session and its rows, as Delete Sessions… does. */
@@ -476,3 +483,34 @@ export const heldRows = async (blob: Blob) => {
 }
 
 export { inspectNxsp, sha256Hex }
+
+const repo = join(import.meta.dirname, '..', '..', '..')
+
+/** Whether the independent checker can run: `uv` on the machine (CI installs it). */
+export const hasUv = spawnSync('uv', ['--version'], { encoding: 'utf8' }).status === 0
+
+/**
+ * Runs `tools/nxsp_check.py` over files in order (oldest first), which also checks each file's
+ * `completeFrom` against every earlier file it names (§1.6.11.9). Returns its status and output.
+ */
+export const checkFiles = async (files: readonly Blob[]) => {
+    const dir = mkdtempSync(join(tmpdir(), 'nse-save-'))
+    try {
+        const paths: string[] = []
+        for (const [i, file] of files.entries()) {
+            const path = join(dir, `${String(i).padStart(3, '0')}.nxsp`)
+            writeFileSync(path, new Uint8Array(await file.arrayBuffer()))
+            paths.push(path)
+        }
+        const result = spawnSync(
+            'uv',
+            ['run', 'python', '-I', join(repo, 'tools', 'nxsp_check.py'), ...paths],
+            {
+                encoding: 'utf8',
+            },
+        )
+        return { status: result.status, output: `${result.stdout}${result.stderr}` }
+    } finally {
+        rmSync(dir, { recursive: true, force: true })
+    }
+}
