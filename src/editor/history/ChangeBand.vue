@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { isAppActive } from '../../activity'
 import { isPeeking } from '../../history/peek'
 import { peekClearance, sheetBox } from '../toolModals'
 import { view } from '../view'
@@ -9,12 +10,20 @@ const anchor = useTemplateRef<HTMLElement>('anchor')
 let resize: ResizeObserver | undefined
 let children: MutationObserver | undefined
 const observed = new Set<Element>()
+let alive = false
 let frame = 0
+const cancelMeasure = () => {
+    if (frame) cancelAnimationFrame(frame)
+    frame = 0
+}
 const scheduleMeasure = () => {
-    cancelAnimationFrame(frame)
+    cancelMeasure()
+    if (!alive || !isAppActive.value) return
     frame = requestAnimationFrame(measure)
 }
 const measure = () => {
+    frame = 0
+    if (!alive || !isAppActive.value) return
     const pane = anchor.value?.parentElement
     if (!pane) return
     const box = pane.getBoundingClientRect()
@@ -29,6 +38,7 @@ const measure = () => {
         changeBand.value = { top, bottom }
 }
 const observe = () => {
+    if (!alive) return
     const pane = anchor.value?.parentElement
     if (!pane) return
     const toolbar = pane.querySelector(':scope > [data-editor-toolbar]')
@@ -54,6 +64,7 @@ const observe = () => {
 }
 
 onMounted(() => {
+    alive = true
     resize = new ResizeObserver(scheduleMeasure)
     children = new MutationObserver(observe)
     if (anchor.value?.parentElement)
@@ -61,12 +72,22 @@ onMounted(() => {
     observe()
 })
 onBeforeUnmount(() => {
-    cancelAnimationFrame(frame)
+    alive = false
+    cancelMeasure()
     resize?.disconnect()
     children?.disconnect()
+    observed.clear()
     peekClearance.value = 0
     changeBand.value = { top: 0, bottom: 0 }
 })
+watch(
+    isAppActive,
+    (active) => {
+        if (active) void nextTick(observe)
+        else cancelMeasure()
+    },
+    { flush: 'sync' },
+)
 watch([isPeeking, sheetBox, () => view.w, () => view.h], () => void nextTick(observe))
 </script>
 

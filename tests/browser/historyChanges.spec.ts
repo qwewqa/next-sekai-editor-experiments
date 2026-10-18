@@ -1,5 +1,5 @@
 ﻿import { expect, test, type Page } from '@playwright/test'
-import { installEditorFixture, waitForStartup } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
 
 // The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
 // entry before it, marked on the chart with the rest dimmed, counted on the peek bar, brought
@@ -795,4 +795,108 @@ test('Find Edits Here follows toolbar stack height without resizing the pane', a
     })
     await expect.poll(async () => (await changes(page)).band.bottom).toBeCloseTo(before, 0)
     expect(errors.filter((message) => message.includes('ResizeObserver'))).toEqual([])
+})
+
+test('inactive History band waits for focus and resumes with current layout at Now and peek', async ({
+    page,
+}) => {
+    await edit(page, 'Moved 1 note', { kind: 'move', beats: [5] })
+    await stored(page)
+    await openTab(page)
+    await page.evaluate(installCanvasCounters, false)
+    await page.evaluate(async () => {
+        window.installEditorRendering!(
+            await window.editorTest.appImport<typeof import('../../src/rendering/context')>(
+                '/src/rendering/context.ts',
+            ),
+        )
+    })
+    for (const mode of ['now', 'peek'] as const) {
+        if (mode === 'peek') {
+            await row(page, 'Moved 1 note').click()
+            await expect(peekLine(page)).toHaveText('1 change')
+            await expect.poll(async () => (await changes(page)).band.top).toBeGreaterThan(0)
+        }
+        const before = (await changes(page)).band
+        const result = await page.evaluate(async () => {
+            const { appImport, nextTick } = window.editorTest
+            const [{ changeBand }, { peekClearance }, { isAppActive }] = await Promise.all([
+                appImport<typeof import('../../src/editor/history/changes')>(
+                    '/src/editor/history/changes.ts',
+                ),
+                appImport<typeof import('../../src/editor/toolModals')>(
+                    '/src/editor/toolModals.ts',
+                ),
+                appImport<typeof import('../../src/activity')>('/src/activity.ts'),
+            ])
+            const pane = document.querySelector('.chart-pane')!
+            const stack = pane.querySelector<HTMLElement>(':scope > [data-editor-toolbar] > div')!
+            const bar = pane.querySelector<HTMLElement>(':scope > [data-peek-bar]')
+            window.dispatchEvent(new Event('blur'))
+            await nextTick()
+            let frames = 0
+            const request = window.requestAnimationFrame
+            window.requestAnimationFrame = (callback) => {
+                frames++
+                return request.call(window, callback)
+            }
+            window.editorFrames = { chart: 0, overlay: 0 }
+            try {
+                stack.style.height = `${stack.getBoundingClientRect().height + 90}px`
+                if (bar) bar.style.height = `${bar.getBoundingClientRect().height + 60}px`
+                await nextTick()
+                // Let observers deliver without requesting a test animation frame.
+                await new Promise((resolve) => setTimeout(resolve, 100))
+                const box = pane.getBoundingClientRect()
+                return {
+                    active: isAppActive.value,
+                    frames,
+                    draws: { ...window.editorFrames },
+                    band: { ...changeBand.value },
+                    clearance: peekClearance.value,
+                    expected: {
+                        top: bar ? Math.max(0, bar.getBoundingClientRect().bottom - box.top) : 0,
+                        bottom: Math.max(0, box.bottom - stack.getBoundingClientRect().top),
+                    },
+                }
+            } finally {
+                window.requestAnimationFrame = request
+            }
+        })
+        expect(result.active).toBe(false)
+        expect(result.frames).toBe(0)
+        expect(result.draws).toEqual({ chart: 0, overlay: 0 })
+        expect(result.band).toEqual(before)
+        expect(result.clearance).toBe(before.top)
+        expect(result.expected.bottom).toBeGreaterThan(before.bottom + 80)
+        if (mode === 'peek') expect(result.expected.top).toBeGreaterThan(before.top + 50)
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        await expect
+            .poll(async () => (await changes(page)).band.bottom)
+            .toBeCloseTo(result.expected.bottom, 0)
+        await expect
+            .poll(async () => (await changes(page)).band.top)
+            .toBeCloseTo(result.expected.top, 0)
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { peekClearance } = await window.editorTest.appImport<
+                        typeof import('../../src/editor/toolModals')
+                    >('/src/editor/toolModals.ts')
+                    return peekClearance.value
+                }),
+            )
+            .toBeCloseTo(result.expected.top, 0)
+        await page.evaluate(() => {
+            const pane = document.querySelector('.chart-pane')!
+            pane.querySelector<HTMLElement>(':scope > [data-editor-toolbar] > div')!.style.height =
+                ''
+            const bar = pane.querySelector<HTMLElement>(':scope > [data-peek-bar]')
+            if (bar) bar.style.height = ''
+        })
+        await expect
+            .poll(async () => (await changes(page)).band.bottom)
+            .toBeCloseTo(before.bottom, 0)
+        await expect.poll(async () => (await changes(page)).band.top).toBeCloseTo(before.top, 0)
+    }
 })
