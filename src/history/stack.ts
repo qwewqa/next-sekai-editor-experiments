@@ -246,7 +246,8 @@ export const replaceState = (state: State) => {
     states[index.value] = slot
 }
 
-export const pushState = (name: () => string, state: State) => {
+/** Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first. */
+export const pushState = (name: () => string, state: State, kind: 'edit' | 'restore' = 'edit') => {
     // Every edit path is gated while peeking, so one that is not fails in development and tests.
     if (peek.value) {
         if (isProduction()) return
@@ -261,7 +262,7 @@ export const pushState = (name: () => string, state: State) => {
         state: publish(state),
     })
     index.value++
-    emitHistoryAction({ kind: 'edit', state, name, isDirty: true })
+    emitHistoryAction({ kind, state, name, isDirty: true })
 }
 
 /**

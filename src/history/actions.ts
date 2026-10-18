@@ -13,7 +13,8 @@ export type HistoryAction =
           /** A blank start or New, or a chart brought in (an import, a restored auto save). */
           origin: 'new' | 'import'
       }
-    | { kind: 'edit'; state: State; name: () => string; isDirty: boolean }
+    /** An edit, or Restore of a History entry: both push. */
+    | { kind: 'edit' | 'restore'; state: State; name: () => string; isDirty: boolean }
     /**
      * The state landed on, and the name of the step undone or redone. A coalesced move's
      * intermediate steps land on slots not loaded: their stored root stands for the state.
@@ -52,6 +53,7 @@ const follow = (at: EarlyStack | undefined, action: HistoryAction): EarlyStack |
     if (!at) return
     switch (action.kind) {
         case 'edit':
+        case 'restore':
             at.slots.length = at.index + 1
             at.slots.push({ state: action.state, name: action.name, isDirty: action.isDirty })
             at.index++
