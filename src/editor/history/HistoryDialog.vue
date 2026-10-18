@@ -24,7 +24,7 @@ import { backToNow, peekedInfo } from './selection'
 const props = defineProps<{ presentation: HistoryPresentation }>()
 const emit = defineEmits<{ close: [result?: HistoryCloseResult] }>()
 const root = useTemplateRef<HTMLElement>('root')
-const panel = useTemplateRef<InstanceType<typeof HistoryPanel>>('panel')
+const panel = useTemplateRef<{ rememberView: () => void; hasGoTo: () => boolean }>('panel')
 const titleId = useId()
 
 // The host names the dialog.
@@ -43,7 +43,9 @@ const canViewChart = computed(
         peekedInfo.value?.key === peekedKey.value &&
         displayedPeekKey.value === peekedKey.value,
 )
-const captureView = () => panel.value?.rememberView()
+const captureView = () => {
+    panel.value?.rememberView()
+}
 const viewChart = () => {
     if (!canViewChart.value) return
     captureView()

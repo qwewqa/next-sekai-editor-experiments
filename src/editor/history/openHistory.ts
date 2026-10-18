@@ -23,6 +23,8 @@ import { historyFilter, historyTab, listFocus, type HistoryTab } from './state'
 const historyId = shallowRef<number>()
 const historyModal = computed(() => modals.find(({ id }) => id === historyId.value))
 export const isHistoryDialogOpen = computed(() => !!historyModal.value)
+const canFocusChart = () =>
+    isPeeking.value && !isBlockingModalOpen.value && !isHistoryDialogOpen.value
 
 let opening = false
 let generation = 0
@@ -53,7 +55,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
             () => historyTab.value === 'timeline' && historyFilter.value !== 'all',
             () => {
                 const modal = historyModal.value
-                if (!modal || modal.presentation !== 'tool') return
+                if (modal?.presentation !== 'tool') return
                 const index = modals.indexOf(modal)
                 modals.splice(index, 1, {
                     ...modal,
@@ -85,7 +87,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
             restoreElevationAfterPeek(reopenAt)
         }
         await nextTick()
-        if (isPeeking.value && !isBlockingModalOpen.value && !isHistoryDialogOpen.value)
+        if (canFocusChart())
             document
                 .querySelector<HTMLElement>('[data-peek-main] button')
                 ?.focus({ preventScroll: true })
