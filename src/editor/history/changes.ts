@@ -1,6 +1,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import { isPeeking } from '../../history'
 import {
+    displayedPeekKey,
     entryKey,
     loadEntryState,
     parseEntryKey,
@@ -149,6 +150,7 @@ watch(
 export const shownChange = computed(() => {
     const change = peekChange.value
     if (!change || !isPeeking.value || peekedKey.value !== change.key) return
+    if (displayedPeekKey.value !== change.key) return
     if (peekedInfo.value !== change.request) return
     if (peek.value?.state.store !== change.state.store) return
     return change

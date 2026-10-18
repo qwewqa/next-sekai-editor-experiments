@@ -13,6 +13,7 @@ import {
 import { closeModal, modals } from '../modals'
 import { modalTitleKey } from '../modals/title'
 import { toolName } from './tools/state'
+import { getSheetGeometry } from './sheetGeometry'
 import { peekClearance, sheetBox, type ToolModalPane } from './toolModals'
 import { view } from './view'
 
@@ -24,7 +25,15 @@ const matching = computed(() =>
 const current = computed(() => matching.value.at(-1))
 // The History sheet: along the pane's bottom, or down its right side in a short landscape pane.
 const sheet = computed(() => !!current.value?.sheet)
-const sheetSide = computed(() => (view.h < 500 && view.w > view.h ? 'right' : 'bottom'))
+const geometry = computed(() =>
+    getSheetGeometry({
+        width: view.w,
+        height: view.h,
+        peekClearance: peekClearance.value,
+        rem: parseFloat(getComputedStyle(document.documentElement).fontSize) || 16,
+    }),
+)
+const sheetSide = computed(() => geometry.value.side)
 const frame = computed(() =>
     !sheet.value
         ? 'inset-x-0 bottom-2 mx-auto max-h-[70%] w-[calc(100%-1rem)] max-w-md'
@@ -34,10 +43,10 @@ const frame = computed(() =>
 )
 const sheetStyle = computed(() => {
     if (!sheet.value) return undefined
-    if (sheetSide.value === 'right') return { top: `${Math.max(60, peekClearance.value + 4)}px` }
+    if (sheetSide.value === 'right') return { top: `${geometry.value.top}px` }
     if (peekClearance.value && view.h < 600)
         return {
-            height: `${Math.min(view.h * 0.55, Math.max(144, view.h - peekClearance.value - 128))}px`,
+            height: `${geometry.value.height}px`,
             minHeight: '144px',
         }
     return undefined
