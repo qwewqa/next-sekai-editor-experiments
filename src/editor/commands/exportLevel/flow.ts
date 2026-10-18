@@ -9,7 +9,13 @@ import {
     type SaveResult,
 } from '../../../platform'
 import { isLevelDataContent, mayBeLevelData } from './content'
-import { exportMemory, ownsExportTarget, rememberExport, type ExportTarget } from './memory'
+import {
+    exportMemory,
+    ownsExportTarget,
+    rememberExport,
+    replaceExportTarget,
+    type ExportTarget,
+} from './memory'
 import { downloadOpened, refusePick, withPickLock, withTargetLock, type RefusedPick } from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
@@ -82,7 +88,7 @@ const built = (ctx: ExportContext) => {
 }
 
 const remember = async (ctx: ExportContext, target: ExportTarget) => {
-    exportMemory.target = target
+    await replaceExportTarget(target)
     if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
     await rememberExport()
 }
@@ -174,7 +180,7 @@ export const exportToTarget = async (
     expected: DiskState = target.disk,
 ): Promise<ExportOutcome> => {
     const body = built(ctx)
-    let revoked = false
+    const revoked = new Error('Export destination was revoked')
     let error: FileError
     try {
         const result = await platform.saveFile({
@@ -186,8 +192,7 @@ export const exportToTarget = async (
             lock: (run) =>
                 withTargetLock(async () => {
                     if (!(await ownsExportTarget(target))) {
-                        revoked = true
-                        throw new Error('Export destination was revoked')
+                        throw revoked
                     }
                     const result = await run()
                     await saved(ctx, result as SaveResult)
@@ -205,7 +210,7 @@ export const exportToTarget = async (
     } catch (caught) {
         // A cancelled export ends here: no dialog follows the one that closed.
         if (cancelled(ctx)) return 'cancelled'
-        if (revoked) return exportByPicker(ctx)
+        if (caught === revoked) return exportByPicker(ctx)
         error = fileError(caught)
     }
 

@@ -1124,6 +1124,8 @@ const ownCompletedSave = async (
         })
         .catch(() => false)
     if (!done) return false
+    if (unit.clearExport && currentSession.value.sessionId === env.session.id)
+        clearExportDestination()
     removeMarker(env.chainId, marker.entry.revisionId)
     rememberHandle(env.chainId, handle)
     const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
@@ -2132,6 +2134,19 @@ export const startExportRead = () => {
 /** Export's dialog closed: the bytes read go. */
 export const endExportRead = () => {
     exportRead = undefined
+}
+
+/** A destination never registered here still cannot write over another known owner. */
+export const exportTargetAvailable = async (handle: FileSystemFileHandle) => {
+    const env = environment()
+    if (!env) return true
+    const owners = await env.worker.call('listHandleOwners').catch(() => [])
+    for (const owner of owners) {
+        const stored = await handleOf(env.worker, owner.chainId, owner.role)
+        if (!stored || !(await sameEntry(handle, stored))) continue
+        if (owner.role !== 'exportTarget' || owner.chainId !== env.chainId) return false
+    }
+    return true
 }
 
 /**

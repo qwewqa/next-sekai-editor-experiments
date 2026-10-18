@@ -467,5 +467,8 @@ test('a refused media Blob preserves the imported history and reports missing me
     assert.equal(rows(s.world, 'media').size, 0)
     assert.equal(sessionRow(s.world)?.importPending, undefined)
     assert.equal(sessionEntries(s.world).length, 5)
-    for (const hash of hashes) assert.ok(storedRecords(s.world, fromHex16(hash)))
+    for (const hash of hashes) {
+        assert.ok(storedRecords(s.world, fromHex16(hash)))
+        assert.equal((await s.run(() => s.peek.readSnapshotVerified(hash))).kind, 'found')
+    }
 })

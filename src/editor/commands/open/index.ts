@@ -146,7 +146,7 @@ export const open: Command = {
                     throw error
                 }
 
-                opened(handle, buffer, type, partial)
+                await opened(handle, buffer, type, partial)
             },
         })
         if (newerValues) {
@@ -165,7 +165,7 @@ export const open: Command = {
             // Cancel opens nothing and leaves the session as it was.
             if (!choice) return
             warning = await apply()
-            opened(handle, await file.arrayBuffer(), 'levelData', true)
+            await opened(handle, await file.arrayBuffer(), 'levelData', true)
         }
         if (!warning) return
 
@@ -214,7 +214,7 @@ const applyLevelData = async (
 }
 
 /** After an open: the source's bytes kept, the chain's Export fields stored, the notice. */
-const opened = (
+const opened = async (
     handle: FileSystemFileHandle | undefined,
     buffer: ArrayBuffer,
     type: keyof typeof openedMessages,
@@ -233,7 +233,7 @@ const opened = (
         }
 
     // The target and the partial flag are the new chain's (§1.4.8).
-    rememberExport()
+    await rememberExport()
     // With Reopen while the session left can be reopened (Part 1 §1.4.1).
     notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
 }
