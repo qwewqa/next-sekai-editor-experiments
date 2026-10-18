@@ -71,3 +71,7 @@ export const formatWhen = (locale: string, at: number, now = Date.now()) =>
 /** An entry's time to the second: the time when it was today, the date and time otherwise. */
 export const formatEntryTime = (locale: string, at: number, now = Date.now()) =>
     sameDay(at, now) ? formatClockSeconds(locale, at) : formatDateTimeSeconds(locale, at, now)
+
+/** "1 PM": an hour header's label. */
+export const formatHour = (locale: string, at: number) =>
+    formatter(locale, 'hour', { hour: 'numeric' }).format(at)

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { isPeeking, peekLoading, peekedKey, restoreEntry } from '../../history/peek'
+import { isPeeking, peekLoading, peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { formatEntryTime } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
 import { isCoarsePointer, isPanelVisible, workspaceLayout } from '../workspace'
-import { backToNow, peekedInfo } from './selection'
+import { backToNow, peekedInfo, requestRestore } from './selection'
 
 // The peek bar (Part 1 §1.4.11): on the canvas, so it shows with the panel scrolled, folded or on
 // another dock. A 2 px accent edge marks the peeked canvas.
@@ -39,7 +39,7 @@ const foldHint = computed(
 
 const restore = () => {
     const key = peekedKey.value
-    if (key) void restoreEntry(key)
+    if (key) void requestRestore(key)
 }
 
 const button =

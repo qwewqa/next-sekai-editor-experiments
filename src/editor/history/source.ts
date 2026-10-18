@@ -20,6 +20,10 @@ const loadedFor = ref<string>()
 let cursor: Cursor | undefined
 /** Whether older entries remain in storage. */
 export const canLoadMore = ref(false)
+/** The first page's read: loading until it lands, failed when it could not be read. */
+export const status = ref<'loading' | 'ready' | 'failed'>('loading')
+/** An older page is being read. */
+export const loadingMore = ref(false)
 let loading: Promise<void> | undefined
 /** Bumped by every change of the undo stack, so the entries waiting to be stored are read again. */
 const version = ref(0)
@@ -78,11 +82,16 @@ const startOf = (id: string) => {
 export const refresh = async () => {
     const worker = storageWorker
     const id = session.value.sessionId
-    if (!worker) return
+    // Without storage the timeline holds what this tab made.
+    if (!worker) {
+        status.value = 'ready'
+        return
+    }
     let page
     try {
         page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
     } catch {
+        if (loadedFor.value !== id) status.value = 'failed'
         return
     }
     // The session changed meanwhile: its own refresh follows.
@@ -98,6 +107,13 @@ export const refresh = async () => {
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor
+    status.value = 'ready'
+}
+
+/** Reads the first page again after it failed. */
+export const retry = () => {
+    status.value = 'loading'
+    void refresh()
 }
 
 /** Loads the next older page. */
@@ -106,6 +122,7 @@ export const loadMore = () => {
     const at = cursor
     if (!worker || !at || loading) return loading
     const id = session.value.sessionId
+    loadingMore.value = true
     loading = (async () => {
         try {
             const page = await worker.call('readTimeline', { ...at, limit: PAGE })
@@ -117,6 +134,7 @@ export const loadMore = () => {
             // The next scroll tries again.
         } finally {
             loading = undefined
+            loadingMore.value = false
         }
     })()
     return loading
@@ -152,6 +170,7 @@ export const followEntries = () => {
             cursor = undefined
             loadedFor.value = undefined
             canLoadMore.value = false
+            status.value = 'loading'
         }
         version.value++
         follow()

@@ -1216,13 +1216,18 @@
     "title": "历史记录",
     "timeline": "时间线",
     "recentSessions": "最近会话",
+    "goTo": "转到",
+    "show": "显示",
     "filterAll": "全部",
     "filterSaves": "保存和导出",
+    "showAll": "显示全部",
     "now": "现在",
     "today": "今天",
     "yesterday": "昨天",
-    "notInUndo": "不在撤销中",
-    "notInUndoTip": "撤销无法到达此处。",
+    "empty": "尚无更改",
+    "noSaves": "没有保存或导出",
+    "loadFailed": "无法加载时间线。",
+    "tryAgain": "重试",
     "removedForSpace": "已为节省空间而移除",
     "damaged": "已损坏",
     "continuedFrom": "从 {0} 继续",
@@ -1854,7 +1859,7 @@
     "newLevel": "新关卡",
     "reopen": "重新打开“{0}”",
     "readOnlyPeek": "查看历史记录时为只读",
-    "restoredTo": "已恢复到 {0}",
+    "restoredTo": "已还原到 {0}",
     "alreadyMatches": "已与当前谱面一致",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中"
@@ -1867,7 +1872,7 @@
     "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤已丢弃。",
     "continued": "已继续",
     "migrated": "已从自动保存恢复",
-    "restoredTo": "恢复到 {0}"
+    "restoredTo": "已还原到 {0}"
   },
   "session": {
     "untitled": "未命名 · {0}"

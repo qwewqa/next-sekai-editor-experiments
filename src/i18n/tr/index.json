@@ -1214,15 +1214,20 @@
       "enabled": "Dinamik sahneler etkinleştirildi"
     },
     "title": "Geçmiş",
-    "timeline": "Zaman Çizelgesi",
+    "timeline": "Zaman Çizgisi",
     "recentSessions": "Son Oturumlar",
+    "goTo": "Git",
+    "show": "Göster",
     "filterAll": "Tümü",
     "filterSaves": "Kaydetmeler ve Dışa Aktarmalar",
+    "showAll": "Tümünü Göster",
     "now": "Şimdi",
     "today": "Bugün",
     "yesterday": "Dün",
-    "notInUndo": "geri alma dışında",
-    "notInUndoTip": "Geri alma buna ulaşamaz.",
+    "empty": "Henüz değişiklik yok",
+    "noSaves": "Kaydetme veya dışa aktarma yok",
+    "loadFailed": "Zaman çizgisi yüklenemedi.",
+    "tryAgain": "Tekrar Dene",
     "removedForSpace": "yer açmak için kaldırıldı",
     "damaged": "hasarlı",
     "continuedFrom": "{0} tarihinden devam",
@@ -1867,7 +1872,7 @@
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı silindi.",
     "continued": "Devam ettirildi",
     "migrated": "Otomatik kaydetmeden kurtarıldı",
-    "restoredTo": "{0} anına geri yükleme"
+    "restoredTo": "{0} anına geri yüklendi"
   },
   "session": {
     "untitled": "Adsız · {0}"

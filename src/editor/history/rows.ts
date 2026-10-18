@@ -1,5 +1,5 @@
 // The Timeline's rows from a chain's entries (Part 1 §1.4.10.5): flags, ×N groups, dividers and
-// minute or day headers. Pure, so Node tests run it without the page.
+// minute, hour or day headers by age. Pure, so Node tests run it without the page.
 
 /** One entry as the Timeline reads it, from storage or still waiting to be stored. */
 export type Entry = {
@@ -26,8 +26,6 @@ export const entryId = (entry: Pick<Entry, 'sessionId' | 'seq'>) =>
 export type Filter = 'all' | 'saves'
 
 export type Flags = {
-    /** Dropped from the redo branch: undo and redo cannot reach it. */
-    notInUndo: boolean
     removed: boolean
     damaged: boolean
 }
@@ -49,43 +47,47 @@ export type EntryRow = {
 }
 
 export type Row =
-    | { type: 'now'; id: 'now' }
-    | EntryRow
-    | { type: 'divider'; id: string; entry: Entry }
-    | { type: 'header'; id: string; level: 'day' | 'minute'; time: number }
-
-const PUSHES = ['edit', 'restore']
+    { type: 'now'; id: 'now' } | EntryRow | { type: 'divider'; id: string; entry: Entry } | Header
 
 /**
- * Which entries are dropped from the redo branch, by the entries newest first. A push at a stack
- * position is dropped when a later push began at or below it; positions are counted from the
- * newest entry's, which is all that matters. A recovered entry replaces the stack, so entries
- * before it are left unflagged.
+ * A label for the rows under it: a minute (this hour), an hour (earlier today, and the days just
+ * before), or a day (older). The hour of a new recent day shares its row with the day.
  */
-export const droppedEntries = (newestFirst: readonly Entry[]) => {
-    const dropped = new Set<string>()
-    let index = 0
-    let cut = Infinity
-    for (const entry of newestFirst) {
-        if (entry.kind === 'recovered') break
-        if (entry.kind === 'undo') index++
-        else if (entry.kind === 'redo') index--
-        else if (PUSHES.includes(entry.kind)) {
-            if (index >= cut) dropped.add(entryId(entry))
-            cut = Math.min(cut, index)
-            index--
-        }
-    }
-    return dropped
+export type Header = {
+    type: 'header'
+    id: string
+    level: 'minute' | 'hour' | 'day'
+    /** An hour or minute that also names its day: "Yesterday · 9 PM". A day header names itself. */
+    withDay: boolean
+    /** A time in what it labels. */
+    time: number
 }
-
-const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
 
 const minuteOf = (time: number) => Math.floor(time / 60_000)
 
+const hourStart = (time: number) => new Date(time).setMinutes(0, 0, 0)
+
+const dayStart = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+
+/** Whole local days from `time` to `now`. */
+const daysBefore = (time: number, now: number) =>
+    Math.round((dayStart(now) - dayStart(time)) / 86_400_000)
+
+/** The days before today that still get hour headers (Part 1 §1.4.10.5). */
+const HOUR_DAYS = 6
+
+/** The finest header an entry's age earns, and the key of the span it labels. */
+const tierOf = (time: number, now: number) => {
+    const ago = daysBefore(time, now)
+    if (ago > HOUR_DAYS) return { level: 'day' as const, key: `d:${dayStart(time)}` }
+    if (ago <= 0 && hourStart(time) === hourStart(now))
+        return { level: 'minute' as const, key: `m:${minuteOf(time)}` }
+    return { level: 'hour' as const, key: `h:${hourStart(time)}` }
+}
+
 /** Entries that collapse into a ×N group when next to each other: the same label, or a run of undo or redo. */
 const groupKey = (entry: Entry, flags: Flags) => {
-    const flag = `${flags.notInUndo ? 1 : 0}${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}`
+    const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}`
     if (entry.kind === 'undo' || entry.kind === 'redo') return `${entry.kind}:${flag}`
     if (entry.kind === 'edit') return `edit:${flag}:${entry.label}`
 }
@@ -96,16 +98,16 @@ export type BuildOptions = {
     expanded: ReadonlySet<string>
     /** Entries found unreadable when loaded, by id. */
     damaged: ReadonlySet<string>
+    /** The clock the headers' ages are measured against. */
+    now?: number
 }
 
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    { filter, expanded, damaged }: BuildOptions,
+    { filter, expanded, damaged, now = Date.now() }: BuildOptions,
 ): Row[] => {
-    const dropped = droppedEntries(newestFirst)
     const flagsOf = (entry: Entry): Flags => ({
-        notInUndo: dropped.has(entryId(entry)),
         removed: !entry.kept && !damaged.has(entryId(entry)),
         damaged: damaged.has(entryId(entry)),
     })
@@ -176,28 +178,28 @@ export const buildRows = (
             }
     }
 
-    // Headers: a minute's, and a day's once the timeline spans days.
-    const times = shown.map((entry) => entry.time)
-    const spansDays = times.length > 1 && !sameDay(Math.max(...times), Math.min(...times))
     const rows: Row[] = [{ type: 'now', id: 'now' }]
     let previous: Entry | undefined
+    let previousKey: string | undefined
     for (const item of items) {
         const { time } = item.entry
         if (item.type === 'entry' && item.child) {
             rows.push(item)
             continue
         }
-        if (spansDays && (!previous || !sameDay(previous.time, time)))
-            rows.push({
-                type: 'header',
-                id: `day:${new Date(time).toDateString()}`,
-                level: 'day',
-                time,
-            })
-        if (item.type === 'entry' && (!previous || minuteOf(previous.time) !== minuteOf(time)))
-            rows.push({ type: 'header', id: `minute:${minuteOf(time)}`, level: 'minute', time })
+        if (item.type === 'entry') {
+            const { level, key } = tierOf(time, now)
+            if (key !== previousKey) {
+                // A day not yet named, past today, names itself with its first hour or minute.
+                const newDay = !previous || dayStart(previous.time) !== dayStart(time)
+                const withDay = level !== 'day' && newDay && daysBefore(time, now) > 0
+                const id = withDay ? `${key}|${dayStart(time)}` : key
+                rows.push({ type: 'header', id, level, withDay, time })
+            }
+            previousKey = key
+            previous = item.entry
+        }
         rows.push(item)
-        previous = item.entry
     }
     return rows
 }

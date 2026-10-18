@@ -18,3 +18,5 @@ export const formatDateTimeSeconds = (at: number) =>
 
 /** An entry's time to the second: the time when it was today, the date and time otherwise. */
 export const formatEntryTime = (at: number) => dateTime.formatEntryTime(settings.locale, at)
+
+export const formatHour = (at: number) => dateTime.formatHour(settings.locale, at)
