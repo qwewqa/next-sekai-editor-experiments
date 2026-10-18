@@ -73,6 +73,12 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
+/**
+ * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
+ * what this tab holds (§1.4.7); no journal, tab record, Reopen or revocation is written.
+ */
+let safeMode = false
+
 /** This tab's journal writer (§1.6.4 #7), once storing started; none in safe mode. */
 export let journalWriter: JournalWriter | undefined
 
@@ -96,6 +102,7 @@ export const untouched = () => {
  * until then the record keeps the session this tab had, so a reload meanwhile claims it again.
  */
 export const recordBlankStart = () => {
+    if (safeMode) return
     const session = flusher?.session
     if (session && session === initialSession)
         writeTabRecord({ sessionId: session.id, start: 'blank' })
@@ -228,11 +235,7 @@ export const startStoring = (
     tabClient = client
     void client.lock.granted.catch(() => undefined)
 
-    if (!(status instanceof Promise) && status.mode === 'readOnly' && safe) {
-        // Safe mode: nothing is written. Earlier actions are let go.
-        onHistoryAction(() => undefined, { replay: true })
-        return
-    }
+    safeMode = safe
 
     const writes: JournalWrite[] = []
     const instance = new Flusher({
@@ -293,7 +296,13 @@ export const startStoring = (
                 ...(fork.forkName === undefined ? {} : { name: fork.forkName }),
                 copyOf,
             }
-            writeTabRecord({ sessionId: fork.id, start: 'continuation', parent: from.id, copyOf })
+            if (!safe)
+                writeTabRecord({
+                    sessionId: fork.id,
+                    start: 'continuation',
+                    parent: from.id,
+                    copyOf,
+                })
         },
         forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
         writeChain: (request) => worker.call('writeChainFields', request),
@@ -312,6 +321,8 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
+    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
+    if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
     // keeps the open session (§1.6.7).
     void Promise.resolve(status).then((known) => {
@@ -385,7 +396,7 @@ export const startStoring = (
                 const lock = holdSessionLock(locks, descriptor.sessionId)
                 // A New reloads as blank (§1.4.2); the page's own blank start is recorded once
                 // startup opened nothing over it (`recordBlankStart`).
-                if (!firstReset || action.origin !== 'new')
+                if (!safe && (!firstReset || action.origin !== 'new'))
                     writeTabRecord({
                         sessionId: descriptor.sessionId,
                         start: action.origin === 'import' ? 'stored' : 'new',
@@ -408,7 +419,7 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                if (leaving) offerReopen(leaving, instance.outgoing)
+                if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return
             }
             // Work on the blank start (after Start Blank) names it in the tab record at once, so
@@ -431,11 +442,11 @@ export const startStoring = (
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
         // Storing resumed: revocations kept meanwhile go in (§1.4.7 R11).
-        if (next.mode === 'stored' && !next.reason) void applyRevocations(worker)
+        if (next.mode === 'stored' && !next.reason && !safe) void applyRevocations(worker)
     })
     // At the next start, after the journals and before any cleanup (R11); then other tabs'
     // takeovers show here as they happen (R6).
-    void afterReplay.then(() => applyRevocations(worker))
+    if (!safe) void afterReplay.then(() => applyRevocations(worker))
     watchBindings(worker, () => flusher)
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
@@ -496,7 +507,7 @@ export const startStoring = (
             })
         },
     }
-    if (test)
+    if (test && !safe)
         window.nseFlushTest = {
             flusher: instance,
             reports,
@@ -504,5 +515,6 @@ export const startStoring = (
             journal: { writer: journalWriter, writes },
             isDurablyStored,
         }
-    void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
+    if (!safe)
+        void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
 }
