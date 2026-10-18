@@ -121,7 +121,7 @@ test('an item over 64 MB once repacked is refused', async () => {
     const data = JSON.stringify({
         width: 64,
         height: 64,
-        sprites: [],
+        sprites: [{ name: 'Sekai Normal Note Middle', x: 0, y: 0, w: 16, h: 16, transform: {} }],
         padding: randomBytes(7_000_000).toString('base64'),
     })
     await refused(

@@ -164,7 +164,7 @@ export const skinData = (overrides: Record<string, unknown> = {}) => ({
     height: 64,
     interpolation: true,
     sprites: [
-        { name: 'Sekai Note Tap', x: 0, y: 0, w: 16, h: 16, transform: identity },
+        { name: 'Sekai Normal Note Middle', x: 0, y: 0, w: 16, h: 16, transform: identity },
         { name: 'Sekai Note Flick', x: 16, y: 0, w: 16, h: 16, transform: identity },
     ],
     ...overrides,

@@ -19,6 +19,7 @@ export type ImportErrorCode =
     | 'imageSize'
     | 'checksum'
     | 'spriteOutside'
+    | 'noNoteSprites'
     | 'tooManySprites'
     | 'tooManyEffects'
     | 'tooManyParticles'

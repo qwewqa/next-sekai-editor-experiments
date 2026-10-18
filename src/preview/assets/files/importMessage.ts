@@ -56,6 +56,7 @@ export const formatImportMessage = (
                 String(limit),
             )
         case 'spriteOutside':
+        case 'noNoteSprites':
         case 'noPerfect':
             return interpolateRaw(text[code], noun)
         case 'tooManySprites':

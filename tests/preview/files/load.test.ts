@@ -334,14 +334,14 @@ test('a store that does not answer falls back as unavailable', async (t) => {
 test('a sprite outside the texture is refused at import and dropped at load', () => {
     const data = skinData({
         sprites: [
-            { name: 'in', x: 0, y: 0, w: 16, h: 16, transform: {} },
+            { name: 'Sekai Normal Note Middle', x: 0, y: 0, w: 16, h: 16, transform: {} },
             { name: 'out', x: 60, y: 0, w: 16, h: 16, transform: {} },
         ],
     })
     assert.throws(() => checkSkinData(data, 'import'), { code: 'spriteOutside' })
     assert.deepEqual(
         checkSkinData(data, 'load').sprites.map((sprite) => sprite.name),
-        ['in'],
+        ['Sekai Normal Note Middle'],
     )
 })
 
@@ -352,13 +352,48 @@ test('a stored skin with a bad sprite still loads, without the sprite', async ()
             resources: {
                 data: gz(
                     skinData({
-                        sprites: [{ name: 'out', x: 60, y: 0, w: 16, h: 16, transform: {} }],
+                        sprites: [
+                            {
+                                name: 'Sekai Normal Note Middle',
+                                x: 0,
+                                y: 0,
+                                w: 16,
+                                h: 16,
+                                transform: {},
+                            },
+                            { name: 'out', x: 60, y: 0, w: 16, h: 16, transform: {} },
+                        ],
                     }),
                 ),
             },
         }),
     )
     assert.equal(result?.status.active, 'chosen')
+})
+
+test('a skin with no note body sprite is refused at import and falls back at load', async () => {
+    const data = skinData({
+        sprites: [{ name: 'Sekai Lane Background', x: 0, y: 0, w: 16, h: 16, transform: {} }],
+    })
+    assert.throws(() => checkSkinData(data, 'import'), { code: 'noNoteSprites' })
+    assert.throws(() => checkSkinData(data, 'load'), { code: 'noNoteSprites' })
+    const outside = skinData({
+        sprites: [{ name: 'Sekai Normal Note Middle', x: 60, y: 0, w: 16, h: 16, transform: {} }],
+    })
+    assert.throws(() => checkSkinData(outside, 'load'), { code: 'noNoteSprites' })
+    const result = await load('skin', scp('skin', { resources: { data: gz(data) } }))
+    assert.deepEqual(result?.status, { active: 'default', reason: 'corrupt' })
+    for (const name of [
+        'Sekai Critical Flick Note Middle',
+        'Sekai Trace Note Green Middle',
+        '#NOTE_HEAD_RED',
+    ])
+        assert.doesNotThrow(() =>
+            checkSkinData(
+                skinData({ sprites: [{ name, x: 0, y: 0, w: 16, h: 16, transform: {} }] }),
+                'import',
+            ),
+        )
 })
 
 test('transforms, eases and colours are rebuilt from what passed', () => {
