@@ -1388,13 +1388,9 @@ const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHa
         case 'separate':
             await separateFile(env, binding, handle, pre)
             return
-        case 'openOther': {
-            const file = await handle.getFile().catch(() => undefined)
-            if (!file) return
-            const { openProject } = await import('../commands/open/project')
-            await openProject(file, handle)
+        case 'openOther':
+            await openOther(handle, handle.name)
             return
-        }
         case 'replace':
             if (pinned) await replace(env, handle, pinned)
             return
@@ -1420,6 +1416,24 @@ const replace = async (
     const keptName = interpolateRaw(i18n.value.conflict.keptName, stem, formatDate(Date.now()))
     const kept = await keepReplaced(pinned.file, keptName)
     if (kept !== 'kept') {
+        // The file changed while it was being kept: the dialog again, over what's there now.
+        const now = await platform
+            .inspect({ kind: 'handle', handle }, 'nxsp')
+            .catch(() => undefined)
+        const changed = now && (now === 'missing' || !sameContent(now, pinned.disk))
+        const binding = changed ? await readBinding(env).catch(() => undefined) : undefined
+        if (kept === 'failed' && now === 'missing') {
+            await afterOutcome(env, {
+                kind: 'failed',
+                error: new FileError('not-found', 'Not found'),
+                name: handle.name,
+            })
+            return
+        }
+        if (kept === 'failed' && binding) {
+            await afterOutcome(env, { kind: 'conflict', handle, binding })
+            return
+        }
         saveUi.error(
             kept === 'newer'
                 ? replaceNewerLine
@@ -2178,16 +2192,35 @@ export const fileDownloadAgain = () =>
         if (env && file) await downloadAgain(env, file)
     })
 
-/** Open the Other Version: the file on disk as a new session in place of this one (§0.9.6). */
+/**
+ * Open the Other Version (§0.9.6): the file on disk as a new session in place of this one, which
+ * keeps its changes. A file that can't be read says so.
+ */
+const openOther = async (handle: FileSystemFileHandle | undefined, name: string) => {
+    const opened = await handle?.getFile().catch(() => undefined)
+    if (!handle || !opened) {
+        saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
+        return
+    }
+    const { openProject } = await import('../commands/open/project')
+    await openProject(opened, handle)
+}
+
+/** Reads the bound file's stored handle ahead of a Save, once the session is edited (n5). */
+export const prefetchHandle = async () => {
+    const env = environment()
+    const file = env && quickBinding(env).file
+    if (!env || !file || !platform.pickSaveFile || heldHandle(env.chainId, file.name)) return
+    const handle = await bindingHandle(env, file)
+    if (handle && quickBinding(env).file?.name === handle.name) rememberHandle(env.chainId, handle)
+}
+
+/** The chip's Open the Other Version: the bound file on disk (§1.3.4). */
 export const openOtherVersion = async () => {
     const env = environment()
     const file = env && quickBinding(env).file
     if (!env || !file) return
-    const handle = await bindingHandle(env, file)
-    const opened = await handle?.getFile().catch(() => undefined)
-    if (!handle || !opened) return
-    const { openProject } = await import('../commands/open/project')
-    await openProject(opened, handle)
+    await openOther(await bindingHandle(env, file), file.name)
 }
 
 /** I Have the File: `file.confirmed` stored on the chain record (§1.3.4). */

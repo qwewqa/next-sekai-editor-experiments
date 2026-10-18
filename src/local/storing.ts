@@ -16,6 +16,7 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
+import { startupGate } from '../startup/gate'
 import type { State } from '../state'
 import { isDurablyStoredWith } from './durable'
 import {
@@ -390,6 +391,7 @@ export const startStoring = (
 
     let firstReset = true
     let blankNamed = false
+    let prefetched: FlushSession | undefined
     onHistoryAction(
         (action) => {
             if (action.kind === 'reset') {
@@ -431,6 +433,12 @@ export const startStoring = (
             if (instance.session === initialSession && !blankNamed) {
                 blankNamed = true
                 recordBlankStart()
+            }
+            // The bound file's handle read once the session is edited, so a Save's permission
+            // request isn't behind a storage read (D24: never at startup).
+            if (startupGate.phase === 'done' && prefetched !== instance.session) {
+                prefetched = instance.session
+                void import('../editor/save/flow').then((flow) => flow.prefetchHandle())
             }
             instance.append(
                 action.kind,

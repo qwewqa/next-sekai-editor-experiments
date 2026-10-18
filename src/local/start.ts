@@ -1,5 +1,6 @@
 import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
+import { sweepMarkers } from '../editor/save/env'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
@@ -308,8 +309,11 @@ export const startStorage = async () => {
             // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
-                // Kept bytes of partial opens no tab holds any more go (§1.5.4).
-                const sweep = () => void sweepKept(worker, platform.locks)
+                // Kept bytes no tab holds (§1.5.4) and markers of deleted chains go.
+                const sweep = () => {
+                    void sweepKept(worker, platform.locks)
+                    void sweepMarkers(worker)
+                }
                 if (typeof requestIdleCallback === 'function')
                     requestIdleCallback(sweep, { timeout: 5000 })
                 else setTimeout(sweep, 1000)
