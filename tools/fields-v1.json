@@ -1,0 +1,211 @@
+{
+    "root": [
+        { "name": "v", "type": "uint" },
+        { "name": "header", "type": "hash16" },
+        { "name": "kinds", "type": "array:kindRef" },
+        { "name": "noteCount", "type": "uint" }
+    ],
+    "kindRef": [
+        { "name": "name", "type": "enum:kinds" },
+        { "name": "hash", "type": "hash16" }
+    ],
+    "node": [
+        { "name": "kind", "type": "enum:kinds" },
+        { "name": "depth", "type": "uint" },
+        { "name": "hashes", "type": "array:hash16", "minItems": 1 }
+    ],
+    "header": [
+        { "name": "initialLife", "type": "number" },
+        { "name": "isDynamicStages", "type": "bool" },
+        { "name": "bgmOffset", "type": "number" },
+        { "name": "groups", "type": "array:group" },
+        { "name": "stages", "type": "array:stage" },
+        { "name": "groupFolders", "type": "array:folder" },
+        { "name": "stageFolders", "type": "array:folder" },
+        { "name": "levelInfo", "type": "record:levelInfo" },
+        { "name": "bgm", "type": "record:bgm", "optional": true }
+    ],
+    "group": [
+        { "name": "id", "type": "id" },
+        { "name": "name", "type": "string" },
+        { "name": "forceNoteSpeed", "type": "number", "default": 0 },
+        { "name": "folderId", "type": "id", "optional": true, "ref": "groupFolders" }
+    ],
+    "stage": [
+        { "name": "id", "type": "id" },
+        { "name": "name", "type": "string" },
+        { "name": "isFromStart", "type": "bool" },
+        { "name": "isUntilEnd", "type": "bool" },
+        { "name": "generateSimLines", "type": "enum:generateSimLines" },
+        { "name": "folderId", "type": "id", "optional": true, "ref": "stageFolders" }
+    ],
+    "folder": [
+        { "name": "id", "type": "id" },
+        { "name": "name", "type": "string" },
+        { "name": "index", "type": "uint" },
+        { "name": "folderId", "type": "id", "optional": true, "ref": "folders", "acyclic": true }
+    ],
+    "levelInfo": [
+        { "name": "title", "type": "string" },
+        { "name": "artists", "type": "string" },
+        { "name": "author", "type": "string" },
+        { "name": "description", "type": "string" },
+        { "name": "tags", "type": "array:tag" },
+        { "name": "cover", "type": "mediaRefOrEmpty" },
+        { "name": "preview", "type": "mediaRefOrEmpty" },
+        { "name": "rating", "type": "number", "optional": true }
+    ],
+    "tag": [
+        { "name": "title", "type": "string" },
+        { "name": "icon", "type": "string", "optional": true }
+    ],
+    "mediaRef": [
+        { "name": "hash", "type": "hash16" },
+        { "name": "filename", "type": "string" },
+        { "name": "size", "type": "uint" },
+        { "name": "type", "type": "string" }
+    ],
+    "bgm": [
+        { "name": "hash", "type": "hash16" },
+        { "name": "filename", "type": "string" },
+        { "name": "size", "type": "uint" },
+        { "name": "type", "type": "string" },
+        { "name": "durationMs", "type": "uint", "optional": true }
+    ],
+    "slide": { "type": "array:note", "minItems": 1 },
+    "note": [
+        { "name": "groupId", "type": "id", "ref": "groups" },
+        { "name": "stageId", "type": "id", "ref": "stages" },
+        { "name": "beat", "type": "number" },
+        { "name": "elevation", "type": "number", "default": 0 },
+        { "name": "noteStyle", "type": "enum:noteStyle" },
+        { "name": "connectorStyle", "type": "enum:noteStyle" },
+        { "name": "noteType", "type": "enum:noteType" },
+        { "name": "isAttached", "type": "bool" },
+        { "name": "left", "type": "number" },
+        { "name": "size", "type": "number" },
+        { "name": "isCritical", "type": "bool" },
+        { "name": "flickDirection", "type": "enum:flickDirection" },
+        { "name": "isFake", "type": "bool" },
+        { "name": "sfx", "type": "enum:sfx" },
+        { "name": "isConnectorSeparator", "type": "bool" },
+        { "name": "connectorType", "type": "enum:connectorType" },
+        { "name": "connectorEase", "type": "enum:ease" },
+        { "name": "connectorIsFake", "type": "bool" },
+        { "name": "connectorActiveIsCritical", "type": "bool" },
+        { "name": "connectorGuideAlpha", "type": "number" },
+        { "name": "connectorLayer", "type": "enum:connectorLayer" },
+        { "name": "connectorIsPassThrough", "type": "bool" },
+        { "name": "connectorPresentation", "type": "enum:connectorPresentation" }
+    ],
+    "bpm": [
+        { "name": "beat", "type": "number" },
+        { "name": "bpm", "type": "number" },
+        { "name": "meter", "type": "number", "default": 4 }
+    ],
+    "timeScale": [
+        { "name": "groupId", "type": "id", "ref": "groups" },
+        { "name": "beat", "type": "number" },
+        { "name": "editorLane", "type": "number" },
+        { "name": "timeScale", "type": "number" },
+        { "name": "skip", "type": "number" },
+        { "name": "timeScaleEase", "type": "enum:timeScaleEase" },
+        { "name": "timeScaleTransition", "type": "enum:timeScaleTransition" },
+        { "name": "hideNotes", "type": "bool" }
+    ],
+    "cameraEvent": [
+        { "name": "beat", "type": "number" },
+        { "name": "cameraLeft", "type": "number" },
+        { "name": "cameraSize", "type": "number" },
+        { "name": "cameraZoom", "type": "number" },
+        { "name": "cameraZoomTargetLane", "type": "number" },
+        { "name": "cameraZoomTargetY", "type": "number" },
+        { "name": "cameraZoomVerticalAlign", "type": "enum:cameraZoomVerticalAlign" },
+        { "name": "cameraRotation", "type": "number" },
+        { "name": "cameraStageTilt", "type": "number" },
+        { "name": "eventEase", "type": "enum:ease" }
+    ],
+    "stageMaskEvent": [
+        { "name": "stageId", "type": "id", "ref": "stages" },
+        { "name": "beat", "type": "number" },
+        { "name": "maskLeft", "type": "number" },
+        { "name": "maskSize", "type": "number" },
+        { "name": "isMaskNotes", "type": "bool" },
+        { "name": "eventEase", "type": "enum:ease" }
+    ],
+    "stagePivotEvent": [
+        { "name": "stageId", "type": "id", "ref": "stages" },
+        { "name": "beat", "type": "number" },
+        { "name": "pivotLane", "type": "number" },
+        { "name": "divisionSize", "type": "number" },
+        { "name": "divisionParity", "type": "enum:divisionParity" },
+        { "name": "yOffset", "type": "number" },
+        { "name": "yOffsetBeat", "type": "number" },
+        { "name": "eventEase", "type": "enum:ease" }
+    ],
+    "stageStyleEvent": [
+        { "name": "stageId", "type": "id", "ref": "stages" },
+        { "name": "beat", "type": "number" },
+        { "name": "editorLane", "type": "number" },
+        { "name": "judgmentLineColor", "type": "enum:judgmentLineColor" },
+        { "name": "judgmentLineStyle", "type": "enum:judgmentLineStyle" },
+        { "name": "leftBorderStyle", "type": "enum:borderStyle" },
+        { "name": "rightBorderStyle", "type": "enum:borderStyle" },
+        { "name": "isFullWidth", "type": "bool" },
+        { "name": "noteAlpha", "type": "number" },
+        { "name": "laneAlpha", "type": "number" },
+        { "name": "judgmentLineAlpha", "type": "number" },
+        { "name": "divisionLineAlpha", "type": "number" },
+        { "name": "eventEase", "type": "enum:ease" }
+    ],
+    "stageTransformEvent": [
+        { "name": "stageId", "type": "id", "ref": "stages" },
+        { "name": "beat", "type": "number" },
+        { "name": "rotation", "type": "number" },
+        { "name": "xTranslation", "type": "number" },
+        { "name": "yTranslation", "type": "number" },
+        { "name": "elevation", "type": "number" },
+        { "name": "anchor", "type": "enum:anchor" },
+        { "name": "eventEase", "type": "enum:ease" }
+    ],
+    "kinds": {
+        "slides": "slide",
+        "bpms": "bpm",
+        "timeScales": "timeScale",
+        "cameraEvents": "cameraEvent",
+        "stageMaskEvents": "stageMaskEvent",
+        "stagePivotEvents": "stagePivotEvent",
+        "stageStyleEvents": "stageStyleEvent",
+        "stageTransformEvents": "stageTransformEvent"
+    },
+    "kindOrder": [
+        "slides",
+        "bpms",
+        "timeScales",
+        "cameraEvents",
+        "stageMaskEvents",
+        "stagePivotEvents",
+        "stageStyleEvents",
+        "stageTransformEvents"
+    ],
+    "enums": {
+        "kinds": { "slides": 1, "bpms": 1, "timeScales": 1, "cameraEvents": 1, "stageMaskEvents": 1, "stagePivotEvents": 1, "stageStyleEvents": 1, "stageTransformEvents": 1 },
+        "noteStyle": { "default": 1, "neutral": 1, "red": 1, "green": 1, "blue": 1, "yellow": 1, "purple": 1, "cyan": 1, "black": 1 },
+        "noteType": { "default": 1, "trace": 1, "anchor": 1, "damage": 1, "forceTick": 1, "forceNonTick": 1 },
+        "flickDirection": { "none": 1, "up": 1, "upLeft": 1, "upRight": 1, "down": 1, "downLeft": 1, "downRight": 1 },
+        "sfx": { "default": 1, "none": 1, "normalTap": 1, "criticalTap": 1, "normalFlick": 1, "criticalFlick": 1, "normalTrace": 1, "criticalTrace": 1, "normalTick": 1, "criticalTick": 1, "damage": 1 },
+        "connectorType": { "active": 1, "guide": 1, "damage": 1 },
+        "ease": { "none": 1, "linear": 1, "inSine": 1, "outSine": 1, "inOutSine": 1, "outInSine": 1, "inQuad": 1, "outQuad": 1, "inOutQuad": 1, "outInQuad": 1, "inCubic": 1, "outCubic": 1, "inOutCubic": 1, "outInCubic": 1, "inQuart": 1, "outQuart": 1, "inOutQuart": 1, "outInQuart": 1, "inQuint": 1, "outQuint": 1, "inOutQuint": 1, "outInQuint": 1, "inExpo": 1, "outExpo": 1, "inOutExpo": 1, "outInExpo": 1, "inCirc": 1, "outCirc": 1, "inOutCirc": 1, "outInCirc": 1, "inBack": 1, "outBack": 1, "inOutBack": 1, "outInBack": 1, "inElastic": 1, "outElastic": 1, "inOutElastic": 1, "outInElastic": 1, "inStep": 1, "outStep": 1, "inOutStep": 1, "outInStep": 1 },
+        "timeScaleEase": { "none": 1, "linear": 1, "inSine": 1, "outSine": 1, "inOutSine": 1, "outInSine": 1, "inQuad": 1, "outQuad": 1, "inOutQuad": 1, "outInQuad": 1, "inCubic": 1, "outCubic": 1, "inOutCubic": 1, "outInCubic": 1, "inQuart": 1, "outQuart": 1, "inOutQuart": 1, "outInQuart": 1, "inQuint": 1, "outQuint": 1, "inOutQuint": 1, "outInQuint": 1, "inExpo": 1, "outExpo": 1, "inOutExpo": 1, "outInExpo": 1, "inCirc": 1, "outCirc": 1, "inOutCirc": 1, "outInCirc": 1, "inStep": 1, "outStep": 1, "inOutStep": 1, "outInStep": 1 },
+        "connectorLayer": { "top": 1, "bottom": 1, "under": 1, "over": 1 },
+        "connectorPresentation": { "default": 1, "fullscreen": 1 },
+        "timeScaleTransition": { "timeScale": 1, "scroll": 1 },
+        "cameraZoomVerticalAlign": { "default": 1, "center": 1 },
+        "divisionParity": { "even": 1, "odd": 1 },
+        "judgmentLineColor": { "neutral": 1, "red": 1, "green": 1, "blue": 1, "yellow": 1, "purple": 1, "cyan": 1, "black": 1 },
+        "judgmentLineStyle": { "default": 1, "singleLine": 1 },
+        "borderStyle": { "default": 1, "light": 1, "medium": 1, "disabled": 1 },
+        "anchor": { "default": 1, "center": 1 },
+        "generateSimLines": { "global": 1, "isolated": 1 }
+    }
+}

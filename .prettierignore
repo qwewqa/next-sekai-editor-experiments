@@ -34,4 +34,6 @@ src/local/records/fields-v1.json
 # Frozen Formats v1 vectors: never reformatted.
 tests/local/records/schema-v1/
 tests/local/records/golden-v1/
+tests/local/nxsp/golden-v1/
+tests/zip/plan-conformance-v1/
 tests/fixtures/deflate-v1/

@@ -1,0 +1,1886 @@
+{
+  "modified": {
+    "dosTime": 10240,
+    "dosDate": 23888
+  },
+  "entries": [
+    {
+      "name": "project.json",
+      "method": 8,
+      "crc32": 4257760003,
+      "uncompressedSize": 1486,
+      "parts": [
+        {
+          "kind": "bytes",
+          "json": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Icon tag",
+                  "icon": "star"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
+        }
+      ]
+    },
+    {
+      "name": "level.json",
+      "method": 8,
+      "crc32": 325745116,
+      "uncompressedSize": 11457,
+      "parts": [
+        {
+          "kind": "bytes",
+          "json": {
+            "bgmOffset": 0.125,
+            "entities": [
+              {
+                "archetype": "Initialization",
+                "data": [
+                  {
+                    "name": "initialLife",
+                    "value": 1000
+                  },
+                  {
+                    "name": "revision",
+                    "value": 2
+                  },
+                  {
+                    "name": "firstCamera",
+                    "ref": "4"
+                  }
+                ]
+              },
+              {
+                "archetype": "#BPM_CHANGE",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 0
+                  },
+                  {
+                    "name": "#BPM",
+                    "value": 120
+                  },
+                  {
+                    "name": "meter",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "archetype": "#BPM_CHANGE",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 8
+                  },
+                  {
+                    "name": "#BPM",
+                    "value": 150
+                  },
+                  {
+                    "name": "meter",
+                    "value": 3
+                  }
+                ]
+              },
+              {
+                "archetype": "#TIMESCALE_GROUP",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Default"
+                  },
+                  {
+                    "name": "editorFolder",
+                    "ref": "0"
+                  },
+                  {
+                    "name": "first",
+                    "ref": "b"
+                  }
+                ],
+                "name": "a"
+              },
+              {
+                "archetype": "#TIMESCALE_GROUP",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Fast"
+                  },
+                  {
+                    "name": "forceNoteSpeed",
+                    "value": 10
+                  },
+                  {
+                    "name": "editorFolder",
+                    "ref": "0"
+                  }
+                ],
+                "name": "11"
+              },
+              {
+                "archetype": "Stage",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Main"
+                  },
+                  {
+                    "name": "fromStart",
+                    "value": 1
+                  },
+                  {
+                    "name": "untilEnd",
+                    "value": 1
+                  },
+                  {
+                    "name": "generateSimLines",
+                    "value": 0
+                  },
+                  {
+                    "name": "firstMaskChange",
+                    "ref": "6"
+                  },
+                  {
+                    "name": "firstPivotChange",
+                    "ref": "7"
+                  },
+                  {
+                    "name": "firstStyleChange",
+                    "ref": "8"
+                  }
+                ],
+                "name": "c"
+              },
+              {
+                "archetype": "Stage",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Side"
+                  },
+                  {
+                    "name": "fromStart",
+                    "value": 0
+                  },
+                  {
+                    "name": "untilEnd",
+                    "value": 1
+                  },
+                  {
+                    "name": "generateSimLines",
+                    "value": 1
+                  },
+                  {
+                    "name": "editorFolder",
+                    "ref": "1"
+                  },
+                  {
+                    "name": "firstTransformChange",
+                    "ref": "9"
+                  }
+                ],
+                "name": "16"
+              },
+              {
+                "archetype": "CameraChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 0
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0
+                  },
+                  {
+                    "name": "size",
+                    "value": 6
+                  },
+                  {
+                    "name": "zoom",
+                    "value": 1
+                  },
+                  {
+                    "name": "zoomTargetLane",
+                    "value": 0
+                  },
+                  {
+                    "name": "zoomTargetY",
+                    "value": 0
+                  },
+                  {
+                    "name": "zoomVerticalAlign",
+                    "value": 0
+                  },
+                  {
+                    "name": "rotate",
+                    "value": 0
+                  },
+                  {
+                    "name": "stageTilt",
+                    "value": 0
+                  },
+                  {
+                    "name": "ease",
+                    "value": 1
+                  },
+                  {
+                    "name": "next",
+                    "ref": "3"
+                  }
+                ],
+                "name": "4"
+              },
+              {
+                "archetype": "CameraChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 2
+                  },
+                  {
+                    "name": "lane",
+                    "value": 3.666666666666667
+                  },
+                  {
+                    "name": "size",
+                    "value": 3.3333333333333335
+                  },
+                  {
+                    "name": "zoom",
+                    "value": 1
+                  },
+                  {
+                    "name": "zoomTargetLane",
+                    "value": 0
+                  },
+                  {
+                    "name": "zoomTargetY",
+                    "value": 0
+                  },
+                  {
+                    "name": "zoomVerticalAlign",
+                    "value": 0
+                  },
+                  {
+                    "name": "rotate",
+                    "value": 0
+                  },
+                  {
+                    "name": "stageTilt",
+                    "value": 0
+                  },
+                  {
+                    "name": "ease",
+                    "value": 1
+                  }
+                ],
+                "name": "3"
+              },
+              {
+                "archetype": "StageMaskChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 0
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0
+                  },
+                  {
+                    "name": "size",
+                    "value": 6
+                  },
+                  {
+                    "name": "maskNotes",
+                    "value": 0
+                  },
+                  {
+                    "name": "ease",
+                    "value": 1
+                  },
+                  {
+                    "name": "next",
+                    "ref": "5"
+                  }
+                ],
+                "name": "6"
+              },
+              {
+                "archetype": "StageMaskChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 2
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0.85
+                  },
+                  {
+                    "name": "size",
+                    "value": 0.15
+                  },
+                  {
+                    "name": "maskNotes",
+                    "value": 1
+                  },
+                  {
+                    "name": "ease",
+                    "value": 1
+                  }
+                ],
+                "name": "5"
+              },
+              {
+                "archetype": "StagePivotChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 1
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0
+                  },
+                  {
+                    "name": "divisionSize",
+                    "value": 2
+                  },
+                  {
+                    "name": "divisionParity",
+                    "value": 1
+                  },
+                  {
+                    "name": "yOffset",
+                    "value": 0.5
+                  },
+                  {
+                    "name": "yBeatOffset",
+                    "value": 1
+                  },
+                  {
+                    "name": "ease",
+                    "value": 3
+                  }
+                ],
+                "name": "7"
+              },
+              {
+                "archetype": "StageStyleChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 1
+                  },
+                  {
+                    "name": "editorLane",
+                    "value": 0
+                  },
+                  {
+                    "name": "judgeLineColor",
+                    "value": 6
+                  },
+                  {
+                    "name": "judgeLineStyle",
+                    "value": 0
+                  },
+                  {
+                    "name": "leftBorderStyle",
+                    "value": 1
+                  },
+                  {
+                    "name": "rightBorderStyle",
+                    "value": 0
+                  },
+                  {
+                    "name": "fullWidth",
+                    "value": 0
+                  },
+                  {
+                    "name": "noteAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "laneAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "judgeLineAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "divisionLineAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "ease",
+                    "value": 1
+                  }
+                ],
+                "name": "8"
+              },
+              {
+                "archetype": "StageTransformChange",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 3
+                  },
+                  {
+                    "name": "rotate",
+                    "value": 15
+                  },
+                  {
+                    "name": "xLaneTranslate",
+                    "value": 1
+                  },
+                  {
+                    "name": "yLaneTranslate",
+                    "value": -1
+                  },
+                  {
+                    "name": "elevation",
+                    "value": 0.25
+                  },
+                  {
+                    "name": "anchor",
+                    "value": 1
+                  },
+                  {
+                    "name": "ease",
+                    "value": 8
+                  }
+                ],
+                "name": "9"
+              },
+              {
+                "archetype": "#TIMESCALE_CHANGE",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 4
+                  },
+                  {
+                    "name": "editorLane",
+                    "value": 0
+                  },
+                  {
+                    "name": "#TIMESCALE",
+                    "value": 1.5
+                  },
+                  {
+                    "name": "#TIMESCALE_SKIP",
+                    "value": 0
+                  },
+                  {
+                    "name": "#TIMESCALE_EASE",
+                    "value": 1
+                  },
+                  {
+                    "name": "transitionStyle",
+                    "value": 0
+                  },
+                  {
+                    "name": "hideNotes",
+                    "value": 0
+                  }
+                ],
+                "name": "b"
+              },
+              {
+                "archetype": "NormalHeadTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 0
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1.3333333333333333
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "elevation",
+                    "value": 0.5
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "next",
+                    "ref": "d"
+                  }
+                ],
+                "name": "10"
+              },
+              {
+                "archetype": "NormalTickNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 1
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1.3333333333333333
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 1
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "next",
+                    "ref": "e"
+                  },
+                  {
+                    "name": "attachHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "attachTail",
+                    "ref": "e"
+                  }
+                ],
+                "name": "d"
+              },
+              {
+                "archetype": "AnchorNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 1.5
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1.3333333333333333
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "next",
+                    "ref": "f"
+                  }
+                ],
+                "name": "e"
+              },
+              {
+                "archetype": "NormalTailFlickNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 2
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1.3333333333333333
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "activeHead",
+                    "ref": "10"
+                  }
+                ],
+                "name": "f"
+              },
+              {
+                "archetype": "TransientHiddenTickNote",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 0.5
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 1
+                  },
+                  {
+                    "name": "attachHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "attachTail",
+                    "ref": "e"
+                  }
+                ]
+              },
+              {
+                "archetype": "TransientHiddenTickNote",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 1
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 1
+                  },
+                  {
+                    "name": "attachHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "attachTail",
+                    "ref": "e"
+                  }
+                ]
+              },
+              {
+                "archetype": "Connector",
+                "data": [
+                  {
+                    "name": "head",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "tail",
+                    "ref": "e"
+                  },
+                  {
+                    "name": "segmentHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "segmentTail",
+                    "ref": "f"
+                  },
+                  {
+                    "name": "activeHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "activeTail",
+                    "ref": "f"
+                  }
+                ]
+              },
+              {
+                "archetype": "TransientHiddenTickNote",
+                "data": [
+                  {
+                    "name": "#BEAT",
+                    "value": 1.5
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 1
+                  },
+                  {
+                    "name": "attachHead",
+                    "ref": "e"
+                  },
+                  {
+                    "name": "attachTail",
+                    "ref": "f"
+                  }
+                ]
+              },
+              {
+                "archetype": "Connector",
+                "data": [
+                  {
+                    "name": "head",
+                    "ref": "e"
+                  },
+                  {
+                    "name": "tail",
+                    "ref": "f"
+                  },
+                  {
+                    "name": "segmentHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "segmentTail",
+                    "ref": "f"
+                  },
+                  {
+                    "name": "activeHead",
+                    "ref": "10"
+                  },
+                  {
+                    "name": "activeTail",
+                    "ref": "f"
+                  }
+                ]
+              },
+              {
+                "archetype": "NormalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "11"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 3
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0.85
+                  },
+                  {
+                    "name": "size",
+                    "value": 0.15
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 103
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "next",
+                    "ref": "12"
+                  }
+                ],
+                "name": "13"
+              },
+              {
+                "archetype": "NormalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "11"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 4
+                  },
+                  {
+                    "name": "lane",
+                    "value": 0.85
+                  },
+                  {
+                    "name": "size",
+                    "value": 0.15
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 103
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  }
+                ],
+                "name": "12"
+              },
+              {
+                "archetype": "Connector",
+                "data": [
+                  {
+                    "name": "head",
+                    "ref": "13"
+                  },
+                  {
+                    "name": "tail",
+                    "ref": "12"
+                  },
+                  {
+                    "name": "segmentHead",
+                    "ref": "13"
+                  },
+                  {
+                    "name": "segmentTail",
+                    "ref": "12"
+                  }
+                ]
+              },
+              {
+                "archetype": "NormalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 5
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 104
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  },
+                  {
+                    "name": "next",
+                    "ref": "14"
+                  }
+                ],
+                "name": "15"
+              },
+              {
+                "archetype": "NormalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 6
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 104
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  }
+                ],
+                "name": "14"
+              },
+              {
+                "archetype": "Connector",
+                "data": [
+                  {
+                    "name": "head",
+                    "ref": "15"
+                  },
+                  {
+                    "name": "tail",
+                    "ref": "14"
+                  },
+                  {
+                    "name": "segmentHead",
+                    "ref": "15"
+                  },
+                  {
+                    "name": "segmentTail",
+                    "ref": "14"
+                  }
+                ]
+              },
+              {
+                "archetype": "CriticalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "11"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "16"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 5
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 2
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "archetype": "NormalTapNote",
+                "data": [
+                  {
+                    "name": "#TIMESCALE_GROUP",
+                    "ref": "a"
+                  },
+                  {
+                    "name": "stage",
+                    "ref": "c"
+                  },
+                  {
+                    "name": "#BEAT",
+                    "value": 64
+                  },
+                  {
+                    "name": "lane",
+                    "value": 1
+                  },
+                  {
+                    "name": "size",
+                    "value": 1
+                  },
+                  {
+                    "name": "style",
+                    "value": 0
+                  },
+                  {
+                    "name": "direction",
+                    "value": 0
+                  },
+                  {
+                    "name": "isAttached",
+                    "value": 0
+                  },
+                  {
+                    "name": "isSeparator",
+                    "value": 0
+                  },
+                  {
+                    "name": "connectorEase",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentKind",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentAlpha",
+                    "value": 1
+                  },
+                  {
+                    "name": "segmentLayer",
+                    "value": 0
+                  },
+                  {
+                    "name": "effectKind",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentThroughJudgeLine",
+                    "value": 0
+                  },
+                  {
+                    "name": "segmentPresentation",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "archetype": "EditorGroupFolder",
+                "name": "0",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Folder"
+                  },
+                  {
+                    "name": "editorIndex",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "archetype": "EditorStageFolder",
+                "name": "1",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Stage folder"
+                  },
+                  {
+                    "name": "editorIndex",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "archetype": "EditorStageFolder",
+                "name": "2",
+                "data": [
+                  {
+                    "name": "editorName",
+                    "ref": "Inner"
+                  },
+                  {
+                    "name": "editorIndex",
+                    "value": 2
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "history/manifest.json",
+      "method": 8,
+      "crc32": 3535329532,
+      "uncompressedSize": 3907,
+      "parts": [
+        {
+          "kind": "bytes",
+          "json": {
+            "version": 1,
+            "entries": [
+              {
+                "kind": "init",
+                "time": 1792126795000,
+                "label": "Imported LevelData",
+                "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
+                "noteCount": 9
+              },
+              {
+                "kind": "edit",
+                "time": 1792126796000,
+                "label": "Moved notes",
+                "snapshot": "fe800dbfd4e0a5df36f976b3895eb373",
+                "noteCount": 12,
+                "kept": false
+              },
+              {
+                "kind": "edit",
+                "time": 1792126797000,
+                "label": "Added note",
+                "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
+                "noteCount": 10,
+                "dirty": true
+              },
+              {
+                "kind": "edit",
+                "time": 1792126798000,
+                "label": "Changed BGM",
+                "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                "noteCount": 10
+              },
+              {
+                "kind": "save",
+                "time": 1792126799000,
+                "label": "Saved golden.nxsp",
+                "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                "noteCount": 10,
+                "revisionId": "r001-0000-4000-8000-000000000000",
+                "device": {
+                  "id": "c3f00000-0000-4000-8000-000000000000",
+                  "label": "Web (Chrome)"
+                }
+              }
+            ],
+            "roots": {
+              "6f38b02f6367f5d66a255253ba873eeb": [
+                1,
+                "682a80bc1a00cfab534aa4fdeae2c440",
+                [
+                  [
+                    "slides",
+                    "65a0f6a004fe25573ce5b6fdbae71817"
+                  ],
+                  [
+                    "bpms",
+                    "e80a9229767480eab7f7dd2d83604937"
+                  ],
+                  [
+                    "timeScales",
+                    "107ecd6888961918f82c1d95d55093da"
+                  ],
+                  [
+                    "cameraEvents",
+                    "75fcebec3c4ba89fe2a995a6e890fdae"
+                  ],
+                  [
+                    "stageMaskEvents",
+                    "e8019d7edcb2a1dde0c36784de540a0a"
+                  ],
+                  [
+                    "stagePivotEvents",
+                    "04835ab2cfea9666c28f08add6025185"
+                  ],
+                  [
+                    "stageStyleEvents",
+                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                  ],
+                  [
+                    "stageTransformEvents",
+                    "4a422a26c54fa83bc5f1e4c92ad29f25"
+                  ]
+                ],
+                9
+              ],
+              "378b9e27d9a17db01b7d279c5d05bc8d": [
+                1,
+                "682a80bc1a00cfab534aa4fdeae2c440",
+                [
+                  [
+                    "slides",
+                    "0b5cc92e23eb8916f8e623eb6964b8d2"
+                  ],
+                  [
+                    "bpms",
+                    "e80a9229767480eab7f7dd2d83604937"
+                  ],
+                  [
+                    "timeScales",
+                    "107ecd6888961918f82c1d95d55093da"
+                  ],
+                  [
+                    "cameraEvents",
+                    "75fcebec3c4ba89fe2a995a6e890fdae"
+                  ],
+                  [
+                    "stageMaskEvents",
+                    "e8019d7edcb2a1dde0c36784de540a0a"
+                  ],
+                  [
+                    "stagePivotEvents",
+                    "04835ab2cfea9666c28f08add6025185"
+                  ],
+                  [
+                    "stageStyleEvents",
+                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                  ],
+                  [
+                    "stageTransformEvents",
+                    "4a422a26c54fa83bc5f1e4c92ad29f25"
+                  ]
+                ],
+                10
+              ],
+              "77c0e9da1303c6408802ce6b6c3ad54c": [
+                1,
+                "131e2143922e8938d0cdd01a620d73cb",
+                [
+                  [
+                    "slides",
+                    "0b5cc92e23eb8916f8e623eb6964b8d2"
+                  ],
+                  [
+                    "bpms",
+                    "e80a9229767480eab7f7dd2d83604937"
+                  ],
+                  [
+                    "timeScales",
+                    "107ecd6888961918f82c1d95d55093da"
+                  ],
+                  [
+                    "cameraEvents",
+                    "75fcebec3c4ba89fe2a995a6e890fdae"
+                  ],
+                  [
+                    "stageMaskEvents",
+                    "e8019d7edcb2a1dde0c36784de540a0a"
+                  ],
+                  [
+                    "stagePivotEvents",
+                    "04835ab2cfea9666c28f08add6025185"
+                  ],
+                  [
+                    "stageStyleEvents",
+                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                  ],
+                  [
+                    "stageTransformEvents",
+                    "4a422a26c54fa83bc5f1e4c92ad29f25"
+                  ]
+                ],
+                10
+              ]
+            },
+            "nodes": {
+              "65a0f6a004fe25573ce5b6fdbae71817": [
+                "slides",
+                0,
+                [
+                  "afdaecb84dce6bbf59f2b3d94fda7cf4"
+                ]
+              ],
+              "e80a9229767480eab7f7dd2d83604937": [
+                "bpms",
+                0,
+                [
+                  "1402f2c7f6c666905ccf3e5bb4003757"
+                ]
+              ],
+              "107ecd6888961918f82c1d95d55093da": [
+                "timeScales",
+                0,
+                [
+                  "1014738dcba13b60478ce43afd5339a2"
+                ]
+              ],
+              "75fcebec3c4ba89fe2a995a6e890fdae": [
+                "cameraEvents",
+                0,
+                [
+                  "e9a279deffd46e42dbea2c852e1d9489"
+                ]
+              ],
+              "e8019d7edcb2a1dde0c36784de540a0a": [
+                "stageMaskEvents",
+                0,
+                [
+                  "b93755a48d7dca74378d1e854a3e52ac"
+                ]
+              ],
+              "04835ab2cfea9666c28f08add6025185": [
+                "stagePivotEvents",
+                0,
+                [
+                  "fc69f5483924d4aff06683335ded65d1"
+                ]
+              ],
+              "ec7e12fc53132cfbc1e4b9ff64b74cd8": [
+                "stageStyleEvents",
+                0,
+                [
+                  "40b783550034e9d28d76681825a58fed"
+                ]
+              ],
+              "4a422a26c54fa83bc5f1e4c92ad29f25": [
+                "stageTransformEvents",
+                0,
+                [
+                  "785cf7fc1d8caf4021845009ea643c09"
+                ]
+              ],
+              "0b5cc92e23eb8916f8e623eb6964b8d2": [
+                "slides",
+                0,
+                [
+                  "afdaecb84dce6bbf59f2b3d94fda7cf4",
+                  "985cec3836fc092b8502871a62e8a0b7"
+                ]
+              ]
+            },
+            "chunks": [
+              [
+                "682a80bc1a00cfab534aa4fdeae2c440",
+                0,
+                319
+              ],
+              [
+                "afdaecb84dce6bbf59f2b3d94fda7cf4",
+                319,
+                183
+              ],
+              [
+                "1402f2c7f6c666905ccf3e5bb4003757",
+                502,
+                23
+              ],
+              [
+                "1014738dcba13b60478ce43afd5339a2",
+                525,
+                44
+              ],
+              [
+                "e9a279deffd46e42dbea2c852e1d9489",
+                569,
+                55
+              ],
+              [
+                "b93755a48d7dca74378d1e854a3e52ac",
+                624,
+                49
+              ],
+              [
+                "fc69f5483924d4aff06683335ded65d1",
+                673,
+                35
+              ],
+              [
+                "40b783550034e9d28d76681825a58fed",
+                708,
+                53
+              ],
+              [
+                "785cf7fc1d8caf4021845009ea643c09",
+                761,
+                43
+              ],
+              [
+                "985cec3836fc092b8502871a62e8a0b7",
+                804,
+                75
+              ],
+              [
+                "131e2143922e8938d0cdd01a620d73cb",
+                879,
+                318
+              ]
+            ],
+            "undoStack": {
+              "base": 0,
+              "slots": [
+                {
+                  "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
+                  "label": "Imported LevelData"
+                },
+                {
+                  "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
+                  "label": "Added note"
+                },
+                {
+                  "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                  "label": "Changed BGM"
+                }
+              ],
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "history/chunks.bin",
+      "method": 0,
+      "crc32": 2853292100,
+      "uncompressedSize": 1197,
+      "parts": [
+        {
+          "kind": "bytes",
+          "base64": "bZFBboMwEEWvgmY9IrYBQ9apUkVqV+mOsjB4TC2BjcBJTlGp+96id2rPURmaXTej+TP/P1uamjPGMMwXQpZyUWBdc4QHMuoyBECGvMFaIBzVEgB51M3meVbWwZZcC/SDb9UAm/9sNQEaNSz3tV38oAJpQHFHHP2gaQZk6yCmguopMX/j+HSGcHIuKrHl4DFuHSAc/Dj5hebEkAppcraujz44vKk5rN2TdZR4R69u7cLNA9Y1vKg+/hJOnXdJUD0gLEHNsOI7uZdd1haS56IsOG+FyYysulZkXVsxDgidv9KcTq4H5AWCHVVPuyhjnlReir0xiuUFE7olksxoristJdeZAYRppqulWzpOGSAvEdRFW78bJ4oILiKm0ExXJZPUlnm2L6TMKkZSSCnKXLJKAsLP51fy/fH+LwbjWZvmF82UwQ7CIAxA/6XnZhnM6ccQDrh1SkKYQfD7DeIu29ymxiAHQoA2L68FIQRDhiWWRY3QUqeC8TC76pS5EpZFNRrIn0dge0vDvXEcqMbrGwGC0ZaUG/bTzBB8f5nESnzQRb5lNu9CJrSifgWnbHPuXU5vfNXbOluYZv+KTKIQHBlWm9kOkW+TqlPQ7fumIs3uT2iinVi5UVMdTaAZmI0d9JmWiLHPjZG6hScfjtrF2iBP/8AP3pOUd4uONtAxNDLQMYnVibbQMTQ10DGOjQUAi4421DHRMdAx1DPVMdBRysnMS00sUtJRKsnMTQ1OTsxJVdJJS8wpTo2NBQCLjjbQ0TXTMTTSMdQx0DHQUUpJTUsszSlRgvByMvNSE4uUYnWijXQM9IzRgI6ZnhkKMMdvSiwAi4421DHQ0TXTMTTSSUvMKU7VUcrJzEtNLFKK1Yk21DHSMdAz1zHQM9YpKSpFkosFAIuONtQx1DHQMdJRyk9JUdIx0DPVMdRRyi8tCSxNTFGKjQUAi4421DHUMdBRSq5MzFPSUUpJTUsszSlR0lHKyUzPKEEWSUvMKU7VMYRCpZzMvNTEIqXYWACLjjbSMdYxNNUx1NE11DHQMzLVUUpOzStJLVLSUcrM8y8tCc7MS1WKjQUAi46ONtQx1DEz0THQUUpJTUsszSlRwspKS8wpTtUx0DGCspTy8vNSYcLoypQSk0syy1KVdJRyMvNSE4tg4hDSUEepJL8AQ29sbCwAVZFBb4MwDIX/CvJpk6w2CRDg3KlTpfXU3VgPhjgMCRIEof37U2h72CXys9/7nCi1FEJgmFdGsZMqx7qWCB9saR0CoEB5xVohHGkJgDLq68Nzpt7BI7kd0A2+oQEe/ktvGNDSsLzG/eIHCmwA1Qtx9IPhGVBsjZgK1HFin+24OkU4OReVeuTgM04dIBz8OPmF58QyhV1y6V0XfXD4pTls1VfvOPGOf9xWhbsHrGv4pi7eEk6td0mgDhCWQDNs+FZXuk2bXMtMFbmUjbKp1WXbqLRtSiEBofU3nneT6wBljtCP1PE+yphnygpVWUsiy4UyDbMW1khTGq2lSS0gTDPfer7vxikFlAUCrab3+3HiiJAqYkotUqOKpjK2lU1GggrKK6UrY0stcrG9v/VuDcnbmZbA8/uTp/7xMP7v9foH"
+        }
+      ]
+    },
+    {
+      "name": "assets/cover.png",
+      "method": 0,
+      "crc32": 136824160,
+      "uncompressedSize": 15,
+      "parts": [
+        {
+          "kind": "bytes",
+          "base64": "Y292ZXIucG5nIGJ5dGVz"
+        }
+      ]
+    },
+    {
+      "name": "assets/preview.mp3",
+      "method": 0,
+      "crc32": 3245599963,
+      "uncompressedSize": 17,
+      "parts": [
+        {
+          "kind": "bytes",
+          "base64": "cHJldmlldy5tcDMgYnl0ZXM="
+        }
+      ]
+    },
+    {
+      "name": "bgm/Coconut-Master.mp3",
+      "method": 0,
+      "crc32": 1553704227,
+      "uncompressedSize": 12,
+      "parts": [
+        {
+          "kind": "bytes",
+          "base64": "YSBzZWNvbmQgQkdN"
+        }
+      ]
+    }
+  ]
+}
