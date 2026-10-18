@@ -296,7 +296,7 @@ test('release assets, preview, chart editing and FFT audio work in the productio
             .toBeGreaterThan(0)
     })
 
-    await test.step('select, edit and save the imported note', async () => {
+    await test.step('select, edit and export the imported note', async () => {
         const bounds = await page.locator('.editor').boundingBox()
         expect(bounds).not.toBeNull()
         // Preview Follow can pan the timeline during the transport smoke above.
@@ -322,7 +322,11 @@ test('release assets, preview, chart editing and FFT audio work in the productio
         await page.mouse.click(bounds!.x + bounds!.width - 15, bounds!.y + bounds!.height - 15)
 
         const downloading = page.waitForEvent('download')
-        await page.keyboard.press('p')
+        await page.keyboard.press('Shift+P')
+        await page
+            .getByRole('dialog', { name: 'Export Level Data', exact: true })
+            .getByRole('button', { name: 'Export', exact: true })
+            .click()
         const download = await downloading
         const saved = testInfo.outputPath('smoke.leveldata.gz')
         await download.saveAs(saved)

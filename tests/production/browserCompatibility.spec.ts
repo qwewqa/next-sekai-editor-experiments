@@ -86,7 +86,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 30)
 })
 
-test('production imports, scales through the touch menu, applies with Enter and saves', async ({
+test('production imports, scales through the touch menu, applies with Enter and exports', async ({
     page,
 }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
@@ -101,7 +101,11 @@ test('production imports, scales through the touch menu, applies with Enter and 
     await factor.press('Enter')
     await expect(page.locator('.scaling-panel')).toHaveCount(0)
     const saving = page.waitForEvent('download')
-    await page.keyboard.press('p')
+    await page.keyboard.press('Shift+P')
+    await page
+        .getByRole('dialog', { name: 'Export Level Data', exact: true })
+        .getByRole('button', { name: 'Export', exact: true })
+        .click()
     const path = testInfo.outputPath('compatibility.leveldata.gz')
     await (await saving).saveAs(path)
     const level = JSON.parse(gunzipSync(await readFile(path)).toString()) as {
@@ -233,7 +237,11 @@ test('lane limit commands clamp note placement in the production editor', async 
         bounds.y + bounds.height / 2 - 90,
     )
     const saving = page.waitForEvent('download')
-    await page.keyboard.press('p')
+    await page.keyboard.press('Shift+P')
+    await page
+        .getByRole('dialog', { name: 'Export Level Data', exact: true })
+        .getByRole('button', { name: 'Export', exact: true })
+        .click()
     const path = testInfo.outputPath('lane-limit.leveldata.gz')
     await (await saving).saveAs(path)
     const level = JSON.parse(gunzipSync(await readFile(path)).toString()) as {
@@ -279,7 +287,11 @@ test('internal copy and paste survive denied browser clipboard permissions', asy
     if (!bounds) throw new Error('Missing editor canvas')
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 90)
     const saving = page.waitForEvent('download')
-    await page.keyboard.press('p')
+    await page.keyboard.press('Shift+P')
+    await page
+        .getByRole('dialog', { name: 'Export Level Data', exact: true })
+        .getByRole('button', { name: 'Export', exact: true })
+        .click()
     const path = testInfo.outputPath('clipboard.leveldata.gz')
     await (await saving).saveAs(path)
     const level = JSON.parse(gunzipSync(await readFile(path)).toString()) as {
