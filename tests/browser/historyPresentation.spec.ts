@@ -278,7 +278,7 @@ test('reset clears view memory and discards the deferred elevation return', asyn
     await viewChart(page).click()
     await page.evaluate(() => {
         const history = window.editorTest.history
-        history.resetStates({ isDirty: false, name: () => 'Reset', state: history.liveState.value })
+        history.resetState(false)
     })
     await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
     expect(
@@ -443,7 +443,7 @@ test('reset closes an in-progress Go To chooser before a later presentation chan
     await expect(page.locator('[data-history-goto]')).toBeVisible()
     await page.evaluate(() => {
         const history = window.editorTest.history
-        history.resetStates({ isDirty: false, name: () => 'Reset', state: history.liveState.value })
+        history.resetState(false)
     })
     await expect(page.locator('[data-history-goto]')).toHaveCount(0)
     await page.setViewportSize({ width: 520, height: 320 })

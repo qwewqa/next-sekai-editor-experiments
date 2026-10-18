@@ -50,6 +50,13 @@ const fake = (name: string, offset = 0, extra: Partial<State> = {}) =>
 const nameOf = (value: State) => (value as Fake).name
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const deferred = <T>() => {
+    let resolve!: (value: T) => void
+    const promise = new Promise<T>((done) => {
+        resolve = done
+    })
+    return { promise, resolve }
+}
 
 /** A source holding entries by key, counting loads; `fail` keys reject as damaged. */
 const source = (entries: Record<string, PeekedEntry>, fail: string[] = []) => {
@@ -203,8 +210,8 @@ test('a load that finishes after leaving shows nothing', async () => {
 })
 
 test('readiness retains the displayed endpoint while another request loads', async () => {
-    const pending = Promise.withResolvers<PeekedEntry>()
-    const started = Promise.withResolvers<void>()
+    const pending = deferred<PeekedEntry>()
+    const started = deferred<void>()
     setPeekSource({
         load: async (entry) => {
             if (entry === key(2)) {
@@ -232,8 +239,8 @@ test('readiness retains the displayed endpoint while another request loads', asy
 
 for (const sameSource of [false, true])
     test(`source reset invalidates a pending peek (${sameSource ? 'same source' : 'replacement'})`, async () => {
-        const pending = Promise.withResolvers<PeekedEntry>()
-        const started = Promise.withResolvers<void>()
+        const pending = deferred<PeekedEntry>()
+        const started = deferred<void>()
         const original = {
             load: () => {
                 started.resolve()

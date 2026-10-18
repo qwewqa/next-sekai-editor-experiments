@@ -154,7 +154,7 @@ watch(
     { flush: 'sync' },
 )
 // The piece at the top of the list is Go To's current one.
-const goToCurrent = ref<Target | 'now'>(savedGoTo.value?.current)
+const goToCurrent = ref<Target | 'now' | undefined>(savedGoTo.value?.current)
 const openGoTo = () => {
     goToGeneration = historyViewGeneration()
     savedGoTo.value = undefined
