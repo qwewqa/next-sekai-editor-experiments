@@ -16,15 +16,6 @@ import { shownName } from './shownName'
 // storage modules load after first paint, so they are imported when a switch runs.
 
 /**
- * Named stub until Step 6's Save: the prompt's [Save] runs today's Save (level data, as `p`
- * does). The switch is left for the user to repeat; Step 8 adds the "Saved to … · Continue"
- * follow-up.
- */
-export const promptSaveStub = async () => {
-    await runCommand(save)
-}
-
-/**
  * Whether leaving the open session loses work (§1.4.9): it has changes no file holds, and it
  * isn't durably stored. The journal is written first, as every switch does.
  */
@@ -51,7 +42,9 @@ export const confirmSwitch = async () => {
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
-    if (choice === 'save') await promptSaveStub()
+    // This session's Save (§1.4.7); the switch is left for the user to repeat, and Step 8 adds
+    // the "Saved to … · Continue" follow-up.
+    if (choice === 'save') await runCommand(save)
     return choice === 'leave'
 }
 

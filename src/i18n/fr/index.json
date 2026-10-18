@@ -1901,7 +1901,9 @@
     "downloadAgain": "Télécharger à nouveau",
     "unreadable": "\"{0}\" n’a pas pu être lu entièrement.",
     "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
-    "restoredName": "{0} (restauré le {1})"
+    "restoredName": "{0} (restauré le {1})",
+    "fileType": "Fichier de projet Next SEKAI",
+    "unavailable": "Non sauvegardé. En mode sans échec, utilisez Exporter les données de niveau… (Maj+P)."
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",

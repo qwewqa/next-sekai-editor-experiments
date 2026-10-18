@@ -1,4 +1,8 @@
-import { exportMemory, rememberExport } from '../../editor/commands/exportLevel/memory'
+import {
+    exportMemory,
+    KEPT_BYTES_LIMIT,
+    rememberExport,
+} from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { addLoadNotice, notify } from '../../editor/notification'
 import { session as currentSession } from '../../history/session'
@@ -27,8 +31,7 @@ import type { OpenReadReply } from './opened'
 
 export type NxspReply = OpenReadReply & { kind: 'nxsp' }
 
-/** Bytes kept at an open for a picker that empties the file (§1.5.4, D5): in memory up to this. */
-export const KEPT_BYTES_LIMIT = 64 * 1024 * 1024
+export { KEPT_BYTES_LIMIT }
 
 const context = () => {
     const found = sessionContext()
@@ -242,7 +245,7 @@ const keepOpenedBytes = (open: StoreOpen, keep: boolean) => {
 }
 
 const keepBytes = (file: Blob, handle: FileSystemFileHandle, keep: boolean) => {
-    exportMemory.opened = { handle, levelData: false, partial: keep }
+    exportMemory.opened = { handle, levelData: false, partial: keep, project: true }
     if (!keep || file.size > KEPT_BYTES_LIMIT) return
     const opened = exportMemory.opened
     void file.arrayBuffer().then(

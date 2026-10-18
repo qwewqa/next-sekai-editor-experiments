@@ -32,6 +32,7 @@ test('a failure without a step is told by its code', () => {
         conflict: 'changedWhileWriting',
         'not-local': 'notLocal',
         'no-space': 'noSpace',
+        'read-only': 'writeFailed',
         io: 'writeFailed',
     }
     for (const [code, key] of Object.entries(codes))

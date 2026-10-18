@@ -1,0 +1,211 @@
+import type { Flusher, FlushSession, PendingEntry } from '../../local/flush'
+import { fromHex16, toHex } from '../../local/hash'
+import { toRecords } from '../../local/records/records'
+import { encodeSnapshot } from '../../local/records/snapshot'
+import type { PendingRecords } from '../../local/save/bodies'
+import type {
+    IdentityInput,
+    PendingInput,
+    PendingRow,
+    SaveRefusal,
+    SaveTarget,
+} from '../../local/save/build'
+import type { BuiltSave, ExecuteRefusal, SaveSourceFile } from '../../local/save/execute'
+import type { HeldMedia } from '../../local/save/media'
+import { addRecords, headInput } from '../../local/save/pending'
+import type { StorageWorker } from '../../local/worker/client'
+import type { BuildSaveOptions } from '../../local/worker/saveHandlers'
+import { appVersion, FileError, type PinnedSource } from '../../platform'
+import type { State } from '../../state'
+import { deviceForm } from './env'
+
+// A Save's build (Part 1 §1.6.11.6–§1.6.11.7): the options the storage worker's writer takes, with
+// what this tab holds that storage may not (its unflushed rows and stack, the live head, its media
+// and a binding kept in memory), and the writer's refusals as errors the flows tell apart.
+
+/** A build the writer refused: why, with its message. */
+export class BuildRefused extends Error {
+    constructor(readonly refusal: SaveRefusal | ExecuteRefusal) {
+        super(`The build was refused: ${refusal.refused}`)
+        this.name = 'BuildRefused'
+    }
+}
+
+/** The storage side a build needs: the worker, the flusher and the session saved. */
+export type BuildEnv = {
+    worker: Pick<StorageWorker, 'call'>
+    flusher: Flusher
+    session: FlushSession
+}
+
+/** A state's root as hex: the binding's hash and a head input's snapshot (§1.6.11.1). */
+export const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
+
+/** The head's media this tab holds the bytes of (§1.6.11.6's first source). */
+const heldMedia = (state: State): HeldMedia[] => {
+    const { meta, source } = state.bgm
+    if (!meta || !source) return []
+    return [
+        {
+            hash: meta.hash,
+            bytes: new Uint8Array(source),
+            type: meta.type,
+            ...(meta.filename ? { filename: meta.filename } : {}),
+        },
+    ]
+}
+
+const rowOf = (entry: PendingEntry, records: PendingRecords): PendingRow | undefined => {
+    const snapshot = entry.state
+        ? addRecords(records, entry.state)
+        : entry.snapshot && toHex(entry.snapshot)
+    if (!snapshot) return
+    const root = records.roots[snapshot]
+    return {
+        seq: entry.seq,
+        time: entry.wall,
+        kind: entry.kind,
+        label: entry.label(),
+        snapshot,
+        // A stored slot's count isn't known here: display only.
+        noteCount: typeof root?.[3] === 'number' ? root[3] : 0,
+        dirty: entry.dirty,
+        ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+        ...(entry.device ? { device: { ...entry.device } } : {}),
+    }
+}
+
+/**
+ * This tab's part of the saved session no store holds yet, as the writer takes it (§1.6.11.6):
+ * only while a flush didn't take everything (storage paused or full).
+ */
+const pendingOf = (env: BuildEnv): PendingInput | undefined => {
+    const { entries, stack } = env.flusher.unstored(env.session)
+    if (!entries.length) return
+    const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
+    const rows = entries.flatMap((entry) => rowOf(entry, records) ?? [])
+    const slots = stack?.slots.map((slot) => {
+        const state = slot.entry?.state
+        const snapshot = state
+            ? addRecords(records, state)
+            : slot.hash
+              ? toHex(slot.hash)
+              : slot.entry?.snapshot && toHex(slot.entry.snapshot)
+        const label = typeof slot.label === 'string' ? slot.label : slot.label()
+        return snapshot === undefined ? undefined : { snapshot, label }
+    })
+    return {
+        entries: rows,
+        ...(stack && slots?.every((slot) => slot)
+            ? {
+                  stack: {
+                      base: stack.first,
+                      slots: slots as { snapshot: string; label: string }[],
+                      index: stack.index,
+                  },
+              }
+            : {}),
+        records,
+        startedAt: env.session.startedAt,
+    }
+}
+
+/** The binding kept in memory while storage is paused (§1.3.2), its cut's start as stored. */
+const identityOf = async (env: BuildEnv): Promise<IdentityInput | undefined> => {
+    const identity = env.session.identity
+    if (!identity) return
+    const file = identity.file as NonNullable<IdentityInput['file']>
+    let entry = file.entry
+    if (entry) {
+        const empty: Record<string, number> = {}
+        const starts = await env.worker
+            .call('readSessionStarts', [entry.sessionId])
+            .catch(() => empty)
+        const startedAt = starts[entry.sessionId]
+        if (startedAt !== undefined) entry = { ...entry, startedAt }
+    }
+    return {
+        docId: identity.docId,
+        revision: identity.revision,
+        file: {
+            ...(entry ? { entry } : {}),
+            ...(file.completeFrom === undefined ? {} : { completeFrom: file.completeFrom }),
+            ...(file.disk ? { disk: file.disk } : {}),
+        },
+        marks: [...identity.marks],
+    }
+}
+
+export type BuildRequest = {
+    target: SaveTarget
+    history: boolean
+    bgm: boolean
+    fileName: string
+    /** The `save` entry's time and label. */
+    save: { time: number; label: string }
+    /** The state saved: the live head when the Save started. */
+    state: State
+    /** Save to File…: the session written, binding nothing. */
+    sessionId?: string
+}
+
+/** The build's options as the worker takes them. */
+export const buildOptions = async (
+    env: BuildEnv,
+    request: BuildRequest,
+): Promise<BuildSaveOptions> => {
+    const own = request.sessionId === undefined
+    const pending = own ? pendingOf(env) : undefined
+    const identity = own ? await identityOf(env) : undefined
+    return {
+        history: request.history,
+        bgm: request.bgm,
+        fileName: request.fileName,
+        save: request.save,
+        context: { now: Date.now(), device: deviceForm(), appVersion: appVersion().appVersion },
+        ...(request.sessionId === undefined ? {} : { sessionId: request.sessionId }),
+        ...(pending ? { pending } : {}),
+        ...(identity ? { identity } : {}),
+        ...(own ? { head: headInput(request.state), media: heldMedia(request.state) } : {}),
+    }
+}
+
+/** A build's call can take long on a large chart: the worker reports its progress meanwhile. */
+const BUILD_TIMEOUT_MS = 10 * 60_000
+
+/**
+ * Builds the file in the storage worker, reading only the pinned sources given. A refusal
+ * throws `BuildRefused`, except a changed source, which is a `conflict` `FileError`, so the
+ * platform's path applies (Part 0 §0.9.1).
+ */
+export const runBuild = async (
+    env: BuildEnv,
+    request: BuildRequest,
+    sources: readonly (PinnedSource | SaveSourceFile)[] = [],
+): Promise<BuiltSave> => {
+    const options = await buildOptions(env, request)
+    const built = await env.worker.call(
+        'buildSave',
+        {
+            chainId: env.session.chainId,
+            target: request.target,
+            options,
+            sources: sources.map((source) => ({
+                token: source.token,
+                role: source.role,
+                file: source.file,
+                fingerprint: 'disk' in source ? source.disk.fingerprint : source.fingerprint,
+            })),
+        },
+        { timeoutMs: BUILD_TIMEOUT_MS },
+    )
+    if ('refused' in built) {
+        if (built.refused === 'conflict' || built.refused === 'notAtBase')
+            throw new FileError('conflict', 'The file changed after it was checked')
+        throw new BuildRefused(built)
+    }
+    return built
+}
+
+/** The binding's hash: the saved head's root (§1.3.2). */
+export const headHashOf = (built: BuiltSave) => fromHex16(built.saveEntry.snapshot)

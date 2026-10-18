@@ -48,6 +48,7 @@ import { properties } from './properties'
 import { redo } from './redo'
 import { reset } from './reset'
 import { save } from './save'
+import { saveAs } from './saveAs'
 import { scaleBeat, scaleElevation, scaleWidth } from './scaleSelection'
 import { scrollDown } from './scrolls/scrollDown'
 import { scrollLeft } from './scrolls/scrollLeft'
@@ -106,6 +107,7 @@ export type Command = {
 const builtInCommands = {
     open,
     save,
+    saveAs,
     exportLevel,
     reset,
     properties,

@@ -36,6 +36,7 @@ export const fileErrorKey = (error: FileError): FileErrorKey => {
             return 'notLocal'
         case 'no-space':
             return 'noSpace'
+        case 'read-only':
         case 'io':
             return 'writeFailed'
     }

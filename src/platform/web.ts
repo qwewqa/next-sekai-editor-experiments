@@ -13,18 +13,20 @@ import {
     writeHandle,
 } from './handover'
 import { opfsOpenPicker, opfsSavePicker } from './opfs'
-import type {
-    DiskState,
-    FileTarget,
-    LifecycleEvent,
-    OpenedFile,
-    PickOptions,
-    Platform,
-    PlatformCapabilities,
-    SaveKind,
-    SavePicker,
-    SaveRequest,
-    SaveResult,
+import {
+    FileError,
+    type DiskState,
+    type FileTarget,
+    type LifecycleEvent,
+    type OpenedFile,
+    type PickOptions,
+    type PickSaveRequest,
+    type Platform,
+    type PlatformCapabilities,
+    type SaveKind,
+    type SavePicker,
+    type SaveRequest,
+    type SaveResult,
 } from './types'
 import { appVersion } from './version'
 
@@ -85,23 +87,42 @@ const savePickerOptions = (picker: SavePicker, suggestedName: string): SaveFileP
             description,
             accept: { 'application/octet-stream': [extension as `.${string}`] },
         })),
-        excludeAcceptAllOption: false,
+        excludeAcceptAllOption: !!picker.excludeAll,
     }),
+    ...(picker.startIn ? { startIn: picker.startIn } : {}),
 })
 
-/** The save picker; undefined falls back to a download. Dismissing it throws AbortError. */
+const hasSavePicker = () =>
+    usesOpfsPickers() || (allowsFileSystemAccess() && !!window.showSaveFilePicker)
+
+/**
+ * The save picker; undefined where there is none, which downloads. Dismissing it throws
+ * AbortError; any other failure is a FileError, never a download (§1.4.7 R12).
+ */
 const pickSaveHandle = async (picker: SavePicker, suggestedName: string) => {
     const options = savePickerOptions(picker, suggestedName)
-    if (usesOpfsPickers()) return opfsSavePicker(options)
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!allowsFileSystemAccess() || !window.showSaveFilePicker) return
-
+    if (!hasSavePicker()) return
     try {
-        return await window.showSaveFilePicker(options)
+        return usesOpfsPickers()
+            ? await opfsSavePicker(options)
+            : await window.showSaveFilePicker(options)
     } catch (error) {
-        // Dismissing the picker cancels saving; other failures download instead.
         if (isAbort(error)) throw error
-        return
+        throw fileErrorOf(error)
+    }
+}
+
+const pickSaveFile = async ({
+    suggestedName,
+    picker,
+}: PickSaveRequest): Promise<FileTarget | undefined> => {
+    try {
+        const handle = await pickSaveHandle(picker, suggestedName)
+        if (!handle) throw new FileError('io', 'There is no save picker')
+        return { kind: 'handle', handle }
+    } catch (error) {
+        if (isAbort(error)) return
+        throw fileErrorOf(error)
     }
 }
 
@@ -136,7 +157,7 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
             handle = await pickSaveHandle(picker, req.suggestedName)
         } catch (error) {
             if (isAbort(error)) return { status: 'cancelled' }
-            throw error
+            throw fileErrorOf(error)
         }
     }
 
@@ -259,6 +280,9 @@ export const platform: Platform = {
 
     pickFiles,
     saveFile,
+    get pickSaveFile() {
+        return hasSavePicker() ? pickSaveFile : undefined
+    },
     inspect,
     read,
     // The web registers no file types, so nothing arrives here.

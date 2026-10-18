@@ -35,6 +35,7 @@ const codes: Partial<Record<string, FileErrorCode>> = {
     // The file changed after it was read (Part 0 §0.9.1).
     NotReadableError: 'conflict',
     QuotaExceededError: 'no-space',
+    NoModificationAllowedError: 'read-only',
 }
 
 /** A failed file operation as a FileError. */

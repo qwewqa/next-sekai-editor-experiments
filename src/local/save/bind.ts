@@ -24,13 +24,15 @@ export const readChainRecord = async (tx: KvTx, chainId: string) => {
     return isRow(chain) ? withoutHandles(chain) : undefined
 }
 
-/** A stored binding or Export target a picked handle is compared with (R3). */
+/** A stored binding or Export target: what a pick is compared with (R3), and R1's names. */
 export type HandleOwner = {
     chainId: string
     role: 'file' | 'exportTarget'
     name: string
     /** The binding's `at`, which a revocation checks is unchanged. */
     at?: number
+    /** Whether a handle is stored for it. */
+    handle: boolean
 }
 
 /** Each stored session's `startedAt`, as a binding's cut needs it. */
@@ -43,7 +45,7 @@ export const readSessionStarts = async (tx: KvTx, sessionIds: readonly string[])
     return starts
 }
 
-/** Every chain's binding and Export target that has a stored handle, `deleting` chains included. */
+/** Every chain's binding and Export target, `deleting` chains included. */
 export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
     const owners: HandleOwner[] = []
     let hasStore = true
@@ -52,19 +54,18 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
     } catch {
         hasStore = false
     }
-    if (!hasStore) return owners
     for (const value of await tx.getAll('chains')) {
         if (!isRow(value) || typeof value.chainId !== 'string') continue
         const chainId = value.chainId
         for (const role of ['file', 'exportTarget'] as const) {
             const field = value[role]
             if (!isRow(field) || typeof field.name !== 'string') continue
-            if ((await tx.getKey(HANDLES, [chainId, role])) === undefined) continue
             owners.push({
                 chainId,
                 role,
                 name: field.name,
                 ...(typeof field.at === 'number' ? { at: field.at } : {}),
+                handle: hasStore && (await tx.getKey(HANDLES, [chainId, role])) !== undefined,
             })
         }
     }

@@ -1901,7 +1901,9 @@
     "downloadAgain": "Yeniden İndir",
     "unreadable": "\"{0}\" tamamen okunamadı.",
     "tooLarge": "Tek bir dosya için çok büyük. BGM veya geçmiş işaretini kaldırın.",
-    "restoredName": "{0} ({1} geri yüklendi)"
+    "restoredName": "{0} ({1} geri yüklendi)",
+    "fileType": "Next SEKAI proje dosyası",
+    "unavailable": "Kaydedilmedi. Güvenli modda Seviye Verisini Dışa Aktar… (Shift+P) kullanın."
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",

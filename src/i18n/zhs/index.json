@@ -1901,7 +1901,9 @@
     "downloadAgain": "再次下载",
     "unreadable": "无法完整读取“{0}”。",
     "tooLarge": "对单个文件而言过大。请取消勾选 BGM 或历史记录。",
-    "restoredName": "{0}（{1} 恢复）"
+    "restoredName": "{0}（{1} 恢复）",
+    "fileType": "Next SEKAI 项目文件",
+    "unavailable": "未保存。安全模式下请使用“导出关卡数据…”(Shift+P)。"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",

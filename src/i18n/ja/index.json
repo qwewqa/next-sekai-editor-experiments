@@ -1901,7 +1901,9 @@
     "downloadAgain": "再ダウンロード",
     "unreadable": "「{0}」を完全には読み込めませんでした。",
     "tooLarge": "1 つのファイルには大きすぎます。BGM または履歴のチェックを外してください。",
-    "restoredName": "{0}（{1} に復元）"
+    "restoredName": "{0}（{1} に復元）",
+    "fileType": "Next SEKAI プロジェクトファイル",
+    "unavailable": "保存されませんでした。セーフモードでは「レベルデータを出力…」(Shift+P) を使ってください。"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",

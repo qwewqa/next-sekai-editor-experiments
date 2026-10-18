@@ -10,6 +10,7 @@ import {
     type LifecycleEvent,
     type LockService,
     type OpenedFile,
+    type PickSaveRequest,
     type PinnedSource,
     type Platform,
     type PlatformCapabilities,
@@ -53,8 +54,13 @@ export type MockPlatform = Platform & {
     readonly modified: Map<string, number>
     /** Each pickFiles call takes the next entry; none left is a cancel. */
     readonly picks: OpenedFile[][]
-    /** Where each save without a target goes: a target, a cancelled picker, or a download. */
+    /**
+     * Where each save without a target goes: a target, a cancelled picker, or a download. A save
+     * picker alone (`pickSaveFile`) takes the next too, emptying a file that exists (D5).
+     */
     readonly saveTargets: (FileTarget | 'cancel' | 'download')[]
+    /** Each `pickSaveFile` call's request. */
+    readonly pickerCalls: PickSaveRequest[]
     readonly downloads: { kind: SaveRequest['kind']; name: string; blob: Blob }[]
     readonly external: string[]
     /** Calls in order, such as `requestPermission:<name>` and `write:<name>`. */
@@ -327,6 +333,19 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         return { status: 'saved', target, name, disk: await diskOf(name, kind) }
     }
 
+    const pickerCalls: PickSaveRequest[] = []
+
+    /** A save picker alone: the next target, emptied when it exists, as Chromium's (D5). */
+    const pickSaveFile = async (req: PickSaveRequest): Promise<FileTarget | undefined> => {
+        pickerCalls.push(req)
+        await Promise.resolve()
+        const target = saveTargets.shift()
+        if (!target || target === 'cancel' || target === 'download') return
+        const name = targetKey(target)
+        writeFile(name, new Blob([]))
+        return target
+    }
+
     const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> =>
         (await diskOf(targetKey(target), kind)) ?? 'missing'
 
@@ -352,6 +371,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         modified,
         picks,
         saveTargets,
+        pickerCalls,
         downloads,
         external,
         calls,
@@ -359,6 +379,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
 
         pickFiles: () => Promise.resolve(picks.shift() ?? []),
         saveFile,
+        ...(capabilities.writeBack ? { pickSaveFile } : {}),
         inspect,
         read,
         onOpenFiles: () => undefined,

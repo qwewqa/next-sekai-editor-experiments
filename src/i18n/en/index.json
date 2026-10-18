@@ -1901,7 +1901,9 @@
         "downloadAgain": "Download Again",
         "unreadable": "\"{0}\" could not be read completely.",
         "tooLarge": "Too large for one file. Untick BGM or history.",
-        "restoredName": "{0} (restored {1})"
+        "restoredName": "{0} (restored {1})",
+        "fileType": "Next SEKAI project file",
+        "unavailable": "Not saved. In safe mode, use Export Level Data… (Shift+P)."
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",

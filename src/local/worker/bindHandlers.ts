@@ -1,3 +1,5 @@
+import { HANDLES } from '../handleRows'
+import { writeUnlink } from '../open/importWrite'
 import {
     applyRevocation,
     BIND_STORES,
@@ -38,6 +40,33 @@ export const bindHandlers = (context: WorkerContext) => ({
         context.core.write(BIND_STORES, (tx) => applyRevocation(tx, chainId, revoke), {
             durability: 'strict',
         }),
+
+    /**
+     * An append that met damage in the chain's own file (§1.6.11.8): the chain unlinks (a new
+     * `docId`, no `revision`, no binding), with nothing marked.
+     */
+    unlinkChain: ({
+        chainId,
+        docId,
+        appVersion,
+    }: {
+        chainId: string
+        docId: string
+        appVersion: string
+    }) =>
+        context.core.write(
+            ['chains', 'entries', HANDLES],
+            (tx) =>
+                writeUnlink(tx, {
+                    sessionId: '',
+                    chainId,
+                    docId,
+                    hashes: [],
+                    roots: [],
+                    appVersion,
+                }),
+            { durability: 'strict' },
+        ),
 
     /** Our own completed Save, recorded (§1.4.7). */
     finishOwnSave: ({

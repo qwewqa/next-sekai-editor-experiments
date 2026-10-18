@@ -66,8 +66,6 @@ resetStates({
     state: createState(createDefaultChart(), 0),
 })
 
-export let levelDataHandle: FileSystemFileHandle | undefined
-
 /**
  * Named stub until Step 6's close prompts: today's leave prompt, on the current slot's `isDirty`,
  * which a slot keeps while its state is unloaded (§1.11.3).
@@ -80,8 +78,7 @@ setFileEventMessages(() => i18n.value)
 
 /**
  * Starts over with a chart, or the default one, in a session (§1.3.5): the
- * descriptor's missing ids are fresh. The level-data handle is cleared; an
- * open sets it again afterwards.
+ * descriptor's missing ids are fresh.
  */
 export const resetState = (
     isDirty: boolean,
@@ -100,8 +97,6 @@ export const resetState = (
         },
         chart ? 'import' : 'new',
     )
-    setLevelDataHandle(undefined)
-
     cleanupWaveform()
 
     switchToolTo('select')
@@ -124,7 +119,6 @@ export const openStoredState = (
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = descriptor
     restoreStates(slots, at, head, earlier)
-    setLevelDataHandle(undefined)
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()
@@ -138,12 +132,7 @@ export const openState = (state: State, descriptor?: Partial<SessionDescriptor>)
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = createSessionDescriptor(descriptor)
     resetStates({ isDirty: true, name: () => i18n.value.entry.recovered, state }, 'import')
-    setLevelDataHandle(undefined)
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()
-}
-
-export const setLevelDataHandle = (handle: FileSystemFileHandle | undefined) => {
-    levelDataHandle = handle
 }

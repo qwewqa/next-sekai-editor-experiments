@@ -1,4 +1,6 @@
 import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
+import { markedSeq, removeMarker } from '../editor/save/env'
+import { applyRevocations, watchBindings } from '../editor/save/watch'
 import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
@@ -221,6 +223,12 @@ export const startStoring = (
             journalWriter?.committed(session.id, seq, strict)
         },
         syncStrict: () => worker.call('syncStrict'),
+        // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
+        onIdentity: (session, identity) => {
+            removeMarker(session.chainId, identity.revision.id)
+        },
+        // A Save that may have written its file before a reload keeps its `seq` (§1.6.11.6).
+        reservedSeq: markedSeq,
         transport: (batch, list, current) =>
             // A spec holds flushes to leave edits only the journal has, as a kill does.
             (test ? whileStalled() : Promise.resolve()).then(() =>
@@ -399,7 +407,13 @@ export const startStoring = (
     // A newer database opened by Try Again: nothing this tab holds will be stored.
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
+        // Storing resumed: revocations kept meanwhile go in (§1.4.7 R11).
+        if (next.mode === 'stored' && !next.reason) void applyRevocations(worker)
     })
+    // At the next start, after the journals and before any cleanup (R11); then other tabs'
+    // takeovers show here as they happen (R6).
+    void afterReplay.then(() => applyRevocations(worker))
+    watchBindings(worker, () => flusher)
 
     worker.onRestart(() => {
         void instance.restarted()

@@ -8,6 +8,9 @@ import type { DiskState } from '../../../platform'
 // is stored apart (D24) and read only when Export needs it. A new chart clears it; a fork drops
 // the target and the name (Step 1c's stub `exportTargetMemory`, retired).
 
+/** Bytes kept at an open for a picker that empties the file (§1.5.4, D5): in memory up to this. */
+export const KEPT_BYTES_LIMIT = 64 * 1024 * 1024
+
 export type ExportTarget = {
     /** The file's name, as shown: "LevelData". */
     name: string
@@ -27,6 +30,13 @@ export type OpenedSource = {
     partial: boolean
     /** The bytes read, for a file never written over, to put back if a picker empties it (D5). */
     bytes?: ArrayBuffer
+    /** A `.nxsp` (§1.5.4): whole, it's the chain's own bound file; partial, it's never written over. */
+    project?: true
+    /**
+     * The bytes read, for the project picker (R7): it never writes over level data or a chart,
+     * which Export may (§1.4.7).
+     */
+    kept?: ArrayBuffer
 }
 
 export type ExportMemory = {

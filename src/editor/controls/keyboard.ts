@@ -106,6 +106,10 @@ const returnsDeselect = (element: Element | null) => {
     )
 }
 
+/** Ctrl+S, or Cmd+S on Apple keyboards: Save's fixed alias, outside the customizable map. */
+export const isSaveChord = (event: KeyboardEvent) =>
+    isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
+
 const onKeydown = (event: KeyboardEvent) => {
     if (isBlockingModalOpen.value || pressesButton(event)) return
     // An open tool dialog takes Escape.
@@ -121,8 +125,10 @@ const onKeydown = (event: KeyboardEvent) => {
         event,
         isApple,
     )
-    const names = matched.names.filter(isCommandName)
-    const { exact } = matched
+    // Ctrl/Cmd+S is Save's fixed alias (§1.4.6), unless a binding takes that chord itself.
+    const alias = !matched.exact && isSaveChord(event)
+    const names: CommandName[] = alias ? ['save'] : matched.names.filter(isCommandName)
+    const exact = alias || matched.exact
     // Alt+N belongs to the notice card, even where that does not act; never plain n.
     if (!exact && isNoticeChord(event)) return
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This

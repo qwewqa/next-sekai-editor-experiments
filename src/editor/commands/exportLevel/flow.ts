@@ -211,6 +211,7 @@ export const exportToTarget = async (
         }
         case 'not-local':
         case 'no-space':
+        case 'read-only':
         case 'io':
             break
     }

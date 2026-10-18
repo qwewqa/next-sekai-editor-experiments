@@ -1,79 +1,49 @@
 import { expect, test, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { edit, notice, start, submitSave } from './saveFlows'
 
-type SaveMode =
-    'picker' | 'create' | 'write' | 'abortPicker' | 'success' | 'missingAPI' | 'writeFailure'
+// Save's picker and write paths with the browser's own picker stubbed (Part 1 §1.4.7; Step 6
+// migrated this spec from level data to `.nxsp`): a dismissed picker writes and downloads nothing,
+// a picker failure is an error and never a download (R12), a failed write leaves the file as it
+// was and binds nothing, and a browser without a save picker downloads. The stub's handles aren't
+// stored (a suspected private window), as a real browser's would be.
+
+type SaveMode = 'abortPicker' | 'pickerFailure' | 'success' | 'missingAPI' | 'writeFailure'
 
 declare global {
     interface Window {
         saveReview: {
             events: string[]
-            held: boolean
-            release: () => void
             downloads: { name: string; size: number }[]
-            handle?: FileSystemFileHandle
-            notificationId: number
+            committed?: Blob
         }
     }
 }
 
 const errors = new WeakMap<Page, string[]>()
 
-test.beforeEach(async ({ page }) => {
-    const collected: string[] = []
-    errors.set(page, collected)
-    page.on('pageerror', (error) => collected.push(error.message))
-    await page.addInitScript(installCanvasCounters)
-    await page.addInitScript(() => {
-        window.saveReview = {
-            events: [],
-            held: false,
-            release: () => {},
-            downloads: [],
-            notificationId: 0,
-        }
+const installSave = async (page: Page, mode: SaveMode) => {
+    await page.addInitScript((mode) => {
+        window.saveReview = { events: [], downloads: [] }
+        const fixture = window.saveReview
         // Record downloads without touching disk.
         HTMLAnchorElement.prototype.click = function () {
             const name = this.download
             void fetch(this.href)
                 .then((response) => response.blob())
-                .then((blob) => window.saveReview.downloads.push({ name, size: blob.size }))
+                .then((blob) => fixture.downloads.push({ name, size: blob.size }))
         }
-    })
-    await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await page.evaluate(installEditorFixture)
-})
-
-test.afterEach(({ page }) => {
-    expect(errors.get(page)).toEqual([])
-})
-
-const installSave = (page: Page, mode: SaveMode) =>
-    page.evaluate(async (mode) => {
-        const { notification } = await import('/src/editor/notification.ts')
-        const fixture = window.saveReview
-        fixture.notificationId = notification.value.id
-        const gate = async (phase: string) => {
-            fixture.held = true
-            await new Promise<void>((resolve) => (fixture.release = resolve))
-            fixture.events.push(`released:${phase}`)
-        }
-        // The file as committed, which the platform reads back after close().
         let pending: Blob | undefined
-        let committed: Blob | undefined
         const writable = {
-            async write(blob: Blob) {
-                if (!blob.size) throw new Error('Expected serialized chart data')
+            write(blob: Blob) {
                 pending = blob
                 fixture.events.push('write')
-                if (mode === 'write') await gate('write')
                 if (mode === 'writeFailure')
-                    throw new DOMException('Disk full', 'QuotaExceededError')
+                    return Promise.reject(new DOMException('Disk full', 'QuotaExceededError'))
+                return Promise.resolve()
             },
             close() {
                 fixture.events.push('close')
-                committed = pending
+                fixture.committed = pending
                 return Promise.resolve()
             },
             abort() {
@@ -82,89 +52,93 @@ const installSave = (page: Page, mode: SaveMode) =>
             },
         }
         const handle = {
+            kind: 'file',
+            name: 'coconut.nxsp',
             getFile: () =>
-                committed
-                    ? Promise.resolve(new File([committed], 'LevelData'))
-                    : Promise.reject(new DOMException('Not found', 'NotFoundError')),
-            async createWritable() {
+                Promise.resolve(
+                    new File([fixture.committed ?? new Blob([])], 'coconut.nxsp', {
+                        lastModified: 1000,
+                    }),
+                ),
+            isSameEntry: (other: unknown) => Promise.resolve(other === handle),
+            createWritable() {
                 fixture.events.push('create')
-                if (mode === 'create') await gate('create')
-                return writable
+                return Promise.resolve(writable)
             },
-        } as unknown as FileSystemFileHandle
-        fixture.handle = handle
+        }
         Object.defineProperty(window, 'showSaveFilePicker', {
             configurable: true,
             value:
                 mode === 'missingAPI'
                     ? undefined
-                    : async () => {
+                    : () => {
                           fixture.events.push('picker')
-                          if (mode === 'abortPicker') {
-                              throw new DOMException('Picker dismissed', 'AbortError')
-                          }
-                          if (mode === 'picker') await gate('picker')
-                          return handle
+                          if (mode === 'abortPicker')
+                              return Promise.reject(
+                                  new DOMException('Picker dismissed', 'AbortError'),
+                              )
+                          if (mode === 'pickerFailure')
+                              return Promise.reject(
+                                  new DOMException(
+                                      'Must be handling a user gesture',
+                                      'SecurityError',
+                                  ),
+                              )
+                          return Promise.resolve(handle)
                       },
         })
-        if (mode === 'create' || mode === 'write' || mode === 'writeFailure') {
-            window.editorTest.history.setLevelDataHandle(handle)
-        }
     }, mode)
-
-for (const phase of ['picker', 'create', 'write'] as const) {
-    test(`cancelling save while awaiting ${phase} prevents a commit or fallback download`, async ({
-        page,
-    }) => {
-        await installSave(page, phase)
-        await page.keyboard.press('p')
-        await expect.poll(() => page.evaluate(() => window.saveReview.held)).toBe(true)
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-        await page.evaluate(() => window.saveReview.release())
-        await expect
-            .poll(() => page.evaluate(() => window.saveReview.events))
-            .toContain(phase === 'picker' ? 'released:picker' : 'abort')
-        const result = await page.evaluate(async () => {
-            const { notification } = await import('/src/editor/notification.ts')
-            return {
-                events: window.saveReview.events,
-                downloads: window.saveReview.downloads,
-                notificationChanged: notification.value.id !== window.saveReview.notificationId,
-                handleRetained:
-                    window.editorTest.history.levelDataHandle === window.saveReview.handle,
-            }
-        })
-        expect(result.events).not.toContain('close')
-        if (phase !== 'write') expect(result.events).not.toContain('write')
-        expect(result.downloads).toEqual([])
-        expect(result.notificationChanged).toBe(false)
-        expect(result.handleRetained).toBe(phase !== 'picker')
-    })
+    await start(page, { fileSystemAccess: true, override: { privateSuspected: true } })
 }
 
-test('dismissing the native save picker does not download or report a saved chart', async ({
+test.beforeEach(({ page }) => {
+    const collected: string[] = []
+    errors.set(page, collected)
+    page.on('pageerror', (error) => collected.push(error.message))
+})
+
+test.afterEach(({ page }) => {
+    expect(errors.get(page)).toEqual([])
+})
+
+const firstSave = async (page: Page) => {
+    await edit(page, 1)
+    await page.keyboard.press('p')
+    await submitSave(page, 'coconut')
+}
+
+const bound = (page: Page) =>
+    page.evaluate(async () => {
+        const { session } = await import('/src/history/session.ts')
+        return session.value.file?.name
+    })
+
+test('dismissing the save picker writes nothing, downloads nothing and binds nothing', async ({
     page,
 }) => {
     await installSave(page, 'abortPicker')
-    await page.keyboard.press('p')
+    await firstSave(page)
     await expect.poll(() => page.evaluate(() => window.saveReview.events)).toContain('picker')
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    const result = await page.evaluate(async () => {
-        const { notification } = await import('/src/editor/notification.ts')
-        return {
-            downloads: window.saveReview.downloads,
-            notificationChanged: notification.value.id !== window.saveReview.notificationId,
-        }
-    })
-    expect(result).toEqual({ downloads: [], notificationChanged: false })
+    expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
+    expect(await page.evaluate(() => window.saveReview.events)).toEqual(['picker'])
+    expect(await bound(page)).toBeUndefined()
 })
 
-test('successful native save commits once and retains its handle', async ({ page }) => {
+test('a picker failure is shown as an error, never a download (R12)', async ({ page }) => {
+    await installSave(page, 'pickerFailure')
+    await firstSave(page)
+    await expect(page.getByRole('dialog')).toContainText(
+        'The browser did not allow writing to coconut.nxsp.',
+    )
+    expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
+    expect(await bound(page)).toBeUndefined()
+})
+
+test('a successful Save writes once and binds the picked file', async ({ page }) => {
     await installSave(page, 'success')
-    await page.keyboard.press('p')
-    await expect.poll(() => page.evaluate(() => window.saveReview.events)).toContain('close')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await firstSave(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     expect(await page.evaluate(() => window.saveReview.events)).toEqual([
         'picker',
         'create',
@@ -172,72 +146,35 @@ test('successful native save commits once and retains its handle', async ({ page
         'close',
     ])
     expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
-    expect(
-        await page.evaluate(
-            () => window.editorTest.history.levelDataHandle === window.saveReview.handle,
-        ),
-    ).toBe(true)
+    expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('cancelling a pending native write preserves the previous file contents', async ({ page }) => {
-    await page.evaluate(async () => {
-        const directory = await navigator.storage.getDirectory()
-        const handle = await directory.getFileHandle('cancelled-save.dat', { create: true })
-        const initial = await handle.createWritable()
-        await initial.write('previous chart')
-        await initial.close()
-        const fixture = window.saveReview
-        window.editorTest.history.setLevelDataHandle({
-            async createWritable() {
-                const stream = await handle.createWritable()
-                return {
-                    async write(blob: Blob) {
-                        await stream.write(blob)
-                        fixture.held = true
-                        await new Promise<void>((resolve) => (fixture.release = resolve))
-                    },
-                    async close() {
-                        await stream.close()
-                        fixture.events.push('close')
-                    },
-                    async abort() {
-                        await stream.abort()
-                        fixture.events.push('abort')
-                    },
-                }
-            },
-        } as unknown as FileSystemFileHandle)
-    })
-    await page.keyboard.press('p')
-    await expect.poll(() => page.evaluate(() => window.saveReview.held)).toBe(true)
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.evaluate(() => window.saveReview.release())
-    await expect.poll(() => page.evaluate(() => window.saveReview.events)).toEqual(['abort'])
-    const contents = await page.evaluate(async () => {
-        const directory = await navigator.storage.getDirectory()
-        const handle = await directory.getFileHandle('cancelled-save.dat')
-        const contents = await (await handle.getFile()).text()
-        await directory.removeEntry('cancelled-save.dat')
-        return contents
-    })
-    expect(contents).toBe('previous chart')
+test('a write that fails before close() aborts, binds nothing and offers Save As…', async ({
+    page,
+}) => {
+    await installSave(page, 'writeFailure')
+    await firstSave(page)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('There is not enough space to write coconut.nxsp.')
+    await expect(dialog.getByRole('button', { name: 'Save As…' })).toBeVisible()
+    expect(await page.evaluate(() => window.saveReview.events)).toEqual([
+        'picker',
+        'create',
+        'write',
+        'abort',
+    ])
     expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
+    expect(await bound(page)).toBeUndefined()
 })
 
-for (const mode of ['missingAPI', 'writeFailure'] as const) {
-    test(`save retains its download fallback for ${mode}`, async ({ page }) => {
-        await installSave(page, mode)
-        await page.keyboard.press('p')
-        await expect.poll(() => page.evaluate(() => window.saveReview.downloads.length)).toBe(1)
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-        const result = await page.evaluate(() => ({
-            events: window.saveReview.events,
-            downloads: window.saveReview.downloads,
-            hasHandle: !!window.editorTest.history.levelDataHandle,
-        }))
-        expect(result.downloads[0]!.size).toBeGreaterThan(0)
-        expect(result.hasHandle).toBe(false)
-        expect(result.events).toEqual(mode === 'writeFailure' ? ['create', 'write', 'abort'] : [])
-    })
-}
+test('a browser without a save picker downloads, bound by name', async ({ page }) => {
+    await installSave(page, 'missingAPI')
+    await firstSave(page)
+    await expect.poll(() => page.evaluate(() => window.saveReview.downloads.length)).toBe(1)
+    const [download] = await page.evaluate(() => window.saveReview.downloads)
+    expect(download!.name).toBe('coconut.nxsp')
+    expect(download!.size).toBeGreaterThan(0)
+    expect(await page.evaluate(() => window.saveReview.events)).toEqual([])
+    await expect(notice(page).filter({ hasText: 'Download started: coconut.nxsp' })).toBeVisible()
+    expect(await bound(page)).toBe('coconut.nxsp')
+})

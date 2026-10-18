@@ -85,7 +85,14 @@ export type SavePicker = {
     id: string
     /** Offered before "All files", the first one selected; none offers "All files" alone. */
     types: SavePickerType[]
+    /** Leaves "All files" out: the project picker lists `.nxsp` files only (D5). */
+    excludeAll?: boolean
+    /** Where the picker opens while its id has no folder yet: a folder, or a file's own folder. */
+    startIn?: 'documents' | FileSystemHandle
 }
+
+/** A save picker alone, for a file built before it (D5). */
+export type PickSaveRequest = { suggestedName: string; picker: SavePicker }
 
 /** Asks for a new tap once a build has outlasted the gesture; false cancels. */
 export type ReadyPrompt = (file: { name: string; size: number }) => Promise<boolean>
@@ -117,7 +124,15 @@ export type SaveResult =
     | { status: 'exported'; name: string }
     | { status: 'cancelled' }
 
-export type FileErrorCode = 'conflict' | 'not-found' | 'denied' | 'not-local' | 'no-space' | 'io'
+export type FileErrorCode =
+    | 'conflict'
+    | 'not-found'
+    | 'denied'
+    | 'not-local'
+    | 'no-space'
+    /** A read-only file or folder: the browser can't make its swap file (§1.4.7). */
+    | 'read-only'
+    | 'io'
 
 /** Which step failed, where the code alone does not tell the user. */
 export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download'
@@ -215,6 +230,12 @@ export type Platform = {
     pickFiles: (opts: PickOptions) => Promise<OpenedFile[]>
     /** Every file the editor writes. */
     saveFile: (req: SaveRequest) => Promise<SaveResult>
+    /**
+     * A save picker alone (owner decision log D5): the picked file, which the picker emptied when
+     * it existed, or undefined when dismissed. Any other failure is a `FileError`, never a
+     * download (§1.4.7 R12). Absent where there's no save picker.
+     */
+    pickSaveFile?: (req: PickSaveRequest) => Promise<FileTarget | undefined>
     /** The changed-on-disk check; `nxsp` reads the revision id and `<cd>` (level data by default). */
     inspect: (target: FileTarget, kind?: SaveKind) => Promise<DiskState | 'missing'>
     read: (target: FileTarget) => Promise<Blob>

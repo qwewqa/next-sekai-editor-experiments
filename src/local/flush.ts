@@ -740,6 +740,18 @@ export class Flusher {
         return this.flush({ strict: true })
     }
 
+    /**
+     * What a Save's build takes from this tab (§1.6.11.6): the entries before its reservation that
+     * no store acknowledged yet, and the stack they give, slots `first` on.
+     */
+    unstored(session: FlushSession) {
+        const entries = [...this.takeable(session)]
+        return {
+            entries,
+            stack: session.stack.replay(entries, (entry) => this.slotOf(entry))?.stack,
+        }
+    }
+
     /** The entries a flush can take: those before a reserved `seq`. */
     private takeable(session: FlushSession) {
         const { reserved } = session

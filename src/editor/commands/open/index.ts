@@ -9,7 +9,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { resetState, setLevelDataHandle } from '../../../history'
+import { resetState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -32,7 +32,7 @@ import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { changeBgm } from '../bgm/index.ts'
-import { exportMemory, rememberExport } from '../exportLevel/memory'
+import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
 import { installDropGuard } from './dropGuard'
 import OpenIcon from './OpenIcon.vue'
 
@@ -195,7 +195,6 @@ const applyLevelData = async (
     const revisionWarning = getRevisionWarning(getLevelDataRevision(levelData.entities), chart)
     const complete = report.isEmpty
     resetState(false, chart, levelData.bgmOffset, { sourceName: getFilename(file) })
-    setLevelDataHandle(complete ? handle : undefined)
     // Pickers then suggest "<name> (2)", never the original (§1.4.7).
     if (!complete) exportMemory.partial = true
     if (complete && isGzip(buffer)) {
@@ -229,6 +228,8 @@ const opened = (
             partial,
             // Complete level data may be written over; anything else is kept.
             bytes: type === 'levelData' && !partial ? undefined : buffer,
+            // The project picker never writes over any of them (§1.4.7 R7).
+            ...(buffer.byteLength <= KEPT_BYTES_LIMIT ? { kept: buffer } : {}),
         }
 
     // The target and the partial flag are the new chain's (§1.4.8).
