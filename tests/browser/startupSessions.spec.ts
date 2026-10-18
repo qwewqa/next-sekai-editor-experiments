@@ -792,17 +792,21 @@ test('safe mode’s real startup opens blank and read-only, and writes no journa
     await opened(page)
     expect(await lifeOf(page)).toBe(1000)
     expect(await page.evaluate(() => window.nseFlushTest === undefined)).toBe(true)
+    // What the normal page left as it went (its journal, the legacy slot) stays as it is.
+    const kept = () =>
+        page.evaluate(() =>
+            Object.fromEntries(
+                Object.entries(localStorage).filter(([key]) =>
+                    /\.(journal\.|legacyRecovery|canary)/.test(key),
+                ),
+            ),
+        )
+    const before = await kept()
+    expect(before[`${prefix}canary`]).toBe(canary)
     await edit(page, 970)
     await hide(page)
     await page.waitForTimeout(500)
-    expect(
-        await page.evaluate(() =>
-            Object.keys(localStorage).filter((key) => /\.(journal\.|legacyRecovery)/.test(key)),
-        ),
-    ).toEqual([])
-    expect(await page.evaluate((prefix) => localStorage.getItem(`${prefix}canary`), prefix)).toBe(
-        canary,
-    )
+    expect(await kept()).toEqual(before)
     const { sessions } = await rows(page, ['sessions'])
     expect(sessions.map((row) => row.id)).toEqual([stored.id])
 })
