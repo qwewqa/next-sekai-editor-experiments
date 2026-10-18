@@ -550,3 +550,24 @@ test('Duplicate Tab of an unstored continuation forks what it continued', async 
     assert.equal(fork.parent?.id, parent.id)
     assert.notEqual(fork.id, continuation.id)
 })
+
+test('a reload of a session deleted in the gap continues the recovery session its journal became', async () => {
+    const world = createWorld({ seed: 16 })
+    const storage = new MemoryStorage()
+    const { tab, session, root } = await journalledOnly(world, storage)
+    await tamper(world, async (tx) => {
+        const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+        await tx.put('chains', { ...chain, deleting: { at: 1 } })
+    })
+    const reload = await load(world, 'reload', storage, { tab })
+    const outcome = reload.recovery.ownOutcome
+    assert.ok(outcome && 'result' in outcome && outcome.result.kind === 'recovery')
+    assert.deepEqual(reload.events.map((event) => event.kind).sort(), [
+        'bgmNotLoaded',
+        'deletedElsewhere',
+        'journalKept',
+    ])
+    assert.equal(openSession(reload).parent?.id, outcome.result.sessionId)
+    assert.equal(rootOf(reload.page.live.state), root)
+    assert.equal(journalText(storage, session.id), null)
+})
