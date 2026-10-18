@@ -7,6 +7,7 @@ import {
     peekedKey,
     type EntryKey,
 } from '../../history/peek'
+import { onResetState } from '../../history/resetHooks'
 import { peek } from '../../history/stack'
 import { i18n } from '../../i18n'
 import { languageTag } from '../../i18n/plural'
@@ -43,7 +44,6 @@ import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { getComposedLayout } from '../composedView'
 import { view } from '../view'
-import { isCoarsePointer } from '../workspace'
 import {
     countOff,
     nearestStop,
@@ -53,7 +53,8 @@ import {
     type Place,
     type Stop,
 } from './changeStops'
-import { peekedInfo, type PeekedInfo } from './selection'
+import { createChangePaint, createPropertyInspection, createShowEdits } from './inspection'
+import { peekedInfo, type ChainKey, type PeekedInfo } from './selection'
 
 // The change view (Part 1 §1.4.11): what the peeked entry changed against the entry before it on
 // the Timeline, from the worker by roots, or diffed here from states in memory for entries not
@@ -66,6 +67,7 @@ type Rec = readonly RecordValue[]
 export type ChangeView = {
     key: EntryKey
     request: PeekedInfo
+    previous: ChainKey
     set: ChangeSet
     totals: ChangeTotals
     state: State
@@ -109,7 +111,16 @@ const compute = async (info: PeekedInfo): Promise<ChangeView | undefined> => {
         const before = await loadEntryState(previous.key)
         set = diffChanges(stateCandidates(before, after), totals)
     }
-    return set && { key: info.key, request: info, set, totals, state: after }
+    return (
+        set && {
+            key: info.key,
+            request: info,
+            previous: { ...previous },
+            set,
+            totals,
+            state: after,
+        }
+    )
 }
 
 watch(
@@ -141,6 +152,21 @@ export const shownChange = computed(() => {
     if (peekedInfo.value !== change.request) return
     if (peek.value?.state.store !== change.state.store) return
     return change
+})
+
+const presentation = createShowEdits(isPeeking, () => settings.dimUnchangedObjects)
+export const showEdits = presentation.showEdits
+export const setShowEdits = presentation.set
+export const toggleShowEdits = presentation.toggle
+
+const inspection = createPropertyInspection(shownChange, loadEntryState)
+export const propertyInspection = inspection.inspection
+export const canInspectProperties = inspection.available
+export const openPropertyInspection = inspection.open
+export const closePropertyInspection = inspection.close
+onResetState(() => {
+    inspection.close()
+    presentation.reset()
 })
 
 // --- What the bar says.
@@ -344,38 +370,23 @@ const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks =
 }
 
 /** What the chart draws for the change; none for a change told in words or unknown. */
-export const changeMarks = computed((): ChangeMarks | undefined => {
+const rawChangeMarks = computed((): ChangeMarks | undefined => {
     const change = shownChange.value
     if (!change || !hasPlaces.value) return
     return marksOf(change.state, change.set.objects)
 })
 
+const paint = createChangePaint<Entity, ChangeMarks>(
+    rawChangeMarks,
+    isPeeking,
+    showEdits,
+    comparisonStatus,
+    computed(() => peekChange.value?.set.layout !== 'none'),
+)
+export const changeMarks = paint.marks
+
 /** The entities the chart keeps at full strength while the rest dims; undefined dims nothing. */
-export const undimmed = computed((): ReadonlySet<Entity> | undefined => {
-    if (!settings.dimUnchangedObjects || !isPeeking.value) return
-    const marks = changeMarks.value
-    if (marks) return marks.changed
-    // The next entry's change still loading: the dim holds, so arrowing never flashes.
-    const loading =
-        comparisonStatus.value === 'loading' ||
-        (comparisonStatus.value === 'known' && peekChange.value?.set.layout !== 'none')
-    return loading && dimHeld.value ? nothing : undefined
-})
-
-const nothing: ReadonlySet<Entity> = new Set()
-
-/** Whether the last settled change dimmed the chart. */
-const dimHeld = shallowRef(false)
-watch([changeMarks, comparisonStatus, isPeeking], () => {
-    if (!isPeeking.value) dimHeld.value = false
-    else if (changeMarks.value) dimHeld.value = true
-    else if (
-        comparisonStatus.value === 'initial' ||
-        comparisonStatus.value === 'unavailable' ||
-        peekChange.value?.set.layout === 'none'
-    )
-        dimHeld.value = false
-})
+export const undimmed = paint.undimmed
 
 // --- Where the changes are, and bringing them into view.
 
@@ -385,8 +396,8 @@ export const changeBand = shallowRef({ top: 0, bottom: 0 })
 /** An edge arrow's distance from the band's edge, in px. */
 export const ARROW_GAP = 4
 
-/** The gap on a touch screen: a little more, so the chip does not touch the toolbar or the bar. */
-export const arrowGap = computed(() => ARROW_GAP + (isCoarsePointer.value ? 4 : 0))
+/** Pointer-independent spacing keeps the navigation controls on the same geometry. */
+export const arrowGap = computed(() => ARROW_GAP)
 
 /** Pane y to chart time. */
 const timeAt = (y: number) => (0.5 * view.h - y) / settings.pps + view.time
@@ -402,7 +413,7 @@ const places = computed((): Place[] => {
     const change = shownChange.value
     if (!change || !hasPlaces.value) return []
     const bpms = change.state.bpms
-    const marks = changeMarks.value
+    const marks = rawChangeMarks.value
     const current = new Map(marks?.rings.map(({ id, entity }) => [id, entity]))
     const old = new Map(marks?.ghosts.map(({ id, entity }) => [id, entity]))
     const composed = getComposedLayout(change.state)
