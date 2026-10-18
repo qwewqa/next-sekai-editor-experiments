@@ -550,3 +550,59 @@ test('opening a file whose session a dead tab left a journal for: Restore applie
         .toBe(555)
     expect((await sessionOf(other)).file?.name).toBe('coconut.nxsp')
 })
+
+test('a newer major version asks first, then opens only the level, unbound', async ({ page }) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        project.version = 2
+        setJson(items, 'project.json', project)
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    const before = await sessionOf(page)
+    await openFile(page, 'coconut.nxsp')
+    const dialog = page
+        .getByRole('dialog')
+        .filter({ hasText: 'Only the level can be opened from it.' })
+    await expect(dialog).toContainText('Made by a newer version of Next SEKAI Editor.')
+    await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
+    await page.waitForTimeout(400)
+    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(before.sessionId)
+    const session = await sessionOf(page)
+    expect(session.file).toBeUndefined()
+    expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+    const { entries } = await rows(page, ['entries'])
+    // No history is read from a newer major version: the level alone.
+    expect(
+        entries!
+            .map((row) => row.value)
+            .filter((row) => row.sessionId === session.sessionId)
+            .map((row) => row.kind),
+    ).toEqual(['continue'])
+})
+
+test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thumbs.db, opens whole', async ({
+    page,
+}) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        const bgm = items.find((item) => item.name.startsWith('bgm/'))!
+        bgm.name = 'bgm/曲.mp3'
+        project.bgm.file = bgm.name
+        setJson(items, 'project.json', project)
+        for (const item of items) item.method = 'deflate'
+        return [...items, { name: 'history/Thumbs.db', data: new Uint8Array([0]), method: 'store' }]
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const session = await sessionOf(page)
+    expect(session.file?.name).toBe('coconut.nxsp')
+    const { media } = await rows(page, ['media'])
+    // The BGM and the cover, stored from the file.
+    expect(media!.length).toBe(2)
+    expect((await ownRows(page, session.sessionId)).every((row) => row.kept)).toBe(true)
+})
