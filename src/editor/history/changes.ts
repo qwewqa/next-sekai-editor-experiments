@@ -46,6 +46,9 @@ export type ChangeView = { key: EntryKey; set: ChangeSet; totals: ChangeTotals; 
 
 export const peekChange = shallowRef<ChangeView>()
 
+/** The entry whose change is settled: known, or found unknown. */
+const settledKey = shallowRef<EntryKey>()
+
 let generation = 0
 
 /** The entry before one on the chain, when the list didn't have it loaded. */
@@ -88,10 +91,13 @@ watch(
         if (!info) return
         compute(info).then(
             (result) => {
-                if (at === generation) peekChange.value = result
+                if (at !== generation) return
+                peekChange.value = result
+                settledKey.value = info.key
             },
             () => {
                 // Unknown: the label alone, nothing drawn.
+                if (at === generation) settledKey.value = info.key
             },
         )
     },
@@ -298,9 +304,25 @@ export const changeMarks = computed((): ChangeMarks | undefined => {
 })
 
 /** The entities the chart keeps at full strength while the rest dims; undefined dims nothing. */
-export const undimmed = computed(() =>
-    settings.dimUnchangedObjects ? changeMarks.value?.changed : undefined,
-)
+export const undimmed = computed((): ReadonlySet<Entity> | undefined => {
+    if (!settings.dimUnchangedObjects || !isPeeking.value) return
+    const marks = changeMarks.value
+    if (marks) return marks.changed
+    // The next entry's change still loading: the dim holds, so arrowing never flashes.
+    const loading = settledKey.value !== peekedKey.value || !shownChange.value
+    return loading && dimHeld.value ? nothing : undefined
+})
+
+const nothing: ReadonlySet<Entity> = new Set()
+
+/** Whether the last settled change dimmed the chart. */
+const dimHeld = shallowRef(false)
+watch([changeMarks, settledKey, isPeeking], () => {
+    if (!isPeeking.value) dimHeld.value = false
+    else if (changeMarks.value) dimHeld.value = true
+    else if (settledKey.value === peekedKey.value && shownChange.value) dimHeld.value = false
+    else if (settledKey.value === peekedKey.value && !peekChange.value) dimHeld.value = false
+})
 
 // --- Where the changes are, and bringing them into view.
 

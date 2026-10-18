@@ -2,7 +2,6 @@ import { isPeeking, state } from '../../history'
 import { settings } from '../../settings'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { formatBeatPosition } from '../beatDisplay'
-import { view } from '../view'
 import { bandTimes } from './changes'
 import { showHistoryLink } from './openHistory'
 import { hereRange, historyFilter } from './state'
@@ -11,7 +10,7 @@ import { hereRange, historyFilter } from './state'
 // beats, taken once as it is chosen: the selection's beats at Now, else the beats in view. Shared
 // by Go To's Show list, the chart's context menu and the Find Edits Here command.
 
-/** The beats Edits Here would use now, rounded outward to the beat grid. */
+/** The beats Edits Here would use now: whole beats, from the one `from` is in to the one `to` is in. */
 export const takeHereRange = () => {
     const shown = state.value
     const selected = isPeeking.value ? [] : shown.selectedEntities
@@ -25,18 +24,17 @@ export const takeHereRange = () => {
         from = timeToBeat(shown.bpms, Math.max(0, band.bottom))
         to = timeToBeat(shown.bpms, Math.max(0, band.top))
     }
-    const division = view.division > 0 ? view.division : 1
-    return {
-        from: Math.max(0, Math.floor(from * division) / division),
-        to: Math.ceil(to * division) / division,
-    }
+    const first = Math.max(0, Math.floor(from))
+    const last = Math.max(first, Math.floor(to))
+    // Up to the end of the last beat.
+    return { from: first, to: last + 1 - 1e-9 }
 }
 
-/** A range as the grid labels write it: "118.2 – 121.4". */
+/** A range as the grid labels write its first and last beats: "118.2 – 121.4". */
 export const hereRangeText = (range: { from: number; to: number }) => {
     const bpms = state.value.bpms
     const at = (beat: number) => formatBeatPosition(bpms, beat, settings.beatDisplay)
-    return `${at(range.from)} – ${at(range.to)}`
+    return `${at(range.from)} – ${at(Math.floor(range.to))}`
 }
 
 /** Turns Edits Here on with the beats it takes now. */
