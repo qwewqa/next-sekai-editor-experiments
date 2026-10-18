@@ -3,7 +3,7 @@ import { setProjectPickCheck } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
 import { markedSeq, removeMarker } from '../editor/save/env'
-import { applyRevocations, watchBindings } from '../editor/save/watch'
+import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { filename } from '../history/live'
@@ -241,6 +241,10 @@ export const startStoring = (
         // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
         onIdentity: (session, identity) => {
             removeMarker(session.chainId, identity.revision.id)
+        },
+        // Taken over while the binding waited in memory (R5, R6): the label follows the record.
+        onStaleIdentity: () => {
+            void refreshBinding(worker, flusher)
         },
         // A Save that may have written its file before a reload keeps its `seq` (§1.6.11.6).
         reservedSeq: markedSeq,

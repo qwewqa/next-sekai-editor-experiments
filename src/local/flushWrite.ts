@@ -9,7 +9,7 @@ import { putChunk } from './putChunk'
 import { nodeRow, rootRow, type NodesRow } from './records/rows'
 import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
-import { storeMarks, type IdentityUnit } from './save/commit'
+import { storeMarks, unitApplies, type IdentityUnit } from './save/commit'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
 import {
@@ -196,6 +196,8 @@ export type FlushResult =
           chain: Record<string, unknown>
           /** Whether the batch's identity unit was stored. */
           identity?: boolean
+          /** The batch's identity unit was dropped: its binding was taken over meanwhile. */
+          staleIdentity?: true
           /**
            * Media refused by the put or that didn't read back right: the entries are stored, the
            * media is not (§1.6.8.4).
@@ -682,7 +684,9 @@ export const writeFlush = async (
     // A Save's identity unit, after its entry and with its marks (§1.3.2): the binding replaces a
     // taken-over one's `replaced`.
     let identity: boolean | undefined
-    if (batch.identity) {
+    // A unit whose binding was taken over since its Save is dropped, never stored (R5).
+    const stale = !!batch.identity && !!chain && !unitApplies(chain, batch.identity)
+    if (batch.identity && !stale) {
         identity = await storeMarks(tx, batch.identity.marks)
         if (identity) {
             // The cut's session start as stored, which the page may not know.
@@ -714,6 +718,7 @@ export const writeFlush = async (
         ...(stackRemoved ? { stackRemoved } : {}),
         chain: chainValue,
         ...(identity === undefined ? {} : { identity }),
+        ...(stale ? { staleIdentity: true } : {}),
         stats,
         committed: {
             session: { id: batch.session.id, chainId },

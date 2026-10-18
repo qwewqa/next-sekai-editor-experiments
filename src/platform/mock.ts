@@ -265,8 +265,13 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             const { expected } = req
             // Source integrity: the File taken at the check is the only source of the old bytes.
             const file = fileOf(name)
+            // A write-back's empty target holds nothing to keep (R9): written, with nothing to copy.
+            const overEmpty = () => !!req.overEmpty && kind === 'nxsp' && fileOf(name)?.size === 0
+            const emptied = overEmpty()
             const pinned =
-                expected === undefined ? undefined : await check(name, expected, kind, file)
+                expected === undefined || emptied
+                    ? undefined
+                    : await check(name, expected, kind, file)
             signal?.throwIfAborted()
             const sources: PinnedSource[] =
                 pinned && file
@@ -292,7 +297,14 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             await point('built', name)
             mock.beforeCommit?.(name)
             await point('beforeClose', name)
-            if (expected !== undefined) {
+            if (expected !== undefined && !overEmpty()) {
+                // Filled since it was found empty, or changed: never written over unseen.
+                if (emptied)
+                    throw new FileError(
+                        'conflict',
+                        `${name} changed on disk`,
+                        await diskOf(name, kind),
+                    )
                 const now = await check(name, expected, kind)
                 // Checked again just before close(): a `.nxsp` by the pinned File's fingerprint.
                 if (kind === 'nxsp' && pinned && now?.fingerprint !== pinned.fingerprint)

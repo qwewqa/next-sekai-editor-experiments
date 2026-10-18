@@ -75,8 +75,11 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
 /** A takeover (R5): another chain's binding or Export target revoked, this chain pre-bound. */
 export type TakeOver = {
     owner?: HandleOwner
-    /** This chain, bound to the picked file in its empty state; none for Save to File…. */
-    preBind?: { chainId: string; file: Row }
+    /**
+     * This chain, bound to the picked file in its empty state; none for Save to File…. Save As…
+     * gives its new `docId`, with no revision yet (the identity fields are one unit, §1.3.2).
+     */
+    preBind?: { chainId: string; file: Row; docId?: string }
     by: string
     at: number
 }
@@ -114,10 +117,18 @@ export const takeOver = async (tx: KvTx, request: TakeOver) => {
     if (request.preBind) {
         const chain = await tx.get('chains', request.preBind.chainId)
         if (isRow(chain)) {
+            const { docId } = request.preBind
             const fields = await splitHandles(tx, request.preBind.chainId, {
                 file: request.preBind.file,
             })
-            await tx.put('chains', { ...chain, file: fields.file })
+            const record: Row = { ...chain, file: fields.file }
+            // Bound again: a revocation it had is over.
+            delete record.replaced
+            if (docId !== undefined) {
+                record.docId = docId
+                delete record.revision
+            }
+            await tx.put('chains', record)
             preBound = true
         }
     }

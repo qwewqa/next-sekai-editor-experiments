@@ -104,6 +104,8 @@ export type SaveRequest = {
     target?: FileTarget
     /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
+    /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written (R9). */
+    overEmpty?: boolean
     replaced?: 'keep' | 'discard'
     replaces?: string
     /** Runs after any pick. */
@@ -135,7 +137,7 @@ export type FileErrorCode =
     | 'io'
 
 /** Which step failed, where the code alone does not tell the user. */
-export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download'
+export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download' | 'check'
 
 /** How a file operation fails. */
 export class FileError extends Error {

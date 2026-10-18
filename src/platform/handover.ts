@@ -146,6 +146,7 @@ const readDisk = async (
 const matches = (found: Found, expected: DiskState | 'absent'): boolean =>
     expected === 'absent' ? !found : !!found?.disk && sameContent(found.disk, expected)
 
+/** A precondition that failed: nothing was written (`check`). */
 const changedError = (
     handle: FileSystemFileHandle,
     found: Found,
@@ -154,8 +155,12 @@ const changedError = (
     if (!found) return new FileError('not-found', `${handle.name} cannot be found`)
     const message =
         expected === 'absent' ? `${handle.name} exists` : `${handle.name} changed on disk`
-    return new FileError('conflict', message, found.disk)
+    return new FileError('conflict', message, found.disk, 'check')
 }
+
+/** A write-back's target found empty, which it writes over (R9). */
+const overEmpty = (req: SaveRequest, found: Found) =>
+    !!req.overEmpty && req.kind === 'nxsp' && found?.file.size === 0
 
 /** The file's fingerprint now, through a new `getFile()`: a change after pinning is a conflict. */
 const fingerprintNow = async (kind: SaveRequest['kind'], handle: FileSystemFileHandle) => {
@@ -191,8 +196,11 @@ const writeTo = async (
     if (expected !== undefined) {
         const found = await readDisk(kind, handle, expected)
         signal?.throwIfAborted()
-        if (!matches(found, expected)) throw changedError(handle, found, expected)
-        if (found?.disk) {
+        // An empty target holds nothing to keep (R9): written over, with nothing to copy.
+        const empty = overEmpty(req, found)
+        if (!empty && !matches(found, expected)) throw changedError(handle, found, expected)
+        if (empty) pinned = found?.disk
+        else if (found?.disk) {
             pinned = found.disk
             sources.push({
                 token: 'target',
@@ -229,12 +237,24 @@ const writeTo = async (
         if (expected !== undefined) {
             // Checked again just before the commit (Part 0 §0.9.6); a `.nxsp` by the whole
             // fingerprint of the File pinned at the first check, so a change during the build or
-            // the write is never overwritten unseen.
+            // the write is never overwritten unseen. A target emptied meanwhile is written (R9).
             const found = await readDisk(kind, handle, expected)
             signal?.throwIfAborted()
-            if (!matches(found, expected)) throw changedError(handle, found, expected)
-            if (kind === 'nxsp' && pinned && found?.disk?.fingerprint !== pinned.fingerprint)
-                throw new FileError('conflict', `${handle.name} changed on disk`, found?.disk)
+            if (!overEmpty(req, found)) {
+                if (!matches(found, expected)) throw changedError(handle, found, expected)
+                if (
+                    kind === 'nxsp' &&
+                    pinned &&
+                    !(found?.disk && pinned.size === 0 && found.disk.size === 0) &&
+                    found?.disk?.fingerprint !== pinned.fingerprint
+                )
+                    throw new FileError(
+                        'conflict',
+                        `${handle.name} changed on disk`,
+                        found?.disk,
+                        'check',
+                    )
+            }
         }
         await writable.close()
         writable = undefined
