@@ -18,14 +18,11 @@ import {
     type FlushReport,
     type FlushSession,
 } from './flush'
-import { toHex } from './hash'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
-import { createPeekSource, rememberRoots } from './peekSource'
+import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
-import { stateFromRecords } from './records/records'
-import { decodeSnapshot } from './records/snapshot'
 import { holdSessionLock, TabClient } from './sessions'
 import { leftSession } from './startup/api'
 import { previousSession } from './startup/events'
@@ -401,15 +398,8 @@ export const startStoring = (
         void instance.restarted()
     })
 
-    // A restored undo slot is built from its stored records when Undo or Redo reaches it.
-    setSlotLoader(async (snapshot) => {
-        const parts = await worker.call('readSnapshot', toHex(snapshot))
-        const records = decodeSnapshot(parts.root, {
-            node: (hex) => parts.nodes[hex],
-            chunk: (hex) => parts.chunks[hex],
-        })
-        return stateFromRecords(records)
-    })
+    // A restored undo slot is built from its stored records, verified, when Undo or Redo reaches it.
+    setSlotLoader(slotLoader((hex) => worker.call('readSnapshotVerified', hex)))
 
     // History's entries are peeked from memory or their stored snapshots (§1.4.11).
     setPeekSource(createPeekSource(worker, () => flusher))

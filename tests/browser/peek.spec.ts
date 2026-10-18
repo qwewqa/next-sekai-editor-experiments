@@ -207,6 +207,37 @@ test('entering a peek cancels a drag in progress', async ({ page }) => {
     expect(await newestSeq(page)).toBe(first + 1)
 })
 
+test('leaving a peek cancels a box selection, so no peeked object reaches the live selection', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await peek(page, first)
+    // The peeked note at beat 3 is selected, then Ctrl adds a box to it.
+    const note = await notePoint(page, 3)
+    await page.mouse.click(note.x, note.y)
+    const from = await page.evaluate(() => window.editorTest.point(-6, 4))
+    const to = await page.evaluate(() => window.editorTest.point(6, 8))
+    await page.keyboard.down('Control')
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 5 })
+    // Leaving switches the tool from view-only Select, which ends the drag.
+    await leave(page)
+    await page.mouse.move(to.x + 4, to.y + 4, { steps: 2 })
+    await page.mouse.up()
+    await page.keyboard.up('Control')
+    expect(
+        await page.evaluate(() => {
+            const live = window.editorTest.history.liveState.value
+            const notes = new Set<unknown>([...live.store.slides.note.values()].flat())
+            return live.selectedEntities.filter(
+                (entity) => entity.type === 'note' && !notes.has(entity),
+            ).length
+        }),
+    ).toBe(0)
+})
+
 test('entering a peek cancels a scaling session', async ({ page }) => {
     const first = await newestSeq(page)
     await page.evaluate(async () => {

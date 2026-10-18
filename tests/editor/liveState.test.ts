@@ -152,6 +152,8 @@ const writers: {
         file: 'src/editor/commands/bgm/index.ts',
         imports: { index: ['liveState'], live: ['bgm'] },
     },
+    // The journal, the leave predicate's media and a fork's name: a reload applies the journal.
+    { file: 'src/local/storing.ts', imports: { stack: ['liveState'] } },
 ]
 
 for (const { file, imports: required, readsDisplay } of writers) {
@@ -163,6 +165,7 @@ for (const { file, imports: required, readsDisplay } of writers) {
 
         if (readsDisplay) return
         assert.ok(!imports.get('index')?.includes('state'), 'state from history')
+        assert.ok(!imports.get('stack')?.includes('state'), 'state from history/stack')
         for (const module of displayModules)
             assert.ok(!imports.has(module), `display computeds from history/${module}`)
     })

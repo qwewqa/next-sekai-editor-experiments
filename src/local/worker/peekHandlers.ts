@@ -21,6 +21,15 @@ type EntryRow = { time?: unknown; snapshot?: unknown; kept?: unknown }
 
 const decoder = new TextDecoder()
 
+/** A row's parsed form; undefined when it's malformed, so the read reports `damaged`. */
+const parsed = <T>(parse: () => T) => {
+    try {
+        return parse()
+    } catch {
+        return undefined
+    }
+}
+
 export const peekHandlers = (context: WorkerContext) => ({
     /** An entry's time and snapshot; undefined when there's no such entry. */
     readEntry: ({ sessionId, seq }: { sessionId: string; seq: number }) =>
@@ -37,7 +46,16 @@ export const peekHandlers = (context: WorkerContext) => ({
         const read = await context.core.read(['nodes', 'chunks'], async (tx) => {
             const rootRow = (await tx.get('nodes', hashKey(fromHex16(hex)))) as NodesRow | undefined
             if (rootRow?.t !== 'root') return
-            const root = rootJsonFromRow(rootRow)
+            const root = parsed(() => rootJsonFromRow(rootRow))
+            const header = root?.[1]
+            const kinds = root?.[2]
+            if (
+                !root ||
+                !isHash16Hex(header) ||
+                !Array.isArray(kinds) ||
+                !kinds.every((kind) => Array.isArray(kind) && isHash16Hex(kind[1]))
+            )
+                return 'damaged'
             const nodes: Record<string, RecordValue[]> = {}
             const chunks: Record<string, Uint8Array> = {}
             let complete = true
@@ -50,22 +68,26 @@ export const peekHandlers = (context: WorkerContext) => ({
             const node = async (key: string) => {
                 const found = (await tx.get('nodes', hashKey(fromHex16(key)))) as
                     NodesRow | undefined
-                if (found?.t !== 'node') {
+                const json = found?.t === 'node' ? parsed(() => nodeJsonFromRow(found)) : undefined
+                const children = json?.[2]
+                if (
+                    found?.t !== 'node' ||
+                    !json ||
+                    !Array.isArray(children) ||
+                    !children.every(isHash16Hex)
+                ) {
                     complete = false
                     return
                 }
-                const json = nodeJsonFromRow(found)
                 nodes[key] = json
-                for (const child of json[2] as string[])
-                    await (found.depth === 1 ? node(child) : chunk(child))
+                for (const child of children) await (found.depth === 1 ? node(child) : chunk(child))
             }
-            const [, header, kinds] = root as [number, string, [string, string][]]
             await chunk(header)
-            for (const [, top] of kinds) await node(top)
+            for (const [, top] of kinds as [unknown, string][]) await node(top)
             return { root, nodes, chunks, complete }
         })
         if (!read) return { kind: 'missing' }
-        if (!read.complete) return { kind: 'damaged' }
+        if (read === 'damaged' || !read.complete) return { kind: 'damaged' }
         // Every part hashes to its key: the root and nodes by their JSON form, chunks inflated.
         try {
             if (!equalBytes(await hash16(canonicalBytes(read.root)), fromHex16(hex)))

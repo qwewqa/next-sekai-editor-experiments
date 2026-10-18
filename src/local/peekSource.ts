@@ -7,6 +7,7 @@ import { toHex } from './hash'
 import { stateFromRecords, toRecords } from './records/records'
 import { decodeSnapshot, encodeSnapshot } from './records/snapshot'
 import type { StorageWorker } from './worker/client'
+import type { SnapshotRead } from './worker/peekHandlers'
 
 // Where peek gets an entry's state (Part 1 §1.4.11, §1.9.2 #5): this tab's memory first (an
 // entry not yet stored, or a state the undo stack still holds), else the stored snapshot, read
@@ -63,6 +64,45 @@ const heldState = (hex: string, flusher: Flusher | undefined) => {
         if (entry.state && rootOf(entry.state) === hex) return entry.state
 }
 
+/** A stored snapshot's state, verified: `missing` when its root is gone, `damaged` when a part is. */
+export type StoredState =
+    { kind: 'missing' } | { kind: 'damaged' } | { kind: 'found'; state: State }
+
+/** Reads a snapshot through the worker's verified read and builds its state. */
+export const readStoredState = async (
+    read: (hex: string) => Promise<SnapshotRead>,
+    hex: string,
+): Promise<StoredState> => {
+    const result = await read(hex)
+    if (result.kind !== 'found') return result
+    const { parts } = result
+    try {
+        return {
+            kind: 'found',
+            state: stateFromRecords(
+                decodeSnapshot(parts.root, {
+                    node: (key) => parts.nodes[key],
+                    chunk: (key) => parts.chunks[key],
+                }),
+            ),
+        }
+    } catch (error) {
+        console.error('A stored snapshot could not be read', error)
+        return { kind: 'damaged' }
+    }
+}
+
+/**
+ * The undo stack's loader for a restored slot (§1.6.4 #6): verified, since the slot becomes the
+ * live head. A missing or damaged snapshot fails the load, which cancels the move.
+ */
+export const slotLoader =
+    (read: (hex: string) => Promise<SnapshotRead>) => async (snapshot: Uint8Array) => {
+        const stored = await readStoredState(read, toHex(snapshot))
+        if (stored.kind !== 'found') throw new Error(`The stored undo step is ${stored.kind}`)
+        return stored.state
+    }
+
 const rootHex = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
 export const createPeekSource = (
@@ -72,21 +112,10 @@ export const createPeekSource = (
     const build = async (hex: string, kept: boolean) => {
         const held = heldState(hex, flusher())
         if (held) return held
-        const read = await worker.call('readSnapshotVerified', hex)
+        const read = await readStoredState((hex) => worker.call('readSnapshotVerified', hex), hex)
         if (read.kind === 'missing') throw new PeekError(kept ? 'damaged' : 'removed')
         if (read.kind === 'damaged') throw new PeekError('damaged')
-        const { parts } = read
-        try {
-            return stateFromRecords(
-                decodeSnapshot(parts.root, {
-                    node: (key) => parts.nodes[key],
-                    chunk: (key) => parts.chunks[key],
-                }),
-            )
-        } catch (error) {
-            console.error('A stored snapshot could not be read', error)
-            throw new PeekError('damaged')
-        }
+        return read.state
     }
     return {
         load: async (key) => {
