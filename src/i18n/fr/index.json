@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "Trouver les modifications ici"
+    },
+    "saveAs": {
+      "title": "Sauvegarder sous…"
     }
   },
   "help": {
@@ -1847,7 +1850,8 @@
     "changesAbove": "Modifications en haut : {0}",
     "changesBelow": "Modifications en bas : {0}",
     "changesAboveAny": "Modifications en haut",
-    "changesBelowAny": "Modifications en bas"
+    "changesBelowAny": "Modifications en bas",
+    "savesCurrent": "Sauvegarde la version actuelle."
   },
   "save": {
     "fileName": "Nom du fichier",
@@ -1867,13 +1871,55 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert."
+    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert.",
+    "title": "Sauvegarder le fichier de projet",
+    "titleAs": "Sauvegarder sous",
+    "history": "Historique",
+    "bgm": "BGM",
+    "placeholder": "Sans titre",
+    "exportHint": "Pour les données de niveau Sonolus, utilisez Exporter les données de niveau… (Maj+P).",
+    "openExport": "Exporter les données de niveau…",
+    "readOnly": "Impossible d’écrire dans \"{0}\".",
+    "notProject": "\"{0}\" n’est pas un fichier de projet.",
+    "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être conservé.",
+    "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
+    "saved": "Sauvegardé dans {0}",
+    "savedWithoutBgm": "Sauvegardé dans {0} sans son BGM, qui n’est pas chargé",
+    "savedWithoutCover": "Sauvegardé dans {0} sans sa couverture, qui n’est pas chargée",
+    "savedWithoutPreview": "Sauvegardé dans {0} sans son audio d’aperçu, qui n’est pas chargé",
+    "savedWithoutMedia": "Sauvegardé dans {0} sans les médias non chargés",
+    "savedWithoutBgmLarge": "Sauvegardé dans {0} sans son BGM",
+    "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
+    "savedWithoutPreviewLarge": "Sauvegardé dans {0} sans son audio d’aperçu",
+    "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
+    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures n’ont pas été conservées.",
+    "someStepsNotKeptLine": "Certaines étapes antérieures n’ont pas été conservées.",
+    "tookOver": "Sauvegardé dans {0}. Son travail antérieur se trouve dans Sessions récentes.",
+    "noChanges": "Aucune modification depuis le téléchargement de {0}",
+    "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
+    "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",
+    "downloadAgain": "Télécharger à nouveau",
+    "unreadable": "\"{0}\" n’a pas pu être lu entièrement.",
+    "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
+    "restoredName": "{0} (restauré le {1})"
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
     "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",
     "exportBodyOpened": "\"{0}\" a changé depuis que vous l’avez ouvert ici.",
-    "replace": "Remplacer"
+    "replace": "Remplacer",
+    "title": "\"{0}\" a changé",
+    "body": "\"{0}\" a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "savedOn": "Sauvegardé sur {0}, {1} · {2}.",
+    "savedWeb": "Sauvegardé dans l’éditeur web ({0}), {1} · {2}.",
+    "otherProject": "Un autre fichier de projet, \"{0}\".",
+    "separate": "Sauvegarder dans un fichier séparé",
+    "openOther": "Ouvrir l’autre version",
+    "openOtherNote": "Vos modifications restent non sauvegardées.",
+    "replaceNote": "La version sur le disque va dans Sessions récentes.",
+    "keptName": "{0} (remplacé le {1})",
+    "replaceNewer": "Créé par une version plus récente de {0}.",
+    "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus."
   },
   "name": {
     "invalidChar": "Un nom ne peut pas contenir {0}",
@@ -1947,5 +1993,8 @@
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
+  },
+  "file": {
+    "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre."
   }
 }

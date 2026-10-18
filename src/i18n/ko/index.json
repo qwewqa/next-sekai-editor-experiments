@@ -603,6 +603,9 @@
     },
     "editsHere": {
       "title": "여기의 편집 찾기"
+    },
+    "saveAs": {
+      "title": "다른 이름으로 저장…"
     }
   },
   "help": {
@@ -1847,7 +1850,8 @@
     "changesAbove": "위쪽의 변경: {0}",
     "changesBelow": "아래쪽의 변경: {0}",
     "changesAboveAny": "위쪽의 변경",
-    "changesBelowAny": "아래쪽의 변경"
+    "changesBelowAny": "아래쪽의 변경",
+    "savesCurrent": "현재 버전을 저장합니다."
   },
   "save": {
     "fileName": "파일 이름",
@@ -1867,13 +1871,55 @@
     "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
     "writeFailed": "\"{0}\"에 쓰지 못했습니다.",
     "notPutBack": "\"{0}\"이(가) 비워졌으며 원래 내용을 되돌리지 못했습니다.",
-    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다."
+    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다.",
+    "title": "프로젝트 파일 저장",
+    "titleAs": "다른 이름으로 저장",
+    "history": "기록",
+    "bgm": "BGM",
+    "placeholder": "제목 없음",
+    "exportHint": "Sonolus 레벨 데이터는 레벨 데이터 내보내기…(Shift+P)를 사용하세요.",
+    "openExport": "레벨 데이터 내보내기…",
+    "readOnly": "\"{0}\"에 쓸 수 없습니다.",
+    "notProject": "\"{0}\"은(는) 프로젝트 파일이 아닙니다.",
+    "notKept": "저장되지 않았습니다. \"{0}\"을(를) 보존할 수 없습니다.",
+    "notKeptSafe": "저장되지 않았습니다. 안전 모드에서는 파일을 교체할 수 없습니다.",
+    "saved": "{0}에 저장됨",
+    "savedWithoutBgm": "{0}에 BGM 없이 저장됨. BGM이 로드되지 않았습니다",
+    "savedWithoutCover": "{0}에 커버 없이 저장됨. 커버가 로드되지 않았습니다",
+    "savedWithoutPreview": "{0}에 미리 듣기 오디오 없이 저장됨. 미리 듣기 오디오가 로드되지 않았습니다",
+    "savedWithoutMedia": "{0}에 로드되지 않은 미디어 없이 저장됨",
+    "savedWithoutBgmLarge": "{0}에 BGM 없이 저장됨",
+    "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
+    "savedWithoutPreviewLarge": "{0}에 미리 듣기 오디오 없이 저장됨",
+    "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
+    "someStepsNotKept": "{0}에 저장됨. 이전 단계 일부는 보존되지 않았습니다.",
+    "someStepsNotKeptLine": "이전 단계 일부는 보존되지 않았습니다.",
+    "tookOver": "{0}에 저장됨. 이전 작업은 최근 세션에 있습니다.",
+    "noChanges": "{0} 다운로드 이후 변경 사항 없음",
+    "noChangesSaved": "{0} 저장 이후 변경 사항 없음",
+    "noChangesOpened": "{0}을(를) 연 이후 변경 사항 없음",
+    "downloadAgain": "다시 다운로드",
+    "unreadable": "\"{0}\"을(를) 완전히 읽지 못했습니다.",
+    "tooLarge": "하나의 파일에 담기에는 너무 큽니다. BGM 또는 기록을 선택 해제하세요.",
+    "restoredName": "{0} ({1} 복원)"
   },
   "conflict": {
     "exportTitle": "\"{0}\" 변경됨",
     "exportBody": "\"{0}\"이(가) 마지막으로 내보낸 후 변경되었습니다.",
     "exportBodyOpened": "\"{0}\"이(가) 여기서 연 후 변경되었습니다.",
-    "replace": "교체"
+    "replace": "교체",
+    "title": "\"{0}\" 변경됨",
+    "body": "\"{0}\"이(가) 여기서 열거나 저장한 후 변경되었습니다.",
+    "savedOn": "{0}에서 저장됨, {1} · {2}.",
+    "savedWeb": "웹 편집기({0})에서 저장됨, {1} · {2}.",
+    "otherProject": "다른 프로젝트 파일 \"{0}\"입니다.",
+    "separate": "별도 파일로 저장",
+    "openOther": "다른 버전 열기",
+    "openOtherNote": "변경 사항은 저장되지 않은 채로 남습니다.",
+    "replaceNote": "디스크의 버전은 최근 세션으로 이동합니다.",
+    "keptName": "{0} ({1} 교체됨)",
+    "replaceNewer": "더 새로운 버전의 {0}에서 만들어졌습니다.",
+    "replaceHoldsEarlier": "이 브라우저에 더 이상 없는 이전 단계가 들어 있습니다."
   },
   "name": {
     "invalidChar": "이름에 {0}을(를) 포함할 수 없습니다",
@@ -1947,5 +1993,8 @@
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",
     "restoreIt": "세션 복원",
     "damagedHistory": "\"{0}\"의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."
+  },
+  "file": {
+    "replacedElsewhere": "\"{0}\"이(가) 다른 탭이나 창에서 교체되었습니다."
   }
 }

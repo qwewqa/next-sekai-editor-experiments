@@ -1,0 +1,399 @@
+import { reactive } from 'vue'
+import { i18n } from '../../i18n'
+import type { SaveSizeEstimate } from '../../local/save/estimate'
+import type { MediaKind } from '../../local/save/media'
+import { showModal } from '../../modals'
+import { showChoice, type Choice } from '../../modals/choice'
+import { PRODUCT_NAME } from '../../product'
+import { interpolate } from '../../utils/interpolate'
+import { formatSize, formatTime } from '../commands/exportLevel/format'
+import { notify } from '../notification'
+import PreparingDialog from './PreparingDialog.vue'
+import SaveDialog from './SaveDialog.vue'
+
+// The Save flows' dialogs and feedback (Part 1 §1.4.7), as the core calls them. These bodies are
+// minimal working defaults; the Save UI package replaces them, keeping the signatures and the
+// accessible names the specs use (work/step6/save-interface.md).
+
+/** Which Save dialog: the first Save, Save As…, or Recent Sessions' Save to File…. */
+export type SaveDialogKind = 'save' | 'saveAs' | 'saveToFile'
+
+/** The History row. */
+export type HistoryRow =
+    /** Ticked or not; `locked` when the target file holds history (ticked, disabled). */
+    | { kind: 'available'; ticked: boolean; locked: boolean; steps: number; keptIn?: string }
+    /** An insecure origin: "History cannot be included on this connection." */
+    | { kind: 'insecure' }
+
+/** The BGM row: disabled with no size for "No BGM" and "BGM not loaded". */
+export type BgmRow =
+    | { kind: 'none' }
+    | { kind: 'notLoaded' }
+    /** `keptIn` only when the target file's `bgm` is the head's ("Already in …"). */
+    | { kind: 'held'; name: string; ticked: boolean; locked: boolean; keptIn?: string }
+
+export type SaveDialogInput = {
+    kind: SaveDialogKind
+    /** The File Name field's first value, without `.nxsp`; empty shows the placeholder. */
+    name: string
+    /** Lines shown first, such as `file.replacedElsewhere` or `open.damagedHistory`. */
+    lines: (() => string)[]
+    history: HistoryRow
+    bgm: BgmRow
+    /** "For Sonolus level data, use Export Level Data… (Shift+P)." with its link. */
+    exportLine: boolean
+    /** "Each save downloads a new copy." (download browsers, the first Save in this browser). */
+    downloadNote: boolean
+    /** Safari, iPhone and iPad, the first Save: the storage line's first sentence. */
+    storageLine?: () => string
+    /** "Saves the current version." */
+    peeking: boolean
+    /** The size preview: a cached estimate shows at once; `load` refreshes it (never blocking). */
+    estimate: { cached?: SaveSizeEstimate; load: () => Promise<SaveSizeEstimate | undefined> }
+}
+
+export type SaveDialogResult =
+    /** `fileName` ends in `.nxsp`, valid by Part 0 §0.9.9; an empty field gives `Untitled.nxsp`. */
+    | { action: 'save'; fileName: string; history: boolean; bgm: boolean }
+    /** The Export line's link: this dialog closes and Export's opens. */
+    | { action: 'export' }
+    | undefined
+
+/** The small dialog a slow build shows (§1.4.7, §1.5.6), opened at once and kept to the end. */
+export type Preparing = {
+    /** Aborted by the dialog's Cancel, × or Escape: the Save stops (an accepted pick runs on). */
+    readonly signal: AbortSignal
+    /** The import's progress while the Save waits for it. */
+    importing: (progress: { done: number; total: number }) => void
+    /** The built file's size, once known. */
+    built: (size: number) => void
+    /**
+     * The build outlasted the press: the button becomes `[Download]` or `[Save]` (focused), whose
+     * press is the gesture; true on it, false on Cancel.
+     */
+    ready: (action: 'download' | 'save', size: number) => Promise<boolean>
+    close: () => void
+}
+
+/** What the default Preparing dialog shows. */
+export type PreparingModel = {
+    size: number
+    importing?: { done: number; total: number }
+    ready?: 'download' | 'save'
+    closed: boolean
+}
+
+/** What the file on disk is, read from its `project.json` (Part 0 §0.9.6). */
+export type DiskVersion =
+    | {
+          kind: 'saved'
+          device: { id: string; label: string }
+          /** Saved in this browser: "Saved in the web editor (Chrome)" names it the same way. */
+          thisDevice: boolean
+          savedAt: number
+          notes: number
+      }
+    | { kind: 'otherProject'; name: string }
+    /** A file whose `project.json` doesn't read: only the title and body show. */
+    | { kind: 'unknown' }
+
+export type ConflictInput = {
+    name: string
+    disk: DiskVersion
+    /** Replace disabled, with its reason line under it; Save as a Separate File stays focused. */
+    replaceDisabled?: () => string
+}
+
+export type ConflictChoice = 'separate' | 'openOther' | 'replace'
+
+/** A save picker's pick of a file the editor won't write over (R7), or a takeover in `?safe`. */
+export type RefusedReason = 'notKept' | 'notProject' | 'levelData' | 'safeMode'
+
+/** The feedback after a write (§1.4.7). */
+export type SavedFeedback = {
+    kind: 'saved' | 'download'
+    name: string
+    size: number
+    /** "Some earlier steps were not kept.": the write doesn't carry its base's `completeFrom`. */
+    someStepsNotKept: boolean
+    /** A save picker took the file from another chain: "Its earlier work is in Recent Sessions." */
+    tookOver: boolean
+    /** Media written as metadata only, in BGM, cover, preview order. */
+    without: MediaKind[]
+    /** Those of `without` over the 1 GB cap: no "which is not loaded" (D25). */
+    tooLarge: MediaKind[]
+    /** Save to File… of a session open in another tab wrote its committed state. */
+    committedState?: boolean
+}
+
+export type SaveUi = {
+    saveDialog: (input: SaveDialogInput) => Promise<SaveDialogResult>
+    preparing: (name: string) => Preparing
+    conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
+    /** ""coconut.nxsp" cannot be found." `[Cancel]` `[Save As…]` (focused). */
+    notFound: (name: string) => Promise<'saveAs' | undefined>
+    /** The permission prompt refused: `[Cancel]` `[Save As…]` `[Try Again]` (focused). */
+    denied: (name: string) => Promise<'saveAs' | 'tryAgain' | undefined>
+    /** A read-only folder or file: `[Cancel]` `[Save As…]` (focused). */
+    readOnly: (name: string) => Promise<'saveAs' | undefined>
+    /** Other errors, with the plain reason; `saveAs` false where there is no other place. */
+    failed: (name: string, message: () => string, saveAs: boolean) => Promise<'saveAs' | undefined>
+    /** `[Cancel]` `[Export Level Data…]` (level data only) `[Choose Another…]` (focused). */
+    refused: (
+        name: string,
+        reason: RefusedReason,
+    ) => Promise<'chooseAnother' | 'export' | undefined>
+    /** A refused pick whose bytes could not be put back; Download keeps them. */
+    notPutBack: (name: string, emptied: boolean) => Promise<'download' | undefined>
+    saved: (feedback: SavedFeedback) => void
+    /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
+    noChanges: (
+        name: string,
+        event: 'saved' | 'opened' | 'downloaded',
+        downloadAgain?: () => void,
+    ) => void
+    /** A Save that could not go on, with its reason. */
+    error: (message: () => string) => void
+}
+
+const title = () => i18n.value.commands.save.title
+
+const saveAsChoice = (focused: boolean): Choice<'saveAs'> => ({
+    value: 'saveAs',
+    label: () => i18n.value.commands.saveAs.title,
+    ...(focused ? { default: true } : {}),
+})
+
+const describe = (disk: DiskVersion) => {
+    const { conflict } = i18n.value
+    switch (disk.kind) {
+        case 'saved': {
+            const notes = interpolate(() => i18n.value.peek.notes, String(disk.notes))()
+            const when = formatTime(disk.savedAt)
+            return disk.device.label.startsWith('Web')
+                ? interpolate(
+                      () => conflict.savedWeb,
+                      disk.device.label.replace(/^Web \((.*)\)$/, '$1'),
+                      when,
+                      notes,
+                  )()
+                : interpolate(() => conflict.savedOn, disk.device.label, when, notes)()
+        }
+        case 'otherProject':
+            return interpolate(() => conflict.otherProject, disk.name)()
+        case 'unknown':
+            return ''
+    }
+}
+
+const withoutKey = (feedback: SavedFeedback) => {
+    const { save } = i18n.value
+    const [only, ...more] = feedback.without
+    if (!only) return
+    const large = feedback.without.every((kind) => feedback.tooLarge.includes(kind))
+    if (more.length) return large ? save.savedWithoutMediaLarge : save.savedWithoutMedia
+    if (large)
+        return only === 'bgm'
+            ? save.savedWithoutBgmLarge
+            : only === 'cover'
+              ? save.savedWithoutCoverLarge
+              : save.savedWithoutPreviewLarge
+    return only === 'bgm'
+        ? save.savedWithoutBgm
+        : only === 'cover'
+          ? save.savedWithoutCover
+          : save.savedWithoutPreview
+}
+
+/** The feedback's text: the first line, then "Some earlier steps were not kept." where it applies. */
+export const savedText = (feedback: SavedFeedback) => {
+    const { save } = i18n.value
+    if (feedback.kind === 'download') {
+        const first = interpolate(
+            () => save.downloadStarted,
+            feedback.name,
+            () => formatSize(feedback.size),
+        )()
+        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+    }
+    const without = withoutKey(feedback)
+    if (without) {
+        const first = interpolate(() => without, feedback.name)()
+        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+    }
+    if (feedback.tookOver) {
+        const first = interpolate(() => save.tookOver, feedback.name)()
+        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+    }
+    if (feedback.someStepsNotKept) return interpolate(() => save.someStepsNotKept, feedback.name)()
+    return interpolate(() => save.saved, feedback.name)()
+}
+
+/** The defaults: the editor's choice dialogs and notices. */
+export const defaultSaveUi: SaveUi = {
+    saveDialog: (input) =>
+        showModal(SaveDialog, { input }).then((result) => result as SaveDialogResult),
+    preparing: (name) => {
+        const controller = new AbortController()
+        const model: PreparingModel = reactive({ size: 0, closed: false })
+        let answer: ((go: boolean) => void) | undefined
+        void showModal(PreparingDialog, { name, model }).then((go) => {
+            if (answer) answer(go === true)
+            else if (!model.closed) controller.abort()
+            answer = undefined
+        })
+        return {
+            signal: controller.signal,
+            importing: (progress) => {
+                model.importing = progress
+            },
+            built: (size) => {
+                model.size = size
+            },
+            ready: (action, size) =>
+                new Promise<boolean>((resolve) => {
+                    answer = resolve
+                    model.size = size
+                    model.ready = action
+                }),
+            close: () => {
+                model.closed = true
+            },
+        }
+    },
+    conflict: (input) =>
+        showChoice<ConflictChoice>({
+            title: interpolate(() => i18n.value.conflict.title, input.name),
+            message: () =>
+                [
+                    interpolate(() => i18n.value.conflict.body, input.name)(),
+                    describe(input.disk),
+                    input.replaceDisabled?.() ?? '',
+                ]
+                    .filter(Boolean)
+                    .join('\n'),
+            choices: [
+                ...(input.replaceDisabled
+                    ? []
+                    : [
+                          {
+                              value: 'replace' as const,
+                              label: () => i18n.value.conflict.replace,
+                              description: () => i18n.value.conflict.replaceNote,
+                              danger: true,
+                          },
+                      ]),
+                {
+                    value: 'openOther',
+                    label: () => i18n.value.conflict.openOther,
+                    description: () => i18n.value.conflict.openOtherNote,
+                },
+                { value: 'separate', label: () => i18n.value.conflict.separate, default: true },
+            ],
+        }),
+    notFound: (name) =>
+        showChoice({
+            title,
+            message: interpolate(() => i18n.value.save.notFound, name),
+            choices: [saveAsChoice(true)],
+        }),
+    denied: (name) =>
+        showChoice<'saveAs' | 'tryAgain'>({
+            title,
+            message: interpolate(() => i18n.value.save.denied, name),
+            choices: [
+                saveAsChoice(false),
+                { value: 'tryAgain', label: () => i18n.value.save.tryAgain, default: true },
+            ],
+        }),
+    readOnly: (name) =>
+        showChoice({
+            title,
+            message: interpolate(() => i18n.value.save.readOnly, name),
+            choices: [saveAsChoice(true)],
+        }),
+    failed: async (_name, message, saveAs) => {
+        if (saveAs) return showChoice({ title, message, choices: [saveAsChoice(true)] })
+        await showChoice({
+            title,
+            message,
+            choices: [],
+            cancelIsDefault: true,
+            cancelLabel: () => i18n.value.modals.info.ok,
+        })
+        return undefined
+    },
+    refused: (name, reason) => {
+        const { save } = i18n.value
+        const message =
+            reason === 'notKept'
+                ? interpolate(() => i18n.value.save.notKept, name)
+                : reason === 'safeMode'
+                  ? () => i18n.value.save.notKeptSafe
+                  : reason === 'levelData'
+                    ? () =>
+                          `${interpolate(() => i18n.value.save.notProject, name)()}\n${save.exportHint}`
+                    : interpolate(() => i18n.value.save.notProject, name)
+        return showChoice<'chooseAnother' | 'export'>({
+            title,
+            message,
+            choices: [
+                ...(reason === 'levelData'
+                    ? [{ value: 'export' as const, label: () => i18n.value.save.openExport }]
+                    : []),
+                {
+                    value: 'chooseAnother',
+                    label: () => i18n.value.save.chooseAnother,
+                    default: true,
+                },
+            ],
+        })
+    },
+    notPutBack: (name, emptied) =>
+        showChoice({
+            title,
+            message: interpolate(
+                () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+                name,
+            ),
+            choices: [
+                {
+                    value: 'download' as const,
+                    label: () => i18n.value.save.download,
+                    default: true,
+                },
+            ],
+        }),
+    saved: (feedback) => {
+        notify(() => savedText(feedback))
+    },
+    noChanges: (name, event, downloadAgain) => {
+        const key =
+            event === 'saved'
+                ? () => i18n.value.save.noChangesSaved
+                : event === 'opened'
+                  ? () => i18n.value.save.noChangesOpened
+                  : () => i18n.value.save.noChanges
+        notify(
+            interpolate(key, name),
+            downloadAgain
+                ? { action: { label: () => i18n.value.save.downloadAgain, run: downloadAgain } }
+                : undefined,
+        )
+    },
+    error: (message) => {
+        notify(message, { card: true })
+    },
+}
+
+/** The Save flows' UI: the defaults until the Save UI package's bodies replace them. */
+export let saveUi: SaveUi = defaultSaveUi
+
+/** Tests swap the UI; undefined restores the defaults. */
+export const setSaveUiForTests = (ui: Partial<SaveUi> | undefined) => {
+    saveUi = ui ? { ...defaultSaveUi, ...ui } : defaultSaveUi
+}
+
+/** "Made by a newer version of Next SEKAI Editor.", Replace's reason line over a newer file. */
+export const replaceNewerLine = () =>
+    interpolate(() => i18n.value.conflict.replaceNewer, PRODUCT_NAME)()
