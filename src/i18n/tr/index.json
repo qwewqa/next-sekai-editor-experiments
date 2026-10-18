@@ -1218,6 +1218,9 @@
     "changed": "Oynatma hızı {0}× olarak değiştirildi"
   },
   "history": {
+    "edits": "{0} düzenleme",
+    "undidSteps": "{0} adım geri alındı",
+    "redidSteps": "{0} adım yinelendi",
     "initialize": "Başlat",
     "dynamicStages": {
       "title": "Dinamik Sahneler",
@@ -1244,7 +1247,6 @@
     "removedForSpace": "yer açmak için kaldırıldı",
     "damaged": "hasarlı",
     "continuedFrom": "{0} tarihinden devam",
-    "foldHint": "Listeyi katlamak için Geçmiş’e dokunun",
     "announceViewing": "{0} görüntüleniyor",
     "filterHere": "Buradaki Düzenlemeler",
     "noEditsHere": "Burada düzenleme yok",
@@ -1835,6 +1837,11 @@
     "unsupportedParts": "\"{0}\", editörün bu sürümünün desteklemediği kısımlar içeriyor."
   },
   "peek": {
+    "settingsChanged": "Ayarlar değiştirildi",
+    "initialState": "İlk durum",
+    "unavailable": "Değişiklikler kullanılamıyor",
+    "loadingChanges": "Değişiklikler yükleniyor…",
+    "addedRemoved": "{0} eklendi · {1} kaldırıldı",
     "exportsCurrent": "Güncel sürümü dışa aktarır.",
     "overlay": "Geçmiş görüntüleniyor · salt okunur",
     "viewing": "{0} görüntüleniyor · {1} · salt okunur",

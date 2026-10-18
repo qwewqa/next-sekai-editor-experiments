@@ -1218,6 +1218,9 @@
     "changed": "再生速度を{0}倍に変更しました"
   },
   "history": {
+    "edits": "{0} 回の編集",
+    "undidSteps": "{0} ステップを元に戻しました",
+    "redidSteps": "{0} ステップをやり直しました",
     "initialize": "初期化",
     "dynamicStages": {
       "title": "動的ステージ",
@@ -1244,7 +1247,6 @@
     "removedForSpace": "容量節約のため削除",
     "damaged": "破損",
     "continuedFrom": "{0}から続行",
-    "foldHint": "履歴をタップすると一覧を折りたためます",
     "announceViewing": "{0} を表示中",
     "filterHere": "ここの変更",
     "noEditsHere": "ここの変更はありません",
@@ -1835,6 +1837,11 @@
     "unsupportedParts": "「{0}」には、このバージョンのエディターが対応していない部分があります。"
   },
   "peek": {
+    "settingsChanged": "設定を変更",
+    "initialState": "初期状態",
+    "unavailable": "変更を取得できません",
+    "loadingChanges": "変更を読み込み中…",
+    "addedRemoved": "追加 {0} · 削除 {1}",
     "exportsCurrent": "現在のバージョンを出力します。",
     "overlay": "履歴を表示中 · 読み取り専用",
     "viewing": "{0} を表示中 · {1} · 読み取り専用",

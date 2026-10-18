@@ -13,7 +13,7 @@ import {
 import { closeModal, modals } from '../modals'
 import { modalTitleKey } from '../modals/title'
 import { toolName } from './tools/state'
-import { sheetBox, type ToolModalPane } from './toolModals'
+import { peekClearance, sheetBox, type ToolModalPane } from './toolModals'
 import { view } from './view'
 
 const props = defineProps<{ pane: ToolModalPane }>()
@@ -29,7 +29,7 @@ const frame = computed(() =>
     !sheet.value
         ? 'inset-x-0 bottom-2 mx-auto max-h-[70%] w-[calc(100%-1rem)] max-w-md'
         : sheetSide.value === 'right'
-          ? 'bottom-2 right-2 top-[3.75rem] w-[min(22rem,62%)]'
+          ? 'bottom-2 right-2 w-[min(22rem,62%)]'
           : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-[40rem]',
 )
 const label = ref('')
@@ -136,6 +136,11 @@ onUnmounted(() => {
     <div
         v-if="current"
         ref="panel"
+        :style="
+            sheet && sheetSide === 'right'
+                ? { top: `${Math.max(60, peekClearance + 4)}px` }
+                : undefined
+        "
         role="dialog"
         :aria-label="label"
         tabindex="-1"

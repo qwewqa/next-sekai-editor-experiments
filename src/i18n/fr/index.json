@@ -1218,6 +1218,9 @@
     "changed": "Vitesse de lecture modifiée à {0}×"
   },
   "history": {
+    "edits": "{0} modifications",
+    "undidSteps": "{0} étapes annulées",
+    "redidSteps": "{0} étapes rétablies",
     "initialize": "Initialiser",
     "dynamicStages": {
       "title": "Scènes dynamiques",
@@ -1244,7 +1247,6 @@
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
     "continuedFrom": "Reprise du {0}",
-    "foldHint": "Appuyez sur Historique pour replier la liste",
     "announceViewing": "Affichage de {0}",
     "filterHere": "Modifications ici",
     "noEditsHere": "Aucune modification ici",
@@ -1835,6 +1837,11 @@
     "unsupportedParts": "\"{0}\" contient des parties que cette version de l’éditeur ne prend pas en charge."
   },
   "peek": {
+    "settingsChanged": "Paramètres modifiés",
+    "initialState": "État initial",
+    "unavailable": "Modifications indisponibles",
+    "loadingChanges": "Chargement des modifications…",
+    "addedRemoved": "{0} ajouts · {1} suppressions",
     "exportsCurrent": "Exporte la version actuelle.",
     "overlay": "Consultation de l’historique · lecture seule",
     "viewing": "Affichage de {0} · {1} · lecture seule",

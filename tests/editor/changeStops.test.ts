@@ -53,3 +53,18 @@ test('with every change in view, nothing moves', () => {
     assert.equal(nearestStop(stops, { top: 10, bottom: 0 }), undefined)
     assert.equal(nextStop([], { top: 10, bottom: 0 }), undefined)
 })
+
+test('old and new footprints count once per object in each direction', () => {
+    assert.deepEqual(
+        countOff(
+            [
+                { id: 0, time: 20, left: 0, right: 1 },
+                { id: 0, time: 21, left: 0, right: 1 },
+                { id: 1, time: 22, left: 0, right: 1 },
+                { id: 0, time: -1, left: 0, right: 1 },
+            ],
+            { bottom: 0, top: 10 },
+        ),
+        { above: 2, below: 1 },
+    )
+})

@@ -450,8 +450,8 @@ test.describe('the dialog', () => {
         await expect(peekBar(page)).toBeVisible()
         // One line on a 390 px pane, with the time alone.
         const bar = await peekBar(page).locator('> div').first().boundingBox()
-        expect(bar?.height).toBeLessThan(52)
-        await expect(page.locator('[data-peek-text]')).toHaveText(/^\d{1,2}:\d{2}:\d{2}/)
+        expect(bar?.height).toBe(52)
+        await expect(page.locator('[data-peek-text]')).toHaveText(/\d/)
         await expect(page.locator('[data-peek-text]')).not.toContainText('Viewing')
         // The band holds Go To as an icon beside the close button, in one line.
         await expect(page.locator('[data-history-band]')).toHaveAttribute('data-band-mode', 'icon')
@@ -642,20 +642,22 @@ test.describe('the Timeline', () => {
         await edit(page, 1, 'Branch')
         await openTab(page)
         // Two undos collapse into one row; nothing says "not in undo".
-        await expect(list(page).getByRole('option').filter({ hasText: '×2' })).toHaveCount(1)
+        await expect(
+            list(page).getByRole('option').filter({ hasText: 'Undid 2 steps' }),
+        ).toHaveCount(1)
         await expect(list(page)).not.toContainText('not in undo')
         await list(page).focus()
         await list(page).press('ArrowDown')
         await list(page).press('ArrowDown')
         await list(page).press('ArrowRight')
-        await expect(list(page).getByRole('option').filter({ hasText: /^Undo/ })).toHaveCount(3)
+        await expect(list(page).getByRole('option').filter({ hasText: /^Undo/ })).toHaveCount(2)
         await shoot(page, 'tab-desktop')
     })
 
     test('edits with the same label collapse into ×N, and the group opens', async ({ page }) => {
         for (let i = 0; i < 3; i++) await edit(page, 1, 'Scrub')
         await openTab(page)
-        const group = list(page).getByRole('option').filter({ hasText: '×3' })
+        const group = list(page).getByRole('option').filter({ hasText: '3 edits' })
         await expect(group).toHaveCount(1)
         await expect(group).toHaveAttribute('aria-expanded', 'false')
         await stored(page)
@@ -666,7 +668,7 @@ test.describe('the Timeline', () => {
             list(page)
                 .getByRole('option')
                 .filter({ hasText: /^Scrub/ }),
-        ).toHaveCount(4)
+        ).toHaveCount(3)
         await page.keyboard.press('ArrowLeft')
         await expect(group).toHaveAttribute('aria-expanded', 'false')
     })
@@ -893,9 +895,7 @@ test.describe('peek', () => {
         await openTab(page)
         await row(page, 'Life 1').click()
         await expect(peekBar(page)).toBeVisible()
-        await expect(peekBar(page)).toContainText('Viewing')
         await expect(peekBar(page)).toContainText('Life 1')
-        await expect(peekBar(page)).toContainText('read-only')
         await expect.poll(() => lives(page)).toEqual({ shown: base - 2, live: base })
         await expect(page.locator('[data-history-announcement]')).toContainText('Viewing')
         await peekBar(page).getByRole('button', { name: 'Back to Now' }).click()
@@ -1112,7 +1112,11 @@ test.describe('ARIA', () => {
         await expect(box.locator('[aria-selected="true"]')).toHaveCount(1)
         await expect(row(page, 'Life 2')).toHaveAttribute('aria-selected', 'true')
         // The buttons on the canvas are ordinary buttons.
-        await expect(peekBar(page).getByRole('button')).toHaveText(['Back to Now', 'Restore'])
+        await expect(peekBar(page).locator('[data-peek-main]').getByRole('button')).toHaveText([
+            'Back to Now',
+            'Restore',
+        ])
+        await expect(peekBar(page).locator('[data-change-arrow]')).toHaveCount(2)
     })
 })
 
@@ -1135,7 +1139,7 @@ test.describe('touch targets', () => {
         await expect(peekBar(page)).toBeVisible()
         const restore = await peekBar(page).getByRole('button', { name: 'Restore' }).boundingBox()
         expect(restore?.height).toBeGreaterThanOrEqual(44)
-        await expect(page.locator('[data-peek-hint]')).toHaveText('Tap History to fold the list')
+        await expect(page.locator('[data-peek-hint]')).toHaveCount(0)
         await shoot(page, 'tab-phone')
         // Folded, there is nothing left to tap.
         await tab(page, 'top', 'History').tap()

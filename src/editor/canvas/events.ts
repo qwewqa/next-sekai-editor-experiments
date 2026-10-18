@@ -34,7 +34,7 @@ const connectionPaths = new WeakMap<
     }
 >()
 
-const jointXs = (entity: EventJointEntity): number[] => {
+export const jointXs = (entity: EventJointEntity): number[] => {
     switch (entity.type) {
         case 'cameraEventJoint':
             return [entity.cameraLeft, entity.cameraLeft + entity.cameraSize]

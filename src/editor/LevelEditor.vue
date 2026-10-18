@@ -16,7 +16,6 @@ import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
 import './peek'
 import LevelEditorNotification from './LevelEditorNotification.vue'
-import ChangeArrows from './history/ChangeArrows.vue'
 import PeekBar from './history/PeekBar.vue'
 import FileChip from './file/FileChip.vue'
 import StatusLabel from './StatusLabel.vue'
@@ -246,7 +245,6 @@ const stageCount = computed(() =>
                     <LevelEditorCanvas />
                 </template>
                 <PeekBar />
-                <ChangeArrows />
                 <LevelEditorNotification pane="main" />
                 <LevelEditorToolbar v-if="!hasToolModal('main')" pane="main" />
                 <EditorToolModalHost pane="main" />
@@ -283,7 +281,7 @@ const stageCount = computed(() =>
         <div
             class="z-10 flex gap-4 bg-preview px-2 py-1 text-xs text-white/80 [@media(pointer:coarse)]:py-2"
         >
-            <span class="min-w-6 shrink-[1000] flex-grow truncate">{{ tool.title() }}</span>
+            <span class="min-w-12 shrink-[1000] flex-grow truncate">{{ tool.title() }}</span>
             <StatusLabel />
             <FileChip />
             <!-- The scope chips open their managers. Long names truncate while the

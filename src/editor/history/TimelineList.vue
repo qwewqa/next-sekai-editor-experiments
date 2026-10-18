@@ -24,9 +24,9 @@ import { interpolateRaw } from '../../utils/interpolate'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
-import { isCoarsePointer } from '../workspace'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
+import ChevronIcon from '../workspace/ChevronIcon.vue'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
@@ -107,6 +107,9 @@ const built = computed(() =>
         damaged: damagedEntries.value,
         now: clock.value,
         gap: gap.value,
+        more: canLoadMore.value,
+        pinned:
+            (peekedInfo.value?.members?.length ?? 0) > 1 ? peekedInfo.value?.members : undefined,
     }),
 )
 
@@ -125,7 +128,7 @@ const isEmpty = computed(
 const rows = computed(() => (isEmpty.value ? built.value.slice(0, 1) : built.value))
 
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring.
-const rowHeight = computed(() => (isCoarsePointer.value ? 44 : 36))
+const rowHeight = computed(() => 44)
 const HEADER = 28
 const DIVIDER = 32
 // The list's padding: 4 px above the first row, 8 px below the last.
@@ -243,6 +246,11 @@ const rowById = (id: string) => rows.value.find((row) => row.id === id)
 // The peeked entry's row, or its group's while the group is closed.
 const rowOf = (key: string | undefined) => {
     if (!key) return rows.value[0]
+    const selected = peekedInfo.value
+    if (selected?.key === key && selected.rowId) {
+        const scoped = rows.value.find((row) => row.id === selected.rowId)
+        if (scoped) return scoped
+    }
     const plain = rows.value.find(
         (row) => row.type === 'entry' && row.child && keyOf(row.entry) === key,
     )
@@ -271,6 +279,8 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
         key: keyOf(entry),
         time: entry.time,
         label: entry.label,
+        oldest: keyOf(oldest),
+        initial: oldest.kind === 'init' && !previous,
         ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
         ...(previous
             ? {
@@ -284,8 +294,12 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
 }
 
 /** A row's peek: a closed ×N row stands for its run, so it is compared with the entry before it. */
-const rowInfo = (row: EntryRow) =>
-    infoOf(row.entry, row.child ? row.entry : (row.members.at(-1) ?? row.entry))
+const rowInfo = (row: EntryRow): PeekedInfo => ({
+    ...infoOf(row.entry, row.child ? row.entry : (row.members.at(-1) ?? row.entry)),
+    label: labelOf(row),
+    rowId: row.id,
+    members: row.members.map(keyOf),
+})
 
 const moveTo = (row: Row | undefined) => {
     if (!row) return
@@ -455,6 +469,7 @@ const toggleGroup = (row: EntryRow, open: boolean) => {
     if (open) next.add(row.id)
     else next.delete(row.id)
     expandedGroups.value = next
+    if (!open && cursorId.value.startsWith(`${row.id}/`)) moveTo(row)
 }
 
 // --- Restore
@@ -480,8 +495,8 @@ const menuItems = computed(() => [
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {
     const info = rowInfo(row)
-    if (peekedInfo.value?.key !== info.key) moveTo(row)
-    showChangeOf(info.key)
+    if (peekedInfo.value?.rowId !== info.rowId) moveTo(row)
+    if (peekedInfo.value) showChangeOf(peekedInfo.value)
 }
 const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
@@ -556,6 +571,7 @@ const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
+    if (event.target instanceof Element && event.target.closest('[data-history-disclosure]')) return
     const row = rowById(cursorId.value)
     const handled = () => {
         event.preventDefault()
@@ -642,6 +658,7 @@ const onKeydown = (event: KeyboardEvent) => {
 
 // --- Loading older entries as the list scrolls.
 const onScroll = () => {
+    cancelLongPress()
     const element = list.value
     if (!element) return
     scrollTop.value = element.scrollTop
@@ -696,6 +713,17 @@ const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}
 const labelOf = (row: EntryRow) => {
     const { kind, label } = row.entry
     const strings = i18n.value
+    if (row.members.length > 1 && !row.child) {
+        const count = `${row.members.length}${row.partial ? '+' : ''}`
+        return interpolateRaw(
+            kind === 'undo'
+                ? strings.history.undidSteps
+                : kind === 'redo'
+                  ? strings.history.redidSteps
+                  : strings.history.edits,
+            count,
+        )
+    }
     if (kind === 'undo') return `${strings.commands.undo.title} · ${label}`
     if (kind === 'redo') return `${strings.commands.redo.title} · ${label}`
     return label
@@ -728,16 +756,7 @@ const titleOf = (row: EntryRow) =>
     [labelOf(row), flagTextOf(row), whenOf(row)].filter(Boolean).join(' · ')
 
 const nameOf = (row: EntryRow) =>
-    [
-        row.members.length > 1 && !row.child
-            ? `${labelOf(row)} ×${row.members.length}`
-            : labelOf(row),
-        flagTextOf(row),
-        deltaOf(row),
-        whenOf(row),
-    ]
-        .filter(Boolean)
-        .join(', ')
+    [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
 
 const nowTime = computed(() => entries.value[0]?.time ?? session.value.startedAt ?? Date.now())
 
@@ -913,32 +932,38 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                         @pointercancel="cancelLongPress"
                     >
                         <KindIcon :kind="row.entry.kind" />
-                        <span class="min-w-0 flex-1 truncate">{{ labelOf(row) }}</span>
-                        <span
+                        <span v-if="row.selectable || !narrow" class="min-w-0 flex-1 truncate">{{
+                            labelOf(row)
+                        }}</span>
+                        <button
                             v-if="row.members.length > 1 && !row.child"
-                            class="timeline-count shrink-0"
-                            aria-hidden="true"
-                            >×{{ row.members.length }}</span
+                            type="button"
+                            class="flex size-11 shrink-0 items-center justify-center rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
+                            :aria-label="labelOf(row)"
+                            :aria-expanded="expandedGroups.has(row.id)"
+                            data-history-disclosure
+                            @pointerdown.stop="cancelLongPress"
+                            @contextmenu.stop.prevent
+                            @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
                         >
+                            <ChevronIcon
+                                :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
+                            />
+                        </button>
                         <!-- A removed or damaged row says why; the label gives way to it. -->
-                        <span
-                            v-if="flagTextOf(row)"
-                            class="timeline-flag shrink-0"
-                            :class="narrow ? '' : 'max-w-[55%]'"
-                            data-history-flag
-                        >
+                        <span v-if="flagTextOf(row)" class="timeline-flag flex-1" data-history-flag>
                             <FlagIcon :kind="flagKindOf(row)" />
-                            <span :class="narrow ? 'sr-only' : 'truncate'">{{
-                                flagTextOf(row)
-                            }}</span>
+                            <span class="leading-tight">{{ flagTextOf(row) }}</span>
                         </span>
                         <span
-                            v-if="deltaOf(row)"
+                            v-if="row.selectable && deltaOf(row)"
                             class="timeline-count shrink-0"
                             :class="{ hidden: narrow }"
                             >{{ deltaOf(row) }}</span
                         >
-                        <span class="timeline-time shrink-0">{{ timeOf(row) }}</span>
+                        <span v-if="row.selectable || !narrow" class="timeline-time shrink-0">{{
+                            timeOf(row)
+                        }}</span>
                     </div>
                 </template>
 
@@ -1100,6 +1125,18 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
 }
 
 .timeline-list:focus-visible .timeline-row-selected {
-    @apply ring-2 ring-inset ring-fg;
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+    .timeline-row-selected {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+    .timeline-row-disabled {
+        color: GrayText;
+        opacity: 1;
+    }
 }
 </style>

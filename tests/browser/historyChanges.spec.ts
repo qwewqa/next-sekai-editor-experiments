@@ -244,10 +244,10 @@ test('the bar counts the change; the arrows bring changes off screen into view',
     await expect(peekLine(page)).toHaveText('2 changes')
     await expect(arrow(page, 'up')).toHaveAttribute('data-count', '2')
     await expect(arrow(page, 'up')).toHaveAccessibleName('Changes Above: 2')
-    await expect(arrow(page, 'down')).toHaveCount(0)
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
     await arrow(page, 'up').click()
     await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
-    await expect(arrow(page, 'up')).toHaveCount(0)
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
 })
 
 test('Show Change steps through the changes in chart order and wraps', async ({ page }) => {
@@ -282,7 +282,18 @@ test('the row menu’s Show Change peeks the row and brings its change into view
     await row(page, 'Added 1 note').click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Show Change' }).click()
     await expect(peekLine(page)).toHaveText('1 change')
-    await expect.poll(async () => Math.round(await centreBeat(page))).toBe(60)
+    await expect
+        .poll(async () => {
+            const module = await page.evaluate(async () =>
+                (
+                    await window.editorTest.appImport<
+                        typeof import('../../src/editor/history/changes')
+                    >('/src/editor/history/changes.ts')
+                ).bandTimes(),
+            )
+            return Math.round(module.top + module.bottom)
+        })
+        .toBe(60)
 })
 
 test('a header-only change dims nothing; an entry that changed nothing says so', async ({
@@ -297,8 +308,7 @@ test('a header-only change dims nothing; an entry that changed nothing says so',
     expect((await changes(page)).dimmed).toBe(false)
     // On a wide pane the label is on the bar's first line already.
     await row(page, 'Set Initial Life to 1,001').click()
-    await expect(page.locator('[data-peek-text]')).toContainText('Set Initial Life to 1,001')
-    await expect(peekLine(page)).toHaveCount(0)
+    await expect(peekLine(page)).toHaveText('Set Initial Life to 1,001')
     expect((await changes(page)).dimmed).toBe(false)
     // A narrow one shows the time alone, and the label under it.
     await page.setViewportSize({ width: 390, height: 844 })
@@ -342,11 +352,11 @@ test('past 150 objects the bar counts by kind; most of the chart is told in word
     await expect(arrow(page, 'up')).toHaveAccessibleName('Changes Above')
     await expect(arrow(page, 'up')).not.toHaveAttribute('data-count')
     await row(page, 'Set Critical').click()
-    await expect(peekLine(page)).toHaveText('Changed 544 of 604 notes')
+    await expect(peekLine(page)).toHaveText('Added 544 · Removed 544')
     const state = await changes(page)
-    expect(state).toMatchObject({ layout: 'most', dimmed: false })
-    expect(state.rings).toBeUndefined()
-    await expect(arrow(page, 'up')).toHaveCount(0)
+    expect(state).toMatchObject({ layout: 'most', dimmed: true, rings: 544, ghosts: 544 })
+    expect(state.rings).toBe(544)
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'false')
 })
 
 test('an entry whose previous state cannot be read shows its label alone, with no notice', async ({
@@ -381,7 +391,7 @@ test('an entry whose previous state cannot be read shows its label alone, with n
     })
     await expect(page.locator('[data-peek-text]')).toBeVisible()
     await page.waitForTimeout(500)
-    await expect(peekLine(page)).toHaveCount(0)
+    await expect(peekLine(page)).toHaveText('Changes unavailable')
     await expect(page.locator('.notification')).toHaveCount(0)
     expect((await changes(page)).dimmed).toBe(false)
 })
@@ -481,11 +491,11 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
         requestAnimationFrame(check)
     })
     await list(page).press('ArrowDown')
-    await expect(page.locator('[data-peek-text]')).toContainText('Faster')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Faster')
     // The tempo differs: the beat in the middle stays.
     expect(Math.abs((await centreBeat(page)) - beat)).toBeLessThan(1e-6)
     await list(page).press('ArrowDown')
-    await expect(page.locator('[data-peek-text]')).toContainText('Moved A')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
     await expect(peekLine(page)).toHaveText('1 change')
     expect(Math.abs((await centreBeat(page)) - beat)).toBeLessThan(1e-6)
     expect(await page.evaluate(() => (window as unknown as { dimLifted: boolean }).dimLifted)).toBe(
@@ -505,7 +515,7 @@ test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => 
     expect(await changes(page)).toMatchObject({ rings: 1, dimmed: false })
 })
 
-test('a notice card stays above the down arrow', async ({ page }) => {
+test('a notice card stays clear of the adjacent spatial controls', async ({ page }) => {
     await edit(page, 'Added 2 notes', { kind: 'add', beats: [2, 3] })
     await stored(page)
     await viewAt(page, 60)
@@ -525,6 +535,141 @@ test('a notice card stays above the down arrow', async ({ page }) => {
             card.boundingBox(),
             arrow(page, 'down').boundingBox(),
         ])
-        expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(arrowBox!.y)
+        expect(cardBox!.y).toBeGreaterThanOrEqual(arrowBox!.y + arrowBox!.height)
     }).toPass()
+})
+
+test('group disclosure preserves scope and selecting its newest child changes the baseline', async ({
+    page,
+}) => {
+    for (const beat of [40, 50, 60])
+        await edit(page, 'Added 1 Note', { kind: 'add', beats: [beat] })
+    await stored(page)
+    await openTab(page)
+    const group = row(page, '3 edits')
+    await group.click()
+    await expect(peekLine(page)).toHaveText('3 changes')
+    await group.locator('[data-history-disclosure]').click()
+    await expect(group).toHaveAttribute('aria-selected', 'true')
+    await expect(peekLine(page)).toHaveText('3 changes')
+    const child = row(page, 'Added 1 Note').first()
+    await child.click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    await group.locator('[data-history-disclosure]').click()
+    await expect(group).toHaveAttribute('aria-selected', 'true')
+    await expect(peekLine(page)).toHaveText('3 changes')
+})
+
+test('a delayed group Show Change cannot scroll a child comparison with the same target', async ({
+    page,
+}) => {
+    for (const beat of [40, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    await stored(page)
+    await openTab(page)
+    await viewAt(page, 6)
+    await page.evaluate(async () => {
+        const { storageWorker } =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const gates: (() => void)[] = []
+        ;(window as unknown as { diffGates: (() => void)[] }).diffGates = gates
+        storageWorker!.call = new Proxy(storageWorker!.call, {
+            apply(target, self, args) {
+                if (args[0] !== 'readChanges') return Reflect.apply(target, self, args)
+                return new Promise((resolve, reject) => {
+                    gates.push(() => {
+                        Promise.resolve(Reflect.apply(target, self, args)).then(resolve, reject)
+                    })
+                })
+            },
+        })
+    })
+    const group = row(page, '2 edits')
+    await group.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Show Change' }).click()
+    await expect
+        .poll(() =>
+            page.evaluate(() => (window as unknown as { diffGates: unknown[] }).diffGates.length),
+        )
+        .toBe(1)
+    const bounds = await page.locator('[data-peek-main]').boundingBox()
+    const lower = await page.locator('[data-peek-navigation]').boundingBox()
+    await group.locator('[data-history-disclosure]').click()
+    await row(page, 'Add').first().click()
+    await expect
+        .poll(() =>
+            page.evaluate(() => (window as unknown as { diffGates: unknown[] }).diffGates.length),
+        )
+        .toBe(2)
+    await page.evaluate(() => (window as unknown as { diffGates: (() => void)[] }).diffGates[1]!())
+    await expect(peekLine(page)).toHaveText('1 change')
+    await page.evaluate(() => (window as unknown as { diffGates: (() => void)[] }).diffGates[0]!())
+    await page.waitForTimeout(300)
+    await expect(peekLine(page)).toHaveText('1 change')
+    expect((await changes(page)).time).toBe(3)
+    expect(await page.locator('[data-peek-main]').boundingBox()).toEqual(bounds)
+    expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(lower)
+})
+
+test('a group at a page boundary reads the predecessor of its oldest member', async ({ page }) => {
+    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    await stored(page)
+    await openTab(page)
+    await row(page, '3 edits').click()
+    await expect(peekLine(page)).toHaveText('3 changes')
+    await page.evaluate(async () => {
+        const { requestPeek, peekedInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        const { previous: _previous, ...info } = peekedInfo.value!
+        requestPeek(info)
+    })
+    await expect(peekLine(page)).toHaveText('3 changes')
+})
+
+test('an arrow keeps focus after its last target enters the visible band, and a covered chart cannot navigate', async ({
+    page,
+}) => {
+    await edit(page, 'Add far', { kind: 'add', beats: [40] })
+    await stored(page)
+    await openTab(page)
+    await row(page, 'Add far').click()
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'false')
+    await arrow(page, 'up').focus()
+    await page.keyboard.press('Enter')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'up')).toBeFocused()
+    const time = (await changes(page)).time
+    await page.keyboard.press('Space')
+    expect((await changes(page)).time).toBe(time)
+    await page.evaluate(async () => {
+        const { changeBand } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/changes')
+        >('/src/editor/history/changes.ts')
+        changeBand.value = { top: window.editorTest.view.h, bottom: 1 }
+    })
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+})
+
+test('net-zero runs retain their real steps and show an equal comparison', async ({ page }) => {
+    await edit(page, 'Adjust', { kind: 'life' })
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.pushState(() => 'Adjust', {
+            ...history.state.value,
+            initialLife: history.state.value.initialLife - 1,
+        })
+    })
+    await stored(page)
+    await openTab(page)
+    const group = row(page, '2 edits')
+    await group.click()
+    await expect(peekLine(page)).toHaveText('No changes')
+    expect((await changes(page)).dimmed).toBe(false)
+    await group.locator('[data-history-disclosure]').click()
+    await expect(row(page, 'Adjust')).toHaveCount(2)
+    await row(page, 'Adjust').first().click()
+    await expect(peekLine(page)).toHaveText('Adjust')
 })

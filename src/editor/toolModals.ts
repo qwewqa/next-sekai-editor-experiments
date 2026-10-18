@@ -11,6 +11,7 @@ export const hasToolModal = (pane: ToolModalPane) =>
 
 /** Where the History sheet sits in its pane and how much of the pane it takes, for the notices. */
 export const sheetBox = shallowRef<{ side: 'bottom' | 'right'; size: number }>()
+export const peekClearance = shallowRef(0)
 
 /**
  * Shows a tool dialog. A sheet leaves the tool as it is and sits in the main pane: History's,

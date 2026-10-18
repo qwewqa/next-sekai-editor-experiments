@@ -1218,6 +1218,9 @@
     "changed": "{0}배속으로 변경됨"
   },
   "history": {
+    "edits": "편집 {0}회",
+    "undidSteps": "{0}단계 실행 취소",
+    "redidSteps": "{0}단계 다시 실행",
     "initialize": "초기화",
     "dynamicStages": {
       "title": "동적 스테이지",
@@ -1244,7 +1247,6 @@
     "removedForSpace": "공간 확보를 위해 제거됨",
     "damaged": "손상됨",
     "continuedFrom": "{0}에서 이어서",
-    "foldHint": "기록을 탭하면 목록이 접힙니다",
     "announceViewing": "{0} 보는 중",
     "filterHere": "여기의 편집",
     "noEditsHere": "여기에 편집 없음",
@@ -1835,6 +1837,11 @@
     "unsupportedParts": "\"{0}\"에는 이 버전의 편집기가 지원하지 않는 부분이 있습니다."
   },
   "peek": {
+    "settingsChanged": "설정 변경",
+    "initialState": "초기 상태",
+    "unavailable": "변경 사항을 불러올 수 없음",
+    "loadingChanges": "변경 사항 불러오는 중…",
+    "addedRemoved": "추가 {0} · 삭제 {1}",
     "exportsCurrent": "현재 버전을 내보냅니다.",
     "overlay": "기록 보는 중 · 읽기 전용",
     "viewing": "{0} 보는 중 · {1} · 읽기 전용",
