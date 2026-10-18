@@ -559,13 +559,13 @@ test('composed old and new change destinations stay identical while Show Edits i
         chart.timeScales = []
         chart.stagePivotEvents = chart.stagePivotEvents.slice(0, 1).map((event) => ({ ...event, beat: 0, pivotLane: 4 }))
         chart.slides = [[{ ...template, beat: 2, left: -3, size: 3 }],
-            [{ ...template, beat: 8, left: 1, size: 3 }, { ...template, beat: 10, left: 2, size: 3 }],
-            [{ ...template, beat: 12, left: -1, size: 3 }]]
+            [{ ...template, beat: 16, left: 1, size: 3 }, { ...template, beat: 18, left: 2, size: 3 }],
+            [{ ...template, beat: 24, left: -1, size: 3 }]]
         const after = structuredClone(chart)
         after.initialLife = chart.initialLife + 1
-        after.slides[0]![0]!.beat = 30
+        after.slides[0]![0]!.beat = 10
         after.slides[0]![0]!.left = 3
-        after.slides[1]![0]!.isCritical = true
+        after.slides[1]![0]!.isCritical = !chart.slides[1]![0]!.isCritical
         after.slides.splice(2, 1)
         after.slides.push([{ ...template, beat: 34, left: 1, size: 3 }])
         const fixture = window.historyInspectionTest
@@ -573,7 +573,7 @@ test('composed old and new change destinations stay identical while Show Edits i
         fixture.states.set(1, createState(after, 0))
         fixture.refresh()
         view.layout = 'composed'
-        view.time = 8
+        view.time = 3
         view.lane = 0
         settings.width = 16
         settings.pps = 400
@@ -590,9 +590,9 @@ test('composed old and new change destinations stay identical while Show Edits i
             movedFrom: marks.ghosts.filter((mark) => !mark.removed).length,
             connector: [...marks.changed].some((entity) => entity.type === 'connector'),
             oldBeat: marks.ghosts.find((mark) => !mark.removed)?.entity.beat,
-            newBeat: marks.rings.find((mark) => mark.entity.beat === 30)?.entity.beat }
+            newBeat: marks.rings.find((mark) => mark.entity.beat === 10)?.entity.beat }
     })
-    expect(markKinds).toMatchObject({ added: 1, removed: 1, movedFrom: 1, connector: true, oldBeat: 2, newBeat: 30 })
+    expect(markKinds).toMatchObject({ added: 1, removed: 1, movedFrom: 1, connector: true, oldBeat: 2, newBeat: 10 })
     expect(markKinds.changed).toBeGreaterThan(0)
     const read = () => page.evaluate(async () => {
         const changes = await window.editorTest.appImport<typeof import('../../src/editor/history/changes')>('/src/editor/history/changes.ts')
@@ -606,7 +606,7 @@ test('composed old and new change destinations stay identical while Show Edits i
             const { view } = window.editorTest
             view.scrollingY = undefined
             view.scrollingX = undefined
-            view.time = 8
+            view.time = 3
             view.lane = 0
         })
         await expect(page.locator(`[data-change-arrow="${direction}"]`)).toHaveAttribute('aria-disabled', 'false')
@@ -614,7 +614,7 @@ test('composed old and new change destinations stay identical while Show Edits i
         await page.locator(`[data-change-arrow="${direction}"]`).click()
         await expect.poll(async () => (await read()).scrolling).toBe(false)
         const after = await read()
-        expect(after.time).not.toBe(8)
+        expect(after.time).not.toBe(3)
         return { before: { off: before.off, line: before.line }, after: { time: after.time, lane: after.lane, off: after.off } }
     }
     const on = { old: await navigate('down'), next: await navigate('up') }
