@@ -61,6 +61,7 @@ test('the worker opens nse-local-data at version 1 with every v1 store', async (
             'chains',
             'chunks',
             'entries',
+            'handles',
             'media',
             'meta',
             'nodes',

@@ -227,7 +227,7 @@ const chainOf = async (page: Page, sessionId: string) => {
 const handleToken = async (page: Page, chainId: string, role: string) => {
     const { handles } = await rows(page, ['handles'])
     const row = handles!.find((each) => each.value.chainId === chainId && each.value.role === role)
-    return (row?.value.handle as { testHandle: string }).testHandle
+    return (row?.value.handle as { testHandle: string } | undefined)?.testHandle
 }
 
 /** How many stored handles the storage worker has read since it started. */
@@ -302,7 +302,7 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     const chain = await chainOf(page, session.sessionId)
-    const token = await handleToken(page, chain.chainId as string, 'file')
+    const token = (await handleToken(page, chain.chainId as string, 'file'))!
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     await page.addInitScript(
         ({ token, name }) => {
@@ -372,8 +372,10 @@ test('Export’s target keeps its handle across a reload, read when Export opens
     const session = await sessionOf(page)
     await expect
         .poll(async () => {
-            const chain = await chainOf(page, session.sessionId)
-            return handleToken(page, chain.chainId as string, 'exportTarget').catch(() => undefined)
+            // The session's first write stores its chain, then the target with it.
+            const { chains } = await rows(page, ['chains'])
+            const chain = chains!.find((row) => row.value.head === session.sessionId)?.value
+            return chain && handleToken(page, chain.chainId as string, 'exportTarget')
         })
         .toBe('LevelData')
     expect(((await chainOf(page, session.sessionId)).exportTarget as Row).handle).toBeUndefined()
