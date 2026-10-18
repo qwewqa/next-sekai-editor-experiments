@@ -7,7 +7,7 @@ import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
-import { dismissNotification, notification, notify, type NoticeAction } from './notification'
+import { dismissNoticeCard, noticeCard, notify, type NoticeAction } from './notification'
 import { shownName } from './shownName'
 
 // Leaving a session in this tab (New, Open, Reopen, Restore as a Copy, Leave Safe Mode): the
@@ -68,11 +68,7 @@ const reopenAction = (left: Left): NoticeAction => ({
         () => shownName(left.name),
     ),
     run: () => {
-        const shown = notification.value.id
-        void reopenPrevious().then((opened) => {
-            // The Reopen it came from has done its job.
-            if (opened && notification.value.id === shown) dismissNotification()
-        })
+        void reopenPrevious()
     },
 })
 
@@ -85,7 +81,10 @@ export const reopenPrevious = async () => {
     const { reopen } = await import('../local/startup/api')
     reopening = true
     try {
-        return await reopen()
+        const opened = await reopen()
+        // Cards belong to the session left.
+        if (opened) dismissNoticeCard()
+        return opened
     } finally {
         reopening = false
     }
@@ -95,7 +94,9 @@ export const reopenPrevious = async () => {
 export const restoreCopy = async (sessionId: string) => {
     if (!(await confirmSwitch())) return false
     const { restoreAsCopy } = await import('../local/startup/api')
-    return restoreAsCopy(sessionId)
+    const opened = await restoreAsCopy(sessionId)
+    if (opened) dismissNoticeCard()
+    return opened
 }
 
 /**
@@ -104,6 +105,8 @@ export const restoreCopy = async (sessionId: string) => {
  * notice is plain.
  */
 export const notifyLeft = (message: () => string, offer = true) => {
+    // The switch ends the session the cards were raised in (Part 1 §1.4.1).
+    dismissNoticeCard()
     const left = previousSession.value
     if (!left || !offer) {
         notify(message)
@@ -115,8 +118,10 @@ export const notifyLeft = (message: () => string, offer = true) => {
         (still) => {
             if (still) return
             stop()
-            // Nothing to reopen after all (Leave Anyway): a notice still showing turns plain.
-            if (!reopening && notification.value.id === shown) notify(message)
+            // Nothing to reopen after all (Leave Anyway): a card still showing turns plain.
+            if (reopening || noticeCard.value?.id !== shown) return
+            dismissNoticeCard()
+            notify(message)
         },
     )
 }

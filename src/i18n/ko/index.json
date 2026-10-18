@@ -752,7 +752,7 @@
         "properties": "기본 속성을 변경하려면 스테이지 변형 이벤트 도구를 다시 선택합니다."
       }
     },
-    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림의 버튼으로 포커스가 이동합니다."
+    "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림으로 포커스가 이동합니다. 이어서 Esc를 누르면 닫힙니다."
   },
   "elevation": {
     "edit": "높이 편집",

@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { closeModal, modals, type Modal } from '.'
+import NoticeCard from '../editor/NoticeCard.vue'
+import { cardInDialog, noticeCard, notification, quickInDialog } from '../editor/notification'
 import NoticeRegion from '../editor/NoticeRegion.vue'
+import QuickNotice from '../editor/QuickNotice.vue'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
+
+// A notice raised while a dialog is open shows over the top dialog (Part 1 §1.4.1).
+const overModal = computed(() => regularModals.value.at(-1))
 
 // Large dialogs fit the visual viewport, which an on-screen keyboard shrinks.
 const hasLarge = computed(() => regularModals.value.some((modal) => modal.size === 'large'))
@@ -81,7 +87,9 @@ const vOpen = {
         const title = el.querySelector('[data-modal-title]')
         if (title) el.setAttribute('aria-labelledby', title.id)
         // The body's primary action always takes focus, as a confirm button must.
-        const body = el.lastElementChild
+        const body = [...el.children]
+            .filter((child) => !child.hasAttribute('data-notice-layer'))
+            .pop()
         const primary = body?.querySelector<HTMLElement>('[data-autofocus]')
         const focusDialog = byPointer && !primary
         // Firefox hides a scripted focus ring after an earlier pointer open.
@@ -138,6 +146,26 @@ const vOpen = {
         <!-- The page behind a dialog is inert, so each dialog carries a region; only the top one is reachable. -->
         <NoticeRegion />
         <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
+        <div
+            v-if="
+                modal === overModal &&
+                ((quickInDialog && notification.message) || (cardInDialog && noticeCard))
+            "
+            data-notice-layer
+            class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 px-2 pb-4"
+        >
+            <QuickNotice
+                v-if="quickInDialog && notification.message"
+                :key="notification.id"
+                :notice="notification"
+            />
+            <NoticeCard
+                v-if="cardInDialog && noticeCard"
+                :key="noticeCard.id"
+                :notice="noticeCard"
+                over
+            />
+        </div>
     </dialog>
 </template>
 

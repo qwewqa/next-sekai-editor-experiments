@@ -752,7 +752,7 @@
         "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur le bouton de la dernière notification."
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite."
   },
   "elevation": {
     "edit": "Modifier les élévations",

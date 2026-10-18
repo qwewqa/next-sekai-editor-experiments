@@ -5,14 +5,17 @@ import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
 import { isTextEntry } from './controls/keyboard'
 import NoticeRegion from './NoticeRegion.vue'
-import { dismissNotification, notification } from './notification'
+import { cardInDialog, dismissCardForEdit, dismissNoticeCard, noticeCard } from './notification'
 
-// Where focus was before Alt+N moved it to the notice's button, for Escape to return it.
+// Where focus was before Alt+N moved it into the card, for Escape to return it.
 let returnTo: HTMLElement | undefined
 
-const actionButton = () => document.querySelector<HTMLElement>('[data-notice-action]')
+// The card's first action, or its close button when it has none.
+const cardButton = () =>
+    document.querySelector<HTMLElement>('[data-notice-card] [data-notice-action]') ??
+    document.querySelector<HTMLElement>('[data-notice-card] [data-notice-close]')
 
-// Alt+N (Option+N on macOS, by code) focuses the latest action notice while it is shown (Part 1 §1.4.1).
+// Alt+N (Option+N on macOS, by code) focuses the latest card while it is shown (Part 1 §1.4.1).
 // A text field and IME composition keep the key: Option+N is the dead key of "ñ".
 const onKeydown = (event: KeyboardEvent) => {
     if (event.code !== 'KeyN' || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
@@ -21,8 +24,9 @@ const onKeydown = (event: KeyboardEvent) => {
     const editing = (target: EventTarget | null) =>
         isTextEntry(target) || target instanceof HTMLSelectElement
     if (isComposingKey(event) || editing(event.target) || editing(document.activeElement)) return
-    if (isBlockingModalOpen.value || !notification.value.action) return
-    const button = actionButton()
+    // A blocking dialog makes the page inert: only a card shown over it can be reached.
+    if (!noticeCard.value || (isBlockingModalOpen.value && !cardInDialog.value)) return
+    const button = cardButton()
     if (!button) return
     if (document.activeElement !== button)
         returnTo =
@@ -32,22 +36,24 @@ const onKeydown = (event: KeyboardEvent) => {
     event.stopImmediatePropagation()
 }
 
-// Escape on the button gives focus back, and is not Deselect.
+// Escape in the card closes it and gives focus back, and is not Deselect.
 const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || !(event.target instanceof Element)) return
-    if (!event.target.closest('[data-notice-action]')) return
+    if (!event.target.closest('[data-notice-card]')) return
     event.preventDefault()
     event.stopImmediatePropagation()
+    dismissNoticeCard()
     const back = returnTo
     returnTo = undefined
     if (back?.isConnected) back.focus()
     else if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
 }
 
-// Focus that left the button another way is not owed back.
+// Focus that left the card another way is not owed back.
 const onFocusOut = (event: FocusEvent) => {
-    if (event.target instanceof Element && event.target.closest('[data-notice-action]'))
-        returnTo = undefined
+    if (!(event.target instanceof Element) || !event.target.closest('[data-notice-card]')) return
+    const into = event.relatedTarget
+    if (!(into instanceof Element && into.closest('[data-notice-card]'))) returnTo = undefined
 }
 
 onMounted(() => {
@@ -61,12 +67,11 @@ onBeforeUnmount(() => {
     window.removeEventListener('focusout', onFocusOut, true)
 })
 
-// The start-up pill with actions goes at the first edit (Part 1 §1.4.3): a stack a new visit
-// restored can already undo, so the action itself is what counts.
+// A card goes at the first edit after it (Part 1 §1.4.1, §1.4.3): a stack a new visit restored can
+// already undo, so the action itself is what counts. A switch of session dismisses it elsewhere.
 const stopWatching = onHistoryAction((action) => {
     if (action.kind === 'reset' || action.kind === 'save' || action.kind === 'export') return
-    if (notification.value.startup && (notification.value.action || notification.value.held))
-        dismissNotification()
+    dismissCardForEdit()
 })
 onBeforeUnmount(stopWatching)
 </script>

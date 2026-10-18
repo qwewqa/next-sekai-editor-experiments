@@ -6,7 +6,7 @@ let announced: object | undefined
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { announcementOf, notification, type Notice } from './notification'
+import { announcementOf, latestNotice, type Notice } from './notification'
 
 // A polite live region announces changes, not what it holds when it is added, and may miss a
 // change made as it is added. So a region starts empty and takes the current notice a moment
@@ -18,15 +18,15 @@ const props = defineProps<{ initial?: boolean }>()
 const SETTLE_MS = 100
 
 const text = ref('')
-const key = ref(notification.value.id)
+const key = ref(latestNotice.value.id)
 const puts = ref(0)
 let settling = true
 let latest: Notice | undefined
 let timer: ReturnType<typeof setTimeout> | undefined
 
 // A page region put back after a dialog closes holds a notice the dialog already announced.
-if (props.initial && announced === notification.value)
-    text.value = announcementOf(notification.value)
+if (props.initial && announced === latestNotice.value)
+    text.value = announcementOf(latestNotice.value)
 
 const put = (notice: Notice) => {
     latest = notice
@@ -38,7 +38,7 @@ const put = (notice: Notice) => {
 onMounted(() => {
     timer = setTimeout(() => {
         settling = false
-        if (notification.value !== announced) put(notification.value)
+        if (latestNotice.value !== announced) put(latestNotice.value)
     }, SETTLE_MS)
 })
 onBeforeUnmount(() => {
@@ -55,7 +55,7 @@ watch(
 )
 
 // The key makes a repeated message read again.
-watch(notification, (notice) => {
+watch(latestNotice, (notice) => {
     if (!settling) put(notice)
 })
 </script>

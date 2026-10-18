@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Notices with an action, the live region and Alt+N (Part 1 §1.4.1, §1.4.3).
+// Notice cards, quick feedback, the live region and Alt+N (Part 1 §1.4.1, §1.4.3).
 
 const boot = async (page: Page, before?: () => void) => {
     await page.addInitScript(installCanvasCounters)
@@ -74,7 +74,7 @@ test.describe('on a phone', () => {
     test('the action button is at least 44 px', async ({ page }) => {
         await boot(page)
         await notifyWithAction(page, 'Nothing to undo')
-        const button = pill(page).getByRole('button')
+        const button = pill(page).getByRole('button', { name: 'Open History' })
         await expect(button).toBeVisible()
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     })
@@ -202,7 +202,7 @@ test('Alt+N is ignored during IME composition', async ({ page }) => {
             )
     })
     await expect(page.locator('.chart-pane')).toBeFocused()
-    await expect(pill(page).getByRole('button')).not.toBeFocused()
+    await expect(pill(page).getByRole('button', { name: 'Open History' })).not.toBeFocused()
 })
 
 test('Option+N on macOS (a dead key, matched by code) focuses the action', async ({ page }) => {
@@ -221,7 +221,7 @@ test('Option+N on macOS (a dead key, matched by code) focuses the action', async
             }),
         )
     })
-    await expect(pill(page).getByRole('button')).toBeFocused()
+    await expect(pill(page).getByRole('button', { name: 'Open History' })).toBeFocused()
 })
 
 test('Help lists Alt+N', async ({ page }) => {
@@ -237,7 +237,9 @@ test('Help lists Alt+N', async ({ page }) => {
         void showModal(HelpModal, {})
     })
     await expect(
-        page.getByText('Alt+N (Option+N on macOS) moves focus to the latest notice’s button.'),
+        page.getByText(
+            'Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.',
+        ),
     ).toBeVisible()
 })
 
@@ -398,7 +400,8 @@ test('Escape on the button does not return focus to an element from an earlier A
     await button.focus()
     await page.keyboard.press('Escape')
     await expect(page.locator('.chart-pane')).not.toBeFocused()
-    await expect(button).not.toBeFocused()
+    // Escape closes the card as well.
+    await expect(pill(page)).toHaveCount(0)
 })
 
 test('Alt+N is ignored in a select and while a blocking dialog is open', async ({ page }) => {
@@ -415,6 +418,10 @@ test('Alt+N is ignored in a select and while a blocking dialog is open', async (
     await page.keyboard.press('Alt+KeyN')
     await expect(page.locator('#probe-select')).toBeFocused()
     await page.locator('#probe-select').blur()
+    // The key also ran New, whose notice comes late and must not land while the dialog is open.
+    await expect(
+        page.locator('.notification, [data-notice-card]').filter({ hasText: 'New level' }),
+    ).toHaveCount(1)
 
     await page.evaluate(async () => {
         const { showChoice } =
@@ -587,4 +594,435 @@ test('a dialog opened before the start-up line is put in announces it', async ({
     await expect(dialog.getByRole('status')).toHaveText('')
     await page.evaluate(() => (Reflect.get(window, 'releaseHeld') as () => void)())
     await expect(dialog.getByRole('status')).toHaveText(/Version 0.6.0/)
+})
+
+// Notice cards: dismissing, timing, the two slots and the dialog layer (Part 1 §1.4.1, §1.4.3).
+
+type Notification = typeof import('../../src/editor/notification')
+const notificationPath = '/src/editor/notification.ts'
+
+/** Shows a card with no action. */
+const notifyCard = (page: Page, message: string) =>
+    page.evaluate(
+        async ({ message, notificationPath }) => {
+            const { notify } = await window.editorTest.appImport<Notification>(notificationPath)
+            notify(() => message, { card: true })
+        },
+        { message, notificationPath },
+    )
+
+const closeButton = (page: Page) => page.locator('[data-notice-card] [data-notice-close]')
+const quick = (page: Page) => page.locator('.notification:not(.notification-pill)')
+
+/** A touch drag along the card, one step every `ms / 4` milliseconds. */
+const swipe = (page: Page, fraction: number, ms: number) =>
+    page.locator('[data-notice-card]').evaluate(
+        async (card, { fraction, ms }) => {
+            const box = card.getBoundingClientRect()
+            const x0 = box.left + box.width / 2
+            const y = box.top + box.height / 2
+            const dx = box.width * fraction
+            const fire = (type: string, x: number) =>
+                card.dispatchEvent(
+                    new PointerEvent(type, {
+                        pointerType: 'touch',
+                        pointerId: 7,
+                        isPrimary: true,
+                        clientX: x,
+                        clientY: y,
+                        bubbles: true,
+                        cancelable: true,
+                    }),
+                )
+            fire('pointerdown', x0)
+            for (let i = 1; i <= 4; i++) {
+                await new Promise((resolve) => setTimeout(resolve, ms / 4))
+                fire('pointermove', x0 + (dx * i) / 4)
+            }
+            fire('pointerup', x0 + dx)
+        },
+        { fraction, ms },
+    )
+
+test.describe('dismissing a card', () => {
+    test('the × closes a card with an action without running it, and one without', async ({
+        page,
+    }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await expect(pill(page)).toBeVisible()
+        await closeButton(page).click()
+        await expect(pill(page)).toHaveCount(0)
+        expect(await runs(page)).toBe(0)
+        await notifyCard(page, 'This version is older than your data.')
+        await expect(pill(page)).toContainText('older than your data')
+        await expect(pill(page).getByRole('button')).toHaveCount(1)
+        await closeButton(page).click()
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('the × is labelled and describes itself by the message', async ({ page }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        const button = pill(page).getByRole('button', { name: 'Close' })
+        await expect(button).toHaveAccessibleDescription('Nothing to undo')
+    })
+
+    test('Esc with focus in the card closes it and returns focus; Esc elsewhere leaves it', async ({
+        page,
+    }) => {
+        await boot(page)
+        await page.locator('.chart-pane').focus()
+        await notifyWithAction(page, 'Nothing to undo')
+        await expect(pill(page)).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(pill(page)).toBeVisible()
+        await page.keyboard.press('Alt+KeyN')
+        await expect(pill(page).getByRole('button', { name: 'Open History' })).toBeFocused()
+        // Tab reaches the ×, which Esc closes the same way.
+        await page.keyboard.press('Tab')
+        await expect(closeButton(page)).toBeFocused()
+        await page.keyboard.press('Escape')
+        await expect(pill(page)).toHaveCount(0)
+        await expect(page.locator('.chart-pane')).toBeFocused()
+    })
+
+    test('Alt+N focuses the × of a card without an action', async ({ page }) => {
+        await boot(page)
+        await page.locator('.chart-pane').focus()
+        await notifyCard(page, 'Something to read')
+        await page.keyboard.press('Alt+KeyN')
+        await expect(closeButton(page)).toBeFocused()
+        await page.keyboard.press('Enter')
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test.describe('on a phone', () => {
+        test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+        test('the × is at least 44 px and a tap on it closes the card', async ({ page }) => {
+            await boot(page)
+            await notifyWithAction(page, 'Nothing to undo')
+            const box = (await closeButton(page).boundingBox())!
+            expect(box.width).toBeGreaterThanOrEqual(44)
+            expect(box.height).toBeGreaterThanOrEqual(44)
+            await closeButton(page).tap()
+            await expect(pill(page)).toHaveCount(0)
+            expect(await runs(page)).toBe(0)
+        })
+
+        test('a swipe past 30% dismisses the card and does not press a button', async ({
+            page,
+        }) => {
+            await boot(page)
+            await notifyWithAction(page, 'Nothing to undo')
+            await expect(pill(page)).toBeVisible()
+            await swipe(page, 0.5, 400)
+            await expect(pill(page)).toHaveCount(0)
+            expect(await runs(page)).toBe(0)
+        })
+
+        test('a swipe to the left dismisses it too, and a flick needs only a short drag', async ({
+            page,
+        }) => {
+            await boot(page)
+            await notifyWithAction(page, 'Nothing to undo')
+            await swipe(page, -0.5, 400)
+            await expect(pill(page)).toHaveCount(0)
+            await notifyWithAction(page, 'Nothing to redo')
+            await swipe(page, 0.2, 20)
+            await expect(pill(page)).toHaveCount(0)
+        })
+
+        test('a short slow drag springs back', async ({ page }) => {
+            await boot(page)
+            await notifyWithAction(page, 'Nothing to undo')
+            await expect(pill(page)).toBeVisible()
+            await swipe(page, 0.15, 800)
+            await page.waitForTimeout(400)
+            await expect(pill(page)).toBeVisible()
+            await expect
+                .poll(() => pill(page).evaluate((card) => getComputedStyle(card).transform))
+                .toBe('none')
+            // The card works as before.
+            await pill(page).getByRole('button', { name: 'Open History' }).tap()
+            expect(await runs(page)).toBe(1)
+        })
+    })
+})
+
+test.describe('timing', () => {
+    test('a long message stays longer, up to 12 s', async ({ page }) => {
+        await boot(page)
+        await page.clock.install()
+        await notifyCard(page, 'x'.repeat(150))
+        await expect(pill(page)).toBeVisible()
+        // 2 s and 60 ms a character is 11 s.
+        await page.clock.runFor(10_500)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(1_000)
+        await expect(pill(page)).toHaveCount(0)
+        await notifyCard(page, 'x'.repeat(400))
+        await page.clock.runFor(11_500)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(1_000)
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('the timer waits while the page is hidden, then leaves at least 1.5 s', async ({
+        page,
+    }) => {
+        await boot(page)
+        await page.clock.install()
+        const visibility = (state: 'hidden' | 'visible') =>
+            page.evaluate((state) => {
+                Object.defineProperty(document, 'visibilityState', {
+                    configurable: true,
+                    value: state,
+                })
+                document.dispatchEvent(new Event('visibilitychange'))
+            }, state)
+        await visibility('hidden')
+        await notifyWithAction(page, 'Nothing to undo')
+        await page.clock.runFor(10_000)
+        await expect(pill(page)).toBeVisible()
+        await visibility('visible')
+        await page.clock.runFor(5_000)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(1_500)
+        await expect(pill(page)).toHaveCount(0)
+        // Hidden partway: the rest of the time is kept.
+        await notifyWithAction(page, 'Nothing to redo')
+        await page.clock.runFor(4_000)
+        await visibility('hidden')
+        await page.clock.runFor(10_000)
+        await expect(pill(page)).toBeVisible()
+        await visibility('visible')
+        await page.clock.runFor(1_000)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(1_000)
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('the timer waits while a blocking dialog covers the card', async ({ page }) => {
+        await boot(page)
+        await page.clock.install()
+        await notifyWithAction(page, 'Nothing to undo')
+        await page.clock.runFor(2_000)
+        await openBlocking(page)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await page.clock.runFor(8_000)
+        await expect(pill(page)).toHaveCount(1)
+        // The fake clock holds the dialog's brief ignore of presses, so it is closed directly.
+        await page.evaluate(async () => {
+            const { closeModal, modals } =
+                await window.editorTest.appImport<typeof import('../../src/modals')>(
+                    '/src/modals/index.ts',
+                )
+            for (const modal of [...modals]) closeModal(modal)
+        })
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(3_500)
+        await expect(pill(page)).toBeVisible()
+        await page.clock.runFor(1_000)
+        await expect(pill(page)).toHaveCount(0)
+    })
+})
+
+test.describe('the two slots', () => {
+    test('quick feedback leaves a card in place and shows centred above it', async ({ page }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await expect(pill(page)).toBeVisible()
+        const before = (await pill(page).boundingBox())!
+        await page.keyboard.press('a')
+        await expect(quick(page)).toHaveCount(1)
+        await expect(pill(page)).toBeVisible()
+        await expect(pill(page)).toContainText('Nothing to undo')
+        const after = (await pill(page).boundingBox())!
+        expect(after).toEqual(before)
+        const toast = (await quick(page).boundingBox())!
+        expect(toast.y + toast.height).toBeLessThanOrEqual(after.y)
+        // The toast fades by itself and the card stays.
+        await expect(quick(page)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(pill(page)).toBeVisible()
+    })
+
+    test('a later card replaces the card', async ({ page }) => {
+        await boot(page)
+        await notifyWithAction(page, 'First')
+        await notifyWithAction(page, 'Second')
+        await expect(pill(page)).toHaveCount(1)
+        await expect(pill(page)).toContainText('Second')
+    })
+
+    test('both are read by the one live region, in the order they were raised', async ({
+        page,
+    }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Nothing to undo', 'Nothing to undo. Open History.')
+        await expect(page.getByRole('status')).toHaveText('Nothing to undo. Open History.')
+        await page.keyboard.press('a')
+        await expect(page.getByRole('status')).toHaveCount(1)
+        await expect(page.getByRole('status')).not.toHaveText(/Nothing to undo/)
+        await expect(pill(page)).toBeVisible()
+    })
+})
+
+test.describe('when a card goes by itself', () => {
+    const prepare = (page: Page) =>
+        page.evaluate(() => {
+            const { fixtures, show } = window.editorTest
+            show(fixtures.interaction, 3)
+        })
+
+    test('the next edit dismisses a card raised before it', async ({ page }) => {
+        await boot(page)
+        await prepare(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await expect(pill(page)).toBeVisible()
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+        })
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('a card the edit raised stays, before or after the step', async ({ page }) => {
+        await boot(page)
+        await prepare(page)
+        await page.evaluate(async (path) => {
+            const { notify } = await window.editorTest.appImport<Notification>(path)
+            const { history } = window.editorTest
+            const raise = (message: string) =>
+                notify(() => message, { action: { label: () => 'Undo', run: () => undefined } })
+            const push = () =>
+                history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+            raise('Older')
+            push()
+            raise('Raised after the step')
+        }, notificationPath)
+        await expect(pill(page)).toContainText('Raised after the step')
+        await page.evaluate(async (path) => {
+            const { notify } = await window.editorTest.appImport<Notification>(path)
+            const { history } = window.editorTest
+            notify(() => 'Raised before the step', {
+                action: { label: () => 'Undo', run: () => undefined },
+            })
+            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+        }, notificationPath)
+        await expect(pill(page)).toContainText('Raised before the step')
+        // The next step, in a task of its own, dismisses it.
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+        })
+        await expect(pill(page)).toHaveCount(0)
+    })
+
+    test('quick feedback does not dismiss a card', async ({ page }) => {
+        await boot(page)
+        await prepare(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await page.keyboard.press('a')
+        await expect(pill(page)).toBeVisible()
+    })
+
+    test('a session switch dismisses every card before its own notice', async ({ page }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await expect(pill(page)).toBeVisible()
+        await page.evaluate(async () => {
+            const { notifyLeft } =
+                await window.editorTest.appImport<typeof import('../../src/editor/switch')>(
+                    '/src/editor/switch.ts',
+                )
+            notifyLeft(() => 'New level')
+        })
+        await expect(pill(page)).toHaveCount(0)
+        await expect(quick(page)).toHaveText('New level')
+    })
+
+    test('saving and exporting leave a card alone', async ({ page }) => {
+        await boot(page)
+        await prepare(page)
+        await notifyWithAction(page, 'Nothing to undo')
+        await page.evaluate(async () => {
+            const { emitHistoryAction } =
+                await window.editorTest.appImport<typeof import('../../src/history/actions')>(
+                    '/src/history/actions.ts',
+                )
+            const { history } = window.editorTest
+            emitHistoryAction({
+                kind: 'save',
+                state: history.state.value,
+                name: () => 'Save',
+                isDirty: false,
+            })
+        })
+        await expect(pill(page)).toBeVisible()
+    })
+})
+
+test.describe('over a blocking dialog', () => {
+    const raiseOver = async (page: Page, message: string) => {
+        await boot(page)
+        await openBlocking(page)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await notifyWithAction(page, message)
+    }
+
+    test('a card raised with a dialog open shows over it, at the bottom, and moves to the pane when it closes', async ({
+        page,
+    }) => {
+        await raiseOver(page, 'Raised over the dialog')
+        const dialog = page.getByRole('dialog')
+        const card = dialog.locator('[data-notice-card]')
+        await expect(card).toBeVisible()
+        await expect(card).toContainText('Raised over the dialog')
+        const box = (await card.boundingBox())!
+        const viewport = page.viewportSize()!
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - 8)
+        expect(box.y + box.height).toBeGreaterThan(viewport.height - 40)
+        // On the menus' surface.
+        await expect(card).toHaveClass(/bg-popup/)
+        // Alt+N reaches it, and its action runs.
+        await page.keyboard.press('Alt+KeyN')
+        await expect(card.getByRole('button', { name: 'Open History' })).toBeFocused()
+        await card.getByRole('button', { name: 'Open History' }).click()
+        expect(await runs(page)).toBe(1)
+        // Closing the dialog leaves the card in the pane.
+        await expect(async () => {
+            await dialog.getByRole('button', { name: 'Go' }).click({ timeout: 500 })
+            await expect(dialog).toHaveCount(0, { timeout: 500 })
+        }).toPass()
+        await expect(page.locator('[data-notice-card]')).toHaveCount(1)
+        await expect(page.locator('[data-notice-card]')).not.toHaveClass(/bg-popup/)
+    })
+
+    test('Esc in the card closes the card, not the dialog', async ({ page }) => {
+        await raiseOver(page, 'Raised over the dialog')
+        await page.keyboard.press('Alt+KeyN')
+        await page.keyboard.press('Escape')
+        await expect(page.locator('[data-notice-card]')).toHaveCount(0)
+        await expect(page.getByRole('dialog')).toBeVisible()
+    })
+
+    test('a card raised before a dialog opens waits under it, and a quick toast raised in it shows in it', async ({
+        page,
+    }) => {
+        await boot(page)
+        await notifyWithAction(page, 'Before the dialog')
+        await openBlocking(page)
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible()
+        await expect(dialog.locator('[data-notice-card]')).toHaveCount(0)
+        await page.evaluate(async (path) => {
+            const { notify } = await window.editorTest.appImport<Notification>(path)
+            notify(() => 'Copied')
+        }, notificationPath)
+        await expect(dialog.locator('.notification')).toHaveText('Copied')
+        await expect(page.locator('.notification')).toHaveCount(1)
+    })
 })

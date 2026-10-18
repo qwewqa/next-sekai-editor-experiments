@@ -752,7 +752,7 @@
         "properties": "Varsayılan Özellikleri değiştirmek için tekrar Sahne Dönüşüm Olayı aracına geçin."
       }
     },
-    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirimin düğmesine taşır."
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",

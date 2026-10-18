@@ -752,7 +752,7 @@
         "properties": "再次切换到舞台变换事件工具即可更改默认属性。"
       }
     },
-    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知的按钮。"
+    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。"
   },
   "elevation": {
     "edit": "编辑高度",

@@ -96,7 +96,7 @@ const tryAgain = async () => {
     }
     if (status.mode === 'memory' && status.reason === 'olderTabs')
         notify(upgradeBlocked, { action: tryAgainAction })
-    else if (status.mode === 'readOnly') notify(olderVersion)
+    else if (status.mode === 'readOnly') notify(olderVersion, { card: true })
 }
 
 const sayAtLoad = (status: StorageStatus) => {

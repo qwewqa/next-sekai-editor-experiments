@@ -464,6 +464,23 @@ test.describe('the dialog', () => {
         const at = await notice.boundingBox()
         if (!at) throw new Error('no notice')
         expect(at.y + at.height).toBeLessThanOrEqual(box.y)
+        // So does a card, with the quick notice in the room above it.
+        await page.evaluate(async () => {
+            const { notify } = await window.editorTest.appImport<
+                typeof import('../../src/editor/notification')
+            >('/src/editor/notification.ts')
+            notify(() => 'A card for the sheet', { card: true })
+        })
+        const card = page.locator('[data-notice-card]')
+        await expect(card).toBeVisible()
+        // The card rises into place as it enters.
+        await expect
+            .poll(async () => {
+                const cardAt = await card.boundingBox()
+                return cardAt ? cardAt.y + cardAt.height : Infinity
+            })
+            .toBeLessThanOrEqual(box.y)
+        await expect(notice).toBeVisible()
     })
 
     test('a phone in landscape gets a narrow side sheet below the peek bar', async ({ page }) => {
@@ -484,6 +501,16 @@ test.describe('the dialog', () => {
         // One line band even in the narrow sheet.
         const band = await page.locator('[data-history-band]').boundingBox()
         expect(band?.height).toBeLessThan(60)
+        // A card sits to the left of the side sheet, never over it.
+        await page.evaluate(async () => {
+            const { notify } = await window.editorTest.appImport<
+                typeof import('../../src/editor/notification')
+            >('/src/editor/notification.ts')
+            notify(() => 'A card for the sheet', { card: true })
+        })
+        const card = await page.locator('[data-notice-card]').boundingBox()
+        if (!card) throw new Error('no card')
+        expect(card.x + card.width).toBeLessThanOrEqual(box.x)
         await page.waitForTimeout(300)
         await shoot(page, 'dialog-landscape')
     })
