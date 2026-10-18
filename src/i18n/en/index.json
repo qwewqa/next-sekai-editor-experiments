@@ -594,6 +594,9 @@
                 "effectGroups": "This item’s {0} effect \"{1}\" has more than {2} particle groups.",
                 "ratio": "This item’s {0} {1} expands to more than {2} times its size."
             }
+        },
+        "history": {
+            "title": "History"
         }
     },
     "help": {
@@ -938,7 +941,8 @@
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
                 "atLoad": "At this load:"
-            }
+            },
+            "openHistory": "Open History"
         }
     },
     "sidebars": {
@@ -1184,7 +1188,8 @@
         "newestDamaged": "Your most recent session could not be opened.",
         "bgmNotLoaded": "The BGM is not loaded.",
         "more": "and {0} more in Local Data",
-        "localData": "Local Data"
+        "localData": "Local Data",
+        "openHistory": "Open History"
     },
     "storage": {
         "reload": "Reload to keep storing changes.",
@@ -1207,7 +1212,23 @@
             "title": "Dynamic Stages",
             "message": "This feature requires dynamic stages. Do you want to enable dynamic stages?",
             "enabled": "Enabled dynamic stages"
-        }
+        },
+        "title": "History",
+        "timeline": "Timeline",
+        "recentSessions": "Recent Sessions",
+        "filterAll": "All",
+        "filterSaves": "Saves and Exports",
+        "now": "Now",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "notStored": "Changes are not being stored in this browser.",
+        "notInUndo": "not in undo",
+        "notInUndoTip": "Undo cannot reach this.",
+        "removedForSpace": "removed to save space",
+        "damaged": "damaged",
+        "continuedFrom": "Continued from {0}",
+        "foldHint": "Tap History to fold the list",
+        "announceViewing": "Viewing {0}"
     },
     "modals": {
         "close": "Close",
@@ -1787,7 +1808,11 @@
         "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
     },
     "peek": {
-        "exportsCurrent": "Exports the current version."
+        "exportsCurrent": "Exports the current version.",
+        "viewing": "Viewing {0} · {1} · read-only",
+        "viewingShort": "Viewing {0} · read-only",
+        "backToNow": "Back to Now",
+        "restore": "Restore"
     },
     "save": {
         "fileName": "File Name",
@@ -1827,7 +1852,8 @@
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
         "chooseAudio": "Choose Audio…",
         "newLevel": "New level",
-        "reopen": "Reopen \"{0}\""
+        "reopen": "Reopen \"{0}\"",
+        "openHistory": "Open History"
     },
     "entry": {
         "exported": "Exported {0}",

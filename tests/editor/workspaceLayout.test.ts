@@ -28,8 +28,8 @@ const defaultTools = 18
 const input = (overrides: Partial<WorkspaceLayoutInput> = {}): WorkspaceLayoutInput => ({
     width: 1600,
     height: 1000,
-    positions: { preview: 'auto', groups: 'auto', stages: 'auto', properties: 'auto' },
-    open: { preview: true, groups: false, stages: false, properties: true },
+    positions: { preview: 'auto', groups: 'auto', stages: 'auto', properties: 'auto', history: 'auto' },
+    open: { preview: true, groups: false, stages: false, properties: true, history: false },
     recency: ['preview', 'properties', 'groups', 'stages'],
     sizes: { left: 0, right: 0, top: 0 },
     weights: {},
@@ -43,6 +43,7 @@ const positions = (position: PanelPosition): Record<PanelId, PanelPosition> => (
     groups: position,
     stages: position,
     properties: position,
+    history: position === 'disabled' ? 'auto' : position,
 })
 
 test('auto placement follows the workspace shape rather than width alone', () => {
@@ -58,7 +59,7 @@ test('auto placement follows the workspace shape rather than width alone', () =>
 
 test('desktop places managers with preview and properties on the right', () => {
     const layout = computeWorkspaceLayout(
-        input({ open: { preview: true, groups: true, stages: true, properties: true } }),
+        input({ open: { preview: true, groups: true, stages: true, properties: true, history: false } }),
     )
     assert.deepEqual(layout.docks.left?.panels, ['preview', 'groups', 'stages'])
     assert.deepEqual(layout.docks.left?.visible, ['preview', 'groups', 'stages'])
@@ -71,7 +72,7 @@ test('desktop places managers with preview and properties on the right', () => {
 
 test('a dock keeps its rail when every panel is closed', () => {
     const layout = computeWorkspaceLayout(
-        input({ open: { preview: false, groups: false, stages: false, properties: false } }),
+        input({ open: { preview: false, groups: false, stages: false, properties: false, history: false } }),
     )
     assert.equal(layout.docks.left?.size, 0)
     assert.deepEqual(layout.docks.left?.panels, ['preview', 'groups', 'stages'])
@@ -79,7 +80,7 @@ test('a dock keeps its rail when every panel is closed', () => {
 })
 
 test('limited room shows the most recent open panels without closing the others', () => {
-    const open = { preview: true, groups: true, stages: true, properties: true }
+    const open = { preview: true, groups: true, stages: true, properties: true, history: false }
     const phone = computeWorkspaceLayout(
         input({
             width: 390,
@@ -98,7 +99,7 @@ test('limited room shows the most recent open panels without closing the others'
         input({
             height: 460,
             positions: positions('left'),
-            open: { preview: true, groups: true, stages: true, properties: false },
+            open: { preview: true, groups: true, stages: true, properties: false, history: false },
             recency: ['stages', 'preview', 'groups', 'properties'],
         }),
     )
@@ -113,7 +114,7 @@ test('explicit positions override auto placement and disabled panels have no tab
         input({
             width: 390,
             height: 844,
-            positions: { preview: 'right', groups: 'disabled', stages: 'top', properties: 'left' },
+            positions: { preview: 'right', groups: 'disabled', stages: 'top', properties: 'left', history: 'auto' },
         }),
     )
     assert.deepEqual(layout.docks.right?.panels, ['preview'])
@@ -143,7 +144,7 @@ test('opposite side docks share the room left beside the editor', () => {
         input({
             width: 1200,
             height: 800,
-            positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right' },
+            positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right', history: 'auto' },
             sizes: { left: 600, right: 600, top: 0 },
         }),
     )
@@ -202,7 +203,7 @@ test('recency moves an activated panel to the front', () => {
 })
 
 test('hiding the only visible panel collapses its dock instead of revealing another', () => {
-    const open = { preview: true, groups: false, stages: false, properties: true }
+    const open = { preview: true, groups: false, stages: false, properties: true, history: false }
     const phone = (collapsed: boolean) =>
         computeWorkspaceLayout(
             input({ width: 390, height: 844, open, collapsed: { top: collapsed } }),
@@ -235,7 +236,7 @@ test('a side dock grows only into room the other side is not using', () => {
     const base = input({
         width: 1600,
         height: 1000,
-        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right' },
+        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right', history: 'auto' },
     })
     const before = computeWorkspaceLayout(base)
     const max = before.docks.left?.max ?? 0
@@ -246,7 +247,7 @@ test('a side dock grows only into room the other side is not using', () => {
 
 test('hiding one side dock never resizes the other', () => {
     const base = input({
-        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right' },
+        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right', history: 'auto' },
     })
     const both = computeWorkspaceLayout(base)
     const leftOnly = computeWorkspaceLayout({ ...base, collapsed: { right: true } })
@@ -307,7 +308,7 @@ test('side docks default to 24rem, leaving the toolbar one row between both, nev
 
 test('unsized side docks use the default, scaled by the root font size', () => {
     const base = input({
-        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right' },
+        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right', history: 'auto' },
     })
     const sizes = (layout: ReturnType<typeof computeWorkspaceLayout>) => [
         layout.docks.left?.size,
@@ -334,7 +335,7 @@ test('collapsing the shown side does not reveal the other side in its place', ()
     const base = input({
         width: 480,
         height: 800,
-        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right' },
+        positions: { preview: 'left', groups: 'left', stages: 'left', properties: 'right', history: 'auto' },
         recency: ['preview', 'properties', 'groups', 'stages'],
     })
     const shown = computeWorkspaceLayout(base)
@@ -352,7 +353,7 @@ test('an unsized top dock fits the width Preview has, alone or in a row of tiles
                 width: 820,
                 height: 1180,
                 coarse: true,
-                open: { preview: true, groups: true, stages: false, properties: true },
+                open: { preview: true, groups: true, stages: false, properties: true, history: false },
                 recency,
             }),
         ).docks.top
@@ -382,7 +383,7 @@ test('a stacked Preview fits its image, plus the playback strip unless it overla
         computeWorkspaceLayout(
             input({
                 positions: { ...positions('auto'), preview: 'left', groups: 'left' },
-                open: { preview: true, groups: true, stages: false, properties: true },
+                open: { preview: true, groups: true, stages: false, properties: true, history: false },
                 previewAspectRatio: 4 / 3,
                 previewOverlay,
             }),
@@ -420,7 +421,7 @@ test('hiding one of several shown panels never reveals one it covered', () => {
     const { shown, state } = play(
         tabletPortrait,
         {
-            open: { preview: true, groups: true, stages: false, properties: false },
+            open: { preview: true, groups: true, stages: false, properties: false, history: false },
             recency: ['preview', 'groups', 'stages', 'properties'],
             collapsed: unfolded,
         },
@@ -444,7 +445,7 @@ test('closing a panel by key or menu never reveals a covered one either', () => 
     const { shown, state } = play(
         { width: 390, height: 844, coarse: true, railSize: 44 },
         {
-            open: { preview: true, groups: false, stages: false, properties: true },
+            open: { preview: true, groups: false, stages: false, properties: true, history: false },
             recency: ['preview', 'properties', 'groups', 'stages'],
             collapsed: unfolded,
         },
@@ -463,7 +464,7 @@ test('a tab or command on a folded dock shows just that panel', () => {
         const { shown } = play(
             tabletLandscape,
             {
-                open: { preview: true, groups: false, stages: true, properties: true },
+                open: { preview: true, groups: false, stages: true, properties: true, history: false },
                 recency: ['preview', 'stages', 'properties', 'groups'],
                 collapsed: { left: true, right: false, top: false },
             },
@@ -482,7 +483,7 @@ test('the chevron restores every panel a dock showed when folded', () => {
     const { shown } = play(
         tabletPortrait,
         {
-            open: { preview: true, groups: true, stages: false, properties: false },
+            open: { preview: true, groups: true, stages: false, properties: false, history: false },
             recency: ['preview', 'groups', 'stages', 'properties'],
             collapsed: unfolded,
         },
@@ -498,7 +499,7 @@ test('a tab on another panel after folding by tab shows only that panel', () => 
     const { shown, state } = play(
         tabletPortrait,
         {
-            open: { preview: true, groups: false, stages: false, properties: false },
+            open: { preview: true, groups: false, stages: false, properties: false, history: false },
             recency: ['preview', 'groups', 'stages', 'properties'],
             collapsed: unfolded,
         },
@@ -515,12 +516,12 @@ test('a side dock held back for the other side never returns on its own', () => 
     // Too narrow for both sides: showing one side closes the other's panels.
     const screen: Partial<WorkspaceLayoutInput> = {
         ...tabletPortrait,
-        positions: { preview: 'top', groups: 'left', stages: 'top', properties: 'right' },
+        positions: { preview: 'top', groups: 'left', stages: 'top', properties: 'right', history: 'auto' },
     }
     const { shown, state } = play(
         screen,
         {
-            open: { preview: false, groups: true, stages: false, properties: false },
+            open: { preview: false, groups: true, stages: false, properties: false, history: false },
             recency: ['groups', 'preview', 'stages', 'properties'],
             collapsed: unfolded,
         },
@@ -546,7 +547,7 @@ test('rotating a tablet keeps exactly the same panels shown', () => {
     // Folded in portrait, Preview and Properties stay hidden in landscape,
     // where they land in two different docks, and the chevrons restore them.
     const folded: WorkspaceToggleState = {
-        open: { preview: true, groups: false, stages: false, properties: true },
+        open: { preview: true, groups: false, stages: false, properties: true, history: false },
         recency: ['preview', 'properties', 'groups', 'stages'],
         collapsed: { left: false, right: false, top: true },
     }
@@ -559,7 +560,7 @@ test('rotating a tablet keeps exactly the same panels shown', () => {
     // Folded on the left in landscape while Properties shows on the right:
     // portrait's shared top dock shows Properties alone.
     const mixed: WorkspaceToggleState = {
-        open: { preview: true, groups: true, stages: true, properties: true },
+        open: { preview: true, groups: true, stages: true, properties: true, history: false },
         recency: ['properties', 'preview', 'groups', 'stages'],
         collapsed: { left: true, right: false, top: false },
     }

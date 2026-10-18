@@ -594,6 +594,9 @@
         "effectGroups": "Bu öğedeki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var.",
         "ratio": "Bu öğedeki {1} ({0}) açıldığında boyutunun {2} katından fazlasına ulaşıyor."
       }
+    },
+    "history": {
+      "title": "Geçmiş"
     }
   },
   "help": {
@@ -938,7 +941,8 @@
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "atLoad": "Bu yüklemede:"
-      }
+      },
+      "openHistory": "Geçmişi Aç"
     }
   },
   "sidebars": {
@@ -1184,7 +1188,8 @@
     "newestDamaged": "En son oturumunuz açılamadı.",
     "bgmNotLoaded": "BGM yüklenmedi.",
     "more": "ve {0} tane daha Yerel Veriler’de",
-    "localData": "Yerel Veriler"
+    "localData": "Yerel Veriler",
+    "openHistory": "Geçmişi Aç"
   },
   "storage": {
     "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",
@@ -1207,7 +1212,23 @@
       "title": "Dinamik Sahneler",
       "message": "Bu özellik dinamik sahneler gerektirir. Dinamik sahneleri etkinleştirmek istiyor musunuz?",
       "enabled": "Dinamik sahneler etkinleştirildi"
-    }
+    },
+    "title": "Geçmiş",
+    "timeline": "Zaman Çizelgesi",
+    "recentSessions": "Son Oturumlar",
+    "filterAll": "Tümü",
+    "filterSaves": "Kaydetmeler ve Dışa Aktarmalar",
+    "now": "Şimdi",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "notStored": "Değişiklikler bu tarayıcıda saklanmıyor.",
+    "notInUndo": "geri alma dışında",
+    "notInUndoTip": "Geri alma buna ulaşamaz.",
+    "removedForSpace": "yer açmak için kaldırıldı",
+    "damaged": "hasarlı",
+    "continuedFrom": "{0} tarihinden devam",
+    "foldHint": "Listeyi katlamak için Geçmiş’e dokunun",
+    "announceViewing": "{0} görüntüleniyor"
   },
   "modals": {
     "close": "Kapat",
@@ -1787,7 +1808,11 @@
     "unsupportedParts": "\"{0}\", editörün bu sürümünün desteklemediği kısımlar içeriyor."
   },
   "peek": {
-    "exportsCurrent": "Güncel sürümü dışa aktarır."
+    "exportsCurrent": "Güncel sürümü dışa aktarır.",
+    "viewing": "{0} görüntüleniyor · {1} · salt okunur",
+    "viewingShort": "{0} görüntüleniyor · salt okunur",
+    "backToNow": "Şimdiye Dön",
+    "restore": "Geri Yükle"
   },
   "save": {
     "fileName": "Dosya Adı",
@@ -1827,7 +1852,8 @@
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
-    "reopen": "\"{0}\" Yeniden Aç"
+    "reopen": "\"{0}\" Yeniden Aç",
+    "openHistory": "Geçmişi Aç"
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",

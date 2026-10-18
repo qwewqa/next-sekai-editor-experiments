@@ -594,6 +594,9 @@
         "effectGroups": "此项目的{0}效果“{1}”的粒子组超过 {2} 个。",
         "ratio": "此项目的{0}{1}解压后超过其大小的 {2} 倍。"
       }
+    },
+    "history": {
+      "title": "历史记录"
     }
   },
   "help": {
@@ -938,7 +941,8 @@
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
         "atLoad": "本次加载："
-      }
+      },
+      "openHistory": "打开历史记录"
     }
   },
   "sidebars": {
@@ -1184,7 +1188,8 @@
     "newestDamaged": "无法打开最近的会话。",
     "bgmNotLoaded": "BGM 未加载。",
     "more": "另有 {0} 条在本地数据中",
-    "localData": "本地数据"
+    "localData": "本地数据",
+    "openHistory": "打开历史记录"
   },
   "storage": {
     "reload": "请重新加载以继续存储更改。",
@@ -1207,7 +1212,23 @@
       "title": "动态舞台",
       "message": "此功能需要动态舞台。是否启用动态舞台？",
       "enabled": "已启用动态舞台"
-    }
+    },
+    "title": "历史记录",
+    "timeline": "时间线",
+    "recentSessions": "最近会话",
+    "filterAll": "全部",
+    "filterSaves": "保存和导出",
+    "now": "现在",
+    "today": "今天",
+    "yesterday": "昨天",
+    "notStored": "更改未存储在此浏览器中。",
+    "notInUndo": "不在撤销中",
+    "notInUndoTip": "撤销无法到达此处。",
+    "removedForSpace": "已为节省空间而移除",
+    "damaged": "已损坏",
+    "continuedFrom": "从 {0} 继续",
+    "foldHint": "点按“历史记录”可折叠列表",
+    "announceViewing": "正在查看 {0}"
   },
   "modals": {
     "close": "关闭",
@@ -1787,7 +1808,11 @@
     "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
   },
   "peek": {
-    "exportsCurrent": "导出当前版本。"
+    "exportsCurrent": "导出当前版本。",
+    "viewing": "正在查看 {0} · {1} · 只读",
+    "viewingShort": "正在查看 {0} · 只读",
+    "backToNow": "返回现在",
+    "restore": "还原"
   },
   "save": {
     "fileName": "文件名",
@@ -1827,7 +1852,8 @@
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "chooseAudio": "选择音频…",
     "newLevel": "新关卡",
-    "reopen": "重新打开“{0}”"
+    "reopen": "重新打开“{0}”",
+    "openHistory": "打开历史记录"
   },
   "entry": {
     "exported": "已导出 {0}",

@@ -44,6 +44,9 @@ const current = computed(() => states[index.value]!)
 
 export const isDirty = computed(() => (current.value as Slot | undefined)?.isDirty ?? false)
 
+/** The name of the step that made the current state: the Timeline's Now row. */
+export const headName = computed(() => (current.value as Slot | undefined)?.name() ?? '')
+
 /** The last head seen: what watchers read while a stored stack replaces the slots. */
 let lastHead: State | undefined
 

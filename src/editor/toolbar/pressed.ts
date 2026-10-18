@@ -1,6 +1,7 @@
 import { settings } from '../../settings'
 import type { CommandName } from '../commands'
 import { toolName, tools, type ToolName } from '../tools'
+import { isHistoryOpen } from '../workspace'
 import { defaultNotePropertiesPresetIndex } from '../tools/note'
 import { defaultSlidePropertiesPresetIndex } from '../tools/slide'
 import { view } from '../view'
@@ -56,6 +57,8 @@ export const commandState = (
     if (name === 'elevation' || name === 'editorLayout') return undefined
     if (name === 'event') return tool(eventTools.includes(toolName.value))
     if (name === 'select') return tool(toolName.value === 'select')
+    // Shown pressed while its panel is open, but never moves a group's face.
+    if (name === 'history') return { kind: 'panel', current: isHistoryOpen.value }
 
     const preset = /^(note|slide)(\d+)$/.exec(name)
     if (preset) {

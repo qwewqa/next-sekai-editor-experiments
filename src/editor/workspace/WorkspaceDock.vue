@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, defineAsyncComponent, type Component } from 'vue'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
@@ -29,11 +29,13 @@ const props = defineProps<{
     side: DockSide
 }>()
 
+// History loads when it is first opened: it brings the storage modules' readers.
 const components: Record<PanelId, Component> = {
     preview: PreviewPanel,
     groups: GroupsPanel,
     stages: StagesPanel,
     properties: PropertiesPanel,
+    history: defineAsyncComponent(() => import('../history/HistoryPanel.vue')),
 }
 
 const dock = computed(() => workspaceLayout.value.docks[props.side])

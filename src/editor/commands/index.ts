@@ -28,6 +28,7 @@ import { groupAll } from './groups/groupAll'
 import { groupNext } from './groups/groupNext'
 import { groupPrev } from './groups/groupPrev'
 import { help } from './help'
+import { history } from './history'
 import { jumpDown } from './jumps/jumpDown'
 import { jumpUp } from './jumps/jumpUp'
 import { laneLimitCustom, laneLimitNone, laneLimitSix } from './laneLimits'
@@ -136,6 +137,7 @@ const builtInCommands = {
     deleteSelection,
     undo,
     redo,
+    history,
     increaseNoteSize,
     decreaseNoteSize,
 

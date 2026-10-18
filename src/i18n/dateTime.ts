@@ -28,6 +28,25 @@ export const formatDate = (locale: string, at: number, now = Date.now()) =>
 export const formatClock = (locale: string, at: number) =>
     formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).format(at)
 
+/** "2:41:07 PM": the Timeline's rows and the peek bar name an entry to the second. */
+export const formatClockSeconds = (locale: string, at: number) =>
+    formatter(locale, 'clockSeconds', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+    }).format(at)
+
+/** "Oct 14, 3:15:02 PM", with the year in another year. */
+export const formatDateTimeSeconds = (locale: string, at: number, now = Date.now()) =>
+    formatter(locale, sameYear(at, now) ? 'dateTimeSeconds' : 'dateTimeYearSeconds', {
+        ...(sameYear(at, now) ? {} : { year: 'numeric' }),
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+    }).format(at)
+
 /** "Oct 16, 2:41 PM", with the year in another year. */
 export const formatDateTime = (locale: string, at: number, now = Date.now()) =>
     sameYear(at, now)
