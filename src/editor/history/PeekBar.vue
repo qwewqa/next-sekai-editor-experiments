@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { isPeeking, peekLoading, peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
+import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
+import { isComposingKey } from '../../utils/composition'
 import { formatEntryTime, formatDateTimeSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { changeLine } from './changes'
@@ -57,6 +59,31 @@ const text = computed(() => {
 const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)
 }
+const onKeydown = (event: KeyboardEvent) => {
+    const target = event.target
+    const host = event.currentTarget
+    if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.repeat ||
+        isComposingKey(event) ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.shiftKey ||
+        !isPeeking.value ||
+        isBlockingModalOpen.value ||
+        isToolDialogOpen.value ||
+        !(target instanceof HTMLButtonElement) ||
+        target !== document.activeElement ||
+        !(host instanceof HTMLElement) ||
+        !host.contains(target)
+    )
+        return
+    event.preventDefault()
+    event.stopPropagation()
+    backToNow()
+}
 const button =
     'h-11 shrink-0 rounded-full px-4 font-bold outline-offset-[-3px] transition-colors focus-visible:outline focus-visible:outline-2'
 </script>
@@ -72,6 +99,7 @@ const button =
             class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center px-2"
             :class="view.w < 640 ? 'pt-7' : 'pt-2'"
             data-peek-bar
+            @keydown="onKeydown"
         >
             <div
                 class="pointer-events-auto flex w-full max-w-lg items-center rounded-3xl bg-modal p-1 text-sm text-fg shadow-md"

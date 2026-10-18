@@ -1,15 +1,27 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 
 const presentation = (page: Page) => page.locator('[data-history-presentation]')
 const list = (page: Page) => presentation(page).locator('[data-history-list]')
 const viewChart = (page: Page) => page.locator('[data-history-view-chart]')
+const errors = new WeakMap<Page, string[]>()
+const capture = async (page: Page, name: string) => {
+    const folder = process.env.NSE_HISTORY_SHOTS
+    if (!folder) return
+    await mkdir(folder, { recursive: true })
+    await page.screenshot({ path: join(folder, `${name}.png`) })
+}
 const row = (page: Page, label: string) =>
     list(page)
         .getByRole('option')
         .filter({ has: page.getByText(label, { exact: true }) })
 
 const load = async (page: Page) => {
+    const caught: string[] = []
+    errors.set(page, caught)
+    page.on('pageerror', (error) => caught.push(error.message))
     await page.addInitScript(() => {
         performance.setResourceTimingBufferSize(5000)
         localStorage.setItem('nse.test.storage', '{}')
@@ -60,6 +72,9 @@ const selected = (page: Page) =>
     })
 
 test.beforeEach(async ({ page }) => load(page))
+test.afterEach(({ page }) => {
+    expect(errors.get(page)).toEqual([])
+})
 
 for (const size of [
     { width: 520, height: 320 },
@@ -87,6 +102,10 @@ for (const size of [
             await expect
                 .poll(() => list(page).evaluate((element) => element.clientHeight))
                 .toBeGreaterThanOrEqual(116)
+            await capture(
+                page,
+                `${size.width}-${size.height}-${filtered ? 'filtered' : 'all'}-list`,
+            )
             if (filtered) await presentation(page).getByRole('button', { name: 'Show All' }).click()
             await row(page, 'Property 29').click()
             await expect.poll(async () => (await selected(page)).label).toBe('Property 29')
@@ -102,6 +121,10 @@ for (const size of [
                 await expect(presentation(page)).toHaveCount(0)
                 expect(await selected(page)).toEqual(before)
                 await expect(page.locator('[data-peek-main] button').first()).toBeFocused()
+                await capture(
+                    page,
+                    `${size.width}-${size.height}-${filtered ? 'filtered' : 'all'}-chart`,
+                )
                 await open(page)
                 await expect(row(page, 'Property 29')).toHaveAttribute('aria-selected', 'true')
                 expect(await selected(page)).toEqual(before)
@@ -121,6 +144,7 @@ test('a portrait sheet promotes once without ending peek, losing the cursor or r
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
     await row(page, 'Property 29').click()
     await expect.poll(async () => (await selected(page)).displayed).toBeTruthy()
+    await capture(page, 'portrait-sheet-peek')
     const before = await selected(page)
     await page.evaluate(async () => {
         const peek =
@@ -205,30 +229,32 @@ test('View Chart is disabled for the placeholder and for a pending different end
     expect((await selected(page)).life).toBe(200)
 })
 
-test('View Chart defers fullscreen elevation restoration until peek exit', async ({ page }) => {
-    await page.setViewportSize({ width: 520, height: 320 })
-    await page.evaluate(async () => {
-        const elevation = await window.editorTest.appImport<
-            typeof import('../../src/editor/elevation/state')
-        >('/src/editor/elevation/state.ts')
-        elevation.openElevationEditor(12)
-    })
-    const elevation = () =>
-        page.evaluate(async () => {
-            const state = await window.editorTest.appImport<
+for (const leave of ['Escape', 'Back to Now'])
+    test(`View Chart defers fullscreen elevation restoration until ${leave}`, async ({ page }) => {
+        await page.setViewportSize({ width: 520, height: 320 })
+        await page.evaluate(async () => {
+            const elevation = await window.editorTest.appImport<
                 typeof import('../../src/editor/elevation/state')
             >('/src/editor/elevation/state.ts')
-            return { open: state.isElevationEditorOpen.value, beat: state.elevationBeat.value }
+            elevation.openElevationEditor(12)
         })
-    await expect.poll(elevation).toEqual({ open: true, beat: 12 })
-    await open(page)
-    await row(page, 'Property 29').click()
-    await expect(viewChart(page)).toBeEnabled()
-    await viewChart(page).click()
-    expect((await elevation()).open).toBe(false)
-    await page.keyboard.press('Escape')
-    await expect.poll(elevation).toEqual({ open: true, beat: 12 })
-})
+        const elevation = () =>
+            page.evaluate(async () => {
+                const state = await window.editorTest.appImport<
+                    typeof import('../../src/editor/elevation/state')
+                >('/src/editor/elevation/state.ts')
+                return { open: state.isElevationEditorOpen.value, beat: state.elevationBeat.value }
+            })
+        await expect.poll(elevation).toEqual({ open: true, beat: 12 })
+        await open(page)
+        await row(page, 'Property 29').click()
+        await expect(viewChart(page)).toBeEnabled()
+        await viewChart(page).click()
+        expect((await elevation()).open).toBe(false)
+        if (leave === 'Escape') await page.keyboard.press('Escape')
+        else await page.locator('[data-peek-back]').click()
+        await expect.poll(elevation).toEqual({ open: true, beat: 12 })
+    })
 
 test('reopening restores the scroll anchor without selecting again; command close and Enter retain their meanings', async ({
     page,
@@ -454,7 +480,7 @@ test('reset closes an in-progress Go To chooser before a later presentation chan
 test('filter-driven promotion retains an open Go To chooser, while window resize still dismisses it', async ({
     page,
 }) => {
-    await page.setViewportSize({ width: 667, height: 375 })
+    await page.setViewportSize({ width: 667, height: 350 })
     await open(page)
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
     await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
@@ -464,7 +490,188 @@ test('filter-driven promotion retains an open Go To chooser, while window resize
     await expect(goTo).toHaveCount(1)
     await expect(goTo.getByRole('radio', { name: 'Saves and Exports', exact: true })).toBeFocused()
     expect(await goTo.evaluate((element) => !!element.closest('dialog[open]'))).toBe(true)
-    await page.setViewportSize({ width: 668, height: 375 })
+    await capture(page, '667-filter-promotion-goto')
+    await page.setViewportSize({ width: 668, height: 350 })
     await expect(goTo).toHaveCount(0)
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
+})
+
+test('520×320 uses identical fine and coarse History geometry and preserves Show Edits Off', async ({
+    browser,
+    baseURL,
+}) => {
+    const measurements: Record<string, Record<string, number>> = {}
+    for (const hasTouch of [false, true]) {
+        const mode = hasTouch ? 'coarse' : 'fine'
+        const context = await browser.newContext({
+            baseURL,
+            viewport: { width: 520, height: 320 },
+            hasTouch,
+        })
+        const page = await context.newPage()
+        try {
+            await load(page)
+            await open(page)
+            await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
+            if (hasTouch) await row(page, 'Property 29').tap()
+            else await row(page, 'Property 29').click()
+            await expect(viewChart(page)).toBeEnabled()
+            const modal = await page.evaluate(() => {
+                const height = (selector: string) =>
+                    document.querySelector(selector)!.getBoundingClientRect().height
+                return {
+                    status: height('[data-status-bar]'),
+                    header: height('[data-history-band]'),
+                    footer: height('[data-history-view-chart]'),
+                    list: height('[data-history-list]'),
+                }
+            })
+            expect(modal.status).toBe(64)
+            expect(modal.header).toBe(48)
+            expect(modal.footer).toBe(36)
+            expect(modal.list).toBeGreaterThanOrEqual(116)
+            await capture(page, `520-320-${mode}-compact-list`)
+            if (hasTouch) await viewChart(page).tap()
+            else await viewChart(page).click()
+            const shown = await selected(page)
+            const chart = await page.evaluate(() => {
+                const height = (selector: string) =>
+                    document.querySelector(selector)!.getBoundingClientRect().height
+                return {
+                    main: height('[data-peek-main]'),
+                    navigation: height('[data-peek-navigation]'),
+                    chart: height('.chart-pane'),
+                }
+            })
+            expect(chart.main).toBe(52)
+            expect(chart.navigation).toBe(32)
+            measurements[mode] = { ...modal, ...chart }
+            const edits = page.locator('[data-show-edits]')
+            if (hasTouch) await edits.tap()
+            else await edits.click()
+            await expect(edits).toHaveAttribute('aria-pressed', 'false')
+            await capture(page, `520-320-${mode}-revealed-chart-off`)
+            await open(page)
+            if (hasTouch) await viewChart(page).tap()
+            else await viewChart(page).click()
+            await expect(edits).toHaveAttribute('aria-pressed', 'false')
+            expect(await selected(page)).toEqual(shown)
+            expect(errors.get(page)).toEqual([])
+        } finally {
+            await context.close()
+        }
+    }
+    expect(measurements.coarse).toEqual(measurements.fine)
+    if (process.env.NSE_HISTORY_SHOTS)
+        await writeFile(
+            join(process.env.NSE_HISTORY_SHOTS, '520-fine-coarse-metrics.json'),
+            JSON.stringify(measurements, null, 2),
+        )
+})
+
+for (const dismissal of ['native', 'backdrop'])
+    test(`compact ${dismissal} dismissal ends peek and restores the live state`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 520, height: 320 })
+        await open(page)
+        await row(page, 'Property 29').click()
+        await expect(viewChart(page)).toBeEnabled()
+        expect((await selected(page)).requested).toBeTruthy()
+        if (dismissal === 'native')
+            await presentation(page).evaluate((element) => element.closest('dialog')!.close())
+        else await page.mouse.click(2, 2)
+        await expect(presentation(page)).toHaveCount(0)
+        await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
+        expect(
+            await page.evaluate(
+                () =>
+                    window.editorTest.history.state.value ===
+                    window.editorTest.history.liveState.value,
+            ),
+        ).toBe(true)
+    })
+
+test('peek-control Escape preserves the live selection and ignores modified or composing events', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 520, height: 320 })
+    await page.evaluate(async () => {
+        const { history, fixtures, show } = window.editorTest
+        show(fixtures.notes)
+        history.pushState(() => 'Selected notes', { ...history.state.value, initialLife: 1234 })
+        const note = [...history.state.value.store.slides.note.values()].flat()[0]!
+        history.replaceState({ ...history.state.value, selectedEntities: [note] })
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+    })
+    const selection = await page.evaluate(() => window.editorTest.snapshot().selected)
+    expect(selection).toHaveLength(1)
+    await open(page)
+    await row(page, 'Selected notes').click()
+    await expect(viewChart(page)).toBeEnabled()
+    await viewChart(page).click()
+    const edits = page.locator('[data-show-edits]')
+    await edits.focus()
+    await edits.evaluate((button) => {
+        for (const init of [
+            { ctrlKey: true },
+            { metaKey: true },
+            { altKey: true },
+            { shiftKey: true },
+            { repeat: true },
+            { isComposing: true },
+            { keyCode: 229 },
+        ])
+            button.dispatchEvent(
+                new KeyboardEvent('keydown', {
+                    key: 'Escape',
+                    bubbles: true,
+                    cancelable: true,
+                    ...init,
+                }),
+            )
+        const prevented = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        })
+        prevented.preventDefault()
+        button.dispatchEvent(prevented)
+    })
+    expect((await selected(page)).requested).toBeTruthy()
+    await page.keyboard.press('Escape')
+    await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
+    expect(await page.evaluate(() => window.editorTest.snapshot().selected)).toEqual(selection)
+})
+
+test('peek child dialogs own their first Escape and chart focus retains Deselect', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 280, height: 640 })
+    await open(page)
+    await row(page, 'Property 29').click()
+    await expect(viewChart(page)).toBeEnabled()
+    await viewChart(page).click()
+    const trigger = page.locator('[data-change-options]')
+    await trigger.click()
+    await expect(page.locator('[data-change-options-menu]')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-change-options-menu]')).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    expect((await selected(page)).requested).toBeTruthy()
+    await page.keyboard.press('Escape')
+    await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
+    await page.setViewportSize({ width: 520, height: 320 })
+    await open(page)
+    await row(page, 'Property 29').click()
+    await expect(viewChart(page)).toBeEnabled()
+    await viewChart(page).click()
+    await page.locator('[data-property-summary]').click()
+    await expect(page.getByRole('dialog', { name: 'Property Changes', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Property Changes', exact: true })).toHaveCount(0)
+    expect((await selected(page)).requested).toBeTruthy()
+    await page.locator('canvas.editor-chart').click({ position: { x: 220, y: 170 } })
+    await page.keyboard.press('Escape')
+    expect((await selected(page)).requested).toBeTruthy()
 })
