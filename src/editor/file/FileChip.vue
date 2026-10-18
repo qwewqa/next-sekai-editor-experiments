@@ -49,12 +49,6 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
     transition: color 150ms;
 }
 
-@media (any-pointer: coarse) {
-    .file-chip {
-        min-width: 44px;
-    }
-}
-
 .file-chip:active {
     color: theme('colors.white');
 }

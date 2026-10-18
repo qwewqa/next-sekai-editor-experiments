@@ -342,7 +342,7 @@ test.describe('the label and the title', () => {
             })
     })
 
-    test.describe('touch targets', () => {
+    test.describe('touch interactions', () => {
         test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
         test('warning arrival keeps the chart fixed and every button owns its target', async ({
@@ -364,7 +364,7 @@ test.describe('the label and the title', () => {
             const bar = page.locator('[data-status-bar]')
             const before = await bar.boundingBox()
             const chart = await page.locator('canvas.editor-chart').boundingBox()
-            expect(before!.height).toBe(88)
+            expect(before!.height).toBe(64)
             await finding(page, 'newer')
             await expect(chip(page)).toBeVisible()
             expect(await bar.boundingBox()).toEqual(before)
@@ -395,15 +395,15 @@ test.describe('the label and the title', () => {
                 }),
             )
             for (const [index, target] of targets.entries()) {
-                expect(target.width).toBeGreaterThanOrEqual(44)
-                expect(target.height).toBe(44)
+                expect(target.width).toBeGreaterThan(0)
+                expect(target.height).toBe(32)
                 expect(target.ownEdges).toBe(true)
                 expect(target.pseudo).toBe('none')
                 if (index && target.top === targets[index - 1]!.top)
                     expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
             }
             expect(targets[0]!.top).toBe(targets[1]!.top)
-            expect(targets[2]!.top).toBe(targets[0]!.top + 44)
+            expect(targets[2]!.top).toBe(targets[0]!.top + 32)
             expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
                 'Level Properties',
@@ -858,7 +858,7 @@ test.describe('the chip', () => {
             expect(geometry.title.width).toBeGreaterThanOrEqual(48)
             expect(geometry.scopes.map((scope) => scope.name)).toEqual(['All Groups', 'All Stages'])
             expect(geometry.file).toMatch(/^coc/)
-            for (const scope of geometry.scopes) expect(scope.width).toBeGreaterThanOrEqual(44)
+            expect(geometry.scopes[0]!.width).toBeCloseTo(geometry.scopes[1]!.width, 1)
             for (const item of [...geometry.items, ...geometry.chip]) {
                 expect(item.left).toBeGreaterThanOrEqual(geometry.bar.left)
                 expect(item.right).toBeLessThanOrEqual(geometry.bar.right)
@@ -889,8 +889,8 @@ test.describe('the chip', () => {
             expect(geometry.title.cut).toBe(true)
             expect(geometry.title.width).toBeGreaterThanOrEqual(48)
             expect(geometry.file).toMatch(/^coc/)
+            expect(geometry.scopes[0]!.width).toBeCloseTo(geometry.scopes[1]!.width, 1)
             for (const scope of geometry.scopes) {
-                expect(scope.width).toBeGreaterThanOrEqual(44)
                 expect(scope.name.replace(/\W/g, '').length).toBeGreaterThanOrEqual(4)
             }
             for (const item of geometry.items) {

@@ -338,10 +338,10 @@ const stageCount = computed(() =>
                     :count="item === 'group' ? groupCount : stageCount"
                     :class="
                         narrowStatus
-                            ? 'min-w-11 flex-1 basis-0'
+                            ? 'min-w-0 flex-1 basis-0'
                             : compactStatus
                               ? 'min-w-28'
-                              : 'min-w-11 max-w-[40%]'
+                              : 'min-w-0 max-w-[40%]'
                     "
                     :title="
                         item === 'group'
@@ -373,11 +373,5 @@ const stageCount = computed(() =>
 
 .status-bar-narrow {
     height: calc(2 * var(--status-row-height));
-}
-
-@media (any-pointer: coarse) {
-    .status-bar {
-        --status-row-height: 44px;
-    }
 }
 </style>
