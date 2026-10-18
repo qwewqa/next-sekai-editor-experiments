@@ -275,3 +275,18 @@ test('previousOf: an Edits Here match’s own, else the next older entry loaded'
     assert.equal(previousOf(list, a), undefined)
     assert.deepEqual(previousOf(list, c), { sessionId: 's', seq: 99, snapshot: 'x' })
 })
+
+test('partial groups omit incomplete deltas and selected segments stay pinned when pages arrive', () => {
+    seq = 0
+    const older = entry('edit', 'Add', noon, { noteCount: 1 })
+    const middle = entry('edit', 'Add', noon, { noteCount: 2 })
+    const newest = entry('edit', 'Add', noon, { noteCount: 3 })
+    const partial = entryRows(buildRows([newest, middle], { ...options, more: true }))[0]!
+    assert.equal(partial.delta, undefined)
+    assert.equal(partial.partial, true)
+    const pinned = partial.members.map((member) => `s:${member.seq}`)
+    const grown = entryRows(buildRows([newest, middle, older], { ...options, pinned, more: true }))
+    assert.deepEqual(grown[0]!.members, [newest, middle])
+    assert.equal(grown[0]!.delta, 2)
+    assert.deepEqual(grown[1]!.members, [older])
+})

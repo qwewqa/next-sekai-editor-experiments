@@ -285,8 +285,9 @@ test('the layouts: small up to the limit, large past it, most from 80% of the ob
     // 330 of 402 objects (the chart keeps its two BPM changes).
     const most = await diff(before, changeFirst(330))
     assert.equal(most.layout, 'most')
-    assert.deepEqual(most.objects, [])
-    assert.equal(most.counts.slides, 330)
+    assert.equal(most.objects.length, 660)
+    assert.equal(most.objects.filter((object) => object.status === 'added').length, 330)
+    assert.equal(most.counts.slides, 660)
 })
 
 test('the page and the worker agree across the golden and edge charts', async () => {
@@ -302,5 +303,45 @@ test('the page and the worker agree across the golden and edge charts', async ()
         assert.ok(set.objects.length >= 4)
         // Unrelated states, as one read from storage and one in memory, give the same answer.
         assert.deepEqual(byIdentity(stateOf(fixture), after), set)
+    }
+})
+
+test('dense candidate pairing is bounded even inside a mostly unchanged chart', () => {
+    const before = createState(
+        { ...edgeChart().chart, slides: Array.from({ length: 400 }, () => [note(4, { left: 1 })]) },
+        0,
+    )
+    const after = createState(
+        { ...edgeChart().chart, slides: Array.from({ length: 400 }, () => [note(5, { left: 2 })]) },
+        0,
+    )
+    const set = diffChanges(stateCandidates(before, after), { notes: 100_000, events: 0 })
+    assert.equal(set.layout, 'most')
+    assert.equal(set.objects.length, 800)
+    assert.equal(set.objects.filter((object) => object.status === 'removed').length, 400)
+    assert.equal(set.objects.filter((object) => object.status === 'added').length, 400)
+})
+
+test('event footprints detect horizontal moves at the same beat', () => {
+    for (const [kind, lane] of [
+        ['cameraEvents', 1],
+        ['stageMaskEvents', 2],
+        ['stagePivotEvents', 2],
+        ['stageStyleEvents', 2],
+        ['stageTransformEvents', 3],
+        ['timeScales', 2],
+    ] as const) {
+        const record = toRecords(stateOf(goldenChart())).kinds.find(
+            (candidate) => candidate.kind === kind,
+        )!.records[0]!.record
+        const moved = [...record]
+        moved[lane] = (record[lane] as number) + 15
+        const set = diffChanges({
+            header: false,
+            kinds: [{ kind, before: [record], after: [moved] }],
+        })
+        assert.equal(set.objects.length, 1)
+        assert.equal(isMoved(set.objects[0]!), true, kind)
+        assert.equal(set.objects[0]!.left, moved[lane], kind)
     }
 })

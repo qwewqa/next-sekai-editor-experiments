@@ -25,6 +25,11 @@ export type PeekedInfo = {
     label: string
     snapshot?: string
     previous?: ChainKey
+    oldest?: EntryKey
+    initial?: boolean
+    rowId?: string
+    members?: readonly EntryKey[]
+    pinned?: readonly EntryKey[]
 }
 
 /** An entry's key in the peek. */
@@ -45,7 +50,7 @@ export const requestPeek = (info: PeekedInfo) => {
         // one already reads so from its row, and one not stored yet can be tried again.
         if (error instanceof PeekError && error.reason === 'damaged')
             damagedEntries.value = new Set(damagedEntries.value).add(info.key)
-        if (peekedInfo.value?.key === info.key) peekedInfo.value = undefined
+        if (peekedInfo.value === info) peekedInfo.value = undefined
     })
 }
 

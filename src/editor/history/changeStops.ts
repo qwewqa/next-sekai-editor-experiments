@@ -2,7 +2,7 @@
 // change's time and lanes, grouped into stops that fit on screen. Pure, so Node tests run it.
 
 /** A change's place: its time, and a note's lanes. */
-export type Place = { time: number; left: number; right: number }
+export type Place = { time: number; left: number; right: number; id?: number }
 
 /** Changes close enough to show together: from the first's time to the last's. */
 export type Stop = { from: number; to: number; left: number; right: number }
@@ -29,13 +29,13 @@ export const stopsOf = (places: readonly Place[], span: number): Stop[] => {
 
 /** Changes wholly beyond the band's top and its bottom. */
 export const countOff = (places: readonly Place[], band: Band) => {
-    let above = 0
-    let below = 0
-    for (const { time } of places) {
-        if (time > band.top) above++
-        else if (time < band.bottom) below++
+    const above = new Set<number>()
+    const below = new Set<number>()
+    for (const [index, { time, id = index }] of places.entries()) {
+        if (time > band.top) above.add(id)
+        else if (time < band.bottom) below.add(id)
     }
-    return { above, below }
+    return { above: above.size, below: below.size }
 }
 
 const middleOf = ({ from, to }: Stop) => (from + to) / 2

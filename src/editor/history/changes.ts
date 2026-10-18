@@ -14,6 +14,7 @@ import {
     MARK_LIMIT,
     diffChanges,
     isMoved,
+    placeOf,
     type ChangeSet,
     type ChangeTotals,
     type ChangedObject,
@@ -21,16 +22,26 @@ import {
 import { joints, stateCandidates, totalsOf } from '../../local/changes/states'
 import type { RecordValue } from '../../local/records/canonical'
 import { entitiesOf } from '../../local/records/extract'
-import { noteObject, noteRecord } from '../../local/records/records'
+import {
+    bpmObject,
+    cameraEventObject,
+    noteObject,
+    noteRecord,
+    stageMaskEventObject,
+    stagePivotEventObject,
+    stageStyleEventObject,
+    stageTransformEventObject,
+    timeScaleObject,
+} from '../../local/records/records'
 import type { KindName } from '../../local/records/schema'
 import { storageWorker } from '../../local/start'
 import { settings } from '../../settings'
 import { createState, type State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
-import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime } from '../../state/integrals/bpms'
 import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
+import { getComposedLayout } from '../composedView'
 import { view } from '../view'
 import { isCoarsePointer } from '../workspace'
 import {
@@ -52,12 +63,20 @@ import { peekedInfo, type PeekedInfo } from './selection'
 type Rec = readonly RecordValue[]
 
 /** The peeked entry's change, once known, with the state it was diffed for. */
-export type ChangeView = { key: EntryKey; set: ChangeSet; totals: ChangeTotals; state: State }
+export type ChangeView = {
+    key: EntryKey
+    request: PeekedInfo
+    set: ChangeSet
+    totals: ChangeTotals
+    state: State
+}
 
 export const peekChange = shallowRef<ChangeView>()
 
 /** The entry whose change is settled: known, or found unknown. */
-const settledKey = shallowRef<EntryKey>()
+export const comparisonStatus = shallowRef<'loading' | 'known' | 'initial' | 'unavailable'>(
+    'loading',
+)
 
 let generation = 0
 
@@ -74,7 +93,7 @@ const previousOf = async (key: EntryKey) => {
 const compute = async (info: PeekedInfo): Promise<ChangeView | undefined> => {
     const after = await loadEntryState(info.key)
     const totals = totalsOf(after)
-    const previous = info.previous ?? (await previousOf(info.key))
+    const previous = info.previous ?? (await previousOf(info.oldest ?? info.key))
     // The chain's first entry has nothing before it.
     if (!previous) return
     let set: ChangeSet | undefined
@@ -90,7 +109,7 @@ const compute = async (info: PeekedInfo): Promise<ChangeView | undefined> => {
         const before = await loadEntryState(previous.key)
         set = diffChanges(stateCandidates(before, after), totals)
     }
-    return set && { key: info.key, set, totals, state: after }
+    return set && { key: info.key, request: info, set, totals, state: after }
 }
 
 watch(
@@ -98,26 +117,28 @@ watch(
     (info) => {
         const at = ++generation
         peekChange.value = undefined
+        comparisonStatus.value = 'loading'
         if (!info) return
         compute(info).then(
             (result) => {
                 if (at !== generation) return
                 peekChange.value = result
-                settledKey.value = info.key
+                comparisonStatus.value = result ? 'known' : info.initial ? 'initial' : 'unavailable'
             },
             () => {
                 // Unknown: the label alone, nothing drawn.
-                if (at === generation) settledKey.value = info.key
+                if (at === generation) comparisonStatus.value = 'unavailable'
             },
         )
     },
-    { immediate: true },
+    { immediate: true, flush: 'sync' },
 )
 
 /** The change while the peeked state is the one it was diffed for. */
 export const shownChange = computed(() => {
     const change = peekChange.value
     if (!change || !isPeeking.value || peekedKey.value !== change.key) return
+    if (peekedInfo.value !== change.request) return
     if (peek.value?.state.store !== change.state.store) return
     return change
 })
@@ -140,20 +161,19 @@ const eventCount = (counts: Record<KindName, number>) =>
 /** "8 changes", "Changed 282 notes · 10 events", "Changed 1,684 of 1,945 notes", "No changes". */
 export const changeText = (change: Pick<ChangeView, 'set' | 'totals'>) => {
     const strings = i18n.value.peek
-    const { set, totals } = change
+    const { set } = change
     if (set.layout === 'none') return set.header ? undefined : strings.noChanges
-    if (set.layout === 'small')
-        return interpolateRaw(strings.changeCount, count(set.objects.length))
+    if (set.layout === 'small') {
+        const text = interpolateRaw(strings.changeCount, count(set.objects.length))
+        return set.header ? `${text} · ${strings.settingsChanged}` : text
+    }
     const fragments: string[] = []
     const { counts } = set
-    const events = eventCount(counts) + counts.bpms + counts.timeScales
     if (set.layout === 'most') {
-        if (counts.slides)
-            fragments.push(
-                interpolateRaw(strings.notesOf, count(counts.slides), count(totals.notes)),
-            )
-        if (events)
-            fragments.push(interpolateRaw(strings.eventsOf, count(events), count(totals.events)))
+        const added = set.objects.filter((object) => object.status === 'added').length
+        const removed = set.objects.filter((object) => object.status === 'removed').length
+        const text = interpolateRaw(strings.addedRemoved, count(added), count(removed))
+        return set.header ? `${text} · ${strings.settingsChanged}` : text
     } else {
         if (counts.slides) fragments.push(interpolateRaw(strings.notes, count(counts.slides)))
         if (counts.bpms) fragments.push(interpolateRaw(strings.bpms, count(counts.bpms)))
@@ -162,19 +182,29 @@ export const changeText = (change: Pick<ChangeView, 'set' | 'totals'>) => {
         const others = eventCount(counts)
         if (others) fragments.push(interpolateRaw(strings.events, count(others)))
     }
-    return interpolateRaw(strings.changedLarge, fragments.join(' · '))
+    const text = interpolateRaw(strings.changedLarge, fragments.join(' · '))
+    return set.header ? `${text} · ${strings.settingsChanged}` : text
 }
 
 /** The bar's second line; undefined while loading, when unknown, or for a header-only change. */
 export const changeLine = computed(() => {
     const change = shownChange.value
-    return change && changeText(change)
+    if (change)
+        return (
+            changeText(change) ??
+            ((peekedInfo.value?.members?.length ?? 1) > 1
+                ? i18n.value.peek.settingsChanged
+                : peekedInfo.value?.label)
+        )
+    if (comparisonStatus.value === 'initial') return i18n.value.peek.initialState
+    if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailable
+    return undefined
 })
 
 /** Whether the change has objects to draw and bring into view. */
 export const hasPlaces = computed(() => {
     const layout = shownChange.value?.set.layout
-    return layout === 'small' || layout === 'large'
+    return layout === 'small' || layout === 'large' || layout === 'most'
 })
 
 // --- Marks on the chart: the peeked state's entities that changed, and ghosts of the old ones.
@@ -185,42 +215,39 @@ export type ChangeMarks = {
     /** Drawn at full strength while the rest dims: changed objects, their connectors. */
     changed: ReadonlySet<Entity>
     /** Rings: changed and added objects; added ones get a `+`. */
-    rings: { entity: Entity; added: boolean }[]
+    rings: { entity: Entity; added: boolean; id: number }[]
     /** Old notes: removed ones (`−`) and where moved ones were. */
-    ghosts: { entity: NoteEntity; removed: boolean }[]
+    ghosts: { entity: Entity; removed: boolean; id: number }[]
     /** The state ghosts are drawn through: the old slides, on the peeked tempo. */
     ghostState?: State
-    /** Removed events: dashed lines at their beats. */
-    ghostLines: { beat: number; kind: KindName }[]
 }
 
 const textOf = (record: Rec) => JSON.stringify(record)
 
 const jointOf = joints as Record<KindName, [EventType, (entity: never) => Rec] | undefined>
 
-/** The entity of a record in a state: the first not yet taken at its beat. */
-const findEntity = (
-    target: State,
-    kind: KindName,
-    record: Rec,
-    beat: number,
-    taken: Set<Entity>,
-): Entity | undefined => {
-    const text = textOf(record)
-    if (kind === 'slides') {
-        for (const entity of target.store.grid.note.get(Math.floor(beat)) ?? [])
-            if (!taken.has(entity) && textOf(noteRecord(entity)) === text) return entity
-        return
+/** Record queues avoid repeatedly scanning dense same-beat buckets. */
+const entityIndex = (target: State) => {
+    const index = new Map<string, Entity[]>()
+    const add = (kind: KindName, entity: Entity, record: Rec) => {
+        const key = `${kind}:${textOf(record)}`
+        const bucket = index.get(key)
+        if (bucket) bucket.push(entity)
+        else index.set(key, [entity])
     }
-    const joint = jointOf[kind]
-    if (!joint) return
-    const [type, encode] = joint
-    for (const entity of target.store.grid[type].get(Math.floor(beat)) ?? [])
-        if (!taken.has(entity) && textOf(encode(entity as never)) === text) return entity
+    for (const entity of entitiesOf(target.store.grid.note))
+        add('slides', entity, noteRecord(entity))
+    for (const [kind, joint] of Object.entries(jointOf)) {
+        if (!joint) continue
+        const [type, encode] = joint
+        for (const entity of entitiesOf<Entity>(target.store.grid[type]))
+            add(kind as KindName, entity, encode(entity as never))
+    }
+    return (kind: KindName, record: Rec) => index.get(`${kind}:${textOf(record)}`)?.pop()
 }
 
 /** The old slides of removed and moved notes, on the peeked state's tempo and header. */
-const ghostStateOf = (shown: State, slides: Rec[]) =>
+const ghostStateOf = (shown: State, slides: Rec[], events: Map<KindName, Rec[]>) =>
     createState(
         {
             initialLife: shown.initialLife,
@@ -234,12 +261,14 @@ const ghostStateOf = (shown: State, slides: Rec[]) =>
             stages: shown.stages,
             groupFolders: shown.groupFolders,
             stageFolders: shown.stageFolders,
-            cameraEvents: [],
-            stageMaskEvents: [],
-            stagePivotEvents: [],
-            stageStyleEvents: [],
-            stageTransformEvents: [],
-            timeScales: [],
+            cameraEvents: (events.get('cameraEvents') ?? []).map(cameraEventObject),
+            stageMaskEvents: (events.get('stageMaskEvents') ?? []).map(stageMaskEventObject),
+            stagePivotEvents: (events.get('stagePivotEvents') ?? []).map(stagePivotEventObject),
+            stageStyleEvents: (events.get('stageStyleEvents') ?? []).map(stageStyleEventObject),
+            stageTransformEvents: (events.get('stageTransformEvents') ?? []).map(
+                stageTransformEventObject,
+            ),
+            timeScales: (events.get('timeScales') ?? []).map(timeScaleObject),
             slides: slides.map((slide) => (slide as readonly Rec[]).map(noteObject)),
         },
         0,
@@ -256,54 +285,62 @@ const connectionTypes: Partial<Record<EntityType, EntityType>> = {
 const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks => {
     const changed = new Set<Entity>()
     const rings: ChangeMarks['rings'] = []
-    const ghostObjects: { object: ChangedObject; record: Rec; removed: boolean }[] = []
-    const ghostLines: ChangeMarks['ghostLines'] = []
-    for (const object of objects) {
+    const ghostObjects: { object: ChangedObject; record: Rec; removed: boolean; id: number }[] = []
+    const find = entityIndex(shown)
+    for (const [id, object] of objects.entries()) {
         if (object.status === 'removed') {
-            if (object.kind === 'slides')
-                ghostObjects.push({ object, record: object.record, removed: true })
-            else ghostLines.push({ beat: object.beat, kind: object.kind })
+            ghostObjects.push({ object, record: object.record, removed: true, id })
             continue
         }
-        const entity = findEntity(shown, object.kind, object.record, object.beat, changed)
+        const entity = find(object.kind, object.record)
         if (entity) {
             changed.add(entity)
-            rings.push({ entity, added: object.status === 'added' })
+            rings.push({ entity, added: object.status === 'added', id })
         }
-        if (object.kind === 'slides' && object.from && isMoved(object))
-            ghostObjects.push({ object, record: object.from, removed: false })
+        if (object.from && isMoved(object))
+            ghostObjects.push({ object, record: object.from, removed: false, id })
     }
-    // Connectors of changed notes, and event lines from changed joints, keep full strength.
-    for (const entity of [...changed]) {
-        if (entity.type === 'note') {
-            for (const connector of shown.store.slides.connector.get(entity.slideId) ?? [])
-                if (changed.has(connector.head) || changed.has(connector.tail))
-                    changed.add(connector)
-            continue
-        }
-        const type = connectionTypes[entity.type]
-        if (!type) continue
+    // One pass over connections keeps dense changes linear.
+    for (const connectors of shown.store.slides.connector.values())
+        for (const connector of connectors)
+            if (changed.has(connector.head) || changed.has(connector.tail)) changed.add(connector)
+    for (const type of Object.values(connectionTypes)) {
         for (const bucket of shown.store.grid[type].values())
             for (const connection of bucket) {
                 const { min, max } = connection as unknown as { min: Entity; max: Entity }
-                if (min === entity || max === entity) changed.add(connection)
+                if (changed.has(min) || changed.has(max)) changed.add(connection)
             }
     }
     const ghosts: ChangeMarks['ghosts'] = []
-    if (!ghostObjects.length) return { changed, rings, ghosts, ghostLines }
+    if (!ghostObjects.length) return { changed, rings, ghosts }
     const slides = [
         ...new Set(ghostObjects.flatMap(({ object }) => (object.slide ? [object.slide] : []))),
     ]
-    const ghostState = ghostStateOf(shown, slides)
-    const taken = new Set<Entity>()
-    for (const { record, removed } of ghostObjects) {
-        const beat = record[2] as number
-        const entity = findEntity(ghostState, 'slides', record, beat, taken)
-        if (entity?.type !== 'note') continue
-        taken.add(entity)
-        ghosts.push({ entity, removed })
+    const events = new Map<KindName, Rec[]>()
+    for (const { object, record } of ghostObjects) {
+        if (object.kind === 'slides' || object.kind === 'bpms') continue
+        const list = events.get(object.kind)
+        if (list) list.push(record)
+        else events.set(object.kind, [record])
     }
-    return { changed, rings, ghosts, ghostState, ghostLines }
+    const ghostState = ghostStateOf(shown, slides, events)
+    const findGhost = entityIndex(ghostState)
+    for (const { object, record, removed, id } of ghostObjects) {
+        const entity =
+            object.kind === 'bpms'
+                ? {
+                      type: 'bpm' as const,
+                      ...bpmObject(record),
+                      meter: record[2] as number,
+                      hitbox: undefined,
+                  }
+                : findGhost(object.kind, record)
+        if (!entity) continue
+        ghosts.push({ entity, removed, id })
+    }
+    rings.sort((a, b) => a.entity.beat - b.entity.beat)
+    ghosts.sort((a, b) => a.entity.beat - b.entity.beat)
+    return { changed, rings, ghosts, ghostState }
 }
 
 /** What the chart draws for the change; none for a change told in words or unknown. */
@@ -319,7 +356,9 @@ export const undimmed = computed((): ReadonlySet<Entity> | undefined => {
     const marks = changeMarks.value
     if (marks) return marks.changed
     // The next entry's change still loading: the dim holds, so arrowing never flashes.
-    const loading = settledKey.value !== peekedKey.value || !shownChange.value
+    const loading =
+        comparisonStatus.value === 'loading' ||
+        (comparisonStatus.value === 'known' && peekChange.value?.set.layout !== 'none')
     return loading && dimHeld.value ? nothing : undefined
 })
 
@@ -327,11 +366,15 @@ const nothing: ReadonlySet<Entity> = new Set()
 
 /** Whether the last settled change dimmed the chart. */
 const dimHeld = shallowRef(false)
-watch([changeMarks, settledKey, isPeeking], () => {
+watch([changeMarks, comparisonStatus, isPeeking], () => {
     if (!isPeeking.value) dimHeld.value = false
     else if (changeMarks.value) dimHeld.value = true
-    else if (settledKey.value === peekedKey.value && shownChange.value) dimHeld.value = false
-    else if (settledKey.value === peekedKey.value && !peekChange.value) dimHeld.value = false
+    else if (
+        comparisonStatus.value === 'initial' ||
+        comparisonStatus.value === 'unavailable' ||
+        peekChange.value?.set.layout === 'none'
+    )
+        dimHeld.value = false
 })
 
 // --- Where the changes are, and bringing them into view.
@@ -359,31 +402,60 @@ const places = computed((): Place[] => {
     const change = shownChange.value
     if (!change || !hasPlaces.value) return []
     const bpms = change.state.bpms
+    const marks = changeMarks.value
+    const current = new Map(marks?.rings.map(({ id, entity }) => [id, entity]))
+    const old = new Map(marks?.ghosts.map(({ id, entity }) => [id, entity]))
+    const composed = getComposedLayout(change.state)
+    const position = (kind: KindName, record: Rec, entity?: Entity, ghost = false) => {
+        const place = placeOf(kind, record)
+        if (composed && entity?.type === 'note') {
+            const state = ghost ? marks?.ghostState : change.state
+            const projected = composed.notePosition(entity, entity.beat, {
+                slideInfos: state?.store.slides.info.get(entity.slideId),
+            })
+            return { ...place, left: projected.left, size: projected.size }
+        }
+        return place
+    }
     return change.set.objects
-        .map((object) => ({
-            time: beatToTime(bpms, object.beat),
-            left: object.left ?? 0,
-            right: (object.left ?? 0) + (object.size ?? 0),
-        }))
+        .flatMap((object, id) => {
+            const from =
+                object.status === 'removed'
+                    ? position(object.kind, object.record, old.get(id), true)
+                    : position(object.kind, object.record, current.get(id))
+            const points = [
+                from,
+                ...(object.from && isMoved(object)
+                    ? [position(object.kind, object.from, old.get(id), true)]
+                    : []),
+            ]
+            return points.map((place) => ({
+                id,
+                time: beatToTime(bpms, place.beat),
+                left: place.left,
+                right: place.left + place.size,
+            }))
+        })
         .sort((a, b) => a.time - b.time)
 })
 
 /** Changes beyond the band's top and bottom edges. */
-export const offBand = computed(() => countOff(places.value, bandTimes()))
+export const usableBand = computed(() => changeBand.value.top + changeBand.value.bottom < view.h)
+export const offBand = computed(() =>
+    usableBand.value ? countOff(places.value, bandTimes()) : { above: 0, below: 0 },
+)
 
 /** Whether the edge arrows show at all. */
 export const arrowsShown = computed(() => isPeeking.value && hasPlaces.value && !!shownChange.value)
 
 /** How far above the pane's bottom the down arrow's top edge is (0 when it is not shown), in px. */
-export const downArrowClearance = computed(() =>
-    arrowsShown.value && offBand.value.below
-        ? changeBand.value.bottom + arrowGap.value + (isCoarsePointer.value ? 44 : 24)
-        : 0,
-)
+export const downArrowClearance = computed(() => 0)
 
 /** Whether the arrows carry counts: not past the limit. */
 export const countsShown = computed(
-    () => (shownChange.value?.set.objects.length ?? 0) <= MARK_LIMIT,
+    () =>
+        shownChange.value?.set.layout !== 'most' &&
+        (shownChange.value?.set.objects.length ?? 0) <= MARK_LIMIT,
 )
 
 const scrollTo = (stop: Stop) => {
@@ -413,11 +485,33 @@ const scrollTo = (stop: Stop) => {
 
 const currentStops = () => {
     const band = bandTimes()
-    return { band, stops: stopsOf(places.value, band.top - band.bottom) }
+    return { band, stops: usableBand.value ? stopsOf(places.value, band.top - band.bottom) : [] }
+}
+
+const showLateralChange = () => {
+    if (!usableBand.value) return false
+    const band = bandTimes()
+    const half = settings.width / 2
+    const outside = places.value.filter(
+        (place) =>
+            place.time >= band.bottom &&
+            place.time <= band.top &&
+            (place.right < view.lane - half || place.left > view.lane + half),
+    )
+    outside.sort(
+        (a, b) =>
+            Math.abs((a.left + a.right) / 2 - view.lane) -
+            Math.abs((b.left + b.right) / 2 - view.lane),
+    )
+    const place = outside[0]
+    if (!place) return false
+    scrollTo({ from: place.time, to: place.time, left: place.left, right: place.right })
+    return true
 }
 
 /** Show Change: the next stop above the band's middle, wrapping to the lowest. */
 export const showNextChange = () => {
+    if (showLateralChange()) return
     const { band, stops } = currentStops()
     const stop = nextStop(stops, band)
     if (stop) scrollTo(stop)
@@ -425,31 +519,46 @@ export const showNextChange = () => {
 
 /** An edge arrow: the nearest stop wholly beyond the band that way. */
 export const showChangeToward = (direction: 'up' | 'down') => {
-    const { band, stops } = currentStops()
+    if (!usableBand.value) return
+    const band = bandTimes()
+    const stops = stopsOf(
+        places.value.filter(({ time }) =>
+            direction === 'up' ? time > band.top : time < band.bottom,
+        ),
+        band.top - band.bottom,
+    )
     const stop = stopToward(stops, band, direction)
     if (stop) scrollTo(stop)
 }
 
 /** The stop nearest the band's middle, when not every change is in view: the row menu's. */
 export const showNearestChange = () => {
+    if (showLateralChange()) return
     const { band, stops } = currentStops()
     const stop = nearestStop(stops, band)
     if (stop) scrollTo(stop)
 }
 
 /** Once the change of `key` is shown, its nearest stop; nothing if it never comes. */
-export const showChangeOf = (key: EntryKey) => {
-    const stop = watch(shownChange, (change) => {
-        if (change?.key !== key) return
-        stop()
-        clearTimeout(timer)
+export const showChangeOf = (request: PeekedInfo) => {
+    if (shownChange.value?.request === request) {
         showNearestChange()
-    })
-    const timer = setTimeout(stop, 5000)
-    // Already shown: at once.
-    if (shownChange.value?.key === key) {
-        stop()
-        clearTimeout(timer)
-        showNearestChange()
+        return
     }
+    const stop = watch(
+        [shownChange, peekedInfo, isPeeking],
+        ([change, selected, peeking], previous) => {
+            if (selected !== request || (!peeking && previous[2])) {
+                stop()
+                clearTimeout(timer)
+                return
+            }
+            if (change?.request !== request) return
+            stop()
+            clearTimeout(timer)
+            showNearestChange()
+        },
+        { flush: 'sync' },
+    )
+    const timer = setTimeout(stop, 5000)
 }

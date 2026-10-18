@@ -1218,6 +1218,9 @@
     "changed": "播放速度更改为 {0}×"
   },
   "history": {
+    "edits": "{0} 次编辑",
+    "undidSteps": "撤销了 {0} 步",
+    "redidSteps": "重做了 {0} 步",
     "initialize": "初始化",
     "dynamicStages": {
       "title": "动态舞台",
@@ -1244,7 +1247,6 @@
     "removedForSpace": "已为节省空间而移除",
     "damaged": "已损坏",
     "continuedFrom": "从 {0} 继续",
-    "foldHint": "点按“历史记录”可折叠列表",
     "announceViewing": "正在查看 {0}",
     "filterHere": "此处的编辑",
     "noEditsHere": "此处没有编辑",
@@ -1835,6 +1837,11 @@
     "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
   },
   "peek": {
+    "settingsChanged": "设置已更改",
+    "initialState": "初始状态",
+    "unavailable": "无法获取更改",
+    "loadingChanges": "正在加载更改…",
+    "addedRemoved": "添加 {0} · 删除 {1}",
     "exportsCurrent": "导出当前版本。",
     "overlay": "正在查看历史记录 · 只读",
     "viewing": "正在查看 {0} · {1} · 只读",

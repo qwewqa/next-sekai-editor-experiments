@@ -1218,6 +1218,9 @@
         "changed": "Changed playback speed to {0}×"
     },
     "history": {
+        "edits": "{0} edits",
+        "undidSteps": "Undid {0} steps",
+        "redidSteps": "Redid {0} steps",
         "initialize": "Initialize",
         "dynamicStages": {
             "title": "Dynamic Stages",
@@ -1244,7 +1247,6 @@
         "removedForSpace": "removed to save space",
         "damaged": "damaged",
         "continuedFrom": "Continued from {0}",
-        "foldHint": "Tap History to fold the list",
         "announceViewing": "Viewing {0}",
         "filterHere": "Edits Here",
         "noEditsHere": "No edits here",
@@ -1835,6 +1837,11 @@
         "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
     },
     "peek": {
+        "settingsChanged": "Settings changed",
+        "initialState": "Initial state",
+        "unavailable": "Changes unavailable",
+        "loadingChanges": "Loading changes…",
+        "addedRemoved": "Added {0} · Removed {1}",
         "exportsCurrent": "Exports the current version.",
         "overlay": "Viewing history · read-only",
         "viewing": "Viewing {0} · {1} · read-only",
