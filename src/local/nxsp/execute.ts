@@ -1,7 +1,7 @@
 import { crc32 } from '../../zip/crc32'
 import { LOCAL_HEADER_SIZE, localHeaderSize } from '../../zip/directory'
 import { ZipError } from '../../zip/error'
-import { inflateExact } from '../../zip/inflate'
+import { inflatedCrc, inflateExact } from '../../zip/inflate'
 import { ZipReader } from '../../zip/reader'
 import { assembleZip, type PreparedEntry } from '../../zip/writer'
 import { ENTRY_LIMIT, ZIP32_LIMIT, type PlannedEntry, type WritePlan } from './plan'
@@ -10,6 +10,8 @@ import { ENTRY_LIMIT, ZIP32_LIMIT, type PlannedEntry, type WritePlan } from './p
 // its token names, by central-directory index and `dataOffset`, and is checked by the entry's CRC;
 // the CRC and sizes of what it writes are computed, never trusted; a plan that breaks the contract
 // is a plan error, a copy that fails is damage in its source, or a conflict when the source changed.
+// Every check that depends on a source's bytes reads its fingerprint first (§1.6.11.7): a source
+// whose bytes changed after `inspect` is a conflict, whatever check it failed.
 
 /** A source the executor reads: the pinned file, its fingerprint then, and how to read it again. */
 export type ExecutionSource = {
@@ -90,24 +92,45 @@ export const executePlan = async (
     }
 }
 
+/** Whether a source's fingerprint now differs from the pinned one (unreadable counts as changed). */
+const hasChanged = async (source: ExecutionSource) => {
+    try {
+        return (await source.readFingerprint()) !== source.fingerprint
+    } catch {
+        return true
+    }
+}
+
+const conflict = ({ token, source }: { token: string; source: ExecutionSource }, message: string) =>
+    new ExecutionError('conflict', `${token} changed: ${message}`, { token, role: source.role })
+
 /** A failure reading a source: a conflict when its fingerprint changed, else damage in it. */
 const sourceFailure = async (
-    { token, source }: { token: string; source: ExecutionSource },
+    opened: { token: string; source: ExecutionSource },
     error: unknown,
 ) => {
     if (error instanceof ExecutionError) return error
-    let changed: boolean
-    try {
-        changed = (await source.readFingerprint()) !== source.fingerprint
-    } catch {
-        changed = true
-    }
     const message = error instanceof Error ? error.message : String(error)
-    return new ExecutionError(changed ? 'conflict' : 'io', `${token}: ${message}`, {
-        token,
-        role: source.role,
+    if (await hasChanged(opened.source)) return conflict(opened, message)
+    return new ExecutionError('io', `${opened.token}: ${message}`, {
+        token: opened.token,
+        role: opened.source.role,
     })
 }
+
+/** A plan error found from a source's bytes: a conflict instead when any of those sources changed. */
+const sourcePlanError = async (
+    sources: readonly { token: string; source: ExecutionSource }[],
+    message: string,
+): Promise<never> => {
+    for (const opened of sources) {
+        if (await hasChanged(opened.source)) throw conflict(opened, message)
+    }
+    throw new ExecutionError('plan', message)
+}
+
+/** How much of a stored copy is read at once to compute its CRC. */
+const CRC_SLICE = 8 * 1024 * 1024
 
 const executeEntry = async (
     entry: PlannedEntry,
@@ -125,6 +148,7 @@ const executeEntry = async (
     }
 
     const data: (Uint8Array<ArrayBuffer> | Blob)[] = []
+    const copied: OpenSource[] = []
     let crc = 0
     let size = 0
     let compressedSize = 0
@@ -133,14 +157,12 @@ const executeEntry = async (
             const bytes = new Uint8Array(part.data)
             if (method === 8) {
                 // Inflated to compute what it holds; a stream past the planned size is a plan error.
-                let inflated: Uint8Array
                 try {
-                    inflated = inflateExact(bytes, entry.uncompressedSize ?? 0)
+                    crc = inflatedCrc(bytes, entry.uncompressedSize ?? 0)
                 } catch {
                     return planError(`${name}: its bytes do not inflate to its planned size`)
                 }
-                crc = crc32(inflated)
-                size = inflated.length
+                size = entry.uncompressedSize ?? 0
             } else {
                 crc = crc32(bytes, crc)
                 size += bytes.length
@@ -151,54 +173,80 @@ const executeEntry = async (
         }
 
         const opened = await sourceFor(part.source)
+        copied.push(opened)
         const from =
             opened.reader.entries[part.entryIndex] ??
-            planError(`${name}: no entry ${part.entryIndex} in ${part.source}`)
-        let slice: Blob
-        let uncompressed: Uint8Array
+            (await sourcePlanError(
+                [opened],
+                `${name}: no entry ${part.entryIndex} in ${part.source}`,
+            ))
         try {
             // The local header gives where the data starts: it must be the plan's `dataOffset`.
             const fixed = await bytesOf(
                 opened.source.file.slice(from.localOffset, from.localOffset + LOCAL_HEADER_SIZE),
             )
             if (from.localOffset + localHeaderSize(fixed) !== part.dataOffset)
-                planError(
+                await sourcePlanError(
+                    [opened],
                     `${name}: entry ${part.entryIndex} of ${part.source} does not start at ${part.dataOffset}`,
                 )
             if (!part.inflate && from.method !== method)
-                planError(`${name}: method ${method}, but the source entry’s is ${from.method}`)
+                await sourcePlanError(
+                    [opened],
+                    `${name}: method ${method}, but the source entry’s is ${from.method}`,
+                )
+            if (part.inflate && from.method !== 8)
+                await sourcePlanError([opened], `${name}: an inflate copy of a STORE entry`)
             if (from.method !== 0 && from.method !== 8) throw new ZipError('unsupported')
-            // The whole entry, its CRC checked against the central directory (inflated when deflated).
-            slice = await opened.reader.stored(from)
-            const stored = await bytesOf(slice)
-            uncompressed =
-                from.method === 0
-                    ? from.compressedSize === from.size
-                        ? stored
-                        : (() => {
-                              throw new ZipError('size')
-                          })()
-                    : inflateExact(stored, from.size)
-            if (crc32(uncompressed) !== from.crc32) throw new ZipError('crc', 'entry CRC')
+            // An entry past the planned size is never inflated or read.
+            if (entry.uncompressedSize !== undefined && size + from.size > entry.uncompressedSize)
+                await sourcePlanError([opened], `${name}: planned size differs`)
         } catch (error) {
             throw await sourceFailure(opened, error)
         }
 
-        // A copy writes the stored bytes as a slice of the source, or with `inflate` the inflated ones.
-        crc = method === 8 ? from.crc32 : crc32(uncompressed, crc)
-        size += uncompressed.length
-        if (part.inflate) {
-            compressedSize += uncompressed.length
-            data.push(new Uint8Array(uncompressed))
-        } else {
-            compressedSize += from.compressedSize
-            data.push(slice)
+        // The whole entry, its CRC checked against the central directory (inflated when deflated).
+        // A STORE copy is read by slices and written as a slice of the source; an `inflate` copy
+        // writes the inflated bytes; a DEFLATE copy is inflated only to compute its CRC.
+        try {
+            const slice = await opened.reader.stored(from)
+            if (from.method === 0) {
+                if (from.compressedSize !== from.size) throw new ZipError('size')
+                let own = 0
+                for (let at = 0; at < slice.size; at += CRC_SLICE) {
+                    const bytes = await bytesOf(slice.slice(at, at + CRC_SLICE))
+                    own = crc32(bytes, own)
+                    if (size) crc = crc32(bytes, crc)
+                }
+                if (own !== from.crc32) throw new ZipError('crc', 'entry CRC')
+                if (!size) crc = own
+                compressedSize += from.compressedSize
+                data.push(slice)
+            } else if (part.inflate) {
+                const inflated = inflateExact(await bytesOf(slice), from.size)
+                if (crc32(inflated) !== from.crc32) throw new ZipError('crc', 'entry CRC')
+                crc = crc32(inflated, crc)
+                compressedSize += inflated.length
+                data.push(inflated)
+            } else {
+                if (inflatedCrc(await bytesOf(slice), from.size) !== from.crc32)
+                    throw new ZipError('crc', 'entry CRC')
+                // A method-8 entry is this one copy, so its CRC is the source entry's.
+                crc = from.crc32
+                compressedSize += from.compressedSize
+                data.push(slice)
+            }
+            size += from.size
+        } catch (error) {
+            throw await sourceFailure(opened, error)
         }
     }
 
-    if (entry.crc32 !== undefined && entry.crc32 !== crc) planError(`${name}: planned CRC differs`)
+    // What the plan expected, against what the copies hold now: a source that changed is a conflict.
+    if (entry.crc32 !== undefined && entry.crc32 !== crc)
+        await sourcePlanError(copied, `${name}: planned CRC differs`)
     if (entry.uncompressedSize !== undefined && entry.uncompressedSize !== size)
-        planError(`${name}: planned size differs`)
+        await sourcePlanError(copied, `${name}: planned size differs`)
     if (size >= ZIP32_LIMIT || compressedSize >= ZIP32_LIMIT) planError(`${name}: 4 GB or more`)
     return {
         name,
