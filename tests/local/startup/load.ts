@@ -112,7 +112,7 @@ export const load = async (
     // The page's own blank start, as the first reset begins it.
     const blank = beginSession(page, stateOf(goldenChart()), 'new')
     options.meanwhile?.(page)
-    const handlers = { ...flush, ...startup, ...journal } as Record<
+    const handlers = { ...flush, ...startup, ...journal } as unknown as Record<
         string,
         (arg: unknown) => Promise<unknown>
     >
