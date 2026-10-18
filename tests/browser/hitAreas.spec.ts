@@ -252,7 +252,9 @@ test.describe('at other root font sizes', () => {
             })
             const dialog = page.getByRole('dialog')
             await expect(dialog).toBeVisible()
-            await dialog.getByRole('heading', { name: 'Toolbar', exact: true }).scrollIntoViewIfNeeded()
+            await dialog
+                .getByRole('heading', { name: 'Toolbar', exact: true })
+                .scrollIntoViewIfNeeded()
             const { end, across, wrapped } = await toolbarPairs(page)
             const button = (index: number) => dialog.locator('button').nth(index)
             const reach = size / 8
