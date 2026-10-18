@@ -28,7 +28,7 @@ export const open = async (page: Page, file: string, acknowledge: boolean) => {
         sessionStorage.setItem('nse.test.storage', '{}')
     })
     await openEditor(page)
-    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
     await importLevelData(page, 'level.json', readFileSync(file), acknowledge)
     await flushed(page)
 }

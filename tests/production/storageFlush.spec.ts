@@ -46,7 +46,7 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     await page.addInitScript(instrumentRendering)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
 
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')

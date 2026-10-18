@@ -121,7 +121,7 @@ const journalLevel = (page: Page) =>
 
 /** Holds flushes, as a kill leaves them: only the journal has the edits after this. */
 const stallFlushes = async (page: Page) => {
-    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
     await page.evaluate(() => {
         window.nseFlushTest!.stall = true
     })

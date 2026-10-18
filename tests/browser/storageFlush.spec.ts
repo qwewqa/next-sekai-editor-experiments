@@ -25,7 +25,7 @@ const boot = async (page: Page, flags: object = {}) => {
             page.evaluate(() => window.nseStorageTest?.status() as StorageStatus | undefined),
         )
         .toEqual({ mode: 'stored' })
-    await expect.poll(() => page.evaluate(() => window.nseFlushTest !== undefined)).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
 }
 
 /** Pushes n edits, each adding a note, as the note tool's history entries do. */

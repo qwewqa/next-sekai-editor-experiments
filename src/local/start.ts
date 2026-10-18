@@ -305,8 +305,10 @@ export const startStorage = async () => {
             setSessionContext(deps, recovery)
         } else if (claim.kind === 'reload') claim.lock.release()
     } finally {
-        // The tab record names the blank start only now, so a reload meanwhile claims again.
-        if (!open) recordBlankStart()
+        // The tab record names the blank start only now, so a reload meanwhile claims again;
+        // never when the worker didn't answer (a page torn down mid-start), which decided
+        // nothing. Work on it named it already.
+        if (!open && answered) recordBlankStart()
         if (test && recovery) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
     }
 }
