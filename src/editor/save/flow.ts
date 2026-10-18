@@ -2,15 +2,19 @@ import { session as currentSession } from '../../history/session'
 import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
 import { formatDateTime } from '../../i18n/dateTime'
+import { formatDate } from '../../i18n/when'
+import { launch } from '../../launch'
 import type { Flusher, FlushSession, SaveReservation } from '../../local/flush'
 import { handleOf, readableWithoutPrompt, storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
+import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
 import { isImporting, whenImported } from '../../local/open/importLoop'
 import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
 import type { BuiltSave } from '../../local/save/execute'
 import { sessionContext } from '../../local/startup/api'
+import { storageStatus } from '../../local/startup/events'
 import { journalWriter, flusher as storingFlusher } from '../../local/storing'
 import {
     appVersion,
@@ -32,6 +36,9 @@ import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { validName } from '../commands/exportLevel/fileName'
 import { exportMemory, sameEntry } from '../commands/exportLevel/memory'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { bindFile, unbindFile } from '../file'
+import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
+import { setDiskFinding } from '../file/state'
 import {
     BuildRefused,
     headHashOf,
@@ -47,6 +54,7 @@ import {
     type DiskVersion,
     type Preparing,
     type RefusedReason,
+    type SaveDialogInput,
     type SaveDialogKind,
 } from './dialogs'
 import { otherProject, readDiskFacts, type DiskFacts } from './disk'
@@ -62,7 +70,6 @@ import {
     rememberHandle,
     removeMarker,
     savedState,
-    showBinding,
     withBind,
     writeMarker,
     writeRevocation,
@@ -316,7 +323,16 @@ const bindWrite = async (
     if (currentSession.value.sessionId === reservation.session.id) {
         const { copyOf: _copy, ...rest } = currentSession.value
         currentSession.value = { ...rest, docId: built.identity.docId }
-        showBinding({ name, event: String(file.event), at: reservation.wall })
+        bindFile(
+            {
+                name,
+                event: String(file.event),
+                at: reservation.wall,
+                hash: toHex(headHashOf(built)),
+            },
+            state,
+        )
+        markFirstSaveDone()
     }
 }
 
@@ -977,6 +993,8 @@ const writeBack = async (
     binding: Binding,
     file: StoredFile,
     expected: DiskState,
+    /** Replace: the revision of the version on disk, kept first (§1.4.7). */
+    replaces?: string,
 ): Promise<Outcome> => {
     const reservation = env.flusher.reserveSave()
     if (!reservation) return { kind: 'cancelled' }
@@ -993,14 +1011,17 @@ const writeBack = async (
             target: { kind: 'handle', handle },
             expected,
             build: async (sources) => {
-                const source = sources.find((each) => each.token === 'target')
+                const source = replaces
+                    ? undefined
+                    : sources.find((each) => each.token === 'target')
                 built = await runBuild(
                     env,
                     {
-                        target:
-                            source && binding.revision
-                                ? { kind: 'append', source: 'target' }
-                                : { kind: 'copy' },
+                        target: replaces
+                            ? { kind: 'replace', replaces }
+                            : source && binding.revision
+                              ? { kind: 'append', source: 'target' }
+                              : { kind: 'copy' },
                         history: file.options.history,
                         bgm: file.options.bgm,
                         fileName: file.name,
@@ -1061,8 +1082,8 @@ const unlinkAndSaveAs = async (env: Env, name: string): Promise<Outcome> => {
         env.session.docId = docId
         env.session.chain = record
         journalWriter?.rewrite()
-        const { file: _bound, ...rest } = currentSession.value
-        currentSession.value = { ...rest, docId, copyOf: { name, bound: true } }
+        unbindFile()
+        currentSession.value = { ...currentSession.value, docId, copyOf: { name, bound: true } }
         exportMemory.partial = true
     }
     forgetHandle(env.chainId)
@@ -1076,39 +1097,63 @@ let pendingLine: (() => string) | undefined
 // The follow-up dialogs.
 
 /** "Saved on iPad, Oct 16, 2:41 PM · 1,220 notes." or another project's name. */
+/** The conflict dialog's facts, and the `File` and disk state Replace keeps and writes over. */
 const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
     let facts: DiskFacts = { version: { kind: 'unknown' } }
     let replaceDisabled: (() => string) | undefined
+    let pinned: { file: File; disk: DiskState } | undefined
+    let relation: string | undefined
     try {
         const file = await handle.getFile()
-        facts = await readDiskFacts(file, deviceId())
         const disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
+        facts = await readDiskFacts(file, deviceId())
+        if (disk !== 'missing') pinned = { file, disk }
         if (disk !== 'missing' && facts.projectJson !== undefined) {
             const decision = await env.worker.call('replaceDecision', {
                 chainId: env.chainId,
                 projectJson: facts.projectJson,
                 fingerprint: disk.fingerprint,
             })
+            relation = decision?.relation
             if (decision?.holdsBase) replaceDisabled = () => i18n.value.conflict.replaceHoldsEarlier
         }
     } catch {
-        // What's on disk can't be read: the title and body say enough.
+        // What is on disk cannot be read: the title and body say enough.
     }
     const version: DiskVersion = otherProject(facts, binding.docId) ?? facts.version
-    // Replace keeps the version on disk first, as an ordinary session (§1.4.7): not built yet.
-    replaceDisabled ??= replaceUnavailable(facts)
-    return { name: handle.name, disk: version, ...(replaceDisabled ? { replaceDisabled } : {}) }
+    replaceDisabled ??= replaceUnavailable(facts, pinned?.disk)
+    return {
+        input: {
+            name: handle.name,
+            disk: version,
+            ...(replaceDisabled ? { replaceDisabled } : {}),
+        },
+        pinned,
+        newer: relation === 'newer',
+    }
 }
 
-/** Why Replace can't keep the version on disk first, or undefined when it can. */
-const replaceUnavailable = (facts: DiskFacts): (() => string) | undefined => {
+/**
+ * Why Replace cannot keep the version on disk first (§1.4.7): a file this build cannot import
+ * whole, or storage that cannot take it; undefined when it can.
+ */
+const replaceUnavailable = (facts: DiskFacts, disk: DiskState | undefined) => {
     const project = isRow(facts.projectJson) ? facts.projectJson : undefined
-    if (typeof project?.minor === 'number' && project.minor > 1) return replaceNewerLine
-    return () => i18n.value.save.unavailable
+    if (!disk?.revisionId || !project) return () => i18n.value.open.damaged
+    if (
+        (typeof project.version === 'number' && project.version > NXSP_VERSION) ||
+        (typeof project.minor === 'number' && project.minor > NXSP_MINOR)
+    )
+        return replaceNewerLine
+    const status = storageStatus.value
+    if (isSafeMode() || status?.mode !== 'stored' || status.reason !== undefined)
+        return () => i18n.value.notSaving.bar
+    return undefined
 }
 
 const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
-    const input = await conflictInput(env, binding, handle)
+    const { input, pinned, newer } = await conflictInput(env, binding, handle)
+    setDiskFinding(newer ? 'newer' : 'changed')
     const choice: ConflictChoice | undefined = await saveUi.conflict(input)
     switch (choice) {
         case 'separate':
@@ -1122,9 +1167,46 @@ const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHa
             return
         }
         case 'replace':
+            if (pinned) await replace(env, handle, pinned)
+            return
         case undefined:
             return
     }
+}
+
+/**
+ * Replace (§1.4.7, Part 0 §0.9.6): the version on disk is kept first, as an ordinary session in
+ * Recent Sessions, committed before anything is written; then the file is written with `replaces`,
+ * while it still equals the kept copy. A change meanwhile shows the dialog again.
+ */
+const replace = async (
+    env: Env,
+    handle: FileSystemFileHandle,
+    pinned: { file: File; disk: DiskState },
+) => {
+    const replaces = pinned.disk.revisionId
+    if (!replaces) return
+    const { keepReplaced } = await import('../commands/open/project')
+    const stem = shownStem(env, savedState()) || stemOf(handle.name)
+    const keptName = interpolateRaw(i18n.value.conflict.keptName, stem, formatDate(Date.now()))
+    const kept = await keepReplaced(pinned.file, keptName)
+    if (kept !== 'kept') {
+        saveUi.error(
+            kept === 'newer'
+                ? replaceNewerLine
+                : kept === 'damaged'
+                  ? () => i18n.value.open.damaged
+                  : () => i18n.value.notSaving.bar,
+        )
+        return
+    }
+    const outcome = await withBind('shared', async (): Promise<Outcome> => {
+        const binding = await readBinding(env)
+        const file = binding.file
+        if (!file || binding.replaced) return { kind: 'cancelled' }
+        return writeBack(env, handle, binding, file, pinned.disk, replaces)
+    })
+    await afterOutcome(env, outcome)
 }
 
 /** Save as a Separate File (§1.4.7): keeps the `docId`, in the original's folder. */
@@ -1184,6 +1266,7 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
             let choice: 'saveAs' | 'tryAgain' | undefined
             switch (error.code) {
                 case 'not-found':
+                    setDiskFinding('missing')
                     choice = await saveUi.notFound(name)
                     if (choice === 'saveAs') await notFoundSaveAs(env)
                     return
@@ -1213,49 +1296,62 @@ const notFoundSaveAs = async (env: Env) => {
     const binding = quickBinding(env)
     const stem = copyStem(binding.file ? stemOf(binding.file.name) : shownStem(env, savedState()))
     const name = await suggestion(env, stem)
-    const result = await saveUi.saveDialog(dialogInput(env, 'saveAs', name, []))
+    const input = dialogInput(env, 'saveAs', name, [])
+    const result = await saveUi.saveDialog(input)
     if (result?.action !== 'save') return
     await afterOutcome(
         env,
         await pickAndWrite(env, {
             dialog: 'notFound',
             fileName: result.fileName,
-            history: result.history,
-            bgm: result.bgm,
+            ...answered(input, result, binding),
             target: 'copy',
         }),
     )
 }
 
-const dialogInput = (env: Env, kind: SaveDialogKind, name: string, lines: (() => string)[]) => {
+const dialogInput = (
+    env: Env,
+    kind: SaveDialogKind,
+    name: string,
+    lines: (() => string)[],
+): SaveDialogInput => {
     const state = savedState()
     const binding = quickBinding(env)
     const options = binding.file?.options
     const meta = state.bgm.meta
     const held = !!state.bgm.source
-    const steps = 0
+    // A first Save after an open by name writes that file again: its history stays (§0.9.7).
+    const kept = kind === 'save' && binding.file?.event === 'opened' && !!binding.file.entry
     return {
         kind,
         name,
         lines,
-        history: {
-            kind: 'available' as const,
-            ticked: options?.history ?? true,
-            locked: false,
-            steps,
-        },
+        // Hashing needs a secure context: elsewhere a file holds no history (§1.4.7).
+        history: globalThis.isSecureContext
+            ? {
+                  kind: 'available',
+                  ticked: kept || (options?.history ?? true),
+                  locked: kept,
+                  steps: 0,
+                  ...(kept && binding.file ? { keptIn: binding.file.name } : {}),
+              }
+            : { kind: 'insecure' },
         bgm: meta
             ? held
                 ? {
-                      kind: 'held' as const,
+                      kind: 'held',
                       name: meta.filename || (state.bgm.filename ?? 'BGM'),
                       ticked: kind === 'saveAs' ? true : (options?.bgm ?? true),
                       locked: false,
                   }
-                : { kind: 'notLoaded' as const }
-            : { kind: 'none' as const },
-        exportLine: exportMemory.target !== undefined || exportMemory.sourceName !== undefined,
-        downloadNote: !platform.pickSaveFile,
+                : { kind: 'notLoaded' }
+            : { kind: 'none' },
+        exportLine:
+            exportMemory.target !== undefined ||
+            exportMemory.sourceName !== undefined ||
+            (launch.isExistingUser && !exportUsed.value),
+        downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
         peeking: isPeeking.value,
         estimate: {
             load: () =>
@@ -1268,6 +1364,22 @@ const dialogInput = (env: Env, kind: SaveDialogKind, name: string, lines: (() =>
         },
     }
 }
+
+/**
+ * The options a dialog's answer sets (§1.4.7): a disabled row never changes its option, so only a
+ * user's untick sets `bgm` false; with no hashing, no history.
+ */
+const answered = (
+    input: SaveDialogInput,
+    result: { history: boolean; bgm: boolean },
+    binding: Binding,
+) => ({
+    history: input.history.kind === 'available' && result.history,
+    bgm:
+        input.bgm.kind === 'held' && !input.bgm.locked
+            ? result.bgm
+            : (binding.file?.options.bgm ?? true),
+})
 
 /** The Save dialog, then the picker or a download (§1.4.7's "Not bound" row and Save As…). */
 const dialogSave = async (
@@ -1292,9 +1404,8 @@ const dialogSave = async (
         : []
     // R2: this chain's own file read first, when it may hold what storage lacks.
     const pre = kind === 'saveAs' && binding.file ? preRead(env, binding) : undefined
-    const result = await saveUi.saveDialog(
-        dialogInput(env, kind, name, [...lines, ...replacedLine]),
-    )
+    const input = dialogInput(env, kind, name, [...lines, ...replacedLine])
+    const result = await saveUi.saveDialog(input)
     if (!result) return
     if (result.action === 'export') {
         const { exportLevel } = await import('../commands/exportLevel')
@@ -1306,8 +1417,7 @@ const dialogSave = async (
         await pickAndWrite(env, {
             dialog: kind,
             fileName: result.fileName,
-            history: result.history,
-            bgm: result.bgm,
+            ...answered(input, result, binding),
             // Save As… gives a new `docId`; a first Save, a fork's and a taken-over chain's keep it.
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
             ...(pre ? { pre } : {}),
@@ -1445,6 +1555,51 @@ export const saveAs = () =>
         }
         await dialogSave(env, 'saveAs')
     })
+
+// The file state's actions (`src/editor/file`): its chip dialogs and notices run these.
+
+/** The not-found chip's Save As…: keeps the chain's identity (§1.4.7). */
+export const fileSaveAs = () =>
+    exclusive(async () => {
+        const env = environment()
+        if (env) await notFoundSaveAs(env)
+    })
+
+/** Download Again: builds and downloads the bound file once more. */
+export const fileDownloadAgain = () =>
+    exclusive(async () => {
+        const env = environment()
+        const file = env && quickBinding(env).file
+        if (env && file) await downloadAgain(env, file)
+    })
+
+/** Open the Other Version: the file on disk as a new session in place of this one (§0.9.6). */
+export const openOtherVersion = async () => {
+    const env = environment()
+    const file = env && quickBinding(env).file
+    if (!env || !file) return
+    const handle = await bindingHandle(env, file)
+    const opened = await handle?.getFile().catch(() => undefined)
+    if (!handle || !opened) return
+    const { openProject } = await import('../commands/open/project')
+    await openProject(opened, handle)
+}
+
+/** I Have the File: `file.confirmed` stored on the chain record (§1.3.4). */
+export const persistConfirmed = () => {
+    const env = environment()
+    if (!env) return
+    const { session } = env
+    if (session.identity) {
+        session.identity = {
+            ...session.identity,
+            file: { ...session.identity.file, confirmed: true },
+        }
+        return
+    }
+    const file = session.chain?.file
+    if (isRow(file)) void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
+}
 
 // Broadcasts: a takeover tells other tabs to read their record again (§1.6.6).
 

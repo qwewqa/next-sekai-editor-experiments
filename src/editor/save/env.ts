@@ -1,4 +1,3 @@
-import { session as currentSession } from '../../history/session'
 import { liveState } from '../../history/stack'
 import { fromHex16, toHex } from '../../local/hash'
 import { hasWebLocks } from '../../local/locks'
@@ -195,12 +194,6 @@ export const markerUnit = (marker: SaveMarker): IdentityUnit => ({
 export const markerFile = (file: Record<string, unknown>) => {
     const { handle: _handle, hash, ...rest } = file
     return { ...rest, hash: hash instanceof Uint8Array ? toHex(hash) : String(hash) }
-}
-
-/** The tab's file state for the status label (§1.3.4). */
-export const showBinding = (file: { name: string; event: string; at: number } | undefined) => {
-    const { file: _old, ...rest } = currentSession.value
-    currentSession.value = file ? { ...rest, file } : rest
 }
 
 /** The live state, never a peek (Save acts on the live session, §1.4.7). */

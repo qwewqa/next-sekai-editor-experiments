@@ -371,3 +371,59 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
             .attachOpenedBgm(bgm.bytes, live.bgm.meta.hash, decodeBgm)
             .catch(() => undefined)
 }
+
+/** How Replace's keep-first went (§1.4.7): only `kept` lets it write. */
+export type Kept = 'kept' | 'newer' | 'damaged' | 'failed'
+
+/**
+ * Replace's keep-first (§1.4.7, Part 0 §0.9.6): the file on disk, read from the `File` the check
+ * pinned, stored whole as a new, unbound, ordinary session named `name`, its level through the
+ * level-data path as an open's is. A file this build can't import whole is refused.
+ */
+export const keepReplaced = async (file: File, name: string): Promise<Kept> => {
+    const project = await import('../../../local/open/project')
+    let read: NxspReply
+    try {
+        const result = await project.readProjectFile(file)
+        if (result.kind !== 'nxsp') return 'damaged'
+        read = result
+    } catch {
+        return 'failed'
+    }
+    const drop = (kept: Kept) => {
+        project.dropProjectRead(read.id)
+        return kept
+    }
+    if (newerFile(read)) return drop('newer')
+    let parsed: ReturnType<typeof parseLevel>
+    try {
+        parsed = parseLevel(read)
+    } catch {
+        return drop('damaged')
+    }
+    const { levelData, chart, report } = parsed
+    if (report.hasUnknownValue) return drop('newer')
+    if (read.open !== 'full' || !report.isEmpty || !read.project) return drop('damaged')
+    const history = read.history
+    const head = history ? stateFromRecords(history.headRecords) : undefined
+    const headLive =
+        head && matchesHead(levelData.entities, levelData.bgmOffset, read.project, head)
+            ? head
+            : undefined
+    const live = headLive ?? levelState(chart, levelData.bgmOffset, read.project, head)
+    const kept = await project.storeKept({
+        read,
+        file,
+        sourceName: file.name,
+        name,
+        ...(headLive
+            ? { summary: summaryOf(live, noteCountOf(history?.headRecords.kinds ?? [])) }
+            : { level: stateBatch(live) }),
+        labels: {
+            opened: interpolateRaw(i18n.value.history.openedFile, file.name),
+            changedOutside: i18n.value.entry.changedOutside,
+        },
+        appVersion: appVersion().appVersion,
+    })
+    return kept ? 'kept' : 'failed'
+}

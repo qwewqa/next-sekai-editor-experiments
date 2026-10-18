@@ -236,6 +236,75 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
     }
 }
 
+/** What Replace keeps first (§1.4.7): the version on disk, read whole, as an unbound session. */
+export type KeepVersion = {
+    read: NxspReply
+    file: Blob
+    sourceName: string
+    /** "Coconut (replaced Oct 16)". */
+    name: string
+    level?: StateBatch
+    summary?: ChainSummary
+    labels: { opened: string; changedOutside: string }
+    appVersion: string
+}
+
+/**
+ * Stores the version on disk as a new, unbound, ordinary session in Recent Sessions (§1.4.7
+ * Replace, Part 0 §0.9.6): its first transaction, then its history's batches, each committed
+ * strictly, under the new session's lock. True only when all of it is stored: Replace writes
+ * nothing otherwise.
+ */
+export const storeKept = async (keep: KeepVersion) => {
+    const { open: deps } = context()
+    const { project } = keep.read
+    if (!project) return false
+    const sessionId = crypto.randomUUID()
+    const chainId = crypto.randomUUID()
+    const lock = holdSessionLock(deps.locks, sessionId)
+    try {
+        await lock.granted.catch(() => undefined)
+        const chain: Record<string, unknown> = { sourceName: keep.sourceName, name: keep.name }
+        if (project.exportName !== undefined) chain.exportName = project.exportName
+        if (!isEmpty(keep.read.extra)) chain.extra = keep.read.extra
+        const { revision } = project
+        if (revision)
+            chain.revision = { id: revision.id, n: revision.n, ancestors: revision.ancestors }
+        const stored = await deps.worker.call(
+            'openStore',
+            {
+                id: keep.read.id,
+                ids: { chainId, sessionId, docId: project.id, lineageId: project.lineageId },
+                chain,
+                origin: 'replaced',
+                ...(keep.level ? { level: keep.level } : {}),
+                ...(keep.summary ? { summary: keep.summary } : {}),
+                labels: keep.labels,
+                wall: Date.now(),
+                appVersion: keep.appVersion,
+            },
+            { timeoutMs: 120_000 },
+        )
+        if (stored.kind !== 'stored') return false
+        if (!stored.batches) return true
+        const outcome = await startImport({
+            worker: deps.worker,
+            locks: deps.locks,
+            sessionId,
+            chainId,
+            id: keep.read.id,
+            batches: stored.batches,
+            source: { file: keep.file },
+            appVersion: keep.appVersion,
+        })
+        return outcome.kind === 'done'
+    } catch {
+        return false
+    } finally {
+        lock.release()
+    }
+}
+
 /**
  * The bytes read at the open, kept with its handle (§1.5.4, D5): a save picker that empties a file
  * the editor won't write over puts them back. In memory up to 64 MB.

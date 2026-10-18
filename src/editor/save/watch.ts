@@ -1,7 +1,8 @@
 import { session as currentSession } from '../../history/session'
 import type { Flusher } from '../../local/flush'
 import type { StorageWorker } from '../../local/worker/client'
-import { pendingRevocations, removeRevocation, showBinding } from './env'
+import { unbindFile } from '../file'
+import { pendingRevocations, removeRevocation } from './env'
 
 // What other tabs' saves change in this one (Part 1 §1.4.7 R6, R11): a binding a save picker
 // took over shows as not saved to a file once this tab reads its record again, on the
@@ -25,8 +26,7 @@ export const refreshBinding = async (
     if (isRow(record.file) || !isRow(record.replaced)) return
     const { file: _gone, ...rest } = session.chain ?? {}
     session.chain = { ...rest, replaced: record.replaced, edited: true, hasContent: true }
-    if (currentSession.value.sessionId === session.id && currentSession.value.file)
-        showBinding(undefined)
+    if (currentSession.value.sessionId === session.id && currentSession.value.file) unbindFile()
 }
 
 /** Applies every revocation kept in localStorage (R11); each key goes once its write commits. */

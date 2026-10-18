@@ -1,7 +1,8 @@
 import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
+import { setFileActions } from '../editor/file'
+import { getVerticalScale } from '../editor/navigation'
 import { markedSeq, removeMarker } from '../editor/save/env'
 import { applyRevocations, watchBindings } from '../editor/save/watch'
-import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { filename } from '../history/live'
@@ -414,6 +415,17 @@ export const startStoring = (
     // takeovers show here as they happen (R6).
     void afterReplay.then(() => applyRevocations(worker))
     watchBindings(worker, () => flusher)
+    // The file state's dialogs run the Save flows, loaded on first use.
+    const flows = () => import('../editor/save/flow')
+    setFileActions({
+        saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
+        downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
+        openOtherVersion: () => void flows().then((flow) => flow.openOtherVersion()),
+        persistConfirmed: () =>
+            void flows().then((flow) => {
+                flow.persistConfirmed()
+            }),
+    })
 
     worker.onRestart(() => {
         void instance.restarted()

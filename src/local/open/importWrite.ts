@@ -64,6 +64,8 @@ export type OpenStoreRequest = {
     labels: { opened: string; changedOutside: string }
     wall: number
     appVersion: string
+    /** `replaced`: the version on disk Replace keeps first, an ordinary unbound session (§1.4.7). */
+    origin?: 'replaced'
 }
 
 export type OpenStoreResult = {
@@ -412,7 +414,7 @@ export const writeOpenHead = async (
         startedAt: now,
         updatedAt: now,
         day,
-        origin: 'nxsp',
+        origin: request.origin ?? 'nxsp',
         stack: { base: window.base, length: window.length, index: window.index },
         lastSeq: seq,
         entryCount: ownEntries.length + (prepared.entries?.length ?? 0),
