@@ -221,6 +221,8 @@ export type FlushDeps = {
      */
     storeMedia?: (item: BatchMedia) => Promise<boolean>
     onFlushed?: (report: FlushReport) => void
+    /** The roots a flush stored for its entries' states, so peek can find them in memory. */
+    onRoots?: (roots: readonly (readonly [State, Uint8Array])[]) => void
     /** A flush or a strict sync committed a session's entries up to `seq` in a database. */
     onCommitted?: (session: FlushSession, commit: { seq: number; strict: boolean }) => void
     /**
@@ -1081,6 +1083,14 @@ export class Flusher {
                     result.known,
                 )
                 const acknowledged = session.pending.splice(0, entries.length)
+                if (this.deps.onRoots) {
+                    const roots: (readonly [State, Uint8Array])[] = []
+                    for (const [entry, at] of snapshotOf) {
+                        const hash = result.roots[at]
+                        if (entry.state && hash) roots.push([entry.state, hash])
+                    }
+                    this.deps.onRoots(roots)
+                }
                 this.noDatabase = !!result.noDatabase
                 if (result.memory) {
                     session.stack.checkpoint()

@@ -255,7 +255,8 @@ export const replaceState = (state: State) => {
     states[index.value] = slot
 }
 
-export const pushState = (name: () => string, state: State) => {
+/** Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first. */
+export const pushState = (name: () => string, state: State, kind: 'edit' | 'restore' = 'edit') => {
     // Every edit path is gated while peeking, so one that is not fails in development and tests.
     if (peek.value) {
         if (isProduction()) return
@@ -270,7 +271,7 @@ export const pushState = (name: () => string, state: State) => {
         state: publish(state),
     })
     index.value++
-    emitHistoryAction({ kind: 'edit', state, name, isDirty: true })
+    emitHistoryAction({ kind, state, name, isDirty: true })
 }
 
 /**
@@ -305,8 +306,14 @@ export const markFileEvent = (
     emitHistoryAction({ kind, state: currentState.value, name, isDirty })
 }
 
+/** Counts the stacks replaced (a reset, a stored stack): what an entry's Restore is relative to. */
+let stacks = 0
+
+export const stackGeneration = () => stacks
+
 /** Replaces the whole history with one entry, leaving any peek. */
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
+    stacks++
     cancelPendingMoves()
     earlierSteps.value = false
     peek.value = undefined
@@ -336,6 +343,7 @@ export const restoreStates = (
 ) => {
     const slot = slots[at]
     if (!slot) throw new RangeError('The index is outside the stack')
+    stacks++
     cancelPendingMoves()
     earlierSteps.value = earlier
     peek.value = undefined
@@ -354,6 +362,10 @@ export const restoreStates = (
     if (restored[at]!.snapshot) evictRestored(restored[at]!)
     prefetch()
 }
+
+/** The loaded slots' states, with their stored roots when restored: peek reuses them. */
+export const loadedStates = () =>
+    states.flatMap(({ state, snapshot }) => (state ? [{ state, snapshot }] : []))
 
 /** Which slots hold a state, for tests of the lazy stack. */
 export const loadedSlotsForTests = () => states.map((slot) => !!slot.state)

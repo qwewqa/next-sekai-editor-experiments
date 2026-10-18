@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
-import { replaceState, state } from '../history'
+import { isPeeking, replaceState, state } from '../history'
 import { selectedEntities } from '../history/selectedEntities'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
@@ -64,6 +64,11 @@ const actions = computed(() => {
     const groups: ActionName[][] = []
     const editable = selection.some(isEditableEntity)
     const point = contextMenu.value
+    // While peeking, only Copy (§1.4.11).
+    if (isPeeking.value) {
+        if (editable) groups.push(['copy'])
+        return toActions(groups)
+    }
     // Elevations belong to notes: offer the editor for notes or empty space.
     const canEditElevations =
         point && (selection.some((entity) => entity.type === 'note') || !selection.length)
@@ -98,7 +103,11 @@ const actions = computed(() => {
     if (canEditElevations) editors.push('editElevations')
     if (editors.length) groups.push(editors)
     if (canDelete.value) groups.push(['deleteSelection'])
-    return groups.map((names) =>
+    return toActions(groups)
+})
+
+const toActions = (groups: ActionName[][]) =>
+    groups.map((names) =>
         names.map((name): Action => {
             if (name === 'editProperties')
                 return {
@@ -133,7 +142,6 @@ const actions = computed(() => {
             }
         }),
     )
-})
 
 const dismiss = (restoreFocus = false) => {
     closeContextMenu()

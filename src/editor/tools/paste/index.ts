@@ -14,10 +14,11 @@ import type { StageId } from '../../../chart/stages'
 import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
 import { clipboardEntry, joinClipboardRead, updateClipboard } from '../../../clipboard/index.ts'
-import { pushState, state } from '../../../history'
+import { isPeeking, pushState, state } from '../../../history'
 import { chartSessionId } from '../../../history/chartSession'
 import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
 import { defaultGroupId, groups } from '../../../history/groups'
+import { refuseWhilePeeking } from '../../../history/peek'
 import { defaultStageId, stages } from '../../../history/stages'
 import { i18n } from '../../../i18n'
 import { settings } from '../../../settings'
@@ -279,6 +280,7 @@ export const paste: Tool = {
         if (!active) return
 
         if (active.entities.some(isEventJoint)) await checkDynamicStages()
+        if (peekedMeanwhile()) return
 
         revealPasteTargets(active.entities)
         const transaction = createTransaction(state.value)
@@ -620,6 +622,7 @@ export const pasteAtPosition = async (
     if (!entities.length) return
 
     if (entities.some(isEventJoint)) await checkDynamicStages()
+    if (peekedMeanwhile()) return
 
     revealPasteTargets(entities)
     const transaction = createTransaction(state.value)
@@ -957,6 +960,13 @@ const pasteAuthored = (
         if (added) selected.push(...added)
     }
     return transaction.commit(selected)
+}
+
+/** A peek begun while a paste waited refuses it: it would build on the peeked state. */
+const peekedMeanwhile = () => {
+    if (!isPeeking.value) return false
+    refuseWhilePeeking()
+    return true
 }
 
 const finishPaste = (result: State) => {

@@ -7,7 +7,8 @@ import { addStageMaskEventJoint } from '../state/mutations/events/stage/mask'
 import { addStagePivotEventJoint } from '../state/mutations/events/stage/pivot'
 import { addStageStyleEventJoint } from '../state/mutations/events/stage/style'
 import { createTransaction } from '../state/transaction'
-import { pushState, state } from './index.ts'
+import { isPeeking, pushState, state } from './index.ts'
+import { refuseWhilePeeking } from './peek'
 import { selectedEntities } from './selectedEntities'
 import { defaultStageId } from './stages'
 
@@ -15,6 +16,11 @@ export const isDynamicStages = computed(() => state.value.isDynamicStages)
 
 export const checkDynamicStages = async () => {
     if (isDynamicStages.value) return true
+    // Enabling them is an edit, refused while peeking (§1.4.11).
+    if (isPeeking.value) {
+        refuseWhilePeeking()
+        return false
+    }
 
     const result = await showModal(ConfirmModal, {
         title: () => i18n.value.history.dynamicStages.title,
@@ -24,6 +30,11 @@ export const checkDynamicStages = async () => {
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (isDynamicStages.value) return true
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (isPeeking.value) {
+        refuseWhilePeeking()
+        return false
+    }
 
     const transaction = createTransaction(state.value)
 

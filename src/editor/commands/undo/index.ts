@@ -15,6 +15,8 @@ export const undo: Command = {
         is: UndoIcon,
     },
 
+    leavesPeek: true,
+
     execute() {
         const name = undoState()
         if (name) {

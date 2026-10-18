@@ -1,6 +1,7 @@
 import type { Command } from '..'
-import { liveState, pushState } from '../../../history'
+import { isPeeking, liveState, pushState } from '../../../history'
 import { bgm as currentBgm } from '../../../history/live'
+import { refuseWhilePeeking } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import { notify } from '../../notification'
@@ -19,11 +20,18 @@ export const bgm: Command = {
 }
 
 export const changeBgm = async (file?: File) => {
+    // Choose Audio… (a load notice's) is an edit: refused while peeking (§1.4.11).
+    if (isPeeking.value) {
+        refuseWhilePeeking()
+        return
+    }
     const newBgm = await showModal(BgmModal, {
         bgm: currentBgm.value,
         file,
     })
-    if (!newBgm) return
+    // A peek begun meanwhile closed the dialog.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!newBgm || isPeeking.value) return
     // Confirming it unchanged is no edit.
     const old = currentBgm.value
     if (

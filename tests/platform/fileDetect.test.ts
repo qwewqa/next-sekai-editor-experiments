@@ -283,9 +283,9 @@ test('Open sniffs the head only, never the whole content', () => {
     assert.ok(!/\bdetectContent\b/.test(source))
 })
 
-test('undo, redo and properties stay available while peeking until Step 5 adds its behavior', () => {
-    for (const name of ['undo', 'redo', 'properties']) {
+test('Open, Undo and Redo leave the peek before they run (Step 5, peekGate.test.ts)', () => {
+    for (const name of ['open', 'undo', 'redo']) {
         const source = readFileSync(`src/editor/commands/${name}/index.ts`, 'utf8')
-        assert.ok(!/readOnly:\s*true/.test(source), name)
+        assert.ok(/leavesPeek:\s*true/.test(source), name)
     }
 })

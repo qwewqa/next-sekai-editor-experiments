@@ -13,6 +13,8 @@ export const stageNext: Command = {
         is: StageNextIcon,
     },
 
+    readOnly: true,
+
     // Focuses the next entry; past the last one comes All, restoring saved visibility.
     async execute() {
         if (!(await checkDynamicStages())) return

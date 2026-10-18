@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { isPeeking } from '../../history/stack'
 import { settings } from '../../settings'
 import { formatShortcut, isPunctuationShortcut } from '../controls/bindings'
 import { commands, type CommandName } from '../commands'
@@ -17,11 +18,17 @@ const props = withDefaults(
         state?: CommandState
         /** Beside a label, a column checking the value in use. */
         checkColumn?: boolean
+        /** In the editor's toolbar: drawn disabled while peeking refuses it (§1.4.11). */
+        gated?: boolean
     }>(),
     { state: undefined },
 )
 
 const pressed = computed(() => props.state?.current)
+const refused = computed(() => {
+    const command = commands[props.name]
+    return props.gated && isPeeking.value && !command.readOnly && !command.leavesPeek
+})
 // Only a tool, mode or open panel takes the selected look; a value in use is checked.
 const selected = computed(() => props.state?.kind !== 'value' && !!props.state?.current)
 const checked = computed(() => props.state?.kind === 'value' && props.state.current)
@@ -61,10 +68,12 @@ const shortcut = computed(() =>
                 ? 'bg-accent fill-on-accent text-on-accent focus-visible:ring-white forced-colors:bg-[Highlight] forced-colors:fill-[HighlightText] forced-colors:text-[HighlightText] forced-colors:outline-[color:HighlightText] forced-colors:forced-color-adjust-none forced-colors:![box-shadow:none] forced-colors:focus-visible:!outline-2 forced-colors:focus-visible:!-outline-offset-2 forced-colors:focus-visible:![box-shadow:inset_0_0_0_4px_Highlight,inset_0_0_0_6px_HighlightText] forced-colors:active:bg-[Highlight] forced-colors:active:fill-[HighlightText] forced-colors:active:text-[HighlightText]'
                 : 'bg-button focus-visible:ring-accent forced-colors:fill-[ButtonText]',
             { '[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3': showLabel },
+            { 'opacity-40': refused },
         ]"
         :title="tooltip"
         :aria-label="warns ? tooltip : undefined"
         :aria-pressed="pressed"
+        :aria-disabled="refused || undefined"
     >
         <span v-if="showLabel && checkColumn" class="mr-2 flex w-4 shrink-0 justify-center">
             <svg

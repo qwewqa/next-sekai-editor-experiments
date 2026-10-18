@@ -1809,6 +1809,7 @@
   },
   "peek": {
     "exportsCurrent": "Güncel sürümü dışa aktarır.",
+    "overlay": "Geçmiş görüntüleniyor · salt okunur",
     "viewing": "{0} görüntüleniyor · {1} · salt okunur",
     "viewingShort": "{0} görüntüleniyor · salt okunur",
     "backToNow": "Şimdiye Dön",
@@ -1853,6 +1854,9 @@
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
+    "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
+    "restoredTo": "{0} anına geri yüklendi",
+    "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te"
   },
@@ -1863,7 +1867,8 @@
     "recovered": "Son değişiklik kurtarıldı",
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı silindi.",
     "continued": "Devam ettirildi",
-    "migrated": "Otomatik kaydetmeden kurtarıldı"
+    "migrated": "Otomatik kaydetmeden kurtarıldı",
+    "restoredTo": "{0} anına geri yükleme"
   },
   "session": {
     "untitled": "Adsız · {0}"

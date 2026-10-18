@@ -17,6 +17,8 @@ import {
     type FolderTreeItem,
     type FolderTreeRef,
 } from '../../../chart/folders'
+import { refuseWhilePeeking } from '../../../history/peek'
+import { isPeeking } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import { modals, showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
@@ -709,6 +711,7 @@ const bulkHidden = computed(() => selectedIds.value.some((id) => !scope.value.is
 
 /** Deletes the selection; keyboard focus moves to the row taking the first deleted row's place. */
 const onBulkDelete = async (keyboard = false) => {
+    if (refused()) return
     const ids = new Set(selectedIds.value)
     const folderIds = new Set(selectedFolderIds.value)
     if (!ids.size && !folderIds.size) return
@@ -733,7 +736,7 @@ const onBulkDelete = async (keyboard = false) => {
             confirm: () => i18n.value.modals.confirm.delete,
             destructive: true,
         }))
-    if (!confirmed) return
+    if (!confirmed || refused()) return
     const index = [...(list.value?.querySelectorAll<HTMLElement>('[data-row]') ?? [])].findIndex(
         (element) => {
             const key = keyOfRow(element)
@@ -755,6 +758,7 @@ const onBulkDelete = async (keyboard = false) => {
  * row's menu, focus returns to that row's name.
  */
 const onBulkFolder = async (choice: string, from?: RowKey) => {
+    if (refused()) return
     const ids = new Set(selectedIds.value)
     if (!ids.size) return
     if (choice === 'new') {
@@ -828,11 +832,13 @@ onUpdated(updateStuck)
 
 const onAdd = async (event: MouseEvent) => {
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
+    if (refused()) return
     await addEntry()
 }
 
 /** Adds an entry, at the end or of an opened folder, and names it right away. */
 const addEntry = async (folder?: FolderId) => {
+    if (refused()) return
     const id = props.model.add(folder)
     if (folder !== undefined) setFolderExpanded(folder, true)
     await nextTick()
@@ -845,6 +851,7 @@ const addEntry = async (folder?: FolderId) => {
 /** Adds a folder, holding entries if given, and names it right away. */
 const onNewFolder = async (held?: ReadonlySet<T>, event?: MouseEvent) => {
     if (event && event.detail > 0) (event.currentTarget as HTMLElement).blur()
+    if (refused()) return
     const id = folders.value.create(held)
     setFolderExpanded(id, true)
     await nextTick()
@@ -858,13 +865,14 @@ const renaming = shallowRef<RowKey>()
 
 const startRename = (key: RowKey) => {
     closeMenu(false)
+    if (refused()) return
     renaming.value = key
 }
 
 const endRename = async (key: RowKey, value: string | undefined, keyboard: boolean) => {
     if (!sameKey(renaming.value, key)) return
     renaming.value = undefined
-    if (value !== undefined) {
+    if (value !== undefined && !refused()) {
         if (key.type === 'entry') props.model.rename(key.id, value)
         else folders.value.rename(key.id, value)
     }
@@ -887,6 +895,7 @@ watch(tree, () => {
 // Reordering by keyboard and drag
 
 const reorder = async (key: RowKey, offset: -1 | 1) => {
+    if (refused()) return
     if (key.type === 'entry') props.model.move(key.id, offset)
     else folders.value.stepFolder(key.id, offset)
     await nextTick()
@@ -1054,6 +1063,8 @@ const targetOf = (current: Drag): Drag['target'] => {
 const onDragStart = (key: RowKey, event: PointerEvent) => {
     const container = list.value
     if (event.button !== 0 || renaming.value !== undefined || !container) return
+    // Reordering is an edit; a press only focuses while peeking.
+    if (isPeeking.value) return
     // A second touch leaves a live drag alone; the same pointer again means its release was lost.
     if (drag.value) {
         if (drag.value.pointerId !== event.pointerId) return
@@ -1506,7 +1517,29 @@ const bulkFolderItems = (): ManagerMenuItem[] => {
     ]
 }
 
-const menuItems = computed((): ManagerMenuItem[] => {
+// While peeking the list is read-only: focus, visibility and selecting objects work (§1.4.11).
+const editActions = new Set([
+    'add',
+    'rename',
+    'properties',
+    'duplicate',
+    'moveSelection',
+    'moveUp',
+    'moveDown',
+    'moveToFolder',
+    'ungroup',
+    'delete',
+])
+const isEditAction = (action: string) => editActions.has(action) || action.startsWith('folder:')
+
+/** True, with the refusal's notice, when peeking refuses an edit. */
+const refused = () => {
+    if (!isPeeking.value) return false
+    refuseWhilePeeking()
+    return true
+}
+
+const shownMenuItems = computed((): ManagerMenuItem[] => {
     const current = menu.value
     if (!current) return []
     const { key } = current
@@ -1518,6 +1551,16 @@ const menuItems = computed((): ManagerMenuItem[] => {
     }
     return current.mode === 'folders' ? folderChoiceItems(key.id) : entryMenuItems(key.id)
 })
+
+const menuItems = computed((): ManagerMenuItem[] =>
+    isPeeking.value
+        ? shownMenuItems.value.map((item) =>
+              // ESLint's parser can't resolve the item type from ManagerMenu.vue.
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+              isEditAction(item.key) ? { ...item, disabled: true } : item,
+          )
+        : shownMenuItems.value,
+)
 
 const menuLabel = computed(() => {
     const current = menu.value
@@ -1607,7 +1650,7 @@ const rowIndex = (key: RowKey) =>
 
 const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
-    if (!current) return
+    if (!current || (isEditAction(key) && refused())) return
     // The folder choice replaces the menu's items in place.
     if (key === 'moveToFolder') {
         menu.value = { ...current, mode: 'folders' }
@@ -1621,10 +1664,12 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
 
 const onInlineAction = (id: T, key: string, button: HTMLElement, keyboard: boolean) => {
     closeMenu(false)
+    if (isEditAction(key) && refused()) return
     void run({ type: 'entry', id }, key, keyboard, button)
 }
 
 const runBulk = async (action: string, keyboard: boolean, from?: RowKey) => {
+    if (isEditAction(action) && refused()) return
     if (action.startsWith('folder:')) {
         await onBulkFolder(action.slice('folder:'.length), from)
         return
@@ -1670,6 +1715,7 @@ const runBulk = async (action: string, keyboard: boolean, from?: RowKey) => {
 
 /** Runs an action; keyboard users keep focus on `anchor` where it remains. */
 const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLElement) => {
+    if (isEditAction(action) && refused()) return
     const index = rowIndex(key)
     if (action.startsWith('folder:') && key.type === 'entry') {
         await chooseFolder(key.id, action.slice('folder:'.length), keyboard)
@@ -1752,6 +1798,7 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
 
 /** Duplicates a row and names the copy right away, as Add does. */
 const duplicateRow = async (key: RowKey) => {
+    if (refused()) return
     let copy: RowKey | undefined
     if (key.type === 'entry') {
         const [id] = folders.value.duplicate(new Set([key.id]))
@@ -1771,6 +1818,7 @@ const duplicateRow = async (key: RowKey) => {
 
 /** Moves an entry; by keyboard, focus stays on its •••, as for Move Up and Down. */
 const chooseFolder = async (id: T, choice: string, keyboard: boolean) => {
+    if (refused()) return
     if (choice === 'new') {
         await onNewFolder(new Set([id]))
         return
@@ -2104,12 +2152,19 @@ const folderEyeLabel = (item: FolderItem) =>
                     class="manager-footer pointer-events-none -mx-1.5 flex items-center gap-1.5 px-1.5 pb-2 pt-3"
                     :style="{ marginRight: gutterPadding && `-${gutterPadding}` }"
                 >
-                    <ManagerAddButton :label="strings.add" @click="onAdd" />
+                    <ManagerAddButton
+                        :label="strings.add"
+                        :class="{ 'opacity-40': isPeeking }"
+                        :aria-disabled="isPeeking || undefined"
+                        @click="onAdd"
+                    />
                     <button
                         type="button"
                         class="manager-new-folder"
                         :aria-label="i18n.workspace.folders.new"
                         :title="i18n.workspace.folders.new"
+                        :class="{ 'opacity-40': isPeeking }"
+                        :aria-disabled="isPeeking || undefined"
                         @click="onNewFolder(undefined, $event)"
                     >
                         <FolderPlusIcon class="manager-new-folder-icon" aria-hidden="true" />
@@ -2208,12 +2263,19 @@ const folderEyeLabel = (item: FolderItem) =>
                 class="manager-footer manager-footer-floating pointer-events-none absolute bottom-0 left-0 z-10 flex items-center gap-1.5 px-1.5 pb-2"
                 :class="{ 'manager-footer-dragging': drag?.started }"
             >
-                <ManagerAddButton :label="strings.add" @click="onAdd" />
+                <ManagerAddButton
+                    :label="strings.add"
+                    :class="{ 'opacity-40': isPeeking }"
+                    :aria-disabled="isPeeking || undefined"
+                    @click="onAdd"
+                />
                 <button
                     type="button"
                     class="manager-new-folder"
                     :aria-label="i18n.workspace.folders.new"
                     :title="i18n.workspace.folders.new"
+                    :class="{ 'opacity-40': isPeeking }"
+                    :aria-disabled="isPeeking || undefined"
                     @click="onNewFolder(undefined, $event)"
                 >
                     <FolderPlusIcon class="manager-new-folder-icon" aria-hidden="true" />

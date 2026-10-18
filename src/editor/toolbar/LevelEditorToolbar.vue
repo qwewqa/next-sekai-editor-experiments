@@ -565,6 +565,7 @@ onBeforeUnmount(() => {
                     :class="{ 'toolbar-quick-switch': settings.toolbarQuickSwitch }"
                     :name="activeName"
                     :state="stateOf(activeName, i)"
+                    gated
                     v-bind="flyoutAttributes(i)"
                     @pointerdown="onPressMain($event, i)"
                     @pointermove="(onOverMain($event, i), onMoveQuick($event))"
@@ -602,6 +603,7 @@ onBeforeUnmount(() => {
                         }"
                         :name
                         :state="stateOf(name, i)"
+                        gated
                         :check-column="hasValues(i)"
                         show-label
                         @click="onClickSub($event, i, name)"

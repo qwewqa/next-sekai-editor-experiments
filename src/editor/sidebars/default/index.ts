@@ -1,4 +1,5 @@
-import { pushState, state } from '../../../history'
+import { isPeeking, pushState, state } from '../../../history'
+import { refuseWhilePeeking } from '../../../history/peek'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
@@ -74,6 +75,11 @@ export const editSelectedEditableEntities = (
     only?: (entity: Entity) => boolean,
     each?: EachEdit,
 ) => {
+    // Properties are read-only while peeking (§1.4.11).
+    if (isPeeking.value) {
+        refuseWhilePeeking()
+        return
+    }
     // Refused without a notice, as fields refuse out-of-range values.
     if (!isEditInRange(state.value, selectedEntities.value, object, only, each)) return
     const { state: edited, changed } = planEdit(state.value, selectedEntities.value, object, {

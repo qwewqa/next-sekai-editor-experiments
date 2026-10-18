@@ -10,6 +10,8 @@ export const stageAll: Command = {
         is: StageAllIcon,
     },
 
+    readOnly: true,
+
     // Clears the focus, restoring saved visibility choices.
     async execute() {
         if (!(await checkDynamicStages())) return

@@ -28,7 +28,7 @@ export const formatDate = (locale: string, at: number, now = Date.now()) =>
 export const formatClock = (locale: string, at: number) =>
     formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).format(at)
 
-/** "2:41:07 PM": the Timeline's rows and the peek bar name an entry to the second. */
+/** "2:40:31 PM": a History entry's time in the peek bar and Restore's notice (§1.4.10.3). */
 export const formatClockSeconds = (locale: string, at: number) =>
     formatter(locale, 'clockSeconds', {
         hour: 'numeric',
