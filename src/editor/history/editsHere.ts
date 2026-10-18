@@ -1,6 +1,6 @@
 import { isPeeking, state } from '../../history'
 import { settings } from '../../settings'
-import { timeToBeat } from '../../state/integrals/bpms'
+import { beatToMeasure, roundBoundary, timeToBeat, type GridBpm } from '../../state/integrals/bpms'
 import { formatBeatPosition } from '../beatDisplay'
 import { bandTimes } from './changes'
 import { showHistoryLink } from './openHistory'
@@ -10,7 +10,14 @@ import { hereRange, historyFilter } from './state'
 // beats, taken once as it is chosen: the selection's beats at Now, else the beats in view. Shared
 // by Go To's Show list, the chart's context menu and the Find Edits Here command.
 
-/** The beats Edits Here would use now: whole beats, from the one `from` is in to the one `to` is in. */
+/** The start of the grid beat a chart beat is in, as the beat labels count them. */
+const beatStart = (bpms: GridBpm[], beat: number) => {
+    if (settings.beatDisplay === 'beat') return Math.floor(beat)
+    const position = roundBoundary(beatToMeasure(bpms, beat).beat)
+    return beat - (position - Math.floor(position))
+}
+
+/** The beats Edits Here would use now: whole grid beats, from the one `from` is in to the one `to` is in. */
 export const takeHereRange = () => {
     const shown = state.value
     const selected = isPeeking.value ? [] : shown.selectedEntities
@@ -24,8 +31,8 @@ export const takeHereRange = () => {
         from = timeToBeat(shown.bpms, Math.max(0, band.bottom))
         to = timeToBeat(shown.bpms, Math.max(0, band.top))
     }
-    const first = Math.max(0, Math.floor(from))
-    const last = Math.max(first, Math.floor(to))
+    const first = Math.max(0, beatStart(shown.bpms, from))
+    const last = Math.max(first, beatStart(shown.bpms, to))
     // Up to the end of the last beat.
     return { from: first, to: last + 1 - 1e-9 }
 }
@@ -34,7 +41,7 @@ export const takeHereRange = () => {
 export const hereRangeText = (range: { from: number; to: number }) => {
     const bpms = state.value.bpms
     const at = (beat: number) => formatBeatPosition(bpms, beat, settings.beatDisplay)
-    return `${at(range.from)} – ${at(Math.floor(range.to))}`
+    return `${at(range.from)} – ${at(beatStart(bpms, range.to))}`
 }
 
 /** Turns Edits Here on with the beats it takes now. */
