@@ -116,9 +116,9 @@ test('Korean labels too long for two lines by word still break between words', a
 
 for (const [locale, command, label] of [
     ['zht', ',', '水平捲動上限（軌道）'],
-    ['zht', ',', '自動儲存週期（秒）'],
+    ['zht', ',', '跟隨位置（%）'],
     ['zhs', ',', '背景音乐音量（%）'],
-    ['zhs', ',', '自动保存延迟（秒）'],
+    ['zhs', ',', '跟随位置（%）'],
     ['ja', 'm', 'オフセット\u00a0(ミリ秒)'],
 ] as const)
     test(`${locale} ${label} keeps its unit whole, on the line of the word before it`, async ({

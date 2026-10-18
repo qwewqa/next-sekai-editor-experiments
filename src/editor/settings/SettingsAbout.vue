@@ -47,7 +47,7 @@ const diagnostics = async () => {
 </script>
 
 <template>
-    <SettingsSection :title="about.title">
+    <SettingsSection id="about" :title="about.title">
         <div class="flex flex-col gap-1">
             <div class="font-bold" data-about-name>{{ PRODUCT_NAME }}</div>
             <div data-about-version>{{ interpolateRaw(about.version, shown) }}</div>

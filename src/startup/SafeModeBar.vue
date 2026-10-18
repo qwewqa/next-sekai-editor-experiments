@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
-import { checkState } from '../history'
 import { i18n } from '../i18n'
 import { leaveSafeMode } from '../safe'
 
 // The bar over the editor in safe mode (Part 1 §1.4.2): nothing is stored, and Leave Safe Mode
-// goes back to the editor, after the in-app not-stored prompt when the tab has edits (today's
-// changes prompt until that one registers with setLeaveSafeModeGuard).
-
-const confirmLeave = async () => (await checkState()) === true
+// goes back to the editor, after the in-app not-stored prompt when the tab has edits (registered
+// by `editor/switch.ts` with setLeaveSafeModeGuard).
 
 // The editor sits below the bar, whatever height its text takes in a narrow window.
 const bar = useTemplateRef<HTMLElement>('bar')
@@ -42,7 +39,7 @@ onBeforeUnmount(() => {
         <button
             type="button"
             class="h-8 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-10"
-            @click="void leaveSafeMode(confirmLeave)"
+            @click="void leaveSafeMode()"
         >
             {{ i18n.safe.leave }}
         </button>

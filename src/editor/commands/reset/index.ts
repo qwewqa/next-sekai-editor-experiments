@@ -1,7 +1,7 @@
 import type { Command } from '..'
-import { checkState, resetState } from '../../../history'
+import { resetState } from '../../../history'
 import { i18n } from '../../../i18n'
-import { notify } from '../../notification'
+import { confirmSwitch, notifyLeft } from '../../switch'
 import ResetIcon from './ResetIcon.vue'
 
 export const reset: Command = {
@@ -13,10 +13,11 @@ export const reset: Command = {
     readOnly: true,
 
     async execute() {
-        if (!(await checkState())) return
+        if (!(await confirmSwitch())) return
 
         resetState(false)
 
-        notify(() => i18n.value.commands.reset.reset)
+        // "New level", with Reopen while the session left can be reopened (Part 1 §1.4.1).
+        notifyLeft(() => i18n.value.notice.newLevel)
     },
 }

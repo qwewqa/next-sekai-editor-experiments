@@ -36,6 +36,9 @@ const pendingMove = ref(0)
 
 export const canUndo = computed(() => index.value + pendingMove.value > 0)
 
+/** Whether the stack holds only its first state: nothing done, nothing to redo. */
+export const isPristine = computed(() => states.length <= 1)
+
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const current = computed(() => states[index.value]!)
 

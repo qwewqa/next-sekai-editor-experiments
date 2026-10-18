@@ -62,7 +62,7 @@ const notes = computed(() => {
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.keyboardShortcuts.title">
+    <SettingsSection id="keyboardShortcuts" :title="i18n.settings.keyboardShortcuts.title">
         <KeyField
             v-for="(command, name) in commands"
             :key="name"

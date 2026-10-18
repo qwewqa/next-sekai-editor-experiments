@@ -8,7 +8,7 @@ import SettingsSection from './SettingsSection.vue'
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.play.title">
+    <SettingsSection id="play" :title="i18n.settings.play.title">
         <NumberField
             v-model="settings.playBgmVolume"
             :label="i18n.settings.play.bgmVolume"

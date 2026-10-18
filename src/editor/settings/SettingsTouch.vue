@@ -8,7 +8,7 @@ import SettingsSection from './SettingsSection.vue'
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.touch.title">
+    <SettingsSection id="touch" :title="i18n.settings.touch.title">
         <NumberField
             v-model="settings.touchQuickScrollWidth"
             :label="i18n.settings.touch.quickScrollWidth"

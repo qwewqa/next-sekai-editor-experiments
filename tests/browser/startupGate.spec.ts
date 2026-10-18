@@ -340,19 +340,28 @@ test.describe('safe mode', () => {
             .toBeGreaterThan(0)
     })
 
-    test('Leave Safe Mode with edits asks first, and Cancel stays', async ({ page }) => {
+    test('Leave Safe Mode with edits shows the not-stored prompt, and Cancel stays', async ({
+        page,
+    }) => {
         await boot(page, '/?safe')
         await page.evaluate(installEditorFixture)
         await addNote(page)
         await leave(page).click()
-        const dialog = page.getByRole('dialog', { name: 'Changes' })
-        await expect(dialog).toBeVisible()
+        const dialog = page.getByRole('dialog', { name: 'Changes Not Stored' })
+        await expect(dialog).toContainText(
+            'Your changes are not being stored in this browser. Leaving loses them.',
+        )
+        // The safe default is Save, on the right.
+        await expect(dialog.getByRole('button', { name: 'Save' })).toBeFocused()
+        // A press in the dialog's first moments is not a choice.
+        await page.waitForTimeout(400)
         await dialog.getByRole('button', { name: 'Cancel' }).click()
         await expect(page).toHaveURL(/\?safe$/)
         await leave(page).click()
+        await page.waitForTimeout(400)
         await page
-            .getByRole('dialog', { name: 'Changes' })
-            .getByRole('button', { name: 'Confirm' })
+            .getByRole('dialog', { name: 'Changes Not Stored' })
+            .getByRole('button', { name: 'Leave Anyway' })
             .click()
         await expect(page).toHaveURL(/\/$/)
     })
