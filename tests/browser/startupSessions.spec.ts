@@ -395,12 +395,13 @@ test('an unedited New reloads as blank', async ({ page }) => {
     expect(await loadEvents(page)).toEqual([])
 })
 
-test('an unedited blank start, the session held elsewhere, continues it on reload once that tab closed', async ({
+test('an unedited blank start, the session held elsewhere, continues it with its binding on reload once that tab closed', async ({
     page,
     context,
 }) => {
     await visit(page)
     await edit(page, 990)
+    expect(await bind(page, 'coconut.nxsp')).toBe(true)
     await settled(page)
     const next = await context.newPage()
     await visit(next)
@@ -411,6 +412,8 @@ test('an unedited blank start, the session held elsewhere, continues it on reloa
     await opened(next)
     expect(await lifeOf(next)).toBe(990)
     expect(await loadEvents(next)).toEqual(['continued'])
+    // The continuation carries the chain's fields, its binding included (§1.4.2).
+    expect((await flushSession(next)).file).toEqual({ name: 'coconut.nxsp', handle: false })
 })
 
 test('Reopen continues the session left by New', async ({ page }) => {
@@ -880,4 +883,32 @@ test('a late flush landing during the marker’s wait is in the session the relo
     expect(await lifeOf(reloaded)).toBe(960)
     const { entries } = await rows(reloaded, ['entries'])
     expect(entries.map((entry) => entry.kind)).toEqual(['init', 'edit', 'edit'])
+})
+
+test('Start Blank, edits, then a reload while startup still runs brings back the blank start’s work', async ({
+    page,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await settled(page)
+    const stored = await flushSession(page)
+    page.on('dialog', (dialog) => void dialog.accept())
+    await nextLoadFlags(page, { holdReplayMs: 15_000 })
+    await page.evaluate(() => {
+        sessionStorage.setItem('nse.test.startup', JSON.stringify({ slowMs: 100 }))
+    })
+    await page.reload()
+    await gate(page).getByRole('button', { name: 'Start Blank' }).click()
+    await expect(gate(page)).toHaveCount(0)
+    await edit(page, 940)
+    // Startup is still holding its replay: the reload comes before it decides.
+    expect(await page.evaluate(() => window.nseStartupTest)).toBeUndefined()
+    await page.evaluate(() => {
+        sessionStorage.removeItem('nse.test.storage')
+        sessionStorage.removeItem('nse.test.startup')
+    })
+    await page.reload()
+    await opened(page)
+    expect(await lifeOf(page)).toBe(940)
+    expect((await flushSession(page)).chainId).not.toBe(stored.chainId)
 })
