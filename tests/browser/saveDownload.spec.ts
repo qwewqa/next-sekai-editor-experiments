@@ -142,3 +142,26 @@ test('opening a file this browser downloaded confirms its downloads', async ({ p
     })
     await expect(page.locator('[data-file-chip]')).toHaveCount(0)
 })
+
+test('a download browser never requests nse-bind', async ({ page }) => {
+    await page.addInitScript(() => {
+        const names: string[] = []
+        ;(window as { lockNames?: string[] }).lockNames = names
+        const request = LockManager.prototype.request
+        LockManager.prototype.request = function (name: string, ...rest: unknown[]) {
+            names.push(name)
+            return (request as (...args: unknown[]) => Promise<unknown>).call(this, name, ...rest)
+        } as typeof request
+    })
+    await start(page, { fileSystemAccess: false })
+    await edit(page, 1)
+    await downloaded(page, async () => {
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+    })
+    await edit(page, 2)
+    await downloaded(page, () => pressSave(page))
+    const names = await page.evaluate(() => (window as { lockNames?: string[] }).lockNames ?? [])
+    expect(names.length).toBeGreaterThan(0)
+    expect(names).not.toContain('nse-bind')
+})
