@@ -29,7 +29,7 @@ const sourceZip = (extra: RawEntry[] = []) =>
 const pinned = async (bytes: Uint8Array) =>
     inspectNxsp(new Blob([new Uint8Array(bytes)]), { token: 's', role: 'target', fingerprint: 'f' })
 
-const copy = (entry: SourceEntry, inflate = false): PlanPart => ({
+const copy = (entry: SourceEntry, inflate = false): Extract<PlanPart, { kind: 'copy' }> => ({
     kind: 'copy',
     source: 's',
     entryIndex: entry.index,

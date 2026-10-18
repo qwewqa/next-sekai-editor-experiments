@@ -69,7 +69,7 @@ const changeHeadChunk =
         const chunks = items.find((i) => i.name === 'history/chunks.bin')
         assert.ok(chunks)
         const head = m.undoStack.slots[m.undoStack.index - m.undoStack.base].snapshot as string
-        const root = m.roots[head] as RecordValue[]
+        const root = m.roots[head] as [number, string, [string, string][], number]
         const read = (hash: string) => {
             const [, offset, length] =
                 (m.chunks as [string, number, number][]).find(([h]) => h === hash) ?? []
@@ -87,10 +87,9 @@ const changeHeadChunk =
             return hash
         }
         let newRoot: RecordValue[]
-        if (kind === 'header')
-            newRoot = [root[0], add(change(read(root[1] as string))), root[2], root[3]]
+        if (kind === 'header') newRoot = [root[0], add(change(read(root[1]))), root[2], root[3]]
         else {
-            const kinds = root[2] as [string, string][]
+            const kinds = root[2]
             const at = kinds.findIndex(([name]) => name === kind)
             const [, top] = kinds[at] ?? []
             assert.ok(top, kind)
