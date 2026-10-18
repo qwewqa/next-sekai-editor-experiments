@@ -512,6 +512,18 @@ test.describe('the label and the title', () => {
                     const range = document.createRange()
                     range.selectNodeContents(element)
                     const lines = [...range.getClientRects()]
+                    const glyphs: DOMRect[] = []
+                    const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+                    while (text.nextNode()) {
+                        const node = text.currentNode
+                        for (let offset = 0; offset < node.textContent!.length; offset++) {
+                            if (/\s/u.test(node.textContent![offset]!)) continue
+                            const glyph = document.createRange()
+                            glyph.setStart(node, offset)
+                            glyph.setEnd(node, offset + 1)
+                            glyphs.push(...glyph.getClientRects())
+                        }
+                    }
                     getSelection()!.removeAllRanges()
                     getSelection()!.addRange(range)
                     const body = element.closest<HTMLElement>('.overflow-y-auto')!
@@ -519,11 +531,14 @@ test.describe('the label and the title', () => {
                     return {
                         selected: getSelection()!.toString(),
                         lines: lines.length,
-                        horizontalFit: lines.every(
-                            (rect) =>
-                                rect.left >= paragraph.left - 0.5 &&
-                                rect.right <= paragraph.right + 0.5,
-                        ),
+                        horizontalFit:
+                            glyphs.length > 0 &&
+                            glyphs.every(
+                                (rect) =>
+                                    rect.left >= paragraph.left - 0.5 &&
+                                    rect.right <= paragraph.right + 0.5,
+                            ),
+                        horizontalScroll: body.scrollWidth > body.clientWidth,
                         scrollable: body.scrollHeight > body.clientHeight,
                         reachedEnd: body.scrollTop + body.clientHeight >= body.scrollHeight - 1,
                         userSelect: getComputedStyle(element).userSelect,
@@ -533,6 +548,7 @@ test.describe('the label and the title', () => {
                 expect(metrics).toMatchObject({
                     selected: full,
                     horizontalFit: true,
+                    horizontalScroll: false,
                     scrollable: true,
                     reachedEnd: true,
                     userSelect: 'text',
