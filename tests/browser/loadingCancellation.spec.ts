@@ -76,7 +76,9 @@ test.beforeEach(async ({ page }) => {
                 .getEntriesByType('resource')
                 .map((entry) => [new URL(entry.name).pathname, entry.name]),
         )
-        const { watch } = await import(moduleUrls.get('/node_modules/.vite/deps/vue.js')!)
+        // Vue as Vite serves it from its dependency cache, wherever `cacheDir` puts that.
+        const vue = [...moduleUrls].find(([path]) => path.endsWith('/deps/vue.js'))?.[1]
+        const { watch } = await import(vue!)
         const { modals } = await import(moduleUrls.get('/src/modals/index.ts')!)
         const wrapped = new WeakSet<object>()
         // Observe completion of the actual generator, including its delayed
