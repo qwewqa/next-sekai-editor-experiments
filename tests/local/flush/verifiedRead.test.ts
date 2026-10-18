@@ -51,7 +51,7 @@ const stored = async (seed: number) => {
     const read = (hex: string) => page.tab.run(() => handlers.readSnapshotVerified(hex))
     const worker = {
         call: (method: 'readEntry' | 'readSnapshotVerified', arg: never) =>
-            page.tab.run(() => handlers[method](arg)),
+            page.tab.run((): Promise<unknown> => handlers[method](arg)),
     } as unknown as StorageWorker
     const seqOf = (state: State) =>
         storedEntries(world, session.id).find((entry) => toHex(entry.snapshot) === hexOf(state))!
