@@ -600,13 +600,19 @@ export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = [
         ...(media.bgm?.entry ? [media.bgm.entry] : []),
     ]
     const names = ['project.json', 'level.json', ...bodyEntries.map((entry) => entry.name)]
-    const minor = minorOf({
-        levelVersion: input.levelVersion,
-        rootVs: laid?.rootVs ?? [],
-        ...(laid ? { manifestVersion: MANIFEST_VERSION } : {}),
-        entryKinds: laid?.entryKinds ?? [],
-        zipEntries: names,
-    })
+    let minor: number
+    try {
+        minor = minorOf({
+            levelVersion: input.levelVersion,
+            rootVs: laid?.rootVs ?? [],
+            ...(laid ? { manifestVersion: MANIFEST_VERSION } : {}),
+            entryKinds: laid?.entryKinds ?? [],
+            zipEntries: names,
+        })
+    } catch (error) {
+        // Content this build can't fully read is never written (§1.6.11.6).
+        throw new PlanError(error instanceof Error ? error.message : String(error))
+    }
 
     const metadata = metadataOf(input.levelInfo, {
         ...(media.cover ? { cover: media.cover.form } : {}),
