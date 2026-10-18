@@ -129,16 +129,16 @@ watch(
             :label="i18n.settings.editor.showOtherObjects"
         />
 
-        <ToggleField
-            v-model="settings.dimUnchangedObjects"
-            :label="i18n.settings.editor.dimUnchangedObjects"
-        />
-
         <ToggleField v-model="settings.nameContrast" :label="i18n.settings.editor.nameContrast" />
 
         <ToggleField
             v-model="settings.deselectSwitchesToSelect"
             :label="i18n.settings.editor.deselectSwitchesToSelect"
+        />
+
+        <ToggleField
+            v-model="settings.dimUnchangedObjects"
+            :label="i18n.settings.editor.dimUnchangedObjects"
         />
     </SettingsSection>
 </template>

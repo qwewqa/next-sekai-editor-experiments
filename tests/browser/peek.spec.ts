@@ -342,13 +342,16 @@ test('Properties shows fields disabled while peeking', async ({ page }) => {
     await leave(page)
 })
 
-test('the selection menu holds only Copy while peeking', async ({ page }) => {
+test('the selection menu holds only Copy and Find Edits Here while peeking', async ({ page }) => {
     const first = await newestSeq(page)
     await deleteAt(page, 3)
     await peek(page, first)
     const point = await notePoint(page, 7)
     await page.mouse.click(point.x, point.y, { button: 'right' })
-    await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([/^Copy/])
+    await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
+        /^Copy/,
+        'Find Edits Here',
+    ])
     await page.keyboard.press('Escape')
     await leave(page)
 })
