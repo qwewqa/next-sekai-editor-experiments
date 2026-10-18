@@ -62,6 +62,7 @@
         "eslint": "^10.6.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-vue": "^10.9.2",
+        "fast-check": "4.10.2",
         "globals": "^17.7.0",
         "prettier": "^3.9.5",
         "prettier-plugin-organize-imports": "^4.3.0",
