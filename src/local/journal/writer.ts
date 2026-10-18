@@ -127,6 +127,16 @@ export class JournalWriter {
         return this.verified(session.id, seq)
     }
 
+    /**
+     * Writes the open session's journal again whatever was written before: its identity changed
+     * (an unlink on damage, §1.6.11.8), so a replay can't put the old binding back.
+     */
+    rewrite(): boolean {
+        const session = this.deps.flusher()?.session
+        if (session) this.written.delete(session.id)
+        return this.write()
+    }
+
     /** Whether the journal of the session's `seq` verified on this page and still counts. */
     verified(sessionId: string, seq: number) {
         const last = this.written.get(sessionId)

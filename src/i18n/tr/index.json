@@ -245,7 +245,7 @@
       "importedChcy": "Chart Cyanvas seviyesi içe aktarıldı",
       "importedUsc": "USC çizelgesi içe aktarıldı",
       "importedSus": "SUS çizelgesi içe aktarıldı",
-      "unsupported": "Desteklenmeyen dosya. Seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
+      "unsupported": "Desteklenmeyen dosya. Proje dosyası, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "Burada düzenleme yok",
     "checking": "Eski adımlar denetleniyor…",
     "notChecked": "{0} adım denetlenemedi",
-    "announceViewingChange": "{0} görüntüleniyor, {1}"
+    "announceViewingChange": "{0} görüntüleniyor, {1}",
+    "openedFile": "{0} açıldı"
   },
   "modals": {
     "close": "Kapat",
@@ -1901,7 +1902,8 @@
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı silindi.",
     "continued": "Devam ettirildi",
     "migrated": "Otomatik kaydetmeden kurtarıldı",
-    "restoredTo": "{0} anına geri yüklendi"
+    "restoredTo": "{0} anına geri yüklendi",
+    "changedOutside": "Editör dışında değiştirildi"
   },
   "session": {
     "untitled": "Adsız · {0}"
@@ -1916,5 +1918,32 @@
     "notInFile": "Dosyaya kaydedilmedi",
     "separateCopy": "{0} için ayrı kopya",
     "opensLevelInfo": "Seviye bilgisini açar"
+  },
+  "open": {
+    "notProject": "Bu ZIP bir proje dosyası değil.",
+    "damagedUnopened": "Bu dosya hasarlı ve açılamadı.",
+    "damaged": "Bu dosya hasarlı. Geçmişi olmadan açıldı.",
+    "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
+    "newerVersion": "Daha yeni bir {0} sürümüyle oluşturuldu. Kaydetmek ayrı bir dosya oluşturur.",
+    "newerRefused": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "mediaBad": "Bu dosyanın {0} okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
+    "media": {
+      "bgm": "arka plan müziği",
+      "cover": "kapak görseli",
+      "preview": "önizleme sesi"
+    },
+    "newerMajor": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "newerMajorNote": "Bu dosyadan yalnızca seviye açılabilir.",
+    "openLevel": "Seviyeyi Aç",
+    "newerValues": {
+      "title": "\"{0}\" Daha Yeni Özellikler Kullanıyor",
+      "body": "Editörün bu sürümü bu seviyedeki bazı değerleri desteklemiyor. Bu değerlerin varsayılanlarla değiştirildiği ayrı bir kopya açılır.",
+      "openCopy": "Kopya Aç"
+    },
+    "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",
+    "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
+    "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",
+    "restoreIt": "Oturumu Geri Yükle",
+    "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
   }
 }

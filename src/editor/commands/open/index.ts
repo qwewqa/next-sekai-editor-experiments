@@ -1,6 +1,7 @@
 import { ungzip } from 'pako'
 import { AssertError } from 'typebox/value'
 import type { Command } from '..'
+import type { Chart } from '../../../chart'
 import { parseLevelDataChart } from '../../../chart/parse/levelData'
 import { parseSusChart } from '../../../chart/parse/sus'
 import { parseUscChart } from '../../../chart/parse/usc'
@@ -18,14 +19,17 @@ import {
     type RevisionWarning,
 } from '../../../levelData/revision'
 import { showModal } from '../../../modals'
+import { showChoice } from '../../../modals/choice'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { levelDataDiskState } from '../../../platform'
 import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
+import { errorMessage } from '../../../utils/error'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
-import { interpolateRaw } from '../../../utils/interpolate'
+import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
+import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, rememberExport } from '../exportLevel/memory'
@@ -48,21 +52,32 @@ export const open: Command = {
         const { file, handle } = await pickFileForOpen('levelData')
         if (!file) return
 
-        // A failed read here surfaces in the loading modal below. A ZIP is only recognised for now.
+        // A failed read here surfaces in the loading modal below.
         const detected = await detectHead(file).catch(() => 'data' as const)
         if (detected === 'audio') {
             void changeBgm(file)
             return
         }
+        // A ZIP is a project file, read in the storage worker (§1.5.4).
+        if (detected === 'zip') {
+            const { openProject } = await import('./project')
+            try {
+                await openProject(file, handle)
+            } catch (error) {
+                console.error(error)
+                notify(() => errorMessage(error), { card: true })
+            }
+            return
+        }
 
         let warning: RevisionWarning | 'unsupportedParts' | undefined
+        // Values this build doesn't know: the level opens only after its confirm (§1.5.4).
+        let newerValues:
+            (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
         await showModal(LoadingModal, {
             title: () => i18n.value.commands.open.title,
             async *task(signal: AbortSignal) {
                 yield () => i18n.value.commands.open.loading
-
-                // Project files, archives and packages have no message of their own yet.
-                if (detected === 'zip') throw new UnsupportedFileError()
 
                 const buffer = await file.arrayBuffer()
                 signal.throwIfAborted()
@@ -86,8 +101,6 @@ export const open: Command = {
                         }
                         case 'levelData': {
                             const levelData = parseLevelData(data)
-
-                            // An unknown choice value still refuses the open (its confirm is Step 6's).
                             const report = new LevelDataReport()
                             const chart = parseLevelDataChart(
                                 levelData.entities,
@@ -95,38 +108,15 @@ export const open: Command = {
                                 undefined,
                                 report,
                             )
-                            report.refuseUnknownValues()
                             validateChart(chart)
-                            const revisionWarning = getRevisionWarning(
-                                getLevelDataRevision(levelData.entities),
-                                chart,
-                            )
-
-                            // Content this build did not read: no file is written over (D2).
-                            const complete = report.isEmpty
-                            partial = !complete
-                            resetState(false, chart, levelData.bgmOffset, {
-                                sourceName: getFilename(file),
-                            })
-                            setLevelDataHandle(complete ? handle : undefined)
-                            // Pickers then suggest "<name> (2)", never the original (§1.4.7).
-                            if (partial) exportMemory.partial = true
-                            warning = complete ? revisionWarning : 'unsupportedParts'
-                            if (complete && isGzip(buffer)) {
-                                // Export's own format: its file is the remembered target (§1.4.8).
-                                exportMemory.sourceName = file.name
-                                if (handle)
-                                    exportMemory.target = {
-                                        name: handle.name,
-                                        handle,
-                                        disk: await levelDataDiskState(
-                                            new File([buffer], file.name, {
-                                                lastModified: file.lastModified,
-                                            }),
-                                        ),
-                                        exported: false,
-                                    }
+                            const apply = () =>
+                                applyLevelData(file, handle, buffer, levelData, chart, report)
+                            if (report.hasUnknownValue) {
+                                newerValues = apply
+                                return
                             }
+                            partial = !report.isEmpty
+                            warning = await apply()
                             break
                         }
                         case 'usc': {
@@ -155,22 +145,27 @@ export const open: Command = {
                     throw error
                 }
 
-                // The source's bytes, so a save picker that empties it can be undone (D5).
-                if (handle)
-                    exportMemory.opened = {
-                        handle,
-                        levelData: type === 'levelData',
-                        partial,
-                        // Complete level data may be written over; anything else is kept.
-                        bytes: type === 'levelData' && !partial ? undefined : buffer,
-                    }
-
-                // The target and the partial flag are the new chain's (§1.4.8).
-                rememberExport()
-                // With Reopen while the session left can be reopened (Part 1 §1.4.1).
-                notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
+                opened(handle, buffer, type, partial)
             },
         })
+        if (newerValues) {
+            const apply = newerValues
+            const choice = await showChoice({
+                title: interpolate(() => i18n.value.open.newerValues.title, file.name),
+                message: () => i18n.value.open.newerValues.body,
+                choices: [
+                    {
+                        value: true,
+                        label: () => i18n.value.open.newerValues.openCopy,
+                        default: true,
+                    },
+                ],
+            })
+            // Cancel opens nothing and leaves the session as it was.
+            if (!choice) return
+            warning = await apply()
+            opened(handle, await file.arrayBuffer(), 'levelData', true)
+        }
         if (!warning) return
 
         const message = warning
@@ -182,6 +177,63 @@ export const open: Command = {
                     : i18n.value.commands.open.revision[message],
         })
     },
+}
+
+/**
+ * Opens parsed level data: a new session, with its handle and Export's target when it was read
+ * whole (§1.4.8). Content this build did not read makes it partial: no file is written over (D2).
+ */
+const applyLevelData = async (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    buffer: ArrayBuffer,
+    levelData: ReturnType<typeof parseLevelData>,
+    chart: Chart,
+    report: LevelDataReport,
+): Promise<RevisionWarning | 'unsupportedParts' | undefined> => {
+    const revisionWarning = getRevisionWarning(getLevelDataRevision(levelData.entities), chart)
+    const complete = report.isEmpty
+    resetState(false, chart, levelData.bgmOffset, { sourceName: getFilename(file) })
+    setLevelDataHandle(complete ? handle : undefined)
+    // Pickers then suggest "<name> (2)", never the original (§1.4.7).
+    if (!complete) exportMemory.partial = true
+    if (complete && isGzip(buffer)) {
+        // Export's own format: its file is the remembered target (§1.4.8).
+        exportMemory.sourceName = file.name
+        if (handle)
+            exportMemory.target = {
+                name: handle.name,
+                handle,
+                disk: await levelDataDiskState(
+                    new File([buffer], file.name, { lastModified: file.lastModified }),
+                ),
+                exported: false,
+            }
+    }
+    return complete ? revisionWarning : 'unsupportedParts'
+}
+
+/** After an open: the source's bytes kept, the chain's Export fields stored, the notice. */
+const opened = (
+    handle: FileSystemFileHandle | undefined,
+    buffer: ArrayBuffer,
+    type: keyof typeof openedMessages,
+    partial: boolean,
+) => {
+    // The source's bytes, so a save picker that empties it can be undone (D5).
+    if (handle)
+        exportMemory.opened = {
+            handle,
+            levelData: type === 'levelData',
+            partial,
+            // Complete level data may be written over; anything else is kept.
+            bytes: type === 'levelData' && !partial ? undefined : buffer,
+        }
+
+    // The target and the partial flag are the new chain's (§1.4.8).
+    rememberExport()
+    // With Reopen while the session left can be reopened (Part 1 §1.4.1).
+    notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
 }
 
 const openedMessages = {

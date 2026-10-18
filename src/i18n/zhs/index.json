@@ -245,7 +245,7 @@
       "importedChcy": "已导入 Chart Cyanvas 关卡",
       "importedUsc": "已导入 USC 谱面",
       "importedSus": "已导入 SUS 谱面",
-      "unsupported": "不支持的文件。请打开关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
+      "unsupported": "不支持的文件。请打开项目文件、关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
       "invalidLevel": "无效的关卡：{0}",
       "invalidChart": "无效的谱面：{0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "此处没有编辑",
     "checking": "正在检查更早的步骤…",
     "notChecked": "有 {0} 步无法检查",
-    "announceViewingChange": "正在查看 {0}，{1}"
+    "announceViewingChange": "正在查看 {0}，{1}",
+    "openedFile": "已打开 {0}"
   },
   "modals": {
     "close": "关闭",
@@ -1901,7 +1902,8 @@
     "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤已丢弃。",
     "continued": "已继续",
     "migrated": "已从自动保存恢复",
-    "restoredTo": "已还原到 {0}"
+    "restoredTo": "已还原到 {0}",
+    "changedOutside": "在编辑器外更改"
   },
   "session": {
     "untitled": "未命名 · {0}"
@@ -1916,5 +1918,32 @@
     "notInFile": "未保存到文件",
     "separateCopy": "{0} 的单独副本",
     "opensLevelInfo": "打开关卡信息"
+  },
+  "open": {
+    "notProject": "此 ZIP 不是项目文件。",
+    "damagedUnopened": "此文件已损坏，无法打开。",
+    "damaged": "此文件已损坏。已在不含历史记录的情况下打开。",
+    "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",
+    "newerVersion": "由更新版本的 {0} 创建。保存时会创建单独的文件。",
+    "newerRefused": "由更新版本的 {0} 创建。",
+    "mediaBad": "无法读取此文件的{0}。保存时会创建单独的文件。",
+    "media": {
+      "bgm": "背景音乐",
+      "cover": "封面",
+      "preview": "预览音频"
+    },
+    "newerMajor": "由更新版本的 {0} 创建。",
+    "newerMajorNote": "只能从中打开关卡。",
+    "openLevel": "打开关卡",
+    "newerValues": {
+      "title": "“{0}”使用了更新的功能",
+      "body": "此版本的编辑器不支持此关卡中的部分值。将打开一个单独的副本，其中这些值已替换为默认值。",
+      "openCopy": "打开副本"
+    },
+    "unsavedChanges": "已打开 {0}。你在 {1} 对它有未保存的更改。",
+    "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在最近会话中。",
+    "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在最近会话中。",
+    "restoreIt": "还原会话",
+    "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"
   }
 }

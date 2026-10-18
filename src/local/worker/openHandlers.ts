@@ -1,5 +1,7 @@
 import { FLUSH_STORES, prepareFlush, type FlushBatch } from '../flushWrite'
 import { KeyRange } from '../kv/types'
+import { readEarlierChains } from '../open/earlier'
+import type { ImportTarget } from '../open/importLoop'
 import {
     prepareBatch,
     prepareOpenHead,
@@ -200,6 +202,30 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                 { durability: 'strict', ...scope },
             )
         },
+
+        /** What a resumed import reads of its chain: the binding and the base revision. */
+        openImportTarget: (chainId: string) =>
+            context.core.read(['chains'], async (tx): Promise<ImportTarget | undefined> => {
+                const chain = (await tx.get('chains', chainId)) as
+                    Record<string, unknown> | undefined
+                if (!chain) return
+                const file = chain.file as ImportTarget['file']
+                const revision = chain.revision as { id?: unknown } | undefined
+                return {
+                    ...(file ? { file } : {}),
+                    ...(typeof revision?.id === 'string' ? { revisionId: revision.id } : {}),
+                }
+            }),
+
+        /**
+         * The chains of a document other than `exclude`, as the open's notice reads them (§1.5.4
+         * step 4): each one's latest session, base revision, binding, whether its head differs
+         * from its file event's state, and when it was last edited.
+         */
+        openEarlierChains: ({ docId, exclude }: { docId: string; exclude: string }) =>
+            context.core.read(['chains', 'sessions', 'stackBlocks'], (tx) =>
+                readEarlierChains(tx, docId, exclude),
+            ),
 
         /** Sessions whose open's import hasn't finished, with their chains (§1.6.11.2's `importPending`). */
         openPendingImports: () =>

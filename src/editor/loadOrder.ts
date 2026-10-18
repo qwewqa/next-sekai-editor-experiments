@@ -14,6 +14,8 @@ export const LOAD_ORDER = {
     journalRecovered: 100,
     journalLater: 110,
     journalFailed: 115,
+    // A resumed import found damage in the continued session's file (§1.6.11.8).
+    damagedHistory: 145,
     bgmNotLoaded: 150,
     openElsewhere: 160,
     deletedElsewhere: 165,

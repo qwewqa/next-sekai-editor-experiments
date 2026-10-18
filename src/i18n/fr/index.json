@@ -245,7 +245,7 @@
       "importedChcy": "Niveau Chart Cyanvas importé",
       "importedUsc": "Partition USC importée",
       "importedSus": "Partition SUS importée",
-      "unsupported": "Fichier non pris en charge. Ouvrez des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
+      "unsupported": "Fichier non pris en charge. Ouvrez un fichier de projet, des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
       "invalidLevel": "Niveau non valide : {0}",
       "invalidChart": "Partition non valide : {0}",
       "revision": {
@@ -1245,7 +1245,8 @@
     "noEditsHere": "Aucune modification ici",
     "checking": "Vérification des étapes plus anciennes…",
     "notChecked": "{0} étape n’a pas pu être vérifiée|{0} étapes n’ont pas pu être vérifiées",
-    "announceViewingChange": "Affichage de {0}, {1}"
+    "announceViewingChange": "Affichage de {0}, {1}",
+    "openedFile": "{0} ouvert"
   },
   "modals": {
     "close": "Fermer",
@@ -1901,7 +1902,8 @@
     "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation a été supprimée.|Dernière modification récupérée. {0} étapes d’annulation ont été supprimées.",
     "continued": "Session reprise",
     "migrated": "Récupéré de la sauvegarde automatique",
-    "restoredTo": "Restauré à {0}"
+    "restoredTo": "Restauré à {0}",
+    "changedOutside": "Modifié en dehors de l’éditeur"
   },
   "session": {
     "untitled": "Sans titre · {0}"
@@ -1916,5 +1918,32 @@
     "notInFile": "Non sauvegardé dans un fichier",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau"
+  },
+  "open": {
+    "notProject": "Ce ZIP n’est pas un fichier de projet.",
+    "damagedUnopened": "Ce fichier est endommagé et n’a pas pu être ouvert.",
+    "damaged": "Ce fichier est endommagé. Il a été ouvert sans son historique.",
+    "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",
+    "newerVersion": "Créé par une version plus récente de {0}. La sauvegarde crée un fichier séparé.",
+    "newerRefused": "Créé par une version plus récente de {0}.",
+    "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
+    "media": {
+      "bgm": "la musique",
+      "cover": "la couverture",
+      "preview": "l’aperçu audio"
+    },
+    "newerMajor": "Créé par une version plus récente de {0}.",
+    "newerMajorNote": "Seul le niveau peut en être ouvert.",
+    "openLevel": "Ouvrir le niveau",
+    "newerValues": {
+      "title": "\"{0}\" utilise des fonctionnalités plus récentes",
+      "body": "Cette version de l’éditeur ne prend pas en charge certaines valeurs de ce niveau. Une copie séparée s’ouvre, où elles sont remplacées par les valeurs par défaut.",
+      "openCopy": "Ouvrir une copie"
+    },
+    "unsavedChanges": "{0} ouvert. Vous avez des modifications non sauvegardées de ce fichier datant du {1}.",
+    "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
+    "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans les sessions récentes.",
+    "restoreIt": "Restaurer la session",
+    "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
   }
 }

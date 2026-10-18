@@ -5,6 +5,7 @@ import type { JournalFound, JournalStore, LockService } from '../../platform/typ
 import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
 import type { FlushSession, StoredStack } from '../flush'
+import { handleOf } from '../handles'
 import { toHex } from '../hash'
 import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, forkNameOf, namePartsOf } from '../names'
@@ -369,7 +370,7 @@ const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State) => {
 
 /** Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). */
 const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open' }) => {
-    const handle = (read.chain.file as { handle?: FileSystemFileHandle } | undefined)?.handle
+    const handle = handleOf((read.chain.file as { handle?: unknown } | undefined)?.handle)
     if (!handle || !hasWebLocks()) return false
     try {
         const own = await deps.client.id()
@@ -383,7 +384,7 @@ const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open'
         const bindings = await deps.worker.call('readBindings', others)
         for (const { chainId, file } of bindings) {
             if (chainId === read.chain.chainId) continue
-            const other = file.handle as FileSystemFileHandle | undefined
+            const other = handleOf(file.handle)
             if (other && (await other.isSameEntry(handle).catch(() => false))) return true
         }
     } catch {

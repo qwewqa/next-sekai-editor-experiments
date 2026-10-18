@@ -148,6 +148,33 @@ export const reopen = async () => (await reopenSession()).opened
 export const restoreAsCopy = async (sessionId: string) =>
     (await openSession(sessionId, true)).opened
 
+/**
+ * Restore (the open notice's, §1.5.4 step 4): continues a session that isn't open, its pending
+ * journal applied first under its lock.
+ */
+export const restoreSession = async (sessionId: string) =>
+    (await openSession(sessionId, false)).opened
+
+/** What opening a session in this tab needs, once startup has run. */
+export const sessionContext = () => context
+
+/**
+ * Applies a session's pending journal under its lock (§1.6.4, between loads; r11-stage1 M3):
+ * `held` when another tab holds the session, which owns its journal. Restore Session, Reopen,
+ * Save to File… and Delete run it before acting on a session that isn't open.
+ */
+export const applyPendingJournal = async (sessionId: string) => {
+    if (!context) return
+    const { open, recovery } = context
+    const lock = await claimSessionLock(open.locks, sessionId, 0)
+    if (!lock) return 'held' as const
+    try {
+        return await replaySessionJournal(recovery, sessionId)
+    } finally {
+        lock.release()
+    }
+}
+
 /** A row of Settings › Local Data › Recovery (§1.4.14). */
 export type RecoveryItem =
     /** A journal of an earlier visit kept while storage is unavailable: Open and Download. */

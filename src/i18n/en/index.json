@@ -245,7 +245,7 @@
             "importedChcy": "Imported Chart Cyanvas level",
             "importedUsc": "Imported USC chart",
             "importedSus": "Imported SUS chart",
-            "unsupported": "Unsupported file. Open level data, a Chart Cyanvas level, or a USC or SUS chart.",
+            "unsupported": "Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.",
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
             "revision": {
@@ -1245,7 +1245,8 @@
         "noEditsHere": "No edits here",
         "checking": "Checking older steps…",
         "notChecked": "{0} step could not be checked|{0} steps could not be checked",
-        "announceViewingChange": "Viewing {0}, {1}"
+        "announceViewingChange": "Viewing {0}, {1}",
+        "openedFile": "Opened {0}"
     },
     "modals": {
         "close": "Close",
@@ -1901,7 +1902,8 @@
         "recoveredDropped": "Recovered last change. {0} undo step was dropped.|Recovered last change. {0} undo steps were dropped.",
         "continued": "Continued",
         "migrated": "Recovered from auto save",
-        "restoredTo": "Restored to {0}"
+        "restoredTo": "Restored to {0}",
+        "changedOutside": "Changed outside the editor"
     },
     "session": {
         "untitled": "Untitled · {0}"
@@ -1916,5 +1918,32 @@
         "notInFile": "Not saved to a file",
         "separateCopy": "Separate copy of {0}",
         "opensLevelInfo": "Opens Level Info"
+    },
+    "open": {
+        "notProject": "This ZIP is not a project file.",
+        "damagedUnopened": "This file is damaged and could not be opened.",
+        "damaged": "This file is damaged. It was opened without its history.",
+        "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",
+        "newerVersion": "Made by a newer version of {0}. Saving makes a separate file.",
+        "newerRefused": "Made by a newer version of {0}.",
+        "mediaBad": "This file’s {0} could not be read. Saving makes a separate file.",
+        "media": {
+            "bgm": "BGM",
+            "cover": "cover",
+            "preview": "preview audio"
+        },
+        "newerMajor": "Made by a newer version of {0}.",
+        "newerMajorNote": "Only the level can be opened from it.",
+        "openLevel": "Open the Level",
+        "newerValues": {
+            "title": "\"{0}\" Uses Newer Features",
+            "body": "This version of the editor does not support some values in this level. A separate copy opens with them replaced by defaults.",
+            "openCopy": "Open a Copy"
+        },
+        "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
+        "unsavedEarlier": "Unsaved changes to an earlier version of {0} ({1}) are in Recent Sessions.",
+        "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
+        "restoreIt": "Restore Session",
+        "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."
     }
 }
