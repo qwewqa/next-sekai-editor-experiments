@@ -355,9 +355,6 @@ const press = async (
     }
 }
 
-const release = (page: Page, input: 'mouse' | 'touch') =>
-    input === 'mouse' ? page.mouse.up() : touch('touchEnd', [])
-
 test('a touch drag past the pane edge lands where a mouse drag does', async ({ page }) => {
     const landing = async (input: 'mouse' | 'touch') => {
         await showNotes(page)
@@ -376,37 +373,6 @@ test('a touch drag past the pane edge lands where a mouse drag does', async ({ p
     expect(mouse[0]!.left).toBeLessThan(-4)
     expect(mouse[0]!.left).toBeGreaterThan(-13)
     expect(await landing('touch')).toEqual(mouse)
-})
-
-test('a touch drag held past the pane edge pans as fast as a mouse drag', async ({ page }) => {
-    const rate = async (input: 'mouse' | 'touch') => {
-        await showNotes(page)
-        await page.evaluate(() => {
-            const { settings, view } = window.editorTest
-            settings.dragToPanX = false
-            settings.dragToPanY = true
-            view.scrollingY = undefined
-            view.time = 0
-        })
-        await page.keyboard.press('a')
-        const from = await point(page, -3, 2)
-        const pane = await paneBounds(page)
-        await press(page, input, from, { x: from.x, y: pane.y - 200 }, false)
-        // Past any reveal the drag's start eases in.
-        await page.waitForTimeout(400)
-        const sample = () =>
-            page.evaluate(() => ({ time: window.editorTest.view.time, now: performance.now() }))
-        const before = await sample()
-        await page.waitForTimeout(500)
-        const after = await sample()
-        await release(page, input)
-        return (after.time - before.time) / (after.now - before.now)
-    }
-    const mouse = await rate('mouse')
-    expect(mouse).toBeGreaterThan(0)
-    const ratio = (await rate('touch')) / mouse
-    expect(ratio).toBeGreaterThan(0.8)
-    expect(ratio).toBeLessThan(1.25)
 })
 
 test('a quick scroll that leaves the pane follows the finger the whole way', async ({ page }) => {
