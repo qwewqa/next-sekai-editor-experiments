@@ -186,7 +186,7 @@ test('Japanese units take half-width parentheses', () => {
 
 test('Turkish editor names all use Editör', () => {
     for (const [key, text] of Object.entries(read('tr')))
-        assert.doesNotMatch(text, /Düzenleyici/, key)
+        assert.doesNotMatch(text, /[Dd]üzenleyici/, key)
 })
 
 test('Turkish writes the beats unit one way, lower case as its other units', () => {
