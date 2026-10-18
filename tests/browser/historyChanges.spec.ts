@@ -768,7 +768,15 @@ test('Find Edits Here measures the live chart before and after peeking', async (
     await stored(page)
     await openTab(page)
     await row(page, 'Add').click()
-    await expect.poll(async () => (await changes(page)).band.top).toBeGreaterThan(100)
+    const barBottom = await page
+        .locator('[data-peek-bar]')
+        .evaluate(
+            (bar) =>
+                bar.getBoundingClientRect().bottom -
+                bar.closest('.chart-pane')!.getBoundingClientRect().top,
+        )
+    expect(barBottom).toBeGreaterThan(0)
+    await expect.poll(async () => (await changes(page)).band.top).toBe(barBottom)
     await page.locator('[data-peek-back]').click()
     await expect.poll(async () => (await changes(page)).band.top).toBe(0)
     const result = await page.evaluate(async () => {

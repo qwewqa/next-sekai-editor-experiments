@@ -17,7 +17,7 @@ declare global {
             pending: Set<number>
             unchanged: () => boolean
         }
-        historyMenuKeys: { key: string; prevented: boolean }[]
+        historyMenuKeys: { key: string; ctrl: boolean; meta: boolean; prevented: boolean }[]
     }
 }
 
@@ -280,6 +280,18 @@ test('property inspection keeps exact chronological values, whitespace and the l
     await expect(page.locator('[data-property-summary]')).toBeFocused()
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
     expect(await page.evaluate(() => window.historyInspectionTest.unchanged())).toBe(true)
+    await page.setViewportSize({ width: 520, height: 320 })
+    await forcePane(page, 520)
+    await open(page)
+    const shortBounds = await dialog(page).boundingBox()
+    expect(shortBounds!.y).toBeGreaterThanOrEqual(0)
+    expect(shortBounds!.y + shortBounds!.height).toBeLessThanOrEqual(320)
+    await expect(dialog(page).getByRole('button', { name: 'Close', exact: true })).toHaveJSProperty(
+        'offsetHeight',
+        36,
+    )
+    await page.screenshot({ path: testInfo.outputPath('property-inspection-short-520x320.png') })
+    await page.keyboard.press('Escape')
 })
 
 for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
@@ -327,6 +339,11 @@ for (const width of [160, 167, 168, 240, 319, 320, 360, 390]) {
             )
         }
         await page.screenshot({ path: testInfo.outputPath(`navigation-${width}.png`) })
+        if (width < 320) {
+            await page.locator('[data-change-options]').click()
+            await expect(page.locator('[data-change-options-menu]')).toBeVisible()
+            await page.screenshot({ path: testInfo.outputPath(`navigation-menu-${width}.png`) })
+        }
     })
 }
 
@@ -344,7 +361,12 @@ test('tiny menu takes keyboard focus, holds browser keys and restores its opener
         window.historyMenuKeys = []
         element.addEventListener('keydown', (event) => {
             const key = event as KeyboardEvent
-            window.historyMenuKeys.push({ key: key.key, prevented: key.defaultPrevented })
+            window.historyMenuKeys.push({
+                key: key.key,
+                ctrl: key.ctrlKey,
+                meta: key.metaKey,
+                prevented: key.defaultPrevented,
+            })
         })
     })
     await page.keyboard.press('Control+s')
@@ -352,8 +374,9 @@ test('tiny menu takes keyboard focus, holds browser keys and restores its opener
     await page.keyboard.press('x')
     expect(await page.evaluate(() => window.historyMenuKeys)).toEqual(
         expect.arrayContaining([
-            { key: 's', prevented: true },
-            { key: 'x', prevented: true },
+            { key: 's', ctrl: true, meta: false, prevented: true },
+            { key: 's', ctrl: false, meta: true, prevented: true },
+            { key: 'x', ctrl: false, meta: false, prevented: true },
         ]),
     )
     await page.keyboard.press('End')
@@ -706,8 +729,8 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
         page,
     }, testInfo) => {
         await seed(page)
-        await page.setViewportSize({ width: 390, height: 844 })
-        await forcePane(page, 390)
+        await page.setViewportSize({ width: 320, height: 844 })
+        await forcePane(page, 320)
         await page.evaluate((locale) => {
             window.editorTest.settings.locale = locale
         }, locale)
@@ -793,7 +816,9 @@ test.describe('touch inspection controls', () => {
         await seed(page)
         await forcePane(page, 160)
         await page.locator('[data-change-options]').tap()
+        await expect(page.locator('[data-change-options]')).toHaveJSProperty('offsetHeight', 32)
         await expect(page.getByRole('menuitemcheckbox')).toHaveAttribute('aria-checked', 'true')
+        await expect(page.getByRole('menuitemcheckbox')).toHaveJSProperty('offsetHeight', 36)
         await page.getByRole('menuitemcheckbox').tap()
         await page.locator('[data-change-options]').tap()
         await expect(page.getByRole('menuitemcheckbox')).toHaveAttribute('aria-checked', 'false')
@@ -804,6 +829,9 @@ test.describe('touch inspection controls', () => {
         await page.locator('[data-change-options]').tap()
         await page.getByRole('menuitem', { name: 'View Property Changes', exact: true }).tap()
         await expect(dialog(page)).toBeVisible()
+        await expect(
+            dialog(page).getByRole('button', { name: 'Close', exact: true }),
+        ).toHaveJSProperty('offsetHeight', 36)
         await dialog(page).getByRole('button', { name: 'Close', exact: true }).tap()
         await expect(page.locator('[data-change-options]')).toBeFocused()
     })
