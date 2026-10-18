@@ -87,6 +87,10 @@ const fileHandle = (initial: Blob | undefined, events: string[] = []) => {
 
 const bytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer())
 
+const flip = (data: Uint8Array, at: number) => {
+    data[at] = (data[at] ?? 0) ^ 0xff
+}
+
 test('a .nxsp’s disk state is its revision id and <cd>; anything else is damaged', async () => {
     const file = await built()
     const disk = await nxspDiskState(file, 1234.7)
@@ -102,7 +106,7 @@ test('a .nxsp’s disk state is its revision id and <cd>; anything else is damag
     // The same bytes at another time are the same content; a changed byte is not.
     assert.equal(sameContent(disk, await nxspDiskState(file, 99_999)), true)
     const changed = await bytes(file)
-    changed[changed.length - 30] ^= 1
+    flip(changed, changed.length - 30)
     assert.equal(sameContent(disk, await nxspDiskState(new Blob([changed]), 1234)), false)
 })
 
@@ -154,7 +158,7 @@ test('a file rewritten with the same size and time is a conflict, found by its <
     const expected = await nxspDiskState(original, 1000)
     const changed = await bytes(original)
     // A byte of the central directory's CRC field, so size and time stay the same.
-    changed[changed.length - 22 - 46 + 16] ^= 1
+    flip(changed, changed.length - 22 - 46 + 16)
     handle.set(new Blob([changed]), 1000)
     await assert.rejects(
         platform.saveFile({
@@ -315,7 +319,7 @@ test('a plan whose copy fails with the source unchanged is damage, not a conflic
         ],
     }
     const damaged = await bytes(original)
-    damaged[level.dataOffset + 2] ^= 0xff
+    flip(damaged, level.dataOffset + 2)
     await assert.rejects(
         executePlan(plan, new Map([['t', { ...source, file: new Blob([damaged]) }]])),
         { code: 'io' },
