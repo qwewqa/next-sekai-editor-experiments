@@ -23,7 +23,9 @@ test('a History sheet needs 116 pixels after its actual chrome', () => {
 })
 
 test('short bottom sheets include their CSS minimum, and taller sheets use rem limits', () => {
-    assert.equal(getSheetGeometry({ width: 320, height: 200, peekClearance: 112 }).height, 144)
+    const short = getSheetGeometry({ width: 320, height: 360, peekClearance: 112 })
+    assert.equal(short.side, 'bottom')
+    assert.equal(short.height, 144)
     assert.equal(getSheetGeometry({ width: 320, height: 436, peekClearance: 112 }).height, 196)
     assert.equal(getSheetGeometry({ width: 320, height: 1000, peekClearance: 112 }).height, 480)
     assert.equal(
