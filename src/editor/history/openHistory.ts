@@ -1,5 +1,12 @@
 import { i18n } from '../../i18n'
 import { closeModal, isSheetOpen, modals } from '../../modals'
+import {
+    closeElevationEditor,
+    elevationBeat,
+    isElevationEditorOpen,
+    isElevationSideBySide,
+    openElevationEditor,
+} from '../elevation/state'
 import type { NoticeAction } from '../notification'
 import { showToolModal } from '../toolModals'
 import { isPanelEnabled, showPanel } from '../workspace'
@@ -20,6 +27,12 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
         listFocus.value = { surface: 'dialog', at: Date.now() }
         return
     }
+    // The Elevation Editor alone fills the editor: it steps aside for the sheet, and returns after.
+    const reopenAt =
+        isElevationEditorOpen.value && !isElevationSideBySide.value
+            ? elevationBeat.value
+            : undefined
+    if (reopenAt !== undefined) closeElevationEditor()
     opening = true
     try {
         // Loads when first opened: it brings the storage modules' readers.
@@ -31,6 +44,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
     }
     // Closing the dialog ends the peek, whatever else shows the list.
     backToNow()
+    if (reopenAt !== undefined) openElevationEditor(reopenAt)
 }
 
 /** The History command: shows the dialog, or closes it when it is shown. */

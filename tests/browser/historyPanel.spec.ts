@@ -489,6 +489,22 @@ test.describe('the dialog', () => {
     })
 })
 
+test('the Elevation Editor alone steps aside for the dialog and returns when it closes', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+    })
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-editor')).toBeVisible()
+    await page.keyboard.press('Shift+H')
+    await expect(sheet(page)).toBeVisible()
+    await expect(page.locator('.elevation-editor')).toHaveCount(0)
+    await page.keyboard.press('Shift+H')
+    await expect(sheet(page)).toHaveCount(0)
+    await expect(page.locator('.elevation-editor')).toBeVisible()
+})
+
 test.describe('links', () => {
     test('Nothing to undo and Nothing to redo select the History tab, the Timeline, with its list focused', async ({
         page,
