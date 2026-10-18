@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { serializeAutoSave } from '../../../src/history/autoSave/serialize'
-import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
-import { serializeToLevelData } from '../../../src/levelData/serialize'
 import { writeMeta } from '../../../src/local/db'
 import { sha256, toHex } from '../../../src/local/hash'
 import { journalHandlers } from '../../../src/local/journal/handlers'
@@ -15,11 +12,11 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type Tab, type World } from '../../../src/local/testing/world'
 import type { StorageCore } from '../../../src/local/worker/core'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
-import type { State } from '../../../src/state'
 import { rows, testId, workerCore } from '../flush/harness'
 import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
+import { autoSaveText } from './autoSaveText'
 
 // The recovery order on start (Part 0 §0.9.8; Part 1 §1.6.9, §1.6.4 #7, §1.8) on the test core:
 // the canary, the journals, then the old auto save, with the step list's insertion points.
@@ -68,25 +65,7 @@ const loadIn = async (
     return { recovery, events, core, startup }
 }
 
-/** The old auto save's value for a state, as today's editor writes it. */
-const autoSaveOf = (state: State, filename = 'coconut') => {
-    const levelData = serializeToLevelData(
-        state.initialLife,
-        state.isDynamicStages,
-        state.bgm.offset,
-        state.store,
-        state.groups,
-        state.stages,
-        { groups: state.groupFolders, stages: state.stageFolders },
-    )
-    return JSON.stringify(
-        serializeAutoSave(
-            levelData,
-            filename,
-            serializeEditorMetadata(levelData.entities, state.store),
-        ),
-    )
-}
+const autoSaveOf = autoSaveText
 
 const key = (name: string) => PREFIX + name
 
@@ -159,7 +138,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     assert.ok(recovery.migrated)
     // Its line waits for the open (`openAtStart`), which knows whether it's what opened.
     assert.deepEqual(events, [])
-    assert.equal(recovery.migrated.name.name.text, 'coconut')
+    assert.deepEqual(recovery.migrated.name.name, { kind: 'source', text: 'coconut' })
     const migrated = recovery.migrated.sessionId
     const session = rows(world, 'sessions').get(migrated)
     assert.ok(session)
