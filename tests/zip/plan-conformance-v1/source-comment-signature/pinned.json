@@ -1,0 +1,71 @@
+{
+  "source.nxsp": {
+    "fingerprint": "zip:5175:0:da124e20",
+    "size": 5175,
+    "entries": [
+      {
+        "index": 0,
+        "name": "project.json",
+        "method": 8,
+        "crc32": 4257760003,
+        "compressedSize": 736,
+        "uncompressedSize": 1486,
+        "dataOffset": 42
+      },
+      {
+        "index": 1,
+        "name": "level.json",
+        "method": 8,
+        "crc32": 325745116,
+        "compressedSize": 1279,
+        "uncompressedSize": 11457,
+        "dataOffset": 818
+      },
+      {
+        "index": 2,
+        "name": "history/manifest.json",
+        "method": 8,
+        "crc32": 3535329532,
+        "compressedSize": 1114,
+        "uncompressedSize": 3907,
+        "dataOffset": 2148
+      },
+      {
+        "index": 3,
+        "name": "history/chunks.bin",
+        "method": 0,
+        "crc32": 2853292100,
+        "compressedSize": 1197,
+        "uncompressedSize": 1197,
+        "dataOffset": 3310
+      },
+      {
+        "index": 4,
+        "name": "assets/cover.png",
+        "method": 0,
+        "crc32": 136824160,
+        "compressedSize": 15,
+        "uncompressedSize": 15,
+        "dataOffset": 4553
+      },
+      {
+        "index": 5,
+        "name": "assets/preview.mp3",
+        "method": 0,
+        "crc32": 3245599963,
+        "compressedSize": 17,
+        "uncompressedSize": 17,
+        "dataOffset": 4616
+      },
+      {
+        "index": 6,
+        "name": "bgm/Coconut-Master.mp3",
+        "method": 0,
+        "crc32": 1553704227,
+        "compressedSize": 12,
+        "uncompressedSize": 12,
+        "dataOffset": 4685
+      }
+    ]
+  }
+}

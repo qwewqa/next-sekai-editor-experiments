@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -84,10 +84,21 @@ const changeHeadHeader = (items: Item[], change: (header: RecordValue[]) => Reco
     setJson(items, 'history/manifest.json', manifest)
 }
 
-test('the checker passes the builder golden’s output', { skip: !hasUv }, () => {
-    const result = check(join(golden, 'write-1.nxsp'), join(golden, 'write-2.nxsp'))
-    assert.equal(result.status, 0, result.output)
-})
+test(
+    'the checker passes the builder golden’s output and every conformance expected.nxsp',
+    { skip: !hasUv },
+    () => {
+        const result = check(join(golden, 'write-1.nxsp'), join(golden, 'write-2.nxsp'))
+        assert.equal(result.status, 0, result.output)
+        const conformance = join(repo, 'tests', 'zip', 'plan-conformance-v1')
+        const expected = readdirSync(conformance)
+            .map((name) => join(conformance, name, 'expected.nxsp'))
+            .filter((path) => existsSync(path))
+        assert.ok(expected.length >= 6)
+        const all = check(...expected)
+        assert.equal(all.status, 0, all.output)
+    },
+)
 
 test('the checker fails each crafted file for its reason', { skip: !hasUv }, async () => {
     const dir = mkdtempSync(join(tmpdir(), 'nxsp-check-'))

@@ -160,6 +160,7 @@ export const secondInput = (
     c: ReturnType<typeof chain>,
     chunks: Map<string, InputChunk>,
     entries: { name: string }[],
+    token = 'golden',
 ): BuildInput => {
     const { store, states, hashes, counts } = c
     const at = (prefix: string) => entries.findIndex((e) => e.name.startsWith(prefix))
@@ -179,7 +180,7 @@ export const secondInput = (
         ...headInput(states.e),
         media: {
             bgm: {
-                copy: { source: 'golden', entryIndex: at('bgm/') },
+                copy: { source: token, entryIndex: at('bgm/') },
                 sha256: BGM_2.sha256,
                 type: 'audio/mpeg',
                 filename: BGM_2.ref.filename,
@@ -191,7 +192,7 @@ export const secondInput = (
                 filename: COVER_2.ref.filename,
             },
             preview: {
-                copy: { source: 'golden', entryIndex: at('assets/preview.') },
+                copy: { source: token, entryIndex: at('assets/preview.') },
                 sha256: PREVIEW.sha256,
                 type: 'audio/mpeg',
                 filename: PREVIEW.ref.filename,
@@ -199,7 +200,7 @@ export const secondInput = (
         },
         extra: { zzFixtureTop: 'kept', metadata: { zzFixtureMeta: [1, 2] } },
         history: {
-            append: 'golden',
+            append: token,
             entries: [
                 entry('continue', T0 + 1000, 'Opened golden.nxsp', hashes.c, {
                     noteCount: counts.c,
