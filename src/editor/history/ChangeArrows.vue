@@ -78,6 +78,10 @@ const closeMenu = (focus: boolean) => {
             if (peekedInfo.value === request && isPeeking.value) restoreFocus(opener)
         })
 }
+const toggleFromMenu = () => {
+    toggleShowEdits()
+    closeMenu(true)
+}
 watch(
     [peekedInfo, isPeeking],
     () => {
@@ -226,10 +230,7 @@ const labelOf = (direction: 'up' | 'down') => {
             :checked="showEdits"
             :inspectable="canInspectProperties"
             @close="closeMenu"
-            @toggle="
-                toggleShowEdits()
-                closeMenu(true)
-            "
+            @toggle="toggleFromMenu"
             @inspect="inspectFromMenu"
         />
     </div>

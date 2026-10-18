@@ -22,7 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{ toggle: []; inspect: []; close: [restoreFocus: boolean] }>()
 const menu = useTemplateRef<HTMLDivElement>('menu')
 const summaryId = useId()
-let alive = false
+const alive = ref(false)
 const position = ref<{ left: number; top: number; maxHeight: number }>()
 const container = computed(() => props.anchor.closest('dialog') ?? 'body')
 const buttons = () => [...(menu.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
@@ -85,18 +85,18 @@ watch(
     },
 )
 onMounted(async () => {
-    alive = true
+    alive.value = true
     await nextTick()
-    if (!alive) return
+    if (!alive.value) return
     place()
     await nextTick()
-    if (!alive || !menu.value) return
+    if (!alive.value || !menu.value) return
     buttons()[0]?.focus({ preventScroll: true })
     window.addEventListener('pointerdown', outside, true)
     window.addEventListener('resize', place)
 })
 onBeforeUnmount(() => {
-    alive = false
+    alive.value = false
     window.removeEventListener('pointerdown', outside, true)
     window.removeEventListener('resize', place)
 })
