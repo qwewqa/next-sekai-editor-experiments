@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { gzip } from 'pako'
+import { color as backgroundColor, renderBackground } from './background.mjs'
 import {
     clipFiles,
     itemMeta,
@@ -183,13 +184,12 @@ async function buildParticle(report) {
     return { data: gzipJson(data), texture: atlas.png }
 }
 
-async function buildBackground(report) {
-    const [width, height] = [1920, 1080]
-    const rendered = await renderSvg(template('background'), width)
-    const image = dither(rendered)
+function buildBackground(report) {
+    const image = renderBackground(1080)
+    const { width, height } = image
     report.background = { width, height }
     return {
-        data: gzipJson({ aspectRatio: width / height, fit: 'cover', color: '#232539' }),
+        data: gzipJson({ aspectRatio: width / height, fit: 'cover', color: backgroundColor }),
         image: pngOf(image),
         configuration: gzipJson({ blur: 0, mask: '#00000000' }),
     }
@@ -214,7 +214,19 @@ function buildEffect(report) {
     }
 }
 
-const thumbnailFor = async (name) => pngOf(await renderTemplate(`thumb-${name}`, {}, 256))
+// The background's thumbnail is its middle square.
+const thumbnailFor = async (name) => {
+    if (name !== 'background') return pngOf(await renderTemplate(`thumb-${name}`, {}, 256))
+    const image = renderBackground(256)
+    const left = (image.width - 256) >> 1
+    const data = new Uint8Array(256 * 256 * 4)
+    for (let y = 0; y < 256; y++)
+        data.set(
+            image.data.subarray((y * image.width + left) * 4, (y * image.width + left + 256) * 4),
+            y * 256 * 4,
+        )
+    return pngOf({ width: 256, height: 256, data })
+}
 
 // The standard single-item package of 2.2: info, list, details and the repository.
 function createItemScp(type, resources) {
@@ -309,7 +321,7 @@ export async function buildAll() {
     const resources = {
         skin: await buildSkin(report),
         particle: await buildParticle(report),
-        background: await buildBackground(report),
+        background: buildBackground(report),
         effect: buildEffect(report),
     }
     const lock = {
