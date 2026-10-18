@@ -1,4 +1,5 @@
 import { platformOverride, suspectPrivate, usesOpfsPickers } from '../platform/detect'
+import { OPFS_PICKER_CALLS_KEY } from '../platform/opfs'
 import type { HandleRole } from './handleRows'
 import type { StorageWorker } from './worker/client'
 
@@ -85,6 +86,23 @@ export const storableHandleNow = (
     return probed === false ? handle : undefined
 }
 
+/**
+ * Read access to a token's file as a spec sets it: `nse.test.readPermission` 'prompt' answers a
+ * query with a prompt and a request with a grant, 'denied' denies the request; each request is
+ * logged among the picker calls. Granted otherwise.
+ */
+const testReadPermission = (name: string, request: boolean): PermissionState => {
+    const set = localStorage.getItem('nse.test.readPermission')
+    if (set !== 'prompt' && set !== 'denied') return 'granted'
+    if (!request) return 'prompt'
+    const calls = JSON.parse(localStorage.getItem(OPFS_PICKER_CALLS_KEY) ?? '[]') as unknown[]
+    localStorage.setItem(
+        OPFS_PICKER_CALLS_KEY,
+        JSON.stringify([...calls, { picker: 'permission', mode: 'read', name }]),
+    )
+    return set === 'denied' ? 'denied' : 'granted'
+}
+
 /** An OPFS root file by name, as a handle each call looks up again (the override's tokens). */
 const opfsFile = (name: string): FileSystemFileHandle => {
     const real = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
@@ -95,8 +113,11 @@ const opfsFile = (name: string): FileSystemFileHandle => {
         createWritable: async (options?: FileSystemCreateWritableOptions) =>
             (await real()).createWritable(options),
         isSameEntry: async (other: FileSystemHandle) => (await real()).isSameEntry(other),
-        queryPermission: () => Promise.resolve('granted'),
-        requestPermission: () => Promise.resolve('granted'),
+        // A spec's read permission after a reload (`nse.test.readPermission`); writes are granted.
+        queryPermission: ({ mode }: { mode?: string } = {}) =>
+            Promise.resolve(mode === 'read' ? testReadPermission(name, false) : 'granted'),
+        requestPermission: ({ mode }: { mode?: string } = {}) =>
+            Promise.resolve(mode === 'read' ? testReadPermission(name, true) : 'granted'),
     }
     return handle as unknown as FileSystemFileHandle
 }
@@ -140,6 +161,25 @@ export const readableWithoutPrompt = async (handle: FileSystemFileHandle) => {
             (await (query as (options: { mode: 'read' }) => Promise<PermissionState>).call(handle, {
                 mode: 'read',
             })) === 'granted'
+        )
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Asks for read access to a handle (§1.4.7 R2): on a press or a dialog opening it made, so the
+ * browser can prompt. True when granted.
+ */
+export const requestRead = async (handle: FileSystemFileHandle) => {
+    const request = (handle as { requestPermission?: unknown }).requestPermission
+    if (typeof request !== 'function') return true
+    try {
+        return (
+            (await (request as (options: { mode: 'read' }) => Promise<PermissionState>).call(
+                handle,
+                { mode: 'read' },
+            )) === 'granted'
         )
     } catch {
         return false

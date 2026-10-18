@@ -1,8 +1,12 @@
 import { setExportHandleReader, setExportPersister } from '../editor/commands/exportLevel/memory'
-import { setProjectPickCheck } from '../editor/commands/exportLevel/pick'
+import {
+    setExportReads,
+    setPickLock,
+    setProjectPickCheck,
+} from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
-import { markedSeq, removeMarker } from '../editor/save/env'
+import { markedSeq, removeMarker, withBind } from '../editor/save/env'
 import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
@@ -436,6 +440,17 @@ export const startStoring = (
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
     setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
+    setPickLock((run) => withBind('exclusive', run))
+    setExportReads({
+        start: () =>
+            void flows().then((flow) => {
+                flow.startExportRead()
+            }),
+        end: () =>
+            void flows().then((flow) => {
+                flow.endExportRead()
+            }),
+    })
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),

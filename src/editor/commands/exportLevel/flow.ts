@@ -10,7 +10,7 @@ import {
 } from '../../../platform'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import { exportMemory, rememberExport, type ExportTarget } from './memory'
-import { downloadOpened, refusePick, type RefusedPick } from './pick'
+import { downloadOpened, refusePick, withPickLock, type RefusedPick } from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
 
@@ -221,6 +221,10 @@ export const exportToTarget = async (
 /** After a refused pick: the refusal, or the bytes to download when they could not go back. */
 const afterRefusal = async (ctx: ExportContext, refused: RefusedPick) => {
     const { name } = refused
+    if (refused.left === 'handled') {
+        await refused.show?.()
+        return 'cancelled'
+    }
     if (refused.left === 'restored') {
         const ask =
             refused.reason === 'notLevelData'
@@ -251,6 +255,8 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             kind: 'nsld',
             suggestedName: ctx.suggestedName,
             picker: { id: 'levelData', types: ctx.types },
+            // One writer per file: from the pick's check to its write (§1.4.8, R3, R5).
+            lock: withPickLock,
             build: body.build,
             ready: ctx.ready,
             signal: ctx.signal,

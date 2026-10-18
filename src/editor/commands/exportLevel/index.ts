@@ -8,6 +8,7 @@ import ExportIcon from './ExportIcon.vue'
 import ExportModal from './ExportModal.vue'
 import { validName } from './fileName'
 import { copyName, exportMemory, loadExportTarget } from './memory'
+import { exportDialogClosed, exportDialogOpened } from './pick'
 
 /** Opens the Export dialog; the remembered target's handle is read here, never at startup (D24). */
 const openExport = async () => {
@@ -17,12 +18,18 @@ const openExport = async () => {
     // valid, as "<name> (2)" for a partial import so the picker never suggests the original.
     const fromSource = exportName === undefined && sourceName !== undefined
     const name = exportName ?? sourceName ?? copyName(validName(filename.value ?? ''))
-    await showModal(ExportModal, {
-        target,
-        name,
-        sourceName: fromSource,
-        peeking: isPeeking.value,
-    })
+    // The chain's own file is read first when a pick of it could lose what it holds (R2).
+    exportDialogOpened()
+    try {
+        await showModal(ExportModal, {
+            target,
+            name,
+            sourceName: fromSource,
+            peeking: isPeeking.value,
+        })
+    } finally {
+        exportDialogClosed()
+    }
 }
 
 export const exportLevel: Command = {

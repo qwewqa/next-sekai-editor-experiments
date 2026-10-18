@@ -168,19 +168,29 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
 
     // Checked before a cancel is honoured, so a refused file the picker emptied is put back.
     const target: FileTarget = { kind: 'handle', handle }
-    if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
-    signal?.throwIfAborted()
-    // The user's choice, which the picker emptied (D5): written without a precondition, and to
-    // its end once accepted, cancel or not.
-    const picked: SaveRequest = {
-        ...req,
-        target,
-        expected: undefined,
-        signal: undefined,
-        build: () => Promise.resolve(blob),
+    const accepted = handle
+    const write = async (): Promise<SaveResult> => {
+        if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
+        signal?.throwIfAborted()
+        // The user's choice, which the picker emptied (D5): written while it's still empty, so a
+        // sync client's write after the pick is never overwritten (R9), and to its end once
+        // accepted, cancel or not.
+        const empty = await inspect(target, req.kind)
+        if (empty === 'missing')
+            throw new FileError('not-found', `${accepted.name} cannot be found`)
+        if (empty.size !== 0)
+            throw new FileError('conflict', `${accepted.name} changed`, empty, 'check')
+        const picked: SaveRequest = {
+            ...req,
+            target,
+            expected: empty,
+            signal: undefined,
+            build: () => Promise.resolve(blob),
+        }
+        return writeHandle(picked, accepted, requestWrite(accepted))
     }
     try {
-        return await writeHandle(picked, handle, requestWrite(handle))
+        return await (req.lock ? req.lock(write) : write())
     } catch (error) {
         // A picked file that could not be written is downloaded instead, as today.
         if (req.kind === 'nsld' && !req.picker)

@@ -5,7 +5,7 @@ import { formatDateTime } from '../../i18n/dateTime'
 import { formatDate } from '../../i18n/when'
 import { launch } from '../../launch'
 import type { Flusher, FlushSession, SaveReservation } from '../../local/flush'
-import { handleOf, readableWithoutPrompt, storableHandle } from '../../local/handles'
+import { handleOf, readableWithoutPrompt, requestRead, storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
@@ -18,6 +18,7 @@ import { storageStatus } from '../../local/startup/events'
 import { journalWriter, flusher as storingFlusher } from '../../local/storing'
 import {
     appVersion,
+    diskStateOfBytes,
     FileError,
     platform,
     type DiskState,
@@ -25,7 +26,7 @@ import {
     type SaveResult,
 } from '../../platform'
 import { hasActivation, reportsActivation } from '../../platform/detect'
-import { sameContent } from '../../platform/fingerprint'
+import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { requestWrite } from '../../platform/handover'
 import { savePoint } from '../../platform/testPause'
 import { PRODUCT_NAME } from '../../product'
@@ -35,6 +36,7 @@ import type { State } from '../../state'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { validName } from '../commands/exportLevel/fileName'
 import { exportMemory, sameEntry } from '../commands/exportLevel/memory'
+import type { ProjectPick } from '../commands/exportLevel/pick'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
 import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
@@ -420,34 +422,47 @@ const nameTime = (time: number) => formatDateTime(settings.locale, time).replace
 
 type PreRead = { blob: Blob; disk: DiskState; atBase: boolean }
 
+/** The head's media whose bytes this tab doesn't hold, by hash: storage or the file may. */
+const mediaNotHeld = (state: State, options: StoredFile['options']) => {
+    const { meta, source } = state.bgm
+    const refs = [
+        ...(meta && !source && options.bgm ? [meta] : []),
+        ...(state.levelInfo.cover ? [state.levelInfo.cover] : []),
+        ...(state.levelInfo.preview ? [state.levelInfo.preview] : []),
+    ]
+    return refs.map((ref) => ref.hash)
+}
+
 /**
- * Reads the chain's own file before a save picker that may return it (R2): its tail always,
- * and whole only when it isn't at the base or the write wouldn't carry its `completeFrom`.
- * Only with read access already granted; resolves undefined otherwise.
+ * Reads the chain's own file before a save picker that may return it (R2), when its dialog
+ * opens: whole, and only when it isn't at the base, when storage lacks rows of its base (the
+ * carry test) or head media it may hold. Read access is asked for only when storage lacks
+ * something; otherwise only a grant already held reads. Undefined when nothing was read.
  */
 const preRead = async (env: Env, binding: Binding): Promise<PreRead | undefined> => {
     const file = binding.file
     if (!file) return
     const handle = await bindingHandle(env, file)
-    if (!handle || !(await readableWithoutPrompt(handle))) return
+    if (!handle) return
+    const needs = await env.worker
+        .call('saveNeeds', {
+            chainId: env.chainId,
+            media: mediaNotHeld(savedState(), file.options),
+        })
+        .catch(() => undefined)
+    const short = !needs?.carries || needs.lacking.length > 0
+    let readable = await readableWithoutPrompt(handle)
+    if (!readable && short) readable = await requestRead(handle)
+    if (!readable) return
     try {
-        const disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
-        if (disk === 'missing' || disk.size === 0) return
+        const found = await handle.getFile()
+        const disk = await nxspDiskState(found, found.lastModified)
+        if (disk.size === 0) return
         const atBase = !!file.disk && sameContent(disk, file.disk)
-        const picked = await handle.getFile()
-        if (atBase) {
-            const facts = await readDiskFacts(picked, deviceId())
-            const decision = await env.worker.call('replaceDecision', {
-                chainId: env.chainId,
-                projectJson: facts.projectJson,
-                fingerprint: disk.fingerprint,
-            })
-            // Storage holds every row the file does: nothing to keep.
-            if (!decision?.holdsBase) return
-        }
+        // At the base, with storage holding all it does: nothing to keep.
+        if (atBase && !short) return
         // Into memory: a picker empties the file under any `File` read before.
-        const blob = new Blob([await picked.arrayBuffer()])
-        return { blob, disk, atBase }
+        return { blob: new Blob([await found.arrayBuffer()]), disk, atBase }
     } catch {
         return
     }
@@ -459,6 +474,8 @@ const preRead = async (env: Env, binding: Binding): Promise<PreRead | undefined>
 type Picked =
     | { kind: 'own' }
     | { kind: 'other'; owner: HandleOwner }
+    /** An Export target: Export's picker writes it (E1, E2); a project picker refuses it (R7). */
+    | { kind: 'target'; owner: HandleOwner }
     /** `bytes`: those kept at its open, once read (R7). */
     | { kind: 'refused'; reason: RefusedReason; bytes?: Promise<ArrayBuffer | undefined> }
     | { kind: 'unknown' }
@@ -500,10 +517,37 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
         if (!owner.handle) continue
         const stored = await handleOf(env.worker, owner.chainId, owner.role)
         if (!stored || !(await same(handle, stored))) continue
-        if (owner.role === 'exportTarget') return { kind: 'refused', reason: 'levelData' }
+        if (owner.role === 'exportTarget') return { kind: 'target', owner }
         return owner.chainId === env.chainId ? { kind: 'own' } : { kind: 'other', owner }
     }
     return { kind: 'unknown' }
+}
+
+/** A project picker's pick of an Export target: level data, refused and put back (R7). */
+const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'target' }> =>
+    picked.kind === 'target'
+        ? { kind: 'refused', reason: 'levelData', bytes: targetBytes(env, picked.owner) }
+        : picked
+
+/**
+ * The bytes an Export target holds, re-exported from this chain's live state when they hash to
+ * what the target last held (R7); undefined for another chain's target or any other state.
+ */
+const targetBytes = async (env: Env, owner: HandleOwner) => {
+    if (owner.chainId !== env.chainId) return
+    try {
+        const record = await env.worker.call('readChainRecord', env.chainId)
+        const target = isRow(record?.exportTarget) ? record.exportTarget : undefined
+        const disk = isRow(target?.disk) ? (target.disk as DiskState) : undefined
+        if (!disk) return
+        const { buildLevelData } = await import('../commands/exportLevel/build')
+        const bytes = await buildLevelData().arrayBuffer()
+        return (await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint
+            ? bytes
+            : undefined
+    } catch {
+        return
+    }
 }
 
 /** Writes bytes back into a picked file while it's still empty (R4, R7); true when it holds them. */
@@ -772,7 +816,8 @@ const changedWhilePicked = (name: string): Outcome => ({
 const afterPick = async (
     env: Env,
     reservation: SaveReservation,
-    prebuilt: BuiltSave,
+    /** Built before the picker; Export's pick of the chain's own file builds after it. */
+    prebuilt: BuiltSave | undefined,
     state: State,
     request: PickRequest,
     binding: Binding,
@@ -792,7 +837,7 @@ const afterPick = async (
     }
     // Written since the pick: by a sync client, or by its owner while this pick waited (R9).
     const filled = found.size !== 0
-    const picked = await identify(env, handle)
+    const picked = refusedTarget(env, await identify(env, handle))
     let built = prebuilt
     let tookOver = false
     let bound = binding
@@ -881,7 +926,7 @@ const afterPick = async (
                     options: { history: request.history, bgm: request.bgm },
                 },
                 // Save As…'s new identity goes with its file (§1.3.2: one unit).
-                ...(request.target === 'new' ? { docId: built.identity.docId } : {}),
+                ...(request.target === 'new' && built ? { docId: built.identity.docId } : {}),
             }
             const done = await revoke(
                 env,
@@ -910,6 +955,10 @@ const afterPick = async (
         }
     }
 
+    if (!built) {
+        await env.flusher.endSave(reservation)
+        return { kind: 'failed', error: new FileError('io', `${name} was not built`), name }
+    }
     const file = await bindingFile(built, reservation, {
         name,
         event: 'saved',
@@ -1332,12 +1381,14 @@ const replaceUnavailable = (facts: DiskFacts, disk: DiskState | undefined) => {
 }
 
 const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
+    // The version on disk read first, in case Save as a Separate File's picker returns it (R2).
+    const pre = preRead(env, binding)
     const { input, pinned, newer } = await conflictInput(env, binding, handle)
     setDiskFinding(newer ? 'newer' : 'changed')
     const choice: ConflictChoice | undefined = await saveUi.conflict(input)
     switch (choice) {
         case 'separate':
-            await separateFile(env, binding, handle)
+            await separateFile(env, binding, handle, pre)
             return
         case 'openOther': {
             const file = await handle.getFile().catch(() => undefined)
@@ -1390,7 +1441,12 @@ const replace = async (
 }
 
 /** Save as a Separate File (§1.4.7): keeps the `docId`, in the original's folder. */
-const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
+const separateFile = async (
+    env: Env,
+    binding: Binding,
+    handle: FileSystemFileHandle,
+    pre: Promise<PreRead | undefined>,
+) => {
     const stem = stemOf(handle.name)
     const engine = deviceForm().label.replace(/^Web \((.*)\)$/, '$1')
     const name = await suggestion(env, `${stem} (${engine}, ${nameTime(Date.now())})`)
@@ -1404,6 +1460,7 @@ const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHa
             bgm: options.bgm,
             target: 'copy',
             startIn: handle,
+            pre,
         }),
     )
 }
@@ -1976,7 +2033,7 @@ const writeSessionFile = async (
                 error: new FileError('conflict', `${handle.name} changed`),
                 name: handle.name,
             }
-        const identity = await identify(env, handle)
+        const identity = refusedTarget(env, await identify(env, handle))
         let tookOver = false
         if (identity.kind === 'refused') {
             const bytes = await identity.bytes
@@ -2035,57 +2092,72 @@ const writeSessionFile = async (
 /** The open chain lost its file to this tab's own Save to File…: its label follows (R6). */
 const refreshOwn = (env: Env) => refreshBinding(env.worker, env.flusher)
 
-// Export's picker (§1.4.7, `work/d5/safety.md` E4, E5).
+// Export's picker (§1.4.7, `work/d5/safety.md` E1–E5).
+
+/** Export's read of this chain's own file, from its dialog's opening to its close (R2). */
+let exportRead: Promise<PreRead | undefined> | undefined
+
+/** Export's dialog opened: this chain's own file is read first when it may hold more (R2). */
+export const startExportRead = () => {
+    const env = environment()
+    const binding = env && quickBinding(env)
+    exportRead = env && binding?.file && !binding.replaced ? preRead(env, binding) : undefined
+}
+
+/** Export's dialog closed: the bytes read go. */
+export const endExportRead = () => {
+    exportRead = undefined
+}
 
 /**
- * A pick in Export's picker of a bound `.nxsp`: this chain's own is written again keeping its
- * identity (the picker emptied it) and refused; another chain's is taken over (its binding
- * revoked) and Export writes it.
+ * A pick in Export's picker, under `nse-bind` exclusive held across Export's write (§1.4.8): this
+ * chain's own `.nxsp` is written again keeping its identity (from the bytes read first, R2) and
+ * refused; another chain's is taken over (its binding revoked) and Export writes it; another
+ * chain's Export target loses it (R5).
  */
-export const projectPick = async (handle: FileSystemFileHandle) => {
+export const projectPick = async (handle: FileSystemFileHandle): Promise<ProjectPick> => {
     const env = environment()
     if (!env) return
-    const picked = await withBind('exclusive', () => identify(env, handle))
-    if (picked.kind === 'other') {
-        const done = await withBind('exclusive', () => revoke(env, picked.owner, undefined))
+    const picked = await identify(env, handle)
+    if (
+        picked.kind === 'other' ||
+        (picked.kind === 'target' && picked.owner.chainId !== env.chainId)
+    ) {
+        const done = await revoke(env, picked.owner, undefined)
         if (done.revoked) broadcastUpdated()
-        return 'taken' as const
+        return 'taken'
     }
     if (picked.kind !== 'own') return
     const binding = quickBinding(env)
     const file = binding.file
-    if (!file) return
-    const reservation = env.flusher.reserveSave()
-    if (!reservation) return 'own' as const
-    const state = savedState()
-    let built: BuiltSave
+    const pre = await settledNow(exportRead)
+    const reservation = file && env.flusher.reserveSave()
+    // Left empty: shown, and the next Save fills it (R9).
+    if (!file || !reservation)
+        return {
+            show: () =>
+                afterOutcome(env, {
+                    kind: 'failed',
+                    error: new FileError('io', `${handle.name} was not written again`),
+                    name: handle.name,
+                }),
+        }
     try {
-        built = await runBuild(env, {
-            target: { kind: 'copy' },
-            history: !!file.entry,
-            bgm: file.options.bgm,
-            fileName: handle.name,
-            save: { time: reservation.wall, label: entryLabel(handle.name, false)() },
-            state,
-        })
-    } catch {
-        await env.flusher.endSave(reservation)
-        return 'own' as const
-    }
-    const outcome = await withBind('exclusive', () =>
-        afterPick(
+        const outcome = await afterPick(
             env,
             reservation,
-            built,
-            state,
+            undefined,
+            savedState(),
             { dialog: 'save', fileName: handle.name, ...file.options, target: 'copy' },
             binding,
             { kind: 'handle', handle },
-            undefined,
-        ),
-    )
-    if (outcome.kind !== 'done') void afterOutcome(env, outcome)
-    return 'own' as const
+            pre,
+        )
+        if (outcome.kind === 'done') return 'own'
+        return { show: () => afterOutcome(env, outcome) }
+    } finally {
+        await release(env, reservation)
+    }
 }
 
 // The file state's actions (`src/editor/file`): its chip dialogs and notices run these.

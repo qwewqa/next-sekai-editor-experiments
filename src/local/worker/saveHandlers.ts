@@ -3,7 +3,7 @@ import type { SaveStore } from '../save/bodies'
 import { setSaveHooksForTests, type SaveOptions, type SaveTarget } from '../save/build'
 import { estimateSaveSize } from '../save/estimate'
 import { buildSave, setBuiltHookForTests, type SaveSourceFile } from '../save/execute'
-import { readReplaceDecision } from '../save/predicate'
+import { readReplaceDecision, readSaveNeeds } from '../save/predicate'
 import type { WorkerContext } from './handlers'
 
 // The storage worker's methods for the shared writer (Part 1 §1.6.11.6–§1.6.11.7, §1.4.7): a
@@ -81,6 +81,9 @@ export const saveHandlers = (context: WorkerContext) => {
             projectJson: unknown
             fingerprint: string
         }) => readReplaceDecision(store, chainId, projectJson, fingerprint),
+        /** Whether the chain's own file may hold what storage lacks (R2), from storage alone. */
+        saveNeeds: ({ chainId, media }: { chainId: string; media: string[] }) =>
+            readSaveNeeds(store, chainId, media),
 
         /** Test: alters what the next builds do (the append assertion's and the post-build check's specs). */
         testSaveHooks: ({
