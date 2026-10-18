@@ -97,7 +97,7 @@ export const normalizeBinding = (binding: string) => {
 
 /**
  * Names bound to a key press. A chord bound exactly wins; otherwise plain
- * bindings match the key whatever modifiers are held, except Alt on a character.
+ * bindings match the key whatever modifiers are held.
  */
 export const matchBindings = <N extends string>(
     shortcuts: Partial<Record<N, string>>,
@@ -114,9 +114,6 @@ export const matchBindings = <N extends string>(
             .map(([name]) => name)
         if (names.length) return { names, exact: true }
     }
-    // Alt+character is no plain key (AltGr types characters, and Option on Apple).
-    if (input.altKey && isCharacter(input.key) && !isAltGraph(input) && !apple)
-        return { names: [], exact: false }
     const key = plainKey(input)
     const names = entries
         .filter(([, value]) => value === key && !parseChord(value))

@@ -49,6 +49,10 @@ const keepsDefault = (event: KeyboardEvent) => {
     )
 }
 
+// Alt+N, or Option+N on macOS, by code.
+const isNoticeChord = (event: KeyboardEvent) =>
+    event.code === 'KeyN' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+
 const isApple = isApplePlatform()
 
 const isInToolDialog = (element: Element | null) => !!element?.closest('[data-tool-dialog]')
@@ -119,6 +123,8 @@ const onKeydown = (event: KeyboardEvent) => {
     )
     const names = matched.names.filter(isCommandName)
     const { exact } = matched
+    // Alt+N belongs to the notice card, even where that does not act; never plain n.
+    if (!exact && isNoticeChord(event)) return
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This
     // exception enables just the bound Deselect action, never other Escape bindings.
     if (

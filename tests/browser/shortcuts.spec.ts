@@ -284,6 +284,40 @@ test.describe('chords', () => {
         expect(await lastDefault(page)).toBe(false)
     })
 
+    test('Alt+N in a select never runs the plain n binding', async ({ page }) => {
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, slide: 'n' }
+            const select = document.createElement('select')
+            select.id = 'probe-select'
+            select.innerHTML = '<option>One</option>'
+            document.body.append(select)
+        })
+        await setTool(page, 'select')
+        await page.locator('#probe-select').focus()
+        await page.keyboard.press('Alt+KeyN')
+        expect(await toolName(page)).toBe('select')
+        // Alt+N on the chart pane also leaves n alone.
+        await page.locator('.chart-pane').focus()
+        await page.keyboard.press('Alt+KeyN')
+        expect(await toolName(page)).toBe('select')
+    })
+
+    test('a chord bound to Alt+S never runs the plain s binding in a select', async ({ page }) => {
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, timeScale: 'Alt+s' }
+            const select = document.createElement('select')
+            select.id = 'probe-select'
+            select.innerHTML = '<option>One</option>'
+            document.body.append(select)
+        })
+        await setTool(page, 'select')
+        await page.locator('#probe-select').focus()
+        await page.keyboard.press('Alt+s')
+        expect(await toolName(page)).not.toBe('slide')
+    })
+
     test('a chord binding wins over the plain key it shares', async ({ page }) => {
         await page.evaluate(() => {
             const { settings } = window.editorTest
