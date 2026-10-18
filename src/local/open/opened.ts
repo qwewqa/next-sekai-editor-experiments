@@ -13,6 +13,15 @@ import { planImport, type ImportBatch } from './plan'
 // stored and its background import runs, so the batches, and peeks of states not imported yet,
 // read the file the tab opened. A worker restart loses them; the page reads the file again.
 
+/**
+ * The file's rows whose root it lacks (§1.6.11.6, D25): the binding's `notKept`, counted by roots
+ * as a Save counts it, never by the `kept` flag (a flagged row whose state another row keeps is held).
+ */
+export const lackingRoots = (history: {
+    entries: readonly { snapshot: string }[]
+    roots: ReadonlyMap<string, unknown>
+}) => history.entries.filter((entry) => !history.roots.has(entry.snapshot)).length
+
 export type OpenedFile = {
     readonly id: string
     readonly file: Blob
@@ -93,7 +102,7 @@ export const readOpened = async (file: Blob): Promise<OpenReadReply> => {
             ? {
                   history: {
                       entries: history.entries.length,
-                      notKept: history.entries.filter((entry) => entry.kept === false).length,
+                      notKept: lackingRoots(history),
                       head: history.head,
                       undoStack: history.undoStack,
                       headRecords: history.headRecords,

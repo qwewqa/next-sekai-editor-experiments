@@ -6,6 +6,7 @@ import { keyText } from '../../../src/local/kv/keys'
 import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/local/nxsp'
 import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
+import { carries, type ChainRow } from '../../../src/local/save/model'
 import { stateBatch } from '../../../src/local/stateBatch'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import {
@@ -403,5 +404,50 @@ test('a long history’s rows come in batches after the first transaction', asyn
     assert.deepEqual(
         stackMismatches(storedStack(s.world), replay(entries as unknown as ReplayEntry[])),
         [],
+    )
+})
+
+test('a row the file flags kept: false whose root the file holds counts as held (D25)', async () => {
+    const s = await setup(9)
+    const { input } = fresh()
+    const history = input.history!
+    // A flagged row whose state a later row keeps: the file holds its root.
+    const held = history.entries[2]!.snapshot
+    const entries = history.entries.map((entry, i) =>
+        i === 1 ? { ...entry, snapshot: held, kept: false as const } : entry,
+    )
+    const file = await executePlan(
+        planNxsp({ ...input, history: { ...history, entries } }).plan,
+        new Map(),
+    )
+    const reply = nxsp(await s.run(() => s.open.openRead(file)))
+    assert.equal(reply.history?.notKept, 0)
+    const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
+    if (stored.kind !== 'stored') throw new Error('not stored')
+    const binding = chainRow(s.world)?.file as { entry: { count: number; notKept: number } }
+    assert.equal(binding.entry.count, history.entries.length)
+    assert.equal(binding.entry.notKept, 0)
+})
+
+test('an import abandoned before its rows batch never lets a later Save carry the file', async () => {
+    const s = await setup(10)
+    const file = await longFile(2100)
+    const reply = nxsp(await s.run(() => s.open.openRead(file)))
+    const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
+    if (stored.kind !== 'stored') throw new Error('not stored')
+    assert.equal(await s.run(() => s.open.openAbandon(ids.sessionId)), true)
+    // The binding keeps the file's counts; storage has none of the rows up to the cut.
+    const binding = chainRow(s.world)?.file as {
+        entry: { sessionId: string; seq: number; startedAt: number; count: number; notKept: number }
+    }
+    assert.deepEqual([binding.entry.count, binding.entry.notKept], [2100, 0])
+    const startedAt = sessionRow(s.world)?.startedAt as number
+    const rows = sessionEntries(s.world).map((entry) => ({
+        entry: entry as unknown as ChainRow['entry'],
+        startedAt,
+    }))
+    assert.equal(
+        carries(rows, binding.entry, (row) => !row.entry.kept),
+        false,
     )
 })

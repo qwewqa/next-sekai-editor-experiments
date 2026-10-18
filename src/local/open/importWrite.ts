@@ -27,7 +27,7 @@ import { directWaiter, type Waiter } from '../scheduler'
 import type { StateBatch } from '../stateBatch'
 import { nextTime } from '../time'
 import { BLOCK_SLOTS, blockOf, blockRow, storedWindow, type ReplaySlot } from '../timeline'
-import type { OpenedFile } from './opened'
+import { lackingRoots, type OpenedFile } from './opened'
 import { BATCH_ROWS, chunksOfRoot, nodesOfRoot, stackOrder, type ImportBatch } from './plan'
 
 // The open's transactions (Part 1 §1.5.4): the first, which stores the new chain and session
@@ -430,7 +430,7 @@ export const writeOpenHead = async (
             seq: count,
             startedAt: now,
             count,
-            notKept: history?.entries.filter((each) => each.kept === false).length ?? 0,
+            notKept: history ? lackingRoots(history) : 0,
         }
         fields.file = { ...file, at: now, hash: head.slice(), entry: cut }
     }
