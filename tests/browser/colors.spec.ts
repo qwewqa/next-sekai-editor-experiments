@@ -394,22 +394,24 @@ for (const command of ['copy', 'cut'] as const) {
         await page.keyboard.press('v')
         const target = await page.evaluate(() => window.editorTest.point(0, 10))
         await page.mouse.click(target.x, target.y)
+        // The paste and its selection together: after a copy, the originals are selected with the
+        // same colors until the paste lands.
         await expect
             .poll(() =>
-                page.evaluate(() =>
-                    window.editorTest.history.state.value.selectedEntities
-                        .filter((entity) => entity.type === 'note')
-                        .sort((a, b) => a.left - b.left || a.beat - b.beat)
-                        .map((note) => note.connectorStyle),
-                ),
+                page.evaluate(() => {
+                    const { state } = window.editorTest.history
+                    return {
+                        notes: [...state.value.store.slides.note.values()].flat().length,
+                        selected: state.value.selectedEntities
+                            .filter((entity) => entity.type === 'note')
+                            .sort((a, b) => a.left - b.left || a.beat - b.beat)
+                            .map((note) => note.connectorStyle),
+                    }
+                }),
             )
-            .toEqual(['default', 'default', 'green', 'green', 'blue', 'blue'])
-        expect(
-            await page.evaluate(
-                () =>
-                    [...window.editorTest.history.state.value.store.slides.note.values()].flat()
-                        .length,
-            ),
-        ).toBe(command === 'copy' ? 12 : 6)
+            .toEqual({
+                notes: command === 'copy' ? 12 : 6,
+                selected: ['default', 'default', 'green', 'green', 'blue', 'blue'],
+            })
     })
 }
