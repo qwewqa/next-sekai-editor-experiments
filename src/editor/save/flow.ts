@@ -1298,8 +1298,7 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
             const choice = await saveUi.refused(outcome.name, outcome.reason)
             if (choice === 'chooseAnother') await dialogSave(env, 'save')
             else if (choice === 'export') {
-                const { exportLevel } = await import('../commands/exportLevel')
-                await exportLevel.execute()
+                await openExport()
             }
             return
         }
@@ -1333,6 +1332,13 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
             return
         }
     }
+}
+
+/** Export Level Data… (the Save dialog's Export line, R7's refusal), as its command runs. */
+const openExport = async () => {
+    const { commands } = await import('../commands')
+    const { runCommand } = await import('../commands/runCommand')
+    await runCommand(commands.exportLevel)
 }
 
 /** Downloads bytes kept at an open that could not be put back (§1.4.7 R7, Step 1c). */
@@ -1475,8 +1481,7 @@ const dialogSave = async (
     const result = await saveUi.saveDialog(input)
     if (!result) return
     if (result.action === 'export') {
-        const { exportLevel } = await import('../commands/exportLevel')
-        await exportLevel.execute()
+        await openExport()
         return
     }
     await afterOutcome(

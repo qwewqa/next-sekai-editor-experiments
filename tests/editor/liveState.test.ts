@@ -126,8 +126,8 @@ const writers: {
     /** It also reads the displayed chart, as playback does. */
     readsDisplay?: true
 }[] = [
-    // Today's Save serializer, which becomes Export.
-    { file: 'src/editor/commands/save/index.ts', imports: { live: ['filename'] } },
+    // Save writes the live session, never a peeked state (§1.4.7).
+    { file: 'src/editor/save/env.ts', imports: { stack: ['liveState'] } },
     { file: 'src/editor/commands/exportLevel/index.ts', imports: { live: ['filename'] } },
     // Save and Export build level data here.
     {

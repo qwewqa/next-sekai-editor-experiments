@@ -184,6 +184,8 @@ test('storing loads restored undo slots through the verified read', () => {
     const source = readFileSync(new URL('../../../src/local/storing.ts', import.meta.url), 'utf8')
     assert.match(
         source,
-        /setSlotLoader\(slotLoader\(\(hex\) => worker\.call\('readSnapshotVerified', hex\)\)\)/,
+        /const load = slotLoader\(\(hex\) => worker\.call\('readSnapshotVerified', hex\)\)/,
     )
+    // Retried once after the resumed import, through the same verified read (§1.5.4).
+    assert.match(source, /setSlotLoader\(async \(snapshot\) => \{/)
 })
