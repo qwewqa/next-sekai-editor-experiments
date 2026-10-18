@@ -65,7 +65,8 @@ export type WritePlan = {
 
 /**
  * A reader cap a write would pass (§1.6.11.4): `bgm`, `cover` or `preview` over the media cap,
- * `project` or `level` past its own, `part` (the manifest or a segment), `chunks` (`chunks.bin`),
+ * `project` or `level` past its own, `part` (the manifest or a segment), `history` (the manifest
+ * and every segment together), `chunks` (`chunks.bin`),
  * `segments` (their count), `depth` (JSON nesting) or `zip64` (a size, offset or count that would
  * need ZIP64). A file past one would open as damaged, so it is never written.
  */
@@ -76,6 +77,7 @@ export type PlanLimit =
     | 'project'
     | 'level'
     | 'part'
+    | 'history'
     | 'chunks'
     | 'segments'
     | 'depth'

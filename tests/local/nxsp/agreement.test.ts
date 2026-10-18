@@ -11,7 +11,7 @@ import { executePlan, planNxsp, readNxsp } from '../../../src/local/nxsp'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { rawZip, type RawEntry } from '../../zip/rawZip'
 import { fresh } from './chain'
-import { jsonOf, setJson, unzip, zipItems, type Item, type Loose } from './craft'
+import { jsonOf, overHistoryCap, setJson, unzip, zipItems, type Item, type Loose } from './craft'
 import { entry } from './helpers'
 
 // The reader and the independent checker agree (§1.6.11.9): every crafted probe is read by
@@ -303,6 +303,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
             chunks.data = new Uint8Array([...chunks.data, ...stored])
             setJson(items, 'history/manifest.json', m)
         }),
+        'history-cap': await overHistoryCap(new Blob([readFileSync(join(golden, 'write-2.nxsp'))])),
         'not-zip': encoder.encode('not a zip'),
         // Two ignored entries whose real ranges overlap: the first's local header claims an extra field.
         overlap: await (async () => {
@@ -397,6 +398,10 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
             'two-values-bool',
         ])
             assert.match(strict, new RegExp(`FAIL .*${name}\\.nxsp`), name)
+        assert.match(
+            strict,
+            /FAIL .*history-cap\.nxsp: history: the manifest and segments are over their cap/,
+        )
         assert.doesNotMatch(strict, /Error:/)
     } finally {
         rmSync(dir, { recursive: true, force: true })

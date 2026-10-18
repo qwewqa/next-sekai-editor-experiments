@@ -774,6 +774,14 @@ const checkLimits = (
     if (entries.length >= ENTRY_LIMIT) fail('65,535 entries or more', 'zip64')
     const segments = entries.filter((entry) => entry.name.startsWith('history/segments/')).length
     if (segments > caps.segments) fail(`More than ${caps.segments} segments`, 'segments')
+    const parts = entries
+        .filter(
+            (entry) =>
+                entry.name.startsWith('history/segments/') ||
+                entry.name === 'history/manifest.json',
+        )
+        .reduce((total, entry) => total + (entry.uncompressedSize ?? storedSize(entry, sources)), 0)
+    if (parts > caps.history) fail('The history’s parts are over their cap together', 'history')
     const seen = new Set<string>()
     let offset = 0
     let directory = 0

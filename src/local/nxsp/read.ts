@@ -28,6 +28,8 @@ export type NxspCaps = {
     level: number
     /** The manifest, and each segment. */
     manifest: number
+    /** The manifest and every segment together. */
+    history: number
     chunksBin: number
     chunk: number
     media: number
@@ -38,6 +40,7 @@ export const NXSP_CAPS: NxspCaps = {
     project: 1024 * 1024,
     level: 64 * 1024 * 1024,
     manifest: 256 * 1024 * 1024,
+    history: 512 * 1024 * 1024,
     chunksBin: 2 * 1024 * 1024 * 1024,
     chunk: CHUNK_CAP,
     media: 1024 * 1024 * 1024,
@@ -392,6 +395,18 @@ const readHistory = async (
         }))
 
     try {
+        // The parts together, from their declared sizes, before any is read.
+        let total = 0
+        for (const name of [...(pointers.segments ?? []), pointers.manifest]) {
+            const entry = reader.get(name)
+            if (entry && !entry.isDirectory) total += entry.size
+        }
+        if (total > cap.history)
+            throw new ReadFailure({
+                reason: 'damaged',
+                path: 'history',
+                detail: 'past the history cap',
+            })
         const segments: SegmentForm[] = []
         for (const [i, name] of (pointers.segments ?? []).entries()) {
             const value = await readJson(reader, entryOf(name), cap.manifest, cap.depth)

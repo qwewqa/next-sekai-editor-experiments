@@ -34,7 +34,7 @@ with open(os.path.join(HERE, "fields-v1.json"), encoding="utf-8") as f:
     FIELDS = json.load(f)
 
 MB = 1024 * 1024
-CAPS = {"project": MB, "level": 64 * MB, "manifest": 256 * MB, "chunks": 2048 * MB,
+CAPS = {"project": MB, "level": 64 * MB, "manifest": 256 * MB, "history": 512 * MB, "chunks": 2048 * MB,
         "chunk": 16 * MB, "media": 1024 * MB, "depth": 64, "entries": 65535, "segments": 4096}
 SAFE = 2 ** 53 - 1
 HEX16 = re.compile(r"^[0-9a-f]{32}$")
@@ -453,9 +453,20 @@ def duration_ms(slides, bpms):
     return result if 0 < result <= SAFE else 0
 
 
+def history_total(entries):
+    """The manifest and segments together, from their declared sizes (the history cap)."""
+    return sum(e["usize"] for e in entries if not e["dir"] and
+               (e["key"].startswith("history/segments/") or e["key"] == "history/manifest.json"))
+
+
 def check_file(path):
     with open(path, "rb") as f:
         blob = f.read()
+    try:
+        declared = read_directory(blob)
+    except (ZipBad, struct.error):
+        declared = []
+    need(history_total(declared) <= CAPS["history"], "history: the manifest and segments are over their cap together")
     entries = read_zip(blob)
     by_name = {e["name"]: e for e in entries}
     names = [e["name"] for e in entries]
@@ -1502,6 +1513,13 @@ def read_history(z, pointers):
         return [(names[r], p) for r, p in issues]
 
     try:
+        total = 0
+        for name in list(pointers.get("segments", [])) + [pointers["manifest"]]:
+            e = z.get(name)
+            if e is not None and not e["dir"]:
+                total += e["usize"]
+        if total > CAPS["history"]:
+            raise ReadFailure("damaged", "history")
         segments = []
         for i, name in enumerate(pointers.get("segments", [])):
             part, issues = check_part(read_entry_json(z, entry(name), CAPS["manifest"]), f"segments[{i}]", False)

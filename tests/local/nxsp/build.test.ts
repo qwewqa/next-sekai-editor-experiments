@@ -495,6 +495,13 @@ test('the builder refuses every reader cap as a PlanError naming it', () => {
     refuses('chunks', () => planNxsp(input, [], { chunksBin: 100 }))
     refuses('cover', () => planNxsp(input, [], { media: 5 }))
     refuses('segments', () => planNxsp(longChain(1001).input, [], { segments: 1 }))
+    // The parts together: just over their sum is refused, their sum passes.
+    const long = longChain(1001).input
+    const sum = planNxsp(long)
+        .plan.entries.filter((e) => e.name.startsWith('history/') && e.name.endsWith('.json'))
+        .reduce((total, e) => total + (e.uncompressedSize ?? 0), 0)
+    refuses('history', () => planNxsp(long, [], { history: sum - 1 }))
+    assert.ok(planNxsp(long, [], { history: sum }).plan)
     assert.ok(planNxsp(longChain(1001).input, [], { segments: 2 }).plan)
     const preview = {
         ...input,

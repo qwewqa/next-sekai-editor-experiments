@@ -14,6 +14,7 @@ import {
     crafted,
     freshFile,
     jsonOf,
+    overHistoryCap,
     readCrafted,
     reasonsOf,
     setJson,
@@ -239,6 +240,16 @@ test('more than 4,096 segments is damage', async () => {
     )
     assert.ok(hasReason(read, 'damaged', 'history.segments'))
     assert.equal(read.history, undefined)
+})
+
+test('the manifest and segments over 512 MB together is damage: no history', async () => {
+    const read = nxsp(await readNxsp(new Blob([await overHistoryCap(await freshFile())])))
+    assert.ok(hasReason(read, 'damaged', 'history'), reasonsOf(read).join())
+    assert.equal(read.history, undefined)
+    assert.ok(read.level)
+    // The same check at real sizes, with a smaller cap.
+    const small = nxsp(await readNxsp(await freshFile(), { history: 100 }))
+    assert.deepEqual(reasonsOf(small), ['damaged history'])
 })
 
 test('more than 65,535 entries opens nothing', async () => {
