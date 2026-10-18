@@ -1,4 +1,5 @@
 import { computed, shallowRef, type Component } from 'vue'
+import { isPeeking } from '../../history/stack'
 import { isToolModalOpen } from '../../modals'
 import { scalingSession } from '../commands/scaleSelection/session'
 import type { CanvasCursor } from '../controls/cursor'
@@ -18,7 +19,7 @@ import { generateSlideNotes } from './generateSlideNotes'
 import { note } from './note'
 import { offset } from './offset'
 import { clearPasteGhost, paste } from './paste'
-import { select } from './select'
+import { select, viewSelect } from './select'
 import { slide } from './slide'
 import { toolName } from './state'
 import { timeScale } from './timeScale'
@@ -86,8 +87,15 @@ const inspectingTool: Tool = {
     secondaryTool: false,
 }
 
+/** While peeking every tool is suspended for a view-only Select (§1.4.11). */
 export const tool = computed(() =>
-    scalingSession.value ? scalingTool : isToolModalOpen.value ? inspectingTool : normalTool.value,
+    isPeeking.value
+        ? viewSelect
+        : scalingSession.value
+          ? scalingTool
+          : isToolModalOpen.value
+            ? inspectingTool
+            : normalTool.value,
 )
 
 export const switchToolTo = (tool: ToolName) => {

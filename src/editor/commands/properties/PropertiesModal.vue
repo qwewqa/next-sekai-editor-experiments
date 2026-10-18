@@ -6,6 +6,8 @@ import NumberField from '../../../modals/form/NumberField.vue'
 
 const props = defineProps<{
     initialLife: number
+    /** While peeking: shown, not changed. */
+    readOnly?: boolean
 }>()
 
 defineEmits<{
@@ -21,11 +23,13 @@ const model = ref(props.initialLife)
         @close="$emit('close')"
         @submit="$emit('close', model)"
     >
-        <NumberField
-            v-model="model"
-            :label="i18n.commands.properties.modal.life"
-            :min="1"
-            :step="1"
-        />
+        <fieldset class="contents" :disabled="readOnly">
+            <NumberField
+                v-model="model"
+                :label="i18n.commands.properties.modal.life"
+                :min="1"
+                :step="1"
+            />
+        </fieldset>
     </FormModal>
 </template>

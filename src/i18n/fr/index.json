@@ -1787,7 +1787,8 @@
     "unsupportedParts": "\"{0}\" contient des parties que cette version de l’éditeur ne prend pas en charge."
   },
   "peek": {
-    "exportsCurrent": "Exporte la version actuelle."
+    "exportsCurrent": "Exporte la version actuelle.",
+    "overlay": "Consultation de l’historique · lecture seule"
   },
   "save": {
     "fileName": "Nom du fichier",
@@ -1827,7 +1828,10 @@
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "chooseAudio": "Choisir l’audio…",
     "newLevel": "Nouveau niveau",
-    "reopen": "Rouvrir \"{0}\""
+    "reopen": "Rouvrir \"{0}\"",
+    "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
+    "restoredTo": "Restauré à {0}",
+    "alreadyMatches": "Correspond déjà à la partition actuelle"
   },
   "entry": {
     "exported": "{0} exporté",
@@ -1836,7 +1840,8 @@
     "recovered": "Dernière modification récupérée",
     "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation a été supprimée.|Dernière modification récupérée. {0} étapes d’annulation ont été supprimées.",
     "continued": "Session reprise",
-    "migrated": "Récupéré de la sauvegarde automatique"
+    "migrated": "Récupéré de la sauvegarde automatique",
+    "restoredTo": "Restauré à {0}"
   },
   "session": {
     "untitled": "Sans titre · {0}"

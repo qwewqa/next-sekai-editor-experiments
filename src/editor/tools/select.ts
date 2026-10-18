@@ -579,6 +579,30 @@ export const select: Tool = {
     },
 }
 
+/**
+ * Select while peeking (§1.4.11): taps and box selection change only the peeked state's
+ * selection, and nothing moves or resizes.
+ */
+export const viewSelect: Tool = {
+    title: select.title,
+    hover: previewTap,
+    tap: select.tap,
+    cursor: (x, y) => (hitOffscreenIndicator(x, y) ? 'pointer' : 'default'),
+    dragStart(x, y) {
+        active = {
+            type: 'select',
+            lane: xToLane(x),
+            time: yToTime(y),
+            count: -1,
+            entities: selectedEntities.value,
+        }
+        return true
+    },
+    dragUpdate: select.dragUpdate,
+    dragEnd: select.dragEnd,
+    dragCancel: select.dragCancel,
+}
+
 const moveEntities = (
     source: State,
     active: MoveActive,

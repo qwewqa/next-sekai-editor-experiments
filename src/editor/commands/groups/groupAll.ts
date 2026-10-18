@@ -9,6 +9,8 @@ export const groupAll: Command = {
         is: GroupAllIcon,
     },
 
+    readOnly: true,
+
     // Clears the focus, restoring saved visibility choices.
     execute() {
         groupScope.focusAll()

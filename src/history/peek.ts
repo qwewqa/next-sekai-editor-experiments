@@ -17,6 +17,19 @@ export const parseEntryKey = (key: EntryKey) => {
     return { sessionId: key.slice(0, at), seq: Number(key.slice(at + 1)) }
 }
 
+/**
+ * Why an entry can't be peeked: no such entry (yet) in storage, its snapshot removed to save
+ * space, or a part of it missing or failing its hash (`history.damaged`).
+ */
+export type PeekFailure = 'missing' | 'removed' | 'damaged'
+
+export class PeekError extends Error {
+    override name = 'PeekError'
+    constructor(readonly reason: PeekFailure) {
+        super(`The entry cannot be shown: ${reason}`)
+    }
+}
+
 /** An entry's state and when it was made. */
 export type PeekedEntry = { state: State; time: number }
 
@@ -88,15 +101,24 @@ const loadEntry = async (key: EntryKey) => {
         remember(key, held)
         return held
     }
-    if (!source) throw new Error('History is not available')
+    if (!source) throw new PeekError('missing')
     const entry = await source.load(key)
     remember(key, entry)
     return entry
 }
 
-/** A peek starts with no selection: the peeked state holds its own (§1.4.11). */
-const shown = (state: State): State =>
-    state.selectedEntities.length ? { ...state, selectedEntities: [] } : state
+/**
+ * What a peek shows: no selection at first, since the peeked state holds its own, and the live
+ * audio and its waveform, which playback keeps while peeking (§1.4.11).
+ */
+const shown = (state: State): State => {
+    const { buffer, waveform } = liveState.value.bgm
+    return {
+        ...state,
+        bgm: { ...state.bgm, buffer, waveform },
+        selectedEntities: [],
+    }
+}
 
 /** Counts requests and leaves, so a load that finishes after either does nothing. */
 let generation = 0
@@ -124,7 +146,11 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
     settlePrevious?.()
     settlePrevious = undefined
     requested.value = key
-    peek.value ??= { source: key, state: shown(liveState.value) }
+    if (!peek.value) {
+        // Drags and sessions end on the live state, before anything is peeked.
+        for (const listener of [...startListeners]) listener()
+        peek.value = { source: key, state: shown(liveState.value) }
+    }
 
     const now = Date.now()
     const quick = now - lastRequestAt < PEEK_DEBOUNCE_MS
@@ -164,6 +190,16 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
         if (quick) timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
         else void run()
     })
+}
+
+const startListeners = new Set<() => void>()
+
+/** Runs as a peek starts, before the peeked state is shown: drags and sessions end. */
+export const onPeekStart = (listener: () => void) => {
+    startListeners.add(listener)
+    return () => {
+        startListeners.delete(listener)
+    }
 }
 
 const leftListeners = new Set<() => void>()
@@ -224,8 +260,8 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
     effects?.restored(entry.time)
 }
 
-/** What a refusal names: the command's name when it has one. */
-export type PeekRefusal = { name?: string }
+/** What a refusal names: the command's title when a command was refused. */
+export type PeekRefusal = { title?: () => string }
 
 const refusedListeners = new Set<(refusal: PeekRefusal) => void>()
 

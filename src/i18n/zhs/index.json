@@ -1787,7 +1787,8 @@
     "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
   },
   "peek": {
-    "exportsCurrent": "导出当前版本。"
+    "exportsCurrent": "导出当前版本。",
+    "overlay": "正在查看历史记录 · 只读"
   },
   "save": {
     "fileName": "文件名",
@@ -1827,7 +1828,10 @@
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "chooseAudio": "选择音频…",
     "newLevel": "新关卡",
-    "reopen": "重新打开“{0}”"
+    "reopen": "重新打开“{0}”",
+    "readOnlyPeek": "查看历史记录时为只读",
+    "restoredTo": "已恢复到 {0}",
+    "alreadyMatches": "已与当前谱面一致"
   },
   "entry": {
     "exported": "已导出 {0}",
@@ -1836,7 +1840,8 @@
     "recovered": "已恢复最后的更改",
     "recoveredDropped": "已恢复最后的更改。{0} 个撤销步骤已丢弃。",
     "continued": "已继续",
-    "migrated": "已从自动保存恢复"
+    "migrated": "已从自动保存恢复",
+    "restoredTo": "恢复到 {0}"
   },
   "session": {
     "untitled": "未命名 · {0}"

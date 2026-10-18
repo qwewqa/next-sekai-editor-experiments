@@ -1,6 +1,7 @@
 import { journalHandlers } from '../journal/handlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
+import { peekHandlers } from './peekHandlers'
 import { serve, type Endpoint } from './rpc'
 import { startupHandlers } from './startupHandlers'
 import { userAssetHandlers } from './userAssets'
@@ -22,6 +23,7 @@ const handlers = {
     ...userAssetHandlers(context),
     ...journalHandlers(context),
     ...startupHandlers(context),
+    ...peekHandlers(context),
 }
 
 export type StorageHandlers = typeof handlers

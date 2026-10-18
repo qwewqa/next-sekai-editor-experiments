@@ -40,6 +40,8 @@ export const open: Command = {
         is: OpenIcon,
     },
 
+    leavesPeek: true,
+
     async execute() {
         if (!(await confirmSwitch())) return
 

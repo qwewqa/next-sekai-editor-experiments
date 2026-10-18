@@ -1787,7 +1787,8 @@
     "unsupportedParts": "\"{0}\"에는 이 버전의 편집기가 지원하지 않는 부분이 있습니다."
   },
   "peek": {
-    "exportsCurrent": "현재 버전을 내보냅니다."
+    "exportsCurrent": "현재 버전을 내보냅니다.",
+    "overlay": "기록 보는 중 · 읽기 전용"
   },
   "save": {
     "fileName": "파일 이름",
@@ -1827,7 +1828,10 @@
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
     "chooseAudio": "오디오 선택…",
     "newLevel": "새 레벨",
-    "reopen": "\"{0}\" 다시 열기"
+    "reopen": "\"{0}\" 다시 열기",
+    "readOnlyPeek": "기록을 보는 중에는 읽기 전용",
+    "restoredTo": "{0} 시점으로 복원됨",
+    "alreadyMatches": "이미 현재 채보와 같음"
   },
   "entry": {
     "exported": "{0} 내보냄",
@@ -1836,7 +1840,8 @@
     "recovered": "마지막 변경 복구됨",
     "recoveredDropped": "마지막 변경 복구됨. 되돌리기 단계 {0}개가 삭제되었습니다.",
     "continued": "이어서 열림",
-    "migrated": "자동 저장에서 복구됨"
+    "migrated": "자동 저장에서 복구됨",
+    "restoredTo": "{0} 시점으로 복원"
   },
   "session": {
     "untitled": "제목 없음 · {0}"

@@ -3,6 +3,7 @@ import { getVerticalScale } from '../editor/navigation'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { filename } from '../history/live'
+import { setPeekSource } from '../history/peek'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { i18n } from '../i18n'
@@ -21,6 +22,7 @@ import { toHex } from './hash'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf } from './names'
+import { createPeekSource, rememberRoots } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
 import { stateFromRecords } from './records/records'
 import { decodeSnapshot } from './records/snapshot'
@@ -267,6 +269,7 @@ export const startStoring = (
         forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
         writeChain: (request) => worker.call('writeChainFields', request),
         continueLabel: () => i18n.value.entry.continued,
+        onRoots: rememberRoots,
         onFlushed: (report) => {
             if (test) reports.push(report)
         },
@@ -407,6 +410,9 @@ export const startStoring = (
         })
         return stateFromRecords(records)
     })
+
+    // History's entries are peeked from memory or their stored snapshots (§1.4.11).
+    setPeekSource(createPeekSource(worker, () => flusher))
 
     window.nse = {
         ...window.nse,

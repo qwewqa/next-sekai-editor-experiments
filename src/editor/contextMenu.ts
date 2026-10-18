@@ -1,8 +1,9 @@
 import { shallowRef } from 'vue'
-import { state } from '../history'
+import { isPeeking, state } from '../history'
 import { selectedEntities } from '../history/selectedEntities'
 import { settings } from '../settings'
 import { beatToTime } from '../state/integrals/bpms'
+import { isEditableEntity } from '../state/operations/editable'
 import { deselect } from './commands/deselect'
 import { runCommand } from './commands/runCommand'
 import { getComposedLayout } from './composedView'
@@ -16,6 +17,10 @@ export const contextMenu = shallowRef<{ x: number; y: number; selection?: boolea
 export const closeContextMenu = () => {
     contextMenu.value = undefined
 }
+
+/** While peeking the menu holds only Copy, so it opens only over something to copy (§1.4.11). */
+const hasNothingWhilePeeking = () =>
+    isPeeking.value && !selectedEntities.value.some(isEditableEntity)
 
 export const openContextMenu = (x: number, y: number) => {
     const found = pointHitsAt(x, y)
@@ -33,10 +38,12 @@ export const openContextMenu = (x: number, y: number) => {
             void select.tap?.(x, y, { ctrl: false, shift: false })
         }
     }
+    if (hasNothingWhilePeeking()) return
     contextMenu.value = { x, y }
 }
 
 export const openSelectionContextMenu = () => {
+    if (hasNothingWhilePeeking()) return
     const point = editorNavigation.value?.getContextMenuPoint?.()
     if (point) {
         contextMenu.value = { ...point, selection: true }

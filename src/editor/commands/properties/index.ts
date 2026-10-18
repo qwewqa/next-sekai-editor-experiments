@@ -1,5 +1,5 @@
 import type { Command } from '..'
-import { pushState, state } from '../../../history'
+import { isPeeking, pushState, state } from '../../../history'
 import { initialLife } from '../../../history/initialLife'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -13,12 +13,16 @@ export const properties: Command = {
         is: PropertiesIcon,
     },
 
+    // Level Info opens read-only while peeking (§1.4.11).
+    readOnly: true,
+
     async execute() {
         const newInitialLife = await showModal(PropertiesModal, {
             initialLife: initialLife.value,
+            readOnly: isPeeking.value,
         })
-        // Confirming it unchanged is no edit.
-        if (!newInitialLife || newInitialLife === initialLife.value) return
+        // Confirming it unchanged is no edit, and nothing is changed while peeking.
+        if (!newInitialLife || newInitialLife === initialLife.value || isPeeking.value) return
 
         pushState(() => i18n.value.commands.properties.changed, {
             ...state.value,

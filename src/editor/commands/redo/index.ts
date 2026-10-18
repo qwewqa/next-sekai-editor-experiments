@@ -12,6 +12,8 @@ export const redo: Command = {
         is: RedoIcon,
     },
 
+    leavesPeek: true,
+
     execute() {
         const name = redoState()
         if (name) {

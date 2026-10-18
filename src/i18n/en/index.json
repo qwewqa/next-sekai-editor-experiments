@@ -1787,7 +1787,8 @@
         "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
     },
     "peek": {
-        "exportsCurrent": "Exports the current version."
+        "exportsCurrent": "Exports the current version.",
+        "overlay": "Viewing history · read-only"
     },
     "save": {
         "fileName": "File Name",
@@ -1827,7 +1828,10 @@
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
         "chooseAudio": "Choose Audio…",
         "newLevel": "New level",
-        "reopen": "Reopen \"{0}\""
+        "reopen": "Reopen \"{0}\"",
+        "readOnlyPeek": "Read-only while viewing history",
+        "restoredTo": "Restored to {0}",
+        "alreadyMatches": "Already matches the current chart"
     },
     "entry": {
         "exported": "Exported {0}",
@@ -1836,7 +1840,8 @@
         "recovered": "Recovered last change",
         "recoveredDropped": "Recovered last change. {0} undo step was dropped.|Recovered last change. {0} undo steps were dropped.",
         "continued": "Continued",
-        "migrated": "Recovered from auto save"
+        "migrated": "Recovered from auto save",
+        "restoredTo": "Restored to {0}"
     },
     "session": {
         "untitled": "Untitled · {0}"

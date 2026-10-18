@@ -1787,7 +1787,8 @@
     "unsupportedParts": "「{0}」には、このバージョンのエディターが対応していない部分があります。"
   },
   "peek": {
-    "exportsCurrent": "現在のバージョンを出力します。"
+    "exportsCurrent": "現在のバージョンを出力します。",
+    "overlay": "履歴を表示中 · 読み取り専用"
   },
   "save": {
     "fileName": "ファイル名",
@@ -1827,7 +1828,10 @@
     "sameFileElsewhere": "「{0}」は別のタブまたはウィンドウで開かれているため、これは別のコピーです。",
     "chooseAudio": "音声を選択…",
     "newLevel": "新しい譜面",
-    "reopen": "「{0}」を再び開く"
+    "reopen": "「{0}」を再び開く",
+    "readOnlyPeek": "履歴の表示中は読み取り専用です",
+    "restoredTo": "{0} の状態に復元しました",
+    "alreadyMatches": "すでに現在の譜面と同じです"
   },
   "entry": {
     "exported": "{0} を出力",
@@ -1836,7 +1840,8 @@
     "recovered": "最後の変更を回復",
     "recoveredDropped": "最後の変更を回復。元に戻す操作 {0} 件は破棄されました。",
     "continued": "続行",
-    "migrated": "自動保存から回復"
+    "migrated": "自動保存から回復",
+    "restoredTo": "{0} の状態に復元"
   },
   "session": {
     "untitled": "無題 · {0}"

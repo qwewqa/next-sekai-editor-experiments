@@ -1787,7 +1787,8 @@
     "unsupportedParts": "\"{0}\" 包含此版本編輯器不支援的部分。"
   },
   "peek": {
-    "exportsCurrent": "匯出目前版本。"
+    "exportsCurrent": "匯出目前版本。",
+    "overlay": "正在檢視歷史記錄 · 唯讀"
   },
   "save": {
     "fileName": "檔案名稱",
@@ -1827,7 +1828,10 @@
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "chooseAudio": "選擇音訊…",
     "newLevel": "新關卡",
-    "reopen": "重新開啟 \"{0}\""
+    "reopen": "重新開啟 \"{0}\"",
+    "readOnlyPeek": "檢視歷史記錄時為唯讀",
+    "restoredTo": "已恢復到 {0}",
+    "alreadyMatches": "已與目前譜面一致"
   },
   "entry": {
     "exported": "已匯出 {0}",
@@ -1836,7 +1840,8 @@
     "recovered": "已恢復最後的變更",
     "recoveredDropped": "已恢復最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
-    "migrated": "已從自動儲存恢復"
+    "migrated": "已從自動儲存恢復",
+    "restoredTo": "恢復到 {0}"
   },
   "session": {
     "untitled": "未命名 · {0}"

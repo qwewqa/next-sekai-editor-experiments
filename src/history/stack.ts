@@ -340,5 +340,9 @@ export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: 
     prefetch()
 }
 
+/** The loaded slots' states, with their stored roots when restored: peek reuses them. */
+export const loadedStates = () =>
+    states.flatMap(({ state, snapshot }) => (state ? [{ state, snapshot }] : []))
+
 /** Which slots hold a state, for tests of the lazy stack. */
 export const loadedSlotsForTests = () => states.map((slot) => !!slot.state)

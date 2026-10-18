@@ -13,6 +13,8 @@ export const stagePrev: Command = {
         is: StagePrevIcon,
     },
 
+    readOnly: true,
+
     // Focuses the previous entry; before the first one comes All, restoring saved visibility.
     async execute() {
         if (!(await checkDynamicStages())) return

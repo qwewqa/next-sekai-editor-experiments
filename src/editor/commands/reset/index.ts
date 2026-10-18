@@ -10,7 +10,7 @@ export const reset: Command = {
         is: ResetIcon,
     },
 
-    readOnly: true,
+    leavesPeek: true,
 
     async execute() {
         if (!(await confirmSwitch())) return

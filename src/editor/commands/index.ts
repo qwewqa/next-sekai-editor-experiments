@@ -92,8 +92,10 @@ export type Command = {
     }
 
     execute: () => void | Promise<void>
-    /** Allowed while peeking, which refuses every other command. */
+    /** Allowed while peeking, which refuses every other command (§1.4.11). */
     readOnly?: true
+    /** Leaves the peek first, then runs: Open, New, Undo and Redo (§1.4.11). */
+    leavesPeek?: true
     /** Picking it from a toolbar flyout leaves the group's face as it is. */
     keepsFace?: true
 }
