@@ -1,7 +1,6 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
-import { showModal } from '../../../modals'
-import SettingsModal from '../../settings/SettingsModal.vue'
+import { openSettings } from '../../settings/openSettings'
 import SettingsIcon from './SettingsIcon.vue'
 
 export const settings: Command = {
@@ -13,6 +12,6 @@ export const settings: Command = {
     readOnly: true,
 
     execute() {
-        void showModal(SettingsModal, {})
+        void openSettings()
     },
 }

@@ -4,8 +4,6 @@ import { addDefaultStageToStages, type Stages } from '../chart/stages'
 import { closeElevationEditor, isElevationSideBySide } from '../editor/elevation/state'
 import { switchToolTo } from '../editor/tools'
 import { i18n } from '../i18n'
-import { showModal } from '../modals'
-import ConfirmModal from '../modals/ConfirmModal.vue'
 import { platform } from '../platform'
 import { createState, type State, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
@@ -19,6 +17,7 @@ export {
     canUndo,
     isDirty,
     isPeeking,
+    isPristine,
     liveState,
     peek,
     pushState,
@@ -77,15 +76,6 @@ export const isDirtyCompat = () => !isDirty.value
 platform.onCloseRequested(isDirtyCompat)
 
 setFileEventMessages(() => i18n.value)
-
-export const checkState = async () => {
-    if (!isDirty.value) return true
-
-    return await showModal(ConfirmModal, {
-        title: () => i18n.value.history.changes.title,
-        message: () => i18n.value.history.changes.message,
-    })
-}
 
 /**
  * Starts over with a chart, or the default one, in a session (§1.3.5): the

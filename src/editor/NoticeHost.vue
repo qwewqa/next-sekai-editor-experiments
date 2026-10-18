@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue'
-import { canUndo } from '../history/stack'
+import { onBeforeUnmount, onMounted } from 'vue'
+import { onHistoryAction } from '../history/actions'
 import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
 import { isTextEntry } from './controls/keyboard'
@@ -61,11 +61,14 @@ onBeforeUnmount(() => {
     window.removeEventListener('focusout', onFocusOut, true)
 })
 
-// The start-up pill with actions goes at the first edit (Part 1 §1.4.3).
-watch(canUndo, (can) => {
-    if (can && notification.value.startup && (notification.value.action || notification.value.held))
+// The start-up pill with actions goes at the first edit (Part 1 §1.4.3): a stack a new visit
+// restored can already undo, so the action itself is what counts.
+const stopWatching = onHistoryAction((action) => {
+    if (action.kind === 'reset' || action.kind === 'save' || action.kind === 'export') return
+    if (notification.value.startup && (notification.value.action || notification.value.held))
         dismissNotification()
 })
+onBeforeUnmount(stopWatching)
 </script>
 
 <template>

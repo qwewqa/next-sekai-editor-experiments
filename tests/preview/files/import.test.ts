@@ -388,6 +388,23 @@ test('a sprite outside its texture is refused', async () => {
     )
 })
 
+test('a skin with no note body sprite is refused', async () => {
+    await expectRefused(
+        'skin',
+        valid('skin', {
+            resources: {
+                data: gz(
+                    skinData({
+                        sprites: [{ name: 'a', x: 0, y: 0, w: 16, h: 16, transform: {} }],
+                    }),
+                ),
+            },
+        }),
+        'noNoteSprites',
+        'This file’s skin has no note sprites.',
+    )
+})
+
 test('too many sprites or effects are refused', async () => {
     const sprites = Array.from({ length: 20_001 }, (_, i) => ({
         name: `s${i}`,

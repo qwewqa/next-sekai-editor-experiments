@@ -108,6 +108,17 @@ export type OpenDeps = {
     events: (event: LoadEvent) => void
 }
 
+/** The chain's file binding for the status label (§1.3.2). */
+const boundFileOf = (chain: Record<string, unknown>) => {
+    const file = chain.file as Record<string, unknown> | undefined
+    if (typeof file?.name !== 'string') return
+    return {
+        name: file.name,
+        ...(typeof file.event === 'string' ? { event: file.event } : {}),
+        ...(typeof file.at === 'number' ? { at: file.at } : {}),
+    }
+}
+
 const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName => ({
     name: displayName(namePartsOf(read.chain, state)),
     at: typeof read.session.startedAt === 'number' ? read.session.startedAt : Date.now(),
@@ -178,6 +189,7 @@ export const openStored = async (
     const id = how.mode === 'resume' ? String(session.id) : newId()
     const fork = how.mode === 'fork'
     const forkName = fork ? forkNameOf(namePartsOf(chain, state)) : undefined
+    const boundFile = boundFileOf(chain)
     const docId = fork ? newId() : (text(chain.docId) ?? newId())
     const name = fork ? forkName : text(chain.name)
     deps.show({
@@ -187,6 +199,8 @@ export const openStored = async (
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
             ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+            ...(typeof session.startedAt === 'number' ? { startedAt: session.startedAt } : {}),
+            ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
         }),
         slots,
         at,

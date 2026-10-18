@@ -27,7 +27,7 @@ watch(
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.editor.title">
+    <SettingsSection id="editor" :title="i18n.settings.editor.title">
         <SelectField
             v-model="settings.locale"
             :label="i18n.settings.editor.locale"

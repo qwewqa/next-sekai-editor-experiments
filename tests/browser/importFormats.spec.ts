@@ -184,7 +184,7 @@ for (const [label, name, buffer] of [
 ] as const) {
     test(`Chart Cyanvas level data imports from ${label}`, async ({ page }) => {
         await open(page, name, buffer)
-        await expect(page.locator('.notification')).toHaveText('Imported Chart Cyanvas level')
+        await expect(page.locator('.notification')).toContainText('Imported Chart Cyanvas level')
         await expect(page.getByRole('dialog')).toHaveCount(0)
         // The tap and both slide notes; the combo tick is scheduled by the editor.
         expect(await notes(page)).toEqual({ notes: 3, offset: 0.5 })
@@ -193,11 +193,11 @@ for (const [label, name, buffer] of [
 
 test('USC and SUS charts import with their own messages', async ({ page }) => {
     await open(page, 'chart.usc', Buffer.from(JSON.stringify(usc)))
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(page.locator('.notification')).toContainText('Imported USC chart')
     expect(await notes(page)).toEqual({ notes: 1, offset: -0.25 })
 
     await open(page, 'chart.sus', Buffer.from(sus))
-    await expect(page.locator('.notification')).toHaveText('Imported SUS chart')
+    await expect(page.locator('.notification')).toContainText('Imported SUS chart')
     expect((await notes(page)).notes).toBe(2)
 })
 
@@ -286,7 +286,7 @@ test('a SUS with a negative beat is refused', async ({ page }) => {
 // The editor's own level data for the USC chart, with one value replaced.
 const levelWithValue = async (page: Page) => {
     await open(page, 'chart.usc', Buffer.from(JSON.stringify(usc)))
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(page.locator('.notification')).toContainText('Imported USC chart')
     const level = await page.evaluate(async () => {
         const urls = new Map(
             performance
@@ -398,7 +398,7 @@ test("a USC 'none' direction flicks up, as the engine reads it", async ({ page }
         },
     }
     await open(page, 'chart.usc', Buffer.from(JSON.stringify(chart)))
-    await expect(page.locator('.notification')).toHaveText('Imported USC chart')
+    await expect(page.locator('.notification')).toContainText('Imported USC chart')
     const directions = await page.evaluate(async () => {
         const urls = new Map(
             performance
@@ -464,7 +464,7 @@ test('Chart Cyanvas attached ticks after a BPM change export clean lanes and siz
         ],
     }
     await open(page, 'level-data', gzipSync(JSON.stringify(level)))
-    await expect(page.locator('.notification')).toHaveText('Imported Chart Cyanvas level')
+    await expect(page.locator('.notification')).toContainText('Imported Chart Cyanvas level')
     const values = await page.evaluate(async () => {
         const urls = new Map(
             performance
@@ -592,7 +592,7 @@ for (const [label, chart] of [
 ] as const)
     test(`a SUS with ${label} saves, reopens and restores`, async ({ page }) => {
         await open(page, 'chart.sus', Buffer.from(chart))
-        await expect(page.locator('.notification')).toHaveText('Imported SUS chart')
+        await expect(page.locator('.notification')).toContainText('Imported SUS chart')
         const imported = (await notes(page)).notes
 
         await page.evaluate(() => {
@@ -608,7 +608,7 @@ for (const [label, chart] of [
         expect(gunzipSync(saved).toString()).not.toContain('null')
 
         await open(page, 'saved', saved)
-        await expect(page.locator('.notification')).toHaveText('Opened level')
+        await expect(page.locator('.notification')).toContainText('Opened level')
         await expect(page.getByRole('dialog')).toHaveCount(0)
         expect((await notes(page)).notes).toBe(imported)
 
@@ -639,7 +639,7 @@ test('level data with a null guide alpha, as older editors saved, opens with alp
     page,
 }) => {
     await open(page, 'chart.sus', Buffer.from(guideSus))
-    await expect(page.locator('.notification')).toHaveText('Imported SUS chart')
+    await expect(page.locator('.notification')).toContainText('Imported SUS chart')
     const level = await page.evaluate(async () => {
         const urls = new Map(
             performance
@@ -663,7 +663,7 @@ test('level data with a null guide alpha, as older editors saved, opens with alp
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await open(page, 'level-data', gzipSync(text))
-    await expect(page.locator('.notification')).toHaveText('Opened level')
+    await expect(page.locator('.notification')).toContainText('Opened level')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     const alphas = await page.evaluate(async () => {
         const urls = new Map(

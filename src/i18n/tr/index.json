@@ -542,6 +542,7 @@
         "imageSize": "Bu dosyadaki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
         "checksum": "Bu dosyadaki {1} ({0}) sağlama toplamıyla eşleşmiyor.",
         "spriteOutside": "Bu dosyadaki veride ({0}) dokunun dışında kalan bir sprite var.",
+        "noNoteSprites": "Bu dosyadaki veride ({0}) hiç nota sprite’ı yok.",
         "tooManySprites": "Bu dosyadaki veride ({0}) {1} sprite’tan fazlası var.",
         "tooManyEffects": "Bu dosyadaki veride ({0}) {1} efektten fazlası var.",
         "tooManyParticles": "Bu dosyadaki veride ({0}) {1} parçacıktan fazlası var.",
@@ -582,6 +583,7 @@
         "notImage": "Bu öğedeki {1} ({0}) PNG veya JPEG görseli değil.",
         "imageSize": "Bu öğedeki {1} ({0}) {2} × {3} boyutunda; sınır {4} × {4}.",
         "spriteOutside": "Bu öğedeki veride ({0}) dokunun dışında kalan bir sprite var.",
+        "noNoteSprites": "Bu öğedeki veride ({0}) hiç nota sprite’ı yok.",
         "tooManySprites": "Bu öğedeki veride ({0}) {1} sprite’tan fazlası var.",
         "tooManyEffects": "Bu öğedeki veride ({0}) {1} efektten fazlası var.",
         "particleCount": "Bu öğedeki \"{1}\" efekti ({0}) {2} parçacıktan fazlasını kullanıyor.",
@@ -919,6 +921,24 @@
       "diagnosticsNote": "Hata iletileri dosya ve klasör adlarını içerebilir. Herkese açık paylaşmadan önce kontrol edin.",
       "copy": "Kopyala",
       "copied": "Kopyalandı"
+    },
+    "sections": "Bölümler",
+    "localData": {
+      "title": "Yerel Veriler",
+      "recoveryHeading": "Kurtarma",
+      "discard": "Sil…",
+      "discardConfirm": "Sil",
+      "cannotOpen": "(bu sürümde açılamıyor)",
+      "discardAutoSave": "Eski otomatik kaydı ({0}) silmek istiyor musunuz?",
+      "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışmayı ({1}) silmek istiyor musunuz?",
+      "recovery": {
+        "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
+        "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
+        "legacy": "Eski kurtarma kopyası · {0}",
+        "autoSave": "Eski otomatik kayıt · {0}",
+        "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
+        "atLoad": "Bu yüklemede:"
+      }
     }
   },
   "sidebars": {
@@ -1140,10 +1160,40 @@
     "whatsNew": "Yenilikler",
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
     "olderVersion": "Bu sürüm verilerinizden daha eski. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
-    "tryAgain": "Tekrar Dene"
+    "tryAgain": "Tekrar Dene",
+    "continued": "\"{0}\", {1} tarihinden devam ettirildi.",
+    "continuedUntitled": "{0} tarihli oturumunuza devam edildi.",
+    "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
+    "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
+    "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
+    "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
+    "migrationFailed": "Eski otomatik kayıt kurtarılamadı.",
+    "autoSave": "\"{0}\", otomatik kayıttan devam ettirildi.",
+    "journal": "\"{0}\" üzerindeki son değişiklik kurtarıldı.",
+    "journalLater": "Kurtarılan bir değişiklik için editörün daha yeni bir sürümü gerekiyor.",
+    "openElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık.",
+    "restoreAsCopy": "Kopya Olarak Geri Yükle",
+    "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
+    "autoSaveKept": "\"{0}\", otomatik kayıttan ayrı bir oturum olarak saklandı.",
+    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Sonraki yüklemede yeniden denenecek.",
+    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
+    "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
+    "sessionDamaged": "Bu oturum açılamadı.",
+    "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
+    "newestDamaged": "En son oturumunuz açılamadı.",
+    "bgmNotLoaded": "BGM yüklenmedi.",
+    "more": "ve {0} tane daha Yerel Veriler’de",
+    "localData": "Yerel Veriler"
   },
   "storage": {
-    "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin."
+    "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",
+    "unavailable": "Bu tarayıcı editörün hiçbir şey saklamasına izin vermiyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "installedWebkit": "Son oturumlar, bu simge Ana Ekran’dan kaldırılana kadar burada tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "persisted": "Son oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "default": "Son oturumlar bu tarayıcıda tutulur; alan azalırsa tarayıcı bunları silebilir. Çalışmanızı korumak için bir dosyaya kaydedin."
   },
   "player": {
     "started": "Oynatmaya başlandı",
@@ -1152,10 +1202,6 @@
   },
   "history": {
     "initialize": "Başlat",
-    "changes": {
-      "title": "Değişiklikler",
-      "message": "Haritadaki değişiklikler kaybolabilir. Devam etmek istiyor musunuz?"
-    },
     "dynamicStages": {
       "title": "Dinamik Sahneler",
       "message": "Bu özellik dinamik sahneler gerektirir. Dinamik sahneleri etkinleştirmek istiyor musunuz?",
@@ -1776,7 +1822,11 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç’ı kullanın."
+    "useOpenFile": "Bir dosya açmak için Aç’ı kullanın.",
+    "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
+    "chooseAudio": "Ses Seç…",
+    "newLevel": "Yeni seviye",
+    "reopen": "\"{0}\" Yeniden Aç"
   },
   "entry": {
     "exported": "{0} dışa aktarıldı",
@@ -1786,5 +1836,19 @@
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı.",
     "continued": "Devam edildi",
     "migrated": "Otomatik kayıttan kurtarıldı"
+  },
+  "session": {
+    "untitled": "Adsız · {0}"
+  },
+  "prompt": {
+    "title": "Değişiklikler Saklanmıyor",
+    "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız kaybolur.",
+    "save": "Kaydet",
+    "leaveAnyway": "Yine de Ayrıl"
+  },
+  "status": {
+    "notInFile": "Dosyaya kaydedilmedi",
+    "separateCopy": "{0} için ayrı kopya",
+    "opensLevelInfo": "Seviye bilgisini açar"
   }
 }

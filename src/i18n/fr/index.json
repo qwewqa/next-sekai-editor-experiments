@@ -542,6 +542,7 @@
         "imageSize": "Dans ce fichier, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
         "checksum": "Dans ce fichier, {1} ({0}) : la somme de contrôle ne correspond pas.",
         "spriteOutside": "Dans ce fichier, les données ({0}) contiennent un sprite hors de la texture.",
+        "noNoteSprites": "Dans ce fichier, les données ({0}) n’ont aucun sprite de note.",
         "tooManySprites": "Dans ce fichier, les données ({0}) contiennent plus de {1} sprites.",
         "tooManyEffects": "Dans ce fichier, les données ({0}) contiennent plus de {1} effets.",
         "tooManyParticles": "Dans ce fichier, les données ({0}) contiennent plus de {1} particules.",
@@ -582,6 +583,7 @@
         "notImage": "Dans cet élément, {1} ({0}) : image PNG ou JPEG attendue.",
         "imageSize": "Dans cet élément, {1} ({0}) mesure {2} × {3} ; la limite est {4} × {4}.",
         "spriteOutside": "Dans cet élément, les données ({0}) contiennent un sprite hors de la texture.",
+        "noNoteSprites": "Dans cet élément, les données ({0}) n’ont aucun sprite de note.",
         "tooManySprites": "Dans cet élément, les données ({0}) contiennent plus de {1} sprites.",
         "tooManyEffects": "Dans cet élément, les données ({0}) contiennent plus de {1} effets.",
         "particleCount": "Dans cet élément, l’effet \"{1}\" ({0}) utilise plus de {2} particules.",
@@ -919,6 +921,24 @@
       "diagnosticsNote": "Les messages d’erreur de ce texte peuvent inclure des noms de fichiers et de dossiers. Relisez-le avant de le publier.",
       "copy": "Copier",
       "copied": "Copié"
+    },
+    "sections": "Rubriques",
+    "localData": {
+      "title": "Données locales",
+      "recoveryHeading": "Récupération",
+      "discard": "Abandonner…",
+      "discardConfirm": "Abandonner",
+      "cannotOpen": "(ne peut pas être ouvert dans cette version)",
+      "discardAutoSave": "Abandonner l’ancienne sauvegarde automatique ({0}) ?",
+      "discardUnreadable": "Abandonner le travail récupéré illisible du {0} ({1}) ?",
+      "recovery": {
+        "journal": "Travail non sauvegardé d’une visite précédente, {0} · {1}",
+        "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
+        "legacy": "Copie de récupération héritée · {0}",
+        "autoSave": "Ancienne sauvegarde automatique · {0}",
+        "unreadable": "Travail récupéré illisible, {0} · {1}",
+        "atLoad": "Lors de ce chargement :"
+      }
     }
   },
   "sidebars": {
@@ -1140,10 +1160,40 @@
     "whatsNew": "Nouveautés",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
     "olderVersion": "Cette version est plus ancienne que vos données. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
-    "tryAgain": "Réessayer"
+    "tryAgain": "Réessayer",
+    "continued": "Reprise de \"{0}\" du {1}.",
+    "continuedUntitled": "Reprise de votre session du {0}.",
+    "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
+    "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
+    "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
+    "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
+    "migrationFailed": "L’ancienne sauvegarde automatique n’a pas pu être restaurée.",
+    "autoSave": "Reprise de \"{0}\" depuis la sauvegarde automatique.",
+    "journal": "Dernière modification de \"{0}\" récupérée.",
+    "journalLater": "Une modification récupérée nécessite une version plus récente de l’éditeur.",
+    "openElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre.",
+    "restoreAsCopy": "Restaurer en copie",
+    "sessionDeleted": "Cette session a été supprimée dans un autre onglet ou une autre fenêtre.",
+    "autoSaveKept": "\"{0}\" de la sauvegarde automatique a été conservé dans une session séparée.",
+    "journalFailed": "Une modification récupérée n’a pas pu être stockée. Le prochain chargement réessaiera.",
+    "journalsFull": "Du travail non sauvegardé de visites précédentes occupe l’espace de ce navigateur.",
+    "sessionLater": "Cette session nécessite une version plus récente de l’éditeur.",
+    "sessionDamaged": "Cette session n’a pas pu être ouverte.",
+    "newestLater": "Votre session la plus récente nécessite une version plus récente de l’éditeur.",
+    "newestDamaged": "Votre session la plus récente n’a pas pu être ouverte.",
+    "bgmNotLoaded": "La BGM n’est pas chargée.",
+    "more": "et {0} autres dans Données locales",
+    "localData": "Données locales"
   },
   "storage": {
-    "reload": "Rechargez la page pour continuer à stocker les modifications."
+    "reload": "Rechargez la page pour continuer à stocker les modifications.",
+    "unavailable": "Ce navigateur ne laisse pas l’éditeur stocker quoi que ce soit. Sauvegardez dans un fichier pour conserver votre travail.",
+    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
+    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
+    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que cette icône soit retirée de l’écran d’accueil. Sauvegardez dans un fichier pour conserver votre travail.",
+    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez dans un fichier pour conserver votre travail.",
+    "default": "Les sessions récentes sont conservées dans ce navigateur, qui peut les effacer si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -1152,10 +1202,6 @@
   },
   "history": {
     "initialize": "Initialiser",
-    "changes": {
-      "title": "Modifications",
-      "message": "Les modifications apportées au niveau peuvent être perdues. Continuer ?"
-    },
     "dynamicStages": {
       "title": "Scènes dynamiques",
       "message": "Cette fonctionnalité nécessite les scènes dynamiques. Voulez-vous les activer ?",
@@ -1776,7 +1822,11 @@
     "tooLong": "Le nom est trop long"
   },
   "notice": {
-    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir."
+    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
+    "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
+    "chooseAudio": "Choisir l’audio…",
+    "newLevel": "Nouveau niveau",
+    "reopen": "Rouvrir \"{0}\""
   },
   "entry": {
     "exported": "{0} exporté",
@@ -1786,5 +1836,19 @@
     "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation n’a pas été conservée.|Dernière modification récupérée. {0} étapes d’annulation n’ont pas été conservées.",
     "continued": "Session reprise",
     "migrated": "Récupéré de la sauvegarde automatique"
+  },
+  "session": {
+    "untitled": "Sans titre · {0}"
+  },
+  "prompt": {
+    "title": "Modifications non stockées",
+    "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Quitter les perd.",
+    "save": "Sauvegarder",
+    "leaveAnyway": "Quitter quand même"
+  },
+  "status": {
+    "notInFile": "Non sauvegardé dans un fichier",
+    "separateCopy": "Copie séparée de {0}",
+    "opensLevelInfo": "Ouvre les informations du niveau"
   }
 }

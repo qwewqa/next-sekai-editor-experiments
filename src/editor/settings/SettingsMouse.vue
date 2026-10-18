@@ -7,7 +7,7 @@ import SettingsSection from './SettingsSection.vue'
 </script>
 
 <template>
-    <SettingsSection :title="i18n.settings.mouse.title">
+    <SettingsSection id="mouse" :title="i18n.settings.mouse.title">
         <SelectField
             v-model="settings.mouseSecondaryTool"
             :label="i18n.settings.mouse.secondaryTool.title"

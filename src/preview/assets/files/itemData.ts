@@ -10,6 +10,7 @@ import Value from 'typebox/value'
 import type { AssetType } from '../types'
 import { AssetImportError } from './errors'
 import { LIMITS } from './limits'
+import { isNoteBody } from './noteBodies'
 import { displayText } from './package'
 
 // The schemas and checks for the JSON of untrusted items (Part 2, 2.5.5): extra fields are
@@ -167,6 +168,9 @@ export const checkSkinData = (raw: unknown, mode: CheckMode): SkinData => {
             transform: cleanTransform(sprite.transform),
         })
     }
+    // A skin with no note body would draw blank notes, so it is refused, or falls back at load.
+    if (!sprites.some((sprite) => isNoteBody(sprite.name)))
+        throw new AssetImportError('noNoteSprites', { type: 'skin' })
     return {
         width: data.width,
         height: data.height,

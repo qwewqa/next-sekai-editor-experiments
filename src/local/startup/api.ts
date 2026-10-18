@@ -1,11 +1,10 @@
-import { shallowRef } from 'vue'
 import { createState } from '../../state'
 import { storageKey } from '../../storage'
 import { journalState } from '../journal/content'
 import { readJournal } from '../journal/format'
 import { hasWebLocks, sessionLock } from '../locks'
 import type { DisplayName } from '../names'
-import type { ShownName } from './events'
+import { previousSession } from './events'
 import {
     AUTO_SAVE_KEY,
     AUTO_SAVE_UNREADABLE_KEY,
@@ -20,8 +19,7 @@ import { claimSessionLock, MARKER_WAIT_MS } from './tab'
 // Restore as a Copy from a load notice, and Settings › Local Data › Recovery's rows with their
 // Open, Download and Discard…. Page-only: it drives the open session and the storage worker.
 
-/** The session left last in this tab by New, an open or a restore, while it can be reopened. */
-export const previousSession = shallowRef<{ sessionId: string; name: ShownName } | undefined>()
+export { previousSession }
 
 let context: { open: OpenDeps; recovery: RecoveryContext } | undefined
 
