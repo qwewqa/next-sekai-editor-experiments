@@ -1,19 +1,29 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    ref,
+    shallowRef,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { i18n } from '../../i18n'
 import { formatClockRange } from '../../i18n/when'
 import type { TimelinePiece } from '../../local/worker/timelineHandlers'
 import { dayLabel, stepsText } from './labels'
-import { readIndex, type Target } from './source'
-import { historyFilter } from './state'
+import { here, readIndex, type Target } from './source'
+import { hereRange, historyFilter, historyViewGeneration } from './state'
+import { session } from '../../history/session'
 
 // Go To's jump list (Part 1 §1.4.10.5): Now, then the days, newest first, with the sessions in
 // each; a day of one session is one row. While filtering it lists and counts saves and exports.
 // The piece at the top of the Timeline has a check; the list opens scrolled to it.
 
-const props = defineProps<{ current: Target | 'now' | undefined }>()
+const props = defineProps<{ current: Target | 'now' | undefined; restoreActiveId?: string }>()
 
-const emit = defineEmits<{ pick: [target: Target | 'now'] }>()
+const emit = defineEmits<{ pick: [target: Target | 'now']; ready: [] }>()
 
 type Item =
     | { kind: 'now'; id: string }
@@ -30,19 +40,50 @@ type Item =
 
 const pieces = shallowRef<TimelinePiece[]>()
 const failed = ref(false)
+let request = 0
+let frame = 0
+let restored = false
+const identity = () =>
+    [
+        historyViewGeneration(),
+        session.value.sessionId,
+        historyFilter.value,
+        hereRange.value?.from,
+        hereRange.value?.to,
+    ].join('|')
+const openedFor = identity()
+onBeforeUnmount(() => {
+    request++
+    cancelAnimationFrame(frame)
+})
 
 const load = async () => {
+    const mark = ++request
+    const context = identity()
     const filter = historyFilter.value
     pieces.value = undefined
     failed.value = false
+    if (filter === 'here' && here.scanning) return
     try {
         const index = await readIndex(filter)
-        if (filter === historyFilter.value) pieces.value = index.pieces
+        if (mark === request && context === identity()) pieces.value = index.pieces
     } catch {
-        failed.value = true
+        if (mark === request && context === identity()) failed.value = true
     }
 }
-watch(historyFilter, load, { immediate: true })
+watch(
+    [
+        historyFilter,
+        hereRange,
+        historyViewGeneration,
+        () => session.value.sessionId,
+        () => here.scanning,
+    ],
+    load,
+    {
+        immediate: true,
+    },
+)
 
 const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
 const rangeOf = (piece: TimelinePiece) => formatClockRange(piece.oldest, piece.newest)
@@ -111,6 +152,7 @@ const listId = useId()
 const optionId = (id: string) => `${listId}-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 const activeId = ref<string>()
 const list = useTemplateRef<HTMLDivElement>('list')
+defineExpose({ activeId: () => activeId.value })
 
 const scrollToItem = (id: string | undefined, block: ScrollLogicalPosition) => {
     if (!id) return
@@ -125,10 +167,18 @@ watch(
     () => pieces.value,
     async (loaded) => {
         if (!loaded) return
-        activeId.value = currentId.value ?? 'now'
+        const saved = !restored && openedFor === identity() ? props.restoreActiveId : undefined
+        activeId.value =
+            saved && items.value.some(({ id }) => id === saved) ? saved : (currentId.value ?? 'now')
+        restored = true
+        const mark = request
         await nextTick()
-        requestAnimationFrame(() => {
+        if (mark !== request) return
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(() => {
+            if (mark !== request) return
             scrollToItem(activeId.value, activeId.value === 'now' ? 'nearest' : 'center')
+            emit('ready')
         })
     },
 )
@@ -260,7 +310,7 @@ const labelOf = (item: Item) =>
 
 <style scoped>
 .goto-item {
-    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-1.5 transition-colors [@media(pointer:coarse)]:min-h-11;
+    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-1.5 transition-colors;
 }
 
 .goto-item-session {

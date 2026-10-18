@@ -68,7 +68,15 @@ import {
     status,
     type Target,
 } from './source'
-import { expandedGroups, historyFilter, listFocus } from './state'
+import {
+    expandedGroups,
+    historyFilter,
+    listFocus,
+    historyViewGeneration,
+    rememberHistoryView,
+    rememberedHistoryView,
+    restoreHistoryView,
+} from './state'
 
 // The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
 // Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
@@ -84,6 +92,12 @@ const list = useTemplateRef<HTMLDivElement>('list')
 const scrollTop = ref(0)
 const viewport = ref(0)
 const width = ref(0)
+const memoryGeneration = historyViewGeneration()
+const mountedSession = session.value.sessionId
+const savedView = props.surface === 'dialog' ? rememberedHistoryView() : undefined
+let viewRestored = !savedView
+let restoreFrame = 0
+let restoreReady = false
 
 followEntries()
 useScrollMemory(() => `${props.surface}:history`, list)
@@ -262,6 +276,54 @@ const rowOf = (key: string | undefined) => {
     )
 }
 
+const rememberView = () => {
+    const element = list.value
+    if (props.surface !== 'dialog' || !element || !viewRestored) return
+    const index = rowAt(geometry.value, element.scrollTop)
+    const anchor = rows.value[index]
+    if (!anchor) return
+    const first = entries.value[0]
+    const last = entries.value.at(-1)
+    rememberHistoryView(
+        {
+            sessionId: mountedSession,
+            cursorId: cursorId.value,
+            anchorId: anchor.id,
+            offset: element.scrollTop - (geometry.value.offsets[index] ?? 0),
+            window: {
+                first: first && keyOf(first),
+                last: last && keyOf(last),
+                gap: gap.value !== undefined,
+            },
+        },
+        memoryGeneration,
+    )
+}
+const restoreView = () => {
+    const element = list.value
+    if (!restoreReady || viewRestored || !savedView || !element) return
+    if (
+        memoryGeneration !== historyViewGeneration() ||
+        mountedSession !== session.value.sessionId
+    ) {
+        viewRestored = true
+        return
+    }
+    if (historyFilter.value === 'here') {
+        if (here.scanning) return
+    } else if (
+        status.value === 'loading' &&
+        !rows.value.some(({ id }) => id === savedView.anchorId)
+    )
+        return
+    const restored = restoreHistoryView(savedView, geometry.value, rowOf(peekedKey.value)?.id)
+    cursorId.value = peekedKey.value ? restored.cursorId : 'now'
+    element.scrollTop = restored.top
+    scrollTop.value = element.scrollTop
+    viewRestored = true
+}
+watch([geometry, status, () => here.scanning], () => void nextTick(restoreView), { flush: 'post' })
+
 watch([peekedKey, () => rows.value], () => {
     const key = peekedKey.value
     const row = rowOf(key)
@@ -309,6 +371,7 @@ const rowInfo = (row: EntryRow): PeekedInfo => ({
 
 const moveTo = (row: Row | undefined) => {
     if (!row) return
+    viewRestored = true
     // After a jump, Now goes back to the newest entries.
     if (row.type === 'now' && gap.value !== undefined) {
         void goNow()
@@ -703,8 +766,20 @@ onMounted(() => {
     width.value = element.clientWidth
     // The dialog's list takes focus as it opens; the tab's only for a link that asked.
     if (props.surface === 'dialog') element.focus({ preventScroll: true })
+    restoreFrame = requestAnimationFrame(() => {
+        restoreReady = true
+        if (!savedView || memoryGeneration !== historyViewGeneration()) {
+            if (props.surface === 'dialog') {
+                element.scrollTop = 0
+                scrollTop.value = 0
+            }
+        }
+        restoreView()
+    })
 })
 onBeforeUnmount(() => {
+    rememberView()
+    cancelAnimationFrame(restoreFrame)
     observer?.disconnect()
     clearTimeout(clockTimer)
     cancelLongPress()
@@ -787,7 +862,12 @@ const notCheckedText = computed(() =>
     interpolateRaw(i18n.value.history.notChecked, String(here.unreadable)),
 )
 
-defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, topEntry })
+defineExpose({
+    focus: () => list.value?.focus({ preventScroll: true }),
+    jumpTo,
+    topEntry,
+    rememberView,
+})
 </script>
 
 <template>
@@ -795,6 +875,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
         <div
             ref="list"
             data-history-list
+            data-history-focus="list"
             role="listbox"
             tabindex="0"
             class="timeline-list overlay-scroller h-full overflow-y-auto overscroll-contain outline-none"
@@ -1019,7 +1100,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                     <span>{{ i18n.history.loadFailed }}</span>
                     <button
                         type="button"
-                        class="h-9 rounded-full bg-button px-4 font-bold text-fg shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        class="h-9 rounded-full bg-button px-4 font-bold text-fg shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                         @click="retry"
                     >
                         {{ i18n.history.tryAgain }}

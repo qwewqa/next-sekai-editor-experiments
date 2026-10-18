@@ -65,8 +65,9 @@ let opener: { pane: Element; index: number } | undefined
 // Read before any render unmounts the toolbar, or the dialog on close.
 watch(
     current,
-    (modal) => {
+    (modal, previous) => {
         if (!modal) {
+            if (previous && modals.some(({ id }) => id === previous.id)) return
             returnFocus()
             return
         }

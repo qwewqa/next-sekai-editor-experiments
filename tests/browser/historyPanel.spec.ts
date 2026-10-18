@@ -1123,7 +1123,7 @@ test.describe('ARIA', () => {
 test.describe('touch targets', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
 
-    test('rows, tabs, Go To and the peek bar are 44 px, and the bar hints at folding the tab', async ({
+    test('touch preserves standard History chrome and 44 px timeline rows without fold hints', async ({
         page,
     }) => {
         await edit(page, 2)
@@ -1132,9 +1132,9 @@ test.describe('touch targets', () => {
         const rowBox = await row(page, 'Life 1').boundingBox()
         expect(rowBox?.height).toBe(44)
         const goTo = await page.locator('[data-history-goto-button]').boundingBox()
-        expect(goTo?.height).toBeGreaterThanOrEqual(44)
+        expect(goTo?.height).toBe(32)
         const track = await page.getByRole('tablist', { name: 'History' }).boundingBox()
-        expect(track?.height).toBeGreaterThanOrEqual(44)
+        expect(track?.height).toBe(32)
         await row(page, 'Life 1').tap()
         await expect(peekBar(page)).toBeVisible()
         const restore = await peekBar(page).getByRole('button', { name: 'Restore' }).boundingBox()

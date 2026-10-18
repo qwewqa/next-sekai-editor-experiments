@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    shallowRef,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -11,15 +21,25 @@ import { hereRangeText } from './editsHere'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import { backToNow, peekedInfo } from './selection'
 import type { Target } from './source'
-import { hereRange, historyFilter, historyTab, type HistoryTab } from './state'
+import {
+    hereRange,
+    historyFilter,
+    historyTab,
+    historyViewGeneration,
+    type HistoryTab,
+} from './state'
 import TimelineList from './TimelineList.vue'
+import type { HistoryPresentation } from './presentation'
 
 // The History panel (Part 1 §1.4.10), in a dock or in the dialog: one band with the two tabs,
 // Timeline and Recent Sessions, and Go To; then the list. There is no action bar in it: the peek's
 // controls are on the canvas (§1.4.11), so the body is all list.
 
-const props = withDefaults(defineProps<{ surface?: 'panel' | 'dialog' }>(), { surface: 'panel' })
-const emit = defineEmits<{ close: [] }>()
+const props = withDefaults(
+    defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
+    { surface: 'panel' },
+)
+const emit = defineEmits<{ close: []; chrome: [height: number] }>()
 
 const tabs: readonly HistoryTab[] = ['timeline', 'sessions']
 
@@ -31,6 +51,7 @@ const title = (tab: HistoryTab) =>
     tab === 'timeline' ? i18n.value.history.timeline : i18n.value.history.recentSessions
 
 const band = useTemplateRef<HTMLElement>('band')
+const filterBanner = useTemplateRef<HTMLElement>('filterBanner')
 const tablist = useTemplateRef<HTMLElement>('tablist')
 const goToButton = useTemplateRef<HTMLButtonElement>('goToButton')
 // What the Timeline offers Go To.
@@ -38,6 +59,7 @@ type TimelineHandle = {
     focus: () => void
     jumpTo: (target: Target | 'now') => Promise<void>
     topEntry: () => Target | 'now'
+    rememberView: () => void
 }
 const timeline = useTemplateRef<TimelineHandle>('timeline')
 
@@ -45,16 +67,54 @@ const timeline = useTemplateRef<TimelineHandle>('timeline')
 // dock too narrow even for that it takes a second line. The dialog's × takes its share.
 const bandWidth = ref(0)
 let observer: ResizeObserver | undefined
+const measureChrome = () => {
+    if (band.value) bandWidth.value = band.value.clientWidth
+    emit(
+        'chrome',
+        (band.value?.getBoundingClientRect().height ?? 0) +
+            (filterBanner.value?.getBoundingClientRect().height ?? 0),
+    )
+}
 onMounted(() => {
     const element = band.value
     if (!element) return
-    observer = new ResizeObserver(() => {
-        bandWidth.value = element.clientWidth
-    })
+    observer = new ResizeObserver(measureChrome)
     observer.observe(element)
-    bandWidth.value = element.clientWidth
+    if (filterBanner.value) observer.observe(filterBanner.value)
+    measureChrome()
 })
 onBeforeUnmount(() => observer?.disconnect())
+watch(
+    filterBanner,
+    (element, previous) => {
+        if (previous) observer?.unobserve(previous)
+        if (element) observer?.observe(element)
+        measureChrome()
+    },
+    { flush: 'post' },
+)
+
+const goToPopover = useTemplateRef<InstanceType<typeof GoToPopover>>('goToPopover')
+const goToList = useTemplateRef<InstanceType<typeof GoToList>>('goToList')
+const savedGoTo = shallowRef(props.presentation?.takeGoTo())
+let goToGeneration = historyViewGeneration()
+defineExpose({
+    hasGoTo: () => goToOpen.value,
+    rememberView: () => {
+        timeline.value?.rememberView()
+        props.presentation?.rememberGoTo(
+            goToOpen.value
+                ? {
+                      current: goToCurrent.value,
+                      activeId: goToList.value?.activeId(),
+                      ...goToPopover.value?.captureView(),
+                      top: goToPopover.value?.captureView().top ?? 0,
+                  }
+                : undefined,
+            goToGeneration,
+        )
+    },
+})
 
 const LABEL_FROM = 362
 const ICON_FROM = 236
@@ -79,14 +139,25 @@ const filterText = computed(() => {
 const onTimeline = computed(() => historyTab.value === 'timeline')
 
 // --- Go To
-const goToOpen = ref(false)
+const goToOpen = ref(!!savedGoTo.value)
 const closeGoTo = (restoreFocus: boolean) => {
     goToOpen.value = false
+    savedGoTo.value = undefined
     if (restoreFocus) void nextTick(() => goToButton.value?.focus({ preventScroll: true }))
 }
+watch(historyViewGeneration, () => closeGoTo(false), { flush: 'sync' })
+watch(
+    [historyFilter, hereRange],
+    () => {
+        savedGoTo.value = undefined
+    },
+    { flush: 'sync' },
+)
 // The piece at the top of the list is Go To's current one.
-const goToCurrent = ref<Target | 'now'>()
+const goToCurrent = ref<Target | 'now'>(savedGoTo.value?.current)
 const openGoTo = () => {
+    goToGeneration = historyViewGeneration()
+    savedGoTo.value = undefined
     goToCurrent.value = timeline.value?.topEntry()
     goToOpen.value = true
 }
@@ -97,6 +168,7 @@ const toggleGoTo = () => {
 // Picking closes Go To, jumps there and hands the keys to the list.
 const onGoToPick = (target: Target | 'now') => {
     goToOpen.value = false
+    savedGoTo.value = undefined
     timeline.value?.focus()
     void timeline.value?.jumpTo(target)
 }
@@ -149,7 +221,7 @@ const blurAfterPointer = (event: MouseEvent) => {
 // A narrow band trims the segments' padding, so both labels keep their room.
 const segment = computed(
     () =>
-        `flex h-7 items-center justify-center rounded-full text-sm transition-colors [@media(pointer:coarse)]:h-11 ${
+        `flex h-7 items-center justify-center rounded-full text-sm transition-colors ${
             bandWidth.value > 0 && bandWidth.value < 340 ? 'px-2' : 'px-3'
         }`,
 )
@@ -189,6 +261,7 @@ const goToButtonTitle = computed(() =>
                     :aria-controls="historyTab === tab ? panelId : undefined"
                     :tabindex="historyTab === tab ? 0 : -1"
                     :title="title(tab)"
+                    :data-history-focus="`tab-${tab}`"
                     @click="(select(tab), blurAfterPointer($event))"
                     @keydown="onTabKeydown"
                 >
@@ -205,16 +278,15 @@ const goToButtonTitle = computed(() =>
                 :aria-expanded="goToOpen"
                 :aria-hidden="onTimeline ? undefined : true"
                 :tabindex="onTimeline ? 0 : -1"
-                class="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-button text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                class="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-button text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                 :class="[
-                    mode === 'icon'
-                        ? 'w-8 justify-center [@media(pointer:coarse)]:w-11'
-                        : 'pl-3 pr-2',
+                    mode === 'icon' ? 'w-8 justify-center' : 'pl-3 pr-2',
                     { invisible: !onTimeline },
                 ]"
                 :title="goToButtonTitle"
                 :aria-label="i18n.history.goTo"
                 data-history-goto-button
+                data-history-focus="goto"
                 @click="(toggleGoTo(), blurAfterPointer($event))"
                 @keydown="onGoToKeydown"
             >
@@ -227,25 +299,28 @@ const goToButtonTitle = computed(() =>
             <button
                 v-if="surface === 'dialog'"
                 type="button"
-                class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11"
+                class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
                 :aria-label="i18n.modals.close"
                 :title="i18n.modals.close"
                 data-history-close
+                data-history-focus="close"
                 @click="emit('close')"
             >
-                <CloseIcon class="size-4 [@media(pointer:coarse)]:size-5" />
+                <CloseIcon class="size-4" />
             </button>
         </div>
         <!-- While filtering, a banner says so; Show All is the way back. -->
         <div
             v-if="onTimeline && filtered"
-            class="flex h-9 shrink-0 items-center justify-between border-b border-fg/15 pl-5 pr-2 text-xs [@media(pointer:coarse)]:h-11"
+            ref="filterBanner"
+            class="flex h-9 shrink-0 items-center justify-between border-b border-fg/15 pl-5 pr-2 text-xs"
             data-history-filter-banner
         >
             <span class="min-w-0 truncate">{{ filterText }}</span>
             <button
                 type="button"
-                class="flex h-7 shrink-0 items-center rounded-full bg-button px-3 font-bold shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-9"
+                class="flex h-7 shrink-0 items-center rounded-full bg-button px-3 font-bold shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                data-history-focus="show-all"
                 @click="(showAll(), blurAfterPointer($event))"
             >
                 {{ i18n.history.showAll }}
@@ -265,8 +340,20 @@ const goToButtonTitle = computed(() =>
             />
             <RecentSessionsTab v-else />
         </div>
-        <GoToPopover v-if="goToOpen && goToButton" :anchor="goToButton" @close="closeGoTo">
-            <GoToList :current="goToCurrent" @pick="onGoToPick" />
+        <GoToPopover
+            v-if="goToOpen && goToButton"
+            ref="goToPopover"
+            :anchor="goToButton"
+            :restore="savedGoTo"
+            @close="closeGoTo"
+        >
+            <GoToList
+                ref="goToList"
+                :current="goToCurrent"
+                :restore-active-id="savedGoTo?.activeId"
+                @pick="onGoToPick"
+                @ready="goToPopover?.restoreScroll()"
+            />
         </GoToPopover>
     </div>
 </template>

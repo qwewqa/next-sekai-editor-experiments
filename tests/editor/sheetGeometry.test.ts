@@ -26,7 +26,10 @@ test('short bottom sheets include their CSS minimum, and taller sheets use rem l
     assert.equal(getSheetGeometry({ width: 320, height: 200, peekClearance: 112 }).height, 144)
     assert.equal(getSheetGeometry({ width: 320, height: 436, peekClearance: 112 }).height, 196)
     assert.equal(getSheetGeometry({ width: 320, height: 1000, peekClearance: 112 }).height, 480)
-    assert.equal(getSheetGeometry({ width: 320, height: 1000, peekClearance: 112, rem: 20 }).height, 550)
+    assert.equal(
+        getSheetGeometry({ width: 320, height: 1000, peekClearance: 112, rem: 20 }).height,
+        550,
+    )
 })
 
 test('prospective peek geometry includes top padding and retains measured wrapping', () => {
