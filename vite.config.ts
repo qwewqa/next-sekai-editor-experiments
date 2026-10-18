@@ -27,6 +27,9 @@ const pages = (mode: string) => ({
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+    // Each checkout keeps its own dependency cache, so worktrees whose node_modules is a link to
+    // another checkout's never rewrite that checkout's cache.
+    cacheDir: '.vite-cache',
     server: {
         watch: { ignored: ['**/test-results*/**', '**/playwright-report/**'] },
     },
