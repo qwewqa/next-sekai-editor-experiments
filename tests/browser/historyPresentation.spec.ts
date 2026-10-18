@@ -299,6 +299,85 @@ test('reset clears view memory and discards the deferred elevation return', asyn
     ).toEqual({ open: false, memory: undefined })
 })
 
+test('promotion waits for an interrupted Edits Here scan before restoring its anchor', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await open(page)
+    await expect(row(page, 'Property 29')).toBeVisible()
+    await page.evaluate(async () => {
+        const [start, source, state] = await Promise.all([
+            window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            ),
+            window.editorTest.appImport<typeof import('../../src/editor/history/source')>(
+                '/src/editor/history/source.ts',
+            ),
+            window.editorTest.appImport<typeof import('../../src/editor/history/state')>(
+                '/src/editor/history/state.ts',
+            ),
+        ])
+        const target = window as unknown as { hereCalls: number; releaseHere: () => void }
+        target.hereCalls = 0
+        const matches = source.entries.value.slice(0, 20).map((entry, index) => ({
+            ...entry,
+            pos: index,
+            previous: source.entries.value[index + 1],
+        }))
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const original = worker.call.bind(worker)
+        worker.call = (name, ...args) => {
+            if (name !== 'findEdits') return original(name, ...args)
+            target.hereCalls++
+            const result = { matches, unreadable: 0, top: matches[0] }
+            if (target.hereCalls === 1) return Promise.resolve({ ...result, cursor: { before: 1 } })
+            if (target.hereCalls === 2) return new Promise(() => {})
+            return new Promise((resolve) => {
+                target.releaseHere = () => resolve(result)
+            })
+        }
+        state.hereRange.value = { from: 0, to: 16 }
+        state.historyFilter.value = 'here'
+    })
+    await expect
+        .poll(() => page.evaluate(() => (window as unknown as { hereCalls: number }).hereCalls))
+        .toBe(2)
+    await list(page).focus()
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('PageDown')
+    await expect.poll(async () => (await selected(page)).displayed).toBeTruthy()
+    await page.keyboard.press('PageDown')
+    await expect.poll(async () => {
+        const current = await selected(page)
+        return current.requested === current.displayed
+    }).toBe(true)
+    const before = await selected(page)
+    const top = await list(page).evaluate((element) => element.scrollTop)
+    expect(top).toBeGreaterThan(0)
+    const pinned = () =>
+        page.evaluate(async () => {
+            const selection = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return selection.peekedInfo.value?.pinned
+        })
+    const beforePinned = await pinned()
+    await page.setViewportSize({ width: 520, height: 320 })
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
+    await expect
+        .poll(() => page.evaluate(() => (window as unknown as { hereCalls: number }).hereCalls))
+        .toBe(3)
+    await expect(list(page).getByRole('option')).toHaveCount(1)
+    await page.evaluate(() => (window as unknown as { releaseHere: () => void }).releaseHere())
+    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top)
+    await expect(list(page).getByRole('option', { selected: true })).toContainText(before.label!)
+    await expect(list(page)).toBeFocused()
+    expect(await selected(page)).toEqual(before)
+    expect(await pinned()).toEqual(beforePinned)
+})
+
 test.describe('touch compact History', () => {
     test.use({ hasTouch: true, viewport: { width: 568, height: 320 } })
     test('selection stays in a useful list until View Chart is tapped', async ({ page }) => {

@@ -309,7 +309,12 @@ const restoreView = () => {
         viewRestored = true
         return
     }
-    if (status.value === 'loading' && !rows.value.some(({ id }) => id === savedView.anchorId))
+    if (historyFilter.value === 'here') {
+        if (here.scanning) return
+    } else if (
+        status.value === 'loading' &&
+        !rows.value.some(({ id }) => id === savedView.anchorId)
+    )
         return
     const restored = restoreHistoryView(savedView, geometry.value, rowOf(peekedKey.value)?.id)
     cursorId.value = peekedKey.value ? restored.cursorId : 'now'
@@ -317,7 +322,7 @@ const restoreView = () => {
     scrollTop.value = element.scrollTop
     viewRestored = true
 }
-watch([geometry, status], () => void nextTick(restoreView), { flush: 'post' })
+watch([geometry, status, () => here.scanning], () => void nextTick(restoreView), { flush: 'post' })
 
 watch([peekedKey, () => rows.value], () => {
     const key = peekedKey.value
