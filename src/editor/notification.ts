@@ -1,42 +1,43 @@
-import { shallowRef, watch } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
 import { RELEASE_NOTES_URL } from '../buildInfo'
 import { i18n } from '../i18n'
 import { launch } from '../launch'
+import { isBlockingModalOpen } from '../modals'
 import { appVersion, platform } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { startupGate } from '../startup/gate'
 import { interpolate } from '../utils/interpolate'
+import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
-/** A notice's one button (Part 1 §1.4.1). */
+/** A card's one button (Part 1 §1.4.1). */
 export type NoticeAction = { label: () => string; run: () => void }
 
-/** One line of the start-up pill, with at most one action (Part 1 §1.4.3). */
-export type NoticeLine = { message: () => string; action?: NoticeAction }
+/** One line of the start-up card, with at most one action (Part 1 §1.4.3). */
+export type NoticeLine = {
+    message: () => string
+    action?: NoticeAction
+    /** The name and version, which the card joins into its heading. */
+    heading?: boolean
+}
 
 export type Notice = {
     id: number
     message?: () => string
-    /** The first line's action, or the first of the pill's lines that has one. */
+    /** The first line's action, or the first of the card's lines that has one. */
     action?: NoticeAction
-    /** The start-up pill's lines, each with its own action. */
+    /** The start-up card's lines, each with its own action. */
     lines?: NoticeLine[]
     /** What the live region reads in place of the message, such as the message and another way to the action. */
     announcement?: () => string
-    /** The start-up pill, which stays a little longer. */
+    /** The start-up notice, which stays a little longer. */
     startup?: boolean
-    /** A pill with load notices: it stays and times out as an action notice does, button or not. */
-    held?: boolean
+    /** A message that must be read: a card without an action. */
+    card?: boolean
 }
-
-/** How long a notice with an action stays (Part 1 §1.4.1, §1.4.3). */
-export const NOTICE_MS = 6000
-export const STARTUP_NOTICE_MS = 8000
-/** The least a notice has left once hover or focus lets go, so it can still be read. */
-const RESUME_MIN_MS = 1500
 
 let id = 0
 
-/** How many load notices the pill shows before "and N more in Local Data" (Part 1 §1.4.3). */
+/** How many load notices the start-up card shows before "and N more in Local Data" (Part 1 §1.4.3). */
 export const PILL_NOTICES = 3
 
 // "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New (Part 1 §1.4.3).
@@ -44,7 +45,7 @@ const titleLines = (): NoticeLine[] => {
     const name = PRODUCT_NAME
     if (launch.updated)
         return [
-            { message: () => name },
+            { message: () => name, heading: true },
             {
                 message: interpolate(() => i18n.value.load.updated, launch.release),
                 action: {
@@ -56,52 +57,86 @@ const titleLines = (): NoticeLine[] => {
             },
         ]
     return [
-        { message: () => name },
-        { message: interpolate(() => i18n.value.load.version, appVersion().appVersion) },
+        { message: () => name, heading: true },
+        {
+            message: interpolate(() => i18n.value.load.version, appVersion().appVersion),
+            heading: true,
+        },
     ]
 }
 
-const noticeOf = (lines: NoticeLine[], held: boolean): Notice => ({
+/** A card has an action or is flagged one; other notices are quick feedback (Part 1 §1.4.1). */
+const isCard = (notice: Notice) => notice.action !== undefined || notice.card === true
+
+const noticeOf = (lines: NoticeLine[]): Notice => ({
     id: id++,
     startup: true,
-    held,
     lines,
     message: () => lines.map((line) => line.message()).join('\n'),
     action: lines.find((line) => line.action)?.action,
+    // Load notices make a card even when none has a button.
+    card: lines.some((line) => !line.heading),
 })
 
-export const notification = shallowRef<Notice>(noticeOf(titleLines(), false))
+const first = noticeOf(titleLines())
+
+/** Quick feedback: one at a time, fading by itself, never replacing a card. */
+export const notification = shallowRef<Notice>(isCard(first) ? { id: first.id } : first)
+/** The card: one at a time, with a close button, and a timeout. */
+export const noticeCard = shallowRef<Notice | undefined>(isCard(first) ? first : undefined)
+/** The notice raised last, whichever slot it is in, for the live region. */
+export const latestNotice = shallowRef<Notice>(first)
+
+// Where a notice raised while a blocking dialog was open is drawn: over that dialog.
+export const cardInDialog = ref(false)
+export const quickInDialog = ref(false)
+let quickAt = 0
+/** A quick notice raised in a dialog moves to the pane when the dialog closes only while it still shows. */
+const QUICK_VISIBLE_MS = 1000
 
 let timer: ReturnType<typeof setTimeout> | undefined
 let remaining = 0
 let startedAt = 0
-const holds = new Set<string>()
+type HoldSource = 'hover' | 'focus' | 'hidden' | 'dialog'
+const holds = new Set<HoldSource>()
+// The card raised in this task, which the edit that raised it must not dismiss.
+let raisedNow = -1
 
 const stopTimer = () => {
     clearTimeout(timer)
     timer = undefined
 }
 
+// The start-up card is out of sight, and its time not running, while the startup gate shows.
+const waitingOnGate = (card: Notice) => !!card.startup && startupGate.phase !== 'done'
+
 const startTimer = (ms: number) => {
     stopTimer()
     remaining = ms
     startedAt = Date.now()
-    const shown = notification.value.id
+    const shown = noticeCard.value?.id
     timer = setTimeout(() => {
-        // A later notice has its own timer.
-        if (notification.value.id === shown) dismissNotification()
+        // A later card has its own timer.
+        if (noticeCard.value?.id === shown) dismissNoticeCard()
     }, ms)
     // A timer left by a test never holds the process open.
     ;(timer as { unref?: () => void }).unref?.()
 }
 
+/** A blocking dialog covers a card drawn in the pane. */
+const covered = () => isBlockingModalOpen.value && !cardInDialog.value
+const hidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden'
+
 const track = () => {
     holds.clear()
     stopTimer()
-    // The start-up pill is out of sight, and its time not running, while the startup gate shows.
-    if (notification.value.startup && startupGate.phase !== 'done') return
-    if (notification.value.action || notification.value.held)
-        startTimer(notification.value.startup ? STARTUP_NOTICE_MS : NOTICE_MS)
+    const card = noticeCard.value
+    if (!card) return
+    remaining = noticeDuration(!!card.startup, (card.message?.() ?? '').length)
+    if (hidden()) holds.add('hidden')
+    if (covered()) holds.add('dialog')
+    if (holds.size || waitingOnGate(card)) return
+    startTimer(remaining)
 }
 track()
 
@@ -134,11 +169,20 @@ const pillLines = (): NoticeLine[] => {
     return lines
 }
 
-// Shows the pill again: with the gate lifted, or with a load notice found.
+// Shows the start-up notice again: with the gate lifted, or with a load notice found. With load
+// notices or the update line it is the start-up card; else quick feedback, as in v0.5.22.
 const refreshPill = () => {
-    if (!notification.value.startup) return
-    notification.value = noticeOf(pillLines(), loadNotices.value.length > 0)
-    track()
+    if (!notification.value.startup && !noticeCard.value?.startup) return
+    const next = noticeOf(pillLines())
+    latestNotice.value = next
+    if (isCard(next)) {
+        if (notification.value.startup) notification.value = { id: notification.value.id }
+        noticeCard.value = next
+        cardInDialog.value = false
+        track()
+    } else {
+        notification.value = next
+    }
 }
 
 watch(
@@ -149,8 +193,8 @@ watch(
 )
 
 /**
- * Adds a load notice (Part 1 §1.4.3): a line on the start-up pill while it still shows, which then
- * stays about 8 s. Once the pill has gone (an edit, another notice), the line is only kept, since
+ * Adds a load notice (Part 1 §1.4.3): a line on the start-up card while it still shows, which then
+ * stays about 8 s. Once the card has gone (an edit, another card), the line is only kept, since
  * nothing appears at an arbitrary time.
  */
 export const addLoadNotice = (message: () => string, action?: NoticeAction, order = 0) => {
@@ -165,51 +209,102 @@ export const addLoadNotice = (message: () => string, action?: NoticeAction, orde
 }
 
 /**
- * Shows a notice. With an action it is a pill with a button that stays about 6 s, pausing while
- * hovered or focused; Alt+N focuses the button. Returns the notice's id.
+ * Shows a notice. With an action, or flagged `card`, it is a card: a message with a button and a
+ * close button that stays about 6 s, pausing while hovered or focused; Alt+N focuses the button.
+ * Anything else is quick feedback, which fades and never replaces a card. Returns the notice's id.
  */
 export const notify = (
     message: () => string,
-    options?: { action?: NoticeAction; announcement?: () => string },
+    options?: { action?: NoticeAction; card?: boolean; announcement?: () => string },
 ) => {
-    notification.value = {
+    const notice: Notice = {
         id: id++,
         message,
         action: options?.action,
+        card: options?.card,
         announcement: options?.announcement,
     }
-    track()
-    return notification.value.id
+    latestNotice.value = notice
+    if (isCard(notice)) {
+        raisedNow = notice.id
+        queueMicrotask(() => {
+            if (raisedNow === notice.id) raisedNow = -1
+        })
+        cardInDialog.value = isBlockingModalOpen.value
+        noticeCard.value = notice
+        track()
+    } else {
+        quickInDialog.value = isBlockingModalOpen.value
+        quickAt = Date.now()
+        notification.value = notice
+    }
+    return notice.id
 }
 
-/** Removes the shown notice, whatever it is. */
+/** Removes the quick notice, whatever it is. */
 export const dismissNotification = () => {
     notification.value = { id: notification.value.id }
+    quickInDialog.value = false
+}
+
+/** Removes the card: the close button, a swipe, Esc in it, its timeout, a later edit or a switch. */
+export const dismissNoticeCard = () => {
+    if (!noticeCard.value) return
+    noticeCard.value = undefined
+    cardInDialog.value = false
     track()
 }
 
 /**
- * Removes a plain notice that no longer holds, such as one for a drag that changed nothing.
- * A notice with an action (Undo, Reopen, the update line) or load notices is another feature's, so it stays.
+ * The card at the user's next edit, unless that edit raised it (Part 1 §1.4.1): its Undo or
+ * Reopen never outlives the state it was offered for.
+ */
+export const dismissCardForEdit = () => {
+    if (noticeCard.value && noticeCard.value.id !== raisedNow) dismissNoticeCard()
+}
+
+/**
+ * Removes quick feedback that no longer holds, such as one for a drag that changed nothing. A
+ * card (Undo, Reopen, the update line, load notices) is another feature's, so it stays.
  */
 export const clearNotification = () => {
-    if (notification.value.action || notification.value.held) return
     dismissNotification()
 }
 
-/** Pauses the notice's timeout while the pointer or focus is on it. */
-export const holdNotice = (source: 'hover' | 'focus', held: boolean) => {
-    if (!notification.value.action && !notification.value.held) return
+/** Pauses the card's timeout while the pointer or focus is on it, the page is hidden or a dialog covers it. */
+export const holdNotice = (source: HoldSource, held: boolean) => {
+    const card = noticeCard.value
+    if (!card) return
     if (held) {
         if (!holds.size && timer !== undefined) {
             stopTimer()
             remaining -= Date.now() - startedAt
         }
         holds.add(source)
-    } else if (holds.delete(source) && !holds.size) {
+    } else if (holds.delete(source) && !holds.size && !waitingOnGate(card)) {
         startTimer(Math.max(remaining, RESUME_MIN_MS))
     }
 }
 
-/** What the live region reads for the current notice. */
+if (typeof document !== 'undefined')
+    document.addEventListener('visibilitychange', () => {
+        holdNotice('hidden', hidden())
+    })
+
+watch(
+    isBlockingModalOpen,
+    (open) => {
+        holdNotice('dialog', open && !cardInDialog.value)
+        if (open) return
+        // What a dialog showed moves to the pane, a quick notice only while it still shows.
+        cardInDialog.value = false
+        if (quickInDialog.value) {
+            quickInDialog.value = false
+            if (Date.now() - quickAt > QUICK_VISIBLE_MS) dismissNotification()
+        }
+    },
+    { flush: 'sync' },
+)
+
+/** What the live region reads for a notice. */
 export const announcementOf = (notice: Notice) => (notice.announcement ?? notice.message)?.() ?? ''

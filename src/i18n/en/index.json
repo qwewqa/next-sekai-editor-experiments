@@ -752,7 +752,7 @@
                 "properties": "Switch to Stage Transform Event Tool again to change default properties."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice’s button."
+        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it."
     },
     "elevation": {
         "edit": "Edit Elevations",

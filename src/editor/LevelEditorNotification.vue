@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { startupGate } from '../startup/gate'
-import { holdNotice, notification } from './notification'
+import NoticeCard from './NoticeCard.vue'
+import { cardInDialog, holdNotice, noticeCard, notification, quickInDialog } from './notification'
+import QuickNotice from './QuickNotice.vue'
 import { hasToolModal, sheetBox, type ToolModalPane } from './toolModals'
 
 // Shown within one editor pane, below its header (`inset`, in pixels), so it
@@ -14,7 +16,7 @@ const props = defineProps<{ pane: ToolModalPane; inset?: number }>()
 const sheet = computed(() => (props.pane === 'main' ? sheetBox.value : undefined))
 const top = computed(() => hasToolModal(props.pane) && !sheet.value)
 
-// A notice with an action sits above the floating toolbar, not where a tap on the chart lands.
+// A card sits above the floating toolbar, not where a tap on the chart lands; quick feedback is centred in the room above it.
 const host = useTemplateRef<HTMLElement>('host')
 const clearance = ref(0)
 const gap = 8
@@ -47,140 +49,59 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 watch(
-    () => [notification.value.id, top.value],
+    () => [noticeCard.value?.id, top.value],
     () => void nextTick(measure),
 )
 
-// A pointer that has not moved never enters a new pill, so its hover is taken here.
+// A pointer that has not moved never enters a new card, so its hover is taken here.
 watch(
-    () => notification.value.id,
+    () => noticeCard.value?.id,
     () => {
-        const pill = host.value?.querySelector('.notification-pill')
-        if (pill?.matches(':hover')) holdNotice('hover', true)
+        const card = host.value?.querySelector('[data-notice-card]')
+        if (card?.matches(':hover')) holdNotice('hover', true)
     },
     { flush: 'post' },
 )
 
-// The start-up pill waits for the startup gate to lift.
-const shown = computed(
-    () =>
-        !!notification.value.message &&
-        (!notification.value.startup || startupGate.phase === 'done'),
+// The start-up notice waits for the startup gate to lift. What was raised over a blocking dialog shows there.
+const quick = computed(() =>
+    !!notification.value.message &&
+    !quickInDialog.value &&
+    (!notification.value.startup || startupGate.phase === 'done')
+        ? notification.value
+        : undefined,
 )
-
-const pause = (source: 'hover' | 'focus', held: boolean) => {
-    holdNotice(source, held)
-}
+const card = computed(() => {
+    const notice = noticeCard.value
+    if (!notice || cardInDialog.value) return undefined
+    return !notice.startup || startupGate.phase === 'done' ? notice : undefined
+})
 </script>
 
 <template>
     <!-- The page's one live region announces notices (NoticeHost); this only draws them. -->
     <div
         ref="host"
-        class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-2"
-        :class="top ? 'items-start pt-4' : notification.action ? 'items-end' : 'items-center'"
+        class="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center px-2"
+        :class="top ? 'justify-start gap-2 pt-4' : 'justify-end'"
         :style="{
             top: `${inset ?? 0}px`,
             paddingBottom:
                 sheet?.side === 'bottom'
                     ? `${sheet.size + 2 * gap}px`
-                    : !top && notification.action
+                    : !top && card
                       ? `${clearance + gap}px`
                       : undefined,
             paddingRight: sheet?.side === 'right' ? `${sheet.size + 2 * gap}px` : undefined,
         }"
     >
         <div
-            v-if="shown && !notification.action && !notification.held"
-            :key="notification.id"
-            class="notification whitespace-break-spaces rounded-full px-6 py-2 text-center"
+            v-if="quick"
+            class="flex min-h-0 justify-center"
+            :class="top ? '' : 'w-full flex-1 items-center'"
         >
-            {{ notification.message?.() }}
+            <QuickNotice :key="quick.id" :notice="quick" />
         </div>
-        <div
-            v-else-if="shown && notification.lines"
-            :key="notification.id"
-            class="notification notification-pill pointer-events-auto flex max-w-full flex-col gap-0.5 rounded-3xl py-1.5 shadow-md"
-            :class="notification.action ? 'pl-5 pr-2' : 'px-5 text-center'"
-            @pointerenter="pause('hover', true)"
-            @pointerleave="pause('hover', false)"
-            @focusin="pause('focus', true)"
-            @focusout="pause('focus', false)"
-        >
-            <div
-                v-for="(line, i) in notification.lines"
-                :key="i"
-                class="flex min-w-0 items-center gap-3"
-            >
-                <span class="min-w-0 flex-1 whitespace-break-spaces py-1">{{
-                    line.message()
-                }}</span>
-                <button
-                    v-if="line.action"
-                    type="button"
-                    data-notice-action
-                    class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"
-                    @click="line.action.run()"
-                >
-                    {{ line.action.label() }}
-                </button>
-            </div>
-        </div>
-        <div
-            v-else-if="shown"
-            :key="notification.id"
-            class="notification notification-pill pointer-events-auto flex max-w-full items-center gap-3 rounded-3xl py-1.5 pl-5 shadow-md"
-            :class="notification.action ? 'pr-2' : 'pr-5 text-center'"
-            @pointerenter="pause('hover', true)"
-            @pointerleave="pause('hover', false)"
-            @focusin="pause('focus', true)"
-            @focusout="pause('focus', false)"
-        >
-            <span class="min-w-0 whitespace-break-spaces py-1">{{ notification.message?.() }}</span>
-            <button
-                v-if="notification.action"
-                type="button"
-                data-notice-action
-                class="h-8 shrink-0 rounded-full bg-on-accent px-4 font-bold text-accent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-on-accent focus-visible:ring-offset-2 focus-visible:ring-offset-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11"
-                @click="notification.action?.run()"
-            >
-                {{ notification.action?.label() }}
-            </button>
-        </div>
+        <NoticeCard v-if="card" :key="card.id" :notice="card" />
     </div>
 </template>
-
-<style scoped>
-.notification {
-    animation-name: fade;
-    animation-duration: 1s;
-    animation-fill-mode: forwards;
-}
-
-/* Stays until its timeout ends, which removes it. */
-.notification-pill {
-    animation: none;
-    /* Dark text on mint, as on every accent fill (8.9:1). */
-    color: theme('colors.on-accent');
-    background-color: theme('colors.accent');
-    z-index: 100;
-}
-
-@keyframes fade {
-    0% {
-        z-index: 100;
-        /* Dark text on mint, as on every accent fill (8.9:1). */
-        color: theme('colors.on-accent');
-        background-color: theme('colors.accent');
-    }
-
-    99% {
-        z-index: 100;
-    }
-
-    100% {
-        color: rgb(255 255 255 / 0.25);
-        background-color: theme('colors.accent / 0%');
-    }
-}
-</style>

@@ -102,7 +102,7 @@ import { quickEdit } from '../utils/quickEdit'
 import LevelEditorToolbar from '../toolbar/LevelEditorToolbar.vue'
 import EditorToolModalHost from '../EditorToolModalHost.vue'
 import LevelEditorNotification from '../LevelEditorNotification.vue'
-import { clearNotification, notification, notify } from '../notification'
+import { clearNotification, noticeCard, notification, notify } from '../notification'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
 import { hasToolModal, showToolModal } from '../toolModals'
@@ -391,8 +391,17 @@ const hovered = ref<NoteEntity>()
 // 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
 // In pixels: index.css fixes the rem at 16px.
 const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
-    const pill = container.value?.querySelector('.notification')?.getBoundingClientRect()
-    const bottom = pill?.height ? pill.bottom - canvas.getBoundingClientRect().top : 0
+    const top = canvas.getBoundingClientRect().top
+    // Quick feedback and a card both stack at the top.
+    const bottom = Math.max(
+        0,
+        ...[...(container.value?.querySelectorAll('.notification, [data-notice-card]') ?? [])].map(
+            (element) => {
+                const box = element.getBoundingClientRect()
+                return box.height ? box.bottom - top : 0
+            },
+        ),
+    )
     return Math.max(y + 56, bottom + 24)
 }
 // The pane y badges were last placed from, unrounded.
@@ -1622,7 +1631,7 @@ watchEffect(() => {
     // note at any pane width.
     const underNotice = !isElevationSideBySide.value && hasToolModal('elevation')
     const isEmpty = !solidRows.length && !drag?.ghosts.length
-    if (underNotice && isEmpty) void notification.value
+    if (underNotice && isEmpty) void [notification.value, noticeCard.value]
     if (!element || !layout.width || !layout.height || !isAppActive.value) {
         frame.cancel()
         // A collapsed pane's last frame would show stretched as it reopens.
