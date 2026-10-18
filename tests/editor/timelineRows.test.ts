@@ -11,7 +11,6 @@ import {
 // The Timeline's rows (Part 1 §1.4.10.5): flags, ×N groups, headers by age and dividers.
 
 const MINUTE = 60_000
-const DAY = 24 * 60 * MINUTE
 const noon = new Date(2026, 9, 16, 12, 0, 0).getTime()
 
 let seq = 0

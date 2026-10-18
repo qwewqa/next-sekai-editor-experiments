@@ -133,7 +133,7 @@ const settingsProperties = {
 
     panelRecency: Type.Codec(
         Type.Array(Type.String(), {
-            default: ['preview', 'properties', 'groups', 'stages'] satisfies PanelId[],
+            default: ['preview', 'properties', 'groups', 'stages', 'history'] satisfies PanelId[],
         }),
     )
         .Decode((values) => [...new Set([...values.filter(isPanelId), ...panelIds])])

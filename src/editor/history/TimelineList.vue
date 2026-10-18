@@ -519,7 +519,9 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         </span>
                         <span class="min-w-0 flex-1 truncate font-bold"
                             >{{ i18n.history.now
-                            }}<template v-if="headName"> · {{ headName }}</template></span
+                            }}<template v-if="headName && !isEmpty">
+                                · {{ headName }}</template
+                            ></span
                         >
                         <span class="timeline-time shrink-0">{{
                             formatClockSeconds(nowTime)

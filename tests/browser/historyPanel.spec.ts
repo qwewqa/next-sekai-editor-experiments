@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 
 // The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
@@ -141,7 +141,7 @@ const seedOlder = (page: Page) =>
             entry(30, 'export', 'Exported coconut.json'),
             entry(30.5, 'edit', 'Removed notes', { noteCount: 37, kept: false }),
             entry(30.6, 'edit', 'Changed BPM', { noteCount: 40 }),
-            entry(24 * 5, 'edit', 'Added slide'),
+            entry(24 * 5, 'edit', 'Moved slide'),
             entry(24 * 9, 'edit', 'Added notes'),
             entry(24 * 9 + 1, 'init', 'Initialize'),
         ]
@@ -1121,31 +1121,48 @@ const sizes = [
     ['landscape', { width: 844, height: 390 }],
 ] as const
 
+type Size = (typeof sizes)[number][1]
+
+/** A page at a size and theme, as a phone or tablet would be (touch), with the fixture installed. */
+const launch = async (
+    browser: Browser,
+    baseURL: string | undefined,
+    name: string,
+    size: Size,
+    theme: 'light' | 'dark',
+) => {
+    const touch = name === 'phone' || name === 'tablet'
+    const context = await browser.newContext({
+        viewport: size,
+        hasTouch: touch,
+        isMobile: touch,
+        colorScheme: theme,
+        baseURL,
+    })
+    const page = await context.newPage()
+    await page.addInitScript((prefix) => {
+        performance.setResourceTimingBufferSize(5000)
+        localStorage.setItem(`${prefix}showPreview`, 'false')
+        localStorage.setItem(`${prefix}showSidebar`, 'false')
+        localStorage.setItem('nse.test.storage', '{}')
+    }, prefix)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
+    await page.evaluate(installEditorFixture)
+    return { page, context }
+}
+
+const sideOf = (size: Size) =>
+    size.width < 640 || size.width < size.height ? 'top' : size.width >= 1100 ? 'right' : 'left'
+
 test.describe('screenshots', () => {
     test.skip(!process.env.NSE_SHOTS, 'Shots are taken on request')
 
     for (const theme of ['light', 'dark'] as const)
         for (const [name, size] of sizes) {
-            test(`${name} ${theme}: tab and dialog, peeking`, async ({ browser }) => {
-                const touch = name === 'phone' || name === 'tablet'
-                const context = await browser.newContext({
-                    viewport: size,
-                    hasTouch: touch,
-                    isMobile: touch,
-                    colorScheme: theme,
-                    baseURL: test.info().project.use.baseURL,
-                })
-                const page = await context.newPage()
-                await page.addInitScript((prefix) => {
-                    performance.setResourceTimingBufferSize(5000)
-                    localStorage.setItem(`${prefix}showPreview`, 'false')
-                    localStorage.setItem(`${prefix}showSidebar`, 'false')
-                    localStorage.setItem('nse.test.storage', '{}')
-                }, prefix)
-                await page.goto('/')
-                await expect(page.locator('canvas.editor-chart')).toBeVisible()
-                await waitForStartup(page)
-                await page.evaluate(installEditorFixture)
+            test(`${name} ${theme}: tab and dialog, peeking`, async ({ browser, baseURL }) => {
+                const { page, context } = await launch(browser, baseURL, name, size, theme)
                 await edit(page, 4)
                 await page.keyboard.press('z')
                 await page.keyboard.press('z')
@@ -1153,12 +1170,7 @@ test.describe('screenshots', () => {
                 await edit(page, 3, 'Changed BPM')
                 await stored(page)
                 await seedOlder(page)
-                const side =
-                    size.width < 640 || size.width < size.height
-                        ? 'top'
-                        : size.width >= 1100
-                          ? 'right'
-                          : 'left'
+                const side = sideOf(size)
                 await tab(page, side, 'History').click()
                 await expect(surface(page, 'panel')).toBeVisible()
                 await row(page, 'Added slide').click()
@@ -1171,6 +1183,70 @@ test.describe('screenshots', () => {
                 await expect(sheet(page)).toBeVisible()
                 await page.waitForTimeout(500)
                 await page.screenshot({ path: `${shots}/dialog-${name}-${theme}.png` })
+                await context.close()
+            })
+
+            test(`${name} ${theme}: Go To in the dialog`, async ({ browser, baseURL }) => {
+                const { page, context } = await launch(browser, baseURL, name, size, theme)
+                await edit(page, 3, 'Added slide')
+                await stored(page)
+                await seedOlder(page)
+                await page.keyboard.press('Shift+H')
+                await expect(sheet(page)).toBeVisible()
+                await page.locator('[data-history-goto-button]').click()
+                await expect(page.locator('[data-history-goto]')).toBeVisible()
+                await page.waitForTimeout(300)
+                await page.screenshot({ path: `${shots}/dialogGoTo-${name}-${theme}.png` })
+                await context.close()
+            })
+
+            test(`${name} ${theme}: states`, async ({ browser, baseURL }) => {
+                const { page, context } = await launch(browser, baseURL, name, size, theme)
+                const side = sideOf(size)
+                await tab(page, side, 'History').click()
+                await expect(page.locator('[data-history-empty]')).toBeVisible()
+                await page.screenshot({ path: `${shots}/states-empty-${name}-${theme}.png` })
+                await edit(page, 2)
+                await page.evaluate(() => {
+                    const { history } = window.editorTest
+                    history.markSaved('coconut.nxsp', false)
+                    history.markExported('coconut.nsld')
+                })
+                await page.locator('[data-history-goto-button]').click()
+                await page.getByRole('radio', { name: 'Saves and Exports' }).click()
+                await page.keyboard.press('Escape')
+                await page.waitForTimeout(200)
+                await page.screenshot({ path: `${shots}/states-filtered-${name}-${theme}.png` })
+                await context.close()
+            })
+
+            test(`${name} ${theme}: Settings › Panels, and every tab disabled`, async ({
+                browser,
+                baseURL,
+            }) => {
+                const { page, context } = await launch(browser, baseURL, name, size, theme)
+                await page.keyboard.press(',')
+                const dialog = page.getByRole('dialog')
+                await expect(dialog).toBeVisible()
+                await dialog.getByRole('button', { name: 'Panels', exact: true }).click()
+                await page.waitForTimeout(500)
+                await page.screenshot({ path: `${shots}/settings-${name}-${theme}.png` })
+                await page.keyboard.press('Escape')
+                await setSettings(page, {
+                    previewPosition: 'disabled',
+                    groupsPosition: 'disabled',
+                    stagesPosition: 'disabled',
+                    propertiesPosition: 'disabled',
+                    historyPosition: 'disabled',
+                })
+                await settle(page)
+                await edit(page, 3)
+                await page.waitForTimeout(300)
+                await page.screenshot({ path: `${shots}/hidden-${name}-${theme}.png` })
+                await page.keyboard.press('Shift+H')
+                await expect(sheet(page)).toBeVisible()
+                await page.waitForTimeout(300)
+                await page.screenshot({ path: `${shots}/hiddenDialog-${name}-${theme}.png` })
                 await context.close()
             })
         }

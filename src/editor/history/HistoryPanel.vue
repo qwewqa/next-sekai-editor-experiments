@@ -114,8 +114,13 @@ const blurAfterPointer = (event: MouseEvent) => {
 }
 
 // High contrast paints only the outlines: the track's is its edge, the segment's shows focus.
-const segment =
-    'flex h-7 items-center justify-center rounded-full px-3 text-sm transition-colors [@media(pointer:coarse)]:h-10'
+// A narrow band trims the segments' padding, so both labels keep their room.
+const segment = computed(
+    () =>
+        `flex h-7 items-center justify-center rounded-full text-sm transition-colors [@media(pointer:coarse)]:h-10 ${
+            bandWidth.value > 0 && bandWidth.value < 340 ? 'px-2' : 'px-3'
+        }`,
+)
 
 const goToButtonTitle = computed(() =>
     filtered.value

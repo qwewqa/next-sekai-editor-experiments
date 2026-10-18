@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { formatClock, formatDate, formatDateTime, formatWhen } from '../../src/i18n/dateTime'
+import {
+    formatClock,
+    formatDate,
+    formatDateTime,
+    formatEntryTime,
+    formatHour,
+    formatWhen,
+} from '../../src/i18n/dateTime'
 
 const at = (month: number, day: number, hour = 14, minute = 41, year = 2026) =>
     new Date(year, month - 1, day, hour, minute).getTime()
@@ -28,4 +35,15 @@ test('a file event shows the time when it was today and the date otherwise', () 
 test('locale codes that are not language tags still format', () => {
     assert.match(formatDate('zhs', at(10, 15), now), /10月15日/)
     assert.match(formatDate('zht', at(10, 15), now), /10月15日/)
+})
+
+test('an entry shows its time to the second, with the date when it is not from today', () => {
+    assert.equal(formatEntryTime('en', at(10, 16, 14, 41), now), '2:41:00 PM')
+    assert.equal(formatEntryTime('en', at(10, 14, 17, 2), now), 'Oct 14, 5:02:00 PM')
+    assert.match(formatEntryTime('en', at(10, 14, 17, 2, 2025), now), /Oct 14, 2025/)
+})
+
+test('an hour header is the hour alone', () => {
+    assert.equal(formatHour('en', at(10, 16, 13, 40)), '1 PM')
+    assert.match(formatHour('fr', at(10, 16, 13, 40)), /13/)
 })
