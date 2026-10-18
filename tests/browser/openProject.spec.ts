@@ -616,7 +616,7 @@ test('in safe mode, where nothing is stored, a .nxsp opens its level alone', asy
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     })
-    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
     await page.goto('/?safe')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
