@@ -143,7 +143,7 @@ track()
 /** A load notice (Part 1 §1.4.3): `order` is its place in the table, most important first. */
 export type LoadNotice = { order: number; message: () => string; action?: NoticeAction }
 
-/** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load:". */
+/** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load". */
 export const loadNotices = shallowRef<readonly LoadNotice[]>([])
 
 // What "and N more in Local Data" does: set by `loadNotices.ts`, which can import Settings.

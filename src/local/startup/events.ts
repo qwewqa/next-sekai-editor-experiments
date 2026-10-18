@@ -4,7 +4,7 @@ import type { StorageStatus } from '../worker/core'
 
 // What this load found (Part 1 §1.4.3's table), as data: the UI turns each into its load notice
 // with its action, most important first. Kept for the page's life, so Settings › Local Data ›
-// Recovery can list "At this load:". Light (Vue only).
+// Recovery can list "At this load". Light (Vue only).
 
 /** A name as shown: the displayed name, or the date fallback with the session's start. */
 export type ShownName = { name: DisplayName; at: number }
