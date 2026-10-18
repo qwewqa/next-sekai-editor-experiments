@@ -41,9 +41,9 @@ const partClass = ({ text, role }: NamePart) =>
                     >{{ part.text }}</span
                 >
             </span>
-            <span v-if="folder || count" class="flex min-w-0" data-status-metadata>
+            <span v-if="folder || count" class="flex min-w-0 overflow-hidden" :class="folder && count ? 'gap-1' : ''" data-status-metadata>
                 <span v-if="folder" class="status-folder min-w-0 flex-1 truncate" data-status-part="folder">{{ folder }}</span>
-                <span v-if="count" class="status-count min-w-0 max-w-full shrink-0 truncate" :class="folder ? 'ml-1' : ''" :title="count.label" data-status-count>· {{ count.short }}</span>
+                <span v-if="count" class="status-count min-w-0 shrink-0 truncate" :class="folder ? 'max-w-[calc(100%-0.25rem)]' : 'max-w-full'" :title="count.label" data-status-count>· {{ count.short }}</span>
             </span>
         </span>
         <template v-else>
