@@ -597,6 +597,12 @@
     },
     "history": {
       "title": "Historique"
+    },
+    "showChange": {
+      "title": "Afficher la modification"
+    },
+    "editsHere": {
+      "title": "Trouver les modifications ici"
     }
   },
   "help": {
@@ -827,7 +833,8 @@
         "beat": "Temps",
         "measure": "Mesure",
         "both": "Les deux"
-      }
+      },
+      "dimUnchangedObjects": "Estomper les objets inchangés"
     },
     "keyboardShortcuts": {
       "title": "Raccourcis clavier"
@@ -1234,7 +1241,12 @@
     "damaged": "endommagé",
     "continuedFrom": "Reprise du {0}",
     "foldHint": "Appuyez sur Historique pour replier la liste",
-    "announceViewing": "Affichage de {0}"
+    "announceViewing": "Affichage de {0}",
+    "filterHere": "Modifications ici",
+    "noEditsHere": "Aucune modification ici",
+    "checking": "Vérification des étapes plus anciennes…",
+    "notChecked": "{0} étape n’a pas pu être vérifiée|{0} étapes n’ont pas pu être vérifiées",
+    "announceViewingChange": "Affichage de {0}, {1}"
   },
   "modals": {
     "close": "Fermer",
@@ -1819,7 +1831,20 @@
     "viewing": "Affichage de {0} · {1} · lecture seule",
     "viewingShort": "Affichage de {0} · lecture seule",
     "backToNow": "Revenir à l’état actuel",
-    "restore": "Restaurer"
+    "restore": "Restaurer",
+    "changeCount": "{0} modification|{0} modifications",
+    "noChanges": "Aucune modification",
+    "changedLarge": "Modifications : {0}",
+    "notes": "{0} note|{0} notes",
+    "notesOf": "{0} notes sur {1}",
+    "eventsOf": "{0} événements sur {1}",
+    "bpms": "{0} changement de BPM|{0} changements de BPM",
+    "timeScales": "{0} échelle de temps|{0} échelles de temps",
+    "events": "{0} événement|{0} événements",
+    "changesAbove": "Modifications en haut : {0}",
+    "changesBelow": "Modifications en bas : {0}",
+    "changesAboveAny": "Modifications en haut",
+    "changesBelowAny": "Modifications en bas"
   },
   "save": {
     "fileName": "Nom du fichier",

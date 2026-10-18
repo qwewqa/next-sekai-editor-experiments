@@ -23,7 +23,8 @@ type Rec = readonly RecordValue[]
 
 type Joint = Exclude<KindName, 'slides'>
 
-const joints: Record<Joint, [EntityType, (entity: never) => Rec]> = {
+/** Each event kind's entity type, and its record encoder. */
+export const joints: Record<Joint, [EntityType, (entity: never) => Rec]> = {
     bpms: ['bpm', bpmRecord],
     timeScales: ['timeScale', timeScaleRecord],
     cameraEvents: ['cameraEventJoint', cameraEventRecord],

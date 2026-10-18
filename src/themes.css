@@ -24,6 +24,8 @@
     --color-preview: 91 92 124;
     --color-danger: 185 28 28;
     --color-on-danger: 255 255 255;
+    /* A History entry's changes on the chart: the one hue the chart's objects don't use. */
+    --color-change: 255 155 66;
     --color-knob: 255 255 255;
     --color-band-hover: rgb(255 255 255 / 0.4);
     --color-recess: rgb(68 68 102 / 0.1);

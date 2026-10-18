@@ -20,7 +20,11 @@ export const isHistoryDialogOpen = isSheetOpen
 
 let opening = false
 
-/** Shows the History dialog, a sheet over the chart; already shown, it takes focus. */
+/**
+ * Shows the History dialog, a sheet over the chart. Resolves when the dialog closes, after the
+ * peek has ended, so callers that don't wait for that use `void`. Already shown, it gives the
+ * dialog's list focus and resolves at once.
+ */
 export const openHistoryDialog = async (tab?: HistoryTab) => {
     if (tab) historyTab.value = tab
     if (isSheetOpen.value || opening) {

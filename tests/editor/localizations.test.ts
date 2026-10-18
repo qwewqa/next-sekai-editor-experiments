@@ -268,6 +268,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.timeScaleTransition.label',
         'modals.form.unset.auto',
         'modals.info.ok',
+        // French spells "note" the same.
+        'peek.notes',
         // French spells "Version" the same.
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',

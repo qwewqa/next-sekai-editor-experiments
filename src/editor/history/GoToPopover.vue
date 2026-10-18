@@ -4,12 +4,13 @@ import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import { swallowPress } from '../../utils/swallowPress'
 import { workspaceDockAttribute } from '../workspace'
+import { filterHere, hereRangeText, takeHereRange } from './editsHere'
 import type { Filter } from './rows'
 import { historyFilter } from './state'
 
-// The Go To popover (Part 1 §1.4.10.5): the Show switch, All or Saves and Exports, and under it the
-// jump list, which the default slot holds. Under 640 px it is the menus' bottom sheet over a
-// dimmed backdrop.
+// The Go To popover (Part 1 §1.4.10.5): the Show list, All, Saves and Exports or Edits Here with
+// the beats it would take, and under it the jump list, which the default slot holds. Under 640 px
+// it is the menus' bottom sheet over a dimmed backdrop.
 
 const props = defineProps<{ anchor: HTMLElement }>()
 
@@ -19,9 +20,16 @@ const popover = useTemplateRef<HTMLDivElement>('popover')
 const scroller = useTemplateRef<HTMLDivElement>('scroller')
 const headingId = useId()
 
-const filters: readonly Filter[] = ['all', 'saves']
+const filters: readonly Filter[] = ['all', 'saves', 'here']
 const filterTitle = (filter: Filter) =>
-    filter === 'all' ? i18n.value.history.filterAll : i18n.value.history.filterSaves
+    filter === 'all'
+        ? i18n.value.history.filterAll
+        : filter === 'saves'
+          ? i18n.value.history.filterSaves
+          : i18n.value.history.filterHere
+// The beats Edits Here would take, as the popover opens.
+const hereText = hereRangeText(takeHereRange())
+const hereId = useId()
 
 const margin = 8
 const gap = 4
@@ -107,8 +115,10 @@ const onOutside = (event: PointerEvent) => {
     emit('close', false)
 }
 
+// Edits Here takes its beats again each time it is chosen.
 const pick = (filter: Filter) => {
-    historyFilter.value = filter
+    if (filter === 'here') filterHere()
+    else historyFilter.value = filter
 }
 
 const onKeydown = (event: KeyboardEvent) => {
@@ -134,7 +144,7 @@ const onKeydown = (event: KeyboardEvent) => {
             else list.focus()
         } else emit('close', true)
     } else if (event.target instanceof HTMLElement && event.target.matches('[role="radio"]')) {
-        const at = filters.indexOf(historyFilter.value)
+        const at = radios().indexOf(event.target)
         const next = {
             ArrowLeft: at - 1,
             ArrowUp: at - 1,
@@ -143,12 +153,21 @@ const onKeydown = (event: KeyboardEvent) => {
             Home: 0,
             End: filters.length - 1,
         }[event.key]
-        const filter =
-            next === undefined ? undefined : filters[(next + filters.length) % filters.length]
-        if (!filter) return
-        event.preventDefault()
-        pick(filter)
-        void nextTick(() => radios()[filters.indexOf(filter)]?.focus())
+        if (next !== undefined) {
+            const filter = filters[(next + filters.length) % filters.length]
+            if (!filter) return
+            event.preventDefault()
+            void nextTick(() => radios()[filters.indexOf(filter)]?.focus())
+            // Arrows move the focus; Space or Enter picks.
+            return
+        }
+        if (event.key === ' ' || event.key === 'Enter') {
+            const at = radios().indexOf(event.target)
+            const filter = filters[at]
+            if (!filter) return
+            event.preventDefault()
+            pick(filter)
+        }
     }
 }
 </script>
@@ -179,25 +198,46 @@ const onKeydown = (event: KeyboardEvent) => {
         >
             <div ref="scroller" v-scroll-edges class="popup-scroller">
                 <div :id="headingId" class="popup-heading">{{ i18n.history.show }}</div>
-                <div
-                    role="radiogroup"
-                    :aria-labelledby="headingId"
-                    class="mx-2 mb-2 flex shrink-0 rounded-full bg-recess p-0.5 shadow-track"
-                >
+                <div role="radiogroup" :aria-labelledby="headingId" class="flex shrink-0 flex-col">
                     <button
                         v-for="filter in filters"
                         :key="filter"
                         type="button"
                         role="radio"
-                        class="goto-segment flex h-7 min-w-0 flex-1 items-center justify-center rounded-full px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-10"
-                        :class="{ 'bg-button shadow-md': historyFilter === filter }"
+                        class="goto-filter popup-item"
                         :aria-checked="historyFilter === filter"
+                        :aria-label="filterTitle(filter)"
+                        :aria-describedby="filter === 'here' ? hereId : undefined"
                         :tabindex="historyFilter === filter ? 0 : -1"
+                        :data-goto-filter="filter"
                         @click="pick(filter)"
                     >
-                        <span class="truncate">{{ filterTitle(filter) }}</span>
+                        <svg
+                            class="size-4 shrink-0"
+                            :class="{ invisible: historyFilter !== filter }"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M3.5 8.5l3 3 6-7" />
+                        </svg>
+                        <span class="flex min-w-0 flex-1 flex-col">
+                            <span class="truncate">{{ filterTitle(filter) }}</span>
+                            <span
+                                v-if="filter === 'here'"
+                                :id="hereId"
+                                class="truncate text-xs tabular-nums opacity-80"
+                                data-goto-here-range
+                                >{{ hereText }}</span
+                            >
+                        </span>
                     </button>
                 </div>
+                <div role="separator" class="popup-separator" />
                 <!-- The jump list: Now, then days and the sessions in them. -->
                 <slot />
             </div>

@@ -64,9 +64,10 @@ const actions = computed(() => {
     const groups: ActionName[][] = []
     const editable = selection.some(isEditableEntity)
     const point = contextMenu.value
-    // While peeking, only Copy (§1.4.11).
+    // While peeking, only Copy and Find Edits Here (§1.4.11).
     if (isPeeking.value) {
         if (editable) groups.push(['copy'])
+        groups.push(['editsHere'])
         return toActions(groups)
     }
     // Elevations belong to notes: offer the editor for notes or empty space.
@@ -102,6 +103,7 @@ const actions = computed(() => {
     if (canEditSelectionProperties.value) editors.push('editProperties')
     if (canEditElevations) editors.push('editElevations')
     if (editors.length) groups.push(editors)
+    groups.push(['editsHere'])
     if (canDelete.value) groups.push(['deleteSelection'])
     return toActions(groups)
 })

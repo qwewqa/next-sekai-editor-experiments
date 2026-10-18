@@ -63,6 +63,8 @@ export type FindEditsPage = {
     unreadable: number
     /** The newest entry checked, on a scan's first call. */
     top?: ChainEntry
+    /** Where `until` lay along this scan. */
+    reached?: number
 }
 
 /** Pairs read per transaction, so a flush waits a few milliseconds at most (§1.6.5). */
@@ -178,7 +180,10 @@ const scanSlice = async (
         const entry = list[i]!
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const older = list[i + 1]!
-        if (isEntry(entry, request.until)) return
+        if (isEntry(entry, request.until)) {
+            page.reached = cursor.pos + i
+            return
+        }
         if (!entry.snapshot || !older.snapshot) {
             page.unreadable++
             continue
@@ -189,8 +194,12 @@ const scanSlice = async (
             page.matches.push({ ...entry, pos: cursor.pos + i, previous: chainEntry(older) })
     }
     const last = list.at(-1)
+    if (last && isEntry(last, request.until)) {
+        page.reached = cursor.pos + list.length - 1
+        return
+    }
     // The chain's first entry has nothing before it.
-    if (!read.next || !last || isEntry(last, request.until)) return
+    if (!read.next || !last) return
     return {
         sessionId: read.next.sessionId,
         before: read.next.before,

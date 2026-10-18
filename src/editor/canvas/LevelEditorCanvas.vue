@@ -66,6 +66,9 @@ import {
     type SideBoxes,
 } from '../edgeLabels'
 import { shownMarkerTime } from '../hoverMarker'
+import { changeMarks, undimmed } from '../history/changes'
+import { hereRange, historyFilter } from '../history/state'
+import { drawChangeMarks, drawHereBracket } from './changes'
 import { createConnectorRenderer } from './connectors'
 import { drawEvent, drawEventInfinities } from './events'
 import { EventAnnotations } from './eventAnnotations'
@@ -187,6 +190,8 @@ const visibility = () => ({
     scope: scopeLookup.value,
     visibilities: view.visibilities,
     showOtherObjects: settings.showOtherObjects,
+    // While a peeked entry's change is shown, what it didn't change dims.
+    ...(undimmed.value ? { undimmed: undimmed.value } : {}),
 })
 // Built per selection; ordering and the extension passes share it.
 const chains = computed(() => raisedChains(shownSelected.value, raisedToolChain.value))
@@ -768,6 +773,12 @@ watchEffect(
               ]
             : visibleSelectedEntities.value
         const selection = view.selection
+        // A peeked entry's change, and Edits Here's range.
+        const marks = changeMarks.value
+        const bracket = historyFilter.value === 'here' ? hereRange.value : undefined
+        const markScope = scopeLookup.value
+        const markVisibilities = view.visibilities
+        const markOthers = settings.showOtherObjects
         const hover = shownMarkerTime.value
         const hoverEnds =
             hover === undefined
@@ -822,6 +833,25 @@ watchEffect(
             } else if (creatingCanvas) {
                 creatingCanvas.dispose()
                 creatingCanvas = undefined
+            }
+
+            if (marks || bracket) {
+                const context = { ...inputs, ctx, nameSprites }
+                if (bracket) drawHereBracket(context, bracket.from, bracket.to)
+                // Changes in hidden groups or stages are counted, not drawn.
+                if (marks)
+                    drawChangeMarks(
+                        context,
+                        marks,
+                        range.min,
+                        range.max,
+                        (entity) =>
+                            entityScopeVisibility(entity, markScope) !== 'hidden' &&
+                            (markVisibilities[entity.type] || markOthers),
+                        (target, entity, opacity) => {
+                            drawEntity(target, entity, false, opacity)
+                        },
+                    )
             }
 
             ctx.save()

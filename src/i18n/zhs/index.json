@@ -597,6 +597,12 @@
     },
     "history": {
       "title": "历史记录"
+    },
+    "showChange": {
+      "title": "显示更改"
+    },
+    "editsHere": {
+      "title": "查找此处的编辑"
     }
   },
   "help": {
@@ -827,7 +833,8 @@
         "beat": "节拍",
         "measure": "小节",
         "both": "两者"
-      }
+      },
+      "dimUnchangedObjects": "淡化未更改的对象"
     },
     "keyboardShortcuts": {
       "title": "键盘快捷键"
@@ -1234,7 +1241,12 @@
     "damaged": "已损坏",
     "continuedFrom": "从 {0} 继续",
     "foldHint": "点按“历史记录”可折叠列表",
-    "announceViewing": "正在查看 {0}"
+    "announceViewing": "正在查看 {0}",
+    "filterHere": "此处的编辑",
+    "noEditsHere": "此处没有编辑",
+    "checking": "正在检查更早的步骤…",
+    "notChecked": "有 {0} 步无法检查",
+    "announceViewingChange": "正在查看 {0}，{1}"
   },
   "modals": {
     "close": "关闭",
@@ -1819,7 +1831,20 @@
     "viewing": "正在查看 {0} · {1} · 只读",
     "viewingShort": "正在查看 {0} · 只读",
     "backToNow": "返回现在",
-    "restore": "还原"
+    "restore": "还原",
+    "changeCount": "{0} 处更改",
+    "noChanges": "无更改",
+    "changedLarge": "已更改 {0}",
+    "notes": "{0} 个音符",
+    "notesOf": "{1} 个音符中的 {0} 个",
+    "eventsOf": "{1} 个事件中的 {0} 个",
+    "bpms": "{0} 个 BPM",
+    "timeScales": "{0} 个时间尺度",
+    "events": "{0} 个事件",
+    "changesAbove": "上方的更改：{0}",
+    "changesBelow": "下方的更改：{0}",
+    "changesAboveAny": "上方的更改",
+    "changesBelowAny": "下方的更改"
   },
   "save": {
     "fileName": "文件名",
