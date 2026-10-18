@@ -58,3 +58,27 @@ test('events retain their native glyph positions rather than their broad selecti
         assert.ok(shape.h <= 0.27)
     }
 })
+
+test('tick contours use native asymmetric points and effective composed widths', () => {
+    const tick = toNoteEntity(createSlideId(), note(4, { noteType: 'forceTick', size: 0 }))
+    const composed = {
+        ...context,
+        composed: { hitbox: () => ({ lane: 7, w: 2 }) },
+    } as unknown as EditorDrawContext
+    const shape = changeShape(composed, tick)!
+    assert.equal(shape.kind, 'diamond')
+    assert.deepEqual(shape.points, [
+        [6.7, 4],
+        [7, 3.7],
+        [7.3, 4],
+        [7, 4.15],
+    ])
+    assert.equal(shape.y, 3.7)
+    assert.equal(shape.h, 0.45)
+    const collapsed = {
+        ...context,
+        composed: { hitbox: () => ({ lane: 7, w: 0 }) },
+    } as unknown as EditorDrawContext
+    assert.equal(changeShape(collapsed, tick)!.kind, 'note')
+    assert.equal(changeShape(collapsed, tick)!.w, 0.2)
+})

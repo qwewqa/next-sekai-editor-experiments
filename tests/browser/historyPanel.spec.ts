@@ -1323,3 +1323,43 @@ test.describe('screenshots', () => {
             })
         }
 })
+
+test.describe('touch disclosure', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+    test('tap disclosure expands without peeking and scrolling cancels row long press', async ({
+        page,
+    }) => {
+        for (let i = 0; i < 3; i++) await edit(page, 1, 'Touch edit')
+        await stored(page)
+        await openTab(page, 'top')
+        const group = row(page, '3 edits')
+        const disclosure = group.locator('[data-history-disclosure]')
+        await disclosure.tap()
+        await expect(group).toHaveAttribute('aria-expanded', 'true')
+        await expect(peekBar(page)).toHaveCount(0)
+        const child = row(page, 'Touch edit').first()
+        await child.dispatchEvent('pointerdown', {
+            pointerType: 'touch',
+            pointerId: 2,
+            isPrimary: true,
+            clientX: 80,
+            clientY: 160,
+        })
+        await child.dispatchEvent('pointermove', {
+            pointerType: 'touch',
+            pointerId: 2,
+            isPrimary: true,
+            clientX: 80,
+            clientY: 195,
+        })
+        await child.dispatchEvent('pointercancel', { pointerType: 'touch', pointerId: 2 })
+        await page.waitForTimeout(550)
+        await expect(page.getByRole('menu')).toHaveCount(0)
+        await expect(peekBar(page)).toHaveCount(0)
+        await child.tap()
+        await expect(peekBar(page)).toBeVisible()
+        await disclosure.tap()
+        await expect(group).toHaveAttribute('aria-selected', 'true')
+        await expect(group).toHaveAttribute('aria-expanded', 'false')
+    })
+})

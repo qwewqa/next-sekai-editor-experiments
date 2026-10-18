@@ -55,6 +55,14 @@ const contour = (context: EditorDrawContext, shape: ChangeShape, by: number) => 
         })
     } else if (shape.kind === 'circle') {
         ctx.ellipse(cx, cy, box.w / 2, box.h / 2, 0, 0, Math.PI * 2)
+    } else if (shape.points) {
+        shape.points.forEach(([x, y], i) => {
+            const px = cx + ((x - cx) * box.w) / shape.w
+            const py = cy + ((y - cy) * box.h) / shape.h
+            if (i) ctx.lineTo(px, py)
+            else ctx.moveTo(px, py)
+        })
+        ctx.closePath()
     } else if (shape.kind === 'diamond') {
         ctx.moveTo(cx, box.y)
         ctx.lineTo(box.x + box.w, cy)

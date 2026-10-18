@@ -3,6 +3,7 @@ import { BPM_LABEL } from '../../state/entities/bpm'
 import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { beatToTime } from '../../state/integrals/bpms'
 import { jointXs } from './events'
+import { diamondPoints } from './notes'
 import type { EditorDrawContext } from './types'
 
 export type ChangeShape = {
@@ -12,6 +13,7 @@ export type ChangeShape = {
     h: number
     kind: 'note' | 'circle' | 'diamond' | 'range' | 'bpm'
     radius?: number
+    points?: readonly (readonly [number, number])[]
 }
 
 /** Native body and glyph footprints, independent of interaction hitboxes. */
@@ -29,8 +31,15 @@ export const changeShape = (
         const type = getNoteVisualType(entity, context.state.store.slides.info.get(entity.slideId))
         const width = box.w > 0 ? box.w * 2 : 0.2
         const x = box.lane - width / 2
-        if (type === 'tick' && entity.size > 0)
-            return { kind: 'diamond', x: box.lane - 0.3, y: y - 0.3, w: 0.6, h: 0.6 }
+        if (type === 'tick' && box.w > 0)
+            return {
+                kind: 'diamond',
+                x: box.lane - 0.3,
+                y: y - 0.3,
+                w: 0.6,
+                h: 0.45,
+                points: diamondPoints.map(([x, dy]) => [box.lane + x, y + dy]),
+            }
         const h =
             type === 'anchor' || type === 'damage' || type === 'trace' || type === 'tick'
                 ? 0.3

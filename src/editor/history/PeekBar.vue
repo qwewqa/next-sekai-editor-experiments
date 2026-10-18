@@ -1,8 +1,10 @@
 ﻿<script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { isPeeking, peekLoading, peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
-import { formatEntryTime } from '../../i18n/when'
+import { formatEntryTime, formatDateTimeSeconds } from '../../i18n/when'
+import { interpolateRaw } from '../../utils/interpolate'
+import { changeLine } from './changes'
 import { languageTag } from '../../i18n/plural'
 import { settings } from '../../settings'
 import { view } from '../view'
@@ -10,9 +12,35 @@ import ChevronIcon from '../workspace/ChevronIcon.vue'
 import ChangeArrows from './ChangeArrows.vue'
 import { backToNow, peekedInfo, requestRestore } from './selection'
 
+// --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
+const announcement = ref('')
+let announcedAt = 0
+watch(
+    peekedInfo,
+    (info) => {
+        announcedAt = Date.now()
+        announcement.value = info
+            ? interpolateRaw(i18n.value.history.announceViewing, formatDateTimeSeconds(info.time))
+            : ''
+    },
+    { immediate: true },
+)
+watch(changeLine, (line) => {
+    const info = peekedInfo.value
+    if (!line || !info) return
+    announcement.value =
+        Date.now() - announcedAt <= 300
+            ? interpolateRaw(
+                  i18n.value.history.announceViewingChange,
+                  formatDateTimeSeconds(info.time),
+                  line,
+              )
+            : line
+})
+
 const strings = computed(() => i18n.value.peek)
 const compact = computed(() => view.w < 600)
-const tiny = computed(() => view.w < 350)
+const tiny = computed(() => view.w < 300)
 const text = computed(() => {
     const info = peekedInfo.value
     if (!info) return ''
@@ -34,6 +62,7 @@ const button =
 </script>
 
 <template>
+    <div class="sr-only" aria-live="polite" data-history-announcement>{{ announcement }}</div>
     <template v-if="isPeeking">
         <div
             class="pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-accent forced-colors:ring-[Highlight]"
@@ -45,13 +74,19 @@ const button =
             data-peek-bar
         >
             <div
-                class="pointer-events-auto flex w-full max-w-lg items-center gap-2 rounded-3xl bg-modal p-1 text-sm text-fg shadow-md"
-                :class="tiny ? 'flex-wrap' : ''"
+                class="pointer-events-auto flex w-full max-w-lg items-center rounded-3xl bg-modal p-1 text-sm text-fg shadow-md"
+                :class="tiny ? 'flex-wrap gap-1' : compact ? 'gap-1' : 'gap-2'"
                 data-peek-main
             >
                 <span
                     class="min-w-0 truncate pl-3"
-                    :class="tiny ? 'w-full pt-1 text-center leading-5' : 'flex-1'"
+                    :class="
+                        tiny
+                            ? 'w-full pt-1 text-center leading-5'
+                            : view.w < 350
+                              ? 'flex-1 text-xs'
+                              : 'flex-1'
+                    "
                     :title="peekedInfo?.label"
                     data-peek-text
                     >{{ text }}</span

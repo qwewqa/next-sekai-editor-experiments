@@ -216,3 +216,275 @@ test('forced colors and chart zoom retain marks with directional shape cues', as
         }
     }
 })
+
+for (const width of [1440, 390])
+    test.describe(`chronology-${width}`, () => {
+        test.use({
+            viewport: { width, height: width === 390 ? 844 : 900 },
+            hasTouch: width === 390,
+        })
+        test('group labels and disclosure keep chronological actions visible', async ({ page }) => {
+            await boot(page)
+            await page.evaluate(() => {
+                const { history } = window.editorTest
+                for (const label of [
+                    'Added 1 Note',
+                    'Moved 2 Notes',
+                    'Changed BPM',
+                    'Adjusted',
+                    'Adjusted',
+                    'Adjusted',
+                ])
+                    history.pushState(() => label, {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                    })
+                for (let i = 0; i < 4; i++) history.undoState()
+                for (let i = 0; i < 4; i++) history.redoState()
+            })
+            await page.evaluate(async () => {
+                await window.nseFlushTest!.flusher.flush({ strict: true })
+            })
+            await page.keyboard.press('Shift+H')
+            const list = page.locator('[data-history-surface="dialog"] [data-history-list]')
+            await expect(list.getByRole('option', { name: /^Redid 4 steps/ })).toBeVisible()
+            await expect(list.getByRole('option', { name: /^Undid 4 steps/ })).toBeVisible()
+            const group = list.getByRole('option', { name: /^3 edits/ })
+            await (width === 390 ? group.tap() : group.click())
+            await page.screenshot({ path: `${shots}/groups-${width}-collapsed.png` })
+            await (width === 390
+                ? group.locator('[data-history-disclosure]').tap()
+                : group.locator('[data-history-disclosure]').click())
+            await expect(group).toHaveAttribute('aria-selected', 'true')
+            await page.screenshot({ path: `${shots}/groups-${width}-expanded.png` })
+            await list
+                .getByRole('option', { name: /^Undid 4 steps/ })
+                .locator('[data-history-disclosure]')
+                .click()
+            await list.getByRole('option', { name: /^Undo · Changed BPM/ }).scrollIntoViewIfNeeded()
+            await page.screenshot({ path: `${shots}/groups-${width}-undo.png` })
+        })
+    })
+
+test('200 percent viewport equivalent and narrowed docks retain both bar rows', async ({
+    page,
+}) => {
+    await boot(page)
+    await seedNotes(page)
+    await page
+        .locator('[data-workspace-dock="right"]')
+        .getByRole('tab', { name: 'History', exact: true })
+        .click()
+    await page.screenshot({ path: `${shots}/desktop-dock.png` })
+    // A 1600px display at 200% browser zoom has an 800 CSS-pixel viewport.
+    await page.setViewportSize({ width: 800, height: 450 })
+    await page.evaluate(() => {
+        window.editorTest.settings.locale = 'fr'
+    })
+    await expect(page.locator('[data-peek-main]')).toBeVisible()
+    await expect(page.locator('[data-peek-navigation]')).toBeVisible()
+    const boxes = await page.locator('[data-peek-bar] button').evaluateAll((buttons) =>
+        buttons.map((button) => {
+            const box = button.getBoundingClientRect()
+            return { left: box.left, right: box.right }
+        }),
+    )
+    for (const box of boxes) {
+        expect(box.left).toBeGreaterThanOrEqual(0)
+        expect(box.right).toBeLessThanOrEqual(800)
+    }
+    await page.screenshot({ path: `${shots}/desktop-200-percent.png` })
+})
+
+test('same-beat event moves retain old glyphs and Show Change reaches their actual lanes', async ({
+    page,
+}) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { fixtures, history, appImport, view, settings } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const before = structuredClone(fixtures.events)
+        history.pushState(() => 'Events', createState(before, 0))
+        const after = structuredClone(before)
+        after.timeScales[0]!.editorLane = 30
+        history.pushState(() => 'Moved event', createState(after, 0))
+        view.time = 2.25
+        settings.maxScrollX = 64
+    })
+    await previewLatest(page)
+    const ghosts = await page.evaluate(async () => {
+        const { changeMarks } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/changes')
+        >('/src/editor/history/changes.ts')
+        return changeMarks.value!.ghosts.map(({ entity }) => ({
+            type: entity.type,
+            lane: 'editorLane' in entity ? entity.editorLane : undefined,
+        }))
+    })
+    expect(ghosts).toEqual([{ type: 'timeScale', lane: 8 }])
+    await page.evaluate(async () => {
+        ;(
+            await window.editorTest.appImport<typeof import('../../src/editor/history/changes')>(
+                '/src/editor/history/changes.ts',
+            )
+        ).showNearestChange()
+    })
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.lane)).toBeGreaterThan(20)
+    await page.screenshot({ path: `${shots}/event-horizontal-move.png` })
+})
+
+test('narrow French history keeps removed and damaged reasons readable', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await boot(page)
+    await page.evaluate(async () => {
+        const { appImport, settings } = window.editorTest
+        settings.locale = 'fr'
+        const { storageWorker } =
+            await appImport<typeof import('../../src/local/start')>('/src/local/start.ts')
+        const { damagedEntries, keyOf } = await appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        const entries = [1, 2].map((seq) => ({
+            sessionId: 'evidence',
+            seq,
+            time: Date.now() - seq * 1000,
+            kind: 'edit',
+            label:
+                seq === 1
+                    ? 'Déplacement de nombreuses notes sur plusieurs voies'
+                    : 'Modification du tempo',
+            kept: false,
+            snapshot: '00',
+            dirty: false,
+            noteCount: 5,
+        }))
+        damagedEntries.value = new Set([keyOf(entries[1]!)])
+        const worker = storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        worker.call = async (name, ...args) => {
+            const result = await call(name, ...args)
+            return name === 'readTimeline' ? { ...(result as object), entries } : result
+        }
+    })
+    await page.keyboard.press('Shift+H')
+    const flags = page.locator('[data-history-surface="dialog"] [data-history-flag]')
+    await expect(flags).toHaveCount(2)
+    const sizes = await flags.evaluateAll((flags) =>
+        flags.map((flag) => {
+            const text = flag.lastElementChild!
+            const row = flag.closest('[role="option"]')!.getBoundingClientRect()
+            const box = text.getBoundingClientRect()
+            return {
+                inside: box.top >= row.top && box.bottom <= row.bottom,
+                fits: text.scrollWidth <= text.clientWidth,
+            }
+        }),
+    )
+    expect(sizes).toEqual([
+        { inside: true, fits: true },
+        { inside: true, fits: true },
+    ])
+    await page.screenshot({ path: `${shots}/phone-small-fr-unavailable-rows.png` })
+})
+
+test('header-only and unavailable comparisons have explicit stable summaries', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await boot(page)
+    await page.evaluate(() => {
+        const { history, settings } = window.editorTest
+        settings.locale = 'fr'
+        history.pushState(
+            () =>
+                'Modification de la vie initiale et des paramètres du niveau conservés dans cet historique',
+            { ...history.state.value, initialLife: 1200 },
+        )
+    })
+    await previewLatest(page)
+    await page.screenshot({ path: `${shots}/phone-fr-header-only.png` })
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { peekedInfo, requestPeek } = await appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        requestPeek({
+            ...peekedInfo.value!,
+            previous: { key: 'missing:1', snapshot: '0'.repeat(32) },
+        })
+    })
+    await expect(page.locator('[data-peek-change]')).toHaveText('Modifications indisponibles')
+    await page.screenshot({ path: `${shots}/phone-fr-unavailable.png` })
+})
+
+test('composed stages outline attached ticks and zero-width placeholders', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { fixtures, history, appImport, view, settings } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const before = structuredClone(fixtures.events)
+        const base = fixtures.notes.slides[0]![0]!
+        before.cameraEvents = []
+        before.stageMaskEvents = []
+        before.stageStyleEvents = []
+        before.stageTransformEvents = []
+        before.timeScales = []
+        before.stagePivotEvents = before.stagePivotEvents
+            .slice(0, 1)
+            .map((event) => ({ ...event, beat: 0, pivotLane: 4 }))
+        before.slides = [
+            [
+                { ...base, beat: 2, size: 4 },
+                { ...base, beat: 4, size: 0, isAttached: true, noteType: 'forceTick' },
+                { ...base, beat: 6, size: 4, left: -3 },
+            ],
+        ]
+        before.slides.push([{ ...base, beat: 5, left: 3, size: 0, noteType: 'forceTick' }])
+        history.pushState(() => 'Composed slide', createState(before, 0))
+        const after = structuredClone(before)
+        after.slides[0]![1]!.isCritical = true
+        after.slides[1]![0]!.isCritical = true
+        after.slides[0]![0]!.connectorEase = 'inQuad'
+        history.pushState(() => 'Changed tick and connector', createState(after, 0))
+        view.layout = 'composed'
+        view.time = 3.5
+        settings.width = 16
+        settings.pps = 160
+    })
+    await previewLatest(page)
+    const result = await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const { changeMarks } = await appImport<typeof import('../../src/editor/history/changes')>(
+            '/src/editor/history/changes.ts',
+        )
+        const { getComposedLayout } = await appImport<
+            typeof import('../../src/editor/composedView')
+        >('/src/editor/composedView.ts')
+        const { changeShape } = await appImport<
+            typeof import('../../src/editor/canvas/changeGeometry')
+        >('/src/editor/canvas/changeGeometry.ts')
+        const state = history.state.value
+        const tick = changeMarks.value!.rings.find(
+            ({ entity }) =>
+                entity.type === 'note' && entity.noteType === 'forceTick' && entity.isAttached,
+        )!.entity
+        const composed = getComposedLayout(state)!
+        return {
+            shape: changeShape(
+                { state, ups: 2, composed } as Parameters<typeof changeShape>[0],
+                tick,
+            ),
+            storedSize: 'size' in tick ? tick.size : null,
+            effective: composed.hitbox(tick)?.w,
+            marks: changeMarks.value!.rings.length,
+        }
+    })
+    expect(result.storedSize).toBe(4)
+    expect(result.effective).toBeGreaterThan(0)
+    expect(result.shape?.kind).toBe('diamond')
+    expect(result.shape?.points).toHaveLength(4)
+    expect(result.marks).toBe(3)
+    await page.screenshot({ path: `${shots}/composed-attached-tick-connector.png` })
+})

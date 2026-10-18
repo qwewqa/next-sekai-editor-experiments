@@ -31,7 +31,7 @@ import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
-import { changeLine, showChangeOf } from './changes'
+import { showChangeOf } from './changes'
 import {
     buildRows,
     previousOf,
@@ -108,8 +108,7 @@ const built = computed(() =>
         now: clock.value,
         gap: gap.value,
         more: canLoadMore.value,
-        pinned:
-            (peekedInfo.value?.members?.length ?? 0) > 1 ? peekedInfo.value?.members : undefined,
+        pinned: peekedInfo.value?.pinned,
     }),
 )
 
@@ -299,6 +298,13 @@ const rowInfo = (row: EntryRow): PeekedInfo => ({
     label: labelOf(row),
     rowId: row.id,
     members: row.members.map(keyOf),
+    pinned: (row.child
+        ? rows.value.find(
+              (parent): parent is EntryRow =>
+                  parent.type === 'entry' && !parent.child && row.id.startsWith(`${parent.id}/`),
+          )
+        : row
+    )?.members.map(keyOf),
 })
 
 const moveTo = (row: Row | undefined) => {
@@ -495,7 +501,14 @@ const menuItems = computed(() => [
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {
     const info = rowInfo(row)
-    if (peekedInfo.value?.rowId !== info.rowId) moveTo(row)
+    const selected = peekedInfo.value
+    if (
+        !selected ||
+        selected.rowId !== info.rowId ||
+        selected.oldest !== info.oldest ||
+        selected.members?.join() !== info.members?.join()
+    )
+        moveTo(row)
     if (peekedInfo.value) showChangeOf(peekedInfo.value)
 }
 const onMenuSelect = (key: string, keyboard: boolean) => {
@@ -770,32 +783,6 @@ const headerClass = (header: Header) =>
           ? 'font-bold text-fg/80'
           : 'font-medium text-fg/70'
 
-// --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
-const announcement = ref('')
-let announcedAt = 0
-watch(
-    peekedInfo,
-    (info) => {
-        announcedAt = Date.now()
-        announcement.value = info
-            ? interpolateRaw(i18n.value.history.announceViewing, formatDateTimeSeconds(info.time))
-            : ''
-    },
-    { immediate: true },
-)
-watch(changeLine, (line) => {
-    const info = peekedInfo.value
-    if (!line || !info) return
-    announcement.value =
-        Date.now() - announcedAt <= 300
-            ? interpolateRaw(
-                  i18n.value.history.announceViewingChange,
-                  formatDateTimeSeconds(info.time),
-                  line,
-              )
-            : line
-})
-
 const notCheckedText = computed(() =>
     interpolateRaw(i18n.value.history.notChecked, String(here.unreadable)),
 )
@@ -1066,7 +1053,6 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
             </div>
         </div>
         <OverlayScrollbar :target="list" />
-        <div class="sr-only" aria-live="polite" data-history-announcement>{{ announcement }}</div>
         <ManagerMenu
             v-if="menu"
             :key="menu.row.id"

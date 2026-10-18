@@ -41,6 +41,7 @@ import type { Entity, EntityType } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
 import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
+import { getComposedLayout } from '../composedView'
 import { view } from '../view'
 import { isCoarsePointer } from '../workspace'
 import {
@@ -213,9 +214,9 @@ export type ChangeMarks = {
     /** Drawn at full strength while the rest dims: changed objects, their connectors. */
     changed: ReadonlySet<Entity>
     /** Rings: changed and added objects; added ones get a `+`. */
-    rings: { entity: Entity; added: boolean }[]
+    rings: { entity: Entity; added: boolean; id: number }[]
     /** Old notes: removed ones (`−`) and where moved ones were. */
-    ghosts: { entity: Entity; removed: boolean }[]
+    ghosts: { entity: Entity; removed: boolean; id: number }[]
     /** The state ghosts are drawn through: the old slides, on the peeked tempo. */
     ghostState?: State
 }
@@ -283,20 +284,20 @@ const connectionTypes: Partial<Record<EntityType, EntityType>> = {
 const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks => {
     const changed = new Set<Entity>()
     const rings: ChangeMarks['rings'] = []
-    const ghostObjects: { object: ChangedObject; record: Rec; removed: boolean }[] = []
+    const ghostObjects: { object: ChangedObject; record: Rec; removed: boolean; id: number }[] = []
     const find = entityIndex(shown)
-    for (const object of objects) {
+    for (const [id, object] of objects.entries()) {
         if (object.status === 'removed') {
-            ghostObjects.push({ object, record: object.record, removed: true })
+            ghostObjects.push({ object, record: object.record, removed: true, id })
             continue
         }
         const entity = find(object.kind, object.record)
         if (entity) {
             changed.add(entity)
-            rings.push({ entity, added: object.status === 'added' })
+            rings.push({ entity, added: object.status === 'added', id })
         }
         if (object.from && isMoved(object))
-            ghostObjects.push({ object, record: object.from, removed: false })
+            ghostObjects.push({ object, record: object.from, removed: false, id })
     }
     // One pass over connections keeps dense changes linear.
     for (const connectors of shown.store.slides.connector.values())
@@ -323,7 +324,7 @@ const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks =
     }
     const ghostState = ghostStateOf(shown, slides, events)
     const findGhost = entityIndex(ghostState)
-    for (const { object, record, removed } of ghostObjects) {
+    for (const { object, record, removed, id } of ghostObjects) {
         const entity =
             object.kind === 'bpms'
                 ? {
@@ -334,7 +335,7 @@ const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks =
                   }
                 : findGhost(object.kind, record)
         if (!entity) continue
-        ghosts.push({ entity, removed })
+        ghosts.push({ entity, removed, id })
     }
     rings.sort((a, b) => a.entity.beat - b.entity.beat)
     ghosts.sort((a, b) => a.entity.beat - b.entity.beat)
@@ -400,18 +401,40 @@ const places = computed((): Place[] => {
     const change = shownChange.value
     if (!change || !hasPlaces.value) return []
     const bpms = change.state.bpms
+    const marks = changeMarks.value
+    const current = new Map(marks?.rings.map(({ id, entity }) => [id, entity]))
+    const old = new Map(marks?.ghosts.map(({ id, entity }) => [id, entity]))
+    const composed = getComposedLayout(change.state)
+    const position = (kind: KindName, record: Rec, entity?: Entity, ghost = false) => {
+        const place = placeOf(kind, record)
+        if (composed && entity?.type === 'note') {
+            const state = ghost ? marks?.ghostState : change.state
+            const projected = composed.notePosition(entity, entity.beat, {
+                slideInfos: state?.store.slides.info.get(entity.slideId),
+            })
+            return { ...place, left: projected.left, size: projected.size }
+        }
+        return place
+    }
     return change.set.objects
-        .flatMap((object, id) =>
-            [
-                object,
-                ...(object.from && isMoved(object) ? [placeOf(object.kind, object.from)] : []),
-            ].map((place) => ({
+        .flatMap((object, id) => {
+            const from =
+                object.status === 'removed'
+                    ? position(object.kind, object.record, old.get(id), true)
+                    : position(object.kind, object.record, current.get(id))
+            const points = [
+                from,
+                ...(object.from && isMoved(object)
+                    ? [position(object.kind, object.from, old.get(id), true)]
+                    : []),
+            ]
+            return points.map((place) => ({
                 id,
                 time: beatToTime(bpms, place.beat),
-                left: place.left ?? 0,
-                right: (place.left ?? 0) + (place.size ?? 0),
-            })),
-        )
+                left: place.left,
+                right: place.left + place.size,
+            }))
+        })
         .sort((a, b) => a.time - b.time)
 })
 
@@ -464,8 +487,30 @@ const currentStops = () => {
     return { band, stops: usableBand.value ? stopsOf(places.value, band.top - band.bottom) : [] }
 }
 
+const showLateralChange = () => {
+    if (!usableBand.value) return false
+    const band = bandTimes()
+    const half = settings.width / 2
+    const outside = places.value.filter(
+        (place) =>
+            place.time >= band.bottom &&
+            place.time <= band.top &&
+            (place.right < view.lane - half || place.left > view.lane + half),
+    )
+    outside.sort(
+        (a, b) =>
+            Math.abs((a.left + a.right) / 2 - view.lane) -
+            Math.abs((b.left + b.right) / 2 - view.lane),
+    )
+    const place = outside[0]
+    if (!place) return false
+    scrollTo({ from: place.time, to: place.time, left: place.left, right: place.right })
+    return true
+}
+
 /** Show Change: the next stop above the band's middle, wrapping to the lowest. */
 export const showNextChange = () => {
+    if (showLateralChange()) return
     const { band, stops } = currentStops()
     const stop = nextStop(stops, band)
     if (stop) scrollTo(stop)
@@ -487,6 +532,7 @@ export const showChangeToward = (direction: 'up' | 'down') => {
 
 /** The stop nearest the band's middle, when not every change is in view: the row menu's. */
 export const showNearestChange = () => {
+    if (showLateralChange()) return
     const { band, stops } = currentStops()
     const stop = nearestStop(stops, band)
     if (stop) scrollTo(stop)

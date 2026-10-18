@@ -1,56 +1,17 @@
 ﻿<script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { isPeeking } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
-import { peekClearance, sheetBox } from '../toolModals'
-import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
-import {
-    changeBand,
-    changeLine,
-    comparisonStatus,
-    countsShown,
-    offBand,
-    showChangeToward,
-} from './changes'
+import { changeLine, comparisonStatus, countsShown, offBand, showChangeToward } from './changes'
+import { peekedInfo } from './selection'
 
-const root = useTemplateRef<HTMLElement>('root')
-const measure = () => {
-    const bar = root.value?.parentElement
-    const pane = bar?.parentElement
-    if (!pane || !bar) return
-    const box = pane.getBoundingClientRect()
-    const top = Math.max(0, bar.getBoundingClientRect().bottom - box.top)
-    let bottom = 0
-    const tools = pane
-        .querySelector(':scope > [data-editor-toolbar]')
-        ?.firstElementChild?.getBoundingClientRect()
-    if (tools && tools.height > 0) bottom = Math.max(0, box.bottom - tools.top)
-    if (sheetBox.value?.side === 'bottom') bottom = Math.max(bottom, sheetBox.value.size + 8)
-    peekClearance.value = top
-    changeBand.value = { top, bottom }
-}
-let observer: ResizeObserver | undefined
-onMounted(() => {
-    observer = new ResizeObserver(measure)
-    const bar = root.value?.parentElement
-    if (bar) observer.observe(bar)
-    if (bar?.parentElement) observer.observe(bar.parentElement)
-    const toolbar = bar?.parentElement?.querySelector(':scope > [data-editor-toolbar]')
-    if (toolbar) observer.observe(toolbar)
-    measure()
-})
-onBeforeUnmount(() => {
-    observer?.disconnect()
-    peekClearance.value = 0
-})
-watch([sheetBox, () => view.h, () => view.w], () => void nextTick(measure))
 const delayed = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(
-    comparisonStatus,
-    (status) => {
+    [comparisonStatus, peekedInfo],
+    ([status]) => {
         clearTimeout(timer)
         delayed.value = false
         if (status === 'loading')
@@ -83,18 +44,12 @@ const labelOf = (direction: 'up' | 'down') => {
 <template>
     <div
         v-if="isPeeking"
-        ref="root"
         class="pointer-events-auto flex h-[52px] w-full max-w-lg items-center gap-1 rounded-3xl bg-modal p-1 pl-4 text-sm text-fg shadow-md"
         data-peek-navigation
     >
-        <span
-            class="min-w-0 flex-1 truncate"
-            :title="line"
-            :aria-label="line"
-            aria-live="polite"
-            data-peek-change
-            >{{ line }}</span
-        >
+        <span class="min-w-0 flex-1 truncate" :title="line" :aria-label="line" data-peek-change>{{
+            line
+        }}</span>
         <button
             v-for="direction in directions"
             :key="direction"

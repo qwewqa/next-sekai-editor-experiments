@@ -29,6 +29,7 @@ export type PeekedInfo = {
     initial?: boolean
     rowId?: string
     members?: readonly EntryKey[]
+    pinned?: readonly EntryKey[]
 }
 
 /** An entry's key in the peek. */

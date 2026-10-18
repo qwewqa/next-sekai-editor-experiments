@@ -321,3 +321,27 @@ test('dense candidate pairing is bounded even inside a mostly unchanged chart', 
     assert.equal(set.objects.filter((object) => object.status === 'removed').length, 400)
     assert.equal(set.objects.filter((object) => object.status === 'added').length, 400)
 })
+
+test('event footprints detect horizontal moves at the same beat', () => {
+    for (const [kind, lane] of [
+        ['cameraEvents', 1],
+        ['stageMaskEvents', 2],
+        ['stagePivotEvents', 2],
+        ['stageStyleEvents', 2],
+        ['stageTransformEvents', 3],
+        ['timeScales', 2],
+    ] as const) {
+        const record = toRecords(stateOf(goldenChart())).kinds.find(
+            (candidate) => candidate.kind === kind,
+        )!.records[0]!.record
+        const moved = [...record]
+        moved[lane] = (record[lane] as number) + 15
+        const set = diffChanges({
+            header: false,
+            kinds: [{ kind, before: [record], after: [moved] }],
+        })
+        assert.equal(set.objects.length, 1)
+        assert.equal(isMoved(set.objects[0]!), true, kind)
+        assert.equal(set.objects[0]!.left, moved[lane], kind)
+    }
+})

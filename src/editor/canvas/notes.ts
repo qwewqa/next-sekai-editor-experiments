@@ -34,7 +34,7 @@ const diamondColors = { green: '#abfbe3', red: '#ffd8f6', yellow: '#fff2c3' }
 
 type Point = readonly [number, number]
 
-const diamondPoints: readonly Point[] = [
+export const diamondPoints: readonly Point[] = [
     [-0.3, 0],
     [0, -0.3],
     [0.3, 0],

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+﻿import { expect, test, type Page } from '@playwright/test'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 
 // The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
@@ -672,4 +672,107 @@ test('net-zero runs retain their real steps and show an equal comparison', async
     await expect(row(page, 'Adjust')).toHaveCount(2)
     await row(page, 'Adjust').first().click()
     await expect(peekLine(page)).toHaveText('Adjust')
+})
+
+test('both footprints of a moved object remain reachable on opposite sides of the clear band', async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { history, appImport, settings, view } = window.editorTest
+        const [{ createTransaction }, { replaceNote }, { noteObjectOf }] = await Promise.all([
+            appImport<typeof import('../../src/state/transaction')>('/src/state/transaction.ts'),
+            appImport<typeof import('../../src/state/mutations/slides/note')>(
+                '/src/state/mutations/slides/note.ts',
+            ),
+            appImport<typeof import('../../src/local/records/extract')>(
+                '/src/local/records/extract.ts',
+            ),
+        ])
+        const transaction = createTransaction(history.state.value)
+        const note = [...history.state.value.store.slides.note.values()]
+            .flat()
+            .find((note) => note.beat === 5)!
+        replaceNote(transaction, note, { ...noteObjectOf(note), beat: 11 })
+        history.pushState(() => 'Moved across view', transaction.commit([]))
+        settings.pps = 400
+        view.time = 4
+    })
+    await stored(page)
+    await openTab(page)
+    await row(page, 'Moved across view').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+    await expect(arrow(page, 'down')).toHaveAttribute('data-count', '1')
+    await arrow(page, 'down').click()
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'false')
+})
+
+test('a selected edge singleton stays separate when an older matching page arrives', async ({
+    page,
+}) => {
+    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    await stored(page)
+    await page.evaluate(async () => {
+        const { storageWorker } =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        let first = true
+        storageWorker!.call = new Proxy(storageWorker!.call, {
+            apply(target, self, args) {
+                if (args[0] !== 'readTimeline' || (args[1] as { limit: number }).limit !== 100)
+                    return Reflect.apply(target, self, args)
+                if (first) {
+                    first = false
+                    return Promise.resolve(Reflect.apply(target, self, args)).then(
+                        (
+                            result: import('../../src/local/worker/timelineHandlers').TimelinePage,
+                        ) => {
+                            const entry = result.entries[0]!
+                            return {
+                                entries: [entry],
+                                next: { sessionId: entry.sessionId, before: entry.seq },
+                            }
+                        },
+                    )
+                }
+                return new Promise((resolve, reject) => {
+                    ;(window as unknown as { releasePage: () => void }).releasePage = () => {
+                        Promise.resolve(Reflect.apply(target, self, args)).then(resolve, reject)
+                    }
+                })
+            },
+        })
+    })
+    await openTab(page)
+    await row(page, 'Add').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    await page.evaluate(() => (window as unknown as { releasePage: () => void }).releasePage())
+    await expect(row(page, '2 edits')).toHaveCount(1)
+    await expect(row(page, 'Add')).toHaveAttribute('aria-selected', 'true')
+    await expect(peekLine(page)).toHaveText('1 change')
+    await row(page, '2 edits').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Show Change' }).click()
+    await expect(peekLine(page)).toHaveText('2 changes')
+})
+
+test('Find Edits Here measures the live chart before and after peeking', async ({ page }) => {
+    const initial = (await changes(page)).band
+    expect(initial.top).toBe(0)
+    expect(initial.bottom).toBeGreaterThan(0)
+    await edit(page, 'Add', { kind: 'add', beats: [40] })
+    await stored(page)
+    await openTab(page)
+    await row(page, 'Add').click()
+    await expect.poll(async () => (await changes(page)).band.top).toBeGreaterThan(100)
+    await page.locator('[data-peek-back]').click()
+    await expect.poll(async () => (await changes(page)).band.top).toBe(0)
+    const result = await page.evaluate(async () => {
+        const { takeHereRange } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/editsHere')
+        >('/src/editor/history/editsHere.ts')
+        return takeHereRange()
+    })
+    expect(result.to).toBeGreaterThan(result.from)
 })

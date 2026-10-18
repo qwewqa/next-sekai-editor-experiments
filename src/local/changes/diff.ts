@@ -290,10 +290,7 @@ const pairNearest = (sides: Sides, blank: readonly number[], pairs: Pair[]) => {
 const objectOf = (item: Item, status: ChangeStatus, from?: Item): ChangedObject => ({
     kind: item.kind,
     status,
-    beat: item.beat,
-    ...(item.kind === 'slides'
-        ? { left: item.record[NOTE_LEFT] as number, size: item.record[NOTE_SIZE] as number }
-        : {}),
+    ...placeOf(item.kind, item.record),
     record: item.record,
     ...(from ? { from: from.record } : {}),
     ...(from?.slide ? { slide: from.slide } : item.slide ? { slide: item.slide } : {}),
@@ -376,22 +373,40 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
 /** Whether a changed object's place differs from its old one: a move, which leaves a ghost. */
 export const isMoved = (object: ChangedObject) => {
     if (!object.from) return false
-    const at = eventBeat[object.kind]
-    if (object.from[at] !== object.record[at]) return true
+    const before = placeOf(object.kind, object.from)
+    const after = placeOf(object.kind, object.record)
     return (
-        object.kind === 'slides' &&
-        (object.from[NOTE_LEFT] !== object.record[NOTE_LEFT] ||
-            object.from[NOTE_SIZE] !== object.record[NOTE_SIZE])
+        before.beat !== after.beat ||
+        before.left !== after.left ||
+        before.size !== after.size ||
+        trackOf(object.kind, object.from) !== trackOf(object.kind, object.record) ||
+        (object.kind === 'slides' && object.from[1] !== object.record[1])
     )
 }
 
 /** Where an old record was: its beat, and a note's left lane and size. */
-export const placeOf = (kind: KindName, record: Rec) => ({
-    beat: record[eventBeat[kind]] as number,
-    ...(kind === 'slides'
-        ? { left: record[NOTE_LEFT] as number, size: record[NOTE_SIZE] as number }
-        : {}),
-})
+export const placeOf = (kind: KindName, record: Rec) => {
+    const lane =
+        kind === 'slides'
+            ? NOTE_LEFT
+            : kind === 'cameraEvents'
+              ? 1
+              : kind === 'stageTransformEvents'
+                ? 3
+                : 2
+    return {
+        beat: record[eventBeat[kind]] as number,
+        left: kind === 'bpms' ? 6.1 : (record[lane] as number),
+        size:
+            kind === 'slides'
+                ? (record[NOTE_SIZE] as number)
+                : kind === 'cameraEvents'
+                  ? (record[2] as number)
+                  : kind === 'stageMaskEvents'
+                    ? (record[3] as number)
+                    : 0,
+    }
+}
 
 /** An event record's track. */
 export const eventTrack = trackOf
