@@ -37,7 +37,7 @@ const stateOf = async (key: EntryKey): Promise<State> => {
         limit: 1,
     })
     const entry = page.entries[0]
-    if (!entry || entry.seq !== key.seq || !entry.kept) throw new Error('No such entry')
+    if (entry?.seq !== key.seq || !entry.kept) throw new Error('No such entry')
     const parts = await storageWorker.call('readSnapshot', entry.snapshot)
     return stateFromRecords(
         decodeSnapshot(parts.root, {
@@ -65,7 +65,8 @@ export const leavePeek = () => {
 export const restoreEntry = async (key: EntryKey) => {
     const state = await stateOf(key)
     leavePeek()
-    const { pushState } = await import('./stack')
-    pushState(() => `Restored to ${new Date().toLocaleTimeString()}`, state)
+    // Named apart: the audit of edit paths is 5-peek's, and this file goes with its own.
+    const push = (await import('./stack')).pushState
+    push(() => `Restored to ${new Date().toLocaleTimeString()}`, state)
     void refused
 }

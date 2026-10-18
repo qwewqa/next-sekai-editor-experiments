@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useId, useTemplateRef } from 'vue'
 import { i18n } from '../../i18n'
-import { isCoarsePointer, getPanelSide } from '../workspace'
+import { getPanelSide } from '../workspace'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import TimelineList from './TimelineList.vue'
 import type { Filter } from './rows'

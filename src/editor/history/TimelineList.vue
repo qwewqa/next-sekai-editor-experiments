@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-    computed,
-    nextTick,
-    onBeforeUnmount,
-    onMounted,
-    ref,
-    shallowRef,
-    useTemplateRef,
-    watch,
-} from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { peekedKey, restoreEntry } from '../../history/peek'
 import { headName } from '../../history/stack'
 import { session } from '../../history/session'
@@ -20,7 +11,7 @@ import {
     formatDateTime,
     formatEntryTime,
 } from '../../i18n/when'
-import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import { interpolateRaw } from '../../utils/interpolate'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
@@ -221,26 +212,28 @@ const passed: CommandName[] = ['history', 'play', 'copy']
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
     const row = rowById(cursorId.value)
-    const handled = (): true => {
+    const handled = () => {
         event.preventDefault()
         event.stopPropagation()
-        return true
     }
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey
     if (plain && !event.shiftKey) {
         switch (event.key) {
             case 'ArrowDown':
-                return void (handled() && step(1))
             case 'ArrowUp':
-                return void (handled() && step(-1))
             case 'PageDown':
-                return void (handled() && step(5))
             case 'PageUp':
-                return void (handled() && step(-5))
+                handled()
+                step({ ArrowDown: 1, ArrowUp: -1, PageDown: 5, PageUp: -5 }[event.key])
+                return
             case 'Home':
-                return void (handled() && moveTo(rows.value[0], true))
+                handled()
+                moveTo(rows.value[0], true)
+                return
             case 'End':
-                return void (handled() && moveTo(selectables.value.at(-1), false))
+                handled()
+                moveTo(selectables.value.at(-1), false)
+                return
             case 'Enter':
                 if (row?.type === 'entry' && row.selectable) {
                     handled()
@@ -390,10 +383,6 @@ const announcement = computed(() =>
           )
         : '',
 )
-
-void interpolate
-void formatClock
-void nextTick
 
 defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
 </script>

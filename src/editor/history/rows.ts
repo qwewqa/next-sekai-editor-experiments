@@ -169,7 +169,7 @@ export const buildRows = (
                     entry: member,
                     members: [member],
                     flags: memberFlags,
-                    delta: delta ? delta : undefined,
+                    delta: delta === 0 ? undefined : delta,
                     child: true,
                     selectable: !memberFlags.removed && !memberFlags.damaged,
                 })
@@ -178,7 +178,7 @@ export const buildRows = (
 
     // Headers: a minute's, and a day's once the timeline spans days.
     const times = shown.map((entry) => entry.time)
-    const spansDays = times.length > 1 && !sameDay(Math.max(...times), Math.min(...times)) // eslint-disable-line
+    const spansDays = times.length > 1 && !sameDay(Math.max(...times), Math.min(...times))
     const rows: Row[] = [{ type: 'now', id: 'now' }]
     let previous: Entry | undefined
     for (const item of items) {

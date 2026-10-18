@@ -213,7 +213,7 @@ const layer = shallowRef<Transient>()
 /** What is on screen: the saved state with the layer on top. */
 const shownState = computed(
     () =>
-        (layer.value && transientState(layoutInput(toggleState.value, layer.value))) ||
+        (layer.value && transientState(layoutInput(toggleState.value, layer.value))) ??
         toggleState.value,
 )
 
