@@ -1162,7 +1162,7 @@
     "olderVersion": "Bu sürüm verilerinizden daha eski. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
     "tryAgain": "Tekrar Dene",
     "continued": "\"{0}\", {1} tarihinden devam ettirildi.",
-    "continuedUntitled": "{0} tarihli oturumunuza devam edildi.",
+    "continuedUntitled": "{0} tarihli oturumunuz devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
@@ -1835,7 +1835,7 @@
     "downloaded": "{0} indirildi",
     "recovered": "Son değişiklik kurtarıldı",
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı silindi.",
-    "continued": "Devam edildi",
+    "continued": "Devam ettirildi",
     "migrated": "Otomatik kaydetmeden kurtarıldı"
   },
   "session": {
