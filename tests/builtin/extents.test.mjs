@@ -6,17 +6,17 @@ import { decode, pixelAt } from './pngDecode.mjs'
 // Where each sprite's art (alpha at least one half) lands in the engine's quad, 0 to 1 from the
 // quad's bottom-left corner, after the sprite's transform: [x0, x1, y0, y1]. The targets were
 // measured the same way on the base skin (Next SEKAI 01), so ours draws at its size on screen.
-// Note ends stop 0.02 of a lane inside the note (the base's opaque body ends at the note's edge,
-// with a dark glow past it), so notes side by side keep a gap.
+// Note bodies fill their quads, as the base's opaque bodies do (its dark glow left out), so a note
+// one lane wide on the judge line covers its slot cell; traces and damage keep the base's heights.
 const targets = {
-    'Sekai Normal Note Left': [0.08, 1, -0.06, 1.06],
-    'Sekai Normal Note Middle': [0, 1, -0.06, 1.06],
-    'Sekai Normal Note Right': [0, 0.92, -0.06, 1.06],
-    'Sekai Critical Flick Note Left Red': [0.08, 1, -0.06, 1.06],
-    'Sekai Normal Trace Note Left Neutral': [0.16, 1, 0.19, 0.81],
-    'Sekai Normal Trace Note Middle Neutral': [0, 1, 0.19, 0.81],
-    'Sekai Normal Trace Note Right Neutral': [0, 0.84, 0.19, 0.81],
-    'Sekai Damage Note Middle': [0, 1, 0.05, 0.95],
+    'Sekai Normal Note Left': [0, 1, 0, 1],
+    'Sekai Normal Note Middle': [0, 1, 0, 1],
+    'Sekai Normal Note Right': [0, 1, 0, 1],
+    'Sekai Critical Flick Note Left Red': [0, 1, 0, 1],
+    'Sekai Normal Trace Note Left Neutral': [0, 1, 0.25, 0.75],
+    'Sekai Normal Trace Note Middle Neutral': [0, 1, 0.25, 0.75],
+    'Sekai Normal Trace Note Right Neutral': [0, 1, 0.25, 0.75],
+    'Sekai Damage Note Middle': [0, 1, 0.19, 0.81],
     '#SIMULTANEOUS_CONNECTION_NEUTRAL': [0, 1, 0.44, 0.56],
     'Sekai Diamond Green': [-0.12, 1.1, 0.22, 1.12],
     'Sekai Normal Trace Diamond Neutral': [-0.05, 1.05, 0.27, 1.02],

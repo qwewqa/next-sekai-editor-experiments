@@ -44,9 +44,6 @@ const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, 
 const slot = (color) => image('slot', { color }, { transform: box(-0.28, 1.28, -0.28, 1.28) })
 const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
 
-// The dark base of the judgment band.
-const judgmentShade = '#0b0c16'
-
 /**
  * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
  * quad (0 to 1 from its bottom-left corner), so the art lands where the base skin's does on screen.
@@ -80,56 +77,50 @@ const arrow = (direction, accent, width) => {
     return image('arrow', vars, { width: pixels, transform: box(...frame) })
 }
 
-// Note bodies sit 6% over and under their quad, as the base skin's do; their ends stop 0.02 of a
-// lane inside the note, so notes side by side keep a gap. Slim traces keep their height in the art.
-const bodySpan = { end: 0.92, over: 0.06 }
-const slimSpan = { end: 0.84, over: 0 }
-const bodyBox = {
-    Left: box(1 - bodySpan.end, 1, -bodySpan.over, 1 + bodySpan.over),
-    Middle: box(0, 1, -bodySpan.over, 1 + bodySpan.over),
-    Right: box(0, bodySpan.end, -bodySpan.over, 1 + bodySpan.over),
-}
-const slimBox = {
-    Left: box(1 - slimSpan.end, 1, 0, 1),
-    Middle: undefined,
-    Right: box(0, slimSpan.end, 0, 1),
-}
-
-// At stage tilt 0 a note is one lane tall, its end slices 0.25 lane (slim 0.125) wide. Body art is
-// drawn in units square on screen there, so its borders are even and its corners round; the
-// texture keeps its pixel size and squeezes the units (taller units at other tilts).
+// Note bodies fill their slices' quads exactly, as the base's bodies do (its lower band included):
+// a note one lane wide on the judge line then covers its lane's slot cell, which is the same quad
+// (layout_slot_effect). At stage tilt 0 a note is one lane tall, its end slices 0.25 lane (slim
+// 0.125) wide, so the art is drawn in units square on screen there (192 a lane), its borders even
+// and its corners round; the texture squeezes the units (taller units at other tilts).
 const NOTE_EDGE_W = 0.25
 const NOTE_SLIM_EDGE_W = 0.125
 /** The art's height in units for an end slice `pixels` wide over `edge` lanes. */
-export const unitHeight = (pixels, edge, { end, over }) => (pixels * (1 + 2 * over)) / (end * edge)
-const bodyH = unitHeight(48, NOTE_EDGE_W, bodySpan)
-const slimH = unitHeight(24, NOTE_SLIM_EDGE_W, slimSpan)
-const damageH = unitHeight(48, NOTE_EDGE_W, slimSpan)
+export const unitHeight = (pixels, edge) => pixels / edge
+const bodyH = unitHeight(48, NOTE_EDGE_W)
+const slimH = unitHeight(24, NOTE_SLIM_EDGE_W)
+const damageH = unitHeight(48, NOTE_EDGE_W)
 const n = (value) => Math.round(value * 1000) / 1000
 // A shape from x to the slice's inner end and from top to bottom, its outer corners rounded.
 const endShape = (x, top, bottom, radius, end = 48) =>
     `M${end} ${n(top)}H${n(x + radius)}A${radius} ${radius} 0 0 0 ${n(x)} ${n(top + radius)}` +
     `V${n(bottom - radius)}A${radius} ${radius} 0 0 0 ${n(x + radius)} ${n(bottom)}H${end}Z`
-// Regular bodies: a 16 unit border in the outer colour round the inner face, and the accent mark,
-// a bar a quarter of the note's height (as the base's).
+// The base's border is about 0.07 lane at tilt 0; its mark fills the face from the border's inner
+// edge to 0.236 lane in from the note's edge, over the middle third of the face's height, its inner
+// corners a little round.
+const border = 14
+const markEnd = 0.236 * bodyH
+const markShape = (top, bottom, radius = 4) =>
+    `M${border} ${n(top)}H${n(markEnd - radius)}A${radius} ${radius} 0 0 1 ${n(markEnd)} ` +
+    `${n(top + radius)}V${n(bottom - radius)}A${radius} ${radius} 0 0 1 ${n(markEnd - radius)} ` +
+    `${n(bottom)}H${border}Z`
 const bodyVars = {
     h: n(bodyH),
-    rim: endShape(0, 0, bodyH, 16),
-    face: endShape(16, 16, bodyH - 16, 16),
-    mark: n(bodyH / 2 - bodyH / 8),
-    tall: n(bodyH / 4),
-    span: n(bodyH - 32),
+    rim: endShape(0, 0, bodyH, border),
+    face: endShape(border, border, bodyH - border, 8),
+    mark: markShape(bodyH / 3, (2 * bodyH) / 3),
+    border,
+    span: n(bodyH - 2 * border),
 }
-// Slim traces: the bar is 62.5% of the note's height, with round ends.
-const slimTop = slimH * 0.1875
+// Slim traces: a bar half the note's height through its middle, as the base's.
+const slimTop = slimH / 4
 const slimVars = {
     h: n(slimH),
-    face: endShape(0, slimTop, slimH - slimTop, 20, 24),
+    face: endShape(0, slimTop, slimH - slimTop, 8, 24),
     top: n(slimTop),
     span: n(slimH - 2 * slimTop),
 }
-// Damage: 90% of the height, a 4 unit rim in the edge colour.
-const damageTop = damageH * (5 / 96)
+// Damage: 62.5% of the height through its middle, as the base's, with a 4 unit rim.
+const damageTop = damageH * 0.1875
 const damageVars = {
     h: n(damageH),
     rim: endShape(0, damageTop, damageH - damageTop, 22),
@@ -150,20 +141,12 @@ const bodyImage = (part, [outer, inner, accent]) =>
     image(
         `note-body-${part.toLowerCase()}`,
         { ...bodyVars, outer, inner, accent },
-        { stretch: true, transform: bodyBox[part] },
+        { stretch: true },
     )
 const slimImage = (part, accent) =>
-    image(
-        `note-slim-${part.toLowerCase()}`,
-        { ...slimVars, accent },
-        { stretch: true, transform: slimBox[part] },
-    )
+    image(`note-slim-${part.toLowerCase()}`, { ...slimVars, accent }, { stretch: true })
 const damageImage = (part, color, edge) =>
-    image(
-        `note-damage-${part.toLowerCase()}`,
-        { ...damageVars, color, edge },
-        { stretch: true, transform: slimBox[part] },
-    )
+    image(`note-damage-${part.toLowerCase()}`, { ...damageVars, color, edge }, { stretch: true })
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -261,20 +244,22 @@ export function skinSprites() {
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
     })
 
-    // Opaque strips and dividers: darker at the stage edges, lighter at the centre, over a dark band.
+    // Opaque strips and dividers in the base's colours: its edge colour at the stage edges and on
+    // the dividers' ends, its centre colour at the centre, over a dark band. Where the base leaves
+    // a sprite out (the coloured bands, the single line, the end caps), the engine's fallback's
+    // colour.
     group('Judgment', () => {
-        add('Sekai Judgment Background', solid(judgmentShade, 0.55))
+        const [shade, alpha] = baseColors.judgmentBand
+        add('Sekai Judgment Background', solid(shade, alpha))
         for (const color of colorNames) {
-            const hue = guideColor(color)
-            const edge = mix(hue, '#000000', 0.2)
-            const centre = mix(hue, '#ffffff', 0.3)
-            add(`Sekai Judgment Background ${color}`, solid(mix(hue, judgmentShade, 0.85), 0.55))
+            const [edge, centre] = baseColors.judgmentLine[color]
+            add(`Sekai Judgment Background ${color}`, solid(shade, alpha))
             add(
                 `Sekai Judgment Gradient ${color}`,
                 image('judgment-gradient', { edge, centre }, { stretch: true }),
             )
             add(`Sekai Judgment Edge ${color}`, solid(edge))
-            add(`Sekai Judgment Single Line ${color}`, solid(mix(hue, '#ffffff', 0.15)))
+            add(`Sekai Judgment Single Line ${color}`, solid(edge))
             add(`Sekai Judgment Edge Left ${color}`, solid(edge, 1, 8, 4))
             add(`Sekai Judgment Center ${color}`, solid(centre))
         }

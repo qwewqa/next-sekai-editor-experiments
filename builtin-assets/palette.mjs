@@ -92,6 +92,19 @@ export const baseColors = {
             ['#484848', '#454545', '#3d3d3d'],
         ],
     },
+    // The judgment line per colour: [edge, centre], the gradient running between them from the
+    // stage edge to the centre. Its band is one black at 0.57 for every colour.
+    judgmentLine: {
+        Neutral: ['#afafaf', '#cacaca'],
+        Red: ['#ff186f', '#fa72ab'],
+        Green: ['#4dff00', '#b1ff00'],
+        Blue: ['#009fff', '#00dfff'],
+        Yellow: ['#ffff00', '#ecff9b'],
+        Purple: ['#c85fff', '#a694ff'],
+        Cyan: ['#00f9ff', '#8ffcff'],
+        Black: ['#000000', '#222222'],
+    },
+    judgmentBand: ['#000000', 0.57],
     // Effects, from captures of each hit: the hue where the effects add light.
     effect: { tap: '#6266f2', flick: '#e640bc', trace: '#39b2e6' },
     // Per style: connector at rest and held, critical connector at rest and held, damage
