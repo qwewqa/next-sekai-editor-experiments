@@ -434,6 +434,23 @@ test('compact Go To supports pointer filters and keyboard picks inside the nativ
     await expect(list(page).getByRole('option', { selected: true })).toContainText('Now')
 })
 
+test('reset closes an in-progress Go To chooser before a later presentation change', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await open(page)
+    await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
+    await expect(page.locator('[data-history-goto]')).toBeVisible()
+    await page.evaluate(() => {
+        const history = window.editorTest.history
+        history.resetStates({ isDirty: false, name: () => 'Reset', state: history.liveState.value })
+    })
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+    await page.setViewportSize({ width: 520, height: 320 })
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+})
+
 test('filter-driven promotion retains an open Go To chooser, while window resize still dismisses it', async ({
     page,
 }) => {

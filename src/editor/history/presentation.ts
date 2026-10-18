@@ -18,7 +18,7 @@ export type HistoryPresentation = {
     registerView: (capture: () => void) => () => void
     takeFocusTarget: () => string | undefined
     measureChrome: (height: number) => void
-    rememberGoTo: (view: GoToView | undefined) => void
+    rememberGoTo: (view: GoToView | undefined, generation: number) => void
     takeGoTo: () => GoToView | undefined
 }
 
@@ -62,8 +62,11 @@ export const createHistoryPresentation = (filtered: () => boolean, promote: () =
     }
     const state = shallowReactive<HistoryPresentation>({
         compact: !fits(),
-        rememberGoTo(view) {
-            goTo = view && { identity: goToIdentity(), view }
+        rememberGoTo(view, generation) {
+            goTo =
+                view && generation === historyViewGeneration()
+                    ? { identity: goToIdentity(), view }
+                    : undefined
         },
         takeGoTo() {
             const saved = goTo

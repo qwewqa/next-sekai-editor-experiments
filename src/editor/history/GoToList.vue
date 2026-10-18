@@ -71,9 +71,19 @@ const load = async () => {
         if (mark === request && context === identity()) failed.value = true
     }
 }
-watch([historyFilter, hereRange, () => session.value.sessionId, () => here.scanning], load, {
-    immediate: true,
-})
+watch(
+    [
+        historyFilter,
+        hereRange,
+        historyViewGeneration,
+        () => session.value.sessionId,
+        () => here.scanning,
+    ],
+    load,
+    {
+        immediate: true,
+    },
+)
 
 const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
 const rangeOf = (piece: TimelinePiece) => formatClockRange(piece.oldest, piece.newest)

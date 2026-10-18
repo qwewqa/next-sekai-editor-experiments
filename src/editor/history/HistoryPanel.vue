@@ -21,7 +21,13 @@ import { hereRangeText } from './editsHere'
 import RecentSessionsTab from './RecentSessionsTab.vue'
 import { backToNow, peekedInfo } from './selection'
 import type { Target } from './source'
-import { hereRange, historyFilter, historyTab, type HistoryTab } from './state'
+import {
+    hereRange,
+    historyFilter,
+    historyTab,
+    historyViewGeneration,
+    type HistoryTab,
+} from './state'
 import TimelineList from './TimelineList.vue'
 import type { HistoryPresentation } from './presentation'
 
@@ -91,6 +97,7 @@ watch(
 const goToPopover = useTemplateRef<InstanceType<typeof GoToPopover>>('goToPopover')
 const goToList = useTemplateRef<InstanceType<typeof GoToList>>('goToList')
 const savedGoTo = shallowRef(props.presentation?.takeGoTo())
+let goToGeneration = historyViewGeneration()
 defineExpose({
     hasGoTo: () => goToOpen.value,
     rememberView: () => {
@@ -104,6 +111,7 @@ defineExpose({
                       top: goToPopover.value?.captureView().top ?? 0,
                   }
                 : undefined,
+            goToGeneration,
         )
     },
 })
@@ -137,9 +145,18 @@ const closeGoTo = (restoreFocus: boolean) => {
     savedGoTo.value = undefined
     if (restoreFocus) void nextTick(() => goToButton.value?.focus({ preventScroll: true }))
 }
+watch(historyViewGeneration, () => closeGoTo(false), { flush: 'sync' })
+watch(
+    [historyFilter, hereRange],
+    () => {
+        savedGoTo.value = undefined
+    },
+    { flush: 'sync' },
+)
 // The piece at the top of the list is Go To's current one.
 const goToCurrent = ref<Target | 'now'>(savedGoTo.value?.current)
 const openGoTo = () => {
+    goToGeneration = historyViewGeneration()
     savedGoTo.value = undefined
     goToCurrent.value = timeline.value?.topEntry()
     goToOpen.value = true

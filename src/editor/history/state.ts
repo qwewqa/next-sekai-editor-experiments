@@ -30,12 +30,12 @@ export type HistoryViewMemory = {
 }
 
 let dialogView: HistoryViewMemory | undefined
-let viewGeneration = 0
-export const historyViewGeneration = () => viewGeneration
+const viewGeneration = ref(0)
+export const historyViewGeneration = () => viewGeneration.value
 
 /** One dialog view for the current session, without keeping rows or historical states. */
-export const rememberHistoryView = (view: HistoryViewMemory, generation = viewGeneration) => {
-    if (generation === viewGeneration && view.sessionId === session.value.sessionId)
+export const rememberHistoryView = (view: HistoryViewMemory, generation = viewGeneration.value) => {
+    if (generation === viewGeneration.value && view.sessionId === session.value.sessionId)
         dialogView = view
 }
 
@@ -43,7 +43,7 @@ export const rememberedHistoryView = () =>
     dialogView?.sessionId === session.value.sessionId ? dialogView : undefined
 
 export const clearHistoryView = () => {
-    viewGeneration++
+    viewGeneration.value++
     dialogView = undefined
 }
 
