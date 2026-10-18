@@ -73,7 +73,10 @@ const read = async (
         const list = of === 'hovered' ? view.entities.hovered : state.selectedEntities
         const result = {
             keys: list
-                .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
+                .map(
+                    (entity) =>
+                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
+                )
                 .sort(),
             unedited:
                 !initial ||
@@ -142,7 +145,7 @@ const stackAnchors = (page: Page) =>
         return {
             isolated: point(2.8, 4),
             overlap: point(0.5, 4),
-            pivot: point(-1, 4),
+            pivot: point(-0.975, 4),
             timeScale: point(1.5, 4),
             empty: point(-5, 4),
         }
@@ -196,7 +199,14 @@ test('Select: the hover is what a tap selects, cycling, with or without a select
     }
     check?.(await keys(page, 'selected', initial))
     expect([...seen].sort()).toEqual(
-        [...stackNotes, 'note:4:2.3', 'stagePivotEventJoint:4:', 'timeScale:4:', 'hit', 'miss'].sort(),
+        [
+            ...stackNotes,
+            'note:4:2.3',
+            'stagePivotEventJoint:4:',
+            'timeScale:4:',
+            'hit',
+            'miss',
+        ].sort(),
     )
 })
 
@@ -264,39 +274,51 @@ test('Select with Ctrl: the hover is every object a Ctrl-tap adds or removes', a
 
 /** The objects not in `all`, and those of `all` gone; undoes the tap if it changed any. Without `all`, every object. */
 const changed = async (page: Page, all?: string[], initial?: Baseline) => {
-    const result = await page.evaluate(({ all, initial }) => {
-        const { store, history } = window.editorTest
-        const now = [...store.getAllEntities()]
-            .filter((entity) => entity.type !== 'bpm' && !entity.type.startsWith('connector'))
-            .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
-        const selected = history.state.value.selectedEntities
-            .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
-            .sort()
-        // As multisets: an add can repeat an object's beat and lane.
-        const minus = (a: string[], b: string[]) => {
-            const rest = [...b]
-            return a.filter((name) => {
-                const i = rest.indexOf(name)
-                if (i >= 0) rest.splice(i, 1)
-                return i < 0
-            })
-        }
-        const added = minus(now, all ?? []).sort()
-        const removed = all ? minus(all, now) : []
-        if (all && (added.length || removed.length)) history.undoState()
-        const restored = [...store.getAllEntities()]
-            .filter((entity) => entity.type !== 'bpm' && !entity.type.startsWith('connector'))
-            .map((entity) => `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`)
-            .sort()
-        return {
-            added,
-            removed,
-            selected,
-            restored,
-            sameStore: !initial || history.state.value.store === initial.store,
-            canUndo: history.canUndo.value,
-        }
-    }, { all, initial })
+    const result = await page.evaluate(
+        ({ all, initial }) => {
+            const { store, history } = window.editorTest
+            const now = [...store.getAllEntities()]
+                .filter((entity) => entity.type !== 'bpm' && !entity.type.startsWith('connector'))
+                .map(
+                    (entity) =>
+                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
+                )
+            const selected = history.state.value.selectedEntities
+                .map(
+                    (entity) =>
+                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
+                )
+                .sort()
+            // As multisets: an add can repeat an object's beat and lane.
+            const minus = (a: string[], b: string[]) => {
+                const rest = [...b]
+                return a.filter((name) => {
+                    const i = rest.indexOf(name)
+                    if (i >= 0) rest.splice(i, 1)
+                    return i < 0
+                })
+            }
+            const added = minus(now, all ?? []).sort()
+            const removed = all ? minus(all, now) : []
+            if (all && (added.length || removed.length)) history.undoState()
+            const restored = [...store.getAllEntities()]
+                .filter((entity) => entity.type !== 'bpm' && !entity.type.startsWith('connector'))
+                .map(
+                    (entity) =>
+                        `${entity.type}:${entity.beat}:${'left' in entity ? entity.left : ''}`,
+                )
+                .sort()
+            return {
+                added,
+                removed,
+                selected,
+                restored,
+                sameStore: !initial || history.state.value.store === initial.store,
+                canUndo: history.canUndo.value,
+            }
+        },
+        { all, initial },
+    )
     if (all) {
         expect(result.restored, 'undo restores the original entity multiset').toEqual(all)
         expect(result.sameStore, 'undo restores the exact original chart store').toBe(true)
@@ -390,7 +412,12 @@ test('Eraser and Note tool: the hover is what a tap removes or selects, and the 
         }
     }
     expect(added).toBeGreaterThan(0)
-    expect([...outcomes].sort()).toEqual(['erase inStack', 'erase miss', 'erase none', 'note select'])
+    expect([...outcomes].sort()).toEqual([
+        'erase inStack',
+        'erase miss',
+        'erase none',
+        'note select',
+    ])
 })
 
 test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page }) => {
