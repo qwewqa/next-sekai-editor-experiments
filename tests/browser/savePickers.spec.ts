@@ -10,6 +10,7 @@ import {
     pickerCalls,
     pressSave,
     projectOf,
+    prompts,
     queuePicks,
     reached,
     readFile,
