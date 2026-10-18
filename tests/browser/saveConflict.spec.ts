@@ -105,6 +105,13 @@ test('with storing paused, Save still writes and appends, and Replace writes not
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).parent)
         .toBe((first.revision as Row).id)
+    // That Save has bound the file in memory: the next press is its own.
+    const second = ((await projectOf(page, 'coconut.nxsp')).revision as Row).id
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.nseFlushTest?.flusher.session?.identity?.revision.id),
+        )
+        .toBe(second)
 
     const dialog = await conflict(page)
     await expect(dialog).toContainText('Changes are not being stored in this browser.')
