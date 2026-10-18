@@ -26,7 +26,7 @@ const prefixes = [
     'Sekai Critical Trace Down Flick Note',
 ]
 
-const bodyNames = new Set<string>([
+export const noteBodyNames: ReadonlySet<string> = new Set<string>([
     ...prefixes.map((prefix) => `${prefix} Middle`),
     SkinSpriteName.NoteHeadCyan,
     SkinSpriteName.NoteHeadGreen,
@@ -35,4 +35,4 @@ const bodyNames = new Set<string>([
 ])
 
 /** Whether a sprite is a body the preview can draw a note with. */
-export const isNoteBody = (name: string) => bodyNames.has(name)
+export const isNoteBody = (name: string) => noteBodyNames.has(name)
