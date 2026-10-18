@@ -185,7 +185,9 @@ test('opening an older level with elevation warns, and its save is the latest re
     page,
 }) => {
     await open(page, 'older', gzipSync(JSON.stringify(level(undefined, 1.5))))
-    await expect(page.locator('.notification')).toContainText('Opened level')
+    await expect(
+        page.locator('.notification, .notification-pill').filter({ hasText: 'Opened level' }),
+    ).toBeVisible()
     expect(await dialogsAfterLoading(page)).toEqual([older])
     await dismiss(page, 'Open', older)
     expect((await current(page)).elevations).toEqual([0, 1.5])
@@ -302,7 +304,11 @@ test('chart imports carry no revision and never warn', async ({ page }) => {
         ['sus', Buffer.from(sus), 'Imported SUS chart'],
     ] as const) {
         await open(page, name, buffer)
-        await expect(page.locator('.notification')).toContainText(message)
+        // After the first open the notice is a card with Reopen (`.notification-pill`), while the
+        // toast before it may still show (c0b0da72, 7f3ce9c7).
+        await expect(
+            page.locator('.notification, .notification-pill').filter({ hasText: message }),
+        ).toBeVisible()
         await expectNoDialogs(page)
     }
 })
