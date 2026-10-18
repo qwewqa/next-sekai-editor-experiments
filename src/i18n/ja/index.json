@@ -1729,6 +1729,8 @@
       "duplicated": "{0}フォルダーを複製しました"
     },
     "manager": {
+      "currentGroup": "現在のグループ",
+      "currentStage": "現在のステージ",
       "show": "{0}を表示",
       "hide": "{0}を非表示",
       "actions": "{0}のその他の操作",
@@ -1838,6 +1840,8 @@
     "unsupportedParts": "「{0}」には、このバージョンのエディターが対応していない部分があります。"
   },
   "peek": {
+    "loadingShort": "読み込み中…",
+    "unavailableShort": "取得できません",
     "settingsChanged": "設定を変更",
     "initialState": "初期状態",
     "unavailable": "変更を取得できません",
@@ -1991,6 +1995,7 @@
     "leaveAnyway": "このまま移動"
   },
   "status": {
+    "separateCopyShort": "別コピー",
     "notInFile": "ファイルに保存されていません",
     "separateCopy": "{0} の別コピー",
     "opensLevelInfo": "譜面情報を開きます",
