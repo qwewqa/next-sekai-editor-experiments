@@ -250,6 +250,57 @@ test.describe('the label and the title', () => {
             await expect(page.locator('[data-status-state]')).toBeHidden()
             await expect(page.locator('[data-status-changed]')).toBeVisible()
         })
+
+        test('a compact bound label gives the file its name space and protects the changed bullet', async ({ page, context }) => {
+            await page.setViewportSize({ width: 320, height: 568 })
+            await seed(context)
+            await visit(page)
+            await bindFile(page, { name: 'coconut-long-working-copy.nxsp', event: 'saved' })
+            await page.evaluate(async () => {
+                const { session } = (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                session.value = { ...session.value, name: 'A Very Long Distinct Display Name' }
+            })
+            await edit(page, 990)
+            await page.evaluate(async () => {
+                const { raised } = (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+                raised.notStored.value = true
+            })
+            await expect(page.locator('[data-status-name]')).toHaveCount(0)
+            await expect(page.locator('[data-status-file]')).toHaveText('coconut-long-working-copy.nxsp')
+            await expect(page.locator('[data-status-changed]')).toBeVisible()
+            await expect(button(page)).toHaveAccessibleName('A Very Long Distinct Display Name, changed since saved to coconut-long-working-copy.nxsp')
+            const geometry = await statusGeometry(page)
+            expect(geometry.file).toMatch(/^coconut/)
+            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
+            expect(geometry.bar.height).toBe(64)
+        })
+
+        for (const locale of ['ja', 'tr']) test(`a compact ${locale} separate copy protects its fixed meaning after a long filename`, async ({ page, context }) => {
+            await page.setViewportSize({ width: 320, height: 568 })
+            await seed(context, { os: 'ios', engine: 'webkit' })
+            await visit(page)
+            const expected = await page.evaluate(async (locale) => {
+                const { session } = (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                const { settings } = (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                const { i18n } = (await import('/src/i18n/index.ts')) as typeof import('../../src/i18n')
+                const { raised } = (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+                settings.locale = locale
+                session.value = { ...session.value, name: 'A Long Separate Session Name', copyOf: { name: 'coconut-source-with-an-extremely-long-file-name.nxsp', bound: true } }
+                raised.notStored.value = true
+                return i18n.value.status.separateCopy.replace('{0}', '')
+            }, locale)
+            const fixed = page.locator('[data-status-reason-part="fixed"]')
+            await expect(fixed).toHaveText(expected)
+            const metrics = await fixed.evaluate((element) => {
+                const label = element.closest('button')!.getBoundingClientRect()
+                const range = document.createRange()
+                range.selectNodeContents(element)
+                return [...range.getClientRects()].map((rect) => ({ inside: rect.left >= label.left && rect.right <= label.right && rect.top >= label.top && rect.bottom <= label.bottom }))
+            })
+            expect(metrics.length).toBeGreaterThan(0)
+            expect(metrics.every(({ inside }) => inside)).toBe(true)
+            await expect(button(page)).toHaveAccessibleName(/coconut-source-with-an-extremely-long-file-name\.nxsp/)
+        })
     })
 
     test.describe('touch targets', () => {
@@ -274,7 +325,7 @@ test.describe('the label and the title', () => {
             const bar = page.locator('[data-status-bar]')
             const before = await bar.boundingBox()
             const chart = await page.locator('canvas.editor-chart').boundingBox()
-            expect(before!.height).toBe(44)
+            expect(before!.height).toBe(88)
             await finding(page, 'newer')
             await expect(chip(page)).toBeVisible()
             expect(await bar.boundingBox()).toEqual(before)
@@ -295,6 +346,7 @@ test.describe('the label and the title', () => {
                         height: box.height,
                         left: box.left,
                         right: box.right,
+                        top: box.top,
                         ownEdges: points.every(
                             ([x, y]) =>
                                 document.elementFromPoint(x!, y!)?.closest('button') === element,
@@ -308,8 +360,12 @@ test.describe('the label and the title', () => {
                 expect(target.height).toBe(44)
                 expect(target.ownEdges).toBe(true)
                 expect(target.pseudo).toBe('none')
-                if (index) expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
+                if (index && target.top === targets[index - 1]!.top)
+                    expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
             }
+            expect(targets[0]!.top).toBe(targets[1]!.top)
+            expect(targets[2]!.top).toBe(targets[0]!.top + 44)
+            expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
                 'Level Properties',
                 '"coconut.nxsp" Changed',
@@ -350,6 +406,11 @@ test.describe('the label and the title', () => {
                         width: getComputedStyle(element).outlineWidth,
                     })),
                 ).toEqual({ visible: true, outline: 'solid', width: '2px' })
+            }
+            await buttons.first().focus()
+            for (let index = 0; index < 4; index++) {
+                await expect(buttons.nth(index)).toBeFocused()
+                if (index < 3) await page.keyboard.press('Tab')
             }
             await finding(page, undefined)
             await expect(chip(page)).toBeHidden()

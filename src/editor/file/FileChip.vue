@@ -44,6 +44,7 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
 
 <style scoped>
 .file-chip {
+    height: var(--status-row-height);
     border-radius: 9999px;
     transition: color 150ms;
 }
