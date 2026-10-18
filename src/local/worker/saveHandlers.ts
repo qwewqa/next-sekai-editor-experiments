@@ -94,8 +94,7 @@ export const saveHandlers = (context: WorkerContext) => {
             if (!context.test) throw new Error('Test hooks need a test flag')
             return context.core.write(['entries', 'nodes'], async (tx) => {
                 const row = (await tx.get('entries', [sessionId, seq])) as
-                    | Record<string, unknown>
-                    | undefined
+                    Record<string, unknown> | undefined
                 if (!row || !(row.snapshot instanceof Uint8Array)) return false
                 await tx.put('entries', { ...row, kept: false })
                 await tx.delete('nodes', hashKey(row.snapshot))
