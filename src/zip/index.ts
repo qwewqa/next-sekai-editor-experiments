@@ -12,6 +12,7 @@ export {
     type ZipEntry,
 } from './directory'
 export { ZipError, type ZipErrorCode } from './error'
+export { centralDirectoryCrc, zipFingerprint } from './fingerprint'
 export { inflateExact } from './inflate'
 export { ZipReader, type ReadOptions } from './reader'
 export {
