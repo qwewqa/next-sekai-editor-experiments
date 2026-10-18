@@ -230,17 +230,19 @@ test.describe('load notices in the start-up pill', () => {
             'Recovered your last change to "Coconut (Master)".',
         )
         await expect(lines.nth(4)).toContainText('and 2 more in Local Data')
-        // The first action is Local Data, then the last line's.
+        // Local Data is offered once, on the last line, and Alt+N reaches it.
+        await expect(pill(page).getByRole('button', { name: 'Local Data' })).toHaveCount(1)
+        await expect(lines.nth(4).getByRole('button', { name: 'Local Data' })).toBeVisible()
         await page.keyboard.press('Alt+KeyN')
-        await expect(pill(page).getByRole('button', { name: 'Local Data' }).first()).toBeFocused()
-        await pill(page).getByRole('button', { name: 'Local Data' }).last().click()
+        await expect(pill(page).getByRole('button', { name: 'Local Data' })).toBeFocused()
+        await pill(page).getByRole('button', { name: 'Local Data' }).click()
         // Settings opens scrolled to Local Data with its heading focused.
         const heading = page.locator('#settings-localData [data-settings-heading]')
         await expect(heading).toBeFocused()
         await expect(heading).toBeInViewport()
         // Every notice of this load is listed there, not only the three on the pill.
         const atLoad = page.locator('[data-at-load]')
-        await expect(atLoad).toContainText('At this load:')
+        await expect(atLoad).toContainText('At this load')
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
@@ -444,7 +446,7 @@ test.describe('Reopen', () => {
         await run(page, 'reset')
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('New level')
-        await expect(notice.getByRole('button', { name: /^Reopen "Untitled · / })).toBeVisible()
+        await expect(notice.getByRole('button', { name: /^Reopen Session from / })).toBeVisible()
         expect(await lifeOf(page)).toBe(1000)
         await notice.getByRole('button', { name: /^Reopen / }).click()
         await expect.poll(() => lifeOf(page)).toBe(990)
@@ -696,7 +698,7 @@ test.describe('Settings › Local Data', () => {
             await expect(autoSave).toContainText('(cannot be opened in this version)')
             await expect(autoSave.getByRole('button')).toHaveText(['Download', 'Discard…'])
             const legacy = later.locator('[data-recovery-row="legacy"]')
-            await expect(legacy).toContainText('Legacy recovery copy')
+            await expect(legacy).toContainText('Recovery copy from an older version')
             await expect(legacy.getByRole('button')).toHaveText(['Download'])
             // The load notices of this load are listed too.
             await expect(later.locator('[data-at-load] li')).toContainText([

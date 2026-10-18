@@ -944,10 +944,10 @@
       "recovery": {
         "journal": "以前の訪問時の未保存の作業、{0} · {1}",
         "journalUndated": "以前の訪問時の未保存の作業 · {0}",
-        "legacy": "従来の回復用コピー · {0}",
+        "legacy": "以前のバージョンの回復用コピー · {0}",
         "autoSave": "以前の自動保存 · {0}",
         "unreadable": "読み取れない回復済みの作業、{0} · {1}",
-        "atLoad": "今回の読み込み："
+        "atLoad": "今回の読み込み"
       },
       "openHistory": "履歴を開く"
     }
@@ -1888,6 +1888,7 @@
     "chooseAudio": "音声を選択…",
     "newLevel": "新しい譜面",
     "reopen": "「{0}」を再び開く",
+    "reopenUntitled": "{0}のセッションを再び開く",
     "readOnlyPeek": "履歴の表示中は読み取り専用です",
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",

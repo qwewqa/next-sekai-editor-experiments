@@ -886,3 +886,28 @@ test('on/off fields are switches named by their row', async ({ page }) => {
     await expect(arrows).not.toBeChecked()
     await expect(arrows).toHaveValue('Disabled')
 })
+
+test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 1100 })
+    const dialog = page.getByRole('dialog')
+    // No 48rem (768 px) cap; 42rem wide, not 40.
+    await expect.poll(async () => (await dialog.boundingBox())!.height).toBeGreaterThan(1000)
+    expect(Math.round((await dialog.boundingBox())!.width)).toBe(672)
+    const nav = page.locator('[data-settings-index]')
+    // The pills wrap on a mouse, so none sits beyond the dialog's edge.
+    expect(await nav.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await expect(page.locator('[data-settings-pill="about"]')).toBeInViewport({ ratio: 1 })
+})
+
+test('on a short screen the section index scrolls away with the sections', async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 })
+    const nav = page.locator('[data-settings-index]')
+    await expect(nav).toBeVisible()
+    const body = page.locator('[data-settings-section="editor"]').locator('xpath=..')
+    await expect(body.locator('[data-settings-index]')).toHaveCount(1)
+    await page.setViewportSize({ width: 844, height: 700 })
+    await expect(body.locator('[data-settings-index]')).toHaveCount(0)
+    await expect(nav).toBeVisible()
+})

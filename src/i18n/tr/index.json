@@ -944,10 +944,10 @@
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
-        "legacy": "Eski kurtarma kopyası · {0}",
+        "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
-        "atLoad": "Bu yüklemede:"
+        "atLoad": "Bu yüklemede"
       },
       "openHistory": "Geçmişi Aç"
     }
@@ -1888,6 +1888,7 @@
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
+    "reopenUntitled": "{0} Tarihli Oturumu Yeniden Aç",
     "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
     "restoredTo": "{0} anına geri yüklendi",
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",

@@ -18,6 +18,11 @@ import { backToNow, peekedInfo, requestRestore } from './selection'
 const MEDIUM_PANE = 480
 const WIDE_PANE = 720
 
+// Under this pane width the bar would cover the chart's top time and beat labels, so it starts
+// below their row.
+const LABELS_CLEAR = 640
+const belowLabels = computed(() => view.w < LABELS_CLEAR)
+
 const strings = computed(() => i18n.value.peek)
 
 const text = computed(() => {
@@ -64,7 +69,8 @@ const button =
             aria-hidden="true"
         />
         <div
-            class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-1 px-2 pt-2"
+            class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-1 px-2"
+            :class="belowLabels ? 'pt-7' : 'pt-2'"
             data-peek-bar
         >
             <div

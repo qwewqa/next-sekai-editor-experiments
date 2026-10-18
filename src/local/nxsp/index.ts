@@ -33,6 +33,7 @@ export {
     PlanError,
     type CopyCheck,
     type PinnedSource,
+    type PlanLimit,
     type PlanPart,
     type PlannedEntry,
     type SourceEntry,

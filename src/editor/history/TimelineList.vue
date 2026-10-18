@@ -13,7 +13,12 @@ import { peekedKey } from '../../history/peek'
 import { session } from '../../history/session'
 import { headName } from '../../history/stack'
 import { i18n } from '../../i18n'
-import { formatClockSeconds, formatDateTime, formatDateTimeSeconds } from '../../i18n/when'
+import {
+    formatClock,
+    formatClockSeconds,
+    formatDateTime,
+    formatDateTimeSeconds,
+} from '../../i18n/when'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { commands, type CommandName } from '../commands'
@@ -705,10 +710,13 @@ const flagTextOf = (row: EntryRow) =>
 
 const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
-// Under about 300 px a flag keeps only its icon; its text is still the name and the tooltip.
-const narrow = computed(() => width.value > 0 && width.value < 300)
+// Under about 340 px a flag keeps only its icon, and rows drop the seconds and the Δ count; the
+// text and the full time are still the name and the tooltip.
+const narrow = computed(() => width.value > 0 && width.value < 340)
 
-const timeOf = (row: EntryRow) => formatClockSeconds(row.entry.time)
+const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
+
+const timeOf = (row: EntryRow) => clockOf(row.entry.time)
 
 const deltaOf = (row: EntryRow) =>
     row.delta === undefined ? undefined : `${row.delta > 0 ? '+' : '−'}${Math.abs(row.delta)}`
@@ -816,9 +824,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                                 · {{ headName }}</template
                             ></span
                         >
-                        <span class="timeline-time shrink-0">{{
-                            formatClockSeconds(nowTime)
-                        }}</span>
+                        <span class="timeline-time shrink-0">{{ clockOf(nowTime) }}</span>
                     </div>
 
                     <!-- After a jump: the newer entries not read yet, read as it comes into view. -->
@@ -926,9 +932,12 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }), jumpTo, 
                                 flagTextOf(row)
                             }}</span>
                         </span>
-                        <span v-if="deltaOf(row)" class="timeline-count shrink-0">{{
-                            deltaOf(row)
-                        }}</span>
+                        <span
+                            v-if="deltaOf(row)"
+                            class="timeline-count shrink-0"
+                            :class="{ hidden: narrow }"
+                            >{{ deltaOf(row) }}</span
+                        >
                         <span class="timeline-time shrink-0">{{ timeOf(row) }}</span>
                     </div>
                 </template>

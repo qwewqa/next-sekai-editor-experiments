@@ -7,9 +7,15 @@ the entry order and methods, CRCs, the end record, `project.json` and its pointe
 every record's arity and types, the roots and nodes under their own hashes, `chunks.bin` tiling,
 every chunk inflated with the strict end check and hashed, the closure of every root, `summary`,
 `history.entries`, the undo stack, and `revision.completeFrom`, placed and, when the file of the
-revision it names (or one between) is also given, checked against that file's rows.
+revision it names (or one between) is also given, checked against that file's rows. A file it
+passes also opens fully in its reader mode.
+
+With `--read` it is a second v1 reader instead, for files a writer doesn't make (an OS re-zip, a
+partial file): it prints, as one JSON line per file, what the editor's reader opens (`full`, or
+`partial` with its reasons, `unreadable` or `not-project`), checking only what an open checks.
 
     uv run python -I tools/nxsp_check.py FILE...
+    uv run python -I tools/nxsp_check.py --read FILE...
     uv run python -I tools/nxsp_check.py --show FILE HASH
 """
 
@@ -20,6 +26,7 @@ import os
 import re
 import struct
 import sys
+import unicodedata
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,13 +34,15 @@ with open(os.path.join(HERE, "fields-v1.json"), encoding="utf-8") as f:
     FIELDS = json.load(f)
 
 MB = 1024 * 1024
-CAPS = {"project": MB, "level": 64 * MB, "manifest": 256 * MB, "chunks": 2048 * MB,
+CAPS = {"project": MB, "level": 64 * MB, "manifest": 256 * MB, "history": 512 * MB, "chunks": 2048 * MB,
         "chunk": 16 * MB, "media": 1024 * MB, "depth": 64, "entries": 65535, "segments": 4096}
 SAFE = 2 ** 53 - 1
 HEX16 = re.compile(r"^[0-9a-f]{32}$")
 HEX32 = re.compile(r"^[0-9a-f]{64}$")
 ENTRY_KINDS = {"init", "continue", "edit", "undo", "redo", "restore", "save", "export", "recovered"}
 STORE_PREFIXES = ("history/chunks.bin", "assets/", "bgm/")
+# A segment copied whole from a stored source segment stays stored (§1.6.11.5).
+EITHER_PREFIXES = ("history/segments/",)
 
 
 class Fail(Exception):
@@ -99,6 +108,61 @@ def is_id(v):
 
 def is_number(v):
     return not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v)
+
+
+def num_is(v, n):
+    """Equal to the integer `n` as JSON.parse reads it (`1.0` is 1), never a boolean."""
+    return is_int(v) and v == n
+
+
+def js_number(x):
+    """A number as JS's Number::toString writes it (`1`, not `1.0`; `1e+21`, not `1e21`)."""
+    if isinstance(x, int):
+        if -SAFE <= x <= SAFE:
+            return str(x)
+        x = float(x)
+    if x == 0:
+        return "0"
+    text = repr(x)
+    sign = "-" if text.startswith("-") else ""
+    mantissa, _, exp = text.lstrip("-").partition("e")
+    whole, _, fraction = mantissa.partition(".")
+    significant = (whole + fraction).lstrip("0")
+    digits = significant.rstrip("0")
+    k = len(digits)
+    n = k + int(exp or 0) - len(fraction) + (len(significant) - k)
+    if k <= n <= 21:
+        out = digits + "0" * (n - k)
+    elif 0 < n <= 21:
+        out = digits[:n] + "." + digits[n:]
+    elif -6 < n <= 0:
+        out = "0." + "0" * -n + digits
+    else:
+        e = n - 1
+        out = digits[0] + ("." + digits[1:] if k > 1 else "") + "e" + ("+" if e > 0 else "-") + str(abs(e))
+    return sign + out
+
+
+SURROGATE = re.compile("[\ud800-\udfff]")
+ARRAY_INDEX = re.compile(r"^(0|[1-9][0-9]*)$")
+
+
+def js_json(value):
+    """JSON.stringify of a parsed value: JS numbers, lone surrogates escaped, index keys first."""
+    if value is None:
+        return "null"
+    if value is True or value is False:
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return js_number(value)
+    if isinstance(value, str):
+        return SURROGATE.sub(lambda m: f"\\u{ord(m.group()):04x}", json.dumps(value, ensure_ascii=False))
+    if isinstance(value, list):
+        return "[" + ",".join(js_json(x) for x in value) + "]"
+    keys = list(value)
+    index = sorted((k for k in keys if ARRAY_INDEX.match(k) and int(k) < 2 ** 32 - 1), key=int)
+    keys = index + [k for k in keys if k not in set(index)]
+    return "{" + ",".join(js_json(k) + ":" + js_json(value[k]) for k in keys) + "}"
 
 
 def is_str(v):
@@ -296,7 +360,7 @@ def media_form(form, what, prefix, entries_by_name):
         entry = entries_by_name.get(form["file"])
         need(entry is not None, f"{what}.file: no entry {form['file']}")
         need(len(entry["data"]) <= CAPS["media"], f"{what}: over the media cap")
-        need(form.get("size") == len(entry["data"]), f"{what}.size: not the entry's size")
+        need(num_is(form.get("size"), len(entry["data"])), f"{what}.size: not the entry's size")
         need(hashlib.sha256(entry["data"]).hexdigest() == form["sha256"], f"{what}.sha256: not the entry's")
     else:
         keys_within(form, ["filename", "type", "hash", "size"], what)
@@ -313,7 +377,7 @@ def entry_form(e, path):
     keys_within(e, ["kind", "time", "label", "snapshot", "noteCount", "dirty", "kept", "revisionId",
                     "device", "stack", "x"], path)
     need(e.get("kind") in ENTRY_KINDS, f"{path}.kind")
-    need(is_number(e.get("time")), f"{path}.time")
+    need(is_uint(e.get("time")), f"{path}.time: not a safe integer of at least 0")
     need(is_str(e.get("label")), f"{path}.label")
     need(is_hash(e.get("snapshot")), f"{path}.snapshot")
     need(is_uint(e.get("noteCount")), f"{path}.noteCount")
@@ -343,7 +407,7 @@ def slot_form(slot, path):
 
 
 def canonical(value):
-    return json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return js_json(value).encode("utf-8")
 
 
 def hash16(data):
@@ -355,24 +419,54 @@ def js_round(x):
     return r + 1 if x - r >= 0.5 else r
 
 
+def ieee_div(a, b):
+    """a / b as IEEE f64 (JS and Rust): ±inf or nan for a zero divisor, inf on overflow."""
+    if b == 0:
+        return math.nan if a == 0 or math.isnan(a) else math.copysign(math.inf, a) * math.copysign(1, b)
+    try:
+        return a / b
+    except OverflowError:
+        return math.copysign(math.inf, a) * math.copysign(1, b)
+
+
+def ieee_mul(a, b):
+    try:
+        return a * b
+    except OverflowError:
+        return math.copysign(math.inf, a) * math.copysign(1, b)
+
+
 def duration_ms(slides, bpms):
-    beats = [note[2] for slide in slides for note in slide]
+    beats = [float(note[2]) for slide in slides for note in slide]
     if not beats:
         return 0
     last, time = max(beats), 0.0
     for i, bpm in enumerate(bpms):
-        start = 0 if i == 0 else bpm[0]
-        end = bpms[i + 1][0] if i + 1 < len(bpms) else math.inf
+        start = 0.0 if i == 0 else float(bpm[0])
+        end = float(bpms[i + 1][0]) if i + 1 < len(bpms) else math.inf
         if last <= start:
             break
-        time += ((min(last, end) - start) * 60000) / bpm[1]
+        time += ieee_div(ieee_mul(min(last, end) - start, 60000.0), float(bpm[1]))
+    if not math.isfinite(time):
+        return 0
     result = js_round(time)
-    return result if math.isfinite(time) and 0 < result <= SAFE else 0
+    return result if 0 < result <= SAFE else 0
+
+
+def history_total(entries):
+    """The manifest and segments together, from their declared sizes (the history cap)."""
+    return sum(e["usize"] for e in entries if not e["dir"] and
+               (e["key"].startswith("history/segments/") or e["key"] == "history/manifest.json"))
 
 
 def check_file(path):
     with open(path, "rb") as f:
         blob = f.read()
+    try:
+        declared = read_directory(blob)
+    except (ZipBad, struct.error):
+        declared = []
+    need(history_total(declared) <= CAPS["history"], "history: the manifest and segments are over their cap together")
     entries = read_zip(blob)
     by_name = {e["name"]: e for e in entries}
     names = [e["name"] for e in entries]
@@ -382,8 +476,8 @@ def check_file(path):
     need(len(by_name["project.json"]["data"]) <= CAPS["project"], "project.json: over its cap")
     need(isinstance(project, dict), "project.json: not an object")
     need("parts" not in project, "project.json: parts, which v0.6.0 never writes")
-    need(project.get("format") == "nxsp" and project.get("version") == 1, "project.json: format or version")
-    need(project.get("minor") == 0 and project.get("levelVersion") == 1, "project.json: minor or levelVersion")
+    need(project.get("format") == "nxsp" and num_is(project.get("version"), 1), "project.json: format or version")
+    need(num_is(project.get("minor"), 0) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
     for key in ("appVersion", "id", "lineageId"):
         need(is_str(project.get(key)) and project[key] != "", f"project.json.{key}")
     for key in ("name", "exportName"):
@@ -393,12 +487,14 @@ def check_file(path):
     rev = project.get("revision")
     keys_within(rev, ["id", "parent", "n", "savedAt", "device", "ancestors", "replaces", "fileName", "completeFrom"], "revision")
     need(is_str(rev.get("id")) and rev["id"] != "", "revision.id")
-    need(rev.get("parent") is None or is_str(rev.get("parent")), "revision.parent")
+    need("parent" in rev and (rev["parent"] is None or (is_str(rev["parent"]) and rev["parent"] != "")), "revision.parent")
     need(is_uint(rev.get("n")), "revision.n")
     keys_within(rev.get("device"), ["id", "label"], "revision.device")
-    need(is_str(rev["device"].get("id")) and is_str(rev["device"].get("label")), "revision.device")
+    need(is_str(rev["device"].get("id")) and rev["device"]["id"] != "" and is_str(rev["device"].get("label")),
+         "revision.device")
     ancestors = rev.get("ancestors")
-    need(isinstance(ancestors, list) and all(is_str(a) for a in ancestors) and len(ancestors) <= 1024, "revision.ancestors")
+    need(isinstance(ancestors, list) and all(is_str(a) and a != "" for a in ancestors) and len(ancestors) <= 1024,
+         "revision.ancestors")
     for key in ("replaces", "fileName"):
         need(key not in rev or is_str(rev[key]), f"revision.{key}")
     dos_time, dos_date = dos_of(rev.get("savedAt", ""))
@@ -478,8 +574,11 @@ def check_file(path):
         [n for n in names if n.startswith("assets/preview.")] + [n for n in names if n.startswith("bgm/")]
     need(names == order, f"entry order {names}")
     for e in entries:
-        expected = 0 if e["name"].startswith(STORE_PREFIXES) else 8
-        need(e["method"] == expected, f"{e['name']}: method {e['method']}")
+        expected = (0, 8) if e["name"].startswith(EITHER_PREFIXES) else (0,) if e["name"].startswith(STORE_PREFIXES) else (8,)
+        need(e["method"] in expected, f"{e['name']}: method {e['method']}")
+    # What it writes, a reader opens fully.
+    kind, opened, report = read_nxsp(blob)
+    need(kind == "nxsp" and opened == "full", f"the reader opens it {opened or kind}: {report}")
     return info
 
 
@@ -501,7 +600,7 @@ def check_history(project, history, segments, by_name, summary, rev):
     need(len(data) <= CAPS["manifest"], "manifest: over its cap")
     manifest = parse_json(data, "manifest")
     keys_within(manifest, ["version", "entries", "roots", "nodes", "chunks", "undoStack"], "manifest")
-    need(len(manifest) == 6 and manifest["version"] == 1, "manifest: version or a key missing")
+    need(len(manifest) == 6 and num_is(manifest["version"], 1), "manifest: version or a key missing")
     parts.append(("manifest", manifest))
 
     chunks_bin = by_name["history/chunks.bin"]["data"]
@@ -515,7 +614,7 @@ def check_history(project, history, segments, by_name, summary, rev):
         for kind, target in (("roots", roots), ("nodes", nodes)):
             need(isinstance(part[kind], dict), f"{name}.{kind}")
             for key, value in part[kind].items():
-                need(target.get(key, value) == value, f"{name}.{kind}.{key}: two values")
+                need(key not in target or js_json(target[key]) == js_json(value), f"{name}.{kind}.{key}: two values")
                 target[key] = value
         need(isinstance(part["chunks"], list), f"{name}.chunks")
         for item in part["chunks"]:
@@ -527,7 +626,7 @@ def check_history(project, history, segments, by_name, summary, rev):
             index[h] = (off, length)
             cursor = off + length
     need(cursor == len(chunks_bin), "chunks.bin: the index does not end at its end")
-    need(len(entries) == history.get("entries"), "history.entries: not the entry count")
+    need(num_is(history.get("entries"), len(entries)), "history.entries: not the entry count")
 
     texts = {}
     for h, (off, length) in index.items():
@@ -690,10 +789,962 @@ def show(path, target):
         raise Fail(f"no root, node or chunk {target}")
 
 
+# Reader mode (--read): what a v1 reader opens (§1.5.4, §1.6.11.4, §1.6.11.8), for files a writer
+# doesn't make (an OS re-zip, a partial file). It reports as the editor's reader does: `full`, or
+# `partial` with its reasons, `unreadable`, or `not-project`, checking only what an open checks.
+
+class ZipBad(Exception):
+    pass
+
+
+class ZipLimit(ZipBad):
+    pass
+
+
+SENTINEL = 0xFFFFFFFF
+END_TAIL = 0xFFFF + 22 + 20
+ISSUE_CAP = 20
+IGNORED_NAMES = (".DS_Store", "Thumbs.db", "desktop.ini")
+
+
+def decode_name(raw, flags):
+    if flags & 0x0800:
+        text = raw.decode("utf-8", errors="replace")
+    else:
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = raw.decode("cp437")
+    return text
+
+
+def u16(b, at):
+    return struct.unpack_from("<H", b, at)[0]
+
+
+def u32(b, at):
+    return struct.unpack_from("<I", b, at)[0]
+
+
+def u64(b, at):
+    v = struct.unpack_from("<Q", b, at)[0]
+    if v > SAFE:
+        raise ZipBad("size")
+    return v
+
+
+def find_extra(extra, ident):
+    p = 0
+    while p + 4 <= len(extra):
+        length = u16(extra, p + 2)
+        if p + 4 + length > len(extra):
+            return None
+        if u16(extra, p) == ident:
+            return extra[p + 4:p + 4 + length]
+        p += 4 + length
+    return None
+
+
+def entry_of(name_raw, flags, method, crc, csize, usize, offset, index):
+    name = decode_name(name_raw, flags)
+    return dict(index=index, raw=name_raw, name=name, key=unicodedata.normalize("NFC", name), flags=flags,
+                method=method, crc=crc, csize=csize, usize=usize, offset=offset, dir=name.endswith("/"))
+
+
+def least_end(e):
+    return e["offset"] + 30 + len(e["raw"]) + e["csize"]
+
+
+def find_end(blob):
+    start = max(0, len(blob) - END_TAIL)
+    tail = blob[start:]
+    loose = -1
+    for i in range(len(tail) - 22, -1, -1):
+        if u32(tail, i) != 0x06054B50:
+            continue
+        rest = len(tail) - (i + 22)
+        comment = u16(tail, i + 20)
+        if comment == rest:
+            return read_end(tail, i)
+        if comment < rest and loose < 0:
+            loose = i
+    if loose < 0:
+        raise ZipBad("no end record")
+    return read_end(tail, loose)
+
+
+def read_end(tail, at):
+    count, cd_size, cd_offset = u16(tail, at + 10), u32(tail, at + 12), u32(tail, at + 16)
+    if count != 0xFFFF and cd_size != SENTINEL and cd_offset != SENTINEL:
+        return count, cd_size, cd_offset, None
+    if at < 20 or u32(tail, at - 20) != 0x07064B50:
+        raise ZipBad("ZIP64 locator")
+    return count, cd_size, cd_offset, u64(tail, at - 20 + 8)
+
+
+def read_directory(blob):
+    count, cd_size, cd_offset, zip64 = find_end(blob)
+    if zip64 is not None:
+        rec = blob[zip64:zip64 + 56]
+        if len(rec) < 56 or u32(rec, 0) != 0x06064B50:
+            raise ZipBad("ZIP64 end")
+        count, cd_size, cd_offset = u64(rec, 32), u64(rec, 40), u64(rec, 48)
+    if count > 0xFFFF:
+        raise ZipLimit("entries")
+    cd_end = cd_offset + cd_size
+    if cd_end > len(blob) or count * 46 > cd_size:
+        raise ZipBad("central directory")
+    entries, at = [], cd_offset
+    for index in range(count):
+        if at + 46 > cd_end or u32(blob, at) != 0x02014B50:
+            raise ZipBad("central directory")
+        nlen, xlen, clen = u16(blob, at + 28), u16(blob, at + 30), u16(blob, at + 32)
+        nxt = at + 46 + nlen + xlen + clen
+        if nxt > cd_end:
+            raise ZipBad("central directory")
+        flags, method, crc = u16(blob, at + 8), u16(blob, at + 10), u32(blob, at + 16)
+        csize, usize, offset = u32(blob, at + 20), u32(blob, at + 24), u32(blob, at + 42)
+        if SENTINEL in (usize, csize, offset):
+            field = find_extra(blob[at + 46 + nlen:at + 46 + nlen + xlen], 1)
+            if field is None:
+                raise ZipBad("ZIP64 extra")
+            p = 0
+            values = []
+            for v in (usize, csize, offset):
+                if v == SENTINEL:
+                    if p + 8 > len(field):
+                        raise ZipBad("ZIP64 extra")
+                    values.append(u64(field, p))
+                    p += 8
+                else:
+                    values.append(v)
+            usize, csize, offset = values
+        e = entry_of(bytes(blob[at + 46:at + 46 + nlen]), flags, method, crc, csize, usize, offset, index)
+        if least_end(e) > len(blob):
+            raise ZipBad("truncated")
+        entries.append(e)
+        at = nxt
+    return entries
+
+
+def local_header(blob, at):
+    fixed = blob[at:at + 30]
+    if len(fixed) < 30:
+        raise ZipBad("truncated")
+    if u32(fixed, 0) != 0x04034B50:
+        raise ZipBad("local header")
+    nlen, xlen = u16(fixed, 26), u16(fixed, 28)
+    total = 30 + nlen + xlen
+    if at + total > len(blob):
+        raise ZipBad("truncated")
+    csize, usize = u32(fixed, 18), u32(fixed, 22)
+    if SENTINEL in (csize, usize):
+        field = find_extra(blob[at + 30 + nlen:at + total], 1)
+        if field is not None and len(field) >= 16:
+            if usize == SENTINEL:
+                usize = u64(field, 0)
+            if csize == SENTINEL:
+                csize = u64(field, 8)
+    return dict(flags=u16(fixed, 6), method=u16(fixed, 8), crc=u32(fixed, 14), csize=csize, usize=usize,
+                raw=bytes(blob[at + 30:at + 30 + nlen]), total=total)
+
+
+def scan_local(blob):
+    entries, at = [], 0
+    while at + 30 <= len(blob):
+        if u32(blob, at) != 0x04034B50:
+            break
+        h = local_header(blob, at) if at + 30 + u16(blob, at + 26) + u16(blob, at + 28) <= len(blob) else None
+        if h is None:
+            break
+        if h["flags"] & 8 and h["csize"] == 0:
+            break
+        nxt = at + h["total"] + h["csize"]
+        if nxt > len(blob):
+            break
+        if len(entries) == 0xFFFF:
+            raise ZipLimit("entries")
+        entries.append(entry_of(h["raw"], h["flags"], h["method"], h["crc"], h["csize"], h["usize"], at, len(entries)))
+        if h["flags"] & 8:
+            d = blob[nxt:nxt + 24]
+            signed = 4 if len(d) >= 4 and u32(d, 0) == 0x08074B50 else 0
+            for wide in (False, True):
+                length = signed + (20 if wide else 12)
+                if len(d) < length or u32(d, signed) != h["crc"]:
+                    continue
+                sizes = (struct.unpack_from("<QQ", d, signed + 4) if wide else struct.unpack_from("<II", d, signed + 4))
+                if tuple(sizes) == (h["csize"], h["usize"]):
+                    nxt += length
+                    break
+        at = nxt
+    if not entries:
+        raise ZipBad("not a ZIP")
+    return entries
+
+
+class Zip:
+    def __init__(self, blob):
+        self.blob = blob
+        self.recovered = False
+        try:
+            self.entries = read_directory(blob)
+        except ZipLimit:
+            raise
+        except (ZipBad, struct.error):
+            self.entries = scan_local(blob)
+            self.recovered = True
+        keys = [e["key"] for e in self.entries]
+        self.duplicates = sorted({k for k in keys if keys.count(k) > 1}) if len(keys) != len(set(keys)) else []
+        files = sorted((e for e in self.entries if not e["dir"]), key=lambda e: e["offset"])
+        self.overlapping = set()
+        furthest = None
+        for e in files:
+            end = least_end(e)
+            if furthest and e["offset"] < furthest[1]:
+                self.overlapping |= {furthest[0]["key"], e["key"]}
+            if not furthest or end > furthest[1]:
+                furthest = (e, end)
+        # Real ranges: every entry's, from its local header with the extra field.
+        self.real_overlapping = set()
+        furthest = None
+        for e in files:
+            if furthest and e["offset"] < furthest[1]:
+                self.real_overlapping |= {furthest[0]["key"], e["key"]}
+            fixed = blob[e["offset"]:e["offset"] + 30]
+            total = 30 + u16(fixed, 26) + u16(fixed, 28) if len(fixed) == 30 and u32(fixed, 0) == 0x04034B50 \
+                else 30 + len(e["raw"])
+            end = e["offset"] + total + e["csize"]
+            if not furthest or end > furthest[1]:
+                furthest = (e, end)
+        self.ambiguous = set(self.duplicates) | self.overlapping
+        self.by_key = {e["key"]: e for e in self.entries if e["key"] not in self.ambiguous}
+
+    def get(self, name):
+        return self.by_key.get(unicodedata.normalize("NFC", name))
+
+    def stored(self, e):
+        blob = self.blob
+        if e["offset"] + 30 > len(blob):
+            raise ZipBad("truncated")
+        h = local_header(blob, e["offset"])
+        if h["raw"] != e["raw"] or h["method"] != e["method"]:
+            raise ZipBad("local header")
+
+        def differs(local, central):
+            return local != central and (not h["flags"] & 8 or local not in (0, SENTINEL))
+        if differs(h["crc"], e["crc"]) or differs(h["csize"], e["csize"]) or differs(h["usize"], e["usize"]):
+            raise ZipBad("local header")
+        start = e["offset"] + h["total"]
+        if start + e["csize"] > len(blob):
+            raise ZipBad("truncated")
+        if not e["dir"] and e["key"] in self.real_overlapping:
+            raise ZipBad("overlapping data")
+        return blob[start:start + e["csize"]]
+
+    def read(self, e, cap):
+        if e["flags"] & 1 or e["method"] not in (0, 8):
+            raise ZipBad("unsupported")
+        if e["usize"] > cap:
+            raise ZipBad("too large")
+        if e["csize"] != e["usize"] if e["method"] == 0 else e["csize"] > 2 * e["usize"] + 1024:
+            raise ZipBad("size")
+        stored = self.stored(e)
+        data = stored if e["method"] == 0 else inflate_exact(stored, e["usize"])
+        if zlib.crc32(data) & 0xFFFFFFFF != e["crc"]:
+            raise ZipBad("crc")
+        return data
+
+
+def inflate_exact(data, size):
+    if size == 0 and not data:
+        return b""
+    d = zlib.decompressobj(-15)
+    try:
+        out = d.decompress(data, size + 1)
+    except zlib.error:
+        raise ZipBad("inflate")
+    if len(out) > size or d.unconsumed_tail:
+        raise ZipBad("size")
+    if not d.eof:
+        raise ZipBad("truncated")
+    if d.unused_data:
+        raise ZipBad("size")
+    if len(out) != size:
+        raise ZipBad("size")
+    return out
+
+
+def inflate_chunk(data, cap):
+    d = zlib.decompressobj(-15)
+    try:
+        out = d.decompress(data, cap + 1)
+    except zlib.error:
+        raise ZipBad("inflate")
+    if len(out) > cap or d.unconsumed_tail or not d.eof or d.unused_data:
+        raise ZipBad("not one whole raw DEFLATE stream")
+    return out
+
+
+class JsonBad(Exception):
+    pass
+
+
+def read_json_text(data, cap_depth=64):
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise JsonBad("not UTF-8")
+    if text.startswith("﻿"):
+        text = text[1:]
+    if depth_of(text) > cap_depth:
+        raise JsonBad("nested too deep")
+    try:
+        return json.loads(text, parse_constant=reject_constant)
+    except (ValueError, Fail) as error:
+        raise JsonBad(str(error))
+
+
+class ReadFailure(Exception):
+    def __init__(self, reason, path):
+        super().__init__(path)
+        self.item = (reason, path)
+
+
+def is_safe_int(v):
+    return is_int(v) and -SAFE <= v <= SAFE
+
+
+def is_hex64(v):
+    return isinstance(v, str) and HEX32.match(v) is not None
+
+
+def is_nonempty(v):
+    return isinstance(v, str) and v != ""
+
+
+PROJECT_KEYS = ["format", "version", "minor", "levelVersion", "appVersion", "id", "lineageId", "revision",
+                "name", "exportName", "level", "editor", "bgm", "history", "summary", "metadata", "parts"]
+
+
+def read_media_form(value, path, issues):
+    if not isinstance(value, dict):
+        issues.append(("schema", path))
+        return None
+    with_file = "file" in value
+    allowed = ["file", "filename", "type", "sha256", "size"] if with_file else ["filename", "type", "hash", "size"]
+    ok = True
+    for key in value:
+        if key not in allowed:
+            issues.append(("unknown-key", f"{path}.{key}"))
+            ok = False
+    valid = ((not with_file or is_str(value.get("file"))) and ("filename" not in value or is_str(value["filename"]))
+             and is_str(value.get("type")) and is_uint(value.get("size"))
+             and (is_hex64(value.get("sha256")) if with_file else is_hash(value.get("hash"))))
+    if not valid:
+        issues.append(("schema", path))
+        ok = False
+    return value if ok else None
+
+
+def read_project(p):
+    issues = []
+    minor = p.get("minor", 0)
+    level_version = p.get("levelVersion")
+
+    def required(ok, path):
+        if not ok:
+            issues.append(("schema", path))
+    required(is_uint(minor), "minor")
+    required(is_safe_int(level_version) and level_version >= 1, "levelVersion")
+    required(is_str(p.get("appVersion")), "appVersion")
+    required(is_nonempty(p.get("id")), "id")
+    required(is_nonempty(p.get("lineageId")), "lineageId")
+    required("name" not in p or is_str(p["name"]), "name")
+    required("exportName" not in p or is_str(p["exportName"]), "exportName")
+    required(is_str(p.get("level")), "level")
+
+    rev = p.get("revision")
+    if "revision" in p:
+        d = rev.get("device") if isinstance(rev, dict) else None
+        valid = (isinstance(rev, dict) and is_nonempty(rev.get("id")) and (rev.get("parent", 0) is None or is_nonempty(rev.get("parent")))
+                 and is_uint(rev.get("n")) and is_str(rev.get("savedAt")) and isinstance(d, dict)
+                 and is_str(d.get("id")) and is_str(d.get("label")) and isinstance(rev.get("ancestors"), list)
+                 and all(is_nonempty(a) for a in rev["ancestors"])
+                 and ("replaces" not in rev or is_str(rev["replaces"])) and ("fileName" not in rev or is_str(rev["fileName"])))
+        if not valid:
+            issues.append(("schema", "revision"))
+    if "editor" in p:
+        editor = p["editor"]
+        if not isinstance(editor, dict):
+            issues.append(("schema", "editor"))
+        else:
+            for key in editor:
+                if key != "defaultGuideColors":
+                    issues.append(("unknown-key", f"editor.{key}"))
+            if "defaultGuideColors" in editor:
+                g = editor["defaultGuideColors"]
+                if not isinstance(g, list) or not all(is_uint(x) for x in g):
+                    issues.append(("schema", "editor.defaultGuideColors"))
+    bgm = read_media_form(p["bgm"], "bgm", issues) if "bgm" in p else None
+    history = None
+    if "history" in p:
+        h = p["history"]
+        if not isinstance(h, dict):
+            issues.append(("schema", "history"))
+        else:
+            ok = True
+            for key in h:
+                if key not in ("manifest", "chunks", "entries", "segments"):
+                    issues.append(("unknown-key", f"history.{key}"))
+                    ok = False
+            segs = h.get("segments")
+            if not (is_str(h.get("manifest")) and is_str(h.get("chunks")) and is_uint(h.get("entries"))
+                    and ("segments" not in h or (isinstance(segs, list) and all(is_str(s) for s in segs)))):
+                issues.append(("schema", "history"))
+            elif isinstance(segs, list) and len(segs) > CAPS["segments"]:
+                issues.append(("limit", "history.segments"))
+            elif ok:
+                history = h
+    metadata = {}
+    if "metadata" in p:
+        meta = p["metadata"]
+        if not isinstance(meta, dict):
+            issues.append(("schema", "metadata"))
+        else:
+            for key, item in meta.items():
+                path = f"metadata.{key}"
+                if key in ("title", "artists", "author", "description"):
+                    if not is_str(item):
+                        issues.append(("schema", path))
+                elif key == "rating":
+                    if not is_number(item):
+                        issues.append(("schema", path))
+                elif key == "tags":
+                    if not isinstance(item, list):
+                        issues.append(("schema", path))
+                        continue
+                    for i, tag in enumerate(item):
+                        if not isinstance(tag, dict) or not is_str(tag.get("title")) or ("icon" in tag and not is_str(tag["icon"])):
+                            issues.append(("schema", f"{path}[{i}]"))
+                            continue
+                        for name in tag:
+                            if name not in ("title", "icon"):
+                                issues.append(("unknown-key", f"{path}[{i}].{name}"))
+                elif key in ("cover", "preview"):
+                    media = read_media_form(item, path, issues)
+                    if media is not None:
+                        metadata[key] = media
+    if "parts" in p:
+        parts = p["parts"]
+        if not isinstance(parts, dict):
+            issues.append(("damaged", "parts"))
+        else:
+            for key in parts:
+                issues.append(("unknown-key", f"parts.{key}"))
+    project = dict(minor=minor if is_uint(minor) else 0,
+                   levelVersion=level_version if is_safe_int(level_version) else 1,
+                   level=p["level"] if is_str(p.get("level")) else "", bgm=bgm, history=history, metadata=metadata)
+    return project, issues
+
+
+class Issues:
+    def __init__(self):
+        self.items, self.more, self.more_reason = [], 0, "damaged"
+
+    def __len__(self):
+        return len(self.items) + self.more
+
+    def add(self, reason, path):
+        if len(self.items) < ISSUE_CAP:
+            self.items.append((reason, path))
+        else:
+            if self.more == 0:
+                self.more_reason = reason
+            self.more += 1
+
+    def done(self, path):
+        return self.items + ([(self.more_reason, path)] if self.more else [])
+
+
+ENTRY_KEYS = ["kind", "time", "label", "snapshot", "noteCount", "dirty", "kept", "revisionId", "device", "stack", "x"]
+
+
+def part_slot(value, path, issues):
+    if not isinstance(value, dict):
+        issues.add("damaged", path)
+        return
+    for key in value:
+        if key not in ("snapshot", "label"):
+            issues.add("unknown-key", f"{path}.{key}")
+    if not is_hash(value.get("snapshot")) or not is_str(value.get("label")):
+        issues.add("damaged", path)
+
+
+def part_entry(e, path, issues):
+    if not isinstance(e, dict):
+        issues.add("damaged", path)
+        return
+    for key in e:
+        if key not in ENTRY_KEYS:
+            issues.add("unknown-key", f"{path}.{key}")
+    kind = e.get("kind")
+    if is_str(kind) and kind not in ENTRY_KINDS:
+        issues.add("newer", f"{path}.kind")
+        return
+    if not is_str(kind):
+        issues.add("damaged", f"{path}.kind")
+
+    def fail(key):
+        issues.add("damaged", f"{path}.{key}")
+
+    def foreign(key):
+        issues.add("unknown-key", f"{path}.{key}")
+    if not is_uint(e.get("time")):
+        fail("time")
+    if not is_str(e.get("label")):
+        fail("label")
+    if not is_hash(e.get("snapshot")):
+        fail("snapshot")
+    if not is_uint(e.get("noteCount")):
+        fail("noteCount")
+    if "dirty" in e and e["dirty"] is not True:
+        fail("dirty")
+    if "kept" in e and e["kept"] is not False:
+        fail("kept")
+    if kind == "save":
+        if not is_str(e.get("revisionId")):
+            fail("revisionId")
+        d = e.get("device")
+        if not isinstance(d, dict) or not is_str(d.get("id")) or not is_str(d.get("label")):
+            fail("device")
+        else:
+            for key in d:
+                if key not in ("id", "label"):
+                    issues.add("unknown-key", f"{path}.device.{key}")
+    else:
+        if "revisionId" in e:
+            foreign("revisionId")
+        if "device" in e:
+            foreign("device")
+    if kind == "recovered":
+        s = e.get("stack")
+        if not isinstance(s, dict) or not is_uint(s.get("keep")) or not is_uint(s.get("index")) or not isinstance(s.get("push"), list):
+            fail("stack")
+        else:
+            for key in s:
+                if key not in ("keep", "push", "index"):
+                    issues.add("unknown-key", f"{path}.stack.{key}")
+            for i, slot in enumerate(s["push"]):
+                part_slot(slot, f"{path}.stack.push[{i}]", issues)
+    elif "stack" in e:
+        foreign("stack")
+    if "x" in e and not isinstance(e["x"], dict):
+        fail("x")
+
+
+def check_part(value, path, manifest):
+    """The editor's checkPart: (part or None, issues)."""
+    if not isinstance(value, dict):
+        return None, [("damaged", path)]
+    if manifest:
+        version = value.get("version")
+        if not is_safe_int(version) or version < 1:
+            return None, [("damaged", f"{path}.version")]
+        if version > 1:
+            return None, [("newer", f"{path}.version")]
+    issues = Issues()
+    allowed = ["entries", "roots", "nodes", "chunks"] + (["version", "undoStack"] if manifest else [])
+    for key in value:
+        if key not in allowed:
+            issues.add("unknown-key", f"{path}.{key}")
+    entries = value.get("entries")
+    if not isinstance(entries, list):
+        issues.add("damaged", f"{path}.entries")
+    else:
+        for i, e in enumerate(entries):
+            part_entry(e, f"{path}.entries[{i}]", issues)
+    for key in ("roots", "nodes"):
+        m = value.get(key)
+        if not isinstance(m, dict):
+            issues.add("damaged", f"{path}.{key}")
+        else:
+            for k in m:
+                if not is_hash(k):
+                    issues.add("damaged", f"{path}.{key}.{k}")
+    chunks = value.get("chunks")
+    if not isinstance(chunks, list):
+        issues.add("damaged", f"{path}.chunks")
+    else:
+        for i, item in enumerate(chunks):
+            if not (isinstance(item, list) and len(item) == 3 and is_hash(item[0]) and is_uint(item[1]) and is_uint(item[2])):
+                issues.add("damaged", f"{path}.chunks[{i}]")
+    if manifest:
+        s = value.get("undoStack")
+        if not isinstance(s, dict) or not is_uint(s.get("base")) or not is_uint(s.get("index")) or not isinstance(s.get("slots"), list):
+            issues.add("damaged", f"{path}.undoStack")
+        else:
+            for key in s:
+                if key not in ("base", "slots", "index"):
+                    issues.add("unknown-key", f"{path}.undoStack.{key}")
+            for i, slot in enumerate(s["slots"]):
+                part_slot(slot, f"{path}.undoStack.slots[{i}]", issues)
+    if len(issues):
+        return None, issues.done(path)
+    return value, []
+
+
+def known_kind(name):
+    return name in FIELDS["kindOrder"]
+
+
+def check_root_form(root):
+    check_record("root", root, "root")
+    need(root[0] == 1 and not isinstance(root[0], bool), "root.v")
+    last = -1
+    for name, _ in root[2]:
+        at = FIELDS["kindOrder"].index(name)
+        need(at > last, "root.kinds: out of the v1 kind order")
+        last = at
+
+
+def combine_parts(segments, manifest, expected_entries, chunks_size):
+    issues = Issues()
+    entries, roots, nodes, index, nxt = [], {}, {}, {}, 0
+    for p, part in enumerate(segments + [manifest]):
+        entries.extend(part["entries"])
+        for name, target in (("roots", roots), ("nodes", nodes)):
+            for key, value in part[name].items():
+                if key in target and js_json(target[key]) != js_json(value):
+                    issues.add("damaged", f"{name}.{key}")
+                target[key] = value
+        for h, off, length in part["chunks"]:
+            if h in index:
+                issues.add("damaged", f"chunks.{h}")
+            if off != nxt:
+                issues.add("damaged", f"chunks.{h}")
+            index[h] = (off, length)
+            nxt = off + length
+    if nxt != chunks_size:
+        issues.add("damaged", "chunks")
+    if len(entries) != expected_entries:
+        issues.add("damaged", "history.entries")
+
+    node_kinds = {}
+    for key, node in nodes.items():
+        try:
+            check_record("node", node, "node")
+            need(node[1] in (0, 1) and not isinstance(node[1], bool), "node.depth")
+            need(hash16(js_json(node).encode("utf-8")) == key, "node: hash")
+            node_kinds[key] = (node[0], node[1])
+        except Fail:
+            if isinstance(node, list) and node and is_str(node[0]) and not known_kind(node[0]):
+                issues.add("newer", f"nodes.{key}")
+            else:
+                issues.add("damaged", f"nodes.{key}")
+    for key, root in roots.items():
+        v = root[0] if isinstance(root, list) and root else None
+        if is_safe_int(v) and v > 1:
+            issues.add("newer", f"roots.{key}")
+            continue
+        try:
+            check_root_form(root)
+            need(hash16(js_json(root).encode("utf-8")) == key, "root: hash")
+        except Fail:
+            unknown = (isinstance(root, list) and len(root) > 2 and isinstance(root[2], list)
+                       and any(isinstance(pair, list) and pair and is_str(pair[0]) and not known_kind(pair[0]) for pair in root[2]))
+            issues.add("newer" if unknown else "damaged", f"roots.{key}")
+            continue
+        if root[1] not in index:
+            issues.add("damaged", f"roots.{key}")
+        for kind, top in root[2]:
+            node = node_kinds.get(top)
+            if node is None or node[0] != kind:
+                issues.add("damaged", f"roots.{key}")
+                continue
+            children = nodes[top][2]
+            hashes = []
+            if node[1] == 0:
+                hashes = children
+            else:
+                for child in children:
+                    leaf = node_kinds.get(child)
+                    if leaf is None or leaf[0] != kind or leaf[1] != 0:
+                        issues.add("damaged", f"nodes.{top}")
+                        continue
+                    hashes += nodes[child][2]
+            for h in hashes:
+                if h not in index:
+                    issues.add("damaged", f"nodes.{top}")
+    for i, e in enumerate(entries):
+        if e.get("kept") is False:
+            continue
+        if e["snapshot"] not in roots:
+            issues.add("damaged", f"entries[{i}]")
+        for j, slot in enumerate(e.get("stack", {}).get("push", []) if e.get("kind") == "recovered" else []):
+            if slot["snapshot"] not in roots:
+                issues.add("damaged", f"entries[{i}].stack.push[{j}]")
+    s = manifest["undoStack"]
+    for i, slot in enumerate(s["slots"]):
+        if slot["snapshot"] not in roots:
+            issues.add("damaged", f"undoStack.slots[{i}]")
+    at = s["index"] - s["base"]
+    head = s["slots"][at]["snapshot"] if 0 <= at < len(s["slots"]) else None
+    if s["index"] < s["base"] or head is None:
+        issues.add("damaged", "undoStack.index")
+    if len(issues) or head is None:
+        return None, issues.done("history")
+    return dict(entries=entries, roots=roots, nodes=nodes, index=index, head=head), []
+
+
+def check_header_chunk(header):
+    check_record("header", header, "header")
+    check_header_refs(header, "header")
+
+
+def read_history(z, pointers):
+    def entry(name):
+        e = z.get(name)
+        if e is None or e["dir"]:
+            raise ReadFailure("history-unreadable", name)
+        return e
+
+    def mapped(issues):
+        names = {"damaged": "history-unreadable", "newer": "newer-history", "unknown-key": "unknown-key"}
+        return [(names[r], p) for r, p in issues]
+
+    try:
+        total = 0
+        for name in list(pointers.get("segments", [])) + [pointers["manifest"]]:
+            e = z.get(name)
+            if e is not None and not e["dir"]:
+                total += e["usize"]
+        if total > CAPS["history"]:
+            raise ReadFailure("damaged", "history")
+        segments = []
+        for i, name in enumerate(pointers.get("segments", [])):
+            part, issues = check_part(read_entry_json(z, entry(name), CAPS["manifest"]), f"segments[{i}]", False)
+            if part is None:
+                return None, mapped(issues)
+            segments.append(part)
+        manifest, issues = check_part(read_entry_json(z, entry(pointers["manifest"]), CAPS["manifest"]), "manifest", True)
+        if manifest is None:
+            return None, mapped(issues)
+        ce = entry(pointers["chunks"])
+        if ce["usize"] > CAPS["chunks"] or (ce["csize"] != ce["usize"] if ce["method"] == 0 else ce["csize"] > 2 * ce["usize"] + 1024):
+            raise ReadFailure("damaged", ce["name"])
+        history, issues = combine_parts(segments, manifest, pointers["entries"], ce["usize"])
+        if history is None:
+            return None, mapped(issues)
+    except ReadFailure as failure:
+        return None, [failure.item]
+
+    whole = []
+
+    def stored(h):
+        off, length = history["index"][h]
+        if ce["method"] == 0:
+            if ce["csize"] != ce["usize"]:
+                raise ZipBad("size")
+            return z.stored(ce)[off:off + length]
+        if not whole:
+            whole.append(z.read(ce, CAPS["chunks"]))
+        return whole[0][off:off + length]
+
+    def chunk(h):
+        raw = inflate_chunk(stored(h), CAPS["chunk"])
+        need(hash16(raw) == h, f"chunk {h}: hash")
+        return read_json_text(raw)
+
+    checked = set()
+    for key, root in history["roots"].items():
+        if root[1] in checked:
+            continue
+        try:
+            check_header_chunk(chunk(root[1]))
+        except (Fail, ZipBad, JsonBad, KeyError, TypeError, IndexError, ValueError):
+            return None, [("history-unreadable", f"roots.{key}")]
+        checked.add(root[1])
+    head = history["head"]
+    try:
+        root = history["roots"][head]
+        check_root_form(root)
+        header = chunk(root[1])
+        check_header_chunk(header)
+        ids = check_header_refs(header, "header")
+        notes = 0
+        for kind, top in root[2]:
+            node = history["nodes"][top]
+            check_record("node", node, "node")
+            need(node[0] == kind and node[1] in (0, 1), "node")
+            hashes = node[2]
+            if node[1] == 1:
+                hashes = []
+                for child in node[2]:
+                    leaf = history["nodes"][child]
+                    check_record("node", leaf, "node")
+                    need(leaf[0] == kind and leaf[1] == 0, "node")
+                    hashes += leaf[2]
+            form = FIELDS["kinds"][kind]
+            for h in hashes:
+                records = chunk(h)
+                need(isinstance(records, list), "chunk: not an array")
+                for record in records:
+                    check_record(form, record, kind)
+                    check_refs(form, record, ids, kind)
+                if kind == "slides":
+                    notes += sum(len(slide) for slide in records)
+        need(notes == root[3], "root.noteCount")
+    except (Fail, ZipBad, JsonBad, KeyError, TypeError, IndexError, ValueError):
+        return None, [("history-unreadable", f"roots.{head}")]
+    return history, []
+
+
+def read_entry_json(z, e, cap):
+    try:
+        data = z.read(e, cap)
+    except (ZipBad, struct.error):
+        raise ReadFailure("damaged", e["name"])
+    try:
+        return read_json_text(data)
+    except JsonBad:
+        raise ReadFailure("damaged", e["name"])
+
+
+def is_ignored(e):
+    if e["dir"]:
+        return True
+    key = e["key"]
+    if key.startswith("__MACOSX/") or key.startswith("cache/"):
+        return True
+    last = key[key.rfind("/") + 1:]
+    return last in IGNORED_NAMES or last.startswith("._")
+
+
+def read_nxsp(blob):
+    """The editor's readNxsp: (kind, open, [(reason, path)])."""
+    report = []
+    try:
+        z = Zip(blob)
+    except (ZipBad, struct.error):
+        return "unreadable", None, [("damaged", "")]
+    if z.recovered:
+        report.append(("damaged", ""))
+    for name in z.duplicates:
+        report.append(("damaged", name))
+    for name in sorted(z.overlapping):
+        report.append(("damaged", name))
+    for name in sorted(z.real_overlapping - z.overlapping):
+        report.append(("damaged", name))
+    try:
+        pe = z.get("project.json")
+        if pe is None:
+            return ("unreadable", None, report) if "project.json" in z.ambiguous else ("not-project", None, [])
+        pj = read_entry_json(z, pe, CAPS["project"])
+        if not isinstance(pj, dict) or pj.get("format") != "nxsp" or isinstance(pj.get("format"), bool):
+            return "not-project", None, []
+        version = pj.get("version")
+        newer_major = is_safe_int(version) and version > 1
+        project = None
+        if newer_major:
+            report.append(("newer-version", "version"))
+        else:
+            if not (is_int(version) and version == 1):
+                report.append(("invalid-key", "version"))
+            project, issues = read_project(pj)
+            for reason, path in issues:
+                report.append(({"unknown-key": "unknown-key", "schema": "invalid-key"}.get(reason, "damaged"), path))
+            if project["minor"] > 0:
+                report.append(("newer-minor", "minor"))
+            if project["levelVersion"] > 1:
+                report.append(("newer-level", "levelVersion"))
+        pointers = []
+        if project:
+            pointers.append(("level", project["level"], "level.json"))
+            if project["bgm"] and "file" in project["bgm"]:
+                pointers.append(("bgm.file", project["bgm"]["file"], "bgm/"))
+            for kind in ("cover", "preview"):
+                m = project["metadata"].get(kind)
+                if m and "file" in m:
+                    pointers.append((f"metadata.{kind}.file", m["file"], f"assets/{kind}."))
+            h = project["history"]
+            if h:
+                pointers.append(("history.manifest", h["manifest"], "history/"))
+                pointers.append(("history.chunks", h["chunks"], "history/"))
+                for i, name in enumerate(h.get("segments", [])):
+                    pointers.append((f"history.segments[{i}]", name, "history/"))
+        named = {}
+        for path, name, prefix in pointers:
+            key = unicodedata.normalize("NFC", name)
+            if (key != prefix) if prefix == "level.json" else (not key.startswith(prefix) or key == prefix):
+                report.append(("damaged", path))
+            if key in named:
+                report.append(("damaged", path))
+            named[key] = path
+        if not newer_major:
+            for e in z.entries:
+                if is_ignored(e) or e["key"] == "project.json" or e["key"] in named:
+                    continue
+                report.append(("unknown-entry", e["name"]))
+        le = z.get("level.json")
+        if le is None:
+            report.append(("damaged", "level.json"))
+            return "unreadable", None, report
+        level = read_entry_json(z, le, CAPS["level"])
+        if isinstance(level, dict):
+            for key in level:
+                if key not in ("bgmOffset", "entities"):
+                    report.append(("unknown-key", f"level.json.{key}"))
+        if project:
+            for kind in ("bgm", "cover", "preview"):
+                form = project["bgm"] if kind == "bgm" else project["metadata"].get(kind)
+                if not form or "file" not in form:
+                    continue
+                path = "bgm.file" if kind == "bgm" else f"metadata.{kind}.file"
+                e = z.get(form["file"])
+                if e is None or e["dir"]:
+                    report.append(("media-unreadable", path))
+                    continue
+                if e["usize"] > CAPS["media"]:
+                    report.append(("damaged", e["name"]))
+                    continue
+                try:
+                    data = z.read(e, CAPS["media"])
+                except (ZipBad, struct.error):
+                    report.append(("damaged", e["name"]))
+                    continue
+                if len(data) != form["size"] or hashlib.sha256(data).hexdigest() != form["sha256"]:
+                    report.append(("media-unreadable", path))
+            damaged = any(r == "damaged" for r, _ in report)
+            newer_minor = any(r == "newer-minor" for r, _ in report)
+            if project["history"] and not damaged and not newer_minor:
+                _, items = read_history(z, project["history"])
+                report += items
+        return "nxsp", "partial" if report else "full", report
+    except ReadFailure as failure:
+        report.append(failure.item)
+        return "unreadable", None, report
+
+
+def read_main(paths):
+    status = 0
+    for path in paths:
+        try:
+            with open(path, "rb") as f:
+                kind, opened, report = read_nxsp(f.read())
+            print(json.dumps({"file": path, "kind": kind, "open": opened, "report": [list(r) for r in report]},
+                             ensure_ascii=False))
+        except Exception as error:  # A crash is the checker's bug: say so, never pass.
+            print(json.dumps({"file": path, "error": f"{type(error).__name__}: {error}"}))
+            status = 1
+    return status
+
+
 def main(argv):
     if argv[:1] == ["--show"] and len(argv) == 3:
         show(argv[1], argv[2])
         return 0
+    if argv[:1] == ["--read"]:
+        return read_main(argv[1:])
     if not argv:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -704,6 +1755,9 @@ def main(argv):
             print(f"ok {path}")
         except Fail as error:
             print(f"FAIL {path}: {error}")
+            failed = True
+        except Exception as error:  # A malformed file the checks didn't foresee still fails.
+            print(f"FAIL {path}: {type(error).__name__}: {error}")
             failed = True
     try:
         check_complete_from(infos)

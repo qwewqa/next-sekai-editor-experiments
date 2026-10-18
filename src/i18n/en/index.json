@@ -944,10 +944,10 @@
             "recovery": {
                 "journal": "Unsaved work from an earlier visit, {0} · {1}",
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
-                "legacy": "Legacy recovery copy · {0}",
+                "legacy": "Recovery copy from an older version · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
-                "atLoad": "At this load:"
+                "atLoad": "At this load"
             },
             "openHistory": "Open History"
         }
@@ -1888,6 +1888,7 @@
         "chooseAudio": "Choose Audio…",
         "newLevel": "New level",
         "reopen": "Reopen \"{0}\"",
+        "reopenUntitled": "Reopen Session from {0}",
         "readOnlyPeek": "Read-only while viewing history",
         "restoredTo": "Restored to {0}",
         "alreadyMatches": "Already matches the current chart",
