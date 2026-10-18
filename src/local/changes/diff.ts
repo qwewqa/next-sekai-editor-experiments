@@ -14,6 +14,7 @@ export const MARK_LIMIT = 150
 export const MOST_SHARE = 0.8
 /** A removed and an added object pair as a move only within this many beats. */
 export const MOVE_BEATS = 8
+export const PAIR_BUDGET = 65_536
 
 /** A kind's candidate records on each side; records on both sides cancel. */
 export type KindCandidates = { kind: KindName; before: readonly Rec[]; after: readonly Rec[] }
@@ -44,7 +45,7 @@ export type ChangedObject = {
 export type ChangeLayout = 'none' | 'small' | 'large' | 'most'
 
 export type ChangeSet = {
-    /** In chart order; none in the `most` layout. */
+    /** In chart order; unpaired additions/removals in the `most` layout. */
     objects: ChangedObject[]
     /** Objects changed per kind; in `most`, at least this many. */
     counts: Record<KindName, number>
@@ -327,8 +328,24 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
         least += counts[kind]
     }
     const total = totals ? totals.notes + totals.events : 0
-    if (least > MARK_LIMIT && total > 0 && least >= MOST_SHARE * total)
-        return { objects: [], counts, header: input.header, layout: 'most' }
+    if (
+        (least > MARK_LIMIT && total > 0 && least >= MOST_SHARE * total) ||
+        [...sides.values()].reduce(
+            (sum, side) => sum + side.removed.length * side.added.length,
+            0,
+        ) > PAIR_BUDGET
+    ) {
+        const objects: ChangedObject[] = []
+        for (const [kind, side] of sides) {
+            objects.push(
+                ...side.removed.map((item) => objectOf(item, 'removed')),
+                ...side.added.map((item) => objectOf(item, 'added')),
+            )
+            counts[kind] = side.removed.length + side.added.length
+        }
+        objects.sort(compareObjects)
+        return { objects, counts, header: input.header, layout: 'most' }
+    }
 
     const objects: ChangedObject[] = []
     for (const [kind, side] of sides) {

@@ -50,6 +50,7 @@ export type EntryRow = {
     child: boolean
     /** Whether it can be peeked: not removed, not damaged. */
     selectable: boolean
+    partial?: boolean
 }
 
 /** After a jump: the entries between Now and the loaded window, not read yet. */
@@ -115,12 +116,14 @@ export type BuildOptions = {
     now?: number
     /** After a jump: how many entries lie between Now and the first one given. */
     gap?: number
+    more?: boolean
+    pinned?: readonly string[]
 }
 
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    { filter, expanded, damaged, now = Date.now(), gap }: BuildOptions,
+    { filter, expanded, damaged, now = Date.now(), gap, more, pinned }: BuildOptions,
 ): Row[] => {
     const flagsOf = (entry: Entry): Flags => ({
         removed: !entry.kept && !damaged.has(entryId(entry)),
@@ -161,6 +164,7 @@ export const buildRows = (
         while (key !== undefined) {
             const next = shown[i + 1]
             if (!next || groupKey(next, flagsOf(next)) !== key) break
+            if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
             // Edits Here collapses only matches next to each other on the chain.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             if (filter === 'here' && next.pos !== members.at(-1)!.pos! + 1) break
@@ -168,7 +172,7 @@ export const buildRows = (
             i++
         }
         const sum = members.reduce((total, member) => total + (deltas.get(entryId(member)) ?? 0), 0)
-        const known = members.some((member) => deltas.has(entryId(member)))
+        const known = members.every((member) => deltas.has(entryId(member)))
         const row: EntryRow = {
             type: 'entry',
             id: entryId(entry),
@@ -178,6 +182,7 @@ export const buildRows = (
             delta: known && sum !== 0 ? sum : undefined,
             child: false,
             selectable: !flags.removed && !flags.damaged,
+            partial: !!(key && more && i === shown.length - 1),
         }
         items.push(row)
         if (members.length > 1 && expanded.has(row.id))
@@ -192,6 +197,7 @@ export const buildRows = (
                     flags: memberFlags,
                     delta: delta === 0 ? undefined : delta,
                     child: true,
+                    partial: false,
                     selectable: !memberFlags.removed && !memberFlags.damaged,
                 })
             }
