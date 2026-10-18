@@ -92,6 +92,8 @@ export type PendingInput = {
 
 /** The head's level data and header, from the page's live state (else decoded from storage). */
 export type HeadInput = {
+    /** The head's root as hex: a head input for another state is ignored. */
+    snapshot: string
     level: unknown
     editor: { defaultGuideColors?: readonly number[] }
     summary: { noteCount: number; durationMs: number }
@@ -355,7 +357,7 @@ export const planSave = async (
         if (error instanceof ModelError) return refuse(error.reason)
         throw error
     }
-    let headInput = options.head
+    let headInput = options.head?.snapshot === head ? options.head : undefined
     if (!headInput) {
         // Decoded from storage: the head's own bodies, whatever the source holds.
         const headBodies = sourceKeys

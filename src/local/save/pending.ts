@@ -65,10 +65,12 @@ export const headInput = (state: State): HeadInput => {
         state.stages,
         { groups: state.groupFolders, stages: state.stageFolders },
     )
+    const records = toRecords(state)
     return {
+        snapshot: toHex(encodeSnapshot(records).root.hash),
         level,
         editor: serializeEditorMetadata(level.entities, state.store),
-        summary: summaryOf(toRecords(state)),
+        summary: summaryOf(records),
         levelInfo: state.levelInfo,
         ...(state.bgm.meta ? { bgm: state.bgm.meta } : {}),
         levelVersion: LEVEL_VERSION,
