@@ -240,7 +240,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(heading).toBeInViewport()
         // Every notice of this load is listed there, not only the three on the pill.
         const atLoad = page.locator('[data-at-load]')
-        await expect(atLoad).toContainText('At this load:')
+        await expect(atLoad).toContainText('At this load')
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
@@ -696,7 +696,7 @@ test.describe('Settings › Local Data', () => {
             await expect(autoSave).toContainText('(cannot be opened in this version)')
             await expect(autoSave.getByRole('button')).toHaveText(['Download', 'Discard…'])
             const legacy = later.locator('[data-recovery-row="legacy"]')
-            await expect(legacy).toContainText('Legacy recovery copy')
+            await expect(legacy).toContainText('Recovery copy from an older version')
             await expect(legacy.getByRole('button')).toHaveText(['Download'])
             // The load notices of this load are listed too.
             await expect(later.locator('[data-at-load] li')).toContainText([

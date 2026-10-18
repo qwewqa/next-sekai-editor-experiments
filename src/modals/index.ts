@@ -11,6 +11,10 @@ export type Modal = {
     pane?: 'main' | 'elevation'
     /** A fixed-height dialog filling most of the screen. */
     size?: 'large'
+    /** With `large`: full height at every width, no cap, and v0.5.22's width. */
+    tall?: boolean
+    /** With `large`: the tallest it grows on wide screens (a CSS length); the default is 48rem. */
+    cap?: string
     /** A tool dialog that leaves the tool as it is: the History sheet over the live chart. */
     sheet?: boolean
 }
@@ -53,7 +57,7 @@ type ModalResult<T extends Component> = ComponentInstance<T>['$emit'] extends (
 export const showModal = <T extends Component>(
     component: T,
     props: ModalProps<T>,
-    options?: Pick<Modal, 'presentation' | 'pane' | 'size' | 'sheet'>,
+    options?: Pick<Modal, 'presentation' | 'pane' | 'size' | 'tall' | 'cap' | 'sheet'>,
 ) =>
     new Promise<ModalResult<T> | undefined>((resolve) => {
         modals.push({
