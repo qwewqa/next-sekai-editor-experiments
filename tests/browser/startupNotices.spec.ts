@@ -243,7 +243,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(heading).toBeInViewport()
         // Every notice of this load is listed there, not only the three on the pill.
         const atLoad = page.locator('[data-at-load]')
-        await expect(atLoad).toContainText('At this load')
+        await expect(atLoad).toContainText('Startup Notices')
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
@@ -524,7 +524,7 @@ test.describe('the not-stored prompt', () => {
         await edit(page, 990)
         const going = run(page, 'reset')
         await expect(prompt(page)).toContainText(
-            'Your changes are not being stored in this browser. Leaving loses them.',
+            'Your changes are not being stored in this browser. Leaving will discard them.',
         )
         // Cancel, Leave Anyway (danger), then Save (focused) on the right.
         const buttons = prompt(page).locator('[data-choice-buttons] button')
@@ -688,7 +688,7 @@ test.describe('Settings › Local Data', () => {
             await pill(later).getByRole('button', { name: 'Local Data' }).click()
             await expect(later.locator('#settings-localData [data-settings-heading]')).toBeFocused()
             await expect(later.locator('[data-storage-line]')).toContainText(
-                'This browser is not letting the editor store anything.',
+                'The editor cannot store changes in this browser.',
             )
             const rows = later.locator('[data-recovery-row]')
             await expect(rows).toHaveCount(3)

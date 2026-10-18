@@ -102,7 +102,7 @@ test.describe('Copy Diagnostic Info…', () => {
         const dialog = page.getByRole('dialog', { name: 'Diagnostic Info' })
         await expect(dialog).toBeVisible()
         await expect(dialog).toContainText(
-            'Error messages in it can include file and folder names. Check it before posting it publicly.',
+            'Diagnostic info may include file and folder names. Check it before sharing.',
         )
         const field = dialog.getByRole('textbox')
         await expect(field).toHaveAttribute('readonly', '')

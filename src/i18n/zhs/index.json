@@ -472,7 +472,7 @@
       "resetDefault": "重置为默认",
       "stored": "已存储：{0} 项，{1}",
       "storedEmpty": "没有已存储的项目",
-      "storedUnavailable": "无法打开此浏览器的存储空间，因此无法读取已存储的项目。",
+      "storedUnavailable": "编辑器无法访问此浏览器中已存储的项目。",
       "noun": {
         "skin": "皮肤",
         "particle": "粒子",
@@ -487,7 +487,7 @@
       },
       "reason": {
         "fileGone": "{0}文件已不再存储在此浏览器中。",
-        "storageUnavailable": "无法打开此浏览器的存储空间，因此无法读取已存储的{0}。",
+        "storageUnavailable": "编辑器无法访问此浏览器中已存储的{0}。",
         "serverFailed": "无法从 {1} 重新下载{0}。",
         "invalid": "无法读取已存储的{0}。",
         "defaultFailed": "无法加载默认项。",
@@ -537,7 +537,7 @@
         "unreadable": "无法读取此文件的{0}{1}。",
         "missing": "此文件缺少{0}{1}。",
         "notImage": "此文件的{0}{1}不是 PNG 或 JPEG 图像。",
-        "imageSize": "此文件的{0}{1}为 {2} × {3}，上限为 {4} × {4}。",
+        "imageSize": "此文件的{0}{1}为 {2} × {3}。上限为 {4} × {4}。",
         "checksum": "此文件的{0}{1}与其校验和不符。",
         "spriteOutside": "此文件的{0}数据中有位于纹理之外的精灵。",
         "noNoteSprites": "此文件的{0}数据中没有音符精灵。",
@@ -579,7 +579,7 @@
         "unreadable": "无法读取此项目的{0}{1}。",
         "missing": "此项目缺少{0}{1}。",
         "notImage": "此项目的{0}{1}不是 PNG 或 JPEG 图像。",
-        "imageSize": "此项目的{0}{1}为 {2} × {3}，上限为 {4} × {4}。",
+        "imageSize": "此项目的{0}{1}为 {2} × {3}。上限为 {4} × {4}。",
         "spriteOutside": "此项目的{0}数据中有位于纹理之外的精灵。",
         "noNoteSprites": "此项目的{0}数据中没有音符精灵。",
         "tooManySprites": "此项目的{0}数据中的精灵超过 {1} 个。",
@@ -932,7 +932,7 @@
       "privacy": "隐私",
       "diagnostics": "复制诊断信息…",
       "diagnosticsTitle": "诊断信息",
-      "diagnosticsNote": "其中的错误信息可能包含文件名和文件夹名。公开发布前请先检查。",
+      "diagnosticsNote": "诊断信息可能包含文件名和文件夹名。分享前请先检查。",
       "copy": "复制",
       "copied": "已复制"
     },
@@ -951,7 +951,7 @@
         "legacy": "旧版本的恢复副本 · {0}",
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
-        "atLoad": "本次加载"
+        "atLoad": "启动通知"
       },
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改"
@@ -1165,7 +1165,7 @@
     "blank": "从空白开始"
   },
   "safe": {
-    "bar": "安全模式：不存储任何内容。",
+    "bar": "安全模式：更改不会被存储。",
     "leave": "退出安全模式",
     "open": "以安全模式打开"
   },
@@ -1204,7 +1204,7 @@
   },
   "storage": {
     "reload": "请重新加载以继续存储更改。",
-    "unavailable": "此浏览器不允许编辑器存储任何内容。请将内容保存到文件中以保留。",
+    "unavailable": "编辑器无法在此浏览器中存储更改。请保存到文件中以保留你的工作。",
     "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请将内容保存到文件中以保留。",
     "ios": "此浏览器会在 7 天未访问后删除已存储的内容。请将内容保存到文件中以保留。",
     "safari": "Safari 会在 7 天未访问后删除已存储的内容。请将内容保存到文件中以保留。",
@@ -1879,11 +1879,11 @@
     "history": "历史记录",
     "bgm": "BGM",
     "placeholder": "未命名",
-    "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”(Shift+P)。",
+    "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”。",
     "openExport": "导出关卡数据…",
     "readOnly": "无法写入“{0}”。",
     "notProject": "“{0}”不是项目文件。",
-    "notKept": "未保存。无法保留“{0}”。",
+    "notKept": "未保存。无法完整读取“{0}”。",
     "notKeptSafe": "未保存。安全模式下无法替换文件。",
     "saved": "已保存到 {0}",
     "savedWithoutBgm": "已保存到 {0}，但未包含 BGM，因为 BGM 未加载",
@@ -1902,20 +1902,20 @@
     "noChangesOpened": "自打开 {0} 以来没有更改",
     "downloadAgain": "再次下载",
     "unreadable": "无法完整读取“{0}”。",
-    "tooLarge": "对单个文件而言过大。请取消勾选 BGM 或历史记录。",
+    "tooLarge": "文件过大。",
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
-    "unavailable": "未保存。请使用“导出关卡数据…”(Shift+P)。",
+    "unavailable": "未保存。请使用“导出关卡数据…”。",
     "include": "包含",
     "historySteps": "{0} 步",
     "historySize": "{0} 步 · {1}",
-    "historyNote": "拥有该文件的人可以看到每一步。",
+    "historyNote": "拥有该文件的人可以查看其中的历史记录。",
     "noBgm": "无 BGM",
     "bgmNotLoaded": "BGM 未加载",
     "bgmSize": "{0} · {1}",
     "keptOptions": "已在 {0} 中",
     "downloadNote": "每次保存都会下载一份新副本。",
-    "noHistoryHere": "此连接无法包含历史记录。",
+    "noHistoryHere": "包含历史记录需要安全连接。",
     "sizeTotal": "总计：约 {0}",
     "sizePending": "正在估算大小…"
   },
@@ -1932,7 +1932,7 @@
     "separate": "另存为单独文件",
     "openOther": "打开另一个版本",
     "openOtherNote": "你的更改保持未保存。",
-    "replaceNote": "磁盘上的版本会移到“最近会话”。",
+    "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "由更新版本的 {0} 创建。",
     "replaceHoldsEarlier": "它包含此浏览器已不再拥有的较早步骤。",
@@ -1976,7 +1976,7 @@
   },
   "prompt": {
     "title": "更改未存储",
-    "notStored": "更改未存储在此浏览器中。离开会丢失这些更改。",
+    "notStored": "更改未存储在此浏览器中。离开后这些更改将丢失。",
     "save": "保存",
     "leaveAnyway": "仍然离开"
   },
@@ -2002,11 +2002,11 @@
       "preview": "预览音频"
     },
     "newerMajor": "由更新版本的 {0} 创建。",
-    "newerMajorNote": "只能从中打开关卡。",
+    "newerMajorNote": "只能打开此文件中的关卡。",
     "openLevel": "打开关卡",
     "newerValues": {
       "title": "“{0}”使用了更新的功能",
-      "body": "此版本的编辑器不支持此关卡中的部分值。将打开一个单独的副本，其中这些值已替换为默认值。",
+      "body": "此关卡使用了此版本编辑器不支持的值。打开单独的副本时，这些值会替换为默认值。",
       "openCopy": "打开副本"
     },
     "unsavedChanges": "已打开 {0}。你在 {1} 对它有未保存的更改。",
