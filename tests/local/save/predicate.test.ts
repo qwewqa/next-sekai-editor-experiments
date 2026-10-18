@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { toHex } from '../../../src/local/hash'
 import { holdsHistory, readReplaceDecision, relation } from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
-import { Fixture, heldRows, save } from './fixture'
+import { Fixture, heldRows, save, stateAt } from './fixture'
 
 // The content predicate and the Replace guard (Part 0 §0.9.5–§0.9.6; Part 1 §1.6.11.6;
 // r12-history-critique §2, r12-freeze2 S5).
@@ -72,5 +73,41 @@ test('Replace is disabled when the file on disk holds the base and the write wou
     assert.deepEqual(
         await readReplaceDecision(fixture.store, fixture.chainId, diverged, 'zip:1:1:abcdef01'),
         { holdsBase: false, relation: 'diverged' },
+    )
+})
+
+test('the Replace guard uses the build’s carry test: a flagged row a kept row shares still carries', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    fixture.undo()
+    await fixture.flush()
+    const { built, file } = await save(
+        fixture,
+        { kind: 'copy' },
+        { disk: (saved) => nxspDiskState(saved, saved.lastModified).then((disk) => ({ ...disk })) },
+    )
+    assert.ok(!('refused' in built) && file)
+    const { read } = await heldRows(file)
+    const base = read.projectJson
+    const revision = base.revision as { id: string; ancestors: string[]; completeFrom: string }
+    const descendant = {
+        ...base,
+        revision: { ...revision, id: 'other', ancestors: [revision.id] },
+        history: { ...(base.history as object), entries: 9 },
+    }
+    // Cleanup flags the edit to state 1; the undo row back to it keeps the state.
+    const row = fixture.session.rows.find(
+        (each) => each.kind === 'edit' && toHex(each.snapshot) === stateAt(1).hex,
+    )
+    assert.ok(row)
+    await fixture.store.write(['entries'], async (tx) => {
+        const stored = (await tx.get('entries', [row.sessionId, row.seq])) as object
+        await tx.put('entries', { ...stored, kept: false })
+    })
+    assert.deepEqual(
+        await readReplaceDecision(fixture.store, fixture.chainId, descendant, 'zip:1:1:abcdef01'),
+        { holdsBase: false, relation: 'newer' },
     )
 })

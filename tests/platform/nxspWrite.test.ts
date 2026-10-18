@@ -325,3 +325,38 @@ test('a plan whose copy fails with the source unchanged is damage, not a conflic
         { code: 'io' },
     )
 })
+
+/** A Blob whose reads fail as Chromium's do once a file it holds ranges of changed. */
+class ChangedBlob extends Blob {
+    override arrayBuffer(): Promise<ArrayBuffer> {
+        return Promise.reject(new DOMException('The file changed', 'NotReadableError'))
+    }
+}
+
+test('a pinned file that changes during or after the build is a conflict on the web, never an error', async () => {
+    const original = await built()
+    const expected = await nxspDiskState(original, 1000)
+    const write = (build: () => Promise<FileBody>) => {
+        const events: string[] = []
+        const handle = fileHandle(original, events)
+        return {
+            events,
+            result: platform.saveFile({
+                kind: 'nxsp',
+                suggestedName: 'coconut.nxsp',
+                target: { kind: 'handle', handle },
+                expected,
+                build,
+            }),
+        }
+    }
+    // The build's own read of the pinned file fails.
+    const during = write(() =>
+        Promise.reject(new DOMException('The file changed', 'NotReadableError')),
+    )
+    await assert.rejects(during.result, { code: 'conflict' })
+    // The built Blob's ranges of the pinned file fail when hashed after the build.
+    const after = write(() => Promise.resolve({ kind: 'blob', blob: new ChangedBlob([original]) }))
+    await assert.rejects(after.result, { code: 'conflict' })
+    assert.deepEqual(after.events, [])
+})

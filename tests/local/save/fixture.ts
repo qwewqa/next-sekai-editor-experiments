@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,14 +16,23 @@ import { nodeRow, rootRow } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { SaveStore } from '../../../src/local/save/bodies'
 import type { SaveOptions, SaveTarget } from '../../../src/local/save/build'
+import { commitIdentity, IDENTITY_STORES } from '../../../src/local/save/commit'
 import {
     buildSave,
     fingerprintNow,
     type BuiltSave,
     type SaveSourceFile,
 } from '../../../src/local/save/execute'
+import { pendingInput } from '../../../src/local/save/pending'
 import { createWorld, type Tab, type World } from '../../../src/local/testing/world'
-import { BLOCK_SLOTS, blockRow, storedWindow, type ReplaySlot } from '../../../src/local/timeline'
+import {
+    BLOCK_SLOTS,
+    blockRow,
+    replay,
+    ReplayError,
+    storedWindow,
+    type ReplaySlot,
+} from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import { workerCore } from '../flush/harness'
 import { BGM, BGM_2, chartWith, COVER, COVER_2, PREVIEW, sha256Hex } from '../nxsp/helpers'
@@ -91,6 +101,7 @@ export class Fixture {
     sessions: FixtureSession[] = []
     private clock = 1_000_000
     private written = new Set<string>()
+    private known = new Map<string, State>()
 
     private constructor(world: World, tab: Tab, store: SaveStore) {
         this.world = world
@@ -181,6 +192,7 @@ export class Fixture {
 
     /** Stores a state's bodies, once. */
     async store_(known: { state: State; hex: string }) {
+        this.known.set(known.hex, known.state)
         if (this.written.has(known.hex)) return known
         const snapshot = encodeSnapshot(toRecords(known.state))
         const chunks = await Promise.all(
@@ -200,6 +212,43 @@ export class Fixture {
         })
         this.written.add(known.hex)
         return known
+    }
+
+    /** A state this fixture made, by its root's hex. */
+    stateOf(hex: string) {
+        const state = this.known.get(hex)
+        if (!state) throw new Error(`No state ${hex}`)
+        return state
+    }
+
+    /**
+     * This tab's rows of the current session after `seq`, its live stack and their records, as
+     * the page posts them while storing is paused (`pendingInput`).
+     */
+    pending(after: number) {
+        const session = this.session
+        return pendingInput(
+            session.rows
+                .filter((row) => row.seq > after)
+                .map((row) => ({
+                    seq: row.seq,
+                    time: row.time,
+                    kind: row.kind,
+                    label: row.label,
+                    dirty: row.dirty,
+                    state: this.stateOf(toHex(row.snapshot)),
+                    ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
+                    ...(row.device ? { device: row.device } : {}),
+                })),
+            {
+                base: 0,
+                slots: session.slots.map((slot) => ({
+                    state: this.stateOf(toHex(slot.snapshot)),
+                    label: slot.label,
+                })),
+                index: session.index,
+            },
+        )
     }
 
     /** An edit to any state. */
@@ -247,6 +296,26 @@ export class Fixture {
             time: this.now(),
             startedAt: session.startedAt,
         }
+    }
+
+    /** The `save` entry a write that binds appends to its session (stored at the next flush). */
+    recordSave(built: BuiltSave, reserved: ReturnType<Fixture['reserveSave']>) {
+        const session = this.sessions.find((each) => each.id === reserved.sessionId)
+        if (!session) throw new Error('No session')
+        session.rows.push({
+            sessionId: session.id,
+            seq: reserved.seq,
+            time: reserved.time,
+            day: 1,
+            kind: 'save',
+            label: built.saveEntry.label,
+            snapshot: fromHex16(built.saveEntry.snapshot),
+            noteCount: built.saveEntry.noteCount,
+            dirty: false,
+            kept: true,
+            revisionId: built.revisionId,
+            device: DEVICE,
+        })
     }
 
     /** Writes every session's rows, its row and stack, and the chain's head. */
@@ -446,51 +515,47 @@ export const commit = async (
     options: SaveOptions,
     { event, disk }: { event: 'saved' | 'downloaded'; disk?: Record<string, unknown> },
 ) => {
-    const session = fixture.sessions.find((each) => each.id === reserved.sessionId)
-    if (!session) throw new Error('No session')
-    session.rows.push({
-        sessionId: session.id,
-        seq: reserved.seq,
-        time: reserved.time,
-        day: 1,
-        kind: 'save',
-        label: options.save.label,
-        snapshot: fromHex16(built.saveEntry.snapshot),
-        noteCount: built.saveEntry.noteCount,
-        dirty: false,
-        kept: true,
-        revisionId: built.revisionId,
-        device: DEVICE,
-    })
+    fixture.recordSave(built, reserved)
     await fixture.flush()
     const { identity } = built
-    const chain = await fixture.chain()
-    const rest = { ...chain }
-    delete rest.replaced
-    await fixture.putChain({
-        ...rest,
-        docId: identity.docId,
-        revision: identity.revision,
-        file: {
-            name: 'coconut.nxsp',
-            event,
-            at: reserved.time,
-            hash: fromHex16(built.saveEntry.snapshot),
-            ...(identity.entry
-                ? {
-                      entry: {
-                          sessionId: reserved.sessionId,
-                          seq: reserved.seq,
-                          startedAt: reserved.startedAt,
-                          ...identity.entry,
-                      },
-                  }
-                : {}),
-            ...(identity.completeFrom === undefined ? {} : { completeFrom: identity.completeFrom }),
-            ...(disk ? { disk } : {}),
-            options: { history: options.history, bgm: options.bgm },
-        },
-    })
+    const committed = await fixture.store.write(IDENTITY_STORES, (tx) =>
+        commitIdentity(tx, fixture.chainId, {
+            docId: identity.docId,
+            revision: identity.revision,
+            file: bindingOf(built, reserved, options, { event, disk }),
+            marks: identity.marks,
+        }),
+    )
+    assert.equal(committed, true)
+}
+
+/** The binding a write's identity unit stores (§1.6.11.2). */
+export const bindingOf = (
+    built: BuiltSave,
+    reserved: ReturnType<Fixture['reserveSave']>,
+    options: SaveOptions,
+    { event, disk }: { event: 'saved' | 'downloaded'; disk?: Record<string, unknown> },
+) => {
+    const { identity } = built
+    return {
+        name: 'coconut.nxsp',
+        event,
+        at: reserved.time,
+        hash: fromHex16(built.saveEntry.snapshot),
+        ...(identity.entry
+            ? {
+                  entry: {
+                      sessionId: reserved.sessionId,
+                      seq: reserved.seq,
+                      startedAt: reserved.startedAt,
+                      ...identity.entry,
+                  },
+              }
+            : {}),
+        ...(identity.completeFrom === undefined ? {} : { completeFrom: identity.completeFrom }),
+        ...(disk ? { disk } : {}),
+        options: { history: options.history, bgm: options.bgm },
+    }
 }
 
 /** A written file's rows with their states (§1.6.11.6): `kind|time|snapshot` → count, held only. */
@@ -538,4 +603,53 @@ export const checkFiles = async (files: readonly Blob[]) => {
     } finally {
         rmSync(dir, { recursive: true, force: true })
     }
+}
+
+/**
+ * "Replay defines the stack" (§1.3.9) for a written file: its undo stack is a window of replay of
+ * its own chronology, numbered from its first entry; when replay can't follow the chronology (a
+ * session removed from its middle), the stack is the head alone.
+ */
+export const checkStack = async (blob: Blob) => {
+    const { history } = await heldRows(blob)
+    const { undoStack } = history
+    const entries = history.entries.map((entry, seq) => ({
+        seq,
+        kind: entry.kind,
+        label: entry.label,
+        snapshot: fromHex16(entry.snapshot),
+        ...(entry.stack
+            ? {
+                  stack: {
+                      keep: entry.stack.keep,
+                      push: entry.stack.push.map((slot) => ({
+                          snapshot: fromHex16(slot.snapshot),
+                          label: slot.label,
+                      })),
+                      index: entry.stack.index,
+                  },
+              }
+            : {}),
+    }))
+    let replayed: ReturnType<typeof replay> | undefined
+    try {
+        replayed = replay(entries)
+    } catch (error) {
+        if (!(error instanceof ReplayError)) throw error
+    }
+    if (!replayed) {
+        assert.equal(undoStack.slots.length, 1, 'a stack replay cannot follow is the head alone')
+        assert.equal(undoStack.base, 0)
+        assert.equal(undoStack.index, 0)
+        assert.equal(undoStack.slots[0]?.snapshot, history.entries.at(-1)?.snapshot)
+        return 'head'
+    }
+    const { slots, index } = replayed
+    assert.equal(undoStack.index, index, 'the stack’s index is replay’s')
+    for (const [i, slot] of undoStack.slots.entries()) {
+        const expected: ReplaySlot | undefined = slots[undoStack.base + i]
+        assert.ok(expected, `slot ${undoStack.base + i} is outside replay’s stack`)
+        assert.equal(slot.snapshot, toHex(expected.snapshot))
+    }
+    return 'replay'
 }

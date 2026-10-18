@@ -1,5 +1,12 @@
+import { toHex } from '../hash'
 import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
-import { replay, ReplayError, type ReplayEntry, type ReplaySlot } from '../timeline'
+import {
+    replay,
+    ReplayError,
+    type ReplayedStack,
+    type ReplayEntry,
+    type ReplaySlot,
+} from '../timeline'
 import type { ChainCut, EntryRow, SessionRow } from './cut'
 
 // The settled history model's rules over a cut (Part 1 §1.6.11.6): the chain order of sessions
@@ -93,25 +100,24 @@ export const isLater = (row: ChainRow, cut: Cut) =>
     (row.entry.sessionId === cut.sessionId && row.entry.seq > cut.seq)
 
 /**
- * The carry test (§1.6.11.6, r12-history-critique §1.1): a write that isn't an append carries its
- * base's `completeFrom` only when the chain's rows up to the cut still number `entry.count`, and
- * the rows among them whose state the write lacks (`notKept`: stored `kept: false`, with any this
- * build marked) still number `entry.notKept`. Stored `kept: false` is one-way, so equal counts
- * mean equal sets.
+ * The carry test (§1.6.11.6, D25): a write that isn't an append carries its base's
+ * `completeFrom` only when the chain's rows up to the cut still number `entry.count`, and the rows
+ * among them that are flagged (stored `kept: false`, or marked by this build) and whose state no
+ * unflagged row up to the cut has still number `entry.notKept`. Both sets only grow, and at the
+ * bind the first contains the rows the file lacked, so equal counts mean equal sets.
  */
 export const carries = (
     rows: readonly ChainRow[],
     entry: { sessionId: string; seq: number; startedAt: number; count: number; notKept: number },
-    notKept: (row: ChainRow) => boolean,
+    flagged: (row: ChainRow) => boolean,
 ) => {
-    let count = 0
+    const upto = rows.filter((row) => !isLater(row, entry))
+    const kept = new Set(
+        upto.filter((row) => !flagged(row)).map((row) => toHex(row.entry.snapshot)),
+    )
     let lacking = 0
-    for (const row of rows) {
-        if (isLater(row, entry)) continue
-        count++
-        if (notKept(row)) lacking++
-    }
-    return count === entry.count && lacking === entry.notKept
+    for (const row of upto) if (flagged(row) && !kept.has(toHex(row.entry.snapshot))) lacking++
+    return upto.length === entry.count && lacking === entry.notKept
 }
 
 /** The undo stack a write holds: its slots and absolute `base` and `index` (§1.6.11.5). */
@@ -138,14 +144,17 @@ export const cutStack = (stack: WriteStack, held: (slot: ReplaySlot) => boolean)
  * How far the session's slot numbers are from the file's (§1.6.11.5): absolute numbers in a file
  * count from replay of its own first entry, so a chronology that starts later than the session's
  * numbering (sessions removed before it) is renumbered. Replay of the written chronology gives
- * the file's index; 0 when replay can't follow it (the numbers are kept).
+ * the file's index and stack; undefined when replay can't follow it.
  */
-export const renumbering = (chronology: readonly ReplayEntry[], sessionIndex: number): number => {
+export const renumbering = (
+    chronology: readonly ReplayEntry[],
+    sessionIndex: number,
+): { offset: number; replayed: ReplayedStack } | undefined => {
     try {
-        const { index } = replay(chronology)
-        return sessionIndex - index
+        const replayed = replay(chronology)
+        return { offset: sessionIndex - replayed.index, replayed }
     } catch (error) {
-        if (error instanceof ReplayError) return 0
+        if (error instanceof ReplayError) return undefined
         throw error
     }
 }

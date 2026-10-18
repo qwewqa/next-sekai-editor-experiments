@@ -221,6 +221,35 @@ export const loadBodies = async (
     return bodies
 }
 
+/**
+ * Adds to `into` each of `roots` that `from` holds whole, with the nodes and chunks it reaches
+ * (those the source holds stay out). The rest are left out, never counted as damage.
+ */
+export const takeWhole = (into: Bodies, from: Bodies, roots: Iterable<string>) => {
+    const takeNode = (hex: string) => {
+        const json = from.nodes.get(hex)
+        if (!json) return
+        into.nodes.set(hex, json)
+        const node = nodeChildren(json)
+        for (const child of node?.children ?? []) {
+            if (node?.depth === 0) {
+                const chunk = from.chunks.get(child)
+                if (chunk) into.chunks.set(child, chunk)
+            } else takeNode(child)
+        }
+    }
+    for (const hex of roots) {
+        const json = from.roots.get(hex)
+        const parts = json && rootParts(json)
+        if (!json || !parts || !from.complete.has(hex) || into.roots.has(hex)) continue
+        into.roots.set(hex, json)
+        const header = from.chunks.get(parts.header)
+        if (header) into.chunks.set(parts.header, header)
+        parts.nodes.forEach(takeNode)
+        into.complete.add(hex)
+    }
+}
+
 /** Whether a root is whole for this write, by hex. */
 export const isWhole = (bodies: Bodies, snapshot: Uint8Array | string) =>
     bodies.complete.has(typeof snapshot === 'string' ? snapshot : toHex(snapshot))

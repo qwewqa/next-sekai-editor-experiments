@@ -1,7 +1,13 @@
 import { inflateRaw } from 'pako'
 import { isObject, parseJsonBytes } from '../nxsp/json'
 import { checkPart, type SegmentForm } from '../nxsp/manifest'
-import { PlanError, type PinnedSource, type PlannedEntry, type WritePlan } from '../nxsp/plan'
+import {
+    PlanError,
+    type PinnedSource,
+    type PlannedEntry,
+    type PlanPart,
+    type WritePlan,
+} from '../nxsp/plan'
 
 // The append assertion (Part 1 §1.6.11.6 step 3, r12-history-critique §3.2): an independent check
 // that a plan is an append, run before it's executed. The builder's layout makes it hold by
@@ -32,6 +38,29 @@ export const sourceParts = (source: PinnedSource): SegmentForm[] => {
     return parts
 }
 
+/** The source's history pointers and its segments' entries, in `history.segments` order. */
+const sourceHistory = (source: PinnedSource) => {
+    const project = isObject(source.projectJson) ? source.projectJson : fail('source project.json')
+    const pointers = isObject(project.history) ? project.history : fail('the source has no history')
+    const entryOf = (name: unknown) => {
+        const found = source.entries.filter((entry) => entry.name === name)
+        return found.length === 1 && found[0] ? found[0] : fail(`source entry ${String(name)}`)
+    }
+    const names = Array.isArray(pointers.segments) ? (pointers.segments as unknown[]) : []
+    return { pointers, entryOf, segments: names.map(entryOf) }
+}
+
+/** A part that copies a source entry whole, by its index and offset (checked by its CRC). */
+const isWholeCopy = (
+    part: PlanPart | undefined,
+    source: PinnedSource,
+    from: { index: number; dataOffset: number },
+): part is Extract<PlanPart, { kind: 'copy' }> =>
+    part?.kind === 'copy' &&
+    part.source === source.token &&
+    part.entryIndex === from.index &&
+    part.dataOffset === from.dataOffset
+
 /** The plan's own `project.json`. */
 export const plannedProject = (plan: WritePlan) => {
     const entry =
@@ -41,61 +70,67 @@ export const plannedProject = (plan: WritePlan) => {
 }
 
 /**
- * The written file's history parts in order: the source's copied segments as their parsed values,
- * then the plan's new segments and manifest.
+ * The written file's history parts in order, by the planned `project.json`'s names: a copy of the
+ * source's i-th segment, by its entry index, as that segment's parsed value (copies only at the
+ * source's positions), else the plan's new segment or manifest.
  */
 export const plannedParts = (plan: WritePlan, source: PinnedSource | undefined): SegmentForm[] => {
     const history = plannedProject(plan).history
     if (!isObject(history)) return []
-    const names = Array.isArray(history.segments) ? (history.segments as string[]) : []
+    const names = Array.isArray(history.segments) ? (history.segments as unknown[]) : []
     const copied = source ? sourceParts(source).slice(0, -1) : []
+    const copiedEntries = source ? sourceHistory(source).segments : []
     const parts: SegmentForm[] = []
-    for (const [i, name] of [...names, history.manifest as string].entries()) {
-        const entry = plan.entries.find((each) => each.name === name) ?? fail(`no ${name}`)
+    for (const [i, name] of [...names, history.manifest].entries()) {
+        const entry = plan.entries.find((each) => each.name === name) ?? fail(`no ${String(name)}`)
         const [part] = entry.parts
-        if (part?.kind === 'copy')
-            parts.push(copied[i] ?? fail(`${name} copies an unknown segment`))
-        else parts.push(plannedJson(entry) as SegmentForm)
+        if (part?.kind === 'copy') {
+            const from = copiedEntries[i]
+            if (
+                !source ||
+                i >= names.length ||
+                !from ||
+                entry.parts.length !== 1 ||
+                part.entryIndex !== from.index
+            )
+                fail(`${entry.name} copies something other than the source’s segment ${i + 1}`)
+            parts.push(copied[i] ?? fail(`${entry.name} copies an unknown segment`))
+        } else parts.push(plannedJson(entry) as SegmentForm)
     }
     return parts
 }
 
 /** Throws a `PlanError` unless `plan` is an append to `source` (§1.6.11.6 step 3). */
 export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
-    const project = isObject(source.projectJson) ? source.projectJson : fail('source project.json')
-    const pointers = isObject(project.history) ? project.history : fail('the source has no history')
-    const names = Array.isArray(pointers.segments) ? (pointers.segments as unknown[]) : []
-    const entryOf = (name: unknown) => {
-        const found = source.entries.filter((entry) => entry.name === name)
-        return found.length === 1 && found[0] ? found[0] : fail(`source entry ${String(name)}`)
+    const { pointers, entryOf, segments } = sourceHistory(source)
+    const planned = (name: unknown) => {
+        const found = plan.entries.filter((entry) => entry.name === name)
+        return found.length === 1 ? found[0] : undefined
     }
-    const planned = (name: string) => plan.entries.find((entry) => entry.name === name)
+    const history = plannedProject(plan).history
+    if (!isObject(history)) return fail('the plan has no history')
+    const names = Array.isArray(history.segments) ? (history.segments as unknown[]) : []
 
-    // Every source segment, copied whole by entryCrc, in order and at its position.
-    for (const [i, name] of names.entries()) {
-        const from = entryOf(name)
-        const entry =
-            planned(`history/segments/${i + 1}.json`) ?? fail(`segment ${i + 1} is missing`)
+    // Every source segment, copied whole by entryCrc, in order and at its position, under the
+    // names the planned `project.json` gives first.
+    for (const [i, from] of segments.entries()) {
+        const name = `history/segments/${i + 1}.json`
+        if (names[i] !== name) fail(`history.segments[${i}] is not ${name}`)
+        const entry = planned(name) ?? fail(`segment ${i + 1} is missing`)
         const [part] = entry.parts
-        if (
-            entry.parts.length !== 1 ||
-            part?.kind !== 'copy' ||
-            part.source !== source.token ||
-            part.entryIndex !== from.index ||
-            part.dataOffset !== from.dataOffset ||
-            part.inflate
-        )
+        if (entry.parts.length !== 1 || !isWholeCopy(part, source, from) || part.inflate)
             fail(`segment ${i + 1} is not a whole copy of the source’s`)
     }
-    // `chunks.bin` begins with the source's, whole.
+    const listed = [...names, history.manifest, history.chunks]
+    if (new Set(listed).size !== listed.length || listed.some((name) => typeof name !== 'string'))
+        fail('the history’s entry names')
+
+    // `chunks.bin`, as the planned `project.json` names it, begins with the source's, whole.
     const chunksFrom = entryOf(pointers.chunks)
-    const chunks = planned('history/chunks.bin') ?? fail('no chunks.bin')
+    const chunks = planned(history.chunks) ?? fail('no chunks.bin')
     const [prefix] = chunks.parts
     if (
-        prefix?.kind !== 'copy' ||
-        prefix.source !== source.token ||
-        prefix.entryIndex !== chunksFrom.index ||
-        prefix.dataOffset !== chunksFrom.dataOffset ||
+        !isWholeCopy(prefix, source, chunksFrom) ||
         !!prefix.inflate !== (chunksFrom.method === 8) ||
         chunks.parts.slice(1).some((part) => part.kind !== 'bytes')
     )
@@ -104,7 +139,7 @@ export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
     // The source manifest's values, unchanged, at the start of the new parts.
     const old = sourceParts(source).at(-1) ?? fail('source manifest')
     const written = plannedParts(plan, source)
-    const next = written[names.length] ?? fail('no part after the copied segments')
+    const next = written[segments.length] ?? fail('no part after the copied segments')
     if (!sameValue(next.entries.slice(0, old.entries.length), old.entries))
         fail('the source’s rows are not carried as they are')
     if (!sameValue(next.chunks.slice(0, old.chunks.length), old.chunks))
@@ -115,15 +150,14 @@ export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
         if (!sameValue(next.nodes[key], value)) fail(`node ${key} is not carried`)
 
     // `history.entries` is the source's plus the new rows.
-    const history = plannedProject(plan).history
     const total = written.reduce((sum, part) => sum + part.entries.length, 0)
+    const kept = written
+        .slice(0, segments.length + 1)
+        .reduce((sum, part) => sum + part.entries.length, 0)
     if (
-        !isObject(history) ||
         typeof pointers.entries !== 'number' ||
         history.entries !== total ||
-        total < pointers.entries ||
-        written.slice(0, names.length + 1).reduce((sum, part) => sum + part.entries.length, 0) <
-            pointers.entries
+        kept < pointers.entries
     )
         fail('history.entries is not the source’s plus the new rows')
 }

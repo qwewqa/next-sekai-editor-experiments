@@ -1,3 +1,4 @@
+import { isNotReadable } from '../../platform/fingerprint'
 import { ZipReader } from '../../zip/reader'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from '../hash'
 import type { PlannedChunk } from '../nxsp/build'
@@ -24,17 +25,28 @@ const mediaForms = (project: Record<string, unknown>) => {
     return [project.bgm, metadata.cover, metadata.preview].filter(isObject)
 }
 
-/** Checks a built file; throws `BuiltFileError` naming what's wrong. */
+/** A read failure that isn't the built file's: a pinned file changed under it, never damage. */
+const unlessNotReadable = (error: unknown, message: string): never => {
+    if (isNotReadable(error)) throw error
+    return fail(message)
+}
+
+/**
+ * Checks a built file; throws `BuiltFileError` naming what's wrong, or a pinned file's
+ * `NotReadableError` (it changed under the built file's ranges) as it is.
+ */
 export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChunk[]) => {
-    const reader = await ZipReader.open(file).catch(() => fail('not a readable ZIP'))
+    const reader = await ZipReader.open(file).catch((error: unknown) =>
+        unlessNotReadable(error, 'not a readable ZIP'),
+    )
     if (reader.recovered || reader.ambiguous.size) fail('its central directory')
     // Every entry read once: its CRC is checked by the read.
     const data = new Map<string, Uint8Array>()
     for (const entry of reader.entries) {
         try {
             data.set(entry.name, await reader.read(entry, { maxSize: NXSP_CAPS.chunksBin }))
-        } catch {
-            fail(`${entry.name} does not read`)
+        } catch (error) {
+            unlessNotReadable(error, `${entry.name} does not read`)
         }
     }
     const json = (name: unknown) => {

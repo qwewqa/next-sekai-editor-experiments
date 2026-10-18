@@ -27,12 +27,32 @@ test('media not held is written as metadata only, with each item named for its l
     const plan = ok(built)
     assert.ok(file)
     assert.deepEqual(plan.without, ['bgm', 'cover', 'preview'])
+    assert.deepEqual(plan.tooLarge, [])
     const { read } = await heldRows(file)
     assert.equal(read.open, 'full')
     const bgm = read.project?.bgm
     assert.ok(bgm && bgm.file === undefined)
     assert.equal(bgm.hash, BGM.ref.hash)
     assert.equal('sha256' in bgm, false)
+})
+
+test('a held BGM over the 1 GB media cap is metadata only, named too large rather than not loaded', async () => {
+    const fixture = await chain()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    const head = headInput(stateAt(1).state)
+    assert.ok(head.bgm)
+    const huge = { ...head, bgm: { ...head.bgm, size: 2 ** 31 } }
+    const { built, file } = await save(
+        fixture,
+        { kind: 'copy' },
+        { event: 'downloaded', extra: { head: huge } },
+    )
+    const plan = ok(built)
+    assert.ok(file)
+    assert.deepEqual(plan.without, ['bgm'])
+    assert.deepEqual(plan.tooLarge, ['bgm'])
+    const { read } = await heldRows(file)
+    assert.equal(read.project?.bgm?.file, undefined)
 })
 
 test('held media are written with their bytes; BGM unticked leaves the BGM out', async () => {

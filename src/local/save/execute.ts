@@ -1,3 +1,4 @@
+import { isNotReadable } from '../../platform/fingerprint'
 import { ZipError } from '../../zip/error'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { ExecutionError, executePlan, type ExecutionSource } from '../nxsp/execute'
@@ -45,37 +46,58 @@ export const setBuiltHookForTests = (next: Hooks) => {
     hooks = next
 }
 
-/** A pinned file's fingerprint now: a read that fails (the file changed under it) is a change. */
+/**
+ * A pinned file's fingerprint now, as the platform pins it (`nxspDiskState`): a file that isn't a
+ * readable ZIP is `damaged:`, and a read that fails (the file changed under it) is a change.
+ */
 export const fingerprintNow = async (file: Blob) => {
+    const time = Math.trunc((file as Partial<File>).lastModified ?? 0)
+    if (!file.size) return `damaged:0:${time}`
     try {
-        return await zipFingerprint(file, (file as Partial<File>).lastModified ?? 0)
-    } catch {
-        return 'changed'
+        return await zipFingerprint(file, time)
+    } catch (error) {
+        return error instanceof ZipError ? `damaged:${file.size}:${time}` : 'changed'
     }
 }
 
-/** Inspects the pinned files; a target that isn't a readable `.nxsp` is damage in it. */
+/**
+ * Inspects the append source, the only pinned file a write reads (§1.6.11.6): one that isn't a
+ * readable `.nxsp` with its fingerprint unchanged is damage in the chain's own file. Other pinned
+ * files (a `copy` or `replace` target) aren't read, so they're never taken for damage.
+ */
 export const inspectSources = async (
     files: readonly SaveSourceFile[],
+    target: SaveTarget,
 ): Promise<PinnedSource[] | SaveRefusal | ExecuteRefusal> => {
+    if (target.kind !== 'append') return []
     const sources: PinnedSource[] = []
     for (const { token, role, file, fingerprint } of files) {
+        if (token !== target.source) continue
         try {
             sources.push(await inspectNxsp(file, { token, role, fingerprint }))
         } catch (error) {
             if ((await fingerprintNow(file)) !== fingerprint) return { refused: 'conflict' }
             if (error instanceof ZipError || error instanceof SyntaxError)
                 return { refused: 'damagedSource', message: error.message }
+            if (isNotReadable(error)) return { refused: 'conflict' }
             throw error
         }
     }
     return sources
 }
 
+/** Whether any pinned file changed since its check. */
+const anyChanged = async (files: readonly SaveSourceFile[]) => {
+    for (const { file, fingerprint } of files)
+        if ((await fingerprintNow(file)) !== fingerprint) return true
+    return false
+}
+
 /** Executes a plan over the pinned files and checks the result. */
 export const executeSave = async (
     planned: SavePlan,
     files: readonly SaveSourceFile[],
+    target?: SaveTarget,
 ): Promise<BuiltSave | SaveRefusal | ExecuteRefusal> => {
     const sources = new Map<string, ExecutionSource>()
     for (const { token, role, file, fingerprint } of files)
@@ -91,7 +113,12 @@ export const executeSave = async (
     } catch (error) {
         if (!(error instanceof ExecutionError)) throw error
         if (error.code === 'conflict') return { refused: 'conflict' }
-        if (error.code === 'io' && error.source?.role === 'target')
+        // Only damage in the chain's own file, the append source, unlinks the chain.
+        if (
+            error.code === 'io' &&
+            target?.kind === 'append' &&
+            error.source?.token === target.source
+        )
             return { refused: 'damagedSource', message: error.message }
         console.error('A save plan failed to execute', error)
         return { refused: 'plan', message: error.message }
@@ -100,6 +127,8 @@ export const executeSave = async (
     try {
         await checkBuilt(blob, planned.storageChunks)
     } catch (error) {
+        // The built file reads the pinned files' ranges: a change under them is a conflict.
+        if (isNotReadable(error) || (await anyChanged(files))) return { refused: 'conflict' }
         if (!(error instanceof BuiltFileError)) throw error
         console.error('A built file failed its check', error)
         return { refused: 'check', message: error.message }
@@ -120,9 +149,14 @@ export const buildSave = async (
     options: SaveOptions,
     files: readonly SaveSourceFile[] = [],
 ): Promise<BuiltSave | SaveRefusal | ExecuteRefusal> => {
-    const sources = await inspectSources(files)
+    // A write-back over a 0-byte file writes the chain from storage, keeping its identity (R9).
+    const emptied =
+        target.kind === 'append' &&
+        files.some((each) => each.token === target.source && each.file.size === 0)
+    const kind: SaveTarget = emptied ? { kind: 'copy' } : target
+    const sources = await inspectSources(files, kind)
     if (!Array.isArray(sources)) return sources
-    const planned = await planSave(store, chainId, target, options, sources)
+    const planned = await planSave(store, chainId, kind, options, sources)
     if ('refused' in planned) return planned
-    return executeSave(planned, files)
+    return executeSave(planned, files, kind)
 }

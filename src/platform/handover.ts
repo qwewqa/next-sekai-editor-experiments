@@ -203,16 +203,18 @@ const writeTo = async (
     }
 
     let blob: Blob
+    let written: string
     try {
         blob = await toBlob(await req.build(sources), sources, () => fingerprintNow(kind, handle))
+        signal?.throwIfAborted()
+        // The built Blob can hold ranges of the pinned file, read again here.
+        await verifyBuilt(kind, blob)
+        written = await sha256Hex(blob)
     } catch (error) {
         // Reading the pinned file failed: it changed after the check.
         if (errorName(error) === 'NotReadableError') throw fileErrorOf(error, pinned)
         throw error
     }
-    signal?.throwIfAborted()
-    await verifyBuilt(kind, blob)
-    const written = await sha256Hex(blob)
     signal?.throwIfAborted()
 
     let writable: FileSystemWritableFileStream | undefined

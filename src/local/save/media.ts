@@ -22,6 +22,8 @@ export type MediaPlan = {
     input: MediaInput
     /** Written without its bytes: the "without its …" line. */
     without: boolean
+    /** Over the reader's 1 GB media cap, though held: the line without "which is not loaded" (D25). */
+    tooLarge?: boolean
     /** A stored copy failed its check: damage in storage. */
     damaged?: boolean
 }
@@ -68,12 +70,13 @@ export const planMediaItem = async (
     { held, source }: { held?: HeldMedia; source?: PinnedSource },
 ): Promise<MediaPlan> => {
     const filename = ref.filename
-    const metadataOnly = (damaged?: boolean): MediaPlan => ({
+    const metadataOnly = (damaged?: boolean, tooLarge?: boolean): MediaPlan => ({
         input: { hash: ref.hash, size: ref.size, type: ref.type, filename },
         without: true,
         ...(damaged ? { damaged } : {}),
+        ...(tooLarge ? { tooLarge } : {}),
     })
-    if (ref.size > NXSP_CAPS.media) return metadataOnly()
+    if (ref.size > NXSP_CAPS.media) return metadataOnly(false, true)
     if (held?.hash === ref.hash) {
         const digest = await sha256(held.bytes)
         if (hex(digest).startsWith(ref.hash))
