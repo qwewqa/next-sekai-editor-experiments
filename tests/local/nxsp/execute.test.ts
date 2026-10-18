@@ -29,7 +29,7 @@ const sourceZip = (extra: RawEntry[] = []) =>
 const pinned = async (bytes: Uint8Array) =>
     inspectNxsp(new Blob([new Uint8Array(bytes)]), { token: 's', role: 'target', fingerprint: 'f' })
 
-const copy = (entry: SourceEntry, inflate = false): PlanPart => ({
+const copy = (entry: SourceEntry, inflate = false): Extract<PlanPart, { kind: 'copy' }> => ({
     kind: 'copy',
     source: 's',
     entryIndex: entry.index,
@@ -220,6 +220,65 @@ test('a copy whose CRC fails is damage in its source, named with its role; with 
     const changed = memorySource(bytes, 'f')
     changed.changed = true
     await fails(run([{ name: 'x', method: 0, parts: [copy(d)] }], bytes, changed), 'conflict')
+})
+
+test('a source whose bytes changed after inspect is a conflict, whatever source check fails first', async () => {
+    const bytes = sourceZip()
+    const source = await pinned(bytes)
+    const a = entryOf(source, 'a.bin')
+    const b = entryOf(source, 'b.json')
+    // Rewritten: a longer project.json moves every entry; a.bin's content and CRC changed.
+    const later = rawZip([
+        { name: 'project.json', data: utf8('{"longer":true}') },
+        { name: 'a.bin', data: utf8('other bytes'), method: 0 },
+        { name: 'b.json', data: DEFLATED, method: 0 },
+    ])
+    const plans: PlannedEntry[][] = [
+        // A dataOffset the entry no longer has.
+        [{ name: 'x', method: 0, parts: [copy(a)] }],
+        // A method the entry no longer has.
+        [
+            {
+                name: 'x',
+                method: 8,
+                crc32: b.crc32,
+                uncompressedSize: b.uncompressedSize,
+                parts: [{ ...copy(b), dataOffset: b.dataOffset + 13 }],
+            },
+        ],
+        // An entry index past the directory.
+        [{ name: 'x', method: 0, parts: [{ ...copy(a), entryIndex: 9 }] }],
+    ]
+    for (const entries of plans) {
+        const changed = memorySource(later, 'f')
+        changed.changed = true
+        await fails(run(entries, later, changed), 'conflict')
+        // The same checks with the fingerprint unchanged are plan errors.
+        await fails(run(entries, later), 'plan')
+    }
+    // The content and its CRC changed together, the offsets kept: the planned CRC differs.
+    const same = rawZip([
+        { name: 'project.json', data: utf8('{}') },
+        { name: 'a.bin', data: STORED.map((byte) => byte ^ 1), method: 0 },
+        { name: 'b.json', data: DEFLATED, method: 8 },
+    ])
+    const planned: PlannedEntry = {
+        name: 'x',
+        method: 0,
+        crc32: a.crc32,
+        uncompressedSize: a.uncompressedSize,
+        parts: [copy(a)],
+    }
+    const changed = memorySource(same, 'f')
+    changed.changed = true
+    await fails(run([planned], same, changed), 'conflict')
+    await fails(run([planned], same), 'plan', /planned CRC differs/)
+})
+
+test('an inflate copy of a STORE entry is a plan error', async () => {
+    const bytes = sourceZip()
+    const a = entryOf(await pinned(bytes), 'a.bin')
+    await fails(run([{ name: 'x', method: 0, parts: [copy(a, true)] }], bytes), 'plan', /STORE/)
 })
 
 test('a source that changed after its last copy is a conflict, even when every copy passed', async () => {

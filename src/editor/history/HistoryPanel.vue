@@ -57,7 +57,7 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 
 const LABEL_FROM = 362
-const ICON_FROM = 296
+const ICON_FROM = 236
 const mode = computed<'label' | 'icon' | 'two'>(() => {
     const extra = props.surface === 'dialog' ? 50 : 0
     if (bandWidth.value === 0 || bandWidth.value >= LABEL_FROM + extra) return 'label'
@@ -149,7 +149,7 @@ const blurAfterPointer = (event: MouseEvent) => {
 // A narrow band trims the segments' padding, so both labels keep their room.
 const segment = computed(
     () =>
-        `flex h-7 items-center justify-center rounded-full text-sm transition-colors [@media(pointer:coarse)]:h-10 ${
+        `flex h-7 items-center justify-center rounded-full text-sm transition-colors [@media(pointer:coarse)]:h-11 ${
             bandWidth.value > 0 && bandWidth.value < 340 ? 'px-2' : 'px-3'
         }`,
 )

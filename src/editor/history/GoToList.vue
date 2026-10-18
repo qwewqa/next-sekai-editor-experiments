@@ -119,7 +119,8 @@ const scrollToItem = (id: string | undefined, block: ScrollLogicalPosition) => {
         ?.scrollIntoView({ block, inline: 'nearest' })
 }
 
-// Opens on the current row, scrolled into view once the list has its rows and its place.
+// Opens on the current row, scrolled into view once the list has its rows and its place. Now sits
+// at the top, so in a short popover it stays put and Show stays in view.
 watch(
     () => pieces.value,
     async (loaded) => {
@@ -127,7 +128,7 @@ watch(
         activeId.value = currentId.value ?? 'now'
         await nextTick()
         requestAnimationFrame(() => {
-            scrollToItem(activeId.value, 'center')
+            scrollToItem(activeId.value, activeId.value === 'now' ? 'nearest' : 'center')
         })
     },
 )

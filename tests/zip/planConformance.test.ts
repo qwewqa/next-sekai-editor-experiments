@@ -25,9 +25,11 @@ import {
 // platform. Each case in `plan-conformance-v1/<case>/` holds `plan.json` (bytes parts as
 // `{ "$u8": "<base64>" }`, copy parts naming a source file in the case), the sources, `pinned.json`
 // (each source's inspect result and its fingerprint, a literal), and `expected.nxsp` or
-// `expected-error.json`; `hook.json`'s `change` names a source whose fingerprint changes after
-// inspect. The web executor (here) and Rust (`cargo test`) must both pass every case, and every
-// `expected.nxsp` passes `tools/nxsp_check.py`. `NSE_WRITE_GOLDEN=1` writes the set, once.
+// `expected-error.json`; `hook.json` names a source whose bytes change after inspect: the executor
+// reads `to`'s bytes in its place, whose fingerprint is `fingerprint`. The web executor (here) and
+// Rust (`cargo test`) must both pass every case, and every `expected.nxsp` passes
+// `tools/nxsp_check.py`. `NSE_WRITE_GOLDEN=1` writes the set, once; `NSE_WRITE_CASE=<case>` writes
+// one case only.
 
 const root = join(import.meta.dirname, 'plan-conformance-v1')
 const writing = process.env.NSE_WRITE_GOLDEN === '1'
@@ -222,10 +224,15 @@ const goldenEntries = async () => {
     return entries
 }
 
+/** A source whose bytes change after inspect: `to` holds the new bytes, with their fingerprint. */
+type Hook = { change: string; to: string; fingerprint: string }
+
 type Case = {
     plan: WritePlan
     sources: Record<string, Uint8Array>
-    hook?: { change: string }
+    hook?: Hook
+    /** Files beside the sources: a hook's `to`. */
+    files?: Record<string, Uint8Array>
     /** Set by the runner from the executor; a generator never guesses it. */
     error?: string
 }
@@ -315,6 +322,16 @@ const generate = async (): Promise<Record<string, Case>> => {
         ),
     )
 
+    // The source rewritten after inspect: `project.json` grew, so every later entry moved.
+    const changed = writeRaw(
+        entries.map((e) =>
+            e.name === 'project.json'
+                ? { ...e, data: new TextEncoder().encode(`${new TextDecoder().decode(e.data)} `) }
+                : e,
+        ),
+    )
+    const changedFingerprint = await zipFingerprint(new Blob([changed]), 0)
+
     const append = await appendOnto(golden)
     const fresh = freshPlan()
     const deflatedPlan = await appendOnto(deflated)
@@ -341,10 +358,11 @@ const generate = async (): Promise<Record<string, Case>> => {
             sources: sourceOnly(truncated),
         },
         'fail-bomb': { plan: await appendOnto(bomb), sources: sourceOnly(bomb) },
-        'fail-changed-source': {
+        'fail-changed-bytes': {
             plan: append,
             sources: sourceOnly(golden),
-            hook: { change: 'source.nxsp' },
+            hook: { change: 'source.nxsp', to: 'changed.nxsp', fingerprint: changedFingerprint },
+            files: { 'changed.nxsp': changed },
         },
         'fail-method-mismatch': {
             plan: withEntry(append, append.entries.at(-1)?.name ?? '', (e) => ({
@@ -398,22 +416,21 @@ const generate = async (): Promise<Record<string, Case>> => {
     return cases
 }
 
-const executionSources = (
-    pinned: Record<string, PinnedSource>,
-    dir: string,
-    hook?: { change: string },
-) =>
+const executionSources = (pinned: Record<string, PinnedSource>, dir: string, hook?: Hook) =>
     new Map(
-        Object.entries(pinned).map(([name, source]) => [
-            name,
-            {
-                file: new Blob([readFileSync(join(dir, name))]),
-                fingerprint: source.fingerprint,
-                role: 'target' as const,
-                readFingerprint: async () =>
-                    hook?.change === name ? `${source.fingerprint}:changed` : source.fingerprint,
-            },
-        ]),
+        Object.entries(pinned).map(([name, source]) => {
+            const changed = hook?.change === name ? hook : undefined
+            return [
+                name,
+                {
+                    file: new Blob([readFileSync(join(dir, changed ? changed.to : name))]),
+                    fingerprint: source.fingerprint,
+                    role: 'target' as const,
+                    readFingerprint: async () =>
+                        changed ? changed.fingerprint : source.fingerprint,
+                },
+            ]
+        }),
     )
 
 const pinnedJson = (source: PinnedSource) => ({
@@ -436,6 +453,7 @@ const writeCase = async (name: string, c: Case) => {
     writeFileSync(join(dir, 'plan.json'), `${JSON.stringify(planToJson(c.plan))}\n`)
     writeFileSync(join(dir, 'pinned.json'), `${JSON.stringify(pinned, null, 2)}\n`)
     if (c.hook) writeFileSync(join(dir, 'hook.json'), `${JSON.stringify(c.hook)}\n`)
+    for (const [file, bytes] of Object.entries(c.files ?? {})) writeFileSync(join(dir, file), bytes)
     try {
         const file = await executePlan(c.plan, executionSources(sources, dir, c.hook))
         assert.ok(!name.startsWith('fail-'), `${name} succeeded`)
@@ -448,8 +466,10 @@ const writeCase = async (name: string, c: Case) => {
 }
 
 test('the plan conformance set: the web executor gives each expected file or error', async () => {
-    if (writing) {
-        for (const [name, c] of Object.entries(await generate())) await writeCase(name, c)
+    const only = process.env.NSE_WRITE_CASE
+    if (writing || only) {
+        for (const [name, c] of Object.entries(await generate()))
+            if (!only || name === only) await writeCase(name, c)
     }
     const cases = readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory())
     assert.ok(cases.length >= 17)
@@ -469,7 +489,7 @@ test('the plan conformance set: the web executor gives each expected file or err
             sources[file] = source
         }
         const hook = existsSync(join(dir, 'hook.json'))
-            ? (JSON.parse(readFileSync(join(dir, 'hook.json'), 'utf8')) as { change: string })
+            ? (JSON.parse(readFileSync(join(dir, 'hook.json'), 'utf8')) as Hook)
             : undefined
         const run = executePlan(plan, executionSources(sources, dir, hook))
         if (existsSync(join(dir, 'expected.nxsp'))) {

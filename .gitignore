@@ -8,3 +8,4 @@ test-results*/
 *.tsbuildinfo
 
 public/resource/*.scp
+.vite-cache

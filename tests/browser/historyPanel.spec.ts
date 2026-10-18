@@ -499,7 +499,7 @@ test.describe('the dialog', () => {
         const bar = await peekBar(page).locator('> div').first().boundingBox()
         const pane = await page.locator('.chart-pane').boundingBox()
         if (!box || !bar || !pane) throw new Error('no layout')
-        expect(box.width).toBeLessThanOrEqual(320)
+        expect(box.width).toBeLessThanOrEqual(352)
         expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height)
         expect(box.x + box.width).toBeGreaterThan(pane.x + pane.width - 12)
         // One line band even in the narrow sheet.
@@ -718,11 +718,11 @@ test.describe('the Timeline', () => {
         // The desktop's right dock is wide enough for the label.
         await openTab(page)
         expect(await mode()).toBe('label')
-        // A narrow left dock under 296 px takes two lines.
+        // A narrow left dock under 236 px takes two lines.
         await page.setViewportSize({ width: 844, height: 390 })
         await settle(page)
         await page.evaluate(() => {
-            window.editorTest.settings.leftDockWidth = 260
+            window.editorTest.settings.leftDockWidth = 220
         })
         await settle(page)
         await page.evaluate(() => {

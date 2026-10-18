@@ -143,7 +143,7 @@ track()
 /** A load notice (Part 1 §1.4.3): `order` is its place in the table, most important first. */
 export type LoadNotice = { order: number; message: () => string; action?: NoticeAction }
 
-/** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load:". */
+/** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load". */
 export const loadNotices = shallowRef<readonly LoadNotice[]>([])
 
 // What "and N more in Local Data" does: set by `loadNotices.ts`, which can import Settings.
@@ -161,12 +161,25 @@ const pillLines = (): NoticeLine[] => {
             message: interpolate(() => i18n.value.load.more, `${notices.length - shown.length}`),
             action: {
                 label: () => i18n.value.load.localData,
-                run: () => {
-                    openLocalData?.()
-                },
+                // The opener itself, so the shown Local Data lines count as this line's twins.
+                run:
+                    openLocalData ??
+                    (() => {
+                        openLocalData?.()
+                    }),
             },
         })
-    return lines
+    // One button per action: a line whose action a later line repeats leaves it to that line.
+    const same = (a: NoticeAction, b: NoticeAction) => a.run === b.run && a.label() === b.label()
+    return lines.map((line, i) => {
+        const { action } = line
+        if (
+            !action ||
+            !lines.slice(i + 1).some((later) => later.action && same(later.action, action))
+        )
+            return line
+        return { message: line.message, heading: line.heading }
+    })
 }
 
 // Shows the start-up notice again: with the gate lifted, or with a load notice found. With load

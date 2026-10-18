@@ -200,8 +200,8 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
 
             <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
                 <div class="text-sm font-bold opacity-75">{{ strings.recovery.atLoad }}</div>
-                <ul class="flex list-none flex-col gap-1 p-0">
-                    <li v-for="(notice, i) in loadNotices" :key="i" class="pl-3">
+                <ul class="flex list-disc flex-col gap-1 pl-5">
+                    <li v-for="(notice, i) in loadNotices" :key="i">
                         {{ notice.message() }}
                     </li>
                 </ul>

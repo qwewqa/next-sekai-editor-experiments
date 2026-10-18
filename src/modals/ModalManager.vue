@@ -25,6 +25,7 @@ const measureVisible = () => {
         '--modal-room': `${viewport.height}px`,
     }
 }
+const largeStyle = (modal: Modal) => ({ ...visible.value, '--modal-cap': modal.cap })
 watch(
     hasLarge,
     (large, _, onCleanup) => {
@@ -133,11 +134,12 @@ const vOpen = {
         class="flex w-[calc(100%-1rem)] flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
         :class="
             modal.size === 'large'
-                ? 'modal-large max-h-none max-w-[40rem]'
+                ? ['modal-large max-h-none', modal.tall ? 'max-w-2xl' : 'max-w-[40rem]']
                 : 'max-h-[calc(100%-1rem)] max-w-2xl'
         "
-        :style="modal.size === 'large' ? visible : undefined"
+        :style="modal.size === 'large' ? largeStyle(modal) : undefined"
         :data-size="modal.size"
+        :data-tall="modal.tall || undefined"
         @pointerdown="onBackdropDown"
         @click="onClick($event, modal)"
         @cancel="onCancel"
@@ -178,9 +180,10 @@ const vOpen = {
     height: var(--modal-height);
 }
 
+/* A tall dialog keeps the full height at every width. */
 @media (min-width: 640px) {
-    .modal-large {
-        height: min(var(--modal-height), 48rem);
+    .modal-large:not([data-tall]) {
+        height: min(var(--modal-height), var(--modal-cap, 48rem));
     }
 }
 </style>

@@ -10,6 +10,7 @@ export default tsEslint.config(
             'node_modules/**',
             'dist/**',
             'dist-native/**',
+            '.vite-cache/**',
             'public/**',
             'test-results*/**',
             '.idea/**',

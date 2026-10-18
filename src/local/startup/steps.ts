@@ -374,5 +374,5 @@ export const replaySessionJournal = async (context: RecoveryContext, sessionId: 
     return outcome
 }
 
-/** Adds a load event: for the UI's pill and Local Data's "At this load:". */
+/** Adds a load event: for the UI's pill and Local Data's "At this load". */
 export const reportLoadEvent = addLoadEvent

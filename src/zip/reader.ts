@@ -157,6 +157,38 @@ export class ZipReader {
     }
 
     /**
+     * The entries whose real ranges (from their local headers, with the extra fields) overlap,
+     * every entry included, ignored ones too (§1.6.11.4), so every reader calls the same file
+     * damaged. The headers are read in offset order through one window.
+     */
+    async realOverlaps() {
+        const window = new Window(this.source)
+        const found = new Set<string>()
+        let furthest: { entry: ZipEntry; end: number } | undefined
+        for (const { entry } of this.byOffset) {
+            if (furthest && entry.localOffset < furthest.end) {
+                found.add(furthest.entry.key)
+                found.add(entry.key)
+            }
+            let total = this.headerSizes.get(entry)
+            if (total === undefined) {
+                try {
+                    const at = entry.localOffset
+                    total = localHeaderSize(await window.get(at, at + LOCAL_HEADER_SIZE))
+                } catch (error) {
+                    // A header that cannot be read is that entry's damage, found when it is read.
+                    if (!(error instanceof ZipError)) throw error
+                    total = LOCAL_HEADER_SIZE + entry.rawName.length
+                }
+                this.headerSizes.set(entry, total)
+            }
+            const end = entry.localOffset + total + entry.compressedSize
+            if (!furthest || end > furthest.end) furthest = { entry, end }
+        }
+        return [...found]
+    }
+
+    /**
      * Reads the whole size of each entry's local header, once. Headers close together come from
      * one slice; scattered ones are read together.
      */

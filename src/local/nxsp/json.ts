@@ -50,6 +50,16 @@ export const parseJsonBytes = (bytes: Uint8Array, cap = JSON_DEPTH_CAP): unknown
 export const isObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
+/** Sets an own key, `__proto__` included (plain assignment would set the prototype instead). */
+export const setKey = (target: Record<string, unknown>, key: string, value: unknown) => {
+    Object.defineProperty(target, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+    })
+}
+
 /** A JSON value with every string, keys included, well-formed (§1.6.11's conventions). */
 export const wellFormedJson = (value: unknown): unknown => {
     if (typeof value === 'string') return toWellFormed(value)
