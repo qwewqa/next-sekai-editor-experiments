@@ -134,19 +134,21 @@ export const load = async (
         ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
         ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
         ...(recovery.ownLeft ? { ownLeft: true } : {}),
+        ...(recovery.ownFailed ? { ownFailed: true } : {}),
         ...(own && 'result' in own && own.result.kind === 'recovery'
             ? { ownRecovery: own.result.sessionId }
             : {}),
         keptForLocalData: recovery.keptForLocalData,
-        retireJournal: (found, by, seq) => page.writer.retire(found, by, seq),
+        retireJournal: (found, by, seq, dropped) => page.writer.retire(found, by, seq, dropped),
         flusher: () => page.flusher,
         show: (each) => {
             shown.push(each)
             page.live.state = each.state
         },
+        // As `openState` does: a new session begins with it.
         showState: (state) => {
             shownStates.push(state)
-            page.live.state = state
+            beginSession(page, state, 'import')
         },
         untouched: () => {
             const session = page.flusher.session

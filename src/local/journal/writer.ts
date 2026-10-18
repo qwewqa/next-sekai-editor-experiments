@@ -68,7 +68,10 @@ export class JournalWriter {
      * couldn't apply, §1.6.4): each removed, if unchanged, once the session's own journal verifies
      * or a strict commit covers the entry that holds the work.
      */
-    private readonly retiring = new Map<string, { found: JournalFound; seq: number }[]>()
+    private readonly retiring = new Map<
+        string,
+        { found: JournalFound; seq: number; dropped?: () => void }[]
+    >()
 
     constructor(private readonly deps: JournalWriterDeps) {}
 
@@ -82,8 +85,9 @@ export class JournalWriter {
         if (!flusher || !session || !flusher.unflushed(session)) return true
         const seq = flusher.newestSeq(session)
         const last = this.written.get(session.id)
-        // beforeunload, pagehide, visibilitychange and freeze can all fire for one close.
-        if (last?.seq === seq && last.verified) return true
+        // beforeunload, pagehide, visibilitychange and freeze can all fire for one close; a key
+        // removed or changed behind it since is written again.
+        if (last?.seq === seq && last.verified && this.deps.store.holds(session.id)) return true
         const live = flusher.liveStack(session)
         if (!live) return false
         const start = performance.now()
@@ -126,7 +130,12 @@ export class JournalWriter {
     /** Whether the journal of the session's `seq` verified on this page and still counts. */
     verified(sessionId: string, seq: number) {
         const last = this.written.get(sessionId)
-        return last?.seq === seq && last.verified && !this.deps.pausedForSpace()
+        return (
+            last?.seq === seq &&
+            last.verified &&
+            !this.deps.pausedForSpace() &&
+            this.deps.store.holds(sessionId)
+        )
     }
 
     /**
@@ -154,9 +163,14 @@ export class JournalWriter {
      * fork's journal takes over the old key, written at once when the fork is the open session.
      */
     forked(from: FlushSession, fork: FlushSession) {
+        // The fork numbers the entries it took from 1: the work is held once all of them are.
         const retiring = this.retiring.get(from.id)
         this.retiring.delete(from.id)
-        if (retiring) this.retiring.set(fork.id, retiring)
+        if (retiring)
+            this.retiring.set(
+                fork.id,
+                retiring.map((each) => ({ ...each, seq: fork.nextSeq - 1 })),
+            )
         const keys = this.superseded.get(from.id)?.keys ?? []
         this.superseded.delete(from.id)
         const last = this.written.get(from.id)
@@ -168,16 +182,20 @@ export class JournalWriter {
     }
 
     /** `found`'s work is in `by`'s entry `seq`: the key goes once `by` holds it (see `retiring`). */
-    retire(found: JournalFound, by: string, seq: number) {
-        this.retiring.set(by, [...(this.retiring.get(by) ?? []), { found, seq }])
+    retire(found: JournalFound, by: string, seq: number, dropped?: () => void) {
+        this.retiring.set(by, [
+            ...(this.retiring.get(by) ?? []),
+            { found, seq, ...(dropped ? { dropped } : {}) },
+        ])
     }
 
     private dropRetired(by: string, covered = Infinity) {
         const list = this.retiring.get(by)
         if (!list) return
-        const left = list.filter(({ found, seq }) => {
+        const left = list.filter(({ found, seq, dropped }) => {
             if (covered !== Infinity && seq > covered) return true
             this.deps.store.remove(found)
+            dropped?.()
             return false
         })
         if (left.length) this.retiring.set(by, left)

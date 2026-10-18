@@ -262,6 +262,7 @@ export const startStorage = async () => {
                 ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
                 ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
                 ...(recovery.ownLeft ? { ownLeft: true } : {}),
+                ...(recovery.ownFailed ? { ownFailed: true } : {}),
                 ...(own && 'result' in own && own.result.kind === 'recovery'
                     ? { ownRecovery: own.result.sessionId }
                     : {}),
@@ -270,7 +271,8 @@ export const startStorage = async () => {
                 show: showSession,
                 showState,
                 onLeft: offerReopen,
-                retireJournal: (found, by, seq) => journalWriter?.retire(found, by, seq),
+                retireJournal: (found, by, seq, dropped) =>
+                    journalWriter?.retire(found, by, seq, dropped),
                 untouched,
                 labels: {
                     continued: () => i18n.value.entry.continued,

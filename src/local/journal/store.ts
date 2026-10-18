@@ -135,6 +135,15 @@ export const storageJournalStore = (
         adopt: (found) => {
             owned.set(prefix + found.from, found.text)
         },
+        holds: (sessionId) => {
+            try {
+                const key = keyOf(sessionId)
+                const text = storage().getItem(key)
+                return text !== null && text === owned.get(key)
+            } catch {
+                return false
+            }
+        },
         remove: (found) => {
             try {
                 const store = storage()

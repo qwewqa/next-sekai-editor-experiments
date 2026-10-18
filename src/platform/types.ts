@@ -167,6 +167,8 @@ export type JournalStore = {
     clear: (sessionId: string, coveredSeq: number) => void
     /** A journal this page loaded to go on writing (a same-tab reload’s own, §1.6.7). */
     adopt: (found: JournalFound) => void
+    /** Whether a session's key still holds the text this page last wrote (or loaded). */
+    holds: (sessionId: string) => boolean
     /** Drops a journal once it's applied or kept elsewhere, only if it's still the text found. */
     remove: (found: JournalFound) => void
 }

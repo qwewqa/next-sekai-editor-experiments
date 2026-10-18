@@ -237,7 +237,7 @@ test('without Web Locks, every other journal is offered even where the page’s 
     held.release()
 })
 
-test('with Web Locks, a lock request that fails leaves the journal alone, as a live tab’s', async () => {
+test('with Web Locks, a journal whose lock request fails is offered all the same', async () => {
     const world = createWorld({ seed: 8 })
     const storage = new MemoryStorage()
     const unavailable = { flags: { noStorage: true } }
@@ -257,7 +257,8 @@ test('with Web Locks, a lock request that fails leaves the journal alone, as a l
         events: () => undefined,
     }
     await journalsStep(context)
-    assert.deepEqual(context.keptForLocalData, [])
+    // A row only copies or downloads: offering it is the safe side (re-review RR5).
+    assert.equal(context.keptForLocalData.length, 1)
 })
 
 test('Restore as a Copy without Web Locks never asks which tab holds the session', async () => {

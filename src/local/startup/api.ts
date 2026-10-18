@@ -79,7 +79,7 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
         const result = outcome && 'result' in outcome ? outcome.result : undefined
         if (outcome?.kind === 'later' || result?.kind === 'later')
             return { opened: false, why: 'later' }
-        let recovered: { found: JournalFound; state: State } | undefined
+        let recovered: { found: JournalFound; state: State; seq: number } | undefined
         if (outcome?.kind === 'failed') {
             const found = (await recovery.journal.read()).find(
                 (each) => each.sessionId === sessionId,
@@ -87,7 +87,7 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
             const journalled = found && journalledSession(found)
             // It reads: the work starts from its state; it doesn't: nothing opens over it.
             if (!found || !journalled) return { opened: false, why: 'damaged' }
-            recovered = { found, state: journalled.state }
+            recovered = { found, state: journalled.state, seq: journalled.seq }
         }
         // Kept as a recovery session (continued elsewhere since): that one holds the work.
         if (result?.kind === 'recovery') {
@@ -96,6 +96,12 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
         }
         const read = await open.worker.call('readSession', sessionId)
         if (read.kind !== 'open') return { opened: false, why: read.kind }
+        // A journal a flush covered since goes, as the apply would have found it (§1.6.4 step 3).
+        const lastSeq = typeof read.session.lastSeq === 'number' ? read.session.lastSeq : 0
+        if (recovered && recovered.seq <= lastSeq) {
+            recovery.journal.remove(recovered.found)
+            recovered = undefined
+        }
         const held = result?.kind === 'recovery' ? undefined : lock
         const elsewhere =
             !held && hasWebLocks() && (await open.client.heldElsewhere(sessionLock(sessionId)))

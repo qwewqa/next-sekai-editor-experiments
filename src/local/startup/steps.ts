@@ -68,6 +68,8 @@ export type RecoveryContext = {
      * its session is never appended to, so the reload continues it in a new one (§1.6.4 step 2).
      */
     ownLeft?: boolean
+    /** That journal's apply failed: the reload says so unless it shows the work. */
+    ownFailed?: boolean
     /** "Unsaved work from an earlier visit is in Local Data." was raised at this load. */
     saidInLocalData?: boolean
     events: (event: LoadEvent) => void
@@ -149,8 +151,8 @@ export const journalsStep = async (context: RecoveryContext) => {
                     .request(sessionLock(found.sessionId), { ifAvailable: true }, (held) =>
                         Promise.resolve(held),
                     )
-                    // A refused request can't tell: left alone, as a live tab's.
-                    .catch(() => false))
+                    // A refused request can't tell: offered, since a row only copies or downloads.
+                    .catch(() => true))
             if (!free) continue
             context.keptForLocalData.push(found)
             size += found.from.length + found.text.length
@@ -195,7 +197,9 @@ export const journalsStep = async (context: RecoveryContext) => {
             if (outcome.kind === 'later') later = true
             if (outcome.kind === 'failed') {
                 console.error('A journal could not be replayed', outcome.error)
-                failed = true
+                // This tab's own is its reload's to say: it may show that work at once.
+                if (outcome.sessionId === context.own) context.ownFailed = true
+                else failed = true
             }
             continue
         }

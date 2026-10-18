@@ -84,7 +84,7 @@ const failedReload = (world: World, storage: MemoryStorage, tab: TabStorage) =>
         }),
     )
 
-test('a reload whose own journal fails to apply continues its session from the journal’s state, offered in Local Data until stored', async () => {
+test('a reload whose own journal fails to apply continues its session from the journal’s state, and says it recovered it', async () => {
     const world = createWorld({ seed: 1 })
     const storage = new MemoryStorage()
     const { tab, session, root } = await journalledOnly(world, storage)
@@ -97,14 +97,14 @@ test('a reload whose own journal fails to apply continues its session from the j
     const continued = openSession(reload)
     assert.notEqual(continued.id, session.id)
     assert.equal(continued.parent?.id, session.id)
-    // The newest work is on screen, and the key is offered in Local Data meanwhile.
+    // The newest work is on screen, so Local Data doesn't offer the key, and the line says so.
     assert.equal(rootOf(reload.page.live.state), root)
     assert.equal(reload.shown.at(-1)?.slots.at(-1)?.label, 'Recovered last change')
+    assert.deepEqual(reload.recovery.keptForLocalData, [])
     assert.deepEqual(
-        reload.recovery.keptForLocalData.map((found) => found.sessionId),
-        [session.id],
+        reload.events.filter((event) => event.kind !== 'bgmNotLoaded').map((event) => event.kind),
+        ['journalRecovered'],
     )
-    assert.ok(reload.events.some((event) => event.kind === 'journalFailed'))
 
     // The continuation's own journal holds the work: S's key goes, and its flush stores it.
     assert.equal(reload.page.writer.write(), true)
@@ -337,8 +337,8 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
         assert.equal(recovery.keptForLocalData.length, 1)
 
         // With the marker it continues from it, under a session id of its own: a copied tab
-        // looks the same, and two tabs never share one key (§1.6.7). The old key goes once the
-        // new one holds the work.
+        // looks the same, and two tabs never share one key (§1.6.7). The old key stays, offered
+        // in Local Data: the tab it came from may still be writing it.
         markUnloaded(tab, session.id)
         const reload = await load(world, 'reload', storage, {
             tab,
@@ -351,8 +351,12 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
         assert.equal(resumed.chainId, session.chainId)
         append(reload.page, 'edit', 'Again', widen(a, 2))
         assert.equal(reload.page.writer.write(), true)
-        assert.equal(storage.getItem(`nse.journal.${session.id}`), null)
+        assert.ok(storage.getItem(`nse.journal.${session.id}`))
         assert.ok(storage.getItem(`nse.journal.${resumed.id}`))
+        assert.deepEqual(
+            reload.recovery.keptForLocalData.map((found) => found.sessionId),
+            [session.id],
+        )
     } finally {
         if (navigator) Object.defineProperty(globalThis, 'navigator', navigator)
     }
