@@ -6,7 +6,7 @@ import { isHash16Hex } from '../hash'
 import type { RecordValue } from '../records/canonical'
 import { rootVersion } from '../records/snapshot'
 import { toWellFormed } from '../records/wellFormed'
-import { isObject, jsonBytes, wellFormedJson } from './json'
+import { checkDepth, isObject, setKey, wellFormedJson } from './json'
 import {
     checkPart,
     type ChunkIndexItem,
@@ -20,6 +20,7 @@ import {
     PlanError,
     ZIP32_LIMIT,
     type PinnedSource,
+    type PlanLimit,
     type PlannedEntry,
     type PlanPart,
     type SourceEntry,
@@ -30,12 +31,14 @@ import {
     bgmEntryName,
     metadataOf,
     PROJECT_KEYS,
+    SEGMENT_CAP,
     type DeviceForm,
     type HistoryPointers,
     type MediaForm,
     type ProjectExtra,
     type RevisionForm,
 } from './project'
+import { NXSP_CAPS, type NxspCaps } from './read'
 import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION } from './version'
 
 // The shared builder (§1.6.11.7), its format half: from what a write holds, already decided by
@@ -109,6 +112,11 @@ export type BuildInput = {
     summary: { noteCount: number; durationMs: number }
     /** The head's level info; its cover and preview come from `media`. */
     levelInfo: LevelInfo
+    /**
+     * The head's BGM hash (32 hex), or `null` for a head without BGM; when given, a written `bgm`
+     * must be it. Absent, the BGM isn't checked.
+     */
+    headBgm?: string | null
     media: { bgm?: MediaInput; cover?: MediaInput; preview?: MediaInput }
     extra?: ProjectExtra
     history?: HistoryInput
@@ -134,17 +142,37 @@ export const ANCESTOR_LIMIT = 1024
 /** `savedAt`: ISO 8601 UTC to the second. */
 export const savedAtOf = (now: number) => new Date(now).toISOString().replace(/\.\d{3}Z$/, 'Z')
 
-const fail = (message: string): never => {
-    throw new PlanError(message)
+const fail = (message: string, limit?: PlanLimit): never => {
+    throw new PlanError(message, limit)
 }
+
+/** The reader caps the builder keeps under (§1.6.11.4), and the segment count's. */
+export type BuildCaps = NxspCaps & { segments: number }
+
+const encoder = new TextEncoder()
 
 const deflated = (bytes: Uint8Array): PlannedEntry['parts'] => [
     { kind: 'bytes', data: deflateRaw(bytes) },
 ]
 
-/** A planned entry for new JSON: deflated, with the CRC and size of its uncompressed bytes. */
-const jsonEntry = (name: string, value: unknown): PlannedEntry => {
-    const bytes = jsonBytes(value)
+/**
+ * A planned entry for new JSON: deflated, with the CRC and size of its uncompressed bytes. Its
+ * size and nesting are checked against the caps first, so nothing past them is deflated.
+ */
+const jsonEntry = (
+    name: string,
+    value: unknown,
+    caps: BuildCaps,
+    [cap, limit]: [number, PlanLimit],
+): PlannedEntry => {
+    const text = JSON.stringify(value)
+    try {
+        checkDepth(text, caps.depth)
+    } catch {
+        fail(`${name} nests deeper than ${caps.depth}`, 'depth')
+    }
+    const bytes = encoder.encode(text)
+    if (bytes.length > cap) fail(`${name} is over its cap`, limit)
     return {
         name,
         method: 8,
@@ -465,7 +493,12 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
  * writer must not write: a reference without a source, a ZIP64 threshold, a value the minor
  * table lacks.
  */
-export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = []): BuildResult => {
+export const planNxsp = (
+    input: BuildInput,
+    sources: readonly PinnedSource[] = [],
+    capsOverride: Partial<BuildCaps> = {},
+): BuildResult => {
+    const caps: BuildCaps = { ...NXSP_CAPS, segments: SEGMENT_CAP, ...capsOverride }
     const { context, history } = input
     const revisionId = context.newId()
     const savedAt = savedAtOf(context.now)
@@ -492,6 +525,14 @@ export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = [
         )
             fail(`The head’s ${kind} and the write’s disagree`)
     }
+    // A written BGM is the head's (left out is allowed: unticked).
+    const bgmForm = media.bgm?.form
+    if (
+        input.headBgm !== undefined &&
+        bgmForm &&
+        (bgmForm.file === undefined ? bgmForm.hash : bgmForm.sha256.slice(0, 32)) !== input.headBgm
+    )
+        fail('The head’s BGM and the write’s disagree')
 
     const laid = history ? planHistory(history, sources) : undefined
     const segmentEntries: PlannedEntry[] = []
@@ -512,7 +553,7 @@ export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = [
                 nodes: part.nodes,
                 chunks: part.chunks,
             }
-            segmentEntries.push(jsonEntry(name, value))
+            segmentEntries.push(jsonEntry(name, value, caps, [caps.manifest, 'part']))
         }
         const manifest: ManifestForm = {
             version: MANIFEST_VERSION,
@@ -537,7 +578,7 @@ export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = [
             const { issues } = checkPart(value, isManifest ? 'manifest' : 'segment', isManifest)
             if (issues.length) fail(`The history breaks v1: ${issues[0]?.path ?? ''}`)
         }
-        manifestEntry = jsonEntry('history/manifest.json', manifest)
+        manifestEntry = jsonEntry('history/manifest.json', manifest, caps, [caps.manifest, 'part'])
 
         const newBytes = concat(laid.newChunks)
         const chunkParts: PlanPart[] = []
@@ -643,11 +684,11 @@ export const planNxsp = (input: BuildInput, sources: readonly PinnedSource[] = [
     )
 
     const entries: PlannedEntry[] = [
-        jsonEntry('project.json', project),
-        jsonEntry('level.json', input.level),
+        jsonEntry('project.json', project, caps, [caps.project, 'project']),
+        jsonEntry('level.json', input.level, caps, [caps.level, 'level']),
         ...bodyEntries,
     ]
-    checkLimits(entries, sources)
+    checkLimits(entries, sources, caps)
     return {
         plan: { modified, entries },
         revisionId,
@@ -663,12 +704,13 @@ const projectValue = (known: Record<string, unknown>, extra: ProjectExtra | unde
     const { metadata: extraMetadata, ...top } = wellFormedJson(extra) as ProjectExtra
     for (const [key, item] of Object.entries(top)) {
         // `parts` is never kept, and a v1 key in `extra` would be a bug: both are left out.
-        if (!(PROJECT_KEYS as readonly string[]).includes(key)) value[key] = item
+        if (!(PROJECT_KEYS as readonly string[]).includes(key)) setKey(value, key, item)
     }
     if (isObject(extraMetadata)) {
         const metadata = isObject(value.metadata) ? value.metadata : {}
         for (const [key, item] of Object.entries(extraMetadata)) {
-            if (!Object.hasOwn(metadata, key) && !METADATA_NAMES.includes(key)) metadata[key] = item
+            if (!Object.hasOwn(metadata, key) && !METADATA_NAMES.includes(key))
+                setKey(metadata, key, item)
         }
         if (Object.keys(metadata).length) value.metadata = metadata
     }
@@ -701,8 +743,6 @@ const concat = (chunks: readonly Uint8Array[]) => {
     return out
 }
 
-const encoder = new TextEncoder()
-
 /** What a planned entry's stored data comes to, from its parts and the sources' directories. */
 export const storedSize = (entry: PlannedEntry, sources: readonly PinnedSource[]) =>
     entry.parts.reduce((total, part) => {
@@ -711,9 +751,29 @@ export const storedSize = (entry: PlannedEntry, sources: readonly PinnedSource[]
         return total + (part.inflate ? from.uncompressedSize : from.compressedSize)
     }, 0)
 
-/** Refuses, from planned sizes, a file that would need ZIP64 (§1.6.11.4), and names that break v1. */
-const checkLimits = (entries: readonly PlannedEntry[], sources: readonly PinnedSource[]) => {
-    if (entries.length >= ENTRY_LIMIT) fail('65,535 entries or more')
+/** The cap an entry's uncompressed size stays within, by its name (§1.6.11.4). */
+const capOf = (name: string, caps: BuildCaps): [number, PlanLimit] | undefined => {
+    if (name === 'project.json') return [caps.project, 'project']
+    if (name === 'level.json') return [caps.level, 'level']
+    if (name === 'history/chunks.bin') return [caps.chunksBin, 'chunks']
+    if (name.startsWith('history/')) return [caps.manifest, 'part']
+    if (name.startsWith('bgm/')) return [caps.media, 'bgm']
+    if (name.startsWith('assets/cover.')) return [caps.media, 'cover']
+    if (name.startsWith('assets/preview.')) return [caps.media, 'preview']
+}
+
+/**
+ * Refuses, from planned sizes, a file a v1 reader would call damaged: past a reader cap (an
+ * entry's size, the segment count) or needing ZIP64 (§1.6.11.4); and names that break v1.
+ */
+const checkLimits = (
+    entries: readonly PlannedEntry[],
+    sources: readonly PinnedSource[],
+    caps: BuildCaps,
+) => {
+    if (entries.length >= ENTRY_LIMIT) fail('65,535 entries or more', 'zip64')
+    const segments = entries.filter((entry) => entry.name.startsWith('history/segments/')).length
+    if (segments > caps.segments) fail(`More than ${caps.segments} segments`, 'segments')
     const seen = new Set<string>()
     let offset = 0
     let directory = 0
@@ -729,14 +789,14 @@ const checkLimits = (entries: readonly PlannedEntry[], sources: readonly PinnedS
         seen.add(entry.name)
         const name = encoder.encode(entry.name).length
         const stored = storedSize(entry, sources)
-        if (
-            offset >= ZIP32_LIMIT ||
-            stored >= ZIP32_LIMIT ||
-            (entry.uncompressedSize ?? 0) >= ZIP32_LIMIT
-        )
-            fail('A size or offset of 4 GB or more')
+        const size = entry.uncompressedSize ?? stored
+        const cap = capOf(entry.name, caps)
+        if (cap && size > cap[0]) fail(`${entry.name} is over its cap`, cap[1])
+        if (offset >= ZIP32_LIMIT || stored >= ZIP32_LIMIT || size >= ZIP32_LIMIT)
+            fail('A size or offset of 4 GB or more', 'zip64')
         offset += 30 + name + stored
         directory += 46 + name
     }
-    if (offset >= ZIP32_LIMIT || directory >= ZIP32_LIMIT) fail('A size or offset of 4 GB or more')
+    if (offset >= ZIP32_LIMIT || directory >= ZIP32_LIMIT)
+        fail('A size or offset of 4 GB or more', 'zip64')
 }

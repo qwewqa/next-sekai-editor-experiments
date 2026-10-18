@@ -369,6 +369,26 @@ test('unknown top-level and metadata keys are kept as extra; anywhere else they 
     }
 })
 
+test('a key named __proto__ is kept in extra like any other', async () => {
+    const read = nxsp(
+        await readCrafted((items) => {
+            const project = jsonOf(items, 'project.json')
+            const text = JSON.stringify(project)
+                .replace('{', '{"__proto__":{"a":1},')
+                .replace('"metadata":{', '"metadata":{"__proto__":2,')
+            const item = items.find((i) => i.name === 'project.json')
+            assert.ok(item)
+            item.data = encoder.encode(text)
+        }),
+    )
+    assert.equal(read.open, 'full')
+    assert.ok(Object.hasOwn(read.extra, '__proto__'))
+    assert.ok(Object.hasOwn(read.extra.metadata ?? {}, '__proto__'))
+    const written = JSON.stringify(read.extra)
+    assert.match(written, /"__proto__":\{"a":1\}/)
+    assert.match(written, /"__proto__":2/)
+})
+
 test('a bgm with file and hash, or without file and with sha256, is a schema violation', async () => {
     const both = nxsp(
         await readCrafted((items) => {

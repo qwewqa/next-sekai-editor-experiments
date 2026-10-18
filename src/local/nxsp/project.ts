@@ -3,7 +3,7 @@ import { isHash16Hex } from '../hash'
 import type { RecordValue } from '../records/canonical'
 import { noteCountOf, type SnapshotRecords } from '../records/records'
 import { toWellFormed } from '../records/wellFormed'
-import { isObject } from './json'
+import { isObject, setKey } from './json'
 import { NXSP_FORMAT, NXSP_VERSION } from './version'
 
 // `project.json` v1 (§1.6.11.4): its fields, the pinned `metadata` mapping, `summary`, the media
@@ -293,7 +293,7 @@ const readMetadata = (value: unknown, issues: ProjectIssue[]) => {
                 break
             }
             default:
-                extra[key] = item
+                setKey(extra, key, item)
         }
     }
     return { metadata, extra }
@@ -315,7 +315,7 @@ export const readProject = (json: Record<string, unknown>): ProjectRead => {
     const issues: ProjectIssue[] = []
     const extra: ProjectExtra = {}
     for (const [key, value] of Object.entries(json)) {
-        if (!(PROJECT_KEYS as readonly string[]).includes(key)) extra[key] = value
+        if (!(PROJECT_KEYS as readonly string[]).includes(key)) setKey(extra, key, value)
     }
 
     const { minor = 0, levelVersion, appVersion, id, lineageId, name, exportName, level } = json

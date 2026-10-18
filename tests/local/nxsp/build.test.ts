@@ -24,6 +24,7 @@ import {
     fixedContext,
     headInput,
     memorySource,
+    PREVIEW,
     Store,
 } from './helpers'
 
@@ -319,6 +320,15 @@ test('the builder fails, never filters: a row without its root, a head media mis
             }),
         PlanError,
     )
+    // A written BGM that isn't the head's, when the head's is given.
+    const headBgm = BGM_2.sha256.slice(0, 32)
+    assert.ok(planNxsp({ ...base.input, headBgm }).plan)
+    assert.ok(
+        planNxsp({ ...base.input, headBgm: null, media: { ...base.input.media, bgm: undefined } })
+            .plan,
+    )
+    for (const other of ['0'.repeat(32), null])
+        assert.throws(() => planNxsp({ ...base.input, headBgm: other }), PlanError)
 })
 
 test('a kept: false row keeps its root only when every node and chunk it reaches is there', () => {
@@ -422,9 +432,85 @@ test('the builder refuses a file that would need ZIP64, from its planned sizes',
                     },
                 },
                 [huge],
+                // Past the media cap too; a larger one leaves only the ZIP64 refusal.
+                { media: 2 ** 33 },
             ),
-        PlanError,
+        (error: unknown) => error instanceof PlanError && error.limit === 'zip64',
     )
+})
+
+test('the builder refuses every reader cap as a PlanError naming it', () => {
+    const { input } = fresh()
+    const refuses = (limit: string, run: () => unknown) =>
+        assert.throws(
+            run,
+            (error: unknown) => error instanceof PlanError && error.limit === limit,
+            limit,
+        )
+    const MB = 1024 * 1024
+    // The real caps, where a test can reach them cheaply.
+    refuses('project', () => planNxsp({ ...input, extra: { pad: 'a'.repeat(MB) } }))
+    let deep: unknown = 1
+    for (let i = 0; i < 64; i++) deep = [deep]
+    refuses('depth', () => planNxsp({ ...input, extra: { deep } }))
+    const sourceWith = (name: string, size: number): PinnedSource => ({
+        token: 'h',
+        role: 'target',
+        fingerprint: 'f',
+        size: 0,
+        projectJson: {},
+        entries: [
+            {
+                index: 0,
+                name,
+                method: 0,
+                crc32: 0,
+                compressedSize: size,
+                uncompressedSize: size,
+                dataOffset: 40,
+            },
+        ],
+    })
+    const bgm = (size: number) =>
+        planNxsp(
+            {
+                ...input,
+                media: {
+                    ...input.media,
+                    bgm: {
+                        copy: { source: 'h', entryIndex: 0 },
+                        sha256: BGM_2.sha256,
+                        type: 'audio/mpeg',
+                        filename: 'x.mp3',
+                    },
+                },
+            },
+            [sourceWith('bgm/x.mp3', size)],
+        )
+    refuses('bgm', () => bgm(1024 * MB + 1))
+    assert.ok(bgm(1024 * MB).plan)
+    // The rest with smaller caps: the same checks, by planned size.
+    refuses('level', () => planNxsp(input, [], { level: 100 }))
+    refuses('part', () => planNxsp(input, [], { manifest: 100 }))
+    refuses('chunks', () => planNxsp(input, [], { chunksBin: 100 }))
+    refuses('cover', () => planNxsp(input, [], { media: 5 }))
+    refuses('segments', () => planNxsp(longChain(1001).input, [], { segments: 1 }))
+    assert.ok(planNxsp(longChain(1001).input, [], { segments: 2 }).plan)
+    const preview = {
+        ...input,
+        levelInfo: { ...input.levelInfo, preview: { ...PREVIEW.ref } },
+        media: {
+            ...input.media,
+            preview: {
+                bytes: PREVIEW.bytes,
+                sha256: PREVIEW.sha256,
+                type: 'audio/mpeg',
+                filename: 'preview.mp3',
+            },
+        },
+    }
+    refuses('preview', () => planNxsp(preview, [], { media: PREVIEW.bytes.length - 1 }))
+    assert.ok(planNxsp(preview, [], { media: PREVIEW.bytes.length }).plan)
 })
 
 test('minor is computed from the table; a value it lacks fails', () => {
@@ -472,4 +558,15 @@ test('strings are written well-formed', () => {
     })
     assert.equal(project.name, 'name �')
     assert.equal(jsonPart(plan, 'history/manifest.json').entries[1].label, 'bad � label')
+})
+
+test('extra keys named __proto__ are written back', () => {
+    const { input } = fresh()
+    const extra = JSON.parse(
+        '{"__proto__":{"a":1},"metadata":{"__proto__":2}}',
+    ) as BuildInput['extra']
+    const { project } = planNxsp({ ...input, extra })
+    const text = JSON.stringify(project)
+    assert.match(text, /"__proto__":\{"a":1\}/)
+    assert.match(text, /"__proto__":2/)
 })

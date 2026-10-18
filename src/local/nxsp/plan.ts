@@ -63,9 +63,36 @@ export type WritePlan = {
     entries: PlannedEntry[]
 }
 
-/** A plan that breaks the contract: a bug, never a user gate (§1.6.11.7). */
+/**
+ * A reader cap a write would pass (§1.6.11.4): `bgm`, `cover` or `preview` over the media cap,
+ * `project` or `level` past its own, `part` (the manifest or a segment), `chunks` (`chunks.bin`),
+ * `segments` (their count), `depth` (JSON nesting) or `zip64` (a size, offset or count that would
+ * need ZIP64). A file past one would open as damaged, so it is never written.
+ */
+export type PlanLimit =
+    | 'bgm'
+    | 'cover'
+    | 'preview'
+    | 'project'
+    | 'level'
+    | 'part'
+    | 'chunks'
+    | 'segments'
+    | 'depth'
+    | 'zip64'
+
+/**
+ * A plan that breaks the contract (§1.6.11.7): a bug, never a user gate, except with `limit`,
+ * content too large for any v1 reader, which the Save can name.
+ */
 export class PlanError extends Error {
     override name = 'PlanError'
+    constructor(
+        message: string,
+        readonly limit?: PlanLimit,
+    ) {
+        super(message)
+    }
 }
 
 /** The highest value a ZIP32 size or offset field holds below the ZIP64 sentinel. */
