@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, provide, watch } from 'vue'
+import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { resetKeybinds, resetSettings } from '../../settings'
@@ -61,11 +62,11 @@ const pill =
 </script>
 
 <template>
-    <BaseModal :title="i18n.settings.title" @close="emit('close')">
+    <BaseModal :title="i18n.settings.title" fill @close="emit('close')">
         <!-- The section index: one row of pills, which stays in reach while the sections scroll. -->
         <nav
             :aria-label="i18n.settings.sections"
-            class="sticky top-0 z-10 -mx-4 -mt-4 flex shrink-0 gap-2 overflow-x-auto bg-modal px-4 py-2"
+            class="flex shrink-0 gap-2 overflow-x-auto px-4 py-2"
             data-settings-index
         >
             <button
@@ -79,41 +80,43 @@ const pill =
                 {{ i18n.settings[id].title }}
             </button>
         </nav>
-        <div class="flex flex-wrap gap-2">
-            <button
-                type="button"
-                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
-                :title="i18n.settings.resetSettingsHint"
-                @click="resetSettings"
-            >
-                {{ i18n.settings.resetSettings }}
-            </button>
-            <button
-                type="button"
-                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
-                @click="resetKeybinds"
-            >
-                {{ i18n.settings.resetKeybinds }}
-            </button>
+        <div v-scroll-edges class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2">
+            <div class="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                    :title="i18n.settings.resetSettingsHint"
+                    @click="resetSettings"
+                >
+                    {{ i18n.settings.resetSettings }}
+                </button>
+                <button
+                    type="button"
+                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                    @click="resetKeybinds"
+                >
+                    {{ i18n.settings.resetKeybinds }}
+                </button>
+            </div>
+            <SettingsEditor />
+
+            <SettingsLocalData />
+
+            <SettingsPanels />
+
+            <SettingsPreview />
+
+            <SettingsToolbar />
+
+            <SettingsPlay />
+
+            <SettingsTouch />
+
+            <SettingsMouse />
+
+            <SettingsKeyboardShortcuts />
+
+            <SettingsAbout />
         </div>
-        <SettingsEditor />
-
-        <SettingsLocalData />
-
-        <SettingsPanels />
-
-        <SettingsPreview />
-
-        <SettingsToolbar />
-
-        <SettingsPlay />
-
-        <SettingsTouch />
-
-        <SettingsMouse />
-
-        <SettingsKeyboardShortcuts />
-
-        <SettingsAbout />
     </BaseModal>
 </template>

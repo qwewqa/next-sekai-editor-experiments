@@ -14,7 +14,7 @@ provide(stackLongValuesKey, true)
 </script>
 
 <template>
-    <section :id="id && `settings-${id}`" :data-settings-section="id" class="scroll-mt-16">
+    <section :id="id && `settings-${id}`" :data-settings-section="id" class="scroll-mt-2">
         <h2
             tabindex="-1"
             data-settings-heading

@@ -28,13 +28,13 @@ const onClick = (event: MouseEvent) => {
 <template>
     <button
         type="button"
-        class="status-label relative flex min-w-[4.5rem] max-w-[60%] shrink-[100] px-1"
+        class="status-label relative flex min-w-[4.5rem] max-w-[60%] shrink-[1000] px-1"
         :aria-label="statusText"
         :aria-describedby="describedBy"
         data-status-label
         @click="onClick"
     >
-        <span class="flex min-w-0" aria-hidden="true">
+        <span class="flex min-w-0" aria-hidden="true" data-status-text>
             <span v-if="statusLabel.name" class="min-w-0 truncate" data-status-name>{{
                 statusLabel.name
             }}</span>
@@ -44,14 +44,14 @@ const onClick = (event: MouseEvent) => {
                 :class="statusLabel.name ? 'ml-1 opacity-70' : ''"
                 data-status-file
             >
-                <template v-if="statusLabel.name">· </template>{{ statusLabel.file }}
+                {{ statusLabel.name ? ` · ${statusLabel.file}` : statusLabel.file }}
             </span>
             <span
                 v-if="statusLabel.state"
                 class="ml-1 min-w-0 shrink-[10] truncate opacity-70"
                 :class="keepState ? '' : 'max-md:hidden'"
                 data-status-state
-                >· {{ statusLabel.state }}</span
+                >{{ ` · ${statusLabel.state}` }}</span
             >
         </span>
         <span :id="describedBy" class="sr-only">{{ i18n.status.opensLevelInfo }}</span>
