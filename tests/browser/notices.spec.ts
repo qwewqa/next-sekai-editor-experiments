@@ -835,6 +835,8 @@ test.describe('the two slots', () => {
         await boot(page)
         await notifyWithAction(page, 'Nothing to undo')
         await expect(pill(page)).toBeVisible()
+        await expect(pill(page)).not.toHaveClass(/notice-card-enter-(from|active|to)/)
+        await expect(pill(page)).toHaveCSS('transform', 'none')
         const before = (await pill(page).boundingBox())!
         await page.keyboard.press('a')
         await expect(quick(page)).toHaveCount(1)
