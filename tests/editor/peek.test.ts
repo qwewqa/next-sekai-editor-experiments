@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
+import { setImmediate as settleTasks } from 'node:timers/promises'
 import type { Command } from '../../src/editor/commands'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import { onHistoryAction, type HistoryAction } from '../../src/history/actions'
 import {
+    displayedPeekKey,
     entryKey,
     isPeeking,
     leavePeek,
@@ -22,7 +24,14 @@ import {
     type EntryKey,
     type PeekedEntry,
 } from '../../src/history/peek'
-import { liveState, pushState, resetStates, state, undoState } from '../../src/history/stack'
+import {
+    liveState,
+    pushState,
+    replaceState,
+    resetStates,
+    state,
+    undoState,
+} from '../../src/history/stack'
 import type { State } from '../../src/state'
 
 // Peek's core (Part 1 §1.4.11) in Node: the override, debounced requests, failures, leaving,
@@ -89,12 +98,15 @@ test('peeking starts at once, shows the entry, and writers keep the live state',
     assert.equal(peekedKey.value, key(1))
     // Until it loads, what was shown stays, read-only.
     assert.equal(nameOf(state.value), 'live')
+    assert.equal(displayedPeekKey.value, undefined)
     await shown
     assert.equal(nameOf(state.value), 'old')
+    assert.equal(displayedPeekKey.value, key(1))
     assert.equal(liveState.value, live)
     leavePeek()
     assert.equal(isPeeking.value, false)
     assert.equal(peekedKey.value, undefined)
+    assert.equal(displayedPeekKey.value, undefined)
     assert.equal(state.value, live)
 })
 
@@ -150,6 +162,7 @@ test('an entry that cannot be read rejects and leaves the peek', async () => {
     })
     assert.equal(isPeeking.value, false)
     assert.equal(nameOf(state.value), 'live')
+    assert.equal(displayedPeekKey.value, undefined)
 })
 
 test('a failure of a replaced request leaves the newer peek alone', async () => {
@@ -159,6 +172,7 @@ test('a failure of a replaced request leaves the newer peek alone', async () => 
     await first
     await second
     assert.equal(nameOf(state.value), 'two')
+    assert.equal(displayedPeekKey.value, key(2))
 })
 
 test('leaving runs the leave hooks; a reset ends the peek without them', async () => {
@@ -173,6 +187,7 @@ test('leaving runs the leave hooks; a reset ends the peek without them', async (
     resetStates({ isDirty: false, name: () => 'new', state: fake('new') })
     assert.equal(isPeeking.value, false)
     assert.equal(peekedKey.value, undefined)
+    assert.equal(displayedPeekKey.value, undefined)
     assert.equal(left, 1)
     stop()
 })
@@ -184,7 +199,68 @@ test('a load that finishes after leaving shows nothing', async () => {
     await shown
     assert.equal(isPeeking.value, false)
     assert.equal(nameOf(state.value), 'live')
+    assert.equal(displayedPeekKey.value, undefined)
 })
+
+test('readiness retains the displayed endpoint while another request loads', async () => {
+    const pending = Promise.withResolvers<PeekedEntry>()
+    const started = Promise.withResolvers<void>()
+    setPeekSource({
+        load: async (entry) => {
+            if (entry === key(2)) {
+                started.resolve()
+                return pending.promise
+            }
+            return { state: fake('one'), time: 1 }
+        },
+        sameSnapshot: (a, b) => a === b,
+    })
+    await peekEntry(key(1))
+    const second = peekEntry(key(2))
+    await started.promise
+    assert.equal(peekedKey.value, key(2))
+    assert.equal(displayedPeekKey.value, key(1))
+    const firstAgain = peekEntry(key(1))
+    assert.equal(displayedPeekKey.value, peekedKey.value)
+    pending.resolve({ state: fake('two'), time: 2 })
+    await Promise.all([firstAgain, second])
+    assert.equal(displayedPeekKey.value, key(1))
+    assert.equal(nameOf(state.value), 'one')
+    replaceState({ ...state.value, selectedEntities: [] })
+    assert.equal(displayedPeekKey.value, key(1))
+})
+
+for (const sameSource of [false, true])
+    test(`source reset invalidates a pending peek (${sameSource ? 'same source' : 'replacement'})`, async () => {
+        const pending = Promise.withResolvers<PeekedEntry>()
+        const started = Promise.withResolvers<void>()
+        const original = {
+            load: () => {
+                started.resolve()
+                return pending.promise
+            },
+            sameSnapshot: (a: State, b: State) => a === b,
+        }
+        setPeekSource(original)
+        const loading = peekEntry(key(1))
+        await started.promise
+        assert.equal(displayedPeekKey.value, undefined)
+        setPeekSource(
+            sameSource
+                ? original
+                : {
+                      ...original,
+                      load: async () => ({ state: fake('replacement'), time: 2 }),
+                  },
+        )
+        pending.resolve({ state: fake('stale'), time: 1 })
+        await loading
+        await settleTasks()
+        assert.equal(isPeeking.value, false)
+        assert.equal(peekedKey.value, undefined)
+        assert.equal(displayedPeekKey.value, undefined)
+        assert.equal(nameOf(state.value), 'live')
+    })
 
 test('pushState while peeking throws in tests, and nothing changes', async () => {
     source({ [key(1)]: { state: fake('old'), time: 1 } })
