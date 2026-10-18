@@ -1,0 +1,203 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { hashKey } from '../../../src/local/db'
+import { fromHex16, toHex } from '../../../src/local/hash'
+import type { SaveStore } from '../../../src/local/save/bodies'
+import { buildSave } from '../../../src/local/save/execute'
+import { checkFiles, commit, Fixture, hasUv, heldRows, save, saveOptions, stateAt } from './fixture'
+
+// The carry test (§1.6.11.6 as D25 settles it): flagged rows count only when no kept row up to
+// the cut has their state; a binding is stored with its write's marks; and flagged rows' states
+// are written when storage still holds them whole (H-2).
+
+const ok = <T extends object>(value: T) => {
+    assert.ok(!('refused' in value), JSON.stringify(value))
+    return value as Exclude<T, { refused: string }>
+}
+
+type FixtureRow = Fixture['sessions'][number]['rows'][number]
+
+/** Cleanup's flag alone: the row is stored `kept: false`, its bodies stay. */
+const flag = async (fixture: Fixture, pick: (row: FixtureRow) => boolean) => {
+    const rows = fixture.sessions
+        .flatMap((session) => session.rows)
+        .filter((row) => row.kept && pick(row))
+    for (const row of rows) {
+        row.kept = false
+        await fixture.store.write(['entries'], async (tx) => {
+            const stored = (await tx.get('entries', [row.sessionId, row.seq])) as Record<
+                string,
+                unknown
+            >
+            await tx.put('entries', { ...stored, kept: false })
+        })
+    }
+    return rows.length
+}
+
+const download = (fixture: Fixture) => save(fixture, { kind: 'copy' }, { event: 'downloaded' })
+
+test('a flagged row whose state a kept row shares shows the line at most once (M7)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    fixture.undo()
+    await fixture.flush()
+    const d0 = ok((await download(fixture)).built)
+    // Cleanup flags the edit to state 1; the undo row back to state 1 keeps it.
+    assert.equal(
+        await flag(fixture, (row) => row.kind === 'edit' && toHex(row.snapshot) === stateAt(1).hex),
+        1,
+    )
+    const lines: boolean[] = []
+    let from = d0.identity.completeFrom
+    for (let i = 0; i < 3; i++) {
+        const d = ok((await download(fixture)).built)
+        lines.push(d.someStepsNotKept)
+        if (!d.someStepsNotKept) assert.equal(d.identity.completeFrom, from)
+        from = d.identity.completeFrom
+    }
+    assert.ok(lines.filter(Boolean).length <= 1, JSON.stringify(lines))
+    // Nothing was lost: no line at all.
+    assert.deepEqual(lines, [false, false, false])
+})
+
+test('a flagged row whose state only the stack held never carries its base (no over-claim)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    fixture.undo()
+    fixture.redo()
+    await fixture.flush()
+    const one = stateAt(1).hex
+    await flag(fixture, (row) => toHex(row.snapshot) === one)
+    const b = await download(fixture)
+    ok(b.built)
+    assert.ok(b.file)
+    fixture.undo()
+    await fixture.flush()
+    await flag(fixture, (row) => toHex(row.snapshot) === one)
+    fixture.undo()
+    await fixture.edit(3)
+    await fixture.flush()
+    // State 1 left the stack: cleanup removes its root.
+    await fixture.store.write(['nodes'], (tx) => tx.delete('nodes', hashKey(fromHex16(one))))
+    const n = await download(fixture)
+    const built = ok(n.built)
+    assert.ok(n.file)
+    const bRows = (await heldRows(b.file)).rows
+    const nRows = (await heldRows(n.file)).rows
+    const lost = [...bRows.keys()].filter((key) => !nRows.has(key))
+    assert.ok(lost.length > 0)
+    // N lacks rows B held with their states: it must not claim B's completeness.
+    assert.notEqual(built.identity.completeFrom, ok(b.built).identity.completeFrom)
+    assert.equal(built.someStepsNotKept, true)
+    if (hasUv) {
+        const result = await checkFiles([b.file, n.file])
+        assert.equal(result.status, 0, result.output)
+    }
+})
+
+/** A store whose next write of `entries` fails, as when storing is paused mid-build. */
+const pausedOnce = (store: SaveStore): SaveStore => {
+    let failed = false
+    return {
+        read: store.read,
+        write: (stores, fn, options) => {
+            if (!failed && stores.includes('entries')) {
+                failed = true
+                return Promise.reject(new DOMException('Paused', 'QuotaExceededError'))
+            }
+            return store.write(stores, fn, options)
+        },
+    }
+}
+
+test('a binding is stored with its write’s marks, so a later reduction never carries (minor 7)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    fixture.undo()
+    await fixture.edit(3)
+    await fixture.flush()
+    // A chunk only state 1 reaches goes bad: the build marks the edit to it.
+    const chunk = await onlyChunk(fixture, 1)
+    const row = (await fixture.store.read(['chunks'], (tx) =>
+        tx.get('chunks', hashKey(fromHex16(chunk))),
+    )) as { bytes: Uint8Array }
+    await fixture.store.write(['chunks'], async (tx) => {
+        const bytes = row.bytes.slice()
+        bytes[0] = (bytes[0] ?? 0) ^ 0xff
+        await tx.put('chunks', { ...row, bytes }, hashKey(fromHex16(chunk)))
+    })
+    const { options, reserved } = saveOptions(fixture)
+    const d1 = ok(
+        await buildSave(pausedOnce(fixture.store), fixture.chainId, { kind: 'copy' }, options),
+    )
+    assert.equal(d1.markStored, false)
+    assert.ok(d1.identity.marks.length >= 1)
+    // Storing resumes: the identity unit goes in with its marks.
+    await commit(fixture, d1, reserved, options, { event: 'downloaded' })
+    const stored = await fixture.entries()
+    const edit1 = stored.find(
+        (each) => each.kind === 'edit' && toHex(each.snapshot) === stateAt(1).hex,
+    )
+    assert.equal(edit1?.kept, false)
+    // The damage is repaired, and cleanup reduces a row d1 held.
+    await fixture.store.write(['chunks'], (tx) => tx.put('chunks', row, hashKey(fromHex16(chunk))))
+    assert.equal(await fixture.thin(0, 2), true)
+    const d2 = ok((await download(fixture)).built)
+    assert.notEqual(d2.identity.completeFrom, d1.identity.completeFrom)
+    assert.equal(d2.someStepsNotKept, true)
+})
+
+test('flagged rows’ states are written when storage still holds them whole (H-2, minor 8)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    fixture.undo()
+    await fixture.edit(3)
+    await fixture.flush()
+    // State 2 is only on its edit row; cleanup flags it but keeps its bodies.
+    await flag(fixture, (row) => toHex(row.snapshot) === stateAt(2).hex)
+    const { built, file } = await download(fixture)
+    ok(built)
+    assert.ok(file)
+    const { history } = await heldRows(file)
+    const edit2 = history.entries.find((entry) => entry.snapshot === stateAt(2).hex)
+    assert.equal(edit2?.kept, false)
+    assert.ok(history.roots.has(stateAt(2).hex))
+    // A flagged row whose root is gone is no damage: nothing is marked.
+    assert.equal(await fixture.thin(0, 2), true)
+    const next = ok((await download(fixture)).built)
+    assert.deepEqual(next.damaged, [])
+    assert.equal(next.marked, 0)
+})
+
+/** A chunk only state `k` reaches among the fixture's stored states. */
+const onlyChunk = async (fixture: Fixture, k: number) => {
+    const { nodeJsonFromRow, rootJsonFromRow } = await import('../../../src/local/records/rows')
+    const chunksOf = (hex: string) =>
+        fixture.store.read(['nodes'], async (tx) => {
+            const root = await tx.get('nodes', hashKey(fromHex16(hex)))
+            const out = new Set<string>()
+            if (!root) return out
+            const json = rootJsonFromRow(root as never)
+            out.add(json[1] as string)
+            for (const [, node] of json[2] as [string, string][]) {
+                const nodeRow = await tx.get('nodes', hashKey(fromHex16(node)))
+                for (const each of nodeJsonFromRow(nodeRow as never)[2] as string[]) out.add(each)
+            }
+            return out
+        })
+    const mine = await chunksOf(stateAt(k).hex)
+    for (const n of [0, 1, 2, 3, 4, 5].filter((each) => each !== k))
+        for (const each of await chunksOf(stateAt(n).hex)) mine.delete(each)
+    const [found] = mine
+    assert.ok(found, `state ${k} shares every chunk`)
+    return found
+}

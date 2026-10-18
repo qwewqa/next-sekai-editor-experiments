@@ -110,8 +110,7 @@ export const carries = (
         upto.filter((row) => !flagged(row)).map((row) => toHex(row.entry.snapshot)),
     )
     let lacking = 0
-    for (const row of upto)
-        if (flagged(row) && !kept.has(toHex(row.entry.snapshot))) lacking++
+    for (const row of upto) if (flagged(row) && !kept.has(toHex(row.entry.snapshot))) lacking++
     return upto.length === entry.count && lacking === entry.notKept
 }
 

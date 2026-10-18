@@ -636,9 +636,12 @@ export const planSave = async (
         if (offset === undefined) {
             // Replay can't follow the chronology (a session removed from its middle): the stack
             // is cut to its head, so no slot claims a number replay doesn't give.
-            console.warn('A Save could not replay its chronology; its undo stack is the head only', {
-                chainId,
-            })
+            console.warn(
+                'A Save could not replay its chronology; its undo stack is the head only',
+                {
+                    chainId,
+                },
+            )
             undoStack = { base: 0, slots: [headSlot], index: 0 }
         } else {
             let base = cutSlots.base - offset
@@ -648,7 +651,8 @@ export const planSave = async (
                 base = 0
             }
             if (offset)
-                for (const form of entries) if (form.stack) form.stack = withShift(form.stack, offset)
+                for (const form of entries)
+                    if (form.stack) form.stack = withShift(form.stack, offset)
             undoStack = { base, slots, index: cutSlots.index - offset }
         }
 
