@@ -1887,6 +1887,7 @@
     "chooseAudio": "오디오 선택…",
     "newLevel": "새 레벨",
     "reopen": "\"{0}\" 다시 열기",
+    "reopenUntitled": "{0}의 작업 다시 열기",
     "readOnlyPeek": "기록을 보는 중에는 읽기 전용",
     "restoredTo": "{0} 시점으로 복원됨",
     "alreadyMatches": "이미 현재 채보와 같음",

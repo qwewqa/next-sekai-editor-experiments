@@ -1887,6 +1887,7 @@
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
+    "reopenUntitled": "{0} Tarihli Oturumu Yeniden Aç",
     "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
     "restoredTo": "{0} anına geri yüklendi",
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",

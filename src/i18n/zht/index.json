@@ -1887,6 +1887,7 @@
     "chooseAudio": "選擇音訊…",
     "newLevel": "新關卡",
     "reopen": "重新開啟 \"{0}\"",
+    "reopenUntitled": "重新開啟 {0} 的工作階段",
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",

@@ -1887,6 +1887,7 @@
         "chooseAudio": "Choose Audio…",
         "newLevel": "New level",
         "reopen": "Reopen \"{0}\"",
+        "reopenUntitled": "Reopen Session from {0}",
         "readOnlyPeek": "Read-only while viewing history",
         "restoredTo": "Restored to {0}",
         "alreadyMatches": "Already matches the current chart",
