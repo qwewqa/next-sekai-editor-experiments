@@ -206,19 +206,26 @@ export const editPastUndo = async (page: Page, beat: number) => {
     await edit(page, beat + 2)
 }
 
-/** Cleanup under pressure, as a test hook: the open session's undone row made `kept: false`. */
+/** Cleanup under pressure, as a test hook: an undone row (`editPastUndo`) made `kept: false`. */
 export const thinUndone = async (page: Page) => {
     await flushed(page)
-    const { sessionId } = await sessionOf(page)
     const { entries } = await rows(page, ['entries'])
-    const own = entries!
+    const all = entries!
         .map((row) => row.value)
-        .filter((row) => row.sessionId === sessionId)
-        .sort((a, b) => (a.seq as number) - (b.seq as number))
-    const undone = own.find((row, i) => row.kind === 'edit' && own[i + 1]?.kind === 'undo')
+        .sort((a, b) =>
+            a.sessionId === b.sessionId
+                ? (a.seq as number) - (b.seq as number)
+                : String(a.sessionId).localeCompare(String(b.sessionId)),
+        )
+    const undone = all.find(
+        (row, i) =>
+            row.kind === 'edit' &&
+            all[i + 1]?.kind === 'undo' &&
+            all[i + 1]?.sessionId === row.sessionId,
+    )
     expect(undone).toBeDefined()
     return page.evaluate(
         (key) => window.nseStorageTest!.worker.call('testThin', key) as Promise<boolean>,
-        { sessionId, seq: undone!.seq as number },
+        { sessionId: undone!.sessionId as string, seq: undone!.seq as number },
     )
 }
