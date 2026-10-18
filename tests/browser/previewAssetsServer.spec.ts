@@ -652,7 +652,7 @@ test.describe('when a server cannot be used', () => {
         await connect(page, BASE)
         await useButton(page).click()
         await expect(useErrorOf(page)).toContainText(
-            'This item’s skin texture is 8192 × 8192; the limit is 4096 × 4096.',
+            'This item’s skin texture is 8192 × 8192. The limit is 4096 × 4096.',
         )
         expect(await stored(page)).toHaveLength(0)
     })

@@ -625,8 +625,7 @@ test.describe('storage that cannot be opened', () => {
     }) => {
         await page.addInitScript(() => localStorage.setItem('nse.test.noStorage', '1'))
         await start(page, { previewAssets: { skin: fileChoice } })
-        const reason =
-            'The stored skin cannot be read while this browser’s storage cannot be opened.'
+        const reason = 'The editor cannot access the stored skin in this browser.'
         await expect(fallbackLine(page, 'skin')).toContainText(`Skin: using Default. ${reason}`)
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
@@ -637,7 +636,7 @@ test.describe('storage that cannot be opened', () => {
 
         await tabOf(page, 'stored').click()
         await expect(dialog(page).locator('[data-stored-unavailable]')).toHaveText(
-            'Stored items cannot be read while this browser’s storage cannot be opened.',
+            'The editor cannot access stored items in this browser.',
         )
         await expect(dialog(page).locator('[data-stored-empty]')).toHaveCount(0)
     })
@@ -890,14 +889,14 @@ test.describe('refusing a file', () => {
         await refused(
             page,
             await patched('skin', { resources: { texture: pngHeader(8192, 8192) } }),
-            'This file’s skin texture is 8192 × 8192; the limit is 4096 × 4096.',
+            'This file’s skin texture is 8192 × 8192. The limit is 4096 × 4096.',
         )
         await refused(
             page,
             await patched('skin', {
                 resources: { thumbnail: pngHeader(2000, 2000) },
             }),
-            'This file’s skin thumbnail is 2000 × 2000; the limit is 1024 × 1024.',
+            'This file’s skin thumbnail is 2000 × 2000. The limit is 1024 × 1024.',
         )
 
         // A sprite outside the texture, in the real skin's own data.
