@@ -316,7 +316,7 @@ test.describe('load notices in the start-up pill', () => {
             const pane = (await page.locator('.chart-pane').boundingBox())!
             const toolbar = (await page.locator('[data-editor-toolbar] > div').boundingBox())!
             expect(close.y).toBeGreaterThanOrEqual(pane.y)
-            expect(close.width).toBeGreaterThanOrEqual(44)
+            expect(close.width).toBe(32)
             const card = (await pill(page).boundingBox())!
             expect(card.y).toBeGreaterThanOrEqual(pane.y)
             expect(card.y + card.height).toBeLessThanOrEqual(toolbar.y)

@@ -125,9 +125,9 @@ const style = computed(() => {
 })
 
 const actionClass =
-    'h-8 shrink-0 rounded-full bg-button px-4 font-bold shadow-md outline-none transition-colors hover:bg-header-hover focus-visible:ring-2 focus-visible:ring-fg focus-visible:ring-offset-2 focus-visible:ring-offset-modal active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11'
+    'h-8 shrink-0 rounded-full bg-button px-4 font-bold shadow-md outline-none transition-colors hover:bg-header-hover focus-visible:ring-2 focus-visible:ring-fg focus-visible:ring-offset-2 focus-visible:ring-offset-modal active:bg-accent active:text-on-accent'
 const closeClass =
-    'flex size-8 shrink-0 items-center justify-center rounded-full outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:size-11'
+    'flex size-8 shrink-0 items-center justify-center rounded-full outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
 </script>
 
 <template>
@@ -181,7 +181,7 @@ const closeClass =
                         :title="label"
                         @click="dismissNoticeCard()"
                     >
-                        <CloseIcon class="size-3.5 [@media(pointer:coarse)]:size-4" />
+                        <CloseIcon class="size-3.5" />
                     </button>
                 </div>
                 <div
@@ -237,7 +237,7 @@ const closeClass =
                         :title="label"
                         @click="dismissNoticeCard()"
                     >
-                        <CloseIcon class="size-3.5 [@media(pointer:coarse)]:size-4" />
+                        <CloseIcon class="size-3.5" />
                     </button>
                 </div>
             </template>

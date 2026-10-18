@@ -122,13 +122,6 @@
             opacity: 0.4;
         }
 
-        /* A finger on a touch laptop gets the rows menus give it. */
-        @media (any-pointer: coarse) {
-            html:not([data-native-lists]) select option:not([hidden]) {
-                min-block-size: 2.75rem;
-            }
-        }
-
         /* Sections, such as folders, under their headings; their options span the list. */
         html:not([data-native-lists]) select optgroup {
             display: block;

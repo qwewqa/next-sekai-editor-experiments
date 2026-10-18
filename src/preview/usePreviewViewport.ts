@@ -17,10 +17,9 @@ export type ControlsMetrics = {
     headerHeight: number
 }
 
-/** Coarse pointers get larger touch targets for the settings toggle and header. */
+/** Touch keeps settings collapsed until the user opens them. */
 export const isCoarsePointer = matchMedia('(pointer: coarse)').matches
-// Settings toggle size; matches its size-9 class on every pointer (touch
-// extends only its hit area).
+// Settings toggle size matches its size-9 class on every pointer.
 export const settingsButtonSize = 36
 
 // Editor controls the expanded settings must never cover when they extend

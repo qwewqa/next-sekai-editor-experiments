@@ -224,7 +224,7 @@ test.describe('phone', () => {
             focusVisible: false,
         })
 
-        // The menu fits the screen with touch-sized items.
+        // The menu fits the screen with ordinary-sized items.
         const viewport = page.viewportSize()!
         const box = (await menu(page).boundingBox())!
         expect(box.x).toBeGreaterThanOrEqual(0)
@@ -233,8 +233,9 @@ test.describe('phone', () => {
         expect(box.y + box.height).toBeLessThanOrEqual(viewport.height)
         const items = menu(page).locator('button')
         await expect(items).toHaveCount(5)
+        await expect(items.first()).toHaveCSS('min-height', '36px')
         for (const item of await items.all())
-            expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+            expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(36)
         if (shots) await page.screenshot({ path: `${shots}/phone.png` })
 
         // Escape returns focus to the tab.

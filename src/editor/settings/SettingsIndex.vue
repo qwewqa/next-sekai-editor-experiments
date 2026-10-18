@@ -8,7 +8,7 @@ defineEmits<{
 }>()
 
 const pill =
-    'h-8 shrink-0 rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:px-4'
+    'h-8 shrink-0 rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
 </script>
 
 <template>

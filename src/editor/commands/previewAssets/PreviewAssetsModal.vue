@@ -219,7 +219,7 @@ const storedText = computed(() => storedLine(strings.value.stored, summary.value
 const choosing = computed(() => isAssetTab(active.value) && choosers[active.value].open.value)
 
 const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 [@media(pointer:coarse)]:h-11'
+    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40'
 </script>
 
 <template>
@@ -363,12 +363,6 @@ const buttonClass =
     .preview-assets-tab:not(.preview-assets-tab-active):not(:active):hover
         .preview-assets-tab-pill {
         @apply bg-header-hover;
-    }
-}
-
-@media (pointer: coarse) {
-    .preview-assets-tab-active .preview-assets-tab-label::after {
-        @apply -bottom-3.5;
     }
 }
 </style>

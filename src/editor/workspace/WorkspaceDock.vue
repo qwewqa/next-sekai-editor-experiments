@@ -233,10 +233,4 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
 .workspace-dock-body-left {
     --overlay-scrollbar-inset: 0.375rem;
 }
-
-@media (pointer: coarse) {
-    .workspace-dock-body-left {
-        --overlay-scrollbar-inset: 0.625rem;
-    }
-}
 </style>

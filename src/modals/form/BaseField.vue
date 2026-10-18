@@ -629,18 +629,6 @@ watchEffect(
     font-variant-numeric: tabular-nums;
 }
 
-/* Fingers get a real target. */
-@media (pointer: coarse) {
-    .form-field-mixed-value {
-        min-height: 2rem;
-        padding-inline: 0.75rem;
-    }
-
-    .form-field-mixed-value::before {
-        margin-inline: -0.875rem;
-    }
-}
-
 .form-field-mixed-value:focus-visible {
     box-shadow: 0 0 0 2px theme('colors.fg');
 }

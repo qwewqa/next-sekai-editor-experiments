@@ -345,6 +345,20 @@ test('opening a dock does not pop a toolbar group under a resting pointer', asyn
 test.describe('phone', () => {
     test.use({ isMobile: true, hasTouch: true, viewport: { width: 390, height: 844 } })
 
+    test('compact rails and resize targets keep a visible touch grabber', async ({ page }) => {
+        await setSettings(page, { groupsPosition: 'top', showGroups: true, showPreview: false })
+        const top = dock(page, 'top')
+        await expect(top.getByRole('tab', { name: 'Groups' })).toBeVisible()
+        expect((await top.locator('.panel-rail').boundingBox())!.height).toBe(36)
+        const handle = top.getByRole('separator', { name: 'Resize Top Panels', exact: true })
+        await expect(handle).toBeVisible()
+        expect((await handle.boundingBox())!.height).toBe(12)
+        const grabber = handle.locator('.resize-grabber')
+        await expect(grabber).toHaveCSS('opacity', '1')
+        const box = (await grabber.boundingBox())!
+        expect([box.width, box.height]).toEqual([32, 4])
+    })
+
     test('side placements open one drawer at a time and its scrim absorbs the dismissing tap', async ({
         page,
     }) => {

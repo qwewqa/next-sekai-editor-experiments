@@ -141,7 +141,7 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
 const showsClosePrompt = detection().os !== 'ios'
 
 const buttonClass =
-    'inline-flex h-9 max-w-full items-center rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11'
+    'inline-flex h-9 max-w-full items-center rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
 
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {

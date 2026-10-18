@@ -16,7 +16,7 @@ const name = useId()
 
 // High contrast paints only the outlines: the track's is its edge, the segment's shows focus.
 const segment =
-    'flex h-7 items-center justify-center rounded-full px-3 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight] [@media(pointer:coarse)]:h-10'
+    'flex h-7 items-center justify-center rounded-full px-3 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight]'
 const choice =
     'relative min-w-0 flex-1 rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent'
 </script>

@@ -18,7 +18,7 @@ import { settings } from '../settings'
 import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from './options'
 import { panelPositionOptions, previewTransportOptions } from './settingsOptions'
 import SelectValue from '../modals/form/SelectValue.vue'
-import { handOffPreviewSettings, isCoarsePointer, type ControlsMetrics } from './usePreviewViewport'
+import { handOffPreviewSettings, type ControlsMetrics } from './usePreviewViewport'
 
 const props = defineProps<{
     /** Hides the toggle where it would sit on the playback bar. */
@@ -323,10 +323,7 @@ const onPlacementChange = () => {
         type="button"
         class="preview-settings-toggle absolute z-10 flex items-center justify-center rounded-full shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent"
         :class="[
-            // An occasional control over a small image: 36px, with a 40px hit
-            // area on touch.
             'size-9',
-            { 'preview-settings-toggle-touch': isCoarsePointer },
             expanded
                 ? 'bg-button text-fg shadow-accent active:bg-accent active:text-on-accent'
                 : 'bg-button text-fg hover:shadow-accent active:bg-accent active:text-on-accent',
@@ -362,8 +359,7 @@ const onPlacementChange = () => {
             <button
                 ref="header"
                 type="button"
-                class="flex w-full shrink-0 items-center gap-2 bg-header px-4 font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent"
-                :class="isCoarsePointer ? 'h-[52px]' : 'h-12'"
+                class="flex h-12 w-full shrink-0 items-center gap-2 bg-header px-4 font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent"
                 :aria-expanded="true"
                 :aria-controls="`${id}-body`"
                 :aria-label="i18n.preview.minimizeSettings"
@@ -611,13 +607,6 @@ const onPlacementChange = () => {
 </template>
 
 <style scoped>
-.preview-settings-toggle-touch::before {
-    content: '';
-    position: absolute;
-    inset: -0.125rem;
-    border-radius: 9999px;
-}
-
 .preview-controls {
     container-type: inline-size;
     width: min(22rem, calc(100vw - 0.5rem));
@@ -720,16 +709,6 @@ const onPlacementChange = () => {
 
 .preview-range:active::-moz-range-thumb {
     @apply bg-accent;
-}
-
-@media (pointer: coarse) {
-    .preview-range::-webkit-slider-thumb {
-        @apply -mt-[0.4375rem] size-5;
-    }
-
-    .preview-range::-moz-range-thumb {
-        @apply size-5;
-    }
 }
 
 /* Narrow panels give labels a little more of the row, then stack them. */

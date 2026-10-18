@@ -9,7 +9,6 @@ import { interpolateRaw } from '../../utils/interpolate'
 import {
     closePanel,
     getPanelPosition,
-    isCoarsePointer,
     isTabHiding,
     movePanel,
     onPanelTab,
@@ -336,7 +335,7 @@ const chevronDirection = computed(() => {
         class="panel-rail relative z-20 flex shrink-0 select-none bg-preview text-sm font-medium"
         :class="[
             vertical ? 'flex-col' : 'flex-row',
-            vertical ? (isCoarsePointer ? 'w-11' : 'w-9') : isCoarsePointer ? 'h-11' : 'h-9',
+            vertical ? 'w-9' : 'h-9',
             `panel-rail-${side}`,
         ]"
     >
@@ -411,7 +410,7 @@ const chevronDirection = computed(() => {
             v-if="dock.open.length"
             type="button"
             class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 transition-colors hover:text-white focus-visible:outline-none"
-            :class="[vertical ? 'w-full' : 'h-full', isCoarsePointer ? 'size-11' : 'size-9']"
+            :class="[vertical ? 'w-full' : 'h-full', 'size-9']"
             :aria-label="
                 dock.collapsed ? i18n.workspace.expand[side] : i18n.workspace.collapse[side]
             "

@@ -153,12 +153,13 @@ for (const side of ['left', 'right'] as const) {
             expect(Math.abs(preview.x + preview.width - tab.x)).toBeLessThanOrEqual(1)
             expect(chart.x + chart.width).toBeLessThanOrEqual(preview.x + 0.5)
         }
-        // A narrow tall tile docks the bar below the image and keeps the clock.
+        // A narrow tall tile docks the bar below the image with the clock in its strip.
         await expect(page.locator('.preview-transport-toggle')).toHaveCount(0)
         await expect(
             page.getByRole('group', { name: 'Preview Playback Controls', exact: true }),
         ).toBeInViewport()
-        await expect(page.locator('.transport-corner-time')).toBeVisible()
+        await expect(page.locator('.transport-time')).toBeVisible()
+        await expect(page.locator('.transport-corner-time')).toHaveCount(0)
 
         // Touch devices start with settings collapsed; they open beside the dock.
         const toggle = page.getByRole('button', { name: 'Show Preview Settings', exact: true })
@@ -197,9 +198,9 @@ for (const side of ['left', 'right'] as const) {
 
 for (const { width, height, side, timeInStrip, compact } of [
     { width: 390, height: 844, side: 'top', timeInStrip: true, compact: false },
-    { width: 844, height: 390, side: 'left', timeInStrip: false, compact: true },
+    { width: 844, height: 390, side: 'left', timeInStrip: true, compact: true },
 ] as const) {
-    test(`touch playback controls keep a 44 px Play and 40 px steppers in one row in a ${side} preview at ${width}px`, async ({
+    test(`touch playback controls keep ordinary-sized controls in one row in a ${side} preview at ${width}px`, async ({
         page,
     }) => {
         await page.setViewportSize({ width, height })
@@ -218,6 +219,8 @@ for (const { width, height, side, timeInStrip, compact } of [
             const play = box(document.querySelector('.transport-play')!)
             const clock = document.querySelector('.transport-corner-time')
             const toggle = box(document.querySelector('.preview-settings-toggle')!)
+            const track = box(document.querySelector('.transport-track')!)
+            const strip = box(document.querySelector('.preview-transport')!)
             return {
                 bar: box(document.querySelector('.preview-transport')!).height,
                 smallest: Math.min(...buttons.flatMap(({ width, height }) => [width, height])),
@@ -228,6 +231,11 @@ for (const { width, height, side, timeInStrip, compact } of [
                     ? box(clock).top + box(clock).height / 2 - (toggle.top + toggle.height / 2)
                     : undefined,
                 toggle: toggle.width,
+                trackHeight: track.height,
+                trackButtonHeights: [...document.querySelectorAll('.transport-track button')].map(
+                    (button) => box(button).height,
+                ),
+                trackInset: [track.top - strip.top, strip.bottom - track.bottom],
                 // Steppers take touches over the track's full height and the gaps between them.
                 stepperHits: [...document.querySelectorAll('.transport-track button')].every(
                     (button, index, buttons) => {
@@ -252,11 +260,16 @@ for (const { width, height, side, timeInStrip, compact } of [
         // Play is the frequent control; the steppers and the settings toggle,
         // used less often, are a little smaller. A narrow strip uses the
         // compact stepper rather than wrapping.
-        expect(geometry.play).toEqual([44, 44])
-        expect(geometry.smallest).toBeGreaterThanOrEqual(40)
+        expect(geometry.play).toEqual([36, 36])
+        expect(geometry.smallest).toBeGreaterThanOrEqual(32)
         expect(geometry.rows).toBe(1)
-        expect(geometry.bar).toBe(52)
+        expect(geometry.bar).toBe(44)
         expect(geometry.toggle).toBe(36)
+        expect(geometry.trackHeight).toBe(36)
+        expect(geometry.trackButtonHeights).toEqual(
+            compact ? [32, 32, 32] : [32, 32, 32, 32, 32, 32],
+        )
+        expect(geometry.trackInset).toEqual([4, 4])
         expect(geometry.stepperHits).toBe(true)
         await expect(page.getByRole('button', { name: /^Step Size: 10 ms$/i })).toBeVisible({
             visible: compact,
