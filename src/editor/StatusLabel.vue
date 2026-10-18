@@ -6,6 +6,8 @@ import { openLevelInfoStub } from './levelInfo'
 import { raised } from './file/state'
 import { statusLabel, statusName } from './labelText'
 
+defineProps<{ compact: boolean }>()
+
 // The status bar's label (Part 1 §1.3.4): the displayed name, then the bound file or why there is
 // none, and a "•" when the file has changes. It takes the warning colour while changes are not
 // stored, and opens Level Info. On phones the reason is left out first, except where it is the
@@ -31,17 +33,24 @@ const onClick = (event: MouseEvent) => {
 <template>
     <button
         type="button"
-        class="status-label relative flex min-w-[4.5rem] max-w-[60%] shrink-[1000] px-1"
-        :class="{ 'text-amber-300': raised.notStored.value }"
+        class="status-label relative flex max-w-[60%] shrink-[1000] items-center px-1"
+        :class="[
+            compact ? 'min-w-11' : 'min-w-[4.5rem]',
+            { 'text-amber-300': raised.notStored.value },
+        ]"
         :aria-label="statusName"
         :aria-describedby="describedBy"
         data-status-label
         @click="onClick"
     >
         <span class="flex min-w-0" aria-hidden="true" data-status-text>
-            <span v-if="statusLabel.name" class="min-w-0 truncate" data-status-name>{{
-                statusLabel.name
-            }}</span>
+            <span
+                v-if="statusLabel.name"
+                class="min-w-0 truncate"
+                :class="statusLabel.file || keepState ? 'shrink-[1000]' : ''"
+                data-status-name
+                >{{ statusLabel.name }}</span
+            >
             <span
                 v-if="statusLabel.file"
                 class="min-w-0 truncate"
@@ -52,8 +61,11 @@ const onClick = (event: MouseEvent) => {
             </span>
             <span
                 v-if="statusLabel.state"
-                class="ml-1 min-w-0 shrink-[10] truncate opacity-70"
-                :class="keepState && !statusLabel.file ? '' : 'max-md:hidden'"
+                class="ml-1 min-w-0 truncate opacity-70"
+                :class="[
+                    keepState && !statusLabel.file ? '' : 'shrink-[10]',
+                    compact && !(keepState && !statusLabel.file) ? 'hidden' : '',
+                ]"
                 data-status-state
                 >{{ ` · ${statusLabel.state}` }}</span
             >
@@ -69,19 +81,6 @@ const onClick = (event: MouseEvent) => {
 .status-label {
     border-radius: 9999px;
     transition: color 150ms;
-}
-
-/* The hit area fills the bar's height without making the label or the bar taller. */
-.status-label::before {
-    content: '';
-    position: absolute;
-    inset: -0.25rem;
-}
-
-@media (pointer: coarse) {
-    .status-label::before {
-        inset-block: -0.5rem;
-    }
 }
 
 .status-label:active {

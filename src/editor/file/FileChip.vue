@@ -4,6 +4,8 @@ import { chipSeverity } from './chip'
 import { chipSentence, chipText, openChipDialog } from './chipDialogs'
 import { chip } from './state'
 
+defineProps<{ compact: boolean }>()
+
 // The one state chip after the status label (Part 1 §1.3.4): the highest-priority state, its
 // own button with an icon drawn by severity. It never shrinks away; on phones it shows the short
 // label, with the full sentence as its accessible name.
@@ -36,11 +38,8 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
                 d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm-.8 3.2h1.6v1.6H7.2zm0 3h1.6v4.6H7.2z"
             />
         </svg>
-        <span class="whitespace-nowrap max-md:hidden" aria-hidden="true">{{
-            chipText(chip.kind)
-        }}</span>
-        <span class="whitespace-nowrap md:hidden" aria-hidden="true">{{
-            chipText(chip.kind, true)
+        <span class="whitespace-nowrap" aria-hidden="true">{{
+            chipText(chip.kind, compact)
         }}</span>
     </button>
 </template>
@@ -51,16 +50,9 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
     transition: color 150ms;
 }
 
-/* The hit area fills the bar's height without making the chip or the bar taller. */
-.file-chip::before {
-    content: '';
-    position: absolute;
-    inset: -0.25rem;
-}
-
-@media (pointer: coarse) {
-    .file-chip::before {
-        inset-block: -0.5rem;
+@media (any-pointer: coarse) {
+    .file-chip {
+        min-width: 44px;
     }
 }
 

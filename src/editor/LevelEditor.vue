@@ -38,6 +38,7 @@ useControlLifecycle()
 const container: Ref<HTMLDivElement | null> = useTemplateRef('container')
 const host = useTemplateRef<HTMLDivElement>('host')
 const hostWidth = ref(0)
+const compactStatus = computed(() => hostWidth.value < 768)
 watch(host, (element, _, cleanup) => {
     if (!element) return
     const update = () => {
@@ -279,25 +280,36 @@ const stageCount = computed(() =>
             </div>
             <LevelEditorContextMenu />
         </div>
-        <!-- Chrome: Meta text in white/80, 24px tall (32px on coarse pointers). -->
+        <!-- Touch-capable rows reserve their full target height before a warning arrives. -->
         <div
-            class="z-10 flex gap-4 bg-preview px-2 py-1 text-xs text-white/80 [@media(pointer:coarse)]:py-2"
+            class="status-bar z-10 flex h-6 shrink-0 bg-preview text-xs text-white/80"
+            :class="compactStatus ? 'gap-1 px-1' : 'gap-4 px-2'"
+            data-status-bar
         >
-            <span class="min-w-12 shrink-[1000] flex-grow truncate">{{ tool.title() }}</span>
-            <StatusLabel />
-            <FileChip />
+            <span
+                class="shrink-[1000000] flex-grow self-center truncate"
+                :class="hostWidth < 360 ? 'min-w-8' : 'min-w-12'"
+                data-status-tool
+                >{{ tool.title() }}</span
+            >
+            <StatusLabel :compact="compactStatus" />
+            <FileChip :compact="compactStatus" />
             <!-- The scope chips open their managers. Long names truncate while the
             shown count stays visible. -->
             <button
                 type="button"
-                class="status-chip relative flex min-w-0 max-w-[40%] px-1"
+                class="status-chip relative flex min-w-11 max-w-[40%] items-center px-1"
                 :title="i18n.commands.manageGroups.title"
                 @click="onStatusChip($event, 'groups')"
             >
                 <span class="flex min-w-0">
-                    <span v-for="(part, i) in group" :key="i" :class="partClass(part)">{{
-                        part.text
-                    }}</span>
+                    <span
+                        v-for="(part, i) in group"
+                        :key="i"
+                        :class="partClass(part)"
+                        :data-status-part="part.role"
+                        >{{ part.text }}</span
+                    >
                 </span>
                 <span
                     v-if="groupCount"
@@ -311,14 +323,18 @@ const stageCount = computed(() =>
             <button
                 v-if="isDynamicStages"
                 type="button"
-                class="status-chip relative flex min-w-0 max-w-[40%] px-1"
+                class="status-chip relative flex min-w-11 max-w-[40%] items-center px-1"
                 :title="i18n.commands.manageStages.title"
                 @click="onStatusChip($event, 'stages')"
             >
                 <span class="flex min-w-0">
-                    <span v-for="(part, i) in stage" :key="i" :class="partClass(part)">{{
-                        part.text
-                    }}</span>
+                    <span
+                        v-for="(part, i) in stage"
+                        :key="i"
+                        :class="partClass(part)"
+                        :data-status-part="part.role"
+                        >{{ part.text }}</span
+                    >
                 </span>
                 <span
                     v-if="stageCount"
@@ -329,7 +345,7 @@ const stageCount = computed(() =>
                     <span class="sr-only">{{ stageCount.label }}</span>
                 </span>
             </button>
-            <span class="shrink-0">1/{{ view.division }}</span>
+            <span class="shrink-0 self-center" data-status-division>1/{{ view.division }}</span>
         </div>
     </div>
 </template>
@@ -345,17 +361,9 @@ const stageCount = computed(() =>
     transition: color 150ms;
 }
 
-/* The hit area fills the bar's height (24px, or 32px on coarse pointers)
- * without making the chip or the bar taller. */
-.status-chip::before {
-    content: '';
-    position: absolute;
-    inset: -0.25rem;
-}
-
-@media (pointer: coarse) {
-    .status-chip::before {
-        inset-block: -0.5rem;
+@media (any-pointer: coarse) {
+    .status-bar {
+        height: 44px;
     }
 }
 

@@ -321,6 +321,36 @@ test.describe('status bar on a phone', () => {
     })
 })
 
+test('a narrow editor host uses compact status text inside a wide fine-pointer viewport', async ({
+    page,
+}) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { appImport, history, settings } = window.editorTest
+        const { bindFile, setDiskFinding } =
+            await appImport<typeof import('../../src/editor/file/state')>('/src/editor/file/state.ts')
+        settings.showPreview = false
+        settings.showSidebar = false
+        bindFile({ name: 'coconut.nxsp', event: 'saved', at: Date.now() }, history.state.value)
+        setDiskFinding('newer')
+        const bar = document.querySelector('[data-status-bar]')!
+        ;(bar.parentElement as HTMLElement).style.width = '360px'
+    })
+    const bar = page.locator('[data-status-bar]')
+    await expect(bar.locator('[data-file-chip]')).toHaveText('Newer')
+    await expect(bar).toHaveCSS('column-gap', '4px')
+    expect((await bar.boundingBox())!.width).toBe(360)
+    expect((await bar.boundingBox())!.height).toBe(24)
+    expect((await bar.locator('[data-status-label]').boundingBox())!.width).toBeGreaterThanOrEqual(44)
+    await page.evaluate(() => {
+        const bar = document.querySelector('[data-status-bar]')!
+        ;(bar.parentElement as HTMLElement).style.width = '1000px'
+    })
+    await expect(bar.locator('[data-file-chip]')).toHaveText('Newer on disk')
+    await expect(bar).toHaveCSS('column-gap', '16px')
+    expect((await bar.locator('[data-status-label]').boundingBox())!.width).toBeGreaterThanOrEqual(72)
+})
+
 test('notifications are announced from one live region', async ({ page }) => {
     await boot(page)
     // The region is there before a notice, so its arrival is announced; there is one per page.

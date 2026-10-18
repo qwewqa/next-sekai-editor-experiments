@@ -63,6 +63,42 @@ const chip = (page: Page) => page.locator('[data-file-chip]')
 /** The chip's text as shown: its full string, or on a phone the short label. */
 const chipShown = (page: Page) => chip(page).locator('span:visible')
 
+const statusGeometry = (page: Page) =>
+    page.locator('[data-status-bar]').evaluate((bar) => {
+        const rect = (element: Element) => {
+            const { left, right, top, bottom, width, height } = element.getBoundingClientRect()
+            return { left, right, top, bottom, width, height }
+        }
+        const visibleText = (element: HTMLElement) => {
+            const text = element.firstChild!
+            const box = element.getBoundingClientRect()
+            const clipped = element.scrollWidth > element.clientWidth
+            const ellipsis = clipped ? parseFloat(getComputedStyle(element).fontSize) : 0
+            const range = document.createRange()
+            let visible = ''
+            for (let i = 0; i < text.textContent!.length; i++) {
+                range.setStart(text, i)
+                range.setEnd(text, i + 1)
+                const character = range.getBoundingClientRect()
+                if (character.left >= box.left && character.right <= box.right - ellipsis + 0.5)
+                    visible += text.textContent![i]
+            }
+            return visible.trim()
+        }
+        const title = bar.querySelector<HTMLElement>('[data-status-tool]')!
+        return {
+            bar: rect(bar),
+            items: [...bar.children].map(rect),
+            title: { ...rect(title), cut: title.scrollWidth > title.clientWidth },
+            scopes: [...bar.querySelectorAll<HTMLElement>('.status-chip')].map((scope) => ({
+                ...rect(scope),
+                name: visibleText(scope.querySelector<HTMLElement>('[data-status-part="name"]')!),
+            })),
+            file: visibleText(bar.querySelector<HTMLElement>('[data-status-file]')!),
+            chip: [...bar.querySelectorAll('[data-file-chip] > *')].map(rect),
+        }
+    })
+
 /** Binds the open session to a file at a file event, with the live state as the file's. */
 const bindFile = (
     page: Page,
@@ -213,6 +249,96 @@ test.describe('the label and the title', () => {
             await edit(page, 990)
             await expect(page.locator('[data-status-state]')).toBeHidden()
             await expect(page.locator('[data-status-changed]')).toBeVisible()
+        })
+    })
+
+    test.describe('touch targets', () => {
+        test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+        test('warning arrival keeps the chart fixed and every button owns its target', async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            await page.evaluate(async () => {
+                const { liveState, replaceState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                const { settings } =
+                    (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                replaceState({ ...liveState.value, isDynamicStages: true })
+                settings.groupsPosition = 'disabled'
+                settings.stagesPosition = 'disabled'
+            })
+            await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
+            const bar = page.locator('[data-status-bar]')
+            const before = await bar.boundingBox()
+            const chart = await page.locator('canvas.editor-chart').boundingBox()
+            expect(before!.height).toBe(44)
+            await finding(page, 'newer')
+            await expect(chip(page)).toBeVisible()
+            expect(await bar.boundingBox()).toEqual(before)
+            expect(await page.locator('canvas.editor-chart').boundingBox()).toEqual(chart)
+            const buttons = bar.locator(':scope > button')
+            await expect(buttons).toHaveCount(4)
+            const targets = await buttons.evaluateAll((elements) =>
+                elements.map((element) => {
+                    const box = element.getBoundingClientRect()
+                    const points = [
+                        [box.left + 1, box.top + box.height / 2],
+                        [box.right - 1, box.top + box.height / 2],
+                        [box.left + box.width / 2, box.top + 1],
+                        [box.left + box.width / 2, box.bottom - 1],
+                    ]
+                    return {
+                        width: box.width,
+                        height: box.height,
+                        left: box.left,
+                        right: box.right,
+                        ownEdges: points.every(
+                            ([x, y]) => document.elementFromPoint(x!, y!)?.closest('button') === element,
+                        ),
+                        pseudo: getComputedStyle(element, '::before').content,
+                    }
+                }),
+            )
+            for (const [index, target] of targets.entries()) {
+                expect(target.width).toBeGreaterThanOrEqual(44)
+                expect(target.height).toBe(44)
+                expect(target.ownEdges).toBe(true)
+                expect(target.pseudo).toBe('none')
+                if (index) expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
+            }
+            const dialogs = ['Level Info', '"coconut.nxsp" Changed', 'Manage Groups', 'Manage Stages']
+            for (const [index, title] of dialogs.entries()) {
+                const control = buttons.nth(index)
+                for (const edge of ['left', 'center', 'right'] as const) {
+                    const box = (await control.boundingBox())!
+                    await page.touchscreen.tap(
+                        box.x + (edge === 'left' ? 1 : edge === 'right' ? box.width - 1 : box.width / 2),
+                        box.y + box.height / 2,
+                    )
+                    await expect(page.getByRole('dialog', { name: title, exact: true })).toBeVisible()
+                    await page.keyboard.press('Escape')
+                    await expect(page.getByRole('dialog')).toHaveCount(0)
+                }
+            }
+            await page.emulateMedia({ forcedColors: 'active' })
+            await page.keyboard.press('Shift')
+            for (const control of await buttons.all()) {
+                await control.focus()
+                expect(
+                    await control.evaluate((element) => ({
+                        visible: element.matches(':focus-visible'),
+                        outline: getComputedStyle(element).outlineStyle,
+                        width: getComputedStyle(element).outlineWidth,
+                    })),
+                ).toEqual({ visible: true, outline: 'solid', width: '2px' })
+            }
+            await finding(page, undefined)
+            await expect(chip(page)).toBeHidden()
+            expect(await bar.boundingBox()).toEqual(before)
+            expect(await page.locator('canvas.editor-chart').boundingBox()).toEqual(chart)
         })
     })
 })
@@ -423,7 +549,7 @@ test.describe('the chip', () => {
             expect(bar.x + bar.width).toBeLessThanOrEqual(360)
         })
 
-        test('the tool title and the label truncate before the scope chips', async ({
+        test('compact spacing preserves useful file and scope names beside a warning', async ({
             page,
             context,
         }) => {
@@ -437,18 +563,49 @@ test.describe('the chip', () => {
             await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
             await finding(page, 'newer')
             await expect(page.locator('.status-chip')).toHaveCount(2)
-            const widths = await page.evaluate(() => {
-                const title = document.querySelector('[data-status-label]')!.previousElementSibling!
-                return {
-                    titleCut: title.scrollWidth > title.clientWidth,
-                    chips: [...document.querySelectorAll<HTMLElement>('.status-chip')].map(
-                        (chip) => chip.getBoundingClientRect().width,
-                    ),
-                }
+            const geometry = await statusGeometry(page)
+            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
+            expect(geometry.scopes.map((scope) => scope.name)).toEqual(['All Groups', 'All Stages'])
+            expect(geometry.file).toMatch(/^coc/)
+            for (const scope of geometry.scopes) expect(scope.width).toBeGreaterThanOrEqual(44)
+            for (const item of [...geometry.items, ...geometry.chip]) {
+                expect(item.left).toBeGreaterThanOrEqual(geometry.bar.left)
+                expect(item.right).toBeLessThanOrEqual(geometry.bar.right)
+            }
+        })
+
+        test('a long localized tool gives way before useful file and scope text', async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            await page.evaluate(async () => {
+                const { liveState, replaceState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                const { switchToolTo } =
+                    (await import('/src/editor/tools/index.ts')) as typeof import('../../src/editor/tools')
+                const { settings } =
+                    (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                replaceState({ ...liveState.value, isDynamicStages: true })
+                settings.locale = 'fr'
+                switchToolTo('stageTransformEvent')
             })
-            // "Select" gives way first; each scope chip keeps a readable name.
-            expect(widths.titleCut).toBe(true)
-            for (const width of widths.chips) expect(width).toBeGreaterThanOrEqual(40)
+            await bindFile(page, { name: 'coconut-long-working-copy.nxsp', event: 'saved' })
+            await finding(page, 'newer')
+            await expect(chipShown(page)).toHaveText('Plus récent')
+            const geometry = await statusGeometry(page)
+            expect(geometry.title.cut).toBe(true)
+            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
+            expect(geometry.file).toMatch(/^coc/)
+            for (const scope of geometry.scopes) {
+                expect(scope.width).toBeGreaterThanOrEqual(44)
+                expect(scope.name.replace(/\W/g, '').length).toBeGreaterThanOrEqual(4)
+            }
+            for (const item of geometry.items) {
+                expect(item.left).toBeGreaterThanOrEqual(geometry.bar.left)
+                expect(item.right).toBeLessThanOrEqual(geometry.bar.right)
+            }
         })
     })
 })
