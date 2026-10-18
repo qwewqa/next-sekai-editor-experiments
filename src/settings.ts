@@ -6,7 +6,7 @@ import { easeEdits, type EaseEdit } from './ease'
 import type { CommandName } from './editor/commands'
 import { normalizeBinding } from './editor/controls/bindings'
 import { migrateToolbar } from './editor/toolbar/migrate'
-import { isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
+import { isPanelId, savedPanelIds, transientPanel, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
 import {
@@ -104,6 +104,14 @@ const defaultNoteSlidePropertiesSchema = Type.Intersect([
 
 export type DefaultNoteSlideProperties = Type.Static<typeof defaultNoteSlidePropertiesSchema>
 
+// History's toolbar tool is its entry point, so its position is never Disabled.
+const historyPanelPosition = Type.Union([
+    Type.Literal('auto'),
+    Type.Literal('left'),
+    Type.Literal('right'),
+    Type.Literal('top'),
+])
+
 const panelPosition = Type.Union([
     Type.Literal('auto'),
     Type.Literal('left'),
@@ -120,6 +128,7 @@ const settingsProperties = {
     groupsPosition: panelPosition,
     stagesPosition: panelPosition,
     propertiesPosition: panelPosition,
+    historyPosition: historyPanelPosition,
 
     showPreview: Type.Boolean({ default: true }),
     // Properties retains the open state saved by the former sidebar.
@@ -133,7 +142,12 @@ const settingsProperties = {
             default: ['preview', 'properties', 'groups', 'stages'] satisfies PanelId[],
         }),
     )
-        .Decode((values) => [...new Set([...values.filter(isPanelId), ...panelIds])])
+        .Decode((values) => [
+            ...new Set([
+                ...values.filter((id) => isPanelId(id) && id !== transientPanel),
+                ...savedPanelIds,
+            ]),
+        ])
         .Encode((values) => values),
 
     leftDockWidth: Type.Number({ minimum: 0 }),
@@ -298,7 +312,7 @@ const settingsProperties = {
                     'stop',
                     'play',
                 ],
-                ['paste', 'cut', 'copy', 'redo', 'undo'],
+                ['paste', 'cut', 'copy', 'history', 'redo', 'undo'],
                 ['increaseNoteSize', 'decreaseNoteSize', 'brush', 'eraser', 'deselect', 'select'],
                 [
                     'editorLayout',
@@ -415,6 +429,7 @@ const settingsProperties = {
         open: 'o',
         save: 'p',
         exportLevel: 'P',
+        history: 'H',
         reset: 'n',
         utilities: '.',
         play: ' ',

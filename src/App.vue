@@ -63,6 +63,8 @@ const onKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || !drawerSide.value || modals.length || contextMenu.value) return
     const target = event.target instanceof Element ? event.target : null
     if (isEditable(target) || target?.closest('[role="menu"]')) return
+    // The History list takes Escape itself: back to Now first, then close.
+    if (target?.closest('[data-history-list]')) return
     // A resize or row drag in the drawer cancels on Escape itself.
     if (document.querySelector('.resize-handle.is-dragging, .manager-row-dragging')) return
     // A selecting manager list stops selecting on Escape instead.

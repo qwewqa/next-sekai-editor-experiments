@@ -127,8 +127,8 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).toContainText(/Continued "coconut" from [A-Z][a-z]{2} \d{1,2}\./)
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
-        // Nothing to press, so the pill stays where the plain one is.
-        await expect(pill(next).getByRole('button')).toHaveCount(0)
+        // Its one button is Open History (Step 5), so the pill sits with the action notices.
+        await expect(pill(next).getByRole('button')).toHaveText(['Open History'])
         // It goes at the first edit.
         await edit(next, 980)
         await expect(pill(next)).toHaveCount(0)
@@ -405,7 +405,9 @@ test.describe('Reopen', () => {
         await expect.poll(() => lifeOf(page)).toBe(990)
     })
 
-    test('after an edit, z with nothing to undo is the plain notice', async ({ page }) => {
+    test('after an edit, z with nothing to undo offers Open History, not Reopen', async ({
+        page,
+    }) => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
@@ -413,8 +415,10 @@ test.describe('Reopen', () => {
         await edit(page, 980)
         await run(page, 'undo')
         await run(page, 'undo')
-        await expect(page.locator('.notification')).toHaveText('Nothing to undo')
-        await expect(page.locator('.notification-pill')).toHaveCount(0)
+        await expect(page.locator('.notification')).toHaveText('Nothing to undoOpen History')
+        await expect(page.locator('.notification-pill').getByRole('button')).toHaveText([
+            'Open History',
+        ])
     })
 
     test('a blank start left by New has nothing to reopen', async ({ page }) => {

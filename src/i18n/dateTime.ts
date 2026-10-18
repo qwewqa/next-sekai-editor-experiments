@@ -36,6 +36,17 @@ export const formatClockSeconds = (locale: string, at: number) =>
         second: '2-digit',
     }).format(at)
 
+/** "Oct 14, 3:15:02 PM", with the year in another year. */
+export const formatDateTimeSeconds = (locale: string, at: number, now = Date.now()) =>
+    formatter(locale, sameYear(at, now) ? 'dateTimeSeconds' : 'dateTimeYearSeconds', {
+        ...(sameYear(at, now) ? {} : { year: 'numeric' }),
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+    }).format(at)
+
 /** "Oct 16, 2:41 PM", with the year in another year. */
 export const formatDateTime = (locale: string, at: number, now = Date.now()) =>
     sameYear(at, now)

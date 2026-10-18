@@ -594,6 +594,9 @@
         "effectGroups": "Dans cet élément, l’effet \"{1}\" ({0}) contient plus de {2} groupes de particules.",
         "ratio": "Dans cet élément, {1} ({0}) : taux de décompression supérieur à {2} pour 1."
       }
+    },
+    "history": {
+      "title": "Historique"
     }
   },
   "help": {
@@ -938,7 +941,8 @@
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "atLoad": "Lors de ce chargement :"
-      }
+      },
+      "openHistory": "Ouvrir l’historique"
     }
   },
   "sidebars": {
@@ -1184,7 +1188,8 @@
     "newestDamaged": "Votre session la plus récente n’a pas pu être ouverte.",
     "bgmNotLoaded": "La BGM n’est pas chargée.",
     "more": "et {0} autres dans Données locales",
-    "localData": "Données locales"
+    "localData": "Données locales",
+    "openHistory": "Ouvrir l’historique"
   },
   "storage": {
     "reload": "Rechargez la page pour continuer à stocker les modifications.",
@@ -1207,7 +1212,23 @@
       "title": "Scènes dynamiques",
       "message": "Cette fonctionnalité nécessite les scènes dynamiques. Voulez-vous les activer ?",
       "enabled": "Scènes dynamiques activées"
-    }
+    },
+    "title": "Historique",
+    "timeline": "Chronologie",
+    "recentSessions": "Sessions récentes",
+    "filterAll": "Tout",
+    "filterSaves": "Sauvegardes et exports",
+    "now": "Maintenant",
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "notStored": "Les modifications ne sont pas stockées dans ce navigateur.",
+    "notInUndo": "hors de l’annulation",
+    "notInUndoTip": "L’annulation ne peut pas y accéder.",
+    "removedForSpace": "supprimé pour libérer de l’espace",
+    "damaged": "endommagé",
+    "continuedFrom": "Reprise du {0}",
+    "foldHint": "Touchez Historique pour replier la liste",
+    "announceViewing": "Affichage de {0}"
   },
   "modals": {
     "close": "Fermer",
@@ -1788,7 +1809,11 @@
   },
   "peek": {
     "exportsCurrent": "Exporte la version actuelle.",
-    "overlay": "Consultation de l’historique · lecture seule"
+    "overlay": "Consultation de l’historique · lecture seule",
+    "viewing": "Affichage de {0} · {1} · lecture seule",
+    "viewingShort": "Affichage de {0} · lecture seule",
+    "backToNow": "Revenir à maintenant",
+    "restore": "Restaurer"
   },
   "save": {
     "fileName": "Nom du fichier",
@@ -1831,7 +1856,9 @@
     "reopen": "Rouvrir \"{0}\"",
     "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
     "restoredTo": "Restauré à {0}",
-    "alreadyMatches": "Correspond déjà à la partition actuelle"
+    "alreadyMatches": "Correspond déjà à la partition actuelle",
+    "openHistory": "Ouvrir l’historique",
+    "earlierInHistory": "Les étapes précédentes sont dans l’historique"
   },
   "entry": {
     "exported": "{0} exporté",

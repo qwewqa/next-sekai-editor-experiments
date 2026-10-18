@@ -4,6 +4,7 @@ import { createContext } from './handlers'
 import { peekHandlers } from './peekHandlers'
 import { serve, type Endpoint } from './rpc'
 import { startupHandlers } from './startupHandlers'
+import { timelineHandlers } from './timelineHandlers'
 import { userAssetHandlers } from './userAssets'
 
 // The storage worker's entry (Part 1 §1.6.5): one dedicated worker per tab, written as a module
@@ -23,6 +24,7 @@ const handlers = {
     ...userAssetHandlers(context),
     ...journalHandlers(context),
     ...startupHandlers(context),
+    ...timelineHandlers(context),
     ...peekHandlers(context),
 }
 

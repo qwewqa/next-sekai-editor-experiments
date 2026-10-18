@@ -36,6 +36,12 @@ const pendingMove = ref(0)
 
 export const canUndo = computed(() => index.value + pendingMove.value > 0)
 
+/**
+ * Whether steps before the stack's first slot are in History: a stored stack is capped
+ * (§1.6.4 #6), so Undo past it after a reload says so.
+ */
+export const earlierSteps = ref(false)
+
 /** Whether the stack holds only its first state: nothing done, nothing to redo. */
 export const isPristine = computed(() => states.length <= 1)
 
@@ -43,6 +49,9 @@ export const isPristine = computed(() => states.length <= 1)
 const current = computed(() => states[index.value]!)
 
 export const isDirty = computed(() => (current.value as Slot | undefined)?.isDirty ?? false)
+
+/** The name of the step that made the current state: the Timeline's Now row. */
+export const headName = computed(() => (current.value as Slot | undefined)?.name() ?? '')
 
 /** The last head seen: what watchers read while a stored stack replaces the slots. */
 let lastHead: State | undefined
@@ -306,6 +315,7 @@ export const stackGeneration = () => stacks
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
     stacks++
     cancelPendingMoves()
+    earlierSteps.value = false
     peek.value = undefined
     index.value = 0
     publish(entry.state)
@@ -325,11 +335,17 @@ export type RestoredSlot = { snapshot?: Uint8Array; label: string; isDirty: bool
  * reload, a new visit, an open, Restore Session). Nothing is emitted: the storage side starts
  * the session itself, with the entry each of those appends.
  */
-export const restoreStates = (slots: readonly RestoredSlot[], at: number, head: State) => {
+export const restoreStates = (
+    slots: readonly RestoredSlot[],
+    at: number,
+    head: State,
+    earlier = false,
+) => {
     const slot = slots[at]
     if (!slot) throw new RangeError('The index is outside the stack')
     stacks++
     cancelPendingMoves()
+    earlierSteps.value = earlier
     peek.value = undefined
     loadedRestored.length = 0
     const restored: Slot[] = slots.map(({ snapshot, label, isDirty }) => ({

@@ -594,6 +594,9 @@
         "effectGroups": "この項目の{0}のエフェクト「{1}」のパーティクルグループが{2}個を超えています。",
         "ratio": "この項目の{0}の{1}は、展開すると元のサイズの{2}倍を超えます。"
       }
+    },
+    "history": {
+      "title": "履歴"
     }
   },
   "help": {
@@ -938,7 +941,8 @@
         "autoSave": "以前の自動保存 · {0}",
         "unreadable": "読み取れない回復済みの作業、{0} · {1}",
         "atLoad": "今回の読み込み："
-      }
+      },
+      "openHistory": "履歴を開く"
     }
   },
   "sidebars": {
@@ -1184,7 +1188,8 @@
     "newestDamaged": "最新のセッションを開けませんでした。",
     "bgmNotLoaded": "BGM が読み込まれていません。",
     "more": "ほか {0} 件はローカルデータにあります",
-    "localData": "ローカルデータ"
+    "localData": "ローカルデータ",
+    "openHistory": "履歴を開く"
   },
   "storage": {
     "reload": "変更の保管を続けるには、再読み込みしてください。",
@@ -1207,7 +1212,23 @@
       "title": "動的ステージ",
       "message": "この機能には動的ステージが必要です。動的ステージを有効にしますか？",
       "enabled": "動的ステージを有効にしました"
-    }
+    },
+    "title": "履歴",
+    "timeline": "タイムライン",
+    "recentSessions": "最近のセッション",
+    "filterAll": "すべて",
+    "filterSaves": "保存と出力",
+    "now": "現在",
+    "today": "今日",
+    "yesterday": "昨日",
+    "notStored": "変更はこのブラウザーに保管されていません。",
+    "notInUndo": "元に戻す対象外",
+    "notInUndoTip": "元に戻す操作では到達できません。",
+    "removedForSpace": "容量節約のため削除",
+    "damaged": "破損",
+    "continuedFrom": "{0}から続行",
+    "foldHint": "履歴をタップすると一覧を折りたためます",
+    "announceViewing": "{0} を表示中"
   },
   "modals": {
     "close": "閉じる",
@@ -1788,7 +1809,11 @@
   },
   "peek": {
     "exportsCurrent": "現在のバージョンを出力します。",
-    "overlay": "履歴を表示中 · 読み取り専用"
+    "overlay": "履歴を表示中 · 読み取り専用",
+    "viewing": "{0} を表示中 · {1} · 読み取り専用",
+    "viewingShort": "{0} を表示中 · 読み取り専用",
+    "backToNow": "現在に戻る",
+    "restore": "復元"
   },
   "save": {
     "fileName": "ファイル名",
@@ -1831,7 +1856,9 @@
     "reopen": "「{0}」を再び開く",
     "readOnlyPeek": "履歴の表示中は読み取り専用です",
     "restoredTo": "{0} の状態に復元しました",
-    "alreadyMatches": "すでに現在の譜面と同じです"
+    "alreadyMatches": "すでに現在の譜面と同じです",
+    "openHistory": "履歴を開く",
+    "earlierInHistory": "それ以前の操作は履歴にあります"
   },
   "entry": {
     "exported": "{0} を出力",

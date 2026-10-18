@@ -594,6 +594,9 @@
         "effectGroups": "此項目的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
         "ratio": "此項目的{0}{1}解壓縮後超過其大小的 {2} 倍。"
       }
+    },
+    "history": {
+      "title": "歷史記錄"
     }
   },
   "help": {
@@ -938,7 +941,8 @@
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "atLoad": "本次載入："
-      }
+      },
+      "openHistory": "開啟歷史記錄"
     }
   },
   "sidebars": {
@@ -1184,7 +1188,8 @@
     "newestDamaged": "無法開啟最近的工作階段。",
     "bgmNotLoaded": "BGM 未載入。",
     "more": "另有 {0} 則在本機資料中",
-    "localData": "本機資料"
+    "localData": "本機資料",
+    "openHistory": "開啟歷史記錄"
   },
   "storage": {
     "reload": "請重新載入以繼續存放變更。",
@@ -1207,7 +1212,23 @@
       "title": "動態舞台",
       "message": "此功能需要動態舞台。要啟用動態舞台嗎？",
       "enabled": "已啟用動態舞台"
-    }
+    },
+    "title": "歷史記錄",
+    "timeline": "時間軸",
+    "recentSessions": "最近工作階段",
+    "filterAll": "全部",
+    "filterSaves": "儲存與匯出",
+    "now": "現在",
+    "today": "今天",
+    "yesterday": "昨天",
+    "notStored": "變更未存放在此瀏覽器中。",
+    "notInUndo": "不在撤銷中",
+    "notInUndoTip": "撤銷無法到達此處。",
+    "removedForSpace": "已為節省空間而移除",
+    "damaged": "已損毀",
+    "continuedFrom": "從 {0} 繼續",
+    "foldHint": "點按歷史記錄可摺疊列表",
+    "announceViewing": "正在檢視 {0}"
   },
   "modals": {
     "close": "關閉",
@@ -1788,7 +1809,11 @@
   },
   "peek": {
     "exportsCurrent": "匯出目前版本。",
-    "overlay": "正在檢視歷史記錄 · 唯讀"
+    "overlay": "正在檢視歷史記錄 · 唯讀",
+    "viewing": "正在檢視 {0} · {1} · 唯讀",
+    "viewingShort": "正在檢視 {0} · 唯讀",
+    "backToNow": "返回現在",
+    "restore": "還原"
   },
   "save": {
     "fileName": "檔案名稱",
@@ -1831,7 +1856,9 @@
     "reopen": "重新開啟 \"{0}\"",
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已恢復到 {0}",
-    "alreadyMatches": "已與目前譜面一致"
+    "alreadyMatches": "已與目前譜面一致",
+    "openHistory": "開啟歷史記錄",
+    "earlierInHistory": "更早的步驟在歷史記錄中"
   },
   "entry": {
     "exported": "已匯出 {0}",

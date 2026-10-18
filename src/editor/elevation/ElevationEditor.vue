@@ -221,6 +221,7 @@ const availableCommands: CommandName[] = [
     'deleteSelection',
     'undo',
     'redo',
+    'history',
     'flip',
     'combineNotes',
     'splitHold',
