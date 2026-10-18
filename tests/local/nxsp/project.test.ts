@@ -74,6 +74,17 @@ test('entry names are ASCII, from the original name', () => {
     assert.equal(bgmEntryName(`${'a'.repeat(300)}.mp3`, 'audio/mpeg'), `bgm/${'a'.repeat(120)}.mp3`)
     assert.equal(assetEntryName('cover', 'カバー.PNG', 'image/png'), 'assets/cover.PNG')
     assert.equal(assetEntryName('preview', 'preview', 'audio/mpeg'), 'assets/preview.mp3')
+    // The extension only when it is 1–10 ASCII letters and digits; else the type's, or `bin`.
+    assert.equal(bgmEntryName('song.mp3 (1)', 'audio/mpeg'), 'bgm/song.mp3-1.mp3')
+    assert.equal(bgmEntryName(`a.${'x'.repeat(300)}`, ''), `bgm/a.${'x'.repeat(118)}.bin`)
+    assert.equal(bgmEntryName('a.mp3x5678901', 'audio/ogg'), 'bgm/a.mp3x5678901.ogg')
+    assert.equal(bgmEntryName('a.wav56789012', ''), 'bgm/a.wav56789012.bin')
+    assert.equal(assetEntryName('cover', 'c.png (2)', 'image/jpeg'), 'assets/cover.jpg')
+    assert.equal(assetEntryName('preview', 'p.ab-c', ''), 'assets/preview.bin')
+    // A reserved name is the stem up to its first dot.
+    assert.equal(bgmEntryName('con.foo.mp3', 'audio/mpeg'), 'bgm/con-.foo.mp3')
+    assert.equal(bgmEntryName('LPT1.x.y.ogg', ''), 'bgm/LPT1-.x.y.ogg')
+    assert.equal(bgmEntryName('console.mp3', ''), 'bgm/console.mp3')
     for (const name of [bgmEntryName('a/b\\c:d.mp3', ''), bgmEntryName('\ud800.mp3', '')])
         assert.match(name, /^bgm\/[A-Za-z0-9._-]+\.[A-Za-z0-9._-]+$/)
 })

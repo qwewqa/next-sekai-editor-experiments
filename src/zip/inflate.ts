@@ -1,18 +1,18 @@
 import { Inflate } from 'pako'
+import { crc32 } from './crc32'
 import { ZipError } from './error'
 
 const Z_BUF_ERROR = -5
 
 /**
- * Inflates raw DEFLATE data that must come to exactly `size` bytes. Output past
- * `size`, a stream that ends early and trailing bytes are all damage, so a
- * bomb stops as soon as it passes what the entry declared.
+ * Inflates raw DEFLATE data that must come to exactly `size` bytes, handing each piece of output
+ * to `onData`. Output past `size`, a stream that ends early and trailing bytes are all damage, so
+ * a bomb stops as soon as it passes what the entry declared.
  */
-export const inflateExact = (data: Uint8Array, size: number) => {
-    if (size === 0 && data.length === 0) return new Uint8Array(0)
+const inflateStream = (data: Uint8Array, size: number, onData: (chunk: Uint8Array) => void) => {
+    if (size === 0 && data.length === 0) return
 
     const inflator = new Inflate({ raw: true })
-    const chunks: Uint8Array[] = []
     let total = 0
     // pako updates `avail_in` as it consumes the input.
     let input = { avail_in: data.length }
@@ -22,7 +22,7 @@ export const inflateExact = (data: Uint8Array, size: number) => {
     inflator.onData = (chunk) => {
         total += chunk.length
         if (total > size) throw new ZipError('size', 'inflates past its declared size')
-        chunks.push(chunk)
+        onData(chunk)
     }
     inflator.push(data, true)
 
@@ -31,12 +31,27 @@ export const inflateExact = (data: Uint8Array, size: number) => {
     if (!inflator.ended || inflator.err !== 0) throw new ZipError('inflate')
     if (input.avail_in > 0) throw new ZipError('size', 'bytes after the compressed stream')
     if (total !== size) throw new ZipError('size', 'inflates short of its declared size')
+}
 
-    const out = new Uint8Array(total)
+/**
+ * Inflates raw DEFLATE data that must come to exactly `size` bytes (see `inflateStream`), into
+ * one buffer of that size, so the output is never held twice. Callers cap `size` first.
+ */
+export const inflateExact = (data: Uint8Array, size: number) => {
+    const out = new Uint8Array(size)
     let at = 0
-    for (const chunk of chunks) {
+    inflateStream(data, size, (chunk) => {
         out.set(chunk, at)
         at += chunk.length
-    }
+    })
     return out
+}
+
+/** The CRC-32 of what raw DEFLATE data inflates to, exactly `size` bytes, without keeping it. */
+export const inflatedCrc = (data: Uint8Array, size: number) => {
+    let crc = 0
+    inflateStream(data, size, (chunk) => {
+        crc = crc32(chunk, crc)
+    })
+    return crc
 }

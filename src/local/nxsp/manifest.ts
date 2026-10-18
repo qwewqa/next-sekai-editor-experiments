@@ -68,6 +68,32 @@ export type HistoryIssue = {
     detail?: string
 }
 
+/** The most issues a part or a history reports; past it, one more says how many were left out. */
+export const ISSUE_CAP = 20
+
+/** Issues collected up to `ISSUE_CAP`, the rest only counted, so a huge bad part can't fill memory. */
+class Issues {
+    readonly items: HistoryIssue[] = []
+    private more = 0
+    private moreReason: HistoryIssue['reason'] = 'damaged'
+
+    get length() {
+        return this.items.length + this.more
+    }
+
+    push(issue: HistoryIssue) {
+        if (this.items.length < ISSUE_CAP) this.items.push(issue)
+        else if (this.more++ === 0) this.moreReason = issue.reason
+        return this.length
+    }
+
+    /** The issues, with "and N more" when some were left out. */
+    done(path: string): HistoryIssue[] {
+        if (!this.more) return this.items
+        return [...this.items, { reason: this.moreReason, path, detail: `and ${this.more} more` }]
+    }
+}
+
 const isUint = (value: unknown): value is number =>
     Number.isSafeInteger(value) && (value as number) >= 0
 const isString = (value: unknown): value is string => typeof value === 'string'
@@ -76,7 +102,7 @@ const unknownKeys = (
     value: Record<string, unknown>,
     known: readonly string[],
     path: string,
-    issues: HistoryIssue[],
+    issues: Issues,
 ) => {
     for (const key of Object.keys(value)) {
         if (!known.includes(key)) issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
@@ -97,7 +123,7 @@ const ENTRY_KEYS = [
     'x',
 ]
 
-const checkSlot = (value: unknown, path: string, issues: HistoryIssue[]) => {
+const checkSlot = (value: unknown, path: string, issues: Issues) => {
     if (!isObject(value)) return issues.push({ reason: 'damaged', path })
     unknownKeys(value, ['snapshot', 'label'], path, issues)
     if (!isHash16Hex(value.snapshot) || !isString(value.label))
@@ -105,7 +131,7 @@ const checkSlot = (value: unknown, path: string, issues: HistoryIssue[]) => {
 }
 
 /** Checks one entry of the entry form; returns false when it can't be used. */
-const checkEntry = (value: unknown, path: string, issues: HistoryIssue[]) => {
+const checkEntry = (value: unknown, path: string, issues: Issues) => {
     const before = issues.length
     if (!isObject(value)) {
         issues.push({ reason: 'damaged', path })
@@ -114,11 +140,16 @@ const checkEntry = (value: unknown, path: string, issues: HistoryIssue[]) => {
     unknownKeys(value, ENTRY_KEYS, path, issues)
     const { kind, time, label, snapshot, noteCount, dirty, kept, revisionId, device, stack, x } =
         value
-    if (!isString(kind)) issues.push({ reason: 'damaged', path: `${path}.kind` })
-    else if (!(ENTRY_KINDS as readonly string[]).includes(kind))
+    // An unknown kind is newer content: its fields are that kind's, so nothing else is checked.
+    if (isString(kind) && !(ENTRY_KINDS as readonly string[]).includes(kind)) {
         issues.push({ reason: 'newer', path: `${path}.kind`, detail: kind })
+        return false
+    }
+    if (!isString(kind)) issues.push({ reason: 'damaged', path: `${path}.kind` })
     const fail = (key: string) => issues.push({ reason: 'damaged', path: `${path}.${key}` })
-    if (typeof time !== 'number' || !Number.isFinite(time)) fail('time')
+    // A field another kind has: a key this kind doesn't (§1.6.11.8).
+    const foreign = (key: string) => issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
+    if (!isUint(time)) fail('time')
     if (!isString(label)) fail('label')
     if (!isHash16Hex(snapshot)) fail('snapshot')
     if (!isUint(noteCount)) fail('noteCount')
@@ -132,8 +163,8 @@ const checkEntry = (value: unknown, path: string, issues: HistoryIssue[]) => {
         if (!isObject(device) || !isString(device.id) || !isString(device.label)) fail('device')
         else unknownKeys(device, ['id', 'label'], `${path}.device`, issues)
     } else {
-        if (revisionId !== undefined) fail('revisionId')
-        if (device !== undefined) fail('device')
+        if (revisionId !== undefined) foreign('revisionId')
+        if (device !== undefined) foreign('device')
     }
     if (kind === 'recovered') {
         if (
@@ -148,12 +179,12 @@ const checkEntry = (value: unknown, path: string, issues: HistoryIssue[]) => {
             for (const [i, slot] of (stack.push as unknown[]).entries())
                 checkSlot(slot, `${path}.stack.push[${i}]`, issues)
         }
-    } else if (stack !== undefined) fail('stack')
+    } else if (stack !== undefined) foreign('stack')
     if (x !== undefined && !isObject(x)) fail('x')
     return issues.length === before
 }
 
-const checkHashMap = (value: unknown, path: string, issues: HistoryIssue[]) => {
+const checkHashMap = (value: unknown, path: string, issues: Issues) => {
     if (!isObject(value)) {
         issues.push({ reason: 'damaged', path })
         return false
@@ -164,7 +195,7 @@ const checkHashMap = (value: unknown, path: string, issues: HistoryIssue[]) => {
     return true
 }
 
-const checkChunkIndex = (value: unknown, path: string, issues: HistoryIssue[]) => {
+const checkChunkIndex = (value: unknown, path: string, issues: Issues) => {
     if (!Array.isArray(value)) {
         issues.push({ reason: 'damaged', path })
         return false
@@ -191,7 +222,7 @@ export const checkPart = (
     path: string,
     manifest: boolean,
 ): { part?: SegmentForm | ManifestForm; issues: HistoryIssue[] } => {
-    const issues: HistoryIssue[] = []
+    const issues = new Issues()
     if (!isObject(value)) return { issues: [{ reason: 'damaged', path }] }
     if (manifest) {
         const { version } = value
@@ -233,7 +264,9 @@ export const checkPart = (
                 checkSlot(slot, `${path}.undoStack.slots[${i}]`, issues)
         }
     }
-    return issues.length ? { issues } : { part: value as SegmentForm | ManifestForm, issues }
+    return issues.length
+        ? { issues: issues.done(path) }
+        : { part: value as SegmentForm | ManifestForm, issues: [] }
 }
 
 /** A history whose parts were checked and put together (§1.6.11.5). */
@@ -262,7 +295,7 @@ export const combineParts = (
     manifest: ManifestForm,
     expected: { entries: number; chunksSize: number },
 ): { history?: HistoryForm; issues: HistoryIssue[] } => {
-    const issues: HistoryIssue[] = []
+    const issues = new Issues()
     const damaged = (path: string, detail?: string) =>
         issues.push({ reason: 'damaged', path, ...(detail === undefined ? {} : { detail }) })
     const entries: EntryForm[] = []
@@ -271,7 +304,8 @@ export const combineParts = (
     const index = new Map<string, { offset: number; length: number }>()
     let next = 0
     for (const [p, part] of [...segments, manifest].entries()) {
-        entries.push(...part.entries)
+        // One at a time: a spread of a huge part would pass the engine's argument limit.
+        for (const entry of part.entries) entries.push(entry)
         for (const [map, values, name] of [
             [roots, part.roots, 'roots'],
             [nodes, part.nodes, 'nodes'],
@@ -367,8 +401,8 @@ export const combineParts = (
     if (undoStack.index < undoStack.base || head === undefined)
         damaged('undoStack.index', 'out of range')
 
-    if (issues.length || head === undefined) return { issues }
-    return { history: { entries, roots, nodes, index, undoStack, head }, issues }
+    if (issues.length || head === undefined) return { issues: issues.done('history') }
+    return { history: { entries, roots, nodes, index, undoStack, head }, issues: [] }
 }
 
 const isUnknownKind = (json: unknown) =>

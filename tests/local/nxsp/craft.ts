@@ -1,5 +1,6 @@
 import { executePlan, planNxsp, readNxsp, type NxspRead } from '../../../src/local/nxsp'
 import { assembleZip, prepareEntry, ZipReader, type DosTime } from '../../../src/zip'
+import { rawZip } from '../../zip/rawZip'
 import { fresh } from './chain'
 
 // Crafting files for the reader and checker tests: a good file unzipped into items, changed, and
@@ -71,3 +72,34 @@ export const reasonsOf = (read: NxspRead) =>
 
 export const readCrafted = async (change: (items: Item[]) => void | Item[]) =>
     readNxsp(await crafted(change))
+
+/**
+ * A file whose manifest and segments declare more than the history cap together (three segments
+ * declaring 180 MB each in the central directory), without holding it: the cap is checked from
+ * declared sizes before any part is read.
+ */
+export const overHistoryCap = async (file: Blob) => {
+    const { items } = await unzip(file)
+    const names = [1, 2, 3].map((n) => `history/segments/${n}.json`)
+    const project = jsonOf(items, 'project.json')
+    project.history.segments = names
+    setJson(items, 'project.json', project)
+    const segment = encoder.encode('{"entries":[],"roots":{},"nodes":{},"chunks":[]}')
+    const at = items.findIndex((item) => item.name === 'history/manifest.json')
+    const entries = items.map((item) => ({
+        name: item.name,
+        data: item.data,
+        method: item.method === 'store' ? (0 as const) : (8 as const),
+    }))
+    entries.splice(
+        at,
+        0,
+        ...names.map((name) => ({
+            name,
+            data: segment,
+            method: 8 as const,
+            central: { size: 180 * 1024 * 1024 },
+        })),
+    )
+    return rawZip(entries)
+}
