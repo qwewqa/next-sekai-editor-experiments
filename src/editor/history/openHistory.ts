@@ -87,7 +87,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
             restoreElevationAfterPeek(reopenAt)
         }
         await nextTick()
-        if (canFocusChart())
+        if (at === generation && canFocusChart())
             document
                 .querySelector<HTMLElement>('[data-peek-main] button')
                 ?.focus({ preventScroll: true })
