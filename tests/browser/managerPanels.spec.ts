@@ -1692,10 +1692,11 @@ test('closing Properties opened from a row’s inline button returns focus to th
     const dialog = page.locator('dialog[open]')
     for (const byButton of [false, true]) {
         await name.focus()
+        const properties = entryRow(panel, 'Other group').locator('.manager-inline-properties')
+        // Focus reveals the inline button before Tab can enter it.
+        await expect(properties).toBeVisible()
         await page.keyboard.press('Tab')
-        await expect(
-            entryRow(panel, 'Other group').locator('.manager-inline-properties'),
-        ).toBeFocused()
+        await expect(properties).toBeFocused()
         await page.keyboard.press('Enter')
         await expect(dialog).toContainText('Group Properties')
         if (byButton)
