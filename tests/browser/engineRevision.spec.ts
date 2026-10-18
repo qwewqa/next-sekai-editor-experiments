@@ -335,33 +335,23 @@ test('pasting copied data from an older revision with elevation never warns', as
 })
 
 /** Waits until startup has opened the session this load continues. */
-const opened = (page: Page) =>
-    expect
-        .poll(
-            () =>
-                page.evaluate(async () => {
-                    const url =
-                        performance
-                            .getEntriesByType('resource')
-                            .map((entry) => entry.name)
-                            .find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
-                        '/src/startup/gate.ts'
-                    const { startupGate } = (await import(
-                        url
-                    )) as typeof import('../../src/startup/gate')
-                    return startupGate.phase
-                }),
-            { timeout: 20_000 },
-        )
-        .toBe('done')
+const opened = waitForStartup
 
 // The old auto save migrates into a session at load (Part 1 §1.8): no dialog then, and a slot
-// this build can't read whole (a newer revision) stays, never migrated.
-for (const [label, revision, elevation] of [
-    ['older with elevation', undefined, 1.5],
-    ['older without elevation', 1, 0],
+// this build can't read whole (a newer revision) stays, never migrated. An older revision the
+// change can matter to says so at load, as Open warns (D18).
+const loadEvents = (page: Page) =>
+    page.evaluate(async () => {
+        const { loadEvents } =
+            (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+        return loadEvents.value.map((event) => event.kind)
+    })
+
+for (const [label, revision, elevation, warns] of [
+    ['older with elevation', undefined, 1.5, true],
+    ['older without elevation', 1, 0, false],
 ] as const) {
-    test(`migrating an auto save ${label} is silent, and its session continues on the next start`, async ({
+    test(`migrating an auto save ${label} ${warns ? 'warns once' : 'is silent'}, and its session continues on the next start`, async ({
         page,
     }) => {
         // The unversioned recovery format is the level data itself.
@@ -375,12 +365,14 @@ for (const [label, revision, elevation] of [
         await expectNoDialogs(page)
         await expect.poll(async () => (await current(page)).elevations).toEqual([0, elevation])
         expect(await storedRecovery(page)).toBeNull()
+        expect((await loadEvents(page)).includes('migratedRevision')).toBe(warns)
 
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await opened(page)
         await expectNoDialogs(page)
         await expect.poll(async () => (await current(page)).elevations).toEqual([0, elevation])
+        expect(await loadEvents(page)).not.toContain('migratedRevision')
     })
 }
 
@@ -399,6 +391,7 @@ test('an auto save from a newer revision stays as stored on every start, never m
         await expectNoDialogs(page)
         expect(await storedRecovery(page)).toBe(text)
         expect((await current(page)).elevations).toEqual([])
+        expect(await loadEvents(page)).toContain('migrationFailed')
     }
 })
 

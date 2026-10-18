@@ -42,6 +42,12 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                 deviceId: await readMeta(tx, 'deviceId'),
             })),
 
+        /** Whether `meta.migratedHashes` holds an old auto save's hash (§1.8). */
+        migratedBefore: (hash: string) =>
+            context.core.read(['meta'], async (tx) =>
+                ((await readMeta(tx, 'migratedHashes')) ?? []).includes(hash),
+            ),
+
         /** A session with its chain and stack, to open it. */
         readSession: (sessionId: string, scope?: CallScope) =>
             context.core.read(READ_STORES, (tx) => readSessionForOpen(tx, sessionId), scope),

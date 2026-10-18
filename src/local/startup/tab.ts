@@ -88,6 +88,9 @@ export const watchMarker = (current: () => string | undefined) => {
     clearMarker()
     if (watching || typeof window === 'undefined') return
     watching = true
+    // A page restored from the back-forward cache, or resumed after a freeze (§1.4.2).
+    window.addEventListener('pageshow', clearMarker)
+    document.addEventListener('resume', clearMarker)
     platform.onLifecycle((event) => {
         if (event === 'show') {
             clearMarker()

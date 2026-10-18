@@ -60,9 +60,9 @@ const clock = (time: number) => {
 const bytesOf = (data: string | Uint8Array) =>
     typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data)
 
-test('the gate is plain ES5', async (t) => {
-    const acorn = await import('acorn').catch(() => undefined)
-    if (!acorn) return t.skip('acorn is not installed')
+test('the gate is plain ES5', async () => {
+    // A dev dependency: without it this fails, never skips, since the check guards Safari 16.
+    const acorn = await import('acorn')
     // Parsing at ecmaVersion 5 rejects arrow functions, let, const, template strings and the rest.
     assert.doesNotThrow(() => acorn.parse(source, { ecmaVersion: 5, sourceType: 'script' }))
     assert.throws(() => acorn.parse('const a = () => 1', { ecmaVersion: 5 }))

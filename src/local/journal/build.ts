@@ -82,9 +82,16 @@ export const journalStack = (
     session: FlushSession,
     live: SlotStack<ModelSlot<PendingEntry>>,
 ): JournalStack => {
-    const { committed, window, durable } = session.stack
+    const { committed, durable } = session.stack
+    // An unstored continuation's committed slots are its parent's stored window (§1.3.6): the
+    // replay that applies it as its first write keeps them from there.
+    const parentWindow =
+        session.continuation && !session.stored && session.forkOf === undefined
+            ? { base: committed.first, length: committed.end - committed.first }
+            : undefined
+    const window = session.stack.window ?? parentWindow
     let keep = 0
-    if (window && durable) {
+    if (window && (durable || parentWindow)) {
         // Slots change only by a push, which replaces every slot above it: the shared prefix.
         const end = Math.min(committed.end, live.end, window.base + window.length)
         keep = committed.first

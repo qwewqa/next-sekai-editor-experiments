@@ -60,6 +60,7 @@ const recover = async (
             applyJournal: (batch) => tab.run(() => journal.applyJournal(batch)),
             keepRecovered: (item) => tab.run(() => journal.keepRecovered(item)),
             readMetaIds: () => tab.run(() => startup.readMetaIds()),
+            migratedBefore: (hash) => tab.run(() => startup.migratedBefore(hash)),
             migrateAutoSave: (batch) => tab.run(() => startup.migrateAutoSave(batch)),
         },
         status: core.status,
@@ -88,6 +89,8 @@ const reloadFromJournal = async (page: JournalPage, storage: MemoryStorage, sess
     assert.ok(found)
     const session = journalledSession(found)
     assert.ok(session)
+    // Loaded: the page goes on writing this key.
+    page.store.adopt(found)
     page.live.state = session.state
     return page.flusher.resumeJournalled({ ...session, label: () => session.label })
 }

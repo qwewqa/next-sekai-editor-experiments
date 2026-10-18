@@ -115,57 +115,53 @@ test.afterEach(async ({ page }) => {
     expect(await page.evaluate(() => window.loadingReview.errors)).toEqual([])
 })
 
-for (const command of ['open'] as const) {
-    test(`cancelled ${command} cannot replace edits made after its dialog is dismissed`, async ({
-        page,
-    }) => {
-        const data = await page.evaluate(async () => {
-            const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
-            const state = window.editorTest.history.state.value
-            return serializeToLevelData(
-                state.initialLife,
-                state.isDynamicStages,
-                state.bgm.offset,
-                state.store,
-                state.groups,
-                state.stages,
-            )
-        })
-        await page.evaluate(holdPreparation)
-        await page.evaluate(
-            async ({ command, bytes }) => {
-                if (command === 'open') {
-                    const { open } = await import('/src/editor/commands/open/index.ts')
-                    const file = new File([new Uint8Array(bytes)], 'incoming.gz', {
-                        type: 'application/octet-stream',
-                    })
-                    window.showOpenFilePicker = async () =>
-                        [{ getFile: async () => file }] as [FileSystemFileHandle]
-                    void open.execute()
-                }
-            },
-            { command, bytes: [...gzipSync(JSON.stringify(data))] },
+test('a cancelled open cannot replace edits made after its dialog is dismissed', async ({
+    page,
+}) => {
+    const data = await page.evaluate(async () => {
+        const { serializeToLevelData } = await import('/src/levelData/serialize.ts')
+        const state = window.editorTest.history.state.value
+        return serializeToLevelData(
+            state.initialLife,
+            state.isDynamicStages,
+            state.bgm.offset,
+            state.store,
+            state.groups,
+            state.stages,
         )
-        await expect.poll(() => page.evaluate(() => window.loadingReview.held)).toBe(true)
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-        await page.evaluate(() => {
-            const { history } = window.editorTest
-            history.pushState(() => 'Later edit', {
-                ...history.state.value,
-                levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
-            })
-            window.loadingReview.release()
-        })
-        await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
-        expect(
-            await page.evaluate(() => ({
-                filename: window.editorTest.history.state.value.levelInfo.title,
-                canUndo: window.editorTest.history.canUndo.value,
-            })),
-        ).toEqual({ filename: 'later-edit', canUndo: true })
     })
-}
+    await page.evaluate(holdPreparation)
+    await page.evaluate(
+        async ({ bytes }) => {
+            const { open } = await import('/src/editor/commands/open/index.ts')
+            const file = new File([new Uint8Array(bytes)], 'incoming.gz', {
+                type: 'application/octet-stream',
+            })
+            window.showOpenFilePicker = async () =>
+                [{ getFile: async () => file }] as [FileSystemFileHandle]
+            void open.execute()
+        },
+        { bytes: [...gzipSync(JSON.stringify(data))] },
+    )
+    await expect.poll(() => page.evaluate(() => window.loadingReview.held)).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.pushState(() => 'Later edit', {
+            ...history.state.value,
+            levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
+        })
+        window.loadingReview.release()
+    })
+    await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
+    expect(
+        await page.evaluate(() => ({
+            filename: window.editorTest.history.state.value.levelInfo.title,
+            canUndo: window.editorTest.history.canUndo.value,
+        })),
+    ).toEqual({ filename: 'later-edit', canUndo: true })
+})
 
 test('cancelled cover decoding cannot replace a newer selected image', async ({ page }) => {
     await page.evaluate(() => {

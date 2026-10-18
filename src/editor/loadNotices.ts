@@ -75,13 +75,39 @@ export const loadNoticeOf: Handlers = {
     }),
     migrated: (event) => ({
         order: LOAD_ORDER.migrated,
-        message: interpolate(() => load().autoSave, quoted(event.name)),
+        // Kept as a session of its own when another session opened (§1.4.3).
+        message: interpolate(
+            () => (event.opened ? load().autoSave : load().autoSaveKept),
+            quoted(event.name),
+        ),
+    }),
+    migratedRevision: () => ({
+        order: LOAD_ORDER.migratedRevision,
+        // Today's warning on an older engine revision (D18).
+        message: () => i18n.value.commands.open.revision.older,
     }),
     journalRecovered: (event) => ({
         order: LOAD_ORDER.journalRecovered,
         message: interpolate(() => load().journal, quoted(event.name)),
     }),
     journalLater: () => ({ order: LOAD_ORDER.journalLater, message: () => load().journalLater }),
+    journalFailed: () => ({ order: LOAD_ORDER.journalFailed, message: () => load().journalFailed }),
+    journalsFull: () => ({
+        order: LOAD_ORDER.journalsFull,
+        message: () => load().journalsFull,
+        action: localData,
+    }),
+    notOpened: ({ which, why }) => ({
+        order: LOAD_ORDER.notOpened,
+        message: () =>
+            which === 'reload'
+                ? why === 'later'
+                    ? load().sessionLater
+                    : load().sessionDamaged
+                : why === 'later'
+                  ? load().newestLater
+                  : load().newestDamaged,
+    }),
     openElsewhere: (event) => ({
         order: LOAD_ORDER.openElsewhere,
         message: interpolate(() => load().openElsewhere, quoted(event.name)),

@@ -59,12 +59,12 @@ export type JournalApplyResult =
     | { kind: 'covered' }
     /** Kept as a separate session in a new chain (§1.6.4: "could not be applied"). */
     | { kind: 'recovery'; sessionId: string; chainId: string; why: string }
-    /** Its chain needs a newer version, or is being deleted: left in place. */
+    /** Its chain needs a newer version: left in place. */
     | { kind: 'later'; why: string }
 
 export const JOURNAL_STORES = [...FLUSH_STORES, 'tombstones'] as const
 
-/** Why a journal of a chain marked for Delete stays: the sweep removes it (Part 0 §0.9.8). */
+/** Why a journal of a chain marked for Delete is kept as a recovery session, never swept unseen. */
 export const CHAIN_DELETING = 'its chain is being deleted'
 
 type Row = Record<string, unknown>
@@ -160,6 +160,10 @@ export const setJournalApplyHookForTests = (hook: typeof applyHook) => {
     applyHook = hook
 }
 
+/** A continuation starts after its parent's last entry (§1.6.11.2). */
+const continuedAfter = (parent: Row | undefined) =>
+    typeof parent?.updatedAt === 'number' ? parent.updatedAt + 1 : -Infinity
+
 export const writeJournalApply = async (
     tx: KvTx,
     batch: JournalApplyBatch,
@@ -198,7 +202,6 @@ export const writeJournalApply = async (
         const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
         if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
             return { kind: 'later', why: 'its chain needs a newer version' }
-        if (chain.deleting !== undefined) return { kind: 'later', why: CHAIN_DELETING }
     }
     if (session) {
         const range = KeyRange.bound([sessionId, -Infinity], [sessionId, Infinity])
@@ -210,25 +213,51 @@ export const writeJournalApply = async (
             return { kind: 'covered' }
     }
 
+    // An unstored continuation's journal (§1.3.6): applied as its first write would be, moving
+    // the head from its parent while the parent is still the head as it was continued.
+    const parentRow =
+        !session && chain && descriptor.origin === 'continued' && descriptor.parent
+            ? await tx.get('sessions', descriptor.parent.id)
+            : undefined
+    const parent = isRow(parentRow) ? parentRow : undefined
+    const continuing =
+        parent !== undefined &&
+        descriptor.parent !== undefined &&
+        chain?.head === descriptor.parent.id &&
+        parent.chainId === chainId &&
+        parent.lastSeq === descriptor.parent.uptoSeq &&
+        isReadableSessionVersion(parent.v)
+    // Its stack keeps slots of the parent's stored stack, copied as the first write copies them.
+    const source = continuing ? (descriptor.parent?.id ?? sessionId) : sessionId
+    const based = continuing ? parent : session
+
     let recoveryWhy: string | undefined
     if (tombstone !== undefined) recoveryWhy = 'its session was removed'
-    else if (chain && chain.head !== sessionId) recoveryWhy = 'its session was continued'
+    else if (chain?.deleting !== undefined) recoveryWhy = CHAIN_DELETING
+    else if (chain && chain.head !== sessionId && !continuing)
+        recoveryWhy = 'its session was continued'
     else if (session && !chain) recoveryWhy = 'its chain is missing'
     else if (force) recoveryWhy = force
-    else recoveryWhy = await stackProblem(tx, sessionId, session, stack)
+    else recoveryWhy = await stackProblem(tx, source, based, stack)
 
     // The stored slots an applied stack keeps in the block it changes.
-    const window = session?.stack as StackWindow | undefined
+    const window = based?.stack as StackWindow | undefined
     let kept: ReplaySlot[] = []
+    let copied: ReplaySlot[] = []
     let next: StackWindow = { base: 0, length: 1, index: 0 }
     if (!recoveryWhy && stack.keep > 0 && window) {
         const end = stack.head ? stack.keep + 1 : stack.keep
         next = storedWindow(end, stack.index, window.base)
         // The last block is rewritten: its kept slots, then the new head.
         const from = Math.max(next.base, blockOf(end - 1) * BLOCK_SLOTS)
-        const slots = await readSlots(tx, sessionId, from, stack.keep)
-        if (!slots) recoveryWhy = 'a kept block is missing'
-        else kept = slots
+        const slots = await readSlots(tx, source, from, stack.keep)
+        // A continuation has no blocks of its own: the window's earlier ones are copied too.
+        const before = continuing ? await readSlots(tx, source, next.base, from) : []
+        if (!slots || !before) recoveryWhy = 'a kept block is missing'
+        else {
+            kept = slots
+            copied = before
+        }
     }
 
     const nodesToPut = []
@@ -327,6 +356,15 @@ export const writeJournalApply = async (
         const first = end - slots.length
         await tx.put('stackBlocks', blockRow(sessionId, lastBlock, first, slots))
     }
+    for (let at = 0; at < copied.length;) {
+        const slot = next.base + at
+        const count = Math.min(BLOCK_SLOTS - (slot % BLOCK_SLOTS), copied.length - at)
+        await tx.put(
+            'stackBlocks',
+            blockRow(sessionId, blockOf(slot), slot, copied.slice(at, at + count)),
+        )
+        at += count
+    }
     await tx.delete(
         'stackBlocks',
         KeyRange.bound([sessionId, lastBlock], [sessionId, Infinity], true, false),
@@ -359,7 +397,10 @@ export const writeJournalApply = async (
                   chainId,
                   ...(descriptor.v === undefined ? {} : { v: descriptor.v }),
                   // Its own start, clamped as times from outside are, never after its entry.
-                  startedAt: Math.min(clampTime(descriptor.startedAt, now), time),
+                  startedAt: Math.min(
+                      Math.max(clampTime(descriptor.startedAt, now), continuedAfter(parent)),
+                      time,
+                  ),
                   origin: descriptor.origin,
                   ...(descriptor.parent ? { parent: descriptor.parent } : {}),
                   ...sessionFields,
@@ -386,7 +427,8 @@ export const writeJournalApply = async (
             ...common,
         })
     } else {
-        const fields: Row = { ...common }
+        // A continuation's first write moves the head to it (§1.3.1).
+        const fields: Row = { ...common, ...(continuing ? { head: sessionId } : {}) }
         // The identity fields only as one unit, and only when safe (§1.6.4 step 4): a write-back
         // whose binding flush the tab didn't live to commit, or a first Save's on a record with
         // no binding yet (D15), never over a binding a save picker took over since (D5).

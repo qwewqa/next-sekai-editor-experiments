@@ -40,8 +40,12 @@ export type ExportMemory = {
 
 export const exportMemory: ExportMemory = {}
 
+/** The stored target as read, while this tab has no handle for it: kept as it is. */
+let storedTarget: ExportChainFields['exportTarget'] | undefined
+
 /** Forgets the target and names, as a new chart does. */
 export const clearExportMemory = () => {
+    storedTarget = undefined
     delete exportMemory.target
     delete exportMemory.exportName
     delete exportMemory.sourceName
@@ -56,7 +60,7 @@ export type ExportChainFields = {
     exportTarget: { name: string; handle?: FileSystemFileHandle; disk: DiskState; opened?: true }
     exportName: string
     /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
-    partial: true
+    partialImport: true
 }
 
 let persist: ((fields: Partial<Record<keyof ExportChainFields, unknown>>) => void) | undefined
@@ -74,14 +78,15 @@ export const rememberExport = () => {
             ? {
                   name: target.name,
                   // The handle stays in this tab: a page that reads an OPFS handle back from
-                  // IndexedDB is killed in the browsers the specs run (Step 4's report), so the
-                  // stored target names the file and Export asks where after a reload.
+                  // IndexedDB is killed in the browsers the specs run (D16), so the stored
+                  // target names the file and Export asks where after a reload.
                   disk: target.disk,
                   ...(target.exported ? {} : { opened: true }),
               }
-            : undefined,
+            : // Read back without its handle: this tab never changed it, so it stays.
+              storedTarget,
         exportName,
-        partial: partial ? true : undefined,
+        partialImport: partial ? true : undefined,
     })
 }
 
@@ -101,11 +106,12 @@ export const restoreExportMemory = (chain: Record<string, unknown>) => {
                 disk: target.disk as DiskState,
                 exported: target.opened !== true,
             }
+        else storedTarget = target as ExportChainFields['exportTarget']
         // The opened file's own name, which the picker suggests (§1.4.8).
         if (target.opened === true) exportMemory.sourceName = target.name
     }
     if (typeof chain.exportName === 'string') exportMemory.exportName = chain.exportName
-    if (chain.partial === true) exportMemory.partial = true
+    if (chain.partialImport === true) exportMemory.partial = true
 }
 
 /** The name a picker suggests: "<name> (2)" for an unlinked copy, so it is not the original's. */

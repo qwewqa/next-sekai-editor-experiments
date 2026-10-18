@@ -929,13 +929,13 @@
       "discard": "Sil…",
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
-      "discardAutoSave": "Eski otomatik kaydı ({0}) silmek istiyor musunuz?",
+      "discardAutoSave": "Eski otomatik kaydetme verisini ({0}) silmek istiyor musunuz?",
       "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışmayı ({1}) silmek istiyor musunuz?",
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
         "legacy": "Eski kurtarma kopyası · {0}",
-        "autoSave": "Eski otomatik kayıt · {0}",
+        "autoSave": "Eski otomatik kaydetme · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "atLoad": "Bu yüklemede:"
       }
@@ -1167,13 +1167,21 @@
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
-    "migrationFailed": "Eski otomatik kayıt kurtarılamadı.",
-    "autoSave": "\"{0}\", otomatik kayıttan devam ettirildi.",
+    "migrationFailed": "Eski otomatik kaydetme verisi kurtarılamadı.",
+    "autoSave": "\"{0}\", otomatik kaydetmeden devam ettirildi.",
     "journal": "\"{0}\" üzerindeki son değişiklik kurtarıldı.",
     "journalLater": "Kurtarılan bir değişiklik için editörün daha yeni bir sürümü gerekiyor.",
     "openElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık.",
     "restoreAsCopy": "Kopya Olarak Geri Yükle",
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
+    "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
+    "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
+    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Sonraki yüklemede yeniden denenecek.",
+    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
+    "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
+    "sessionDamaged": "Bu oturum açılamadı.",
+    "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
+    "newestDamaged": "En son oturumunuz açılamadı.",
     "bgmNotLoaded": "BGM yüklenmedi.",
     "more": "ve {0} tane daha Yerel Veriler’de",
     "localData": "Yerel Veriler"
@@ -1828,7 +1836,7 @@
     "recovered": "Son değişiklik kurtarıldı",
     "recoveredDropped": "Son değişiklik kurtarıldı. {0} geri alma adımı korunmadı.",
     "continued": "Devam edildi",
-    "migrated": "Otomatik kayıttan kurtarıldı"
+    "migrated": "Otomatik kaydetmeden kurtarıldı"
   },
   "session": {
     "untitled": "Adsız · {0}"

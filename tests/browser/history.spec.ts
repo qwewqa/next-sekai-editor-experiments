@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
-import { installEditorFixture } from './editorFixture'
+import { installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
 // History across loads (Part 1 §1.3.8, §1.8, Step 4's spec migration): today's auto save is
@@ -11,25 +11,7 @@ import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 const prefix = 'sonolus-next-sekai-editor.'
 
 /** Waits until the page's startup has opened its session (the startup gate's state). */
-const opened = (page: Page) =>
-    expect
-        .poll(
-            () =>
-                page.evaluate(async () => {
-                    const url =
-                        performance
-                            .getEntriesByType('resource')
-                            .map((entry) => entry.name)
-                            .find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
-                        '/src/startup/gate.ts'
-                    const { startupGate } = (await import(
-                        url
-                    )) as typeof import('../../src/startup/gate')
-                    return startupGate.phase
-                }),
-            { timeout: 20_000 },
-        )
-        .toBe('done')
+const opened = waitForStartup
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -199,7 +181,9 @@ for (const format of ['compressed', 'unversioned'] as const) {
     })
 }
 
-test('an old auto save this build cannot read stays, never loaded', async ({ page }) => {
+test('an old auto save this build cannot read stays, never loaded, and the load says so', async ({
+    page,
+}) => {
     const future = JSON.stringify({
         version: 1,
         filename: 'future-chart',
@@ -221,6 +205,14 @@ test('an old auto save this build cannot read stays, never loaded', async ({ pag
     )
     const next = await newVisit(page)
     await expect(next.getByRole('dialog')).toHaveCount(0)
+    // Never a blank first load without a word (§1.8 step 3's aim): Local Data offers it.
+    expect(
+        await next.evaluate(async () => {
+            const { loadEvents } =
+                (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+            return loadEvents.value
+        }),
+    ).toContainEqual({ kind: 'migrationFailed', unreadable: true })
     expect(
         await next.evaluate(
             (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),

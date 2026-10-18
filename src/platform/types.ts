@@ -156,12 +156,17 @@ export type JournalLike = { readonly sessionId: string; readonly seq: number }
 
 /** The last-chance journal (Part 1 §1.6.4, §1.6.11.3), shaped for both platforms. */
 export type JournalStore = {
-    /** Synchronous; true only when written within the size limits and read back intact. */
+    /**
+     * Synchronous; true only when written within the size limits and read back intact. A key
+     * holding text this page neither wrote nor loaded is never replaced (§1.6.7).
+     */
     writeWhole: (journal: JournalLike) => boolean
     /** Every pending journal. */
     read: () => Promise<JournalFound[]>
-    /** Drops a session's journal once a strict committed flush covers its `seq`. */
+    /** Drops this page's journal of a session once a strict committed flush covers its `seq`. */
     clear: (sessionId: string, coveredSeq: number) => void
+    /** A journal this page loaded to go on writing (a same-tab reload’s own, §1.6.7). */
+    adopt: (found: JournalFound) => void
     /** Drops a journal once it's applied or kept elsewhere, only if it's still the text found. */
     remove: (found: JournalFound) => void
 }

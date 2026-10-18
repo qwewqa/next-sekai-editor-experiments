@@ -13,6 +13,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { installSelectLists } from './modals/form/selectLists'
 import { trackStartup } from './startup/gate'
+import { startsBlankForTests } from './startup/testHook'
 // After App: settings' import cycle must be entered from App's side.
 import './theme'
 
@@ -32,17 +33,13 @@ const starting = new Promise<void>((resolve, reject) => {
 
 // The startup gate (Part 1 §1.4.2) covers what the session's opening takes: the database, the
 // recovery order and loading the session. Under the fixture hook every load starts blank, at once.
-// Read here, not from the storage modules, which load after first paint (`nse.test.startBlank`).
-const startsBlank = (() => {
-    try {
-        return localStorage.getItem('nse.test.startBlank') !== null
-    } catch {
-        return false
-    }
-})()
+// Read here, not from the storage modules, which load after first paint.
+const startsBlank = startsBlankForTests()
 if (startsBlank) {
     trackStartup(Promise.resolve())
+    // The specs' fixture fails on it, so a broken startup never passes unseen.
     starting.catch((error: unknown) => {
         console.error(error)
+        window.nseStartupError = String(error)
     })
 } else trackStartup(starting)
