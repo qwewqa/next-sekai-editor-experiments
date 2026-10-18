@@ -10,17 +10,17 @@ export type Start = {
     fileSystemAccess?: boolean | 'opfs'
     /** Extra platform override fields, such as `activation`. */
     override?: Record<string, unknown>
-    /** Seeds a page that already has data: keeps OPFS and storage as they are. */
-    keep?: boolean
+    /** The storage worker's test flags, such as `forceQuota`. */
+    storage?: Record<string, unknown>
 }
 
 /** Opens the editor with stored sessions, the override's pickers, and no preview or sidebar. */
 export const start = async (
     page: Page,
-    { fileSystemAccess = 'opfs', override = {} }: Start = {},
+    { fileSystemAccess = 'opfs', override = {}, storage = {} }: Start = {},
 ) => {
-    await page.addInitScript(() => {
-        localStorage.setItem('nse.test.storage', '{}')
+    await page.addInitScript((storage) => {
+        localStorage.setItem('nse.test.storage', JSON.stringify(storage))
         localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
         localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
         localStorage.setItem(
@@ -28,7 +28,7 @@ export const start = async (
             JSON.stringify({ appVersion: '0.6.0', atTag: true }),
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
-    })
+    }, storage)
     await page.addInitScript(installTestPlatform, { fileSystemAccess, ...override })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

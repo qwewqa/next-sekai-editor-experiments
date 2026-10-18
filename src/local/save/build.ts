@@ -148,6 +148,11 @@ export type SaveOptions = {
     pending?: PendingInput
     /** The binding in memory, while storage is paused or full. */
     identity?: IdentityInput
+    /**
+     * The chain record as this tab holds it, for a chain storage holds nothing of (storing paused
+     * or unavailable since its start; the Save core's seam): the write is planned from `pending`.
+     */
+    unstored?: ChainRecord
     head?: HeadInput
     /** Media this tab holds that storage may not (the head's BGM, cover and preview). */
     media?: HeldMedia[]
@@ -395,7 +400,20 @@ export const planSave = async (
     const savedSession =
         target.kind === 'new' ? (target.sessionId ?? options.sessionId) : options.sessionId
     // The consistent cut: one read-only transaction.
-    const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId, savedSession))
+    const stored = await store
+        .read(CUT_STORES, (tx) => readCut(tx, chainId, savedSession))
+        .catch(() => undefined)
+    const cut: ChainCut | undefined =
+        stored ??
+        (options.unstored && options.pending
+            ? {
+                  chain: options.unstored,
+                  sessions: [],
+                  entries: new Map(),
+                  unreadable: 0,
+                  sessionId: savedSession,
+              }
+            : undefined)
     if (!cut) return refuse('noChain')
     const chain = chainOf(cut.chain, options.identity)
     const pending = options.pending

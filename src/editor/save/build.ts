@@ -157,11 +157,24 @@ export const buildOptions = async (
     const own = request.sessionId === undefined
     const pending = own ? pendingOf(env) : undefined
     const identity = own ? await identityOf(env) : undefined
+    // A chain storage holds nothing of yet is written from this tab's copy of its record.
+    const chain = env.session.chain
+    const unstored =
+        own && pending && !env.session.stored
+            ? {
+                  ...chain,
+                  chainId: env.session.chainId,
+                  docId: env.session.docId,
+                  lineageId: env.session.lineageId,
+              }
+            : undefined
     return {
         history: request.history,
         bgm: request.bgm,
         fileName: request.fileName,
         save: request.save,
+        ...(own ? { sessionId: env.session.id } : {}),
+        ...(unstored ? { unstored } : {}),
         context: { now: Date.now(), device: deviceForm(), appVersion: appVersion().appVersion },
         ...(request.sessionId === undefined ? {} : { sessionId: request.sessionId }),
         ...(pending ? { pending } : {}),
