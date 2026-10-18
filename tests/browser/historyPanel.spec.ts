@@ -11,7 +11,7 @@ const shoot = async (page: Page, name: string) => {
     if (process.env.NSE_SHOTS) await page.screenshot({ path: `${shots}/${name}.png` })
 }
 
-test.beforeEach(async ({ page }) => {
+const load = async (page: Page) => {
     await page.addInitScript((prefix) => {
         performance.setResourceTimingBufferSize(5000)
         localStorage.setItem(`${prefix}showPreview`, 'false')
@@ -23,6 +23,10 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
+}
+
+test.beforeEach(async ({ page }) => {
+    await load(page)
 })
 
 /** Makes edits named after their numbers, each raising the life. */
@@ -102,8 +106,8 @@ const openTab = async (page: Page, side: 'left' | 'right' | 'top' = 'right') => 
 }
 
 /** Gives the Timeline older entries, as a long chain would: today, yesterday and a week ago. */
-const seedOlder = (page: Page) =>
-    page.evaluate(async () => {
+const seedOlder = (page: Page, fixed?: number) =>
+    page.evaluate(async (fixed) => {
         const start =
             await window.editorTest.appImport<typeof import('../../src/local/start')>(
                 '/src/local/start.ts',
@@ -113,7 +117,7 @@ const seedOlder = (page: Page) =>
         }
         const call = worker.call.bind(worker)
         const hour = 3_600_000
-        const now = Date.now()
+        const now = fixed ?? Date.now()
         const at = (hoursAgo: number) => now - hoursAgo * hour
         let seq = 900
         const entry = (
@@ -151,7 +155,7 @@ const seedOlder = (page: Page) =>
             const page = result as { entries: unknown[] }
             return { ...page, entries: [...page.entries, ...older] }
         }
-    })
+    }, fixed)
 
 test.describe('the tab', () => {
     test('it is on its rail with the others, closed until opened, and its state is saved', async ({
@@ -760,9 +764,29 @@ test.describe('the Timeline', () => {
         await expect(page.locator('[data-history-pinned]')).toContainText(/^Today · /)
     })
 
-    test('rows get headers by age and keep their time to the second', async ({ page }) => {
+    test('rows get headers by age and keep their time to the second', async ({
+        browser,
+        page: first,
+    }) => {
+        // Today at 12:00:30 whatever the wall clock says, so the day headers never move.
+        const fixed = await first.evaluate(() => new Date().setHours(12, 0, 30, 0))
+        // A new context whose page clock and storage worker Date start at that time (as the
+        // long-history sample does), before anything loads.
+        const offset = fixed - Date.now()
+        const context = await browser.newContext()
+        await context.route(/storage\.worker\.ts\?worker_file/, async (route) => {
+            const response = await route.fetch()
+            const shim =
+                `{const R=Date;const off=${offset};` +
+                'class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off)}' +
+                'static now(){return R.now()+off}};self.Date=D}\n'
+            await route.fulfill({ response, body: shim + (await response.text()) })
+        })
+        await context.clock.install({ time: fixed })
+        const page = await context.newPage()
+        await load(page)
         await edit(page, 1, 'Fresh')
-        await seedOlder(page)
+        await seedOlder(page, fixed)
         await openTab(page)
         await expect(row(page, 'Moved notes')).toBeVisible()
         // Everything is label text at the rows' edge; the option's name has the full date.
@@ -774,6 +798,7 @@ test.describe('the Timeline', () => {
         await expect(moved.locator('.timeline-time')).toHaveText(/\d{1,2}:\d{2}:\d{2}/)
         await expect(list(page)).toContainText('Yesterday')
         await shoot(page, 'tab-desktop-aged')
+        await context.close()
     })
 
     test('removed and damaged rows always say why, and cannot be peeked', async ({ page }) => {
