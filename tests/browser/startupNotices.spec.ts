@@ -642,6 +642,46 @@ test.describe('Settings › Local Data', () => {
             ])
         })
 
+        test('Open puts a readable old auto save’s chart in this tab, and its key stays', async ({
+            page,
+            context,
+        }) => {
+            const slot = JSON.stringify({
+                bgmOffset: 0,
+                entities: [
+                    { archetype: 'Initialization', data: [] },
+                    {
+                        archetype: '#BPM_CHANGE',
+                        data: [
+                            { name: '#BEAT', value: 0 },
+                            { name: '#BPM', value: 150 },
+                        ],
+                    },
+                ],
+            })
+            await context.addInitScript((slot) => {
+                localStorage.setItem('sonolus-next-sekai-editor.autoSave.levelData', slot)
+            }, slot)
+            await visit(page)
+            await page.evaluate(async () => {
+                const { openSettings } =
+                    (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                void openSettings('localData')
+            })
+            const row = page.locator('[data-recovery-row="autoSave"]').filter({
+                hasNotText: 'cannot be opened',
+            })
+            await expect(row.getByRole('button')).toHaveText(['Open', 'Download', 'Discard…'])
+            await row.getByRole('button', { name: 'Open' }).click()
+            await expect(page.locator('#settings-localData')).toHaveCount(0)
+            await expect(page.getByText('Opened the old auto save.')).toBeVisible()
+            expect(
+                await page.evaluate(() =>
+                    localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),
+                ),
+            ).toBe(slot)
+        })
+
         test('Download hands the file over', async ({ page, context }) => {
             const later = await earlierVisit(page, context)
             await later.evaluate(async () => {

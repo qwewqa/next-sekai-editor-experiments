@@ -148,16 +148,8 @@ const isWindow = (value: unknown): value is StackWindow =>
     (value.base as number) <= (value.index as number) &&
     (value.index as number) < (value.base as number) + (value.length as number)
 
-/**
- * Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload.
- * `appVersion` is this build's: a session it wrote last holds no entry kind it doesn't know, so
- * its entries aren't all read again.
- */
-export const readSessionForOpen = async (
-    tx: KvTx,
-    sessionId: string,
-    appVersion?: string,
-): Promise<SessionRead> => {
+/** Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload. */
+export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<SessionRead> => {
     if ((await tx.getKey('tombstones', sessionId)) !== undefined) return { kind: 'deleted' }
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) return { kind: 'missing' }
@@ -169,11 +161,10 @@ export const readSessionForOpen = async (
     const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
     if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
         return { kind: 'later', why: 'its chain needs a newer version' }
-    if (appVersion === undefined || session.appVersion !== appVersion) {
-        const entries = await entriesOf(tx, sessionId)
-        if (entries.some((row) => !isKnownEntryKind(row.kind)))
-            return { kind: 'later', why: 'its session needs a newer version' }
-    }
+    // Every entry, whoever wrote it: an unknown kind is never continued (§1.6.11.8).
+    const entries = await entriesOf(tx, sessionId)
+    if (entries.some((row) => !isKnownEntryKind(row.kind)))
+        return { kind: 'later', why: 'its session needs a newer version' }
 
     let stack: StackRead | undefined
     if (isWindow(session.stack)) stack = await readStored(tx, sessionId, session.stack)
@@ -209,13 +200,13 @@ export type NewestRead = {
  * The most recent session (§1.4.2): the head of the chain record with the newest `updatedAt`,
  * skipping chains being deleted and chains this build can't read or open.
  */
-export const readNewestSession = async (tx: KvTx, appVersion?: string): Promise<NewestRead> => {
+export const readNewestSession = async (tx: KvTx): Promise<NewestRead> => {
     const chains = await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })
     let skipped: NewestRead['skipped']
     for (const { value } of chains) {
         if (!isRow(value) || value.deleting !== undefined || typeof value.head !== 'string')
             continue
-        const read = await readSessionForOpen(tx, value.head, appVersion)
+        const read = await readSessionForOpen(tx, value.head)
         if (read.kind === 'open') return { read, ...(skipped ? { skipped } : {}) }
         if (!skipped && (read.kind === 'later' || read.kind === 'damaged')) skipped = read.kind
     }

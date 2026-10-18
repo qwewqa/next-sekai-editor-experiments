@@ -1175,6 +1175,7 @@
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
+    "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法儲存已還原的變更。下次載入時將重試。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",

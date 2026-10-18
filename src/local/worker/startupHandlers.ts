@@ -50,19 +50,11 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
 
         /** A session with its chain and stack, to open it. */
         readSession: (sessionId: string, scope?: CallScope) =>
-            context.core.read(
-                READ_STORES,
-                (tx) => readSessionForOpen(tx, sessionId, context.core.appVersion),
-                scope,
-            ),
+            context.core.read(READ_STORES, (tx) => readSessionForOpen(tx, sessionId), scope),
 
         /** The most recent session a new visit continues (§1.4.2). */
         readNewestSession: (_: undefined, scope?: CallScope) =>
-            context.core.read(
-                READ_STORES,
-                (tx) => readNewestSession(tx, context.core.appVersion),
-                scope,
-            ),
+            context.core.read(READ_STORES, readNewestSession, scope),
 
         /** The bindings of sessions open in other tabs, for the bound-elsewhere check. */
         readBindings: (sessionIds: string[]) =>

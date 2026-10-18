@@ -1175,6 +1175,7 @@
         "restoreAsCopy": "Restore as a Copy",
         "sessionDeleted": "This session was deleted in another tab or window.",
         "autoSaveKept": "Kept \"{0}\" from auto save as a separate session.",
+        "autoSaveOpened": "Opened the old auto save.",
         "journalFailed": "A recovered change could not be stored. The next load tries again.",
         "journalsFull": "Unsaved work from earlier visits is filling this browser’s space.",
         "sessionLater": "This session needs a newer version of the editor.",

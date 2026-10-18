@@ -88,12 +88,21 @@ const download = async (item: RecoveryItem) => {
     }
 }
 
-// Open replaces what this tab shows, so it asks first when that would lose work.
-const open = async (item: RecoveryItem & { kind: 'journal' }) => {
+// Open replaces what this tab shows, so it asks first when that would lose work. The old auto
+// save opens when this build reads it (§1.8 step 5); its key stays until discarded.
+const open = async (item: RecoveryItem & { kind: 'journal' | 'autoSave' }) => {
     if (!(await confirmSwitch())) return
-    if (!(await api()).openRecoveryJournal(item)) return
+    const recovery = await api()
+    if (
+        item.kind === 'journal'
+            ? !recovery.openRecoveryJournal(item)
+            : !recovery.openRecoveryAutoSave(item)
+    )
+        return
     closeSettings()
-    notifyLeft(() => i18n.value.load.fallback)
+    notifyLeft(() =>
+        item.kind === 'journal' ? i18n.value.load.fallback : i18n.value.load.autoSaveOpened,
+    )
 }
 
 // Downloading is the safe default, and removes nothing (§1.4.14).
@@ -143,7 +152,9 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
                 <span class="min-w-0 flex-1 basis-60">{{ label(item) }}</span>
                 <span class="flex flex-wrap gap-2">
                     <button
-                        v-if="item.kind === 'journal'"
+                        v-if="
+                            item.kind === 'journal' || (item.kind === 'autoSave' && item.readable)
+                        "
                         type="button"
                         :class="buttonClass"
                         data-recovery-open
