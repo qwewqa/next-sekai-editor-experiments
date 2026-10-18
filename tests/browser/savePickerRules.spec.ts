@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted } from '../local/nxsp/craft'
-import { waitForStartup } from './editorFixture'
+import { installTestPlatform, waitForStartup } from './editorFixture'
 import {
     chainById,
     chainOf,
@@ -406,4 +406,56 @@ test('Export’s picker: the chain’s own file that could not be written again 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
     await expect(dialog).not.toContainText('is not level data')
+})
+
+test('in safe mode Save writes from this tab, refusing only to take over another session’s file', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+
+    const safe = await context.newPage()
+    await safe.addInitScript(() => {
+        localStorage.setItem('nse.test.storage', '{}')
+        localStorage.setItem(
+            'nse.test.version',
+            JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+        )
+    })
+    await safe.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
+    await safe.goto('/?safe')
+    await expect(safe.locator('[data-safe-bar]')).toBeVisible()
+    await waitForStartup(safe)
+    await edit(safe, 1)
+    await pressSave(safe)
+    await submitSave(safe, 'melt')
+    await expect(notice(safe).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()
+    const first = await projectOf(safe, 'melt.nxsp')
+    // Bound in memory: the next Save writes in place.
+    await edit(safe, 2)
+    await pressSave(safe)
+    await expect
+        .poll(async () => ((await projectOf(safe, 'melt.nxsp')).revision as Row).parent)
+        .toBe((first.revision as Row).id)
+
+    // Another session's file needs a stored revocation: refused (R11).
+    await safe.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs)
+    })
+    await queuePicks(safe, ['coconut.nxsp'])
+    await submitSave(safe, undefined, 'Save As')
+    await expect(safe.getByRole('dialog')).toContainText(
+        'Not saved. Files cannot be replaced in safe mode.',
+    )
+    // The owner keeps its binding, and its next Save fills the emptied file (R9).
+    await b.bringToFront()
+    await edit(b, 4)
+    await pressSave(b)
+    await expect
+        .poll(async () => (await readFile(b, 'coconut.nxsp'))?.length ?? 0, { timeout: 10_000 })
+        .toBeGreaterThan(0)
+    await expect(b.getByRole('dialog')).toHaveCount(0)
 })
