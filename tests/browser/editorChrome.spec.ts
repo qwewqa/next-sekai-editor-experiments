@@ -198,7 +198,7 @@ test.describe('shortcuts', () => {
         await page.mouse.click(400, 300)
         await logDefaults(page)
         for (const key of ['/', "'", 'Backspace', 'l', 'Control+s']) await page.keyboard.press(key)
-        // Unbound keys keep their defaults; Ctrl+S runs the Slide tool instead of saving the page.
+        // Unbound keys keep their defaults; Ctrl+S is Save's (§1.4.6) instead of saving the page.
         expect(await keyLog(page)).toEqual([
             '/:true',
             "':true",
@@ -206,6 +206,10 @@ test.describe('shortcuts', () => {
             'l:false',
             'Control+s:true',
         ])
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await keyLog(page)
 
         // A field outside docks and dialogs still receives its characters.
         await page.evaluate(() => document.body.append(document.createElement('input')))

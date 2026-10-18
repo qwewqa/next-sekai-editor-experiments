@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { crafted } from '../local/nxsp/craft'
 import { waitForStartup } from './editorFixture'
 import {
     chainOf,
@@ -279,6 +280,7 @@ test('with storing paused, a takeover keeps its revocation in localStorage; the 
 
     // The next start applies it, after the journals and before anything else.
     await b.reload()
+    await waitForStartup(b)
     await expect
         .poll(async () => {
             const { chains } = await rows(b, ['chains'])
@@ -436,4 +438,26 @@ test('B frozen while A takes its file: once shown, B’s label goes and its Save
     await expect(saveDialog(b)).toContainText(
         '"coconut.nxsp" was replaced from another tab or window.',
     )
+})
+
+test('a partial open’s file picked in the project picker is refused and put back', async ({
+    page,
+}) => {
+    await start(page)
+    const file = await crafted((items) => {
+        items.push({ name: 'video/clip.mp4', data: new Uint8Array([1, 2, 3]), method: 'store' })
+    })
+    const bytes = [...new Uint8Array(await file.arrayBuffer())]
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await queuePicks(page, ['coconut.nxsp'])
+    await page.keyboard.press('o')
+    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+    await edit(page, 3)
+    await queuePicks(page, ['coconut.nxsp'])
+    await pressSave(page)
+    await submitSave(page)
+    await expect(page.getByRole('dialog')).toContainText(
+        'Not saved. "coconut.nxsp" could not be kept.',
+    )
+    expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
 })
