@@ -493,3 +493,31 @@ test('composed stages outline attached ticks and zero-width placeholders', async
     expect(result.marks).toBe(3)
     await page.screenshot({ path: `${shots}/composed-attached-tick-connector.png` })
 })
+
+test('Show Change reaches a removed event outside the visible lanes', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { fixtures, history, appImport, view, settings } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const before = structuredClone(fixtures.events)
+        before.timeScales = [{ ...before.timeScales[0]!, editorLane: -30 }]
+        history.pushState(() => 'Off-lane event', createState(before, 0))
+        history.pushState(
+            () => 'Removed off-lane event',
+            createState({ ...before, timeScales: [] }, 0),
+        )
+        view.time = 2.25
+        view.lane = 0
+        settings.maxScrollX = 64
+    })
+    await previewLatest(page)
+    await page.evaluate(async () => {
+        const { showNearestChange } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/changes')
+        >('/src/editor/history/changes.ts')
+        showNearestChange()
+    })
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.lane)).toBe(-30)
+    await page.screenshot({ path: `${shots}/removed-off-lane-event.png` })
+})
