@@ -39,3 +39,18 @@ export function samplesPlugin(root) {
         },
     }
 }
+
+/** The hand-run stored-handle probe (dev/probe/handles.html), served at /probe/handles.html; serve only. */
+export function probePlugin(root) {
+    return {
+        name: 'dev-probe',
+        apply: 'serve',
+        configureServer(server) {
+            server.middlewares.use('/probe/handles.html', (req, res) => {
+                res.setHeader('Content-Type', 'text/html; charset=utf-8')
+                res.setHeader('Cache-Control', 'no-store')
+                res.end(readFileSync(join(root, 'dev/probe/handles.html')))
+            })
+        },
+    }
+}

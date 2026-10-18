@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Stored File Handle Probe</title>
+        <style>
+            body { font: 15px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+            button { font: inherit; margin: 0 0.5rem 0.5rem 0; padding: 0.3rem 0.8rem; }
+            pre { background: #eee; color: #111; padding: 0.75rem; white-space: pre-wrap; min-height: 6rem; }
+        </style>
+    </head>
+    <body>
+        <h1>Stored File Handle Probe</h1>
+        <p>Dev server only. Marker: nse-handle-probe.</p>
+        <ol>
+            <li>Pick a File, then Store. The log should say the handle was stored.</li>
+            <li>Reload this page (F5). If the tab closes or crashes, reading a stored handle is not safe in this browser.</li>
+            <li>Read Back. The log shows the file name and size, the permission state, and asks before writing a line to the file.</li>
+        </ol>
+        <p>Also try: close the whole browser, open it again, open this page, and Read Back.</p>
+        <button id="pick">Pick a File</button>
+        <button id="store">Store</button>
+        <button id="read">Read Back</button>
+        <pre id="log" aria-live="polite"></pre>
+        <script>
+            const log = document.getElementById('log')
+            const say = (line) => {
+                log.textContent += `${line}\n`
+            }
+            const database = () =>
+                new Promise((resolve, reject) => {
+                    const request = indexedDB.open('nse-handle-probe', 1)
+                    request.onupgradeneeded = () => request.result.createObjectStore('handles')
+                    request.onsuccess = () => resolve(request.result)
+                    request.onerror = () => reject(request.error)
+                })
+            const request = (r) =>
+                new Promise((resolve, reject) => {
+                    r.onsuccess = () => resolve(r.result)
+                    r.onerror = () => reject(r.error)
+                })
+            let picked
+
+            document.getElementById('pick').onclick = async () => {
+                try {
+                    if (!window.showOpenFilePicker) return say('This browser has no file picker. Nothing to probe here.')
+                    ;[picked] = await showOpenFilePicker()
+                    say(`Picked "${picked.name}". Now press Store.`)
+                } catch (error) {
+                    say(`Pick failed: ${error}`)
+                }
+            }
+            document.getElementById('store').onclick = async () => {
+                try {
+                    if (!picked) return say('Pick a file first.')
+                    const db = await database()
+                    const tx = db.transaction('handles', 'readwrite')
+                    tx.objectStore('handles').put(picked, 'handle')
+                    await new Promise((resolve, reject) => {
+                        tx.oncomplete = resolve
+                        tx.onerror = () => reject(tx.error)
+                    })
+                    say(`Stored the handle for "${picked.name}". Now reload the page, then press Read Back.`)
+                } catch (error) {
+                    say(`Store failed: ${error}`)
+                }
+            }
+            document.getElementById('read').onclick = async () => {
+                try {
+                    const db = await database()
+                    const handle = await request(db.transaction('handles').objectStore('handles').get('handle'))
+                    if (!handle) return say('No stored handle. Pick a File and Store first.')
+                    say(`Read the handle back: "${handle.name}", kind ${handle.kind}. The page survived the read.`)
+                    let state = await handle.queryPermission({ mode: 'readwrite' })
+                    say(`Permission: ${state}.`)
+                    if (state !== 'granted') {
+                        state = await handle.requestPermission({ mode: 'readwrite' })
+                        say(`Permission after asking: ${state}.`)
+                    }
+                    if (state !== 'granted') return say('Permission was not granted, so the file is not read.')
+                    const file = await handle.getFile()
+                    say(`File "${file.name}", ${file.size} bytes.`)
+                    if (!confirm(`Write a line to "${file.name}"? This changes the file.`)) return say('No line written.')
+                    const writable = await handle.createWritable({ keepExistingData: true })
+                    await writable.seek(file.size)
+                    await writable.write(`\nnse-handle-probe ${new Date().toISOString()}\n`)
+                    await writable.close()
+                    say(`Wrote a line. The file is now ${(await handle.getFile()).size} bytes.`)
+                } catch (error) {
+                    say(`Read Back failed: ${error}`)
+                }
+            }
+        </script>
+    </body>
+</html>

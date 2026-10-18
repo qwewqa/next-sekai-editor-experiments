@@ -7,7 +7,7 @@ import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
-import { samplesPlugin } from './scripts/samples.mjs'
+import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
 import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
 import { appVersion } from './scripts/version.mjs'
 import { PRODUCT_NAME } from './src/product'
@@ -52,6 +52,8 @@ export default defineConfig(({ mode }) => ({
         vue(),
         // Dev only: the nse-next samples for `?seedSample=` (scripts/samples.mjs).
         samplesPlugin(root),
+        // Dev only: the stored-handle probe page at /probe/handles.html.
+        probePlugin(root),
         {
             // The pre-paint theme script in index.html reads the same themes and key as the app.
             name: 'theme-script',

@@ -394,7 +394,7 @@ async function checkPages(directory, files, manifest) {
 async function checkBundles(directory, files) {
     for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
         const bytes = await regularFile(join(directory, file))
-        for (const marker of ['__TAURI_INTERNALS__', 'seedSample'])
+        for (const marker of ['__TAURI_INTERNALS__', 'seedSample', 'nse-handle-probe'])
             if (bytes.includes(marker)) throw new Error(`Release contains ${marker}: ${file}`)
     }
 }

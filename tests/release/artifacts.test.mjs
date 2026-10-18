@@ -367,6 +367,13 @@ test('the dev-only sample seeder cannot be in a web release', async (t) => {
     await assert.rejects(checkRelease(directory), /seedSample: assets\/index-12345678.js/)
 })
 
+test('the dev-only handle probe cannot be in a web release', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    await write(directory, 'assets/index-12345678.js', 'document.title = "nse-handle-probe"')
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /nse-handle-probe: assets.index-12345678.js/)
+})
+
 test('every file in public/ is staged by the release build, except the preview packages', async (t) => {
     const directory = await temporary(t)
     await stageReleasePublic(root, directory)
