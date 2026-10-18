@@ -1887,6 +1887,7 @@
     "chooseAudio": "Choisir l’audio…",
     "newLevel": "Nouveau niveau",
     "reopen": "Rouvrir \"{0}\"",
+    "reopenUntitled": "Rouvrir la session du {0}",
     "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
     "restoredTo": "Restauré à {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",

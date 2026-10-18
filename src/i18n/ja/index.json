@@ -1887,6 +1887,7 @@
     "chooseAudio": "音声を選択…",
     "newLevel": "新しい譜面",
     "reopen": "「{0}」を再び開く",
+    "reopenUntitled": "{0}のセッションを再び開く",
     "readOnlyPeek": "履歴の表示中は読み取り専用です",
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",

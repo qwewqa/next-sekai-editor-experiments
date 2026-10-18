@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { isDirty } from '../history'
 import { i18n } from '../i18n'
+import { formatDateTime } from '../i18n/when'
 import { previousSession } from '../local/startup/events'
 import { showChoice } from '../modals/choice'
 import { setLeaveSafeModeGuard } from '../safe'
@@ -62,11 +63,18 @@ type Left = NonNullable<typeof previousSession.value>
 // Reopen clears the session it opens, which is no sign that there was nothing to reopen.
 let reopening = false
 
+// A session without a name of its own is named by its date, which takes no quotes.
 const reopenAction = (left: Left): NoticeAction => ({
-    label: interpolate(
-        () => i18n.value.notice.reopen,
-        () => shownName(left.name),
-    ),
+    label:
+        left.name.name.kind === 'date'
+            ? interpolate(
+                  () => i18n.value.notice.reopenUntitled,
+                  () => formatDateTime(left.name.at),
+              )
+            : interpolate(
+                  () => i18n.value.notice.reopen,
+                  () => shownName(left.name),
+              ),
     run: () => {
         void reopenPrevious()
     },

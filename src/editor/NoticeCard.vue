@@ -191,7 +191,7 @@ const closeClass =
                 >
                     <p
                         class="min-w-0 whitespace-break-spaces py-1.5 pr-3"
-                        :class="line.action ? 'mr-auto max-w-[22rem] flex-[1_1_auto]' : 'flex-1'"
+                        :class="line.action ? 'mr-auto max-w-[22rem] flex-[1_1_12rem]' : 'flex-1'"
                     >
                         {{ line.message() }}
                     </p>
@@ -212,7 +212,7 @@ const closeClass =
                     class="min-w-0 whitespace-break-spaces py-1.5"
                     :class="
                         notice.action
-                            ? 'mr-auto max-w-[22rem] flex-[1_1_auto]'
+                            ? 'mr-auto max-w-[22rem] flex-[1_1_12rem]'
                             : 'max-w-[32rem] flex-1'
                     "
                 >
