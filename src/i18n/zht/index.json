@@ -1896,7 +1896,7 @@
     "savedWithoutMediaLarge": "已儲存到 {0}，未包含媒體",
     "someStepsNotKept": "已儲存到 {0}。部分較早的步驟未保留。",
     "someStepsNotKeptLine": "部分較早的步驟未保留。",
-    "tookOver": "已儲存到 {0}。其先前的工作在「最近的工作階段」中。",
+    "tookOver": "已儲存到 {0}。其先前的工作在「最近工作階段」中。",
     "noChanges": "自下載 {0} 以來沒有變更",
     "noChangesSaved": "自儲存 {0} 以來沒有變更",
     "noChangesOpened": "自開啟 {0} 以來沒有變更",
@@ -1932,7 +1932,7 @@
     "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
     "openOtherNote": "你的變更會保持未儲存。",
-    "replaceNote": "磁碟上的版本會移到「最近的工作階段」。",
+    "replaceNote": "磁碟上的版本會移到「最近工作階段」。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
     "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
@@ -2010,8 +2010,8 @@
       "openCopy": "開啟副本"
     },
     "unsavedChanges": "已開啟 {0}。你在 {1} 對它有未儲存的變更。",
-    "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在最近工作階段中。",
-    "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在最近工作階段中。",
+    "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
+    "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   },
