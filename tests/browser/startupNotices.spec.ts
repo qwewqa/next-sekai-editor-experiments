@@ -230,10 +230,12 @@ test.describe('load notices in the start-up pill', () => {
             'Recovered your last change to "Coconut (Master)".',
         )
         await expect(lines.nth(4)).toContainText('and 2 more in Local Data')
-        // The first action is Local Data, then the last line's.
+        // Local Data is offered once, on the last line, and Alt+N reaches it.
+        await expect(pill(page).getByRole('button', { name: 'Local Data' })).toHaveCount(1)
+        await expect(lines.nth(4).getByRole('button', { name: 'Local Data' })).toBeVisible()
         await page.keyboard.press('Alt+KeyN')
-        await expect(pill(page).getByRole('button', { name: 'Local Data' }).first()).toBeFocused()
-        await pill(page).getByRole('button', { name: 'Local Data' }).last().click()
+        await expect(pill(page).getByRole('button', { name: 'Local Data' })).toBeFocused()
+        await pill(page).getByRole('button', { name: 'Local Data' }).click()
         // Settings opens scrolled to Local Data with its heading focused.
         const heading = page.locator('#settings-localData [data-settings-heading]')
         await expect(heading).toBeFocused()
@@ -444,7 +446,7 @@ test.describe('Reopen', () => {
         await run(page, 'reset')
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('New level')
-        await expect(notice.getByRole('button', { name: /^Reopen "Untitled · / })).toBeVisible()
+        await expect(notice.getByRole('button', { name: /^Reopen Session from / })).toBeVisible()
         expect(await lifeOf(page)).toBe(1000)
         await notice.getByRole('button', { name: /^Reopen / }).click()
         await expect.poll(() => lifeOf(page)).toBe(990)
