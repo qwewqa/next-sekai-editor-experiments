@@ -31,7 +31,9 @@
         "loading": "ファイルを読み込み中…",
         "decoding": "音源をデコード中…",
         "generating": "波形を生成中…"
-      }
+      },
+      "fileChanged": "BGMファイルを変更しました",
+      "offsetSet": "BGMのオフセットを{0}秒に設定しました"
     },
     "brush": {
       "title": "ブラシ",
@@ -186,8 +188,7 @@
           "title": "グループの設定を編集",
           "modal": {
             "title": "グループの設定",
-            "forceNoteSpeed": "ノーツ速度を固定",
-            "edited": "{0} グループの設定を編集しました"
+            "forceNoteSpeed": "ノーツ速度を固定"
           }
         },
         "delete": "グループを削除",
@@ -205,8 +206,7 @@
         "properties": {
           "title": "ステージの設定を編集",
           "modal": {
-            "title": "ステージの設定",
-            "edited": "{0} ステージの設定を編集しました"
+            "title": "ステージの設定"
           }
         },
         "delete": "ステージを削除",
@@ -286,10 +286,10 @@
     },
     "properties": {
       "title": "譜面設定",
-      "changed": "譜面設定を変更しました",
       "modal": {
         "life": "初期ライフ"
-      }
+      },
+      "lifeSet": "初期ライフを{0}に設定しました"
     },
     "redo": {
       "title": "やり直す",
@@ -1056,8 +1056,7 @@
       }
     },
     "offset": {
-      "title": "オフセット",
-      "changed": "BGMのオフセットを変更しました"
+      "title": "オフセット"
     },
     "paste": {
       "title": "ペースト",
@@ -1754,7 +1753,9 @@
       "deleteSelectedFoldersMessage": "選択した{0}個のフォルダーと{1}個のグループ、その{2}個のオブジェクトを削除しますか？",
       "duplicated": "{0} グループを複製しました",
       "duplicatedSelected": "選択した{0}個のグループを複製しました",
-      "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のグループを複製しました"
+      "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のグループを複製しました",
+      "propertySet": "グループ{0}の{1}を{2}に設定しました",
+      "propertyCleared": "グループ{0}の{1}を解除しました"
     },
     "stages": {
       "deleteFolder": "フォルダーとステージを削除…",
@@ -1777,7 +1778,8 @@
       "deleteSelectedFoldersMessage": "選択した{0}個のフォルダーと{1}個のステージ、その{2}個のオブジェクトを削除しますか？",
       "duplicated": "{0} ステージを複製しました",
       "duplicatedSelected": "選択した{0}個のステージを複製しました",
-      "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のステージを複製しました"
+      "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のステージを複製しました",
+      "propertySet": "ステージ{0}の{1}を{2}に設定しました"
     },
     "properties": {
       "sections": "プロパティのセクション",

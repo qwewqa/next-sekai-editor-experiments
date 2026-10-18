@@ -31,7 +31,9 @@
         "loading": "Dosya yükleniyor…",
         "decoding": "Ses çözümleniyor…",
         "generating": "Dalga formu oluşturuluyor…"
-      }
+      },
+      "fileChanged": "Arka plan müziği dosyası değiştirildi",
+      "offsetSet": "Arka plan müziğinin zaman kayması {0} sn olarak ayarlandı"
     },
     "brush": {
       "title": "Fırça",
@@ -186,8 +188,7 @@
           "title": "Grup özelliklerini düzenle",
           "modal": {
             "title": "Grup Özellikleri",
-            "forceNoteSpeed": "Nota Hızını Sabitle",
-            "edited": "{0} grubunun özellikleri düzenlendi"
+            "forceNoteSpeed": "Nota Hızını Sabitle"
           }
         },
         "delete": "Grubu sil",
@@ -205,8 +206,7 @@
         "properties": {
           "title": "Sahne özelliklerini düzenle",
           "modal": {
-            "title": "Sahne Özellikleri",
-            "edited": "{0} sahnesinin özellikleri düzenlendi"
+            "title": "Sahne Özellikleri"
           }
         },
         "delete": "Sahneyi sil",
@@ -286,10 +286,10 @@
     },
     "properties": {
       "title": "Seviye Özellikleri",
-      "changed": "Seviye özellikleri değiştirildi",
       "modal": {
         "life": "Başlangıç Canı"
-      }
+      },
+      "lifeSet": "Başlangıç canı {0} olarak ayarlandı"
     },
     "redo": {
       "title": "Yeniden Yap",
@@ -1056,8 +1056,7 @@
       }
     },
     "offset": {
-      "title": "Zaman Kayması",
-      "changed": "Arka plan müziğinin zaman kayması değiştirildi"
+      "title": "Zaman Kayması"
     },
     "paste": {
       "title": "Yapıştır",
@@ -1754,7 +1753,9 @@
       "deleteSelectedFoldersMessage": "Seçilen klasörler ({0}), gruplar ({1}) ve nesneleri ({2}) silinsin mi?",
       "duplicated": "{0} grubu çoğaltıldı",
       "duplicatedSelected": "Seçilen gruplar ({0}) çoğaltıldı",
-      "duplicatedSelectedFolders": "Seçilen klasörler ({0}) ve gruplar ({1}) çoğaltıldı"
+      "duplicatedSelectedFolders": "Seçilen klasörler ({0}) ve gruplar ({1}) çoğaltıldı",
+      "propertySet": "{0} grubunun {1} değeri {2} olarak ayarlandı",
+      "propertyCleared": "{0} grubunun {1} değeri kaldırıldı"
     },
     "stages": {
       "deleteFolder": "Klasörü ve sahneleri sil…",
@@ -1777,7 +1778,8 @@
       "deleteSelectedFoldersMessage": "Seçilen klasörler ({0}), sahneler ({1}) ve nesneleri ({2}) silinsin mi?",
       "duplicated": "{0} sahnesi çoğaltıldı",
       "duplicatedSelected": "Seçilen sahneler ({0}) çoğaltıldı",
-      "duplicatedSelectedFolders": "Seçilen klasörler ({0}) ve sahneler ({1}) çoğaltıldı"
+      "duplicatedSelectedFolders": "Seçilen klasörler ({0}) ve sahneler ({1}) çoğaltıldı",
+      "propertySet": "{0} sahnesinin {1} değeri {2} olarak ayarlandı"
     },
     "properties": {
       "sections": "Özellik bölümleri",

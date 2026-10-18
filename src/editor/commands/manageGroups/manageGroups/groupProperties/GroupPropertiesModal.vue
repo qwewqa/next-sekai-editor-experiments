@@ -7,7 +7,7 @@ import { i18n } from '../../../../../i18n'
 import NameField from '../../../../../modals/form/NameField.vue'
 import OptionalNumberField from '../../../../../modals/form/OptionalNumberField.vue'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
-import { interpolate } from '../../../../../utils/interpolate'
+import { groupEditLabel } from '../../../../headerLabels'
 import { notify } from '../../../../notification'
 import { normalizeName } from '../../../../workspace/manager/model'
 
@@ -27,28 +27,18 @@ const createModel = <K extends keyof GroupObject>(key: K) =>
             const object = groups.value.get(props.groupId)
             if (!object) throw new Error('Unexpected missing group')
 
+            const label = groupEditLabel(object, key, value)
             const newObject = { ...object, [key]: value }
 
             const newGroups = new Map(groups.value)
             newGroups.set(props.groupId, newObject)
 
-            pushState(
-                interpolate(
-                    () => i18n.value.commands.manageGroups.modal.properties.modal.edited,
-                    newObject.name,
-                ),
-                {
-                    ...state.value,
-                    groups: newGroups,
-                },
-            )
+            pushState(label, {
+                ...state.value,
+                groups: newGroups,
+            })
 
-            notify(
-                interpolate(
-                    () => i18n.value.commands.manageGroups.modal.properties.modal.edited,
-                    newObject.name,
-                ),
-            )
+            notify(label)
         },
     })
 

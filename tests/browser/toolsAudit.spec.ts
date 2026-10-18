@@ -524,7 +524,7 @@ test('an offset drop that changes nothing adds no undo step or notice', async ({
         await page.mouse.up()
         await settle(page)
         expect(await offset()).toBe(before)
-        await expect(page.locator('.notification')).not.toHaveText('Changed BGM offset')
+        await expect(page.locator('.notification')).not.toContainText('BGM Offset to')
         expect(await undoCount(page)).toBe(0)
     }
 })

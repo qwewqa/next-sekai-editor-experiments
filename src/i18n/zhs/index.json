@@ -31,7 +31,9 @@
         "loading": "正在加载文件…",
         "decoding": "正在解码音频…",
         "generating": "正在生成波形…"
-      }
+      },
+      "fileChanged": "已更改背景音乐文件",
+      "offsetSet": "已将背景音乐偏移设为 {0} 秒"
     },
     "brush": {
       "title": "笔刷",
@@ -186,8 +188,7 @@
           "title": "编辑群组属性",
           "modal": {
             "title": "群组属性",
-            "forceNoteSpeed": "强制音符速度",
-            "edited": "已编辑 {0} 群组属性"
+            "forceNoteSpeed": "强制音符速度"
           }
         },
         "delete": "删除群组",
@@ -205,8 +206,7 @@
         "properties": {
           "title": "编辑舞台属性",
           "modal": {
-            "title": "舞台属性",
-            "edited": "已编辑 {0} 舞台属性"
+            "title": "舞台属性"
           }
         },
         "delete": "删除舞台",
@@ -286,10 +286,10 @@
     },
     "properties": {
       "title": "关卡属性",
-      "changed": "已更改关卡属性",
       "modal": {
         "life": "初始生命值"
-      }
+      },
+      "lifeSet": "已将初始生命值设为 {0}"
     },
     "redo": {
       "title": "重做",
@@ -1056,8 +1056,7 @@
       }
     },
     "offset": {
-      "title": "偏移",
-      "changed": "已更改背景音乐偏移"
+      "title": "偏移"
     },
     "paste": {
       "title": "粘贴",
@@ -1754,7 +1753,9 @@
       "deleteSelectedFoldersMessage": "删除所选的 {0} 个文件夹、{1} 个群组及其中的 {2} 个对象？",
       "duplicated": "已为 {0} 群组创建副本",
       "duplicatedSelected": "已为所选的 {0} 个群组创建副本",
-      "duplicatedSelectedFolders": "已为所选的 {0} 个文件夹和 {1} 个群组创建副本"
+      "duplicatedSelectedFolders": "已为所选的 {0} 个文件夹和 {1} 个群组创建副本",
+      "propertySet": "已将群组 {0} 的{1}设为{2}",
+      "propertyCleared": "已清除群组 {0} 的{1}"
     },
     "stages": {
       "deleteFolder": "删除文件夹及舞台…",
@@ -1777,7 +1778,8 @@
       "deleteSelectedFoldersMessage": "删除所选的 {0} 个文件夹、{1} 个舞台及其中的 {2} 个对象？",
       "duplicated": "已为 {0} 舞台创建副本",
       "duplicatedSelected": "已为所选的 {0} 个舞台创建副本",
-      "duplicatedSelectedFolders": "已为所选的 {0} 个文件夹和 {1} 个舞台创建副本"
+      "duplicatedSelectedFolders": "已为所选的 {0} 个文件夹和 {1} 个舞台创建副本",
+      "propertySet": "已将舞台 {0} 的{1}设为{2}"
     },
     "properties": {
       "sections": "属性分区",

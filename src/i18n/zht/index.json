@@ -31,7 +31,9 @@
         "loading": "正在載入檔案…",
         "decoding": "正在解碼音訊…",
         "generating": "生成波形…"
-      }
+      },
+      "fileChanged": "已更改 BGM 檔案",
+      "offsetSet": "已將 BGM 偏移設為 {0} 秒"
     },
     "brush": {
       "title": "筆刷",
@@ -186,8 +188,7 @@
           "title": "編輯圖層屬性",
           "modal": {
             "title": "圖層屬性",
-            "forceNoteSpeed": "強制音符速度",
-            "edited": "已編輯 {0} 圖層屬性"
+            "forceNoteSpeed": "強制音符速度"
           }
         },
         "delete": "刪除圖層",
@@ -205,8 +206,7 @@
         "properties": {
           "title": "編輯舞台屬性",
           "modal": {
-            "title": "舞台屬性",
-            "edited": "已編輯 {0} 舞台屬性"
+            "title": "舞台屬性"
           }
         },
         "delete": "刪除舞台",
@@ -286,10 +286,10 @@
     },
     "properties": {
       "title": "關卡屬性",
-      "changed": "已更改關卡屬性",
       "modal": {
         "life": "初始生命值"
-      }
+      },
+      "lifeSet": "已將初始生命值設為 {0}"
     },
     "redo": {
       "title": "重做",
@@ -1056,8 +1056,7 @@
       }
     },
     "offset": {
-      "title": "偏移",
-      "changed": "已更改 BGM 偏移"
+      "title": "偏移"
     },
     "paste": {
       "title": "貼上",
@@ -1754,7 +1753,9 @@
       "deleteSelectedFoldersMessage": "刪除所選的 {0} 個資料夾、{1} 個圖層及其中的 {2} 個物件？",
       "duplicated": "已為 {0} 圖層建立複本",
       "duplicatedSelected": "已為所選的 {0} 個圖層建立複本",
-      "duplicatedSelectedFolders": "已為所選的 {0} 個資料夾和 {1} 個圖層建立複本"
+      "duplicatedSelectedFolders": "已為所選的 {0} 個資料夾和 {1} 個圖層建立複本",
+      "propertySet": "已將圖層 {0} 的{1}設為{2}",
+      "propertyCleared": "已清除圖層 {0} 的{1}"
     },
     "stages": {
       "deleteFolder": "刪除資料夾及舞台…",
@@ -1777,7 +1778,8 @@
       "deleteSelectedFoldersMessage": "刪除所選的 {0} 個資料夾、{1} 個舞台及其中的 {2} 個物件？",
       "duplicated": "已為 {0} 舞台建立複本",
       "duplicatedSelected": "已為所選的 {0} 個舞台建立複本",
-      "duplicatedSelectedFolders": "已為所選的 {0} 個資料夾和 {1} 個舞台建立複本"
+      "duplicatedSelectedFolders": "已為所選的 {0} 個資料夾和 {1} 個舞台建立複本",
+      "propertySet": "已將舞台 {0} 的{1}設為{2}"
     },
     "properties": {
       "sections": "屬性分區",

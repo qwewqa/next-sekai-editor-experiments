@@ -9,7 +9,7 @@ import IsFromStartField from '../../../../../modals/form/IsFromStartField.vue'
 import IsUntilEndField from '../../../../../modals/form/IsUntilEndField.vue'
 import NameField from '../../../../../modals/form/NameField.vue'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
-import { interpolate } from '../../../../../utils/interpolate'
+import { stageEditLabel } from '../../../../headerLabels'
 import { notify } from '../../../../notification'
 import { normalizeName } from '../../../../workspace/manager/model'
 
@@ -29,28 +29,18 @@ const createModel = <K extends keyof StageObject>(key: K) =>
             const object = stages.value.get(props.stageId)
             if (!object) throw new Error('Unexpected missing stage')
 
+            const label = stageEditLabel(object, key, value)
             const newObject = { ...object, [key]: value }
 
             const newStages: Stages = new Map(stages.value)
             newStages.set(props.stageId, newObject)
 
-            pushState(
-                interpolate(
-                    () => i18n.value.commands.manageStages.modal.properties.modal.edited,
-                    newObject.name,
-                ),
-                {
-                    ...state.value,
-                    stages: newStages,
-                },
-            )
+            pushState(label, {
+                ...state.value,
+                stages: newStages,
+            })
 
-            notify(
-                interpolate(
-                    () => i18n.value.commands.manageStages.modal.properties.modal.edited,
-                    newObject.name,
-                ),
-            )
+            notify(label)
         },
     })
 

@@ -4,6 +4,7 @@ import { bgm as currentBgm } from '../../../history/live'
 import { refuseWhilePeeking } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
+import { bgmLabel } from '../../headerLabels'
 import { notify } from '../../notification'
 import BgmIcon from './BgmIcon.vue'
 import BgmModal from './BgmModal.vue'
@@ -41,10 +42,11 @@ export const changeBgm = async (file?: File) => {
     )
         return
 
-    pushState(() => i18n.value.commands.bgm.changed, {
+    const label = bgmLabel(old, newBgm)
+    pushState(label, {
         ...liveState.value,
         bgm: newBgm,
     })
 
-    notify(() => i18n.value.commands.bgm.changed)
+    notify(label)
 }

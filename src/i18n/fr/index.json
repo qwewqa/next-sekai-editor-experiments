@@ -31,7 +31,9 @@
         "loading": "Chargement du fichier…",
         "decoding": "Décodage audio…",
         "generating": "Génération de forme d’onde…"
-      }
+      },
+      "fileChanged": "Fichier de la musique modifié",
+      "offsetSet": "Décalage de la musique défini sur {0} s"
     },
     "brush": {
       "title": "Pinceau",
@@ -186,8 +188,7 @@
           "title": "Modifier les propriétés du groupe",
           "modal": {
             "title": "Propriétés du groupe",
-            "forceNoteSpeed": "Imposer la vitesse des notes",
-            "edited": "Propriétés du groupe {0} modifiées"
+            "forceNoteSpeed": "Imposer la vitesse des notes"
           }
         },
         "delete": "Supprimer le groupe",
@@ -205,8 +206,7 @@
         "properties": {
           "title": "Modifier les propriétés de la scène",
           "modal": {
-            "title": "Propriétés de la scène",
-            "edited": "Propriétés de la scène {0} modifiées"
+            "title": "Propriétés de la scène"
           }
         },
         "delete": "Supprimer la scène",
@@ -286,10 +286,10 @@
     },
     "properties": {
       "title": "Propriétés du niveau",
-      "changed": "Propriétés du niveau modifiées",
       "modal": {
         "life": "Vie initiale"
-      }
+      },
+      "lifeSet": "Vie initiale définie sur {0}"
     },
     "redo": {
       "title": "Refaire",
@@ -1056,8 +1056,7 @@
       }
     },
     "offset": {
-      "title": "Décalage",
-      "changed": "Décalage de la musique modifié"
+      "title": "Décalage"
     },
     "paste": {
       "title": "Coller",
@@ -1754,7 +1753,9 @@
       "deleteSelectedFoldersMessage": "Supprimer les dossiers sélectionnés ({0}), les groupes ({1}) et leurs objets ({2}) ?",
       "duplicated": "Groupe {0} dupliqué",
       "duplicatedSelected": "Groupe sélectionné ({0}) dupliqué|Groupes sélectionnés ({0}) dupliqués",
-      "duplicatedSelectedFolders": "Dossiers ({0}) et groupes ({1}) sélectionnés dupliqués"
+      "duplicatedSelectedFolders": "Dossiers ({0}) et groupes ({1}) sélectionnés dupliqués",
+      "propertySet": "Groupe {0} : {1} défini sur {2}",
+      "propertyCleared": "Groupe {0} : {1} retiré"
     },
     "stages": {
       "deleteFolder": "Supprimer le dossier et ses scènes…",
@@ -1777,7 +1778,8 @@
       "deleteSelectedFoldersMessage": "Supprimer les dossiers sélectionnés ({0}), les scènes ({1}) et leurs objets ({2}) ?",
       "duplicated": "Scène {0} dupliquée",
       "duplicatedSelected": "Scène sélectionnée ({0}) dupliquée|Scènes sélectionnées ({0}) dupliquées",
-      "duplicatedSelectedFolders": "Dossiers ({0}) et scènes ({1}) sélectionnés dupliqués"
+      "duplicatedSelectedFolders": "Dossiers ({0}) et scènes ({1}) sélectionnés dupliqués",
+      "propertySet": "Scène {0} : {1} défini sur {2}"
     },
     "properties": {
       "sections": "Sections des propriétés",

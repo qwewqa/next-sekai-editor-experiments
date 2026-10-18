@@ -3,6 +3,7 @@ import { isPeeking, pushState, state } from '../../../history'
 import { initialLife } from '../../../history/initialLife'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
+import { initialLifeLabel } from '../../headerLabels'
 import { notify } from '../../notification'
 import PropertiesIcon from './PropertiesIcon.vue'
 import PropertiesModal from './PropertiesModal.vue'
@@ -24,11 +25,12 @@ export const properties: Command = {
         // Confirming it unchanged is no edit, and nothing is changed while peeking.
         if (!newInitialLife || newInitialLife === initialLife.value || isPeeking.value) return
 
-        pushState(() => i18n.value.commands.properties.changed, {
+        const label = initialLifeLabel(newInitialLife)
+        pushState(label, {
             ...state.value,
             initialLife: newInitialLife,
         })
 
-        notify(() => i18n.value.commands.properties.changed)
+        notify(label)
     },
 }
