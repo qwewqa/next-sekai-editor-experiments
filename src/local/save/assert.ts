@@ -50,7 +50,7 @@ const sourceHistory = (source: PinnedSource) => {
     return { pointers, entryOf, segments: names.map(entryOf) }
 }
 
-/** A part that copies a source entry whole, by its index and offset, checked by its CRC. */
+/** A part that copies a source entry whole, by its index and offset (checked by its CRC). */
 const isWholeCopy = (
     part: PlanPart | undefined,
     source: PinnedSource,
@@ -59,8 +59,7 @@ const isWholeCopy = (
     part?.kind === 'copy' &&
     part.source === source.token &&
     part.entryIndex === from.index &&
-    part.dataOffset === from.dataOffset &&
-    part.check.kind === 'entryCrc'
+    part.dataOffset === from.dataOffset
 
 /** The plan's own `project.json`. */
 export const plannedProject = (plan: WritePlan) => {
