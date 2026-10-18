@@ -164,7 +164,7 @@ for (const size of cases)
                     window.editorTest.settings.locale = locale
                 }, locale)
                 const buttons = page.locator('[data-peek-bar] button')
-                await expect(buttons).toHaveCount(4)
+                await expect(buttons).toHaveCount(5)
                 const boxes = await buttons.evaluateAll((elements) =>
                     elements.map((element) => {
                         const box = element.getBoundingClientRect()
@@ -173,13 +173,15 @@ for (const size of cases)
                             y: box.y,
                             w: box.width,
                             h: box.height,
+                            secondary: !!element.closest('[data-peek-navigation]'),
                             name: element.getAttribute('aria-label') || element.textContent,
                         }
                     }),
                 )
                 for (const box of boxes) {
-                    expect(box.w).toBeGreaterThanOrEqual(44)
-                    expect(box.h).toBeGreaterThanOrEqual(44)
+                    expect(box.w).toBeGreaterThanOrEqual(box.secondary ? 32 : 44)
+                    if (box.secondary) expect(box.h).toBe(32)
+                    else expect(box.h).toBeGreaterThanOrEqual(44)
                     expect(box.x).toBeGreaterThanOrEqual(0)
                     expect(box.x + box.w).toBeLessThanOrEqual(size.width)
                 }

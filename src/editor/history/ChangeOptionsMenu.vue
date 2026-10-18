@@ -68,11 +68,11 @@ onBeforeUnmount(() => {
     <Teleport :to="container">
         <div ref="menu" role="menu" :aria-label="i18n.peek.changeOptions" :aria-describedby="summaryId" class="popup-surface fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto" :class="{ invisible: !position }" :style="{ left: `${position?.left ?? 0}px`, top: `${position?.top ?? 0}px`, maxHeight: `${position?.maxHeight ?? 0}px` }" data-change-options-menu @keydown.stop="keydown" @contextmenu.prevent>
             <p :id="summaryId" class="whitespace-pre-wrap px-3 py-2 text-sm [overflow-wrap:anywhere]" data-change-options-summary>{{ summary }}</p>
-            <button type="button" role="menuitemcheckbox" :aria-checked="checked" class="popup-item min-h-8 w-full" @click="emit('toggle')">
+            <button type="button" role="menuitemcheckbox" :aria-checked="checked" class="popup-item w-full" @click="emit('toggle')">
                 <span aria-hidden="true" class="flex size-4 items-center justify-center rounded border border-current"><span v-if="checked" class="size-2 bg-current" /></span>
                 <span>{{ i18n.peek.showEdits }}</span>
             </button>
-            <button v-if="inspectable" type="button" role="menuitem" class="popup-item min-h-8 w-full" @click="emit('inspect')">{{ i18n.historyChanges.view }}</button>
+            <button v-if="inspectable" type="button" role="menuitem" class="popup-item w-full" @click="emit('inspect')">{{ i18n.historyChanges.view }}</button>
         </div>
     </Teleport>
 </template>
