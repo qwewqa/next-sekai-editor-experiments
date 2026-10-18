@@ -463,3 +463,18 @@ test('the legacy slot counts only when it reads back intact', () => {
     assert.equal(writeLegacyRecovery(text, new Changing(), PREFIX), false)
     assert.equal(writeLegacyRecovery(text, new MemoryStorage(), PREFIX), true)
 })
+
+test('a failed worker read in the canary or the migration’s dedupe never stops the load', async () => {
+    const world = createWorld({ seed: 19 })
+    const storage = new MemoryStorage()
+    storage.setItem(key('canary'), JSON.stringify('an earlier database'))
+    storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
+    const { recovery, events } = await loadIn(world, world.tab('a'), storage)
+    recovery.worker.readMetaIds = () => Promise.reject(new Error('The connection closed'))
+    recovery.worker.migratedBefore = () => Promise.reject(new Error('The connection closed'))
+    await runRecovery(recovery)
+    // The canary says nothing either way; the transaction's own check decides the migration.
+    assert.deepEqual(events, [])
+    assert.ok(recovery.migrated)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})

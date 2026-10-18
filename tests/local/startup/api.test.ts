@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import type { FlushSession } from '../../../src/local/flush'
+import { toHex } from '../../../src/local/hash'
+import { journalState } from '../../../src/local/journal/content'
+import { readJournal } from '../../../src/local/journal/format'
 import { MemoryStorage } from '../../../src/local/journal/store'
+import { toRecords } from '../../../src/local/records/records'
+import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { holdSessionLock } from '../../../src/local/sessions'
 import {
     discardRecoveryItem,
@@ -16,7 +21,8 @@ import {
     setSessionContext,
 } from '../../../src/local/startup/api'
 import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY } from '../../../src/local/startup/legacy'
-import { createWorld } from '../../../src/local/testing/world'
+import { createWorld, type World } from '../../../src/local/testing/world'
+import type { State } from '../../../src/state'
 import { storageKey } from '../../../src/storage'
 import { rows } from '../flush/harness'
 import { append, beginSession, openJournalPage } from '../journal/harness'
@@ -24,6 +30,8 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { autoSaveText } from './autoSaveText'
 import { load, openSession } from './load'
+
+const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
 // What the UI acts on after startup (Part 1 §1.4.1, §1.4.14) on the test core: Reopen and Restore
 // as a Copy, and Settings › Local Data › Recovery's rows.
@@ -177,4 +185,62 @@ test('Discard of unreadable recovered work removes only that row', async () => {
     assert.equal(typeof (await recoveryFile(one)), 'object')
     await loaded.page.tab.run(() => discardRecoveryItem(one))
     assert.equal((await recoveryItems()).filter((item) => item.kind === 'recovered').length, 1)
+})
+
+/** A session another tab had open, with edits only its journal holds, then the tab died. */
+const pendingJournal = async (world: World, storage: MemoryStorage) => {
+    const other = await openJournalPage(world, 'other', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(other, a, 'import')
+    await other.flusher.flush({ strict: true })
+    append(other, 'edit', 'Only journalled', widen(a, 6))
+    assert.equal(other.writer.write(), true)
+    other.tab.kill()
+    const text = storage.getItem(`nse.journal.${session.id}`)!
+    const reading = readJournal(text, session.id)
+    const content = reading.kind === 'journal' ? journalState(reading.journal) : undefined
+    const root = content?.kind === 'state' ? rootOf(content.state) : ''
+    return { session, root }
+}
+
+test('Reopen of a session whose journal fails to apply starts from the journal’s state, never the stale one', async () => {
+    const world = createWorld({ seed: 6 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    const { session, root } = await pendingJournal(world, storage)
+    setSessionContext(loaded.deps, {
+        ...loaded.recovery,
+        worker: {
+            ...loaded.recovery.worker,
+            applyJournal: () => Promise.reject(new Error('QuotaExceededError')),
+        },
+    })
+    leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
+    const result = await loaded.page.tab.run(() => reopenSession())
+    assert.deepEqual(result, { opened: true })
+    const reopened = openSession(loaded)
+    assert.equal(reopened.parent?.id, session.id)
+    assert.equal(reopened.forkOf, undefined)
+    assert.equal(rootOf(loaded.page.live.state), root)
+})
+
+test('Reopen of a session whose journal a newer build wrote opens nothing, and says why', async () => {
+    const world = createWorld({ seed: 7 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    const { session } = await pendingJournal(world, storage)
+    const key = `nse.journal.${session.id}`
+    storage.setItem(
+        key,
+        JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 2 }),
+    )
+    setSessionContext(loaded.deps, loaded.recovery)
+    leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
+    const shown = rootOf(loaded.page.live.state)
+    assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy(session.id)), false)
+    assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), {
+        opened: false,
+        why: 'later',
+    })
+    assert.equal(rootOf(loaded.page.live.state), shown)
 })

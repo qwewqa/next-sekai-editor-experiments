@@ -136,3 +136,45 @@ test('a continuation’s missing stack is rebuilt over its parent’s stored one
     if (rebuilt.kind !== 'open') return
     assert.deepEqual(rebuilt.stack.window, { base: 0, length: 3, index: 2 })
 })
+
+test('a stack rebuilt over a stored parent that a later entry cuts below its window falls back to the whole replay', async () => {
+    const world = createWorld({ seed: 6 })
+    const page = await openPage(world, world.tab('a'))
+    const a = stateOf(goldenChart())
+    const b = widen(a)
+    const parent = beginIn(page, a)
+    // Over 5,000 slots: the parent's stored window starts above slot 0.
+    for (let i = 1; i < 6_000; i++)
+        page.flusher.append('edit', () => `Edit ${i}`, i % 2 ? b : a, true)
+    await page.flusher.flush()
+    const read = await readOpen(page, parent.id)
+    assert.ok(read.stack.window.base > 0)
+    const continuation = continueIn(page, read)
+    page.flusher.append('edit', () => 'Edit', widen(a, 2), true)
+    await page.flusher.flush()
+    // A journal applied with an unmatched stack keeps no slot; then the stack is lost.
+    await tamper(world, async (tx) => {
+        const session = (await tx.get('sessions', continuation.id)) as Record<string, unknown>
+        const seq = (session.lastSeq as number) + 1
+        await tx.put('entries', {
+            sessionId: continuation.id,
+            seq,
+            time: 1,
+            day: 0,
+            kind: 'recovered',
+            label: 'Recovered last change',
+            snapshot: read.head,
+            noteCount: 0,
+            dirty: true,
+            kept: true,
+            stack: { keep: 0, push: [{ snapshot: read.head, label: 'Recovered' }], index: 0 },
+        })
+        const rest: Record<string, unknown> = { ...session, lastSeq: seq }
+        Reflect.deleteProperty(rest, 'stack')
+        await tx.put('sessions', rest)
+    })
+    const rebuilt = await page.tab.run(() => handlersOf(page).readSession(continuation.id))
+    assert.equal(rebuilt.kind, 'open')
+    if (rebuilt.kind !== 'open') return
+    assert.deepEqual(rebuilt.stack.window, { base: 0, length: 1, index: 0 })
+})
