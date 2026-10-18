@@ -3,22 +3,22 @@ import { parseLevelDataChart } from '../../chart/parse/levelData'
 import { validateChart } from '../../chart/validate'
 import { parseAutoSave } from '../../history/autoSave/parse'
 import { LevelDataReport } from '../../levelData/report'
+import { getLevelDataRevision, getRevisionWarning } from '../../levelData/revision'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import { createState } from '../../state'
 import { sha256, toHex } from '../hash'
-import { CHAIN_DELETING } from '../journal/apply'
 import {
     replayJournal,
     replayJournals,
     type JournalOutcome,
     type JournalWorker,
 } from '../journal/replay'
-import type { JournalStorage } from '../journal/store'
-import { sessionLock } from '../locks'
+import { JOURNAL_TOTAL_LIMIT, type JournalStorage } from '../journal/store'
+import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, namePartsOf } from '../names'
 import { stateBatch } from '../stateBatch'
 import type { StorageStatus } from '../worker/core'
-import { addLoadEvent, type LoadEvent } from './events'
+import { addLoadEvent, type LoadEvent, type ShownName } from './events'
 import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY, writeLegacyRecovery, writesLegacySlot } from './legacy'
 import type { MigrationBatch, MigrationResult } from './migrationWrite'
 import { RecoverySteps } from './recovery'
@@ -29,6 +29,8 @@ import { RecoverySteps } from './recovery'
 /** What the steps need of the storage worker. */
 export type RecoveryWorker = JournalWorker & {
     readMetaIds: () => Promise<{ dbInstanceId?: string; deviceId?: string }>
+    /** Whether `meta.migratedHashes` holds a slot's hash: read before the slot is parsed. */
+    isMigrated: (hash: string) => Promise<boolean>
     migrateAutoSave: (batch: MigrationBatch) => Promise<MigrationResult>
 }
 
@@ -53,12 +55,21 @@ export type RecoveryContext = {
     outcomes: JournalOutcome[]
     /** The journal step's time, for the timing spec. */
     journalMs?: number
-    /** The session the migration made, which this load continues (§1.8). */
-    migrated?: string
+    /** The session the migration made, which this load continues (§1.8), and its name. */
+    migrated?: { sessionId: string; name: ShownName }
     /** Journals of earlier visits left in place while storage is unavailable (§1.6.7). */
     keptForLocalData: JournalFound[]
     /** This tab's own journal while storage is unavailable: its reload continues from it. */
     ownJournal?: JournalFound
+    /** What replay did with this tab's own journal, when it had one. */
+    ownOutcome?: JournalOutcome
+    /**
+     * This tab's own journal is still there after replay (it failed, or a newer build wrote it):
+     * its session is never appended to, so the reload continues it in a new one (§1.6.4 step 2).
+     */
+    ownLeft?: boolean
+    /** "Unsaved work from an earlier visit is in Local Data." was raised at this load. */
+    saidInLocalData?: boolean
     events: (event: LoadEvent) => void
 }
 
@@ -95,8 +106,12 @@ const parseJson = (text: string | undefined): unknown => {
 export const canaryStep = async (context: RecoveryContext) => {
     if (context.status.mode === 'memory') return
     const ids = await context.worker.readMetaIds()
-    if (!ids.dbInstanceId) return
     const canary = parseJson(read(context, 'canary'))
+    // No `meta` where a database once had one: cleared as well.
+    if (!ids.dbInstanceId) {
+        if (typeof canary === 'string') context.events({ kind: 'storageCleared' })
+        return
+    }
     if (typeof canary === 'string' && canary !== ids.dbInstanceId)
         context.events({ kind: 'storageCleared' })
     if (context.safe) return
@@ -118,21 +133,28 @@ const shown = (outcome: JournalOutcome & { names: unknown; startedAt: number }) 
  */
 export const journalsStep = async (context: RecoveryContext) => {
     if (context.status.mode !== 'stored') {
-        if (context.status.mode === 'readOnly') return
+        let size = 0
         for (const found of await context.journal.read()) {
             if (found.sessionId === context.own) {
                 context.ownJournal = found
                 continue
             }
-            // A live tab's journal is that tab's.
-            const free = await context.locks.request(
-                sessionLock(found.sessionId),
-                { ifAvailable: true },
-                (held) => Promise.resolve(held),
-            )
-            if (free) context.keptForLocalData.push(found)
+            // A live tab's journal is that tab's. Without Web Locks (an insecure origin) no tab
+            // can be told apart, so every other journal is offered (§1.6.7).
+            const free =
+                !hasWebLocks() ||
+                (await context.locks
+                    .request(sessionLock(found.sessionId), { ifAvailable: true }, (held) =>
+                        Promise.resolve(held),
+                    )
+                    .catch(() => true))
+            if (!free) continue
+            context.keptForLocalData.push(found)
+            size += found.from.length + found.text.length
         }
-        if (context.keptForLocalData.length) context.events({ kind: 'unsavedInLocalData' })
+        if (context.keptForLocalData.length) unsavedInLocalData(context)
+        // Kept until opened, downloaded or discarded: say so before they crowd out today's.
+        if (size >= JOURNAL_TOTAL_LIMIT / 2) context.events({ kind: 'journalsFull' })
         return
     }
     const start = performance.now()
@@ -149,18 +171,26 @@ export const journalsStep = async (context: RecoveryContext) => {
     )
     context.outcomes.push(...outcomes)
     context.journalMs = performance.now() - start
+    if (context.own !== undefined) {
+        context.ownOutcome = outcomes.find((outcome) => outcome.sessionId === context.own)
+        context.ownLeft = (await context.journal.read()).some(
+            (found) => found.sessionId === context.own,
+        )
+    }
     let later = false
+    let failed = false
     for (const outcome of outcomes) {
         if (!('result' in outcome)) {
             // Written by a newer build, before its apply was tried.
             if (outcome.kind === 'later') later = true
-            if (outcome.kind === 'failed')
+            if (outcome.kind === 'failed') {
                 console.error('A journal could not be replayed', outcome.error)
+                failed = true
+            }
             continue
         }
         const { result } = outcome
-        // A chain marked for Delete keeps its journal for the sweep: nothing newer about it.
-        if (result.kind === 'later') later ||= result.why !== CHAIN_DELETING
+        if (result.kind === 'later') later = true
         // This tab's own reload says nothing: it continues where it was.
         else if (result.kind === 'applied' && outcome.sessionId !== context.own)
             context.events(
@@ -180,21 +210,26 @@ export const journalsStep = async (context: RecoveryContext) => {
             })
     }
     if (later) context.events({ kind: 'journalLater' })
+    // Left in place for the next load, which tries again (§1.4.3: never silent).
+    if (failed) context.events({ kind: 'journalFailed' })
+}
+
+/** "Unsaved work from an earlier visit is in Local Data.", once per load. */
+const unsavedInLocalData = (context: RecoveryContext) => {
+    if (context.saidInLocalData) return
+    context.saidInLocalData = true
+    context.events({ kind: 'unsavedInLocalData' })
 }
 
 /** The old slot's chart, or undefined when this build can't read all of it (§1.8 step 4). */
 export const parseAutoSaveSlot = (
     text: string,
-): { chart: Chart; offset: number; filename?: string } | undefined => {
+): { chart: Chart; offset: number; filename?: string; olderRevision: boolean } | undefined => {
     try {
         const parsed = parseAutoSave(JSON.parse(text))
         const report = new LevelDataReport()
-        const chart = parseLevelDataChart(
-            parsed.levelData.entities,
-            parsed.defaultGuideColors,
-            undefined,
-            report,
-        )
+        const { entities } = parsed.levelData
+        const chart = parseLevelDataChart(entities, parsed.defaultGuideColors, undefined, report)
         // Content this build didn't read: never migrated, so never lost (§0.10.5 invariant 5).
         if (!report.isEmpty) return
         validateChart(chart)
@@ -202,8 +237,35 @@ export const parseAutoSaveSlot = (
             chart,
             offset: parsed.levelData.bgmOffset,
             ...(parsed.filename ? { filename: parsed.filename } : {}),
+            // Opened today with a warning when the revision change can matter (D18).
+            olderRevision: getRevisionWarning(getLevelDataRevision(entities), chart) === 'older',
         }
     } catch {
+        return
+    }
+}
+
+/** The migration's batch, or undefined when this build can't make one of the slot. */
+const migrationBatch = (context: RecoveryContext, text: string, hash: string) => {
+    const slot = parseAutoSaveSlot(text)
+    if (!slot) return
+    try {
+        const newId = context.newId ?? (() => crypto.randomUUID())
+        const state = createState(slot.chart, slot.offset)
+        const batch: MigrationBatch = {
+            ...stateBatch(state),
+            hash,
+            ids: { chainId: newId(), docId: newId(), lineageId: newId(), sessionId: newId() },
+            ...(slot.filename ? { sourceName: slot.filename } : {}),
+            label: context.labels.migrated,
+            appVersion: context.appVersion,
+            wall: (context.now ?? Date.now)(),
+        }
+        const parts = namePartsOf(slot.filename ? { sourceName: slot.filename } : {}, state)
+        return { batch, name: displayName(parts), olderRevision: slot.olderRevision }
+    } catch (error) {
+        // Read but not storable: a bug, kept in Local Data rather than blocking every load.
+        console.error('The old auto save could not be prepared', error)
         return
     }
 }
@@ -213,49 +275,41 @@ export const parseAutoSaveSlot = (
  * deduplicated by `meta.migratedHashes`; its value is copied into the legacy recovery slot
  * first, and the key is deleted after the transaction commits, only if its value is unchanged
  * since it was read. A failed transaction leaves the key, with its load notice. Without
- * IndexedDB the key stays, offered in Local Data; an unreadable slot stays too.
+ * IndexedDB the key stays, offered in Local Data; an unreadable slot stays too, and says so.
  */
 export const migrationStep = async (context: RecoveryContext) => {
     const text = read(context, AUTO_SAVE_KEY)
     if (text === undefined) return
     if (context.status.mode !== 'stored') {
-        if (context.status.mode === 'memory') context.events({ kind: 'unsavedInLocalData' })
+        unsavedInLocalData(context)
         return
     }
-    const slot = parseAutoSaveSlot(text)
-    if (!slot) return
     const hash = toHex(await sha256(new TextEncoder().encode(text)))
-    const newId = context.newId ?? (() => crypto.randomUUID())
-    const state = createState(slot.chart, slot.offset)
-    const batch: MigrationBatch = {
-        ...stateBatch(state),
-        hash,
-        ids: { chainId: newId(), docId: newId(), lineageId: newId(), sessionId: newId() },
-        ...(slot.filename ? { sourceName: slot.filename } : {}),
-        label: context.labels.migrated,
-        appVersion: context.appVersion,
-        wall: (context.now ?? Date.now)(),
-    }
     let result: MigrationResult
-    try {
-        result = await context.worker.migrateAutoSave(batch)
-    } catch (error) {
-        console.error('The old auto save could not be migrated', error)
-        context.events({ kind: 'migrationFailed' })
-        return
-    }
-    if (result.kind === 'migrated') {
-        context.migrated = result.sessionId
-        context.events({
-            kind: 'migrated',
-            name: {
-                name: displayName(
-                    namePartsOf(slot.filename ? { sourceName: slot.filename } : {}, state),
-                ),
-                at: batch.wall,
-            },
-            sessionId: result.sessionId,
-        })
+    // A slot migrated before (an old tab's write-back, a key a kill left) isn't parsed again.
+    if (await context.worker.isMigrated(hash)) result = { kind: 'duplicate' }
+    else {
+        const made = migrationBatch(context, text, hash)
+        if (!made) {
+            context.events({ kind: 'migrationFailed', unreadable: true })
+            return
+        }
+        try {
+            result = await context.worker.migrateAutoSave(made.batch)
+        } catch (error) {
+            console.error('The old auto save could not be migrated', error)
+            context.events({ kind: 'migrationFailed' })
+            return
+        }
+        if (result.kind === 'migrated') {
+            // Its line waits for the open, which knows whether it's the session that opened.
+            context.migrated = {
+                sessionId: result.sessionId,
+                name: { name: made.name, at: made.batch.wall },
+            }
+            if (made.olderRevision)
+                context.events({ kind: 'migratedRevision', sessionId: result.sessionId })
+        }
     }
     // The insurance copy first, from the first load (round 10), unless one is there already.
     const legacy = !writesLegacySlot(context.appVersion)

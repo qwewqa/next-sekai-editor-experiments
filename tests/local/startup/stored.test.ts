@@ -97,16 +97,22 @@ test('the most recent session skips chains being deleted and chains this build c
     const world = createWorld({ seed: 4 })
     const { page, older, newer } = await twoChains(world)
     const newest = () => page.tab.run(() => handlersOf(page).readNewestSession(undefined))
-    assert.equal((await newest())?.session.id, newer.id)
+    assert.equal((await newest()).read?.session.id, newer.id)
+    // A newer build's entry: that build wrote the session last, as its row says.
     await tamper(world, async (tx) => {
         const entry = (await tx.get('entries', [newer.id, 2])) as Record<string, unknown>
         await tx.put('entries', { ...entry, kind: 'futureKind' })
+        const session = (await tx.get('sessions', newer.id)) as Record<string, unknown>
+        await tx.put('sessions', { ...session, appVersion: '0.7.0' })
     })
-    assert.equal((await newest())?.session.id, older.id)
+    assert.deepEqual(
+        { id: (await newest()).read?.session.id, skipped: (await newest()).skipped },
+        { id: older.id, skipped: 'later' },
+    )
     await tamper(world, async (tx) => {
         const chain = (await tx.get('chains', older.chainId)) as Record<string, unknown>
         await tx.put('chains', { ...chain, deleting: { at: 1 } })
     })
-    assert.equal(await newest(), undefined)
+    assert.deepEqual(await newest(), { skipped: 'later' })
     assert.equal(rows(world, 'chains').size, 2)
 })

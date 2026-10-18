@@ -2,7 +2,8 @@ import type { JournalFound, JournalLike, JournalStore } from '../../platform/typ
 
 // `JournalStore` over localStorage (§1.6.4 #7, §1.6.11.3): one key per session, overwritten on
 // each write and verified by reading it back; a write that would pass the size limits isn't
-// made. The mock runs the same code over an in-memory Storage.
+// made. A store is one page load's: it never replaces or clears a key whose text it neither wrote
+// nor loaded (§1.6.7's backstop). The mock runs the same code over an in-memory Storage.
 
 /** One key's most characters (§1.6.4: about 1 MB; coconut's journal is under 100 KB). */
 export const JOURNAL_KEY_LIMIT = 1024 * 1024
@@ -30,18 +31,24 @@ export const storageJournalStore = (
     prefix: string,
 ): JournalStore => {
     const keyOf = (sessionId: string) => `${prefix}${JOURNAL}${sessionId}`
+    /** The text this page last wrote or loaded, by key: the only text it may replace. */
+    const owned = new Map<string, string>()
+    const ours = (store: JournalStorage, key: string) => {
+        const text = store.getItem(key)
+        return text === null || text === owned.get(key)
+    }
 
     /**
      * Characters the other journals, the legacy slot and the auto save hold, with their keys, and
      * room for the auto save to grow to this journal's size: it holds the same chart, so journals
      * never push its next write over the browser's quota.
      */
-    const othersSize = (store: JournalStorage, own: string, size: number) => {
+    const othersSize = (store: JournalStorage, own: string, size: number, skip?: string) => {
         let total = 0
         let autoSave = 0
         for (let i = 0; i < store.length; i++) {
             const key = store.key(i)
-            if (key === null || key === own) continue
+            if (key === null || key === own || key === skip) continue
             const counted =
                 key.startsWith(prefix + JOURNAL) ||
                 key === prefix + LEGACY ||
@@ -68,21 +75,26 @@ export const storageJournalStore = (
             try {
                 const store = storage()
                 const key = keyOf(journal.sessionId)
+                // Another page's journal of this session (a crash's, a copied tab's) stays.
+                if (!ours(store, key)) return false
                 const text = JSON.stringify(journal)
                 if (text.length > JOURNAL_KEY_LIMIT) return false
-                const fits = () =>
-                    othersSize(store, key, text.length) + key.length + text.length <=
+                const fits = (skip?: string) =>
+                    othersSize(store, key, text.length, skip) + key.length + text.length <=
                     JOURNAL_TOTAL_LIMIT
                 if (!fits()) {
-                    // The legacy slot is the one left out first when space is short (§1.6.4).
-                    if (store.getItem(prefix + LEGACY) === null) return false
+                    // The legacy slot is the one left out first when space is short (§1.6.4),
+                    // only when that makes room.
+                    if (store.getItem(prefix + LEGACY) === null || !fits(prefix + LEGACY))
+                        return false
                     store.removeItem(prefix + LEGACY)
-                    if (!fits()) return false
                 }
                 store.setItem(key, text)
                 // Only a write read back intact counts (§1.6.4): the same length and characters.
                 const back = store.getItem(key)
-                return back !== null && back.length === text.length && back === text
+                const verified = back !== null && back.length === text.length && back === text
+                owned.set(key, text)
+                return verified
             } catch {
                 return false
             }
@@ -109,13 +121,19 @@ export const storageJournalStore = (
                 const store = storage()
                 const key = keyOf(sessionId)
                 const text = store.getItem(key)
-                if (text === null) return
+                if (text === null || text !== owned.get(key)) return
                 const seq = seqOf(text)
                 // A key this build can't read is replay's to keep, never a flush's to drop.
-                if (seq !== undefined && seq <= coveredSeq) store.removeItem(key)
+                if (seq !== undefined && seq <= coveredSeq) {
+                    store.removeItem(key)
+                    owned.delete(key)
+                }
             } catch {
                 // Left for the next load's replay, which finds it covered.
             }
+        },
+        adopt: (found) => {
+            owned.set(prefix + found.from, found.text)
         },
         remove: (found) => {
             try {

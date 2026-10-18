@@ -44,6 +44,7 @@ const loadIn = async (
             applyJournal: (batch) => tab.run(() => journal.applyJournal(batch)),
             keepRecovered: (item) => tab.run(() => journal.keepRecovered(item)),
             readMetaIds: () => tab.run(() => startup.readMetaIds()),
+            isMigrated: (hash) => tab.run(() => startup.isMigrated(hash)),
             migrateAutoSave: (batch) => tab.run(() => startup.migrateAutoSave(batch)),
         },
         status: core.status,
@@ -156,17 +157,17 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     await runRecovery(recovery)
 
     assert.ok(recovery.migrated)
-    assert.deepEqual(
-        events.map((event) => event.kind),
-        ['migrated'],
-    )
-    const session = rows(world, 'sessions').get(recovery.migrated)
+    // Its line waits for the open (`openAtStart`), which knows whether it's what opened.
+    assert.deepEqual(events, [])
+    assert.equal(recovery.migrated.name.name.text, 'coconut')
+    const migrated = recovery.migrated.sessionId
+    const session = rows(world, 'sessions').get(migrated)
     assert.ok(session)
     assert.equal(session.origin, 'migrated')
     assert.equal(session.lastSeq, 1)
     const chain = rows(world, 'chains').get(session.chainId as string)
     assert.ok(chain)
-    assert.equal(chain.head, recovery.migrated)
+    assert.equal(chain.head, migrated)
     // The import rule: no Name, the slot's file name as the source's; edited, since it's in no file.
     assert.equal('name' in chain, false)
     assert.equal(chain.sourceName, 'coconut')
@@ -184,7 +185,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
     // The migrated session is the one a first load continues.
     const newest = await world.tab('a').run(() => startup.readNewestSession(undefined))
-    assert.equal(newest?.session.id, recovery.migrated)
+    assert.equal(newest.read?.session.id, migrated)
     assert.deepEqual(checkStored(world.memory), [])
 })
 
@@ -243,7 +244,8 @@ test('an unreadable or absent slot makes no session, and an unreadable one stays
     storage.setItem(key(AUTO_SAVE_KEY), '{"version":1,"levelData":"not base64 gzip')
     const unreadable = await loadIn(world, world.tab('b'), storage)
     await runRecovery(unreadable.recovery)
-    assert.deepEqual(unreadable.events, [])
+    // Never blank without a word (§1.8 step 3's aim): Local Data offers it.
+    assert.deepEqual(unreadable.events, [{ kind: 'migrationFailed', unreadable: true }])
     assert.equal(rows(world, 'sessions').size, 0)
     assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
     assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), null)
@@ -288,7 +290,7 @@ test('without IndexedDB the old slot and earlier visits’ journals stay for Loc
     await runRecovery(recovery)
     assert.deepEqual(
         events.map((event) => event.kind),
-        ['unsavedInLocalData', 'unsavedInLocalData'],
+        ['unsavedInLocalData'],
     )
     assert.equal(recovery.keptForLocalData.length, 1)
     assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
@@ -312,7 +314,7 @@ test('one load runs all three: the canary, a journal replayed, then the migratio
     await runRecovery(recovery)
     assert.deepEqual(
         events.map((event) => event.kind),
-        ['storageCleared', 'journalRecovered', 'migrated'],
+        ['storageCleared', 'journalRecovered'],
     )
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
     assert.equal((await recovery.journal.read()).length, 0)
@@ -336,7 +338,7 @@ test('a migrated session’s hash is checked in its transaction: a slot migrated
     assert.equal(rows(world, 'sessions').size, 0)
 })
 
-test('a journal of a chain marked for Delete stays for the sweep, with no load event', async () => {
+test('a journal of a chain marked for Delete becomes a recovery session, never swept unseen', async () => {
     const world = createWorld({ seed: 12 })
     const storage = new MemoryStorage()
     const killed = await openJournalPage(world, 'killed', storage)
@@ -354,6 +356,13 @@ test('a journal of a chain marked for Delete stays for the sweep, with no load e
         }),
     )
     await runRecovery(recovery)
-    assert.deepEqual(events, [])
-    assert.equal((await recovery.journal.read()).length, 1)
+    assert.deepEqual(
+        events.map((event) => event.kind),
+        ['journalKept'],
+    )
+    assert.equal((await recovery.journal.read()).length, 0)
+    const outcome = recovery.outcomes[0]
+    assert.ok(outcome && 'result' in outcome && outcome.result.kind === 'recovery')
+    assert.equal(rows(world, 'chains').get(outcome.result.chainId)?.head, outcome.result.sessionId)
+    assert.deepEqual(checkStored(world.memory), [])
 })

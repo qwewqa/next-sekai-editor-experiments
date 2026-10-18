@@ -42,13 +42,27 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                 deviceId: await readMeta(tx, 'deviceId'),
             })),
 
+        /** Whether `meta.migratedHashes` holds an old auto save's hash (§1.8). */
+        isMigrated: (hash: string) =>
+            context.core.read(['meta'], async (tx) =>
+                ((await readMeta(tx, 'migratedHashes')) ?? []).includes(hash),
+            ),
+
         /** A session with its chain and stack, to open it. */
         readSession: (sessionId: string, scope?: CallScope) =>
-            context.core.read(READ_STORES, (tx) => readSessionForOpen(tx, sessionId), scope),
+            context.core.read(
+                READ_STORES,
+                (tx) => readSessionForOpen(tx, sessionId, context.core.appVersion),
+                scope,
+            ),
 
         /** The most recent session a new visit continues (§1.4.2). */
         readNewestSession: (_: undefined, scope?: CallScope) =>
-            context.core.read(READ_STORES, readNewestSession, scope),
+            context.core.read(
+                READ_STORES,
+                (tx) => readNewestSession(tx, context.core.appVersion),
+                scope,
+            ),
 
         /** The bindings of sessions open in other tabs, for the bound-elsewhere check. */
         readBindings: (sessionIds: string[]) =>

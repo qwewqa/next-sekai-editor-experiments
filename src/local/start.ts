@@ -11,9 +11,18 @@ import { recoveredLabel } from './journal/label'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
+import { showSession, showState } from './startup/show'
 import { runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
-import { flusher, startStoring, tabClient, untouched, watchLifecycle } from './storing'
+import {
+    flusher,
+    offerReopen,
+    recordBlankStart,
+    startStoring,
+    tabClient,
+    untouched,
+    watchLifecycle,
+} from './storing'
 import { StorageWorker } from './worker/client'
 import type { StorageStatus, TestFlags } from './worker/core'
 import { transfer } from './worker/rpc'
@@ -122,6 +131,7 @@ const recoveryContext = (
         keepRecovered: (item) =>
             worker.call('keepRecovered', item, { timeoutMs: timeoutFor(item.text.length) }),
         readMetaIds: () => worker.call('readMetaIds'),
+        isMigrated: (hash) => worker.call('isMigrated', hash),
         migrateAutoSave: (batch) =>
             worker.call('migrateAutoSave', transfer(batch, [batch.text.buffer]), {
                 timeoutMs: timeoutFor(batch.text.byteLength),
@@ -239,15 +249,25 @@ export const startStorage = async () => {
     try {
         await recovered
         if (answered && tabClient) {
+            const own = recovery.ownOutcome
             const deps: OpenDeps = {
                 worker,
                 status,
                 locks: platform.locks,
                 client: tabClient,
                 safe,
+                journal: platform.journal,
                 ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
                 ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),
+                ...(recovery.ownLeft ? { ownLeft: true } : {}),
+                ...(own && 'result' in own && own.result.kind === 'recovery'
+                    ? { ownRecovery: own.result.sessionId }
+                    : {}),
+                keptForLocalData: recovery.keptForLocalData,
                 flusher: () => flusher,
+                show: showSession,
+                showState,
+                onLeft: offerReopen,
                 untouched,
                 labels: {
                     continued: () => i18n.value.entry.continued,
@@ -260,6 +280,8 @@ export const startStorage = async () => {
             setSessionContext(deps, recovery)
         } else if (claim.kind === 'reload') claim.lock.release()
     } finally {
+        // The tab record names the blank start only now, so a reload meanwhile claims again.
+        if (!open) recordBlankStart()
         if (test) window.nseStartupTest = { recovery, claim: claim.kind, opened: open }
     }
 }

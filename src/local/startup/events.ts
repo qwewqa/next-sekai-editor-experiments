@@ -19,14 +19,31 @@ export type LoadEvent =
     | { kind: 'unsavedRecovered'; sessionId: string }
     /** Such work, storage still unavailable: "Unsaved work from an earlier visit is in Local Data." [Local Data]. */
     | { kind: 'unsavedInLocalData' }
-    /** "The old auto save could not be restored." [Local Data]. */
-    | { kind: 'migrationFailed' }
-    /** "Continued "{0}" from auto save." (no "Continued…" line then). */
-    | { kind: 'migrated'; name: ShownName; sessionId: string }
+    /**
+     * "The old auto save could not be restored." [Local Data]: its transaction failed, or with
+     * `unreadable`, this build can't read all of it, so it stays in Local Data (§1.8 steps 3–4).
+     */
+    | { kind: 'migrationFailed'; unreadable?: true }
+    /**
+     * The auto save migrated: "Continued "{0}" from auto save." (no "Continued…" line then) when
+     * it's the session that opened; otherwise it's kept as a session of its own.
+     */
+    | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
+    /** The migrated auto save was made for an older engine revision (D18): today's warning. */
+    | { kind: 'migratedRevision'; sessionId: string }
     /** "Recovered your last change to "{0}"." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
     /** "A recovered change needs a newer version of the editor." */
     | { kind: 'journalLater' }
+    /** A journal couldn't be applied or kept at this load (storage full or busy): it stays for the next. */
+    | { kind: 'journalFailed' }
+    /** Earlier visits' journals kept while storage is unavailable fill much of their budget (§1.6.4). */
+    | { kind: 'journalsFull' }
+    /**
+     * A session this build can't open: the reload's own (`reload`), or the most recent one a new
+     * visit passed over for an older one (`newest`); `later` needs a newer version.
+     */
+    | { kind: 'notOpened'; which: 'reload' | 'newest'; why: 'later' | 'damaged' }
     /** The most recent session is open elsewhere: ""{0}" is open in another tab or window." [Restore as a Copy]. */
     | { kind: 'openElsewhere'; name: ShownName; sessionId: string }
     /** The reload's session was deleted in the gap: "This session was deleted in another tab or window." */

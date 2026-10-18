@@ -139,6 +139,11 @@ export class StorageCore {
         }
     }
 
+    /** This build's version, as rows it writes record it. */
+    get appVersion() {
+        return this.deps.appVersion
+    }
+
     get status(): StorageStatus {
         return this.current
     }

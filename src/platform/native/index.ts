@@ -36,6 +36,7 @@ export const platform = {
         writeWhole: notImplemented,
         read: notImplemented,
         clear: notImplemented,
+        adopt: notImplemented,
         remove: notImplemented,
     },
 

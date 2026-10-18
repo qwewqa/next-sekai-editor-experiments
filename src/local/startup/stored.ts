@@ -61,22 +61,50 @@ const entriesOf = async (tx: KvTx, sessionId: string, upto = Infinity) =>
         KeyRange.bound([sessionId, -Infinity], [sessionId, upto]),
     )) as (ReplayEntry & Row)[]
 
-/** A session's stack by replay of its entries over its parent's at `uptoSeq` (§1.3.9). */
+/** A replayed stack, and its lowest known slot: a stored window's own base. */
+type Rebuilt = { stack: ReplayedStack; floor: number }
+
+/**
+ * A session's stack by replay of its entries over its parent's at `uptoSeq` (§1.3.9). A parent
+ * whose stored stack is its stack at `uptoSeq` is taken as stored, so a long chain isn't
+ * replayed from its root.
+ */
 const rebuild = async (
     tx: KvTx,
     sessionId: string,
     upto = Infinity,
     depth = 0,
-): Promise<ReplayedStack> => {
+): Promise<Rebuilt> => {
     if (depth > MAX_DEPTH) throw new Error('Too many parent links')
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) throw new Error(`No session ${sessionId}`)
     const parent = session.parent as { id?: unknown; uptoSeq?: unknown } | undefined
     const inherited =
         typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number'
-            ? await rebuild(tx, parent.id, parent.uptoSeq, depth + 1)
+            ? ((await storedAt(tx, parent.id, parent.uptoSeq)) ??
+              (await rebuild(tx, parent.id, parent.uptoSeq, depth + 1)))
             : undefined
-    return replay(await entriesOf(tx, sessionId, upto), inherited)
+    return {
+        stack: replay(await entriesOf(tx, sessionId, upto), inherited?.stack),
+        floor: inherited?.floor ?? 0,
+    }
+}
+
+/** A session's stored stack when it's its stack at `upto`; slots below the window unknown. */
+const storedAt = async (
+    tx: KvTx,
+    sessionId: string,
+    upto: number,
+): Promise<Rebuilt | undefined> => {
+    const session = await tx.get('sessions', sessionId)
+    if (!isRow(session) || session.lastSeq !== upto || !isWindow(session.stack)) return
+    const read = await readStored(tx, sessionId, session.stack)
+    if (!read) return
+    // Holes below the window: an undo onto one fails replay, as a missing slot does.
+    const slots: ReplaySlot[] = []
+    slots.length = read.window.base
+    slots.push(...read.slots)
+    return { stack: { slots, index: read.window.index }, floor: read.window.base }
 }
 
 /** The stored window's slots and blocks, or undefined when a block lacks one. */
@@ -102,8 +130,8 @@ const readStored = async (
 }
 
 /** A window of replay's stack, as a stored one would be: rewritten whole by the next flush. */
-const fromReplay = (stack: ReplayedStack): StackRead => {
-    const window = storedWindow(stack.slots.length, stack.index)
+const fromReplay = ({ stack, floor }: Rebuilt): StackRead => {
+    const window = storedWindow(stack.slots.length, stack.index, floor)
     return {
         window,
         slots: stack.slots.slice(window.base, window.base + window.length),
@@ -120,8 +148,16 @@ const isWindow = (value: unknown): value is StackWindow =>
     (value.base as number) <= (value.index as number) &&
     (value.index as number) < (value.base as number) + (value.length as number)
 
-/** Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload. */
-export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<SessionRead> => {
+/**
+ * Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload.
+ * `appVersion` is this build's: a session it wrote last holds no entry kind it doesn't know, so
+ * its entries aren't all read again.
+ */
+export const readSessionForOpen = async (
+    tx: KvTx,
+    sessionId: string,
+    appVersion?: string,
+): Promise<SessionRead> => {
     if ((await tx.getKey('tombstones', sessionId)) !== undefined) return { kind: 'deleted' }
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) return { kind: 'missing' }
@@ -133,9 +169,11 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
     if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
         return { kind: 'later', why: 'its chain needs a newer version' }
-    const entries = await entriesOf(tx, sessionId)
-    if (entries.some((row) => !isKnownEntryKind(row.kind)))
-        return { kind: 'later', why: 'its session needs a newer version' }
+    if (appVersion === undefined || session.appVersion !== appVersion) {
+        const entries = await entriesOf(tx, sessionId)
+        if (entries.some((row) => !isKnownEntryKind(row.kind)))
+            return { kind: 'later', why: 'its session needs a newer version' }
+    }
 
     let stack: StackRead | undefined
     if (isWindow(session.stack)) stack = await readStored(tx, sessionId, session.stack)
@@ -160,21 +198,28 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     }
 }
 
+/** The most recent session a new visit continues, and why the newest chain was passed over. */
+export type NewestRead = {
+    read?: SessionRead & { kind: 'open' }
+    /** The newest chain's head couldn't be opened: an older one, or none, is continued. */
+    skipped?: 'later' | 'damaged'
+}
+
 /**
  * The most recent session (§1.4.2): the head of the chain record with the newest `updatedAt`,
  * skipping chains being deleted and chains this build can't read or open.
  */
-export const readNewestSession = async (
-    tx: KvTx,
-): Promise<(SessionRead & { kind: 'open' }) | undefined> => {
+export const readNewestSession = async (tx: KvTx, appVersion?: string): Promise<NewestRead> => {
     const chains = await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })
+    let skipped: NewestRead['skipped']
     for (const { value } of chains) {
         if (!isRow(value) || value.deleting !== undefined || typeof value.head !== 'string')
             continue
-        const read = await readSessionForOpen(tx, value.head)
-        if (read.kind === 'open') return read
+        const read = await readSessionForOpen(tx, value.head, appVersion)
+        if (read.kind === 'open') return { read, ...(skipped ? { skipped } : {}) }
+        if (!skipped && (read.kind === 'later' || read.kind === 'damaged')) skipped = read.kind
     }
-    return
+    return skipped ? { skipped } : {}
 }
 
 /** What a chain-field write did (§1.3.1). */

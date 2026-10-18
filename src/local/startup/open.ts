@@ -1,10 +1,7 @@
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
-import { setVerticalScale } from '../../editor/navigation'
-import { view } from '../../editor/view'
-import { openStoredState } from '../../history'
-import { createSessionDescriptor } from '../../history/session'
+import { createSessionDescriptor, type SessionDescriptor } from '../../history/session'
 import type { RestoredSlot } from '../../history/stack'
-import type { JournalFound, LockService } from '../../platform/types'
+import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
 import type { FlushSession, StoredStack } from '../flush'
@@ -18,7 +15,7 @@ import type { StorageWorker } from '../worker/client'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
 import { journalledSession } from './resume'
-import { blankRequested, startsBlankForTests } from './state'
+import { isBlankRequested, startsBlankForTests } from './state'
 import type { SessionRead } from './stored'
 import {
     claimSessionLock,
@@ -57,24 +54,53 @@ const noLock = (sessionId: string): HeldLock => ({
 export const claimTab = async (locks: LockService): Promise<Claim> => {
     const record = readTabRecord()
     if (!record) return { kind: 'none' }
-    if (!hasWebLocks()) return { kind: 'reload', record, lock: noLock(record.sessionId) }
     const marked = readMarker() === record.sessionId
+    // Without Web Locks only the marker tells: the page went away, so this is its reload. A
+    // copy from a live tab (or a crash) leaves its journal to Local Data, never shared (§1.6.7).
+    if (!hasWebLocks())
+        return marked
+            ? { kind: 'reload', record, lock: noLock(record.sessionId) }
+            : { kind: 'duplicate', record }
     const lock = await claimSessionLock(locks, record.sessionId, marked ? MARKER_WAIT_MS : 0)
     return lock ? { kind: 'reload', record, lock } : { kind: 'duplicate', record }
 }
 
+/** What an opened session shows: its descriptor, its stack with the head loaded, its view. */
+export type Shown = {
+    descriptor: SessionDescriptor
+    slots: RestoredSlot[]
+    at: number
+    state: State
+    /** §1.6.11.2's `view`, as the session last left it. */
+    view?: unknown
+}
+
 /** What opening a session needs of the storing side (`storing.ts`). */
 export type OpenDeps = {
-    worker: StorageWorker
+    worker: Pick<StorageWorker, 'call'>
     status: StorageStatus
     locks: LockService
-    client: TabClient
+    client: Pick<TabClient, 'id' | 'heldElsewhere'>
     safe: boolean
-    /** The session the migration made at this load, if any. */
-    migrated?: string
+    /** The page's journal store: a journal the reload loads becomes the page's to write. */
+    journal?: Pick<JournalStore, 'adopt'>
+    /** The session the migration made at this load, if any, and its name. */
+    migrated?: { sessionId: string; name: ShownName }
     /** This tab's own journal while storage is unavailable. */
     ownJournal?: JournalFound
+    /** Its own journal is still there after replay: never appended to (§1.6.4 step 2). */
+    ownLeft?: boolean
+    /** The recovery session its own journal was kept as (§1.6.4 step 3). */
+    ownRecovery?: string
+    /** Journals offered in Local Data: the reload's own goes there when it can't load it. */
+    keptForLocalData?: JournalFound[]
     flusher: () => import('../flush').Flusher | undefined
+    /** Shows an opened session in the editor (`show.ts`): the stack, the head, the view. */
+    show: (shown: Shown) => void
+    /** A session this tab left by Reopen or Restore as a Copy, for Reopen to offer (§1.4.1). */
+    onLeft?: (leaving: import('../flush').FlushSession, outgoing: Promise<boolean>) => void
+    /** Shows a state as a new session (`show.ts`), as Local Data's Open does. */
+    showState: (state: State, names: { name?: string; sourceName?: string }) => void
     /** Whether the tab still shows its own blank start, never edited or replaced. */
     untouched: () => boolean
     newId?: () => string
@@ -87,7 +113,7 @@ const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName 
     at: typeof read.session.startedAt === 'number' ? read.session.startedAt : Date.now(),
 })
 
-const headState = async (worker: StorageWorker, head: Uint8Array) => {
+const headState = async (worker: OpenDeps['worker'], head: Uint8Array) => {
     const parts = await worker.call('readSnapshot', toHex(head))
     if (parts.root === undefined) throw new Error(`The head ${toHex(head)} is not stored`)
     return stateFromRecords(
@@ -103,16 +129,6 @@ const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
     slots: read.stack.slots.map(({ snapshot, label }) => ({ hash: snapshot, label })),
     index: read.stack.window.index,
 })
-
-/** The view as the session last left it (§1.6.11.2's `view`). */
-const restoreView = (stored: unknown, state: State) => {
-    if (typeof stored !== 'object' || stored === null) return
-    const { scroll, zoom, group, stage } = stored as Record<string, unknown>
-    if (typeof scroll === 'number' && Number.isFinite(scroll)) view.time = Math.max(0, scroll)
-    if (typeof zoom === 'number' && Number.isFinite(zoom) && zoom > 0) setVerticalScale(zoom)
-    if (typeof group === 'number' && state.groups.has(group as never)) view.groupId = group as never
-    if (typeof stage === 'number' && state.stages.has(stage as never)) view.stageId = stage as never
-}
 
 /** How a stored session opens: taken up again, continued in its chain, or as a fork. */
 type How =
@@ -143,7 +159,7 @@ export const openStored = async (
     }
     const state = await headState(deps.worker, read.head)
     // Start Blank, or a chart made meanwhile, keeps what's on screen.
-    if (!replace && (blankRequested || !deps.untouched())) {
+    if (!replace && (isBlankRequested() || !deps.untouched())) {
         releaseAll()
         return
     }
@@ -164,8 +180,8 @@ export const openStored = async (
     const forkName = fork ? forkNameOf(namePartsOf(chain, state)) : undefined
     const docId = fork ? newId() : (text(chain.docId) ?? newId())
     const name = fork ? forkName : text(chain.name)
-    openStoredState(
-        createSessionDescriptor({
+    deps.show({
+        descriptor: createSessionDescriptor({
             sessionId: id,
             docId,
             ...(name === undefined ? {} : { name }),
@@ -175,7 +191,8 @@ export const openStored = async (
         slots,
         at,
         state,
-    )
+        view: session.view,
+    })
     if (how.mode === 'resume') {
         flusher.resumeSession({
             id,
@@ -222,8 +239,7 @@ export const openStored = async (
         })
     }
     // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
-    restoreExportMemory(fork ? { partial: chain.partial } : chain)
-    restoreView(session.view, state)
+    restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
     writeTabRecord({
         sessionId: id,
         start: how.mode === 'resume' ? 'stored' : 'continuation',
@@ -323,8 +339,10 @@ const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open'
 
 /** The new-visit rule (§1.4.2): continue the most recent session, or start blank, or fork. */
 const newVisit = async (deps: OpenDeps): Promise<boolean> => {
-    const read = await deps.worker.call('readNewestSession')
-    if (!read || blankRequested) return false
+    const { read, skipped } = await deps.worker.call('readNewestSession')
+    // A newer chain this build can't open is passed over, never silently (§1.4.3).
+    if (skipped) deps.events({ kind: 'notOpened', which: 'newest', why: skipped })
+    if (!read || isBlankRequested()) return false
     const name = displayName(namePartsOf(read.chain))
     if (name.kind !== 'date') setOpeningName(name.text)
     const headId = String(read.session.id)
@@ -342,7 +360,7 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     }
     const state = await openStored(deps, read, { mode: 'continue', parentLock })
     // The migrated auto save's own line says it already (§1.4.3).
-    if (state && deps.migrated !== headId)
+    if (state && deps.migrated?.sessionId !== headId)
         deps.events({
             kind: 'continued',
             name: shownOf(read, state),
@@ -375,56 +393,100 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
     const journalled = journalledSession(found)
     if (!flusher || !journalled) return false
     const { name, sourceName, label, state, chain } = journalled
-    openStoredState(
-        createSessionDescriptor({
+    // Loaded: the page goes on writing this key (§1.6.7), and no other.
+    deps.journal?.adopt(found)
+    deps.show({
+        descriptor: createSessionDescriptor({
             sessionId: journalled.id,
             docId: journalled.docId,
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
         }),
-        [{ label, isDirty: true }],
-        0,
+        slots: [{ label, isDirty: true }],
+        at: 0,
         state,
-    )
+    })
     flusher.resumeJournalled({
         ...journalled,
         label: () => label || deps.labels.recoveredHead(),
         ready: Promise.resolve(),
         done: lock.release,
     })
-    restoreExportMemory({ partial: chain.partial })
+    restoreExportMemory({ partialImport: chain.partialImport })
     writeTabRecord({ sessionId: journalled.id, start: 'stored' })
     return true
 }
 
-/** Opens the session this load continues; true when one opened, false for a blank start. */
+/** The stored session that opened: the one resumed, or the one continued. */
+export const openedFrom = (deps: Pick<OpenDeps, 'flusher'>) => {
+    const session = deps.flusher()?.session
+    if (!session || session.forkOf !== undefined) return
+    return session.continuation ? session.parent?.id : session.id
+}
+
+/**
+ * Opens the session this load continues; true when one opened, false for a blank start. The
+ * migrated auto save's line follows, saying whether it's what opened (§1.4.3).
+ */
 export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
+    const opened = await openSessionAtStart(deps, claim)
+    if (deps.migrated)
+        deps.events({
+            kind: 'migrated',
+            ...deps.migrated,
+            opened: opened && openedFrom(deps) === deps.migrated.sessionId,
+        })
+    return opened
+}
+
+const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
     const releaseClaim = () => {
         if (claim.kind === 'reload') claim.lock.release()
     }
     // The fixture hook, Start Blank and safe mode open blank (§1.4.2).
-    if (startsBlankForTests() || blankRequested || deps.safe || !deps.untouched()) {
+    if (startsBlankForTests() || isBlankRequested() || deps.safe || !deps.untouched()) {
         releaseClaim()
         return false
     }
-    // A newer database opens nothing to continue: this build can't store into it.
-    if (deps.status.mode === 'readOnly') {
-        releaseClaim()
-        return false
-    }
-    if (deps.status.mode === 'memory') {
-        if (claim.kind === 'reload' && deps.ownJournal)
-            if (resumeFromJournal(deps, deps.ownJournal, claim.lock)) return true
-        // Not loaded: a new session id, and the key stays in Local Data (§1.4.2).
+    // Storage unavailable, or a newer database this build can't store into (§1.6.7).
+    if (deps.status.mode !== 'stored') {
+        const own = deps.ownJournal
+        if (claim.kind === 'reload' && own) {
+            if (resumeFromJournal(deps, own, claim.lock)) return true
+            // Not loaded: a new session id, and the key stays in Local Data (§1.4.2).
+            if (!deps.keptForLocalData?.includes(own)) deps.keptForLocalData?.push(own)
+            deps.events({ kind: 'unsavedInLocalData' })
+        }
         releaseClaim()
         return false
     }
     if (claim.kind === 'none') return newVisit(deps)
     const { record } = claim
-    const read = await deps.worker.call('readSession', record.sessionId)
     if (claim.kind === 'reload') {
-        if (read.kind === 'open' && read.isHead)
+        // Its own journal was kept as a recovery session, which holds its last edits (§1.6.4).
+        if (deps.ownRecovery !== undefined) {
+            const recovered = await deps.worker.call('readSession', deps.ownRecovery)
+            const own = await deps.worker.call('readSession', record.sessionId)
+            if (own.kind === 'deleted') deps.events({ kind: 'deletedElsewhere' })
+            releaseClaim()
+            if (recovered.kind !== 'open') return false
+            const parentLock = await holdShared(deps.locks, deps.ownRecovery)
+            if (parentLock && recovered.isHead)
+                return !!(await openStored(deps, recovered, { mode: 'continue', parentLock }))
+            return forked(deps, recovered, deps.ownRecovery, parentLock)
+        }
+        const read = await deps.worker.call('readSession', record.sessionId)
+        if (read.kind === 'open' && read.isHead) {
+            // Its own journal wasn't applied (it failed, or a newer build wrote it): the session
+            // is never appended to, so it continues in a new one, whose first write moves the
+            // head; the next load keeps the journal as a recovery chain (§1.6.4 step 2).
+            if (deps.ownLeft)
+                return !!(await openStored(deps, read, {
+                    mode: 'continue',
+                    parentLock: claim.lock,
+                }))
             return !!(await openStored(deps, read, { mode: 'resume', lock: claim.lock }))
+        }
         // Continued in another tab during the gap: a fork (§1.4.2).
         if (read.kind === 'open') return forked(deps, read, record.sessionId, claim.lock)
         releaseClaim()
@@ -432,7 +494,10 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
             deps.events({ kind: 'deletedElsewhere' })
             return false
         }
-        if (read.kind !== 'missing') return false
+        if (read.kind === 'later' || read.kind === 'damaged') {
+            deps.events({ kind: 'notOpened', which: 'reload', why: read.kind })
+            return false
+        }
         // Never stored: a blank start reloads by the new-visit rule, an unstored continuation
         // continues its parent again, and a New reloads as blank.
         if (record.start === 'blank') return newVisit(deps)
@@ -446,8 +511,15 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
         }
         return false
     }
-    // A Duplicate Tab: a fork without the binding (§1.4.2).
+    // A Duplicate Tab: a fork without the binding (§1.4.2); of an unstored continuation, a fork
+    // of what it continued.
+    const read = await deps.worker.call('readSession', record.sessionId)
     if (read.kind === 'open') return forked(deps, read, record.sessionId)
+    if (read.kind !== 'missing') return false
     if (record.start === 'blank') return newVisit(deps)
+    if (record.start === 'continuation' && record.parent) {
+        const parent = await deps.worker.call('readSession', record.parent)
+        if (parent.kind === 'open') return forked(deps, parent, record.parent)
+    }
     return false
 }

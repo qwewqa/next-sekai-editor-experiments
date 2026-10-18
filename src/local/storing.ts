@@ -81,6 +81,28 @@ export const untouched = () => {
     return !!session && session === initialSession && !session.stored && session.pending.length <= 1
 }
 
+/**
+ * Names the page's own blank start in the tab record, once startup opened nothing over it (§1.4.2):
+ * until then the record keeps the session this tab had, so a reload meanwhile claims it again.
+ */
+export const recordBlankStart = () => {
+    const session = flusher?.session
+    if (session && session === initialSession)
+        writeTabRecord({ sessionId: session.id, start: 'blank' })
+}
+
+/** Reopen offers a session this tab left, once its strict commit holds (§1.4.1). */
+export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) => {
+    if (!leaving.stored && !leaving.edited) return
+    const state = [...leaving.pending].reverse().find((entry) => entry.state)?.state
+    leftSession(
+        leaving.id,
+        displayName(namePartsOf({ sourceName: leaving.sourceName, ...leaving.chain }, state)),
+        leaving.startedAt,
+        outgoing,
+    )
+}
+
 let storingWorker: StorageWorker | undefined
 
 /**
@@ -171,8 +193,8 @@ export const startStoring = (
     tabClient = client
     void client.lock.granted.catch(() => undefined)
 
-    if (status.mode === 'readOnly') {
-        // A newer database: nothing is written. Earlier actions are let go.
+    if (status.mode === 'readOnly' && safe) {
+        // Safe mode: nothing is written. Earlier actions are let go.
         onHistoryAction(() => undefined, { replay: true })
         return
     }
@@ -234,12 +256,17 @@ export const startStoring = (
         },
         onError: (error) => {
             if (test) errors.push(error)
-            // A dev build's checks (D9, a published state changed in place) fail loudly.
-            if (import.meta.env.DEV) console.error('A flush failed', error)
+            // A dev build's checks (D9, a published state changed in place) fail loudly; a newer
+            // database's refusals are expected.
+            if (import.meta.env.DEV && worker.status?.mode !== 'readOnly')
+                console.error('A flush failed', error)
         },
     })
     flusher = instance
     storingWorker = worker
+    // A newer database stores nothing from this build: as with storage unavailable, the journal
+    // keeps the open session (§1.6.7).
+    if (status.mode === 'readOnly') instance.withoutDatabase()
     const version = appVersion().appVersion
     const legacy = !safe && writesLegacySlot(version)
     if (!safe && !legacy) removeLegacyRecovery()
@@ -280,7 +307,7 @@ export const startStoring = (
         }, LEGACY_IDLE_MS)
 
     // While storage is unavailable the journal is also written about every 10 s (§1.6.7).
-    if (status.mode === 'memory' && journalWriter)
+    if (status.mode !== 'stored' && journalWriter)
         setInterval(() => {
             whenIdle(() => journalWriter?.write())
         }, IDLE_JOURNAL_MS)
@@ -297,11 +324,13 @@ export const startStoring = (
             if (action.kind === 'reset') {
                 const descriptor = currentSession.value
                 const lock = holdSessionLock(locks, descriptor.sessionId)
-                // The page's own blank start reloads by the new-visit rule; a New as blank (§1.4.2).
-                writeTabRecord({
-                    sessionId: descriptor.sessionId,
-                    start: action.origin === 'import' ? 'stored' : firstReset ? 'blank' : 'new',
-                })
+                // A New reloads as blank (§1.4.2); the page's own blank start is recorded once
+                // startup opened nothing over it (`recordBlankStart`).
+                if (!firstReset || action.origin !== 'new')
+                    writeTabRecord({
+                        sessionId: descriptor.sessionId,
+                        start: action.origin === 'import' ? 'stored' : 'new',
+                    })
                 const first = firstReset
                 firstReset = false
                 const leaving = instance.session
@@ -320,21 +349,7 @@ export const startStoring = (
                     done: lock.release,
                 })
                 if (first && action.origin === 'new') initialSession = begun
-                // Reopen offers the session left, once its strict commit holds (§1.4.1).
-                if (leaving && (leaving.stored || leaving.edited)) {
-                    const state = [...leaving.pending].reverse().find((entry) => entry.state)?.state
-                    leftSession(
-                        leaving.id,
-                        displayName(
-                            namePartsOf(
-                                { sourceName: leaving.sourceName, ...leaving.chain },
-                                state,
-                            ),
-                        ),
-                        leaving.startedAt,
-                        instance.outgoing,
-                    )
-                }
+                if (leaving) offerReopen(leaving, instance.outgoing)
                 return
             }
             instance.append(
