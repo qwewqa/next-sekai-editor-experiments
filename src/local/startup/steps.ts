@@ -105,7 +105,9 @@ const parseJson = (text: string | undefined): unknown => {
  */
 export const canaryStep = async (context: RecoveryContext) => {
     if (context.status.mode === 'memory') return
-    const ids = await context.worker.readMetaIds()
+    // A read that fails says nothing either way: the next load checks again.
+    const ids = await context.worker.readMetaIds().catch(() => undefined)
+    if (!ids) return
     const canary = parseJson(read(context, 'canary'))
     // No `meta` where a database once had one: cleared as well.
     if (!ids.dbInstanceId) {
@@ -295,7 +297,9 @@ export const migrationStep = async (context: RecoveryContext) => {
     const hash = toHex(await sha256(new TextEncoder().encode(text)))
     let result: MigrationResult
     // A slot migrated before (an old tab's write-back, a key a kill left) isn't parsed again.
-    if (await context.worker.migratedBefore(hash)) result = { kind: 'duplicate' }
+    // A failed read only costs the parse: the transaction's own check still finds a duplicate.
+    const before = await context.worker.migratedBefore(hash).catch(() => false)
+    if (before) result = { kind: 'duplicate' }
     else {
         const made = migrationBatch(context, text, hash)
         if (!made) {

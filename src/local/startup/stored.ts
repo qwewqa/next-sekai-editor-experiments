@@ -74,16 +74,18 @@ const rebuild = async (
     sessionId: string,
     upto = Infinity,
     depth = 0,
+    /** Whether a parent's stored stack stands for its replay. */
+    stored = true,
 ): Promise<Rebuilt> => {
     if (depth > MAX_DEPTH) throw new Error('Too many parent links')
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) throw new Error(`No session ${sessionId}`)
     const parent = session.parent as { id?: unknown; uptoSeq?: unknown } | undefined
-    const inherited =
-        typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number'
-            ? ((await storedAt(tx, parent.id, parent.uptoSeq)) ??
-              (await rebuild(tx, parent.id, parent.uptoSeq, depth + 1)))
-            : undefined
+    let inherited: Rebuilt | undefined
+    if (typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number')
+        inherited =
+            (stored ? await storedAt(tx, parent.id, parent.uptoSeq) : undefined) ??
+            (await rebuild(tx, parent.id, parent.uptoSeq, depth + 1, stored))
     return {
         stack: replay(await entriesOf(tx, sessionId, upto), inherited?.stack),
         floor: inherited?.floor ?? 0,
@@ -171,8 +173,14 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     if (!stack)
         try {
             stack = fromReplay(await rebuild(tx, sessionId))
-        } catch (error) {
-            return { kind: 'damaged', why: `its stack: ${String(error)}` }
+        } catch {
+            // Over a stored parent, a later entry can keep slots below its window: the whole
+            // chain's replay then tells.
+            try {
+                stack = fromReplay(await rebuild(tx, sessionId, Infinity, 0, false))
+            } catch (error) {
+                return { kind: 'damaged', why: `its stack: ${String(error)}` }
+            }
         }
     const head = stack.slots[stack.window.index - stack.window.base]
     if (!head) return { kind: 'damaged', why: 'no head slot' }

@@ -1176,7 +1176,7 @@
     "sessionDeleted": "此会话已在另一个标签页或窗口中删除。",
     "autoSaveKept": "已将自动保存中的“{0}”保留为单独的会话。",
     "autoSaveOpened": "已打开旧的自动保存。",
-    "journalFailed": "无法存储已恢复的更改。下次加载时将重试。",
+    "journalFailed": "无法存储已恢复的更改。副本在本地数据中。",
     "journalsFull": "以往访问中未保存的内容正在占满此浏览器的空间。",
     "sessionLater": "此会话需要更新版本的编辑器。",
     "sessionDamaged": "无法打开此会话。",

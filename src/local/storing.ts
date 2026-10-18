@@ -334,6 +334,7 @@ export const startStoring = (
     })
 
     let firstReset = true
+    let blankNamed = false
     onHistoryAction(
         (action) => {
             if (action.kind === 'reset') {
@@ -366,6 +367,12 @@ export const startStoring = (
                 if (first && action.origin === 'new') initialSession = begun
                 if (leaving) offerReopen(leaving, instance.outgoing)
                 return
+            }
+            // Work on the blank start (after Start Blank) names it in the tab record at once, so
+            // a reload or crash while startup still runs brings that work back (§1.4.2).
+            if (instance.session === initialSession && !blankNamed) {
+                blankNamed = true
+                recordBlankStart()
             }
             instance.append(
                 action.kind,

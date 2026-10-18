@@ -433,11 +433,15 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
     const journalled = journalledSession(found)
     if (!flusher || !journalled) return false
     const { name, sourceName, label, state, chain } = journalled
-    // Loaded: the page goes on writing this key (§1.6.7), and no other.
-    deps.journal?.adopt(found)
+    // Without Web Locks a copied tab can't be told from a reload, so the work goes on under a
+    // new session id, its own key; the old key goes once the new one holds the work (§1.6.7).
+    // With them, the page goes on writing this key, which it loaded, and no other.
+    const copy = !hasWebLocks()
+    const id = copy ? (deps.newId ?? (() => crypto.randomUUID()))() : journalled.id
+    if (!copy) deps.journal?.adopt(found)
     deps.show({
         descriptor: createSessionDescriptor({
-            sessionId: journalled.id,
+            sessionId: id,
             docId: journalled.docId,
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
@@ -446,14 +450,16 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
         at: 0,
         state,
     })
-    flusher.resumeJournalled({
+    const session = flusher.resumeJournalled({
         ...journalled,
+        id,
         label: () => label || deps.labels.recoveredHead(),
         ready: Promise.resolve(),
         done: lock.release,
     })
+    if (copy) deps.retireJournal?.(found, id, flusher.newestSeq(session))
     restoreExportMemory({ partialImport: chain.partialImport })
-    writeTabRecord({ sessionId: journalled.id, start: 'stored' })
+    writeTabRecord({ sessionId: id, start: 'stored' })
     return true
 }
 

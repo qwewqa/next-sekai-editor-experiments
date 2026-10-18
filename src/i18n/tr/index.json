@@ -1176,7 +1176,7 @@
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
-    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Sonraki yüklemede tekrar denenecek.",
+    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
     "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",

@@ -91,7 +91,11 @@ export const loadNoticeOf: Handlers = {
         message: interpolate(() => load().journal, quoted(event.name)),
     }),
     journalLater: () => ({ order: LOAD_ORDER.journalLater, message: () => load().journalLater }),
-    journalFailed: () => ({ order: LOAD_ORDER.journalFailed, message: () => load().journalFailed }),
+    journalFailed: () => ({
+        order: LOAD_ORDER.journalFailed,
+        message: () => load().journalFailed,
+        action: localData,
+    }),
     journalsFull: () => ({
         order: LOAD_ORDER.journalsFull,
         message: () => load().journalsFull,
