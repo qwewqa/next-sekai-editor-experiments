@@ -1905,7 +1905,7 @@
     "tooLarge": "Trop volumineux pour un seul fichier. Décochez BGM ou l’historique.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. En mode sans échec, utilisez Exporter les données de niveau… (Maj+P).",
+    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau… (Maj+P).",
     "include": "Inclure",
     "historySteps": "{0} étape|{0} étapes",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",

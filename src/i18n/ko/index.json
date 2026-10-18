@@ -1905,7 +1905,7 @@
     "tooLarge": "하나의 파일에 담기에는 너무 큽니다. BGM 또는 기록을 선택 해제하세요.",
     "restoredName": "{0} ({1} 복원)",
     "fileType": "Next SEKAI 프로젝트 파일",
-    "unavailable": "저장되지 않았습니다. 안전 모드에서는 레벨 데이터 내보내기…(Shift+P)를 사용하세요.",
+    "unavailable": "저장되지 않았습니다. 레벨 데이터 내보내기…(Shift+P)를 사용하세요.",
     "include": "포함",
     "historySteps": "{0}단계",
     "historySize": "{0}단계 · {1}",

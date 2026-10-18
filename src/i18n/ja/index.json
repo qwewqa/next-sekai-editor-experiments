@@ -1905,7 +1905,7 @@
     "tooLarge": "1 つのファイルには大きすぎます。BGM または履歴のチェックを外してください。",
     "restoredName": "{0}（{1} に復元）",
     "fileType": "Next SEKAI プロジェクトファイル",
-    "unavailable": "保存されませんでした。セーフモードでは「レベルデータを出力…」(Shift+P) を使ってください。",
+    "unavailable": "保存されませんでした。「レベルデータを出力…」(Shift+P) を使ってください。",
     "include": "含める",
     "historySteps": "{0} 操作",
     "historySize": "{0} 操作 · {1}",

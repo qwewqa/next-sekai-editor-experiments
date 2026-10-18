@@ -1905,7 +1905,7 @@
     "tooLarge": "对单个文件而言过大。请取消勾选 BGM 或历史记录。",
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
-    "unavailable": "未保存。安全模式下请使用“导出关卡数据…”(Shift+P)。",
+    "unavailable": "未保存。请使用“导出关卡数据…”(Shift+P)。",
     "include": "包含",
     "historySteps": "{0} 步",
     "historySize": "{0} 步 · {1}",

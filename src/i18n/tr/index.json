@@ -1905,7 +1905,7 @@
     "tooLarge": "Tek bir dosya için çok büyük. BGM veya geçmiş işaretini kaldırın.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
-    "unavailable": "Kaydedilmedi. Güvenli modda Seviye Verisini Dışa Aktar… (Shift+P) kullanın.",
+    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… (Shift+P) kullanın.",
     "include": "Dahil Edilecekler",
     "historySteps": "{0} adım",
     "historySize": "{0} adım · {1}",
