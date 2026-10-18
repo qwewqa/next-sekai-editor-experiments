@@ -1,0 +1,214 @@
+import { expect, test, type Page } from '@playwright/test'
+import {
+    chainOf,
+    edit,
+    notice,
+    pickerCalls,
+    pressSave,
+    projectOf,
+    queuePicks,
+    readFile,
+    rows,
+    saveDialog,
+    sessionOf,
+    start,
+    submitSave,
+    writeFile,
+} from './saveFlows'
+
+// The save picker's rules (Part 1 §1.4.7 R1–R12; owner decision log D5; `work/d5/safety.md` §8)
+// on the Chromium override, whose picker empties an existing file as Chromium's does. Two pages
+// of one context share OPFS, IndexedDB, Web Locks and BroadcastChannel.
+
+type Row = Record<string, unknown>
+
+const saveAs = (page: Page) =>
+    page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs)
+    })
+
+const savedTo = async (page: Page, name: string) => {
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, name.replace(/\.nxsp$/, ''))
+    await expect(notice(page).filter({ hasText: `Saved to ${name}` })).toBeVisible()
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ name })
+}
+
+test('a takeover: A picks the file B is bound to; B loses it passively and its next Save asks', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    await savedTo(b, 'coconut.nxsp')
+    const bChain = await chainOf(b)
+
+    const a = await context.newPage()
+    await start(a)
+    await edit(a, 5)
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a)
+    await expect(
+        notice(a).filter({
+            hasText: 'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
+        }),
+    ).toBeVisible()
+    const written = await projectOf(a, 'coconut.nxsp')
+    const aChain = await chainOf(a)
+    expect(written.id).toBe(aChain.docId)
+    expect((aChain.file as Row).name).toBe('coconut.nxsp')
+
+    const { chains } = await rows(a, ['chains'])
+    const revoked = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
+    expect(revoked.file).toBeUndefined()
+    expect(revoked.replaced).toMatchObject({ by: aChain.chainId, name: 'coconut.nxsp' })
+    expect(revoked.edited).toBe(true)
+
+    // B's label goes, with no notice (the broadcast, or becoming visible).
+    await b.bringToFront()
+    await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
+    await pressSave(b)
+    const dialog = saveDialog(b)
+    await expect(dialog).toContainText('"coconut.nxsp" was replaced from another tab or window.')
+    await expect(dialog.getByRole('textbox')).toHaveValue('coconut (2)')
+    await submitSave(b)
+    await expect(notice(b).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
+    expect((await projectOf(b, 'coconut (2).nxsp')).id).toBe(bChain.docId)
+})
+
+test('a self-pick at the base keeps the docId and ancestry, with no line', async ({ page }) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    const first = await projectOf(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await saveAs(page)
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (2)')
+    await queuePicks(page, ['coconut.nxsp'])
+    await submitSave(page, undefined, 'Save As')
+    await expect
+        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).parent)
+        .toBe((first.revision as Row).id)
+    expect((await projectOf(page, 'coconut.nxsp')).id).toBe(first.id)
+    await expect(notice(page).filter({ hasText: 'Some earlier steps' })).toHaveCount(0)
+})
+
+test('the chain’s own file changed on disk: a pick puts its bytes back and opens the conflict dialog', async ({
+    page,
+}) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    // Another revision of the file, as another device would write it.
+    await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        const file = await (await root.getFileHandle('coconut.nxsp')).getFile()
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        // The same length, another central directory.
+        for (let i = 0; i + 4 < bytes.length; i++)
+            if (
+                bytes[i] === 0x50 &&
+                bytes[i + 1] === 0x4b &&
+                bytes[i + 2] === 1 &&
+                bytes[i + 3] === 2
+            ) {
+                bytes[i + 4] = bytes[i + 4]! ^ 1
+                break
+            }
+        const writable = await (await root.getFileHandle('coconut.nxsp')).createWritable()
+        await writable.write(bytes)
+        await writable.close()
+    })
+    const changed = await readFile(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await saveAs(page)
+    await queuePicks(page, ['coconut.nxsp'])
+    // The read before the picker (R2) has time to finish.
+    await page.waitForTimeout(500)
+    await submitSave(page, undefined, 'Save As')
+    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
+})
+
+test('suggestions never name a known file: a taken "(2)" gets one more', async ({ page }) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    await saveAs(page)
+    await submitSave(page, undefined, 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
+    // The chain is bound to "coconut (2)" now; its Save As… suggests the next free name.
+    await saveAs(page)
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (2) (2)')
+})
+
+test('the project picker lists .nxsp only, and a build that outlasted the press asks for Save', async ({
+    page,
+}) => {
+    await start(page, { override: { activation: false } })
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' })
+    await expect(preparing).toBeVisible()
+    expect(await pickerCalls(page)).toEqual([])
+    await page.waitForTimeout(350)
+    await preparing.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    expect(await pickerCalls(page)).toHaveLength(1)
+})
+
+test('level data opened in this tab, picked in the project picker, is refused and put back', async ({
+    page,
+}) => {
+    await start(page)
+    const level = await page.evaluate(async () => {
+        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
+        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
+    })
+    await writeFile(page, 'LevelData', level)
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('o')
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+    await queuePicks(page, ['LevelData'])
+    await pressSave(page)
+    await submitSave(page, 'LevelData')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('"LevelData" is not a project file.')
+    await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
+    expect(await readFile(page, 'LevelData')).toEqual(level)
+})
+
+test('a download browser downloads, binds by name, and offers Download Again unchanged', async ({
+    page,
+}) => {
+    await page.addInitScript(() => {
+        const downloads: string[] = []
+        ;(window as { downloads?: string[] }).downloads = downloads
+        HTMLAnchorElement.prototype.click = function () {
+            downloads.push(this.download)
+        }
+    })
+    await start(page, { fileSystemAccess: false })
+    await edit(page, 1)
+    await pressSave(page)
+    await expect(saveDialog(page)).toContainText('Each save downloads a new copy.')
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Download started: coconut.nxsp' })).toBeVisible()
+    expect(await chainOf(page)).toMatchObject({
+        file: { name: 'coconut.nxsp', event: 'downloaded' },
+    })
+    // Unchanged: no new copy until Download Again.
+    await pressSave(page)
+    await expect(
+        notice(page).filter({ hasText: 'No changes since coconut.nxsp was downloaded' }),
+    ).toBeVisible()
+    // A change downloads again with no dialog.
+    await edit(page, 2)
+    await pressSave(page)
+    await expect
+        .poll(() => page.evaluate(() => (window as { downloads?: string[] }).downloads?.length))
+        .toBe(2)
+    await expect(saveDialog(page)).toHaveCount(0)
+    expect(await pickerCalls(page)).toEqual([])
+})

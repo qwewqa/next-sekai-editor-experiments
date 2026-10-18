@@ -441,10 +441,17 @@ type Picked =
     | { kind: 'refused'; reason: RefusedReason; bytes?: ArrayBuffer }
     | { kind: 'unknown' }
 
+/**
+ * Whether two handles name one file (`isSameEntry`), asked both ways: a handle read back from
+ * storage may only compare from its own side (the specs' OPFS tokens).
+ */
+const same = async (a: FileSystemFileHandle, b: FileSystemFileHandle) =>
+    (await sameEntry(a, b)) || sameEntry(b, a)
+
 /** Identifies a picked file under `nse-bind` (R3, R7), outside any transaction. */
 const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked> => {
     const { opened } = exportMemory
-    if (opened && (await sameEntry(handle, opened.handle))) {
+    if (opened && (await same(handle, opened.handle))) {
         if (!opened.project)
             return {
                 kind: 'refused',
@@ -460,7 +467,7 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
     }
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)
-    if (held && (await sameEntry(handle, held))) return { kind: 'own' }
+    if (held && (await same(handle, held))) return { kind: 'own' }
     let owners: HandleOwner[] = []
     try {
         owners = await env.worker.call('listHandleOwners')
@@ -470,7 +477,7 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
     for (const owner of owners) {
         if (!owner.handle) continue
         const stored = await handleOf(env.worker, owner.chainId, owner.role)
-        if (!stored || !(await sameEntry(handle, stored))) continue
+        if (!stored || !(await same(handle, stored))) continue
         if (owner.role === 'exportTarget') return { kind: 'refused', reason: 'levelData' }
         return owner.chainId === env.chainId ? { kind: 'own' } : { kind: 'other', owner }
     }
@@ -1439,7 +1446,7 @@ const dialogSave = async (
         !!binding.replaced ||
         currentSession.value.copyOf !== undefined ||
         exportMemory.partial === true
-    const stem = shownStem(env, state)
+    const stem = shownStem(env, state) || (binding.replaced ? stemOf(binding.replaced.name) : '')
     const name = await suggestion(env, copy ? copyStem(stem) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
