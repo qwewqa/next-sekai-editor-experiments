@@ -55,8 +55,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
             configurable: true,
             value: undefined,
         })
-        for (const key of ['showPreview', 'showSidebar', 'autoSave'])
+        for (const key of ['showPreview', 'showSidebar'])
             localStorage.setItem(`sonolus-next-sekai-editor.${key}`, 'false')
+        // The fixture hook (Part 1 §1.4.2): a blank start, at once.
+        localStorage.setItem('nse.test.startBlank', 'true')
         localStorage.setItem('sonolus-next-sekai-editor.pps', '120')
     })
     await page.addInitScript(seedVersion)

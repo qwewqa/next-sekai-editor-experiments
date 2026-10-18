@@ -45,6 +45,8 @@ test('a package is picked, stored and chosen again after a reload, under the rel
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.addInitScript(() => {
+        // The fixture hook (Part 1 §1.4.2): a blank start, at once.
+        localStorage.setItem('nse.test.startBlank', 'true')
         const seen: string[] = []
         ;(window as unknown as { csp: string[] }).csp = seen
         document.addEventListener(
