@@ -1,6 +1,7 @@
 import { PeekError, parseEntryKey, type PeekSource } from '../history/peek'
 import { loadedStates } from '../history/stack'
 import type { State } from '../state'
+import type { BgmMeta } from '../state/bgm'
 import type { Flusher } from './flush'
 import { toHex } from './hash'
 import { stateFromRecords, toRecords } from './records/records'
@@ -10,21 +11,6 @@ import type { StorageWorker } from './worker/client'
 // Where peek gets an entry's state (Part 1 §1.4.11, §1.9.2 #5): this tab's memory first (an
 // entry not yet stored, or a state the undo stack still holds), else the stored snapshot, read
 // and verified in the worker and built here.
-
-/** The root each stored state was flushed as: a state the stack holds is found by its root. */
-const rootOf = new WeakMap<State, string>()
-
-export const rememberRoots = (roots: readonly (readonly [State, Uint8Array])[]) => {
-    for (const [state, hash] of roots) rootOf.set(state, toHex(hash))
-}
-
-/** A state this tab holds for a root, so peeking it needs no read and shares its structure. */
-const heldState = (hex: string, flusher: Flusher | undefined) => {
-    for (const { state, snapshot } of loadedStates())
-        if (rootOf.get(state) === hex || (snapshot && toHex(snapshot) === hex)) return state
-    for (const entry of flusher?.session?.pending ?? [])
-        if (entry.state && rootOf.get(entry.state) === hex) return entry.state
-}
 
 const sameParts = (a: State, b: State) =>
     a.store === b.store &&
@@ -37,7 +23,45 @@ const sameParts = (a: State, b: State) =>
     a.isDynamicStages === b.isDynamicStages &&
     a.levelInfo === b.levelInfo &&
     a.bgm.offset === b.bgm.offset &&
-    a.bgm.meta?.hash === b.bgm.meta?.hash
+    sameMedia(a.bgm.meta, b.bgm.meta)
+
+/** The BGM's whole record, as the header stores it. */
+const sameMedia = (a: BgmMeta | undefined, b: BgmMeta | undefined) =>
+    a === b ||
+    (!!a &&
+        !!b &&
+        a.hash === b.hash &&
+        a.filename === b.filename &&
+        a.size === b.size &&
+        a.type === b.type &&
+        a.durationMs === b.durationMs)
+
+/**
+ * The roots states were flushed as, by their store: a selection change replaces the state but
+ * keeps its chart, so the state the stack holds is found by its parts, not its identity.
+ */
+const rootsByStore = new WeakMap<object, { state: State; hex: string }[]>()
+
+export const rememberRoots = (roots: readonly (readonly [State, Uint8Array])[]) => {
+    for (const [state, hash] of roots) {
+        const hex = toHex(hash)
+        const known = rootsByStore.get(state.store) ?? []
+        if (known.some((each) => each.hex === hex && sameParts(each.state, state))) continue
+        // A store's states rarely differ in their header; a few are kept.
+        rootsByStore.set(state.store, [{ state, hex }, ...known].slice(0, 4))
+    }
+}
+
+const rootOf = (state: State) =>
+    rootsByStore.get(state.store)?.find((each) => sameParts(each.state, state))?.hex
+
+/** A state this tab holds for a root, so peeking it needs no read and shares its structure. */
+const heldState = (hex: string, flusher: Flusher | undefined) => {
+    for (const { state, snapshot } of loadedStates())
+        if ((snapshot && toHex(snapshot) === hex) || rootOf(state) === hex) return state
+    for (const entry of flusher?.session?.pending ?? [])
+        if (entry.state && rootOf(entry.state) === hex) return entry.state
+}
 
 const rootHex = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
