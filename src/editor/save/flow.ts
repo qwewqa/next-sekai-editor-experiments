@@ -42,6 +42,7 @@ import {
     sameEntry,
     type OpenedSource,
 } from '../commands/exportLevel/memory'
+import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import type { ProjectPick } from '../commands/exportLevel/pick'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
@@ -2140,13 +2141,7 @@ export const endExportRead = () => {
 export const exportTargetAvailable = async (handle: FileSystemFileHandle) => {
     const env = environment()
     if (!env) return true
-    const owners = await env.worker.call('listHandleOwners').catch(() => [])
-    for (const owner of owners) {
-        const stored = await handleOf(env.worker, owner.chainId, owner.role)
-        if (!stored || !(await sameEntry(handle, stored))) continue
-        if (owner.role !== 'exportTarget' || owner.chainId !== env.chainId) return false
-    }
-    return true
+    return knownTargetAvailable(env.worker, env.chainId, handle)
 }
 
 /**

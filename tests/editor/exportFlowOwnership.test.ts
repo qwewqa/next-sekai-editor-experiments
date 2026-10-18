@@ -15,7 +15,9 @@ import {
     setExportTargetReader,
     setUnregisteredTargetCheck,
 } from '../../src/editor/commands/exportLevel/memory'
+import { knownTargetAvailable } from '../../src/editor/commands/exportLevel/ownership'
 import { setPickLock, setTargetLock } from '../../src/editor/commands/exportLevel/pick'
+import type { StorageWorker } from '../../src/local/worker/client'
 import { setPlatformForTests } from '../../src/platform'
 import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform } from '../../src/platform/mock'
@@ -198,3 +200,65 @@ test('bookkeeping rejection releases the binding lock before reporting failure',
     assert.equal(await exportToTarget(ctx, target), 'cancelled')
     assert.equal(reported, true)
 })
+
+for (const failure of ['list', 'read', 'missing', 'compare'] as const) {
+    test(`an unregistered target refuses a failed ${failure} ownership check without writing`, async () => {
+        const { mock, target } = await setup()
+        setExportPersister(async () => false)
+        setExportTargetReader(async () => ({}))
+        assert.equal(await exportToTarget(context(), target), 'done')
+        const retryTarget = exportMemory.target!
+        const bytes = await mock.files.get('LevelData')!.arrayBuffer()
+        const writes = mock.calls.filter((call) => call.startsWith('write:')).length
+        const unavailable = async (): Promise<never> => {
+            throw new Error('Ownership unavailable')
+        }
+        const stored = {
+            ...target.handle,
+            isSameEntry: failure === 'compare' ? unavailable : target.handle.isSameEntry,
+        }
+        if (failure === 'compare') target.handle.isSameEntry = unavailable
+        const worker = {
+            call: async (method: string) => {
+                if (method === 'listHandleOwners')
+                    return failure === 'list'
+                        ? unavailable()
+                        : [{ chainId: 'other', role: 'exportTarget', handle: true }]
+                if (failure === 'read') return unavailable()
+                return failure === 'missing' ? undefined : stored
+            },
+        } as unknown as Pick<StorageWorker, 'call'>
+        setUnregisteredTargetCheck(({ handle }) => knownTargetAvailable(worker, 'own', handle))
+        mock.saveTargets.push('cancel')
+        assert.equal(await exportToTarget(context(), retryTarget), 'back')
+        assert.equal(mock.calls.filter((call) => call.startsWith('write:')).length, writes)
+        assert.deepEqual(await mock.files.get('LevelData')!.arrayBuffer(), bytes)
+    })
+}
+
+for (const kind of ['empty', 'no-handle', 'different', 'own'] as const) {
+    test(`a successful ${kind} ownership check permits a never-registered target`, async () => {
+        const { mock, target } = await setup()
+        const worker = {
+            call: async (method: string) => {
+                if (method === 'listHandleOwners')
+                    return kind === 'empty'
+                        ? []
+                        : [
+                              {
+                                  chainId: kind === 'own' ? 'own' : 'other',
+                                  role: 'exportTarget',
+                                  handle: kind !== 'no-handle',
+                              },
+                          ]
+                assert.notEqual(kind, 'no-handle')
+                return kind === 'own' ? target.handle : mock.createHandle('different')
+            },
+        } as unknown as Pick<StorageWorker, 'call'>
+        setExportPersister(async () => false)
+        setExportTargetReader(async () => ({}))
+        setUnregisteredTargetCheck(({ handle }) => knownTargetAvailable(worker, 'own', handle))
+        assert.equal(await exportToTarget(context(), target), 'done')
+        assert.ok(mock.calls.some((call) => call.startsWith('write:')))
+    })
+}
