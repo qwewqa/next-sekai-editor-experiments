@@ -153,12 +153,13 @@ for (const side of ['left', 'right'] as const) {
             expect(Math.abs(preview.x + preview.width - tab.x)).toBeLessThanOrEqual(1)
             expect(chart.x + chart.width).toBeLessThanOrEqual(preview.x + 0.5)
         }
-        // A narrow tall tile docks the bar below the image and keeps the clock.
+        // A narrow tall tile docks the bar below the image with the clock in its strip.
         await expect(page.locator('.preview-transport-toggle')).toHaveCount(0)
         await expect(
             page.getByRole('group', { name: 'Preview Playback Controls', exact: true }),
         ).toBeInViewport()
-        await expect(page.locator('.transport-corner-time')).toBeVisible()
+        await expect(page.locator('.transport-time')).toBeVisible()
+        await expect(page.locator('.transport-corner-time')).toHaveCount(0)
 
         // Touch devices start with settings collapsed; they open beside the dock.
         const toggle = page.getByRole('button', { name: 'Show Preview Settings', exact: true })

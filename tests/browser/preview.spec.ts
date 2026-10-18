@@ -1057,11 +1057,11 @@ test.describe('preview transport', () => {
             await page.clock.runFor(32)
             await expect.poll(() => panel.evaluate((element) => element.clientHeight)).toBe(44)
         }
-        // At 540 px the six steppers fit on touch, with the time in the corner.
+        // At 540 px the six steppers fit on touch.
         await expect(page.getByRole('button', { name: 'Back 100 ms', exact: true })).toBeVisible()
         await expect(stepSize).toHaveCount(0)
 
-        await page.setViewportSize({ width: 300, height: 1000 })
+        await page.setViewportSize({ width: 240, height: 1000 })
         await page.clock.runFor(32)
         await expect(page.getByRole('button', { name: 'Back 100 ms', exact: true })).toHaveCount(0)
         await expect(stepSize).toHaveAccessibleName(/10 ms/)
