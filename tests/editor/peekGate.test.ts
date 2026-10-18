@@ -267,6 +267,29 @@ const commandFolders: Record<string, string[]> = {
     scaleSelection: ['scaleBeat', 'scaleElevation', 'scaleWidth'],
 }
 
+/** The body of a file's `onPeekStart` listener. */
+const peekStartBody = (path: string) => {
+    const source = read(path)
+    const start = source.search(/onPeekStart\(\(\) => \{/)
+    assert.ok(start !== -1, `${path} registers onPeekStart`)
+    return source.slice(start, source.indexOf('\n})', start))
+}
+
+/** ManagerList's handlers that edit, each refused while peeking. */
+const managerEdits = [
+    'startRename',
+    'endRename',
+    'reorder',
+    'addEntry',
+    'onNewFolder',
+    'duplicateRow',
+    'chooseFolder',
+    'onBulkDelete',
+    'onBulkFolder',
+    'run',
+    'runBulk',
+]
+
 /** What each gate of the call-site list rests on, checked in the source. */
 const gateChecks: Record<string, (path: string, source: string) => void> = {
     // The command's file: its command is refused (checked above by name).
@@ -275,7 +298,13 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         const names = commandFolders[folder] ?? [folder]
         if (path === 'src/history/dynamicStages.ts')
             assert.match(read(path), /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)/)
-        else
+        // A load notice's Choose Audio… reaches changeBgm without runCommand.
+        else if (path === 'src/editor/commands/bgm/index.ts')
+            assert.match(
+                declaration(path, 'changeBgm') ?? '',
+                /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)[^]*showModal\(/,
+            )
+        if (path !== 'src/history/dynamicStages.ts')
             for (const name of names)
                 assert.ok(refused.includes(name), `${path}: ${name} is refused`)
     },
@@ -295,9 +324,13 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
     },
     // A peek cancels drags before it shows (onPeekStart in src/editor/peek.ts).
     drag: () => {
+        const start = peekStartBody('src/editor/peek.ts')
+        assert.match(start, /cancelMouseControls\(\)/)
+        assert.match(start, /cancelTouchControls\(\)/)
+        // Leaving switches the tool from view-only Select, which ends a drag.
         assert.match(
-            read('src/editor/peek.ts'),
-            /onPeekStart\(\(\) => \{\s*[^}]*cancelMouseControls/,
+            read('src/editor/controls/index.ts'),
+            /\[tool, state\],[^]*?cancelControls\(currentTool === previousTool\)/,
         )
     },
     // Panels and managers: disabled, and the writes they reach refuse while peeking.
@@ -319,10 +352,17 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         const guard = guards[path]
         assert.ok(guard, `${path} has no listed guard`)
         assert.match(read(guard), /refuseWhilePeeking\(\)/)
+        if (guard !== 'src/editor/workspace/manager/ManagerList.vue') return
+        // Each edit handler refuses; a drag to reorder doesn't start.
+        for (const name of managerEdits)
+            assert.match(declaration(guard, name) ?? '', /\brefused\(\)/, `${name} refuses`)
+        assert.match(declaration(guard, 'onDragStart') ?? '', /if \(isPeeking\.value\) return/)
     },
     // Closed while peeking, or behind the overlay side by side.
     elevation: () => {
-        assert.match(read('src/editor/peek.ts'), /closeElevationForPeek\(\)/)
+        assert.match(peekStartBody('src/editor/peek.ts'), /closeElevationForPeek\(\)/)
+        // Side by side, its own drag or marquee ends.
+        assert.match(peekStartBody('src/editor/elevation/ElevationEditor.vue'), /\bcancel\(\)/)
         assert.match(read('src/editor/elevation/ElevationEditor.vue'), /v-if="isPeeking"/)
     },
     // Level Info: shown read-only, and nothing is pushed while peeking.
