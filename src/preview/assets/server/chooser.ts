@@ -8,7 +8,7 @@ import { importItem } from '../files/importer'
 import { LIMITS } from '../files/limits'
 import { displayText } from '../files/package'
 import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from '../files/store'
-import { rollBack, storeRecords } from '../files/storeRecords'
+import { storeRecords } from '../files/storeRecords'
 import {
     parseServerUrl,
     ServerUrlError,
@@ -62,7 +62,7 @@ export type ServerChooserDeps = {
     /** Plain http, for the apps' local servers. */
     allowHttp?: boolean
     now?: () => number
-    onStored?: (metas: UserAssetMeta[]) => void
+    onStorageChanged?: () => void
     /** Object URLs for the thumbnails; `URL`'s by default. */
     objectUrls?: { create: (blob: Blob) => string; revoke: (url: string) => void }
 }
@@ -406,6 +406,7 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
         useError.value = undefined
         // The checkboxes are settled: lookups still under way would only hold up Use.
         lookupController.abort()
+        let storageAttempted = false
         try {
             // What the lookups already fetched is not asked for again.
             const seed = wanted.flatMap(({ type: wantedType, name: wantedName }) => {
@@ -428,20 +429,19 @@ export const createServerChooser = (type: AssetType, deps: ServerChooserDeps) =>
             // Checked all: only now is anything stored, all in one transaction and read back, so a
             // bad item stores nothing.
             if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-            const { metas, added } = await storeRecords(deps.store, records)
-            // Closed or cancelled while storing: what this Use added goes again.
-            if (mine !== generation) {
-                await rollBack(deps.store, added)
-                return
-            }
+            storageAttempted = true
+            const { metas } = await storeRecords(deps.store, records)
+            if (mine !== generation) return
             deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, deps.toChoice(meta)])))
-            deps.onStored?.(metas)
+            if (mine !== generation) return
             reset()
             deps.close()
         } catch (failure) {
             if (mine !== generation || isAbort(failure)) return
             phase.value = 'listed'
             useError.value = toError(failure)
+        } finally {
+            if (storageAttempted) deps.onStorageChanged?.()
         }
     }
 

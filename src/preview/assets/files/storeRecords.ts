@@ -6,11 +6,6 @@ export class StoreFailed extends Error {
     override name = 'StoreFailed'
 }
 
-/** Removes what a Use newly stored, when it is not to be used after all. */
-export const rollBack = async (store: UserAssetStore, keys: string[]) => {
-    await Promise.allSettled(keys.map((key) => store.remove(key)))
-}
-
 /** Stores the records together and reads each back, as media is, before it is used. */
 export const storeRecords = async (store: UserAssetStore, records: UserAssetRecord[]) => {
     let stored
@@ -26,7 +21,7 @@ export const storeRecords = async (store: UserAssetStore, records: UserAssetReco
                 throw new Error(`The package ${record.key} did not read back as written`)
         }
     } catch (error) {
-        await rollBack(store, stored.added)
+        // A committed key may already have been adopted by another caller.
         throw new StoreFailed('The packages did not read back', { cause: error })
     }
     return stored
