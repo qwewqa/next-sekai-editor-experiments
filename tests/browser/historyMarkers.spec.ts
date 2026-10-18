@@ -2,7 +2,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 
-const shots = 'D:/sonolus/nse-next/work/validation/history-shots'
+const shots = process.env.NSE_HISTORY_SHOTS_DIR ?? 'D:/sonolus/nse-next/work/validation/history-shots'
 const boot = async (page: Page) => {
     await page.addInitScript(() => {
         performance.setResourceTimingBufferSize(5000)

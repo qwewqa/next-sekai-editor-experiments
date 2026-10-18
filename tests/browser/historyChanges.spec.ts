@@ -503,7 +503,7 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     )
 })
 
-test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => {
+test('Show Edits default off leaves the chart undimmed and unmarked', async ({ page }) => {
     await edit(page, 'Moved 1 note', { kind: 'move', beats: [5] })
     await stored(page)
     await page.evaluate(() => {
@@ -512,7 +512,7 @@ test('Dim Unchanged Objects off leaves the chart undimmed', async ({ page }) => 
     await openTab(page)
     await row(page, 'Moved 1 note').click()
     await expect(peekLine(page)).toHaveText('1 change')
-    expect(await changes(page)).toMatchObject({ rings: 1, dimmed: false })
+    expect(await changes(page)).toMatchObject({ rings: 0, dimmed: false })
 })
 
 test('a notice card stays clear of the adjacent spatial controls', async ({ page }) => {

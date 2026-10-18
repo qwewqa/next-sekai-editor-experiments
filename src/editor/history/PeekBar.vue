@@ -69,7 +69,7 @@ const button =
             aria-hidden="true"
         />
         <div
-            class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-1 px-2"
+            class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center px-2"
             :class="view.w < 640 ? 'pt-7' : 'pt-2'"
             data-peek-bar
         >
