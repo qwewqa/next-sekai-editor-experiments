@@ -753,3 +753,33 @@ test('starting from a failed own journal keeps the session held until its key go
     assert.ok(lock)
     lock.release()
 })
+
+test('a stored stack whose window starts after slot 0 opens saying earlier steps are in History', async () => {
+    for (const base of [0, 1]) {
+        const world = createWorld({ seed: 20 + base })
+        const storage = new MemoryStorage()
+        const first = await openJournalPage(world, 'first', storage)
+        const a = stateOf(goldenChart())
+        const stored = beginSession(first, a)
+        append(first, 'edit', 'One', widen(a))
+        append(first, 'edit', 'Two', widen(a, 1))
+        await first.flusher.flush({ strict: true })
+        // As a capped stack stores it: the window's first slot is past slot 0.
+        if (base) {
+            const row = rows(world, 'sessions').get(stored.id)!
+            const window = row.stack as { base: number; length: number; index: number }
+            await first.tab.run(() =>
+                first.core.write(['sessions'], (tx) =>
+                    tx.put('sessions', {
+                        ...row,
+                        stack: { ...window, base, length: window.length - base },
+                    }),
+                ),
+            )
+        }
+        first.tab.kill()
+        const visit = await load(world, 'visit', storage)
+        assert.equal(visit.opened, true)
+        assert.equal(visit.shown.at(-1)?.earlier, base ? true : undefined)
+    }
+})
