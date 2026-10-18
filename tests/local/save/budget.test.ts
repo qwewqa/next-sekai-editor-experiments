@@ -49,24 +49,22 @@ const measure = async (name: string, fixture: Fixture) => {
     )
 }
 
-test(
-    'the long-chain Save budgets, measured',
-    { skip: !process.env.NSE_BUDGETS || !hasCoconut },
-    async () => {
-        const coconut = sampleState(coconutPath)
+const skip = !process.env.NSE_BUDGETS || !hasCoconut
 
-        const steps1800 = await Fixture.create()
-        let state = coconut
-        await steps1800.start(state)
-        for (let k = 1; k < 1800; k++) {
-            state = widen(state, k)
-            await steps1800.editState(state, `Edit ${k}`)
-        }
-        await measure('coconut, 1,800 steps', steps1800)
+test('a Save of coconut with 1,800 steps, measured', { skip }, async () => {
+    let state = sampleState(coconutPath)
+    const fixture = await Fixture.create()
+    await fixture.start(state)
+    for (let k = 1; k < 1800; k++) {
+        state = widen(state, k)
+        await fixture.editState(state, `Edit ${k}`)
+    }
+    await measure('coconut, 1,800 steps', fixture)
+})
 
-        const hours20 = await Fixture.create()
-        await hours20.start(coconut)
-        for (let k = 1; k < 20_000; k++) await hours20.edit(k)
-        await measure('20-hour chain, 20,000 steps', hours20)
-    },
-)
+test('a Save of a 20-hour chain, measured', { skip }, async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(sampleState(coconutPath))
+    for (let k = 1; k < 20_000; k++) await fixture.edit(k)
+    await measure('20-hour chain, 20,000 steps', fixture)
+})
