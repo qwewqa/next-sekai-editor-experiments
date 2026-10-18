@@ -6,7 +6,6 @@ import { keyText } from '../../../src/local/kv/keys'
 import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/local/nxsp'
 import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
-import { chunksOfRoot } from '../../../src/local/open/plan'
 import { stateBatch } from '../../../src/local/stateBatch'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import {
@@ -22,8 +21,9 @@ import { peekHandlers } from '../../../src/local/worker/peekHandlers'
 import { openPage, rows, storedRecords } from '../flush/harness'
 import { fresh } from '../nxsp/chain'
 import { crafted, jsonOf, setJson } from '../nxsp/craft'
-import { BGM_2, chartWith, COVER_2, levelOf, Store } from '../nxsp/helpers'
+import { chartWith, headInput as headInputOf, levelOf } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
+import { damagedFile } from './files'
 
 // The open's first transaction and its background import (Part 1 §1.5.4): the head stored at
 // once with the stack and media, the file's rows, roots, nodes and chunks in batches, damage
@@ -123,9 +123,16 @@ test('an open stores its head at once, then imports every row, root, node and ch
     assert.equal(toHex(stored.head), history.head)
     assert.ok(storedRecords(s.world, stored.head))
     for (const slot of history.undoStack.slots) assert.ok(hasNode(s.world, slot.snapshot))
+    // A short history's rows come in the first transaction too.
     assert.deepEqual(
-        sessionEntries(s.world).map((row) => [row.seq, row.kind, row.label]),
-        [[5, 'continue', 'Opened coconut.nxsp']],
+        sessionEntries(s.world).map((row) => [row.seq, row.kind]),
+        [
+            [1, 'init'],
+            [2, 'edit'],
+            [3, 'edit'],
+            [4, 'save'],
+            [5, 'continue'],
+        ],
     )
     assert.equal(sessionRow(s.world)?.importPending, true)
     assert.equal(sessionRow(s.world)?.origin, 'nxsp')
@@ -201,62 +208,6 @@ test('a peek of a state not imported yet reads it from the opened file', async (
     assert.equal(read.kind, 'found')
 })
 
-/** The shared chain with a first state of its own notes, so some chunks only it reaches. */
-const distinctFile = async () => {
-    const { input } = fresh()
-    const store = new Store()
-    const states = [
-        stateOf(chartWith({ extraNotes: 40 })),
-        stateOf(chartWith({ extraNotes: 1 })),
-        stateOf(chartWith({ bgm: BGM_2, cover: COVER_2, extraNotes: 1 })),
-    ]
-    const hashes = states.map((state) => store.add(state))
-    const history = input.history!
-    const changed = {
-        ...input,
-        history: {
-            ...history,
-            entries: history.entries.map((each, i) => ({
-                ...each,
-                snapshot: hashes[Math.min(i, 2)]!,
-            })),
-            roots: store.roots,
-            nodes: store.nodes,
-            chunks: store.chunks,
-            undoStack: {
-                ...history.undoStack,
-                slots: history.undoStack.slots.map((slot, i) => ({
-                    ...slot,
-                    snapshot: hashes[i]!,
-                })),
-            },
-        },
-    }
-    return { file: await executePlan(planNxsp(changed).plan, new Map()), hashes }
-}
-
-/** A file with one chunk only the first state reaches changed, its CRCs recomputed. */
-const damagedFile = async () => {
-    const { file, hashes } = await distinctFile()
-    const history = await historyOf(file)
-    const later = new Set([
-        ...chunksOfRoot(history, hashes[1]!),
-        ...chunksOfRoot(history, hashes[2]!),
-    ])
-    const only = chunksOfRoot(history, hashes[0]!).filter((hash) => !later.has(hash))
-    const bad = only.at(-1)!
-    const place = history.index.get(bad)!
-    const broken = await crafted((items) => {
-        const item = items.find((each) => each.name === 'history/chunks.bin')!
-        const data = new Uint8Array(item.data)
-        // A byte in the middle of the deflated stream: it inflates differently, or not at all.
-        const at = place.offset + Math.floor(place.length / 2)
-        data[at] = (data[at] ?? 0) ^ 0x55
-        item.data = data
-    }, file)
-    return { file: broken, bad, hashes }
-}
-
 test('a chunk failing its hash in the import is damage: the chain unlinks and its rows are damaged', async () => {
     const s = await setup(4)
     const { file, bad, hashes } = await damagedFile()
@@ -308,8 +259,7 @@ test('an import that can’t go on marks the rows whose states never arrived kep
     const reply = nxsp(await s.run(() => s.open.openRead(file)))
     const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
     if (stored.kind !== 'stored') throw new Error('not stored')
-    // Only the rows arrive before the tab ends.
-    await s.run(() => s.open.openBatch({ id: reply.id, n: 0 }))
+    // The tab ends before any batch.
     assert.equal(await s.run(() => s.open.openAbandon(ids.sessionId)), true)
     assert.equal(sessionRow(s.world)?.importPending, undefined)
     const head = hashes[2]!
@@ -400,4 +350,58 @@ test('a file whose level differs from its history’s head gets "Changed outside
     )
     assert.equal(chainRow(s.world)?.edited, undefined)
     assert.equal(DB_NAME, 'nse-local-data')
+})
+
+/** A file of many rows: an init, then exports of the same state, in the writer's segments. */
+const longFile = async (count: number) => {
+    const { input } = fresh()
+    const history = input.history!
+    const first = history.entries[0]!
+    const head = history.undoStack.slots[2]!.snapshot
+    const entries = [
+        { ...first, snapshot: head },
+        ...Array.from({ length: count - 2 }, (_, i) => ({
+            kind: 'export' as const,
+            time: 2000 + i,
+            label: 'Exported LevelData',
+            snapshot: head,
+            noteCount: 0,
+        })),
+        { ...history.entries.at(-1)!, snapshot: head },
+    ]
+    const state = fresh().c
+    const long = {
+        ...input,
+        ...headInputOf(state),
+        media: { bgm: input.media!.bgm, cover: input.media!.cover, preview: input.media!.preview },
+        history: {
+            ...history,
+            entries,
+            undoStack: { base: 0, slots: [{ snapshot: head, label: first.label }], index: 0 },
+        },
+    }
+    return executePlan(planNxsp(long).plan, new Map())
+}
+
+test('a long history’s rows come in batches after the first transaction', async () => {
+    const s = await setup(8)
+    const file = await longFile(2100)
+    const reply = nxsp(await s.run(() => s.open.openRead(file)))
+    assert.equal(reply.history?.entries, 2100)
+    const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
+    if (stored.kind !== 'stored') throw new Error('not stored')
+    // Only the open's own entry, at first.
+    assert.deepEqual(
+        sessionEntries(s.world).map((row) => row.seq),
+        [2101],
+    )
+    const outcomes = await runAll(s, reply.id, stored.batches)
+    assert.ok(outcomes.every((outcome) => outcome.kind === 'done'))
+    const entries = sessionEntries(s.world)
+    assert.equal(entries.length, 2101)
+    assert.equal(sessionRow(s.world)?.entryCount, 2101)
+    assert.deepEqual(
+        stackMismatches(storedStack(s.world), replay(entries as unknown as ReplayEntry[])),
+        [],
+    )
 })

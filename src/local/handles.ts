@@ -4,8 +4,8 @@ import { platformOverride, suspectPrivate, usesOpfsPickers } from '../platform/d
 // Save, an Export or an open's resumed import needs it, never during startup, journal replay or
 // recovery. Two cases keep a handle off the record:
 // - Under the specs' OPFS picker override: reading a real OPFS handle back from IndexedDB closes
-//   Playwright's in-memory Chromium, so the record keeps a token and this page the handle; a
-//   spec registers fake handles under `window.nseTestHandles` for a load that reads one back.
+//   Playwright's in-memory Chromium, so the record keeps a token, the file's name in the OPFS
+//   root, which any tab finds again; a spec may register fakes under `window.nseTestHandles`.
 // - A suspected private window, whose in-memory profile the D16 probe couldn't clear: a missing
 //   handle only means a picker.
 
@@ -52,17 +52,34 @@ export const storableHandle = async (
     handle: FileSystemFileHandle | undefined,
 ): Promise<FileSystemFileHandle | HandleToken | undefined> => {
     if (!handle) return
-    if (usesOpfsPickers()) {
-        const token = crypto.randomUUID()
-        testHandles().set(token, handle)
-        return { testHandle: token }
-    }
+    // The override's picks are files in the OPFS root, so the name finds one again in any tab.
+    if (usesOpfsPickers()) return { testHandle: handle.name }
     return (await privateSuspected()) ? undefined : handle
+}
+
+/** An OPFS root file by name, as a handle each call looks up again (the override's tokens). */
+const opfsFile = (name: string): FileSystemFileHandle => {
+    const real = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
+    const handle = {
+        kind: 'file',
+        name,
+        getFile: async () => (await real()).getFile(),
+        createWritable: async (options?: FileSystemCreateWritableOptions) =>
+            (await real()).createWritable(options),
+        isSameEntry: async (other: FileSystemHandle) => (await real()).isSameEntry(other),
+        queryPermission: () => Promise.resolve('granted'),
+        requestPermission: () => Promise.resolve('granted'),
+    }
+    return handle as unknown as FileSystemFileHandle
 }
 
 /** The handle a stored value stands for; undefined for none, or a token this page doesn't hold. */
 export const handleOf = (stored: unknown): FileSystemFileHandle | undefined => {
-    if (isToken(stored)) return testHandles().get(stored.testHandle)
+    if (isToken(stored))
+        return (
+            testHandles().get(stored.testHandle) ??
+            (usesOpfsPickers() ? opfsFile(stored.testHandle) : undefined)
+        )
     if (typeof stored !== 'object' || stored === null) return
     const handle = stored as Partial<FileSystemFileHandle>
     return typeof handle.getFile === 'function' ? (stored as FileSystemFileHandle) : undefined

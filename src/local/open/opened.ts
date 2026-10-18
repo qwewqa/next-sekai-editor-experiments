@@ -120,9 +120,14 @@ export const dropOpenedFor = (sessionId: string) => {
 }
 
 /** Ties a read to the session its open stored, and plans its import. */
-export const attachOpened = (each: OpenedFile, sessionId: string, stored: ReadonlySet<string>) => {
+export const attachOpened = (
+    each: OpenedFile,
+    sessionId: string,
+    stored: ReadonlySet<string>,
+    entriesStored = false,
+) => {
     each.sessionId = sessionId
-    if (each.read.history) each.plan = planImport(each.read.history, stored)
+    if (each.read.history) each.plan = planImport(each.read.history, stored, entriesStored)
 }
 
 const decoder = new TextDecoder()

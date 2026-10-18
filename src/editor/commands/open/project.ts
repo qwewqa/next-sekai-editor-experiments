@@ -286,7 +286,6 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
 
     // Earlier sessions on this file, recognised by revision (§1.5.4 step 4).
     const revision = identity ? opened.project?.revision : undefined
-    const left = previousSession.value?.sessionId
 
     let stored: Awaited<ReturnType<typeof project.storeAndShow>> | undefined
     await showModal(LoadingModal, {
@@ -330,6 +329,8 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
     if (identity && device !== undefined && device === thisDevice())
         storageSet(DOWNLOAD_CONFIRMED_KEY, true)
 
+    // The session this open left, which Reopen offers.
+    const left = previousSession.value?.sessionId
     const earlier = revision
         ? earlierNotice(
               { id: revision.id, ancestors: revision.ancestors },

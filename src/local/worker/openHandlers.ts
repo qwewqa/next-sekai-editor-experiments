@@ -87,7 +87,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                 (tx) => writeOpenHead(tx, opened, request, prepared),
                 { durability: 'strict', ...progress },
             )
-            attachOpened(opened, request.ids.sessionId, prepared.stored)
+            attachOpened(opened, request.ids.sessionId, prepared.stored, !!prepared.entries)
             if (!opened.plan) dropOpened(opened.id)
             return { ...result, batches: opened.plan?.length ?? 0 }
         },

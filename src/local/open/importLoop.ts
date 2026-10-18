@@ -55,6 +55,19 @@ const BATCH_TIMEOUT_MS = 120_000
 
 const running = new Map<string, Promise<ImportOutcome>>()
 
+/** A spec slows the import by this many ms a batch, to act while it runs (§1.11's test hooks). */
+export const IMPORT_DELAY_TEST_KEY = 'nse.test.importDelay'
+
+const testDelay = async () => {
+    let ms = 0
+    try {
+        ms = Number(localStorage.getItem(IMPORT_DELAY_TEST_KEY) ?? 0)
+    } catch {
+        // No localStorage: no hook.
+    }
+    if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /** Resolves once the session's import ends in this tab; `none` when none runs here. */
 export const whenImported = (sessionId: string, signal?: AbortSignal): Promise<ImportOutcome> => {
     const job = running.get(sessionId)
@@ -111,6 +124,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
         return { kind: 'stopped' }
     }
     for (let n = 0; n < job.batches; n++) {
+        await testDelay()
         if (!(await unchanged(source, false))) return stop()
         let outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
         if (outcome.kind === 'notOpened') {

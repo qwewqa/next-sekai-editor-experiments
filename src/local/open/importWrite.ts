@@ -27,7 +27,7 @@ import type { StateBatch } from '../stateBatch'
 import { nextTime } from '../time'
 import { BLOCK_SLOTS, blockOf, blockRow, storedWindow, type ReplaySlot } from '../timeline'
 import type { OpenedFile } from './opened'
-import { chunksOfRoot, nodesOfRoot, stackOrder, type ImportBatch } from './plan'
+import { BATCH_ROWS, chunksOfRoot, nodesOfRoot, stackOrder, type ImportBatch } from './plan'
 
 // The open's transactions (Part 1 §1.5.4): the first, which stores the new chain and session
 // with the head's parts, the stack and the media, strictly; the background batches; the unlink
@@ -181,6 +181,8 @@ export type PreparedOpen = {
     level?: PreparedFlush
     /** Hex keys this transaction stores, which the import then skips. */
     stored: Set<string>
+    /** The file's rows, when few enough for the first transaction: no import waits for them. */
+    entries?: Row[]
 }
 
 const mediaOf = async (opened: OpenedFile): Promise<BatchMedia[]> => {
@@ -253,7 +255,21 @@ export const prepareOpenHead = async (
         foreign = await prepareForeign({ roots: [], nodes: [], chunks: [], media }, waiter)
     }
     const level = request.level ? await prepareLevel(request.level) : undefined
-    return { ...(foreign ? { foreign } : {}), records, ...(level ? { level } : {}), stored }
+    // A short history's rows come in the first transaction, so a tab that ends before the first
+    // batch still has every row the file held (§1.5.4's batches are for long histories).
+    const entries =
+        history && history.entries.length <= BATCH_ROWS
+            ? history.entries.map((entry, i) =>
+                  entryRow(history, request.ids.sessionId, i + 1, entry, 0),
+              )
+            : undefined
+    return {
+        ...(foreign ? { foreign } : {}),
+        records,
+        ...(level ? { level } : {}),
+        stored,
+        ...(entries ? { entries } : {}),
+    }
 }
 
 /** The stored window of a stack given by absolute slots from `base`, and its block rows. */
@@ -382,6 +398,7 @@ export const writeOpenHead = async (
         ? levelNotes
         : ((history?.roots.get(history.head)?.[3] as number | undefined) ?? 0)
     entry('continue', request.labels.opened, head, headNotes)
+    for (const row of prepared.entries ?? []) await tx.put('entries', { ...row, day })
     for (const row of ownEntries) await tx.put('entries', row)
 
     const { window, blocks } = stackRows(sessionId, base, slots, index)
@@ -397,7 +414,7 @@ export const writeOpenHead = async (
         origin: 'nxsp',
         stack: { base: window.base, length: window.length, index: window.index },
         lastSeq: seq,
-        entryCount: ownEntries.length,
+        entryCount: ownEntries.length + (prepared.entries?.length ?? 0),
         activeMs: 0,
         ownBytes,
         appVersion: request.appVersion,

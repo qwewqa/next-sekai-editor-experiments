@@ -63,11 +63,16 @@ export const stackOrder = (history: Pick<ReadHistory, 'undoStack'>) => {
 
 /**
  * The batches after the first transaction. `stored` names what that transaction stored (the
- * head's parts, the stack's roots and nodes), so they aren't sent again.
+ * head's parts, the stack's roots and nodes), so they aren't sent again, and `entriesStored` says
+ * it stored the rows too.
  */
-export const planImport = (history: ReadHistory, stored: ReadonlySet<string>): ImportBatch[] => {
+export const planImport = (
+    history: ReadHistory,
+    stored: ReadonlySet<string>,
+    entriesStored = false,
+): ImportBatch[] => {
     const batches: ImportBatch[] = []
-    const count = history.entries.length
+    const count = entriesStored ? 0 : history.entries.length
     for (let from = 0; from < count; from += BATCH_ROWS)
         batches.push({ kind: 'entries', from, to: Math.min(count, from + BATCH_ROWS) })
 

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
+import { damagedFile } from '../local/open/files'
 import { installTestPlatform, waitForStartup } from './editorFixture'
 
 // Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
@@ -199,4 +200,236 @@ test('a level with a value this build does not know asks first; Cancel opens not
     expect(session.sessionId).not.toBe(before.sessionId)
     expect(session.file).toBeUndefined()
     expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+})
+
+/** Bytes of a file whose damaged chunk only the background import finds. */
+const damagedBytes = async () => {
+    const { file } = await damagedFile()
+    return [...new Uint8Array(await file.arrayBuffer())]
+}
+
+const chainOf = async (page: Page, sessionId: string) => {
+    const { chains } = await rows(page, ['chains'])
+    return chains!.find((row) => row.value.head === sessionId)!.value
+}
+
+const ownRows = async (page: Page, sessionId: string) => {
+    const { entries } = await rows(page, ['entries'])
+    return entries!.map((row) => row.value).filter((row) => row.sessionId === sessionId)
+}
+
+test('damage found by the import unlinks the session: a new docId, no binding, the notice', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await damagedBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(
+        notice(page).filter({
+            hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+        }),
+    ).toBeVisible()
+    await imported(page)
+    const session = await sessionOf(page)
+    expect(session.file).toBeUndefined()
+    expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+    expect(session.docId).not.toBe('doc')
+    const chain = await chainOf(page, session.sessionId)
+    expect(chain.docId).toBe(session.docId)
+    expect(chain.file).toBeUndefined()
+    expect(chain.revision).toBeUndefined()
+    expect(chain.badChunks).toBeTruthy()
+    // The rows that need the bad chunk show damaged; the rest stay.
+    expect((await ownRows(page, session.sessionId)).map((row) => row.kept)).toEqual([
+        false,
+        true,
+        true,
+        true,
+        true,
+    ])
+
+    // After a reload the chain still names the bad chunk, and the rows still show damaged.
+    await page.reload()
+    await waitForStartup(page)
+    const again = await chainOf(page, session.sessionId)
+    expect(again.badChunks).toEqual(chain.badChunks)
+    expect(again.file).toBeUndefined()
+})
+
+/** Slows the import, so a spec acts while it runs. */
+const slowImport = (page: Page, ms: number) =>
+    page.evaluate((ms) => {
+        localStorage.setItem('nse.test.importDelay', String(ms))
+    }, ms)
+
+test('a reload mid-import resumes it from the bound handle', async ({ page }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await slowImport(page, 1500)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const session = await sessionOf(page)
+    const chain = await chainOf(page, session.sessionId)
+    const token = ((chain.file as Row).handle as { testHandle: string }).testHandle
+    // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
+    await page.addInitScript(
+        ({ token, name }) => {
+            localStorage.removeItem('nse.test.importDelay')
+            const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
+            const handle = {
+                kind: 'file',
+                name,
+                getFile: async () => (await opfs()).getFile(),
+                queryPermission: () => Promise.resolve('granted'),
+                isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
+            }
+            window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
+        },
+        { token, name: 'coconut.nxsp' },
+    )
+    await page.reload()
+    await waitForStartup(page)
+    await imported(page)
+    expect((await ownRows(page, session.sessionId)).map((row) => [row.seq, row.kept])).toEqual([
+        [1, true],
+        [2, true],
+        [3, true],
+        [4, true],
+        [5, true],
+    ])
+})
+
+test('a reload mid-import without a handle marks the rows that never arrived kept: false', async ({
+    page,
+}) => {
+    await start(page, false)
+    await slowImport(page, 1500)
+    const bytes = await freshBytes()
+    const choosing = page.waitForEvent('filechooser')
+    await page.keyboard.press('o')
+    await (
+        await choosing
+    ).setFiles({
+        name: 'coconut.nxsp',
+        mimeType: 'application/octet-stream',
+        buffer: Buffer.from(bytes),
+    })
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const session = await sessionOf(page)
+    expect(session.file?.name).toBe('coconut.nxsp')
+    await page.evaluate(() => {
+        localStorage.removeItem('nse.test.importDelay')
+    })
+    await page.reload()
+    await waitForStartup(page)
+    await imported(page)
+    const own = await ownRows(page, session.sessionId)
+    // The head's row stays whole; at least the first state never arrived.
+    expect(own.at(-1)?.kept).toBe(true)
+    expect(own.some((row) => row.kept === false)).toBe(true)
+    const chain = await chainOf(page, session.sessionId)
+    expect((chain.file as Row).name).toBe('coconut.nxsp')
+})
+
+test('a Save waits for the import: whenImported resolves once the last batch commits', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await slowImport(page, 500)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const outcome = await page.evaluate(async () => {
+        const { session } =
+            (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+        const { whenImported } =
+            (await import('/src/local/open/importLoop.ts')) as typeof import('../../src/local/open/importLoop')
+        const result = await whenImported(session.value.sessionId)
+        const found = (await window.nseStorageTest!.worker.call('testRows', ['sessions'])) as {
+            sessions: { value: Record<string, unknown> }[]
+        }
+        return {
+            result,
+            pending: found.sessions.some(
+                (row) =>
+                    row.value.id === session.value.sessionId && row.value.importPending === true,
+            ),
+        }
+    })
+    expect(outcome).toEqual({ result: { kind: 'done' }, pending: false })
+})
+
+test('the same file opened in a second tab opens unbound, as a separate copy', async ({
+    page,
+    context,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const other = await context.newPage()
+    await start(other)
+    await openFile(other, 'coconut.nxsp')
+    await expect(
+        notice(other).filter({
+            hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+        }),
+    ).toBeVisible()
+    const session = await sessionOf(other)
+    expect(session.file).toBeUndefined()
+    expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+    expect(session.docId).not.toBe('doc')
+    // The first tab keeps its binding.
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+/** An edit of the live state, as a tool's would be. */
+const edit = (page: Page, initialLife: number) =>
+    page.evaluate(async (initialLife) => {
+        const { pushState, state } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        pushState(() => `Life ${initialLife}`, { ...state.value, initialLife })
+    }, initialLife)
+
+test('opening the same file again: Reopen after editing, Restore after New in between', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const first = await sessionOf(page)
+    await edit(page, 777)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+
+    // The chain with unsaved changes is the session just left: only Reopen shows.
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen/ })).toBeVisible()
+    await imported(page)
+    const second = await sessionOf(page)
+    expect(second.sessionId).not.toBe(first.sessionId)
+
+    // After New in between: the notice names the unsaved changes, with Restore Session.
+    await page.keyboard.press('n')
+    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+    await openFile(page, 'coconut.nxsp')
+    await expect(
+        notice(page).filter({
+            hasText: 'Opened coconut.nxsp. You have unsaved changes to it from',
+        }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Restore Session' }).click()
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { state } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                return state.value.initialLife
+            }),
+        )
+        .toBe(777)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
