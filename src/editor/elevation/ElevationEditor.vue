@@ -11,7 +11,8 @@ import {
 } from 'vue'
 import { interruptsDrags, isAppActive } from '../../activity'
 import { updateClipboard } from '../../clipboard'
-import { pushState, replaceState, state } from '../../history'
+import { isPeeking, pushState, replaceState, state } from '../../history'
+import { onPeekStart } from '../../history/peek'
 import { defaultGroupId } from '../../history/groups'
 import { i18n } from '../../i18n'
 import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
@@ -1980,7 +1981,13 @@ onMounted(() => {
     activate()
 })
 let cleanupBounds: (() => void) | undefined
+// A peek ends its drag, marquee or placement before the peeked state shows.
+const stopPeekCancel = onPeekStart(() => {
+    cancel()
+    closeContextMenu()
+})
 onUnmounted(() => {
+    stopPeekCancel()
     mounted = false
     cleanupBounds?.()
     chromeMutations.disconnect()
@@ -2033,6 +2040,20 @@ onUnmounted(() => {
                 :anchor="offscreenAnchor"
             />
             <RenderingError v-if="graphicsError" :message="graphicsError" @reload="retryRenderer" />
+        </div>
+        <!-- Side by side while peeking, the peeked state shows behind it, read-only (§1.4.11). -->
+        <div
+            v-if="isPeeking"
+            class="elevation-peek-overlay absolute inset-0 flex touch-none items-center justify-center bg-black/40 p-4"
+            :style="{ paddingTop: `${headerHeight}px` }"
+            @pointerdown.prevent
+            @wheel.prevent
+            @contextmenu.prevent
+        >
+            <span
+                class="max-w-full rounded-full bg-preview px-4 py-1.5 text-center text-sm text-white shadow-md"
+                >{{ i18n.peek.overlay }}</span
+            >
         </div>
         <!-- Beside the main editor, notifications show in its pane instead. -->
         <LevelEditorNotification

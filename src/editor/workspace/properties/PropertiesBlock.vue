@@ -11,6 +11,7 @@ import {
     type WritableComputedRef,
 } from 'vue'
 import { easeEditParts, easeFunctionOf, easeTypeOf, eases, type Ease } from '../../../ease'
+import { isPeeking } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import type { FieldUsage } from '../../../modals/form/fieldUsage'
 import { createFontContext } from '../../../rendering/textRaster'
@@ -274,13 +275,15 @@ const narrowKind = async (event: MouseEvent) => {
                         :key="field.key"
                         :usage="usageOf(field)"
                     >
-                        <component
-                            :is="multiFieldComponents[field.key]"
-                            :model-value="models[field.key].value"
-                            @update:model-value="
-                                (value: unknown) => (models[field.key].value = value)
-                            "
-                        />
+                        <fieldset class="contents" :disabled="isPeeking">
+                            <component
+                                :is="multiFieldComponents[field.key]"
+                                :model-value="models[field.key].value"
+                                @update:model-value="
+                                    (value: unknown) => (models[field.key].value = value)
+                                "
+                            />
+                        </fieldset>
                     </FieldUsageProvider>
                 </div>
             </PropertiesFieldGroup>
@@ -290,12 +293,17 @@ const narrowKind = async (event: MouseEvent) => {
                     :key="field.key"
                     :usage="usageOf(field)"
                 >
-                    <component
-                        :is="multiFieldComponents[field.key]"
-                        v-bind="fieldProps(field)"
-                        :model-value="models[field.key].value"
-                        @update:model-value="(value: unknown) => (models[field.key].value = value)"
-                    />
+                    <!-- Fields are shown disabled while peeking (§1.4.11). -->
+                    <fieldset class="contents" :disabled="isPeeking">
+                        <component
+                            :is="multiFieldComponents[field.key]"
+                            v-bind="fieldProps(field)"
+                            :model-value="models[field.key].value"
+                            @update:model-value="
+                                (value: unknown) => (models[field.key].value = value)
+                            "
+                        />
+                    </fieldset>
                 </FieldUsageProvider>
             </PropertiesFieldGroup>
         </template>
