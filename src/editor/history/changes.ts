@@ -32,6 +32,15 @@ import { beatToTime } from '../../state/integrals/bpms'
 import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { view } from '../view'
+import {
+    countOff,
+    nearestStop,
+    nextStop,
+    stopToward,
+    stopsOf,
+    type Place,
+    type Stop,
+} from './changeStops'
 import { peekedInfo, type PeekedInfo } from './selection'
 
 // The change view (Part 1 §1.4.11): what the peeked entry changed against the entry before it on
@@ -338,8 +347,6 @@ export const bandTimes = () => {
     return { top: timeAt(top), bottom: timeAt(Math.max(top, view.h - bottom)) }
 }
 
-type Place = { time: number; left: number; right: number }
-
 /** Each changed object's time and lanes, on the peeked tempo, in chart order. */
 const places = computed((): Place[] => {
     const change = shownChange.value
@@ -355,42 +362,12 @@ const places = computed((): Place[] => {
 })
 
 /** Changes beyond the band's top and bottom edges. */
-export const offBand = computed(() => {
-    const list = places.value
-    if (!list.length) return { above: 0, below: 0 }
-    const band = bandTimes()
-    let above = 0
-    let below = 0
-    for (const { time } of list) {
-        if (time > band.top) above++
-        else if (time < band.bottom) below++
-    }
-    return { above, below }
-})
+export const offBand = computed(() => countOff(places.value, bandTimes()))
 
 /** Whether the arrows carry counts: not past the limit. */
 export const countsShown = computed(
     () => (shownChange.value?.set.objects.length ?? 0) <= MARK_LIMIT,
 )
-
-export type Stop = { from: number; to: number; left: number; right: number }
-
-/** Changes grouped into stops that each fit in 80% of the band, from the lowest up. */
-export const stopsOf = (list: readonly Place[], span: number): Stop[] => {
-    const stops: Stop[] = []
-    let current: Stop | undefined
-    for (const place of list) {
-        if (current && place.time <= current.from + 0.8 * span) {
-            current.to = place.time
-            current.left = Math.min(current.left, place.left)
-            current.right = Math.max(current.right, place.right)
-            continue
-        }
-        current = { from: place.time, to: place.time, left: place.left, right: place.right }
-        stops.push(current)
-    }
-    return stops
-}
 
 const scrollTo = (stop: Stop) => {
     const { top, bottom } = changeBand.value
@@ -425,35 +402,22 @@ const currentStops = () => {
 /** Show Change: the next stop above the band's middle, wrapping to the lowest. */
 export const showNextChange = () => {
     const { band, stops } = currentStops()
-    if (!stops.length) return
-    // Every change already in view: nothing moves.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    if (stops[0]!.from >= band.bottom && stops.at(-1)!.to <= band.top) return
-    const middle = (band.top + band.bottom) / 2
-    const next = stops.find((stop) => (stop.from + stop.to) / 2 > middle + 1e-6) ?? stops[0]
-    if (next) scrollTo(next)
+    const stop = nextStop(stops, band)
+    if (stop) scrollTo(stop)
 }
 
 /** An edge arrow: the nearest stop wholly beyond the band that way. */
 export const showChangeToward = (direction: 'up' | 'down') => {
     const { band, stops } = currentStops()
-    const next =
-        direction === 'up'
-            ? stops.find((stop) => stop.from > band.top)
-            : stops.filter((stop) => stop.to < band.bottom).at(-1)
-    if (next) scrollTo(next)
+    const stop = stopToward(stops, band, direction)
+    if (stop) scrollTo(stop)
 }
 
 /** The stop nearest the band's middle, when not every change is in view: the row menu's. */
 export const showNearestChange = () => {
     const { band, stops } = currentStops()
-    if (!stops.length) return
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    if (stops[0]!.from >= band.bottom && stops.at(-1)!.to <= band.top) return
-    const middle = (band.top + band.bottom) / 2
-    const distance = (stop: Stop) => Math.abs((stop.from + stop.to) / 2 - middle)
-    const nearest = stops.reduce((best, stop) => (distance(stop) < distance(best) ? stop : best))
-    scrollTo(nearest)
+    const stop = nearestStop(stops, band)
+    if (stop) scrollTo(stop)
 }
 
 /** Once the change of `key` is shown, its nearest stop; nothing if it never comes. */

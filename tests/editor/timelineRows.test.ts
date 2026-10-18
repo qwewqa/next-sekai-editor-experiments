@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     buildRows,
+    previousOf,
     selectableRows,
     type Entry,
     type EntryRow,
@@ -240,4 +241,37 @@ test('a window after a jump: Now, the gap row, then the window’s rows under th
         ['now', 'entry', 'entry'],
     )
     assert.ok(!buildRows([], options).some((row) => row.type === 'gap'))
+})
+
+test('Edits Here collapses only matches next to each other on the chain, with no note delta', () => {
+    seq = 0
+    const at = (pos: number, label: string) =>
+        entry('edit', label, noon, {
+            noteCount: pos * 10,
+            pos,
+            previous: { sessionId: 's', seq: 0, snapshot: '' },
+        })
+    // Places count from the newest entry: members 1, 2 and 4 of a run matched, 3 did not.
+    const matches = newestFirst(at(5, 'Added'), at(4, 'Moved'), at(2, 'Moved'), at(1, 'Moved'))
+    const rows = entryRows(buildRows(matches, { ...options, filter: 'here' }))
+    assert.deepEqual(
+        rows.map((row) => [row.entry.label, row.members.length]),
+        [
+            ['Moved', 2],
+            ['Moved', 1],
+            ['Added', 1],
+        ],
+    )
+    assert.ok(rows.every((row) => row.delta === undefined))
+})
+
+test('previousOf: an Edits Here match’s own, else the next older entry loaded', () => {
+    seq = 0
+    const a = entry('edit', 'A')
+    const b = entry('edit', 'B')
+    const c = entry('edit', 'C', noon, { previous: { sessionId: 's', seq: 99, snapshot: 'x' } })
+    const list = newestFirst(a, b, c)
+    assert.equal(previousOf(list, b), a)
+    assert.equal(previousOf(list, a), undefined)
+    assert.deepEqual(previousOf(list, c), { sessionId: 's', seq: 99, snapshot: 'x' })
 })
