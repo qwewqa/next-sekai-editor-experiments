@@ -2,17 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     buildRows,
-    droppedEntries,
     selectableRows,
     type Entry,
     type EntryRow,
     type Row,
 } from '../../src/editor/history/rows'
 
-// The Timeline's rows (Part 1 §1.4.10.5): flags, ×N groups, headers and dividers.
+// The Timeline's rows (Part 1 §1.4.10.5): flags, ×N groups, headers by age and dividers.
 
 const MINUTE = 60_000
-const DAY = 24 * 60 * MINUTE
 const noon = new Date(2026, 9, 16, 12, 0, 0).getTime()
 
 let seq = 0
@@ -30,25 +28,15 @@ const entry = (kind: string, label: string, at = noon, extra: Partial<Entry> = {
 /** The builder takes entries newest first; tests list them oldest first. */
 const newestFirst = (...entries: Entry[]) => entries.reverse()
 
-const options = { filter: 'all' as const, expanded: new Set<string>(), damaged: new Set<string>() }
+// Noon on the 16th is "now" unless a test says otherwise.
+const options = {
+    filter: 'all' as const,
+    expanded: new Set<string>(),
+    damaged: new Set<string>(),
+    now: noon + 30 * MINUTE,
+}
 
 const entryRows = (rows: Row[]) => rows.filter((row): row is EntryRow => row.type === 'entry')
-
-const levels = (rows: Row[]) => rows.flatMap((row) => (row.type === 'header' ? [row.level] : []))
-
-test('an entry dropped from the redo branch is not in undo, as in the plan’s example', () => {
-    seq = 0
-    const init = entry('init', 'Initialize')
-    const b = entry('edit', 'Added slide')
-    const c = entry('edit', 'Moved notes')
-    const undo1 = entry('undo', 'Moved notes')
-    const d = entry('edit', 'Changed BPM')
-    const undo2 = entry('undo', 'Changed BPM')
-    const save = entry('save', 'Saved coconut.nxsp')
-    const dropped = droppedEntries(newestFirst(init, b, c, undo1, d, undo2, save))
-    // Moved notes (entry 3) was dropped by the edit after the undo; the others are reachable.
-    assert.deepEqual([...dropped], [`s:${c.seq}`])
-})
 
 test('removed and damaged rows are greyed and cannot be selected', () => {
     seq = 0
@@ -151,26 +139,68 @@ test('the Saves and Exports filter keeps saves, exports and dividers', () => {
     )
 })
 
-test('minute headers split the rows, and day headers appear once the timeline spans days', () => {
+const headers = (rows: Row[]) =>
+    rows.flatMap((row) =>
+        row.type === 'header' ? [`${row.level}${row.withDay ? '+day' : ''}`] : [],
+    )
+
+test('headers get coarser with age: minutes this hour, hours today, hours under a day for six days, days after', () => {
     seq = 0
-    const sameDay = buildRows(
+    const at = (days: number, hour: number, minute = 0) =>
+        new Date(2026, 9, 16 - days, hour, minute).getTime()
+    const rows = buildRows(
         newestFirst(
-            entry('edit', 'A', noon),
-            entry('edit', 'B', noon + 5000),
-            entry('edit', 'C', noon + 2 * MINUTE),
+            entry('edit', 'old', at(9, 10)),
+            entry('edit', 'old too', at(9, 9)),
+            entry('edit', 'older week', at(7, 15)),
+            entry('edit', 'six days', at(6, 21)),
+            entry('edit', 'six days later', at(6, 21, 30)),
+            entry('edit', 'yesterday', at(1, 9)),
+            entry('edit', 'yesterday 2', at(1, 22)),
+            entry('edit', 'earlier today', at(0, 9)),
+            entry('edit', 'this hour', at(0, 12, 5)),
+            entry('edit', 'this hour 2', at(0, 12, 7)),
         ),
         options,
     )
-    assert.deepEqual(levels(sameDay), ['minute', 'minute'])
-    const days = buildRows(
+    assert.deepEqual(headers(rows), [
+        'minute', // 12:07
+        'minute', // 12:05
+        'hour', // 9 AM today
+        'hour+day', // Yesterday · 10 PM
+        'hour', // 9 AM
+        'hour+day', // 6 days ago · 9 PM (both rows share the hour)
+        'day', // 7 days ago
+        'day', // 9 days ago, one header for both rows
+    ])
+})
+
+test('a day and its first hour share one header, and one hour is one header', () => {
+    seq = 0
+    const rows = buildRows(
         newestFirst(
-            entry('edit', 'A', noon - DAY),
-            entry('edit', 'B', noon),
-            entry('edit', 'C', noon + MINUTE),
+            entry('edit', 'A', new Date(2026, 9, 15, 21, 5).getTime()),
+            entry('edit', 'B', new Date(2026, 9, 15, 21, 40).getTime()),
         ),
         options,
     )
-    assert.deepEqual(levels(days), ['day', 'minute', 'minute', 'day', 'minute'])
+    assert.deepEqual(headers(rows), ['hour+day'])
+})
+
+test('a divider keeps its own rule, and the rows after it get their own header', () => {
+    seq = 0
+    const rows = buildRows(
+        newestFirst(
+            entry('edit', 'A', new Date(2026, 9, 15, 21, 5).getTime()),
+            entry('continue', 'Continued', noon, { from: noon - 99 }),
+            entry('edit', 'B', noon + 2 * MINUTE),
+        ),
+        options,
+    )
+    assert.deepEqual(
+        rows.map((row) => row.type),
+        ['now', 'header', 'entry', 'divider', 'header', 'entry'],
+    )
 })
 
 test('a continuation is a divider, never a peekable row', () => {

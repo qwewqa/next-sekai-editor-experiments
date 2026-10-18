@@ -11,11 +11,23 @@ export type Modal = {
     pane?: 'main' | 'elevation'
     /** A fixed-height dialog filling most of the screen. */
     size?: 'large'
+    /** A tool dialog that leaves the tool as it is: the History sheet over the live chart. */
+    sheet?: boolean
 }
 
 export const modals = shallowReactive<Modal[]>([])
 
-export const isToolModalOpen = computed(() => modals.some((modal) => modal.presentation === 'tool'))
+/** A tool dialog that suspends the tool; a sheet does not. */
+export const isToolModalOpen = computed(() =>
+    modals.some((modal) => modal.presentation === 'tool' && !modal.sheet),
+)
+
+/** Any tool dialog, which takes Escape. */
+export const isToolDialogOpen = computed(() =>
+    modals.some((modal) => modal.presentation === 'tool'),
+)
+
+export const isSheetOpen = computed(() => modals.some((modal) => modal.sheet))
 
 /** Dialogs that hold the editor; tool dialogs float over a live chart instead. */
 export const isBlockingModalOpen = computed(() =>
@@ -41,7 +53,7 @@ type ModalResult<T extends Component> = ComponentInstance<T>['$emit'] extends (
 export const showModal = <T extends Component>(
     component: T,
     props: ModalProps<T>,
-    options?: Pick<Modal, 'presentation' | 'pane' | 'size'>,
+    options?: Pick<Modal, 'presentation' | 'pane' | 'size' | 'sheet'>,
 ) =>
     new Promise<ModalResult<T> | undefined>((resolve) => {
         modals.push({

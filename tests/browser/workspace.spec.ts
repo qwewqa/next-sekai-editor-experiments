@@ -113,7 +113,8 @@ test('compact docks switch tabs without ever bringing back another panel', async
                 String(names.includes(name)),
             )
     }
-    await expect(top.getByRole('tab')).toHaveCount(4)
+    // History is a fifth tab, closed.
+    await expect(top.getByRole('tab')).toHaveCount(5)
     await expect(top.getByRole('tab', { selected: true })).toHaveCount(1)
     await expect(tab(page, 'top', 'Groups')).toHaveAttribute('aria-selected', 'true')
 
@@ -144,7 +145,7 @@ test('compact docks switch tabs without ever bringing back another panel', async
     await page.keyboard.press('ArrowRight')
     await expect(tab(page, 'top', 'Stages')).toBeFocused()
     await page.keyboard.press('End')
-    await expect(tab(page, 'top', 'Properties')).toBeFocused()
+    await expect(tab(page, 'top', 'History')).toBeFocused()
     await page.keyboard.press('Home')
     await expect(tab(page, 'top', 'Preview')).toBeFocused()
     await page.keyboard.press('Enter')
@@ -401,6 +402,8 @@ test.describe('phone', () => {
     })
 
     test('labels that barely overflow the rail fit by trimming tab padding', async ({ page }) => {
+        // Five tabs with History: English fits at full padding from about 412 px, Japanese trims.
+        await page.setViewportSize({ width: 430, height: 844 })
         await setSettings(page, { showPreview: true })
         const strip = dock(page, 'top').getByRole('tablist')
         const padding = () =>

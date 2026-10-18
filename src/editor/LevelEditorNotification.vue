@@ -2,15 +2,17 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { startupGate } from '../startup/gate'
 import { holdNotice, notification } from './notification'
-import { hasToolModal, type ToolModalPane } from './toolModals'
+import { hasToolModal, sheetBox, type ToolModalPane } from './toolModals'
 
 // Shown within one editor pane, below its header (`inset`, in pixels), so it
 // never covers the elevation header or straddles the split between panes.
 const props = defineProps<{ pane: ToolModalPane; inset?: number }>()
 
 // A tool dialog rises from the bottom of its pane, so notifications move to
-// the top rather than fading over its fields.
-const top = computed(() => hasToolModal(props.pane))
+// the top rather than fading over its fields. The History sheet is kept clear of instead: the
+// notices stay above it, or beside it, so they never cover its list or the peek bar.
+const sheet = computed(() => (props.pane === 'main' ? sheetBox.value : undefined))
+const top = computed(() => hasToolModal(props.pane) && !sheet.value)
 
 // A notice with an action sits above the floating toolbar, not where a tap on the chart lands.
 const host = useTemplateRef<HTMLElement>('host')
@@ -79,7 +81,13 @@ const pause = (source: 'hover' | 'focus', held: boolean) => {
         :class="top ? 'items-start pt-4' : notification.action ? 'items-end' : 'items-center'"
         :style="{
             top: `${inset ?? 0}px`,
-            paddingBottom: !top && notification.action ? `${clearance + gap}px` : undefined,
+            paddingBottom:
+                sheet?.side === 'bottom'
+                    ? `${sheet.size + 2 * gap}px`
+                    : !top && notification.action
+                      ? `${clearance + gap}px`
+                      : undefined,
+            paddingRight: sheet?.side === 'right' ? `${sheet.size + 2 * gap}px` : undefined,
         }"
     >
         <div

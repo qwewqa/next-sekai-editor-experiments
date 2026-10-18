@@ -5,6 +5,7 @@ import {
     leavePeek,
     peekEntry,
     peekedKey,
+    restoreEntry,
     type EntryKey,
 } from '../../history/peek'
 
@@ -34,6 +35,20 @@ export const requestPeek = (info: PeekedInfo) => {
             damagedEntries.value = new Set(damagedEntries.value).add(info.key)
         if (peekedInfo.value?.key === info.key) peekedInfo.value = undefined
     })
+}
+
+/**
+ * Restores an entry. One that cannot be read is marked damaged, as a failed peek marks it, and the
+ * peek ends, so a Restore that fails is never silent.
+ */
+export const requestRestore = async (key: EntryKey) => {
+    try {
+        await restoreEntry(key)
+    } catch (error) {
+        if (error instanceof PeekError && error.reason !== 'removed')
+            damagedEntries.value = new Set(damagedEntries.value).add(key)
+        if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
+    }
 }
 
 /** Back to Now: leaves the peek. */

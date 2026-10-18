@@ -3,17 +3,6 @@ import { clamp } from '../../utils/math'
 export const panelIds = ['preview', 'groups', 'stages', 'properties', 'history'] as const
 export type PanelId = (typeof panelIds)[number]
 
-/**
- * The panel shown as a temporary layer over the saved workspace (Part 1 §1.4.10.4): it has no
- * saved open state, no Disabled position, and a tab only while it is open.
- */
-export const transientPanel = 'history' satisfies PanelId
-
-export type SavedPanelId = Exclude<PanelId, typeof transientPanel>
-
-/** The panels whose open state and recency are saved. */
-export const savedPanelIds = panelIds.filter((id): id is SavedPanelId => id !== transientPanel)
-
 export const panelPositions = ['auto', 'left', 'right', 'top', 'disabled'] as const
 export type PanelPosition = (typeof panelPositions)[number]
 
@@ -85,17 +74,6 @@ export type WorkspaceLayoutInput = {
     rootFontSize?: number
     /** Narrowest editor that keeps the floating toolbar on one row. */
     toolbarWidth?: number
-    /**
-     * A panel shown over the saved state for now (Part 1 §1.4.10.4): the layout is what the `show`
-     * action gives it, then `folds`. The saved state is not changed.
-     */
-    transient?: Transient
-}
-
-/** The temporary layer: its panel, and the docks folded or unfolded while it is open. */
-export type Transient = {
-    id: PanelId
-    folds: Partial<Record<DockSide, boolean>>
 }
 
 export type DockTile = {
@@ -314,41 +292,11 @@ const layoutDock = (
     }
 }
 
-/**
- * The state the layout shows with a transient panel over `input`'s: the normal `show` action
- * applied to it, so the dock unfolds and panels without room are displaced, then the folds.
- */
-export const transientState = (input: WorkspaceLayoutInput): WorkspaceToggleState | undefined => {
-    const { transient, ...plain } = input
-    if (!transient) return
-    const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout({ ...plain, ...state })
-    const base: WorkspaceToggleState = {
-        // Open already, so `show` finds the panel in its dock.
-        open: { ...input.open, [transient.id]: true },
-        recency: [...input.recency],
-        collapsed: {
-            left: !!input.collapsed?.left,
-            top: !!input.collapsed?.top,
-            right: !!input.collapsed?.right,
-        },
-    }
-    const shown = reduceWorkspace(base, { type: 'show', id: transient.id }, layoutOf)
-    return { ...shown, collapsed: { ...shown.collapsed, ...transient.folds } }
-}
-
 export const computeWorkspaceLayout = (input: WorkspaceLayoutInput): WorkspaceLayout => {
-    const shown = transientState(input)
-    if (shown) {
-        const { transient: _, ...plain } = input
-        return computeWorkspaceLayout({ ...plain, ...shown })
-    }
-
     const { width, height } = input
     const shape = input.autoShape ?? { width, height }
     const sides: Partial<Record<PanelId, DockSide>> = {}
     for (const id of panelIds) {
-        // The transient panel has a dock, and a tab, only while it is open.
-        if (id === transientPanel && !input.open[id]) continue
         const side = resolvePanelSide(input.positions[id], id, shape)
         if (side) sides[id] = side
     }
@@ -710,56 +658,4 @@ export const carryAcrossShape = (
         }
     }
     return result
-}
-
-/** A state as the saved workspace holds it: the transient panel neither open nor in the recency. */
-export const withoutTransient = (state: WorkspaceToggleState): WorkspaceToggleState => ({
-    ...state,
-    open: { ...state.open, [transientPanel]: false },
-    recency: state.recency.filter((id) => id !== transientPanel),
-})
-
-/** The docks a state holds folded, as the layer holds them. */
-const foldsOf = (state: WorkspaceToggleState): Transient['folds'] => {
-    const folds: Transient['folds'] = {}
-    for (const side of dockSides) if (state.collapsed[side]) folds[side] = true
-    return folds
-}
-
-/**
- * What an action does with a transient layer open (Part 1 §1.4.10.2, §1.4.10.4): the saved state
- * it leaves, and the layer. An action on the layer's panel never touches the saved state: closing
- * it drops the layer, and folding its dock is part of the layer. Any other action saves what is on
- * screen without the layer, then applies to it with the layer still open to be displaced; the
- * layer stays only if the action leaves it room, rebuilt on the new saved state.
- */
-export const reduceTransient = (
-    saved: WorkspaceToggleState,
-    transient: Transient,
-    action: WorkspaceAction,
-    inputOf: (state: WorkspaceToggleState, transient?: Transient) => WorkspaceLayoutInput,
-): { saved: WorkspaceToggleState; transient: Transient | undefined } => {
-    const { id } = transient
-    const layout = computeWorkspaceLayout(inputOf(saved, transient))
-    const shown = transientState(inputOf(saved, transient)) ?? saved
-    const side = layout.sides[id]
-    const fold = (collapsed: boolean) => ({
-        saved,
-        transient: side
-            ? { ...transient, folds: { ...transient.folds, [side]: collapsed } }
-            : transient,
-    })
-    if ('id' in action && action.id === id) {
-        if (action.type === 'close') return { saved, transient: undefined }
-        if (action.type === 'show') return fold(false)
-        if (tabAction(layout, shown.open, id) === 'close') return { saved, transient: undefined }
-        return fold(!(side && layout.docks[side]?.collapsed))
-    }
-    if (action.type === 'toggleDock' && action.side === side)
-        return fold(!layout.docks[action.side]?.collapsed)
-    const next = reduceWorkspace(shown, action, (state) => computeWorkspaceLayout(inputOf(state)))
-    return {
-        saved: withoutTransient(next),
-        transient: next.open[id] ? { id, folds: foldsOf(next) } : undefined,
-    }
 }

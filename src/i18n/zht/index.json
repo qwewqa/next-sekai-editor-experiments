@@ -1216,14 +1216,18 @@
     "title": "歷史記錄",
     "timeline": "時間軸",
     "recentSessions": "最近工作階段",
+    "goTo": "前往",
+    "show": "顯示",
     "filterAll": "全部",
     "filterSaves": "儲存與匯出",
+    "showAll": "顯示全部",
     "now": "現在",
     "today": "今天",
     "yesterday": "昨天",
-    "notStored": "變更未存放在此瀏覽器中。",
-    "notInUndo": "不在撤銷中",
-    "notInUndoTip": "撤銷無法到達此處。",
+    "empty": "尚無變更",
+    "noSaves": "沒有儲存或匯出",
+    "loadFailed": "無法載入時間軸。",
+    "tryAgain": "重試",
     "removedForSpace": "已為節省空間而移除",
     "damaged": "已損毀",
     "continuedFrom": "從 {0} 繼續",
@@ -1855,7 +1859,7 @@
     "newLevel": "新關卡",
     "reopen": "重新開啟 \"{0}\"",
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
-    "restoredTo": "已恢復到 {0}",
+    "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中"
@@ -1868,7 +1872,7 @@
     "recoveredDropped": "已恢復最後的變更。{0} 個撤銷步驟已捨棄。",
     "continued": "已繼續",
     "migrated": "已從自動儲存恢復",
-    "restoredTo": "恢復到 {0}"
+    "restoredTo": "已還原到 {0}"
   },
   "session": {
     "untitled": "未命名 · {0}"

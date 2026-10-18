@@ -4,7 +4,6 @@ import { isCommandName } from '../commands'
 import { backToNow } from '../history/selection'
 import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
-    panelPositions as allPanelPositions,
     carryAcrossShape,
     coarseRailSize,
     computeWorkspaceLayout,
@@ -12,18 +11,11 @@ import {
     hasRoomFor,
     panelIds,
     railSize,
-    reduceTransient,
     reduceWorkspace,
-    savedPanelIds,
     tabAction,
-    transientPanel,
-    transientState,
-    withoutTransient,
     type DockSide,
     type PanelId,
     type PanelPosition,
-    type SavedPanelId,
-    type Transient,
     type WorkspaceAction,
     type WorkspaceLayoutInput,
     type WorkspaceToggleState,
@@ -39,13 +31,13 @@ const positionKeys = {
     history: 'historyPosition',
 } as const satisfies Record<PanelId, keyof typeof settings>
 
-// The transient panel has no open key: it is never saved.
 const openKeys = {
     preview: 'showPreview',
     groups: 'showGroups',
     stages: 'showStages',
     properties: 'showSidebar',
-} as const satisfies Partial<Record<PanelId, keyof typeof settings>>
+    history: 'showHistory',
+} as const satisfies Record<PanelId, keyof typeof settings>
 
 const sizeKeys = {
     left: 'leftDockWidth',
@@ -103,18 +95,10 @@ export const setPanelPosition = (id: PanelId, position: PanelPosition) => {
     if (getPanelPosition(id) === position) return
     // As with a dock move, the panels the default showed stay as they were.
     if (!isResettingSettings()) keepDefaults()
-    // Only History's setting lacks Disabled, and its tab menu never offers it.
-    if (id === transientPanel && position === 'disabled') return
-    ;(settings as Record<string, unknown>)[positionKeys[id]] = position
+    settings[positionKeys[id]] = position
 }
 
 export const isPanelEnabled = (id: PanelId) => getPanelPosition(id) !== 'disabled'
-
-/** The positions a panel can take: History, which the toolbar opens, is never Disabled. */
-export const panelPositionsOf = (id: PanelId): readonly PanelPosition[] =>
-    id === transientPanel
-        ? allPanelPositions.filter((position) => position !== 'disabled')
-        : allPanelPositions
 
 export const setDockSize = (side: DockSide, size: number) => {
     settings[sizeKeys[side]] = Math.max(0, Math.round(size))
@@ -137,7 +121,7 @@ const toolbarWidth = computed(() =>
     ),
 )
 
-const layoutInput = (state: WorkspaceToggleState, transient?: Transient) => ({
+const layoutInput = (state: WorkspaceToggleState) => ({
     ...workspaceSize.value,
     autoShape: autoShape.value,
     positions: panelPositions.value,
@@ -154,7 +138,6 @@ const layoutInput = (state: WorkspaceToggleState, transient?: Transient) => ({
     previewOverlay: settings.previewTransportPosition === 'overlay',
     rootFontSize: rootFontSize.value,
     toolbarWidth: toolbarWidth.value,
-    ...(transient ? { transient } : {}),
 })
 
 const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout(layoutInput(state))
@@ -163,29 +146,23 @@ const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout(layoutI
 // open where there's room.
 const savedOpenStates = computed(
     () =>
-        Object.fromEntries(savedPanelIds.map((id) => [id, settings[openKeys[id]]])) as Record<
-            SavedPanelId,
+        Object.fromEntries(panelIds.map((id) => [id, settings[openKeys[id]]])) as Record<
+            PanelId,
             boolean | null
         >,
 )
 
-const isPanelStateUnset = computed(() =>
-    savedPanelIds.some((id) => savedOpenStates.value[id] === null),
-)
+const isPanelStateUnset = computed(() => panelIds.some((id) => savedOpenStates.value[id] === null))
 
 // Display settings can be given as they were before a change.
 const resolveToggleState = (display: Partial<WorkspaceLayoutInput> = {}): WorkspaceToggleState => {
     const saved = savedOpenStates.value
-    const unset = savedPanelIds.filter((id) => saved[id] === null)
+    const unset = panelIds.filter((id) => saved[id] === null)
     const state = {
-        // The transient panel is never open in the saved workspace.
-        open: {
-            ...(Object.fromEntries(savedPanelIds.map((id) => [id, !!saved[id]])) as Record<
-                SavedPanelId,
-                boolean
-            >),
-            [transientPanel]: false,
-        },
+        open: Object.fromEntries(panelIds.map((id) => [id, !!saved[id]])) as Record<
+            PanelId,
+            boolean
+        >,
         recency: settings.panelRecency,
         collapsed: {
             left: settings.leftDockCollapsed,
@@ -201,65 +178,27 @@ const resolveToggleState = (display: Partial<WorkspaceLayoutInput> = {}): Worksp
     }
 }
 
-/** The saved workspace's state, without the transient layer. */
 const toggleState = computed(() => resolveToggleState())
 
-/**
- * The temporary layer over the saved workspace (Part 1 §1.4.10.4): History while it is open.
- * Never saved, so a reload starts without it, and the saved state is never changed by it.
- */
-const layer = shallowRef<Transient>()
+const panelOpenStates = computed(() => toggleState.value.open)
 
-/** What is on screen: the saved state with the layer on top. */
-const shownState = computed(
-    () =>
-        (layer.value && transientState(layoutInput(toggleState.value, layer.value))) ??
-        toggleState.value,
-)
+export const isPanelOpen = (id: PanelId) => panelOpenStates.value[id]
 
-export const isPanelOpen = (id: PanelId) => shownState.value.open[id]
-
-/** The layout of the saved workspace, which shape changes are judged against. */
-const baseLayout = computed(() => layoutOf(toggleState.value))
-
-export const workspaceLayout = computed(() =>
-    layer.value
-        ? computeWorkspaceLayout(layoutInput(toggleState.value, layer.value))
-        : baseLayout.value,
-)
+export const workspaceLayout = computed(() => layoutOf(toggleState.value))
 
 /** Saves only what changed, so untouched settings are not rewritten. */
 const commit = (state: WorkspaceToggleState) => {
-    for (const id of savedPanelIds)
+    for (const id of panelIds)
         if (settings[openKeys[id]] !== state.open[id]) settings[openKeys[id]] = state.open[id]
-    const recency = state.recency.filter((id) => id !== transientPanel)
-    if (recency.join() !== settings.panelRecency.join()) settings.panelRecency = recency
+    if (state.recency.join() !== settings.panelRecency.join())
+        settings.panelRecency = [...state.recency]
     for (const side of dockSides)
         if (settings[collapsedKeys[side]] !== state.collapsed[side])
             settings[collapsedKeys[side]] = state.collapsed[side]
 }
 
-/** Whether the layer's panel lives in this dock. */
-const isLayerDock = (side: DockSide) =>
-    !!layer.value && workspaceLayout.value.sides[layer.value.id] === side
-
 const apply = (action: WorkspaceAction) => {
-    const current = layer.value
-    if (!current) {
-        // The transient panel is opened as a layer, never saved.
-        if ('id' in action && action.id === transientPanel) {
-            if (action.type !== 'close') openHistory()
-            return
-        }
-        commit(reduceWorkspace(toggleState.value, action, layoutOf))
-        return
-    }
-    const result = reduceTransient(toggleState.value, current, action, layoutInput)
-    // Folding and closing leave the saved workspace as it is, defaults included.
-    if (result.saved !== toggleState.value) commit(result.saved)
-    layer.value = result.transient
-    // History displaced or closed: the peek ends with it.
-    if (!result.transient) backToNow()
+    commit(reduceWorkspace(toggleState.value, action, layoutOf))
 }
 
 // Saves the open states shown by default, so later window sizes keep them.
@@ -268,35 +207,17 @@ const keepDefaults = () => {
 }
 
 export const setDockCollapsed = (side: DockSide, collapsed: boolean) => {
-    // A drawer folded by Escape or an outside press closes the layer's panel with it.
-    if (isLayerDock(side) && collapsed) closeHistory()
     keepDefaults()
     settings[collapsedKeys[side]] = collapsed
 }
 
-/** Whether History is open. */
-export const isHistoryOpen = computed(() => !!layer.value)
-
-/**
- * Opens History as a layer over the saved workspace: its dock unfolds if folded, it becomes the
- * most recent panel, and panels without room are displaced, as for any panel, but nothing is
- * saved. Open already, it only unfolds.
- */
-export const openHistory = () => {
-    if (layer.value) apply({ type: 'show', id: transientPanel })
-    else layer.value = { id: transientPanel, folds: {} }
-}
-
-/** Drops the layer: the saved workspace shows again, exactly as it was. */
-export const closeHistory = () => {
-    layer.value = undefined
-    backToNow()
-}
-
-export const toggleHistory = () => {
-    if (layer.value) closeHistory()
-    else openHistory()
-}
+// The peek ends with the tab it came from: closed, displaced or Disabled, but not folded.
+watch(
+    () => panelOpenStates.value.history && isPanelEnabled('history'),
+    (shown) => {
+        if (!shown) backToNow()
+    },
+)
 
 /**
  * Changing a display setting the default's room depends on saves the panels it
@@ -334,7 +255,7 @@ export const keepDefaultsAcrossDisplay = () =>
  */
 export const keepPanelsAcrossShape = () =>
     watch(
-        [baseLayout, panelPositions],
+        [workspaceLayout, panelPositions],
         ([layout, positions], [previous, previousPositions]) => {
             if (positions !== previousPositions) return
             // Until the user acts on panels, each shape shows its own default.
@@ -389,27 +310,18 @@ export const closePanel = (id: PanelId) => {
 
 /** Docks a panel elsewhere and shows it there, leaving nothing revealed behind. */
 export const movePanel = (id: PanelId, position: PanelPosition) => {
-    if (id === transientPanel) {
-        // Where History docks is a setting; the layer shows it there, with no saved panel changed.
-        setPanelPosition(id, position)
-        if (layer.value) layer.value = { id, folds: {} }
-        return
-    }
-    // Moving a panel saves what is on screen without the layer, as any other action does.
-    if (layer.value) commit(withoutTransient(shownState.value))
     keepDefaults()
     // Panels its old dock was not showing would otherwise take its place.
     const side = getPanelSide(id)
     const covered = (side && workspaceLayout.value.docks[side]?.covered) ?? []
-    for (const other of covered)
-        if (other !== id && other !== transientPanel) settings[openKeys[other]] = false
+    for (const other of covered) if (other !== id) settings[openKeys[other]] = false
     setPanelPosition(id, position)
     showPanel(id)
 }
 
 /** Whether a click on the panel's name would hide it. */
 export const isTabHiding = (id: PanelId) => {
-    const action = tabAction(workspaceLayout.value, shownState.value.open, id)
+    const action = tabAction(workspaceLayout.value, panelOpenStates.value, id)
     return action === 'close' || action === 'collapse'
 }
 

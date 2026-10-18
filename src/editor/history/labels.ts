@@ -1,0 +1,32 @@
+import { i18n } from '../../i18n'
+import { formatClock, formatDate, formatHour } from '../../i18n/when'
+import type { Header } from './rows'
+
+// What a header says: "2:40 PM", "1 PM", "Yesterday · 9 PM", "Oct 2".
+
+const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
+
+/** "Today", "Yesterday" or "Oct 14" (with the year in another year). */
+export const dayLabel = (time: number, now = Date.now()) => {
+    if (sameDay(time, now)) return i18n.value.history.today
+    const before = new Date(now)
+    before.setDate(before.getDate() - 1)
+    return sameDay(time, before.getTime()) ? i18n.value.history.yesterday : formatDate(time)
+}
+
+/** A header's own label: its day, hour or minute. */
+const ownLabel = (header: Header) =>
+    header.level === 'day'
+        ? dayLabel(header.time)
+        : header.level === 'hour'
+          ? formatHour(header.time)
+          : formatClock(header.time)
+
+export const headerText = (header: Header) =>
+    header.withDay ? `${dayLabel(header.time)} · ${ownLabel(header)}` : ownLabel(header)
+
+/** The pinned header's text: the header above the list's top, always with its day. */
+export const pinnedText = (header: Header) =>
+    header.level === 'day' || header.withDay
+        ? headerText(header)
+        : `${dayLabel(header.time)} · ${ownLabel(header)}`

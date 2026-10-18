@@ -4,7 +4,6 @@ import { toolName, tools, type ToolName } from '../tools'
 import { defaultNotePropertiesPresetIndex } from '../tools/note'
 import { defaultSlidePropertiesPresetIndex } from '../tools/slide'
 import { view } from '../view'
-import { isHistoryOpen } from '../workspace'
 
 const eventTools: readonly ToolName[] = [
     'cameraEvent',
@@ -34,14 +33,9 @@ const valuePreset = (name: CommandName) => {
     if (limit !== undefined) return { family: 'laneLimit', current: settings.maxLane === limit }
 }
 
-/**
- * A tool or mode, shown strongly while in use; a setting's value, shown low-key; or a panel,
- * shown pressed while open but never taking the face.
- */
+/** A tool or mode, shown strongly while in use; or a setting's value, shown low-key. */
 export type CommandState =
-    | { kind: 'tool'; current: boolean }
-    | { kind: 'value'; family: string; current: boolean }
-    | { kind: 'panel'; current: boolean }
+    { kind: 'tool'; current: boolean } | { kind: 'value'; family: string; current: boolean }
 
 const tool = (current: boolean): CommandState => ({ kind: 'tool', current })
 
@@ -57,8 +51,6 @@ export const commandState = (
     if (name === 'elevation' || name === 'editorLayout') return undefined
     if (name === 'event') return tool(eventTools.includes(toolName.value))
     if (name === 'select') return tool(toolName.value === 'select')
-    // Shown pressed while its panel is open, but never moves a group's face.
-    if (name === 'history') return { kind: 'panel', current: isHistoryOpen.value }
 
     const preset = /^(note|slide)(\d+)$/.exec(name)
     if (preset) {

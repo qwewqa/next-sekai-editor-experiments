@@ -323,12 +323,12 @@ test('a pressed tab takes the accent fill and hides its marker', async ({ page }
 test('a narrowing top rail settles on one padding at any root font size', async ({ page }) => {
     // Through each width where the tabs start and stop trimming their padding.
     const sweeps = [
-        [16, 344, 332],
-        [16, 310, 302],
-        [18, 386, 374],
-        [18, 350, 340],
-        [20, 430, 418],
-        [20, 390, 380],
+        [16, 414, 404],
+        [16, 368, 358],
+        [18, 466, 456],
+        [18, 412, 402],
+        [20, 518, 508],
+        [20, 458, 448],
     ] as const
     const paddings = new Map<number, Set<string>>()
     for (const [root, from, to] of sweeps) {

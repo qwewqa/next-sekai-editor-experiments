@@ -1,38 +1,52 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
-import { peekedKey, restoreEntry } from '../../history/peek'
-import { headName } from '../../history/stack'
-import { session } from '../../history/session'
-import { i18n } from '../../i18n'
 import {
-    formatClock,
-    formatClockSeconds,
-    formatDate,
-    formatDateTime,
-    formatEntryTime,
-} from '../../i18n/when'
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    shallowRef,
+    useTemplateRef,
+    watch,
+} from 'vue'
+import { peekedKey } from '../../history/peek'
+import { session } from '../../history/session'
+import { headName } from '../../history/stack'
+import { i18n } from '../../i18n'
+import { formatClockSeconds, formatDateTime, formatDateTimeSeconds } from '../../i18n/when'
+import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
-import { settings } from '../../settings'
-import { closeHistory, isCoarsePointer } from '../workspace'
+import { isCoarsePointer } from '../workspace'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
+import { useScrollMemory } from '../workspace/useScrollMemory'
+import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
-import WarningIcon from './WarningIcon.vue'
-import { buildRows, selectableRows, type Entry, type EntryRow, type Row } from './rows'
-import { backToNow, damagedEntries, keyOf, peekedInfo, requestPeek } from './selection'
-import { canLoadMore, entries, followEntries, loadMore } from './source'
-import { expandedGroups, historyFilter } from './state'
+import { headerText, pinnedText } from './labels'
+import { buildRows, selectableRows, type Entry, type EntryRow, type Header, type Row } from './rows'
+import {
+    backToNow,
+    damagedEntries,
+    keyOf,
+    peekedInfo,
+    requestPeek,
+    requestRestore,
+} from './selection'
+import { canLoadMore, entries, followEntries, loadingMore, loadMore, retry, status } from './source'
+import { expandedGroups, historyFilter, listFocus } from './state'
 
 // The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
 // Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
 
 const props = defineProps<{
-    /** Two-line rows, in the side docks; the top dock's rows are one line. */
-    twoLine: boolean
+    /** The tab in a dock, or the dialog: each keeps its own scroll and focus rules. */
+    surface: 'panel' | 'dialog'
 }>()
+
+const emit = defineEmits<{ close: [] }>()
 
 const list = useTemplateRef<HTMLDivElement>('list')
 const scrollTop = ref(0)
@@ -40,26 +54,53 @@ const viewport = ref(0)
 const width = ref(0)
 
 followEntries()
+useScrollMemory(() => `${props.surface}:history`, list)
 
-const rows = computed(() =>
+// The headers' ages are measured against the clock, rebuilt at each hour: a row changes tier only
+// then, and always below the top of the list (Part 1 §1.4.10.5).
+const clock = ref(Date.now())
+let clockTimer: ReturnType<typeof setTimeout> | undefined
+const tickClock = () => {
+    clock.value = Date.now()
+    const next = new Date(clock.value)
+    next.setHours(next.getHours() + 1, 0, 1, 0)
+    clockTimer = setTimeout(tickClock, next.getTime() - clock.value)
+}
+tickClock()
+
+const built = computed(() =>
     buildRows(entries.value, {
         filter: historyFilter.value,
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
+        now: clock.value,
     }),
 )
 
+// A timeline of only its first state says so, under Now.
+const isEmpty = computed(
+    () =>
+        status.value !== 'loading' &&
+        !built.value.some(
+            (row) =>
+                row.type === 'divider' ||
+                (row.type === 'entry' &&
+                    (row.entry.kind !== 'init' || historyFilter.value !== 'all')),
+        ),
+)
+const rows = computed(() => (isEmpty.value ? built.value.slice(0, 1) : built.value))
+
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring.
-const rowHeight = computed(() => {
-    if (props.twoLine) return isCoarsePointer.value ? 48 : 40
-    return isCoarsePointer.value ? 44 : 36
-})
+const rowHeight = computed(() => (isCoarsePointer.value ? 44 : 36))
 const HEADER = 28
 const DIVIDER = 32
+// The list's padding: 4 px above the first row, 8 px below the last.
+const PAD_TOP = 4
+const PAD_BOTTOM = 8
 const heightOf = (row: Row) =>
     row.type === 'header' ? HEADER : row.type === 'divider' ? DIVIDER : rowHeight.value
 const geometry = computed(() => {
-    let y = 0
+    let y = PAD_TOP
     const offsets = rows.value.map((row) => {
         const top = y
         y += heightOf(row)
@@ -68,21 +109,39 @@ const geometry = computed(() => {
     return { offsets, total: y }
 })
 
+// What follows the rows: the first page loading, an empty or failed timeline, an older page loading.
+const SKELETON_ROWS = 4
+const MESSAGE = 96
+const FAILED = 132
+const tail = computed(() => {
+    if (status.value === 'failed') return { kind: 'failed', height: FAILED }
+    if (status.value === 'loading')
+        return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
+    if (isEmpty.value) return { kind: 'empty', height: MESSAGE }
+    if (loadingMore.value) return { kind: 'more', height: rowHeight.value }
+    return { kind: 'none', height: 0 }
+})
+const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM)
+
 const OVERSCAN = 12
-const range = computed(() => {
+/** The last row starting at or above the scroll position. */
+const topIndex = computed(() => {
     const { offsets } = geometry.value
-    const count = rows.value.length
-    // The last row starting at or above the scroll position.
     let low = 0
-    let high = count
+    let high = rows.value.length
     while (low < high) {
         const mid = (low + high) >> 1
         if ((offsets[mid] ?? Infinity) <= scrollTop.value) low = mid + 1
         else high = mid
     }
-    const first = Math.max(0, low - 1 - OVERSCAN)
+    return low - 1
+})
+const range = computed(() => {
+    const { offsets } = geometry.value
+    const count = rows.value.length
+    const first = Math.max(0, topIndex.value - OVERSCAN)
     const bottom = scrollTop.value + viewport.value
-    let end = low
+    let end = topIndex.value + 1
     while (end < count && (offsets[end] ?? Infinity) < bottom) end++
     return { first, end: Math.min(count, end + OVERSCAN) }
 })
@@ -93,6 +152,19 @@ const visibleRows = computed(() =>
         top: geometry.value.offsets[range.value.first + i] ?? 0,
     })),
 )
+
+// The header of the rows at the top, pinned there once they scroll under it.
+const pinned = computed(() => {
+    if (scrollTop.value <= 0) return
+    const at = topIndex.value
+    const current = rows.value[at]
+    if (current?.type === 'header' && (geometry.value.offsets[at] ?? 0) >= scrollTop.value) return
+    for (let i = at; i >= 0; i--) {
+        const row = rows.value[i]
+        if (row?.type === 'header') return row
+    }
+    return undefined
+})
 
 /** Rows a listbox counts: everything but the headers. */
 const positions = computed(() => {
@@ -143,6 +215,7 @@ const moveTo = (row: Row | undefined) => {
     scrollToRow(row.id)
 }
 
+// Brings a row into view, clear of the pinned header.
 const scrollToRow = (id: string) => {
     const element = list.value
     const index = rows.value.findIndex((row) => row.id === id)
@@ -150,9 +223,10 @@ const scrollToRow = (id: string) => {
     if (!element || !row) return
     const top = geometry.value.offsets[index] ?? 0
     const bottom = top + heightOf(row)
-    if (top < element.scrollTop) element.scrollTop = top
+    const cover = element.scrollTop > 0 ? HEADER : 0
+    if (top < element.scrollTop + cover) element.scrollTop = Math.max(0, top - HEADER)
     else if (bottom > element.scrollTop + element.clientHeight)
-        element.scrollTop = bottom - element.clientHeight
+        element.scrollTop = bottom + PAD_BOTTOM - element.clientHeight
 }
 
 const step = (delta: number) => {
@@ -171,14 +245,14 @@ const toggleGroup = (row: EntryRow, open: boolean) => {
 
 // --- Restore
 const restore = async (row: EntryRow) => {
-    await restoreEntry(keyOf(row.entry))
+    await requestRestore(keyOf(row.entry))
 }
 
 // --- Menu: Restore, by right click, Shift+F10 or the Menu key.
 const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean }>()
-const openMenu = (row: EntryRow, anchor: HTMLElement, touch = false) => {
+const openMenu = (row: EntryRow, anchor: HTMLElement) => {
     if (!row.selectable || menu.value?.row.id === row.id) return
-    menu.value = { row, anchor, touch }
+    menu.value = { row, anchor, touch: false }
 }
 const closeMenu = (restoreFocus: boolean) => {
     if (!menu.value) return
@@ -194,7 +268,7 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
 const onContextMenu = (event: MouseEvent, row: Row) => {
     event.preventDefault()
     if (row.type !== 'entry') return
-    openMenu(row, event.currentTarget as HTMLElement, event.detail === 0 && false)
+    openMenu(row, event.currentTarget as HTMLElement)
 }
 
 // --- Pointer
@@ -237,13 +311,15 @@ const onKeydown = (event: KeyboardEvent) => {
             case 'Enter':
                 if (row?.type === 'entry' && row.selectable) {
                     handled()
-                    void restore(row)
+                    if (!event.repeat) void restore(row)
                 }
                 return
             case 'Escape':
                 handled()
+                // Back to now first; then the dialog closes, and the tab hands focus to the chart.
                 if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
-                else closeHistory()
+                else if (props.surface === 'dialog') emit('close')
+                else list.value?.blur()
                 return
             case 'ArrowRight':
                 if (row?.type === 'entry' && row.members.length > 1 && !row.child) {
@@ -318,12 +394,23 @@ onMounted(() => {
     observer.observe(element)
     viewport.value = element.clientHeight
     width.value = element.clientWidth
-    // Keyboard focus starts in the list, at the Now row (§1.4.10.2).
-    element.focus({ preventScroll: true })
+    // The dialog's list takes focus as it opens; the tab's only for a link that asked.
+    if (props.surface === 'dialog') element.focus({ preventScroll: true })
 })
 onBeforeUnmount(() => {
     observer?.disconnect()
+    clearTimeout(clockTimer)
 })
+// A link asks for the list's focus, also from a list that mounts a moment later.
+watch(
+    listFocus,
+    (request) => {
+        if (request?.surface !== props.surface || Date.now() - request.at > 3000) return
+        listFocus.value = undefined
+        void nextTick(() => list.value?.focus({ preventScroll: true }))
+    },
+    { immediate: true },
+)
 
 // --- Text
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
@@ -341,45 +428,54 @@ const flagTextOf = (row: EntryRow) =>
         ? i18n.value.history.damaged
         : row.flags.removed
           ? i18n.value.history.removedForSpace
-          : row.flags.notInUndo
-            ? i18n.value.history.notInUndo
-            : undefined
+          : undefined
 
-const flagTipOf = (row: EntryRow) =>
-    row.flags.notInUndo && !row.flags.damaged && !row.flags.removed
-        ? i18n.value.history.notInUndoTip
-        : undefined
+const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
-const timeOf = (row: EntryRow) => formatEntryTime(row.entry.time)
+// Under about 300 px a flag keeps only its icon; its text is still the name and the tooltip.
+const narrow = computed(() => width.value > 0 && width.value < 300)
+
+const timeOf = (row: EntryRow) => formatClockSeconds(row.entry.time)
 
 const deltaOf = (row: EntryRow) =>
     row.delta === undefined ? undefined : `${row.delta > 0 ? '+' : '−'}${Math.abs(row.delta)}`
 
-const titleOf = (row: EntryRow) => flagTipOf(row) ?? `${labelOf(row)} · ${timeOf(row)}`
+// The full date and time is the row's tooltip and in its accessible name; the header gives the date.
+const whenOf = (row: EntryRow) => formatDateTimeSeconds(row.entry.time)
+
+const titleOf = (row: EntryRow) =>
+    [labelOf(row), flagTextOf(row), whenOf(row)].filter(Boolean).join(' · ')
+
+const nameOf = (row: EntryRow) =>
+    [
+        row.members.length > 1 && !row.child
+            ? `${labelOf(row)} ×${row.members.length}`
+            : labelOf(row),
+        flagTextOf(row),
+        deltaOf(row),
+        whenOf(row),
+    ]
+        .filter(Boolean)
+        .join(', ')
 
 const nowTime = computed(() => entries.value[0]?.time ?? session.value.startedAt ?? Date.now())
 
 const dividerText = (entry: Entry) =>
     interpolateRaw(i18n.value.history.continuedFrom, formatDateTime(entry.from ?? entry.time))
 
-const dayText = (time: number) => {
-    const now = new Date()
-    const day = new Date(time)
-    const yesterday = new Date(now)
-    yesterday.setDate(now.getDate() - 1)
-    if (day.toDateString() === now.toDateString()) return i18n.value.history.today
-    if (day.toDateString() === yesterday.toDateString()) return i18n.value.history.yesterday
-    return formatDate(time)
-}
-
-const narrow = computed(() => width.value > 0 && width.value < 360)
+const headerClass = (header: Header) =>
+    header.level === 'day'
+        ? 'font-bold text-fg'
+        : header.level === 'hour'
+          ? 'font-bold text-fg/80'
+          : 'font-medium text-fg/70'
 
 // --- Announcing the peek
 const announcement = computed(() =>
     peekedInfo.value
         ? interpolateRaw(
               i18n.value.history.announceViewing,
-              formatClockSeconds(peekedInfo.value.time),
+              formatDateTimeSeconds(peekedInfo.value.time),
           )
         : '',
 )
@@ -400,7 +496,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
             @scroll.passive="onScroll"
             @keydown="onKeydown"
         >
-            <div class="relative px-1.5" :style="{ height: `${geometry.total}px` }">
+            <div class="relative" :style="{ height: `${contentHeight}px` }">
                 <template v-for="{ row, top } in visibleRows" :key="row.id">
                     <!-- Now: the open chart. -->
                     <div
@@ -423,9 +519,13 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         </span>
                         <span class="min-w-0 flex-1 truncate font-bold"
                             >{{ i18n.history.now
-                            }}<template v-if="headName"> · {{ headName }}</template></span
+                            }}<template v-if="headName && !isEmpty">
+                                · {{ headName }}</template
+                            ></span
                         >
-                        <span class="timeline-time shrink-0">{{ formatEntryTime(nowTime) }}</span>
+                        <span class="timeline-time shrink-0">{{
+                            formatClockSeconds(nowTime)
+                        }}</span>
                     </div>
 
                     <!-- A continuation or file open: where one stretch of history ends. -->
@@ -434,7 +534,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         :id="domId(row.id)"
                         role="option"
                         aria-disabled="true"
-                        class="timeline-divider"
+                        class="timeline-divider items-center"
                         :aria-posinset="positions.map.get(row.id)"
                         :aria-setsize="positions.size"
                         :style="{ top: `${top}px`, height: `${DIVIDER}px` }"
@@ -444,20 +544,16 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         <span class="timeline-rule" aria-hidden="true" />
                     </div>
 
-                    <!-- A minute's or a day's header. -->
+                    <!-- A minute's, an hour's or a day's header: a label at the rows' text edge. -->
                     <div
                         v-else-if="row.type === 'header'"
                         role="presentation"
                         aria-hidden="true"
-                        class="timeline-divider"
-                        :class="{ 'font-bold': row.level === 'day' }"
+                        class="timeline-divider items-end pb-1"
+                        :class="headerClass(row)"
                         :style="{ top: `${top}px`, height: `${HEADER}px` }"
                     >
-                        <span class="timeline-rule" />
-                        <span class="min-w-0 truncate px-2">{{
-                            row.level === 'day' ? dayText(row.time) : formatClock(row.time)
-                        }}</span>
-                        <span class="timeline-rule" />
+                        <span class="min-w-0 truncate">{{ headerText(row) }}</span>
                     </div>
 
                     <div
@@ -469,7 +565,6 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                             'timeline-row-selected': cursorId === row.id,
                             'timeline-row-disabled': !row.selectable,
                             'timeline-row-child': row.child,
-                            'timeline-row-two': twoLine,
                         }"
                         :aria-selected="cursorId === row.id"
                         :aria-disabled="row.selectable ? undefined : true"
@@ -478,6 +573,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                                 ? expandedGroups.has(row.id)
                                 : undefined
                         "
+                        :aria-label="nameOf(row)"
                         :aria-posinset="positions.map.get(row.id)"
                         :aria-setsize="positions.size"
                         :title="titleOf(row)"
@@ -486,56 +582,102 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
                         @contextmenu="onContextMenu($event, row)"
                     >
                         <KindIcon :kind="row.entry.kind" />
-                        <span class="flex min-w-0 flex-1 flex-col justify-center">
-                            <span class="flex min-w-0 items-baseline gap-1.5">
-                                <span class="min-w-0 truncate">{{ labelOf(row) }}</span>
-                                <span
-                                    v-if="row.members.length > 1"
-                                    class="timeline-count shrink-0"
-                                    :aria-label="`×${row.members.length}`"
-                                    >×{{ row.members.length }}</span
-                                >
-                            </span>
-                            <span v-if="twoLine" class="timeline-detail">
-                                <span v-if="flagTextOf(row)" class="timeline-flag">
-                                    <WarningIcon
-                                        v-if="
-                                            row.flags.notInUndo &&
-                                            !row.flags.damaged &&
-                                            !row.flags.removed
-                                        "
-                                        class="size-3 shrink-0"
-                                    />
-                                    <span class="truncate">{{ flagTextOf(row) }}</span>
-                                </span>
-                                <span v-if="deltaOf(row)">{{ deltaOf(row) }}</span>
-                            </span>
-                        </span>
-                        <template v-if="!twoLine">
-                            <span
-                                v-if="flagTextOf(row)"
-                                class="timeline-flag shrink-0"
-                                :title="flagTipOf(row)"
-                            >
-                                <WarningIcon
-                                    v-if="
-                                        row.flags.notInUndo &&
-                                        !row.flags.damaged &&
-                                        !row.flags.removed
-                                    "
-                                    class="size-3 shrink-0"
-                                />
-                                <span :class="narrow ? 'sr-only' : 'truncate'">{{
-                                    flagTextOf(row)
-                                }}</span>
-                            </span>
-                            <span v-if="deltaOf(row)" class="timeline-count shrink-0">{{
-                                deltaOf(row)
+                        <span class="min-w-0 flex-1 truncate">{{ labelOf(row) }}</span>
+                        <span
+                            v-if="row.members.length > 1 && !row.child"
+                            class="timeline-count shrink-0"
+                            aria-hidden="true"
+                            >×{{ row.members.length }}</span
+                        >
+                        <!-- A removed or damaged row says why; the label gives way to it. -->
+                        <span
+                            v-if="flagTextOf(row)"
+                            class="timeline-flag shrink-0"
+                            :class="narrow ? '' : 'max-w-[55%]'"
+                            data-history-flag
+                        >
+                            <FlagIcon :kind="flagKindOf(row)" />
+                            <span :class="narrow ? 'sr-only' : 'truncate'">{{
+                                flagTextOf(row)
                             }}</span>
-                        </template>
+                        </span>
+                        <span v-if="deltaOf(row)" class="timeline-count shrink-0">{{
+                            deltaOf(row)
+                        }}</span>
                         <span class="timeline-time shrink-0">{{ timeOf(row) }}</span>
                     </div>
                 </template>
+
+                <!-- What follows the rows. -->
+                <div
+                    v-if="tail.kind === 'skeleton'"
+                    class="absolute inset-x-2"
+                    :style="{ top: `${geometry.total}px` }"
+                    aria-hidden="true"
+                    data-history-loading
+                >
+                    <div
+                        v-for="n in SKELETON_ROWS"
+                        :key="n"
+                        class="flex items-center gap-2 px-3 motion-safe:animate-pulse"
+                        :style="{ height: `${rowHeight}px` }"
+                    >
+                        <span class="size-4 shrink-0 rounded-full bg-fg/10" />
+                        <span
+                            class="h-3 rounded-full bg-fg/10"
+                            :style="{ width: `${72 - n * 9}%` }"
+                        />
+                        <span class="ml-auto h-3 w-16 shrink-0 rounded-full bg-fg/10" />
+                    </div>
+                </div>
+                <div
+                    v-else-if="tail.kind === 'empty'"
+                    class="absolute inset-x-2 flex items-center justify-center px-3 text-center text-sm text-fg/70"
+                    :style="{ top: `${geometry.total}px`, height: `${MESSAGE}px` }"
+                    data-history-empty
+                >
+                    {{ historyFilter === 'saves' ? i18n.history.noSaves : i18n.history.empty }}
+                </div>
+                <div
+                    v-else-if="tail.kind === 'failed'"
+                    class="absolute inset-x-2 flex flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/70"
+                    :style="{ top: `${geometry.total}px`, height: `${FAILED}px` }"
+                    data-history-failed
+                >
+                    <span>{{ i18n.history.loadFailed }}</span>
+                    <button
+                        type="button"
+                        class="h-9 rounded-full bg-button px-4 font-bold text-fg shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(pointer:coarse)]:h-11"
+                        @click="retry"
+                    >
+                        {{ i18n.history.tryAgain }}
+                    </button>
+                </div>
+                <div
+                    v-else-if="tail.kind === 'more'"
+                    class="absolute inset-x-2 flex items-center justify-center"
+                    :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
+                    aria-hidden="true"
+                >
+                    <span
+                        class="size-4 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                    />
+                </div>
+            </div>
+        </div>
+        <!-- The header of the rows at the top, so a long day never loses its place. -->
+        <div
+            v-if="pinned"
+            class="pointer-events-none absolute inset-x-0 top-0 z-10 bg-modal pt-1 shadow-band"
+            aria-hidden="true"
+            data-history-pinned
+        >
+            <div
+                class="flex items-end truncate px-5 pb-1 text-xs"
+                :class="headerClass(pinned)"
+                :style="{ height: `${HEADER}px` }"
+            >
+                <span class="truncate">{{ pinnedText(pinned) }}</span>
             </div>
         </div>
         <OverlayScrollbar :target="list" />
@@ -555,11 +697,7 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
 
 <style scoped>
 .timeline-row {
-    @apply absolute inset-x-1.5 flex select-none items-center gap-2 rounded-full px-3 text-sm;
-}
-
-.timeline-row-two {
-    @apply py-0.5;
+    @apply absolute inset-x-2 flex select-none items-center gap-2 rounded-full px-3 text-sm;
 }
 
 .timeline-row-child {
@@ -582,16 +720,13 @@ defineExpose({ focus: () => list.value?.focus({ preventScroll: true }) })
     @apply text-xs tabular-nums opacity-80;
 }
 
-.timeline-detail {
-    @apply flex min-w-0 items-center gap-2 text-xs opacity-80;
-}
-
 .timeline-flag {
     @apply flex min-w-0 items-center gap-1 text-xs;
 }
 
+/* Headers and dividers: labels at the rows' text edge, inside the 8 px gutter. */
 .timeline-divider {
-    @apply absolute inset-x-1.5 flex select-none items-center px-3 text-xs;
+    @apply absolute inset-x-2 flex select-none px-3 text-xs;
 }
 
 .timeline-rule {
