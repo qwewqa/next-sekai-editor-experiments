@@ -1,4 +1,10 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import type {
+    ConflictInput,
+    DiskVersion,
+    RefusedReason,
+    SavedFeedback,
+} from '../../src/editor/save/dialogs'
 
 // Step 6's Save dialogs (Part 1 §1.4.7): the Save and Save As dialog with File Name's rules, the
 // History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
@@ -383,17 +389,46 @@ test.describe('the Save dialog', () => {
     })
 })
 
-const open = (page: Page, source: string) =>
-    page.evaluate(async (source) => {
-        const { saveUi, defaultSaveUi } =
+type DialogRequest =
+    | {
+          kind: 'conflict'
+          input: Omit<ConflictInput, 'replaceDisabled'> & { replaceDisabled?: string }
+      }
+    | { kind: 'notFound' | 'denied' | 'readOnly'; name: string }
+    | { kind: 'failed'; name: string; message: string; saveAs: boolean }
+    | { kind: 'refused'; name: string; reason: RefusedReason }
+
+const open = (page: Page, input: DialogRequest) =>
+    page.evaluate(async (input) => {
+        const { saveUi } =
             (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
         window.saveSeen = {}
-        const run = new Function('saveUi', 'defaultSaveUi', `return (${source})`)
-        void Promise.resolve(run(saveUi, defaultSaveUi) as unknown).then((result) => {
+        const run = () => {
+            switch (input.kind) {
+                case 'conflict': {
+                    const { replaceDisabled, ...rest } = input.input
+                    return saveUi.conflict({
+                        ...rest,
+                        replaceDisabled: replaceDisabled ? () => replaceDisabled : undefined,
+                    })
+                }
+                case 'notFound':
+                    return saveUi.notFound(input.name)
+                case 'denied':
+                    return saveUi.denied(input.name)
+                case 'readOnly':
+                    return saveUi.readOnly(input.name)
+                case 'failed':
+                    return saveUi.failed(input.name, () => input.message, input.saveAs)
+                case 'refused':
+                    return saveUi.refused(input.name, input.reason)
+            }
+        }
+        void run().then((result) => {
             window.saveSeen.result = result ?? null
             window.saveSeen.done = true
         })
-    }, source)
+    }, input)
 
 test.describe('the Preparing dialog', () => {
     test('shows the name and size, and its button becomes the new gesture', async ({
@@ -477,11 +512,23 @@ test.describe('the Preparing dialog', () => {
 
 test.describe('the conflict dialog', () => {
     const disk = {
-        saved: `{ kind: 'saved', device: { id: 'a', label: 'iPad' }, thisDevice: false, savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(), notes: 1220 }`,
-        web: `{ kind: 'saved', device: { id: 'a', label: 'Web (Chrome)' }, thisDevice: false, savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(), notes: 1 }`,
-        other: `{ kind: 'otherProject', name: 'Melt' }`,
-        unknown: `{ kind: 'unknown' }`,
-    }
+        saved: {
+            kind: 'saved',
+            device: { id: 'a', label: 'iPad' },
+            thisDevice: false,
+            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            notes: 1220,
+        },
+        web: {
+            kind: 'saved',
+            device: { id: 'a', label: 'Web (Chrome)' },
+            thisDevice: false,
+            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            notes: 1,
+        },
+        other: { kind: 'otherProject', name: 'Melt' },
+        unknown: { kind: 'unknown' },
+    } satisfies Record<string, DiskVersion>
 
     test('offers the four choices, with Save as a Separate File focused', async ({
         page,
@@ -489,7 +536,7 @@ test.describe('the conflict dialog', () => {
     }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.saved} })`)
+        await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.saved } })
         await expect(dialog(page)).toHaveAccessibleName('"coconut.nxsp" Changed')
         await expect(dialog(page)).toContainText(
             '"coconut.nxsp" changed since you opened or saved it here.',
@@ -517,17 +564,17 @@ test.describe('the conflict dialog', () => {
     test('names a web version, another project, or nothing', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.web} })`)
+        await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.web } })
         await expect(dialog(page)).toContainText(
             'Saved in the web editor (Chrome), Oct 16, 2:41 PM · 1 note.',
         )
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
-        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.other} })`)
+        await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.other } })
         await expect(dialog(page)).toContainText('A different project file, "Melt".')
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
-        await open(page, `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.unknown} })`)
+        await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.unknown } })
         await expect(dialog(page).locator('.whitespace-pre-line')).toHaveText(
             '"coconut.nxsp" changed since you opened or saved it here.',
         )
@@ -539,10 +586,14 @@ test.describe('the conflict dialog', () => {
     }) => {
         await seed(context)
         await visit(page)
-        await open(
-            page,
-            `saveUi.conflict({ name: 'coconut.nxsp', disk: ${disk.saved}, replaceDisabled: () => 'It holds earlier steps that this browser no longer has.' })`,
-        )
+        await open(page, {
+            kind: 'conflict',
+            input: {
+                name: 'coconut.nxsp',
+                disk: disk.saved,
+                replaceDisabled: 'It holds earlier steps that this browser no longer has.',
+            },
+        })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })
         await expect(replace).toBeDisabled()
         await expect(dialog(page)).toContainText(
@@ -563,7 +614,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
     test('not found: Save As… is focused, with no hint', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.notFound('coconut.nxsp')`)
+        await open(page, { kind: 'notFound', name: 'coconut.nxsp' })
         await expect(dialog(page)).toContainText('"coconut.nxsp" cannot be found.')
         await expect(dialog(page)).not.toContainText('If you moved or renamed it')
         await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
@@ -573,7 +624,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
     test('denied: Try Again is focused', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.denied('coconut.nxsp')`)
+        await open(page, { kind: 'denied', name: 'coconut.nxsp' })
         await expect(dialog(page)).toContainText(
             'The browser did not allow writing to coconut.nxsp.',
         )
@@ -587,7 +638,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
     test('read-only: Save As… is focused', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.readOnly('coconut.nxsp')`)
+        await open(page, { kind: 'readOnly', name: 'coconut.nxsp' })
         await expect(dialog(page)).toContainText('"coconut.nxsp" cannot be written to.')
         await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
         await expect(dialog(page).getByRole('button', { name: 'Save As…' })).toBeFocused()
@@ -599,15 +650,22 @@ test.describe('the dialogs for a file that cannot be written', () => {
     }) => {
         await seed(context)
         await visit(page)
-        await open(
-            page,
-            `saveUi.failed('coconut.nxsp', () => 'There is not enough space to write coconut.nxsp.', true)`,
-        )
+        await open(page, {
+            kind: 'failed',
+            name: 'coconut.nxsp',
+            message: 'There is not enough space to write coconut.nxsp.',
+            saveAs: true,
+        })
         await expect(dialog(page)).toContainText('There is not enough space to write coconut.nxsp.')
         await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
-        await open(page, `saveUi.failed('coconut.nxsp', () => 'The download failed.', false)`)
+        await open(page, {
+            kind: 'failed',
+            name: 'coconut.nxsp',
+            message: 'The download failed.',
+            saveAs: false,
+        })
         await expect(buttons(page)).toHaveText(['OK'])
     })
 
@@ -617,7 +675,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
     }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.refused('LevelData', 'levelData')`)
+        await open(page, { kind: 'refused', name: 'LevelData', reason: 'levelData' })
         await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
         await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
         await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
@@ -630,14 +688,14 @@ test.describe('the dialogs for a file that cannot be written', () => {
     test('a refused partial open and safe mode name why', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, `saveUi.refused('melt.nxsp', 'notKept')`)
+        await open(page, { kind: 'refused', name: 'melt.nxsp', reason: 'notKept' })
         await expect(dialog(page)).toContainText(
             'Not saved. "melt.nxsp" could not be read completely.',
         )
         await expect(buttons(page)).toHaveText(['Cancel', 'Choose Another…'])
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
-        await open(page, `saveUi.refused('melt.nxsp', 'safeMode')`)
+        await open(page, { kind: 'refused', name: 'melt.nxsp', reason: 'safeMode' })
         await expect(dialog(page)).toContainText(
             'Not saved. Files cannot be replaced in safe mode.',
         )
@@ -647,31 +705,39 @@ test.describe('the dialogs for a file that cannot be written', () => {
 test.describe('the feedback after a write', () => {
     const notice = (page: Page) => page.getByRole('status')
 
-    const feedback = (page: Page, source: string) =>
-        page.evaluate(async (source) => {
+    const feedback = (page: Page, input: SavedFeedback) =>
+        page.evaluate(async (input) => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
-            saveUi.saved(new Function(`return (${source})`)() as never)
-        }, source)
+            saveUi.saved(input)
+        }, input)
 
-    const plain = `{ kind: 'saved', name: 'coconut.nxsp', size: 1, someStepsNotKept: false, tookOver: false, without: [], tooLarge: [] }`
+    const plain: SavedFeedback = {
+        kind: 'saved',
+        name: 'coconut.nxsp',
+        size: 1,
+        someStepsNotKept: false,
+        tookOver: false,
+        without: [],
+        tooLarge: [],
+    }
 
     test('says where the file went, and what it left out', async ({ page, context }) => {
         await seed(context)
         await visit(page)
         await feedback(page, plain)
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
-        await feedback(page, `({ ...${plain}, someStepsNotKept: true })`)
+        await feedback(page, { ...plain, someStepsNotKept: true })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp. Some earlier steps were not kept.',
         )
-        await feedback(page, `({ ...${plain}, without: ['bgm'], tooLarge: ['bgm'] })`)
+        await feedback(page, { ...plain, without: ['bgm'], tooLarge: ['bgm'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
-        await feedback(page, `({ ...${plain}, without: ['bgm'], tooLarge: [] })`)
+        await feedback(page, { ...plain, without: ['bgm'], tooLarge: [] })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp without its BGM, which is not loaded',
         )
-        await feedback(page, `({ ...${plain}, tookOver: true })`)
+        await feedback(page, { ...plain, tookOver: true })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
         )
@@ -706,10 +772,7 @@ test.describe('the feedback after a write', () => {
                 (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
             bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
         })
-        await feedback(
-            page,
-            `({ kind: 'download', name: 'coconut.nxsp', size: 12_400_000, someStepsNotKept: false, tookOver: false, without: [], tooLarge: [] })`,
-        )
+        await feedback(page, { ...plain, kind: 'download', size: 12_400_000 })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 12.4 MB')
         await expect(notice(page)).toContainText(
             'To confirm it later, use Download not confirmed in the status bar.',
@@ -733,10 +796,7 @@ test.describe('the feedback after a write', () => {
                 (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
             bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
         })
-        await feedback(
-            page,
-            `({ kind: 'download', name: 'coconut.nxsp', size: 1_000, someStepsNotKept: true, tookOver: false, without: [], tooLarge: [] })`,
-        )
+        await feedback(page, { ...plain, kind: 'download', size: 1_000, someStepsNotKept: true })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
         await expect(notice(page)).toContainText('Some earlier steps were not kept.')
         await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)
