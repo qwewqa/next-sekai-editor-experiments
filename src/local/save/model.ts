@@ -1,6 +1,12 @@
 import { toHex } from '../hash'
 import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
-import { replay, ReplayError, type ReplayEntry, type ReplaySlot } from '../timeline'
+import {
+    replay,
+    ReplayError,
+    type ReplayedStack,
+    type ReplayEntry,
+    type ReplaySlot,
+} from '../timeline'
 import type { ChainCut, EntryRow, SessionRow } from './cut'
 
 // The settled history model's rules over a cut (Part 1 §1.6.11.6): the chain order of sessions
@@ -138,15 +144,15 @@ export const cutStack = (stack: WriteStack, held: (slot: ReplaySlot) => boolean)
  * How far the session's slot numbers are from the file's (§1.6.11.5): absolute numbers in a file
  * count from replay of its own first entry, so a chronology that starts later than the session's
  * numbering (sessions removed before it) is renumbered. Replay of the written chronology gives
- * the file's index; undefined when replay can't follow it.
+ * the file's index and stack; undefined when replay can't follow it.
  */
 export const renumbering = (
     chronology: readonly ReplayEntry[],
     sessionIndex: number,
-): number | undefined => {
+): { offset: number; replayed: ReplayedStack } | undefined => {
     try {
-        const { index } = replay(chronology)
-        return sessionIndex - index
+        const replayed = replay(chronology)
+        return { offset: sessionIndex - replayed.index, replayed }
     } catch (error) {
         if (error instanceof ReplayError) return undefined
         throw error

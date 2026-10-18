@@ -2,7 +2,7 @@ import { centralDirectoryOf } from '../../platform/fingerprint'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfo, MediaRef } from '../../state/levelInfo'
 import { inflateStrict } from '../chunkVerify'
-import { fromHex16, toHex } from '../hash'
+import { equalBytes, fromHex16, toHex } from '../hash'
 import {
     ANCESTOR_LIMIT,
     planNxsp,
@@ -631,9 +631,33 @@ export const planSave = async (
         if (appending && source)
             for (const part of sourceParts(source)) part.entries.forEach(toReplay)
         entries.forEach(toReplay)
-        const offset = renumbering(replayed, cutSlots.index)
+        const renumbered = renumbering(replayed, cutSlots.index)
+        const held = (slot: ReplaySlot) => bodies.complete.has(toHex(slot.snapshot))
         let undoStack: WriteStack
-        if (offset === undefined) {
+        if (renumbered) {
+            const { offset, replayed: file } = renumbered
+            let base = cutSlots.base - offset
+            let slots = cutSlots.slots
+            if (base < 0) {
+                slots = slots.slice(-base)
+                base = 0
+            }
+            const agrees = slots.every((slot, i) => {
+                const own = file.slots[base + i]
+                return !!own && equalBytes(own.snapshot, slot.snapshot)
+            })
+            if (agrees) {
+                if (offset)
+                    for (const form of entries)
+                        if (form.stack) form.stack = withShift(form.stack, offset)
+                undoStack = { base, slots, index: cutSlots.index - offset }
+            } else {
+                // Sessions removed from the chain's middle: replay of the file gives another
+                // stack than the session's, and replay defines the stack (§1.3.9).
+                console.warn('A Save’s undo stack is replay’s of its file', { chainId })
+                undoStack = cutStack({ base: 0, slots: [...file.slots], index: file.index }, held)
+            }
+        } else {
             // Replay can't follow the chronology (a session removed from its middle): the stack
             // is cut to its head, so no slot claims a number replay doesn't give.
             console.warn(
@@ -643,17 +667,6 @@ export const planSave = async (
                 },
             )
             undoStack = { base: 0, slots: [headSlot], index: 0 }
-        } else {
-            let base = cutSlots.base - offset
-            let slots = cutSlots.slots
-            if (base < 0) {
-                slots = slots.slice(-base)
-                base = 0
-            }
-            if (offset)
-                for (const form of entries)
-                    if (form.stack) form.stack = withShift(form.stack, offset)
-            undoStack = { base, slots, index: cutSlots.index - offset }
         }
 
         historyInput = {
