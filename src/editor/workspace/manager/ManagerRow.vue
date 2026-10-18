@@ -581,8 +581,7 @@ const onRenameBlur = (event: FocusEvent) => {
  */
 .manager-row-heading.manager-row-current .manager-label-box::after {
     content: '';
-    /* Row 40px (48 coarse), label 24px centered, band padding 4px (2 coarse):
-       the band's lower edge is 14px below the label either way. */
+    /* The 40px row and 4px padding put the band edge 14px below its centered 24px label. */
     @apply pointer-events-none absolute -bottom-3.5 -left-2 -right-2 h-1 rounded-t-full bg-fg;
 }
 

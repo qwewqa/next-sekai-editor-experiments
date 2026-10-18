@@ -433,10 +433,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
     flex-shrink: 10000;
 }
 
-/* The bar sits on the band's lower edge: 6px below the 36px pill (48px band),
-   8px on coarse pointers (52px band), plus the pill's 6px below the label. Like
-   the rail's marker it spans the hover pill less 4px a side, and it matches the
-   All row's 4px bar. */
+/* The 48px band ends 12px below the label; its 4px bar matches the All row. */
 .properties-tab-active .properties-tab-label::after {
     content: '';
     @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
