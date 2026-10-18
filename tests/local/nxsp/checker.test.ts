@@ -385,3 +385,38 @@ test(
         }
     },
 )
+
+test('the Python reader checks shared graph closure in stored-edge work', { skip: !hasUv }, () => {
+    const script = `
+import runpy, sys
+m = runpy.run_path(sys.argv[1])
+class Edges(list):
+    visits = 0
+    def __iter__(self):
+        for value in super().__iter__():
+            Edges.visits += 1
+            yield value
+repeat = 80
+header, body = "a" * 32, "b" * 32
+key = lambda value: m["hash16"](m["js_json"](value).encode("utf-8"))
+leaf = ["bpms", 0, Edges([body] * repeat)]
+leaf_key = key(leaf)
+top = ["bpms", 1, [leaf_key] * repeat]
+top_key = key(top)
+root = [1, header, [["bpms", top_key]], 0]
+root_key = key(root)
+manifest = dict(version=1, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
+                chunks=[[header, 0, 1], [body, 1, 1]],
+                undoStack=dict(base=0, index=0, slots=[dict(snapshot=root_key, label="")]))
+Edges.visits = 0
+history, issues = m["combine_parts"]([], manifest, 0, 2)
+assert history is not None and not issues, issues
+assert Edges.visits < repeat * 6, Edges.visits
+`
+    const result = spawnSync(
+        'uv',
+        ['run', 'python', '-I', '-c', script, join(repo, 'tools', 'nxsp_check.py')],
+        { encoding: 'utf8' },
+    )
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`)
+})
