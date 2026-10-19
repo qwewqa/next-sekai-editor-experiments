@@ -43,7 +43,7 @@ export const continueIn = (
         stack: stackOf(read),
         chain: read.chain,
         operation: nativeOperation(
-            { id: 'nse.continue', data: { fromTime: read.session.startedAt as number } },
+            { id: 'nse.continue', data: { fromTime: read.session.updatedAt as number } },
             'Continued',
         ),
         dirty: false,

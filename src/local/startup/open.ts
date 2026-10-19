@@ -290,7 +290,7 @@ export const openStored = async (
             stack: storedStack(read),
             chain,
             operation: deps.operations.continued(
-                typeof session.startedAt === 'number' ? session.startedAt : 0,
+                session.updatedAt as number,
             ),
             dirty: edited,
             ...(fork

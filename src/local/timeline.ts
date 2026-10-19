@@ -279,7 +279,7 @@ export const stackMismatches = (
 export type ModelSlot<E> = {
     readonly hash?: Uint8Array
     readonly entry?: E
-    /** Text once stored; an entry's label until then, evaluated when it's written (§1.10 #7). */
+    /** Complete immutable description of the transition that created this slot. */
     readonly step: UndoableStep
 }
 

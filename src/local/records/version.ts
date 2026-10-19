@@ -3,5 +3,5 @@
 /** The record format: a root's `v` and journals' `recordsV`. Stands for engine revision 2. */
 export const RECORDS_V = 1
 
-/** How a session's stack and entries are read: a session row's `v`, absent meaning 1. */
+/** How a session's stack and entries are read: a session row's explicit supported `v`. */
 export const SESSION_V = 2

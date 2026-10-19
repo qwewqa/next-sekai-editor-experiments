@@ -47,7 +47,7 @@ export type ReplayDeps = {
     locks: LockService
     worker: JournalWorker
     appVersion: string
-    /** The `recovered` entry's label, naming the undo steps that weren't kept (§1.6.4 step 4). */
+    /** Captures the recovery operation with its dropped-step count. */
     operation: (dropped: number) => JsonValue
     now?: () => number
 }

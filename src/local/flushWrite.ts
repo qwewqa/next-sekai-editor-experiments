@@ -18,7 +18,7 @@ import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
 import { isReadableSessionVersion } from './records/unknownValues'
 import { SESSION_V } from './records/version'
-import { clearIdentityExport, storeMarks, unitApplies, type IdentityUnit } from './save/commit'
+import { clearIdentityExport, storeMarks, unitApplies, sessionVersionReader, marksHaveSupportedSessions, type IdentityUnit } from './save/commit'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
 import {
@@ -527,6 +527,11 @@ export const writeFlush = async (
         if ((await tx.getKey('nodes', hashKey(root.hash))) === undefined) rootsToPut.set(hex, root)
     }
 
+    const versionRows: [string, unknown][] = [[batch.session.id, session ?? {v: SESSION_V}]]
+    if (batch.session.parent && parentRow !== undefined) versionRows.push([batch.session.parent.id, parentRow])
+    const readVersion = sessionVersionReader(tx, versionRows)
+    const identitySupported = !batch.identity || await marksHaveSupportedSessions(batch.identity.marks, readVersion)
+
     // Writes from here on.
     let maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
     const now = nextTime(maxSeen, wall)
@@ -740,7 +745,7 @@ export const writeFlush = async (
     // A unit whose binding was taken over since its Save is dropped, never stored (R5).
     const stale = !!batch.identity && !!chain && !unitApplies(chain, batch.identity)
     if (batch.identity && !stale) {
-        identity = await storeMarks(tx, batch.identity.marks)
+        identity = identitySupported && await storeMarks(tx, batch.identity.marks, readVersion)
         if (identity) {
             // The cut's session start as stored, which the page may not know.
             const file = { ...batch.identity.file }

@@ -47,7 +47,7 @@ export type JournalApplyBatch = {
     ends: number[]
     snapshot: BatchSnapshot
     summary: ChainSummary
-    /** The `recovered` entry's label: "Recovered last change", with the dropped steps. */
+    /** The captured recovery operation; descriptive context is carried separately. */
     operation: JsonValue
     /** A recovery chain's and session's ids, derived from the journal: used if one is made. */
     recovery: { chainId: string; docId: string; sessionId: string }

@@ -26,7 +26,7 @@ export type SaveSizeEstimate = {
 
 /** Constants fixed on the generated large chart and the golden chart (§1.4.7). */
 export const ESTIMATE = {
-    /** An entry's JSON form beyond its label, before deflate. */
+    /** An entry's JSON framing beyond its captured description, before deflate. */
     entryBytes: 150,
     /** A root's or node's key and framing in a part's map. */
     recordOverhead: 40,

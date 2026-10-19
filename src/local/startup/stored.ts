@@ -171,6 +171,8 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
     if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
         return { kind: 'later', why: 'its chain needs a newer version' }
+    if (!Number.isSafeInteger(session.updatedAt) || (session.updatedAt as number) < 0)
+        return { kind: 'damaged', why: 'invalid last entry time' }
     // Every entry, whoever wrote it: an unknown kind is never continued (§1.6.11.8).
     const entries = await entriesOf(tx, sessionId)
     if (entries.some((row) => !isKnownEntryKind(row.kind)))
@@ -231,7 +233,7 @@ export const readNewestSession = async (tx: KvTx): Promise<NewestRead> => {
 
 /** What a chain-field write did (§1.3.1). */
 export type ChainFieldsResult =
-    { kind: 'stored'; chain: Row } | { kind: 'notHead'; lastSeq?: number } | { kind: 'missing' }
+    { kind: 'stored'; chain: Row } | { kind: 'notHead'; lastSeq: number; lastTime: number } | { kind: 'missing' }
 
 /**
  * Writes chain fields field by field, only from the chain's head session (§1.3.1): `null`
@@ -248,10 +250,13 @@ export const writeChainFields = async (
 ): Promise<ChainFieldsResult> => {
     const chain = await tx.get('chains', chainId)
     if (!isRow(chain)) return { kind: 'missing' }
+    const session = await tx.get('sessions', sessionId)
+    if (!isRow(session) || !isReadableSessionVersion(session.v)) return { kind: 'missing' }
     if (chain.head !== sessionId) {
-        const session = await tx.get('sessions', sessionId)
-        const lastSeq = isRow(session) ? session.lastSeq : undefined
-        return { kind: 'notHead', ...(typeof lastSeq === 'number' ? { lastSeq } : {}) }
+        if (!Number.isSafeInteger(session.lastSeq) || (session.lastSeq as number) < 0 ||
+            !Number.isSafeInteger(session.updatedAt) || (session.updatedAt as number) < 0)
+            return { kind: 'missing' }
+        return { kind: 'notHead', lastSeq: session.lastSeq as number, lastTime: session.updatedAt as number }
     }
     const record: Row = { ...chain, appVersion }
     // A binding's or Export target's handle goes in its own store (D24).

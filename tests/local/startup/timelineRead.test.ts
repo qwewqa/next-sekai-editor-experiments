@@ -1,3 +1,5 @@
+import { entryOperation, fallbackOf, decodeOperation } from '../../../src/history/operations'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { KeyRange } from '../../../src/local/kv/types'
@@ -21,7 +23,7 @@ const chain = async (world: World) => {
     const parent = beginIn(page, state)
     for (const label of ['One', 'Two', 'Three']) {
         state = widen(state)
-        page.flusher.append('edit', () => label, state, true)
+        page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(label)) }, state, true)
     }
     await page.flusher.flush({ strict: true })
     const next = await openPage(world, world.tab('next'))
@@ -29,7 +31,7 @@ const chain = async (world: World) => {
     const child = continueIn(next, opened)
     for (const label of ['Four', 'Five']) {
         state = widen(state)
-        next.flusher.append('edit', () => label, state, true)
+        next.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(label)) }, state, true)
     }
     await next.flusher.flush({ strict: true })
     return { page, next, parent, child }
@@ -40,7 +42,7 @@ test('a session’s entries come newest first, then the parent’s from where it
     const { next, parent, child } = await chain(world)
     const page = await read(next, { sessionId: child.id, limit: 100 })
     assert.deepEqual(
-        page.entries.map((entry) => `${entry.kind} ${entry.label}`),
+        page.entries.map((entry) => `${entry.kind} ${fallbackOf(entryOperation(entry))?.text}`),
         [
             'edit Five',
             'edit Four',
@@ -52,13 +54,17 @@ test('a session’s entries come newest first, then the parent’s from where it
         ]
             .map((text) => text)
             .slice(0, 6)
-            .concat([page.entries[6] ? `${page.entries[6].kind} ${page.entries[6].label}` : '']),
+            .concat([page.entries[6] ? `${page.entries[6].kind} ${fallbackOf(entryOperation(page.entries[6]))?.text}` : '']),
     )
     assert.equal(page.next, undefined)
     // The continue entry names the time of the parent's entry it continued from.
     const continued = page.entries.find((entry) => entry.kind === 'continue')
     const last = page.entries.find((entry) => entry.sessionId === parent.id)
-    assert.equal(continued?.from, last?.time)
+    assert(continued?.kind === 'continue')
+    const operation = decodeOperation(continued.operation)
+    assert(operation.status === 'known' && operation.operation.id === 'nse.continue')
+    assert.equal(operation.operation.data.fromTime, last?.time)
+    assert.equal(continued.from, last?.time)
     assert.equal(continued?.sessionId, child.id)
     assert.ok(page.entries.every((entry) => entry.kept && entry.snapshot.length === 32))
 })
@@ -102,8 +108,8 @@ test('malformed rows still move the cursor within their session', async () => {
     assert.deepEqual(first.next, { sessionId: parent.id, before: broken[1]!.seq })
     const rest = await read(next, { ...first.next!, limit: 5 })
     assert.deepEqual(
-        rest.entries.map((entry) => entry.label),
-        ['One', 'Initialize'],
+        rest.entries.map((entry) => fallbackOf(entryOperation(entry))?.text),
+        ['One', 'Origin: import'],
     )
 })
 
@@ -122,7 +128,7 @@ const day = (offset: number) => new Date(2026, 9, 5 + offset).getTime()
 /** Sessions and their entries, written as stored rows; an undefined time leaves a gap in `seq`. */
 const seed = async (
     sessions: Synthetic[],
-    kindOf: (id: string, seq: number) => string = () => 'edit',
+    kindOf: (id: string, seq: number) => 'save' | 'edit' = () => 'edit',
 ) => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('first'))
@@ -136,8 +142,7 @@ const seed = async (
                             sessionId: id,
                             seq,
                             time,
-                            kind: kindOf(id, seq),
-                            label: `${id}${seq}`,
+                            ...(kindOf(id,seq) === 'edit' ? {kind:'edit',step:editStep(futureFixtureOperation(`${id}${seq}`))} : {kind:'save',operation:futureFixtureOperation(`${id}${seq}`)}),
                             snapshot: new Uint8Array(32),
                             noteCount: seq,
                         })

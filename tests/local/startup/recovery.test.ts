@@ -1,3 +1,4 @@
+import { editStep, futureFixtureOperation, nativeOperation, originOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { writeMeta } from '../../../src/local/db'
@@ -60,10 +61,7 @@ const loadIn = async (
         prefix: PREFIX,
         appVersion: '0.6.0',
         safe: false,
-        labels: {
-            recovered: () => 'Recovered last change',
-            migrated: 'Recovered from auto save',
-        },
+        operations: { recovered: droppedSteps => nativeOperation({id:'nse.recovery', data:{source:'journal',droppedSteps}}, 'Recovered last change'), migrated: originOperation('autoSave') },
         newId: testId,
         now: () => 1_792_130_500_000,
         outcomes: [],
@@ -164,7 +162,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     assert.equal('file' in chain, false)
     const [entry] = [...rows(world, 'entries').values()]
     assert.equal(entry?.kind, 'init')
-    assert.equal(entry?.label, 'Recovered from auto save')
+    assert.deepEqual(entry?.operation, originOperation('autoSave'))
     // Deduplication by the slot's content hash.
     const meta = rows(world, 'meta').get('migratedHashes')
     assert.deepEqual(meta?.value, [toHex(await sha256(new TextEncoder().encode(text)))])
@@ -269,7 +267,7 @@ test('without IndexedDB the old slot and earlier visits’ journals stay for Loc
     const earlier = await openJournalPage(world, 'earlier', storage)
     const a = stateOf(goldenChart())
     beginSession(earlier, a, 'new')
-    append(earlier, 'edit', 'Edit', widen(a))
+    append(earlier, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(earlier.writer.write(), true)
 
     const tab = world.tab('unavailable')
@@ -293,7 +291,7 @@ test('one load runs all three: the canary, a journal replayed, then the migratio
     const a = stateOf(goldenChart())
     const session = beginSession(killed, a)
     await killed.flusher.flush()
-    append(killed, 'edit', 'Edit', widen(a))
+    append(killed, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(killed.writer.write(), true)
     storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(widen(a, 2)))
     storage.setItem(key('canary'), JSON.stringify('another database'))
@@ -333,7 +331,7 @@ test('a journal of a chain marked for Delete becomes a recovery session, never s
     const a = stateOf(goldenChart())
     const session = beginSession(killed, a)
     await killed.flusher.flush()
-    append(killed, 'edit', 'Edit', widen(a))
+    append(killed, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(killed.writer.write(), true)
     const tab = world.tab('next')
     const { recovery, events, core } = await loadIn(world, tab, storage)
@@ -429,7 +427,7 @@ test('storage unavailable: a live tab’s journal isn’t offered, and earlier j
     const live = await openJournalPage(world, 'live', storage, {}, { flags: { noStorage: true } })
     const a = stateOf(goldenChart())
     const session = beginSession(live, a, 'new')
-    append(live, 'edit', 'Edit', widen(a))
+    append(live, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(live.writer.write(), true)
     const lock = holdSessionLock(live.tab.locks, session.id)
     await live.tab.run(() => lock.granted)

@@ -80,7 +80,7 @@ export const isKnownEntryKind = (kind: unknown): kind is EntryKind => known(entr
 export const isReadableRootVersion = (v: unknown) =>
     Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= RECORDS_V
 
-/** A session row's `v`, absent meaning 1; above `SESSION_V`, or not a number, it's newer. */
+/** Only the current session generation is supported; older experimental rows remain untouched. */
 export const isReadableSessionVersion = (v: unknown) => v === SESSION_V
 
 /** What deciding a session's readability needs. */

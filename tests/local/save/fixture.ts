@@ -9,6 +9,7 @@ import {
     entryOperation,
     type EntryDescription,
     type JsonValue,
+    type RecoveryContext,
 } from '../../../src/history/operations'
 import { deflateChunk, verifyChunk } from '../../../src/local/chunkVerify'
 import { hashKey } from '../../../src/local/db'
@@ -40,6 +41,7 @@ import {
     ReplayError,
     storedWindow,
     type ReplaySlot,
+    type ReplayEntry,
 } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import {
@@ -89,6 +91,7 @@ type Row = EntryDescription & {
     kept: boolean
     revisionId?: string
     device?: { id: string; label: string }
+    stack?: ReplayEntry['stack']
 }
 
 type FixtureSession = {
@@ -173,7 +176,7 @@ export class Fixture {
                 {
                     kind: 'continue',
                     operation: nativeOperation(
-                        { id: 'nse.continue', data: { fromTime: last.startedAt } },
+                        { id: 'nse.continue', data: { fromTime: last.rows.at(-1)!.time } },
                         'Continued',
                     ),
                 },
@@ -263,6 +266,7 @@ export class Fixture {
                     ...captureEntryDescription(row),
                     dirty: row.dirty,
                     state: this.stateOf(toHex(row.snapshot)),
+                    ...(row.stack ? {stack: {keep: row.stack.keep, push: row.stack.push.map(slot => ({snapshot: toHex(slot.snapshot),step:slot.step})),index:row.stack.index}} : {}),
                     ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
                     ...(row.device ? { device: row.device } : {}),
                 })),
@@ -313,6 +317,13 @@ export class Fixture {
         session.index++
         this.add({ kind: 'redo', step: session.slots[session.index]!.step }, fromHex16(this.head))
         return true
+    }
+
+    recoverContext(operation: JsonValue, recoveryContext: RecoveryContext) {
+        const session = this.session
+        this.add({kind: 'recovered',operation,recoveryContext},fromHex16(this.head),{
+            stack: {keep:session.slots.length,push:[],index:session.index},
+        })
     }
 
     /** Reserves the `save` entry's `seq` and time, as the Save does before its build. */

@@ -167,7 +167,7 @@ export type ContinueStart = {
     stack: StoredStack
     /** The chain record as read: the journal's descriptor carries it until the first write. */
     chain: Record<string, unknown>
-    /** The `continue` entry's label. */
+    /** The captured `continue` operation. */
     operation: JsonValue
     dirty: boolean
     /** A fork: a new chain copied from `forkOf`'s record, with `forkName`. */
@@ -202,7 +202,7 @@ export type ResumeStart = {
 /** What writing chain fields found (§1.3.1: only the chain's head writes its record). */
 export type ChainWriteResult =
     | { kind: 'stored'; chain: Record<string, unknown> }
-    | { kind: 'notHead'; lastSeq?: number }
+    | { kind: 'notHead'; lastSeq: number; lastTime: number }
     | { kind: 'missing' }
 
 /**
@@ -240,7 +240,7 @@ export type FlushDeps = {
     onFork?: (fork: FlushSession, from: FlushSession) => void
     /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
     forkName?: (from: FlushSession) => string | undefined
-    /** The label of a `continue` entry the flusher adds itself. */
+    /** Captures a `continue` operation from the source entry time. */
     continueOperation: (fromTime: number) => JsonValue
     /** A Save's identity unit was stored in a database. */
     onIdentity?: (session: FlushSession, identity: PendingIdentity) => void
@@ -700,7 +700,7 @@ export class Flusher {
                         fork,
                         {
                             kind: 'continue',
-                            operation: this.deps.continueOperation(session.startedAt),
+                            operation: this.deps.continueOperation(result.lastTime),
                         },
                         head.hash,
                         false,
@@ -738,10 +738,11 @@ export class Flusher {
         state: State | Uint8Array,
         dirty: boolean,
     ) {
+        const captured = captureEntryDescription(description)
         session.pending.push({
             seq: session.nextSeq++,
             wall: this.now(),
-            ...captureEntryDescription(description),
+            ...captured,
             ...(state instanceof Uint8Array ? { snapshot: state } : { state }),
             dirty,
         })
@@ -783,12 +784,14 @@ export class Flusher {
         keep = false,
     ): Promise<void> {
         const { session, seq } = reservation
+        const captured = entry && this.current === session && this.sessions.includes(session)
+            ? { ...entry, operation: captureOperation(entry.operation) }
+            : undefined
         if (session.reserved === seq) session.reserved = undefined
-        if (entry && this.current === session && this.sessions.includes(session)) {
+        if (captured) {
             const at = session.pending.findIndex((each) => each.seq > seq)
             const added: PendingEntry = {
-                ...entry,
-                operation: captureOperation(entry.operation),
+                ...captured,
                 seq,
                 kind: 'save',
                 dirty: false,

@@ -1,8 +1,9 @@
+import { editStep, futureFixtureOperation, nativeOperation, originOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
 import { journalState } from '../../../src/local/journal/content'
-import { readJournal, type JournalV1 } from '../../../src/local/journal/format'
+import { readJournal, type Journal } from '../../../src/local/journal/format'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { toRecords } from '../../../src/local/records/records'
@@ -31,7 +32,7 @@ const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.has
 const journalOf = (storage: MemoryStorage, sessionId: string) => {
     const text = storage.getItem(`nse.journal.${sessionId}`)
     assert.ok(text, 'a journal was written')
-    return JSON.parse(text) as JournalV1
+    return JSON.parse(text) as Journal
 }
 
 const journalKeys = (storage: MemoryStorage) =>
@@ -70,7 +71,7 @@ const recover = async (
         prefix: 'nse.',
         appVersion: '0.6.0',
         safe: false,
-        labels: { recovered: () => 'Recovered last change', migrated: 'Recovered from auto save' },
+        operations: { recovered: droppedSteps => nativeOperation({id:'nse.recovery', data:{source:'journal',droppedSteps}}, 'Recovered last change'), migrated: originOperation('autoSave') },
         newId: testId,
         ...(own ? { own } : {}),
         outcomes: [],
@@ -92,7 +93,7 @@ const reloadFromJournal = async (page: JournalPage, storage: MemoryStorage, sess
     // Loaded: the page goes on writing this key.
     page.store.adopt(found)
     page.live.state = session.state
-    return page.flusher.resumeJournalled({ ...session, label: () => session.label })
+    return page.flusher.resumeJournalled({ ...session, operation: nativeOperation({id:'nse.recovery',data:{source:'journal',droppedSteps:session.recoveryContext.dropped.length+session.recoveryContext.omitted}}, 'Recovered last change') })
 }
 
 test('storage unavailable, edit, reload, edit: the reload continues from its own journal, which then holds both edits', async () => {
@@ -103,7 +104,7 @@ test('storage unavailable, edit, reload, edit: the reload continues from its own
     const a = sampleState('tests/fixtures/generated-large.json')
     const session = beginSession(first, a, 'new')
     const b = widen(a)
-    append(first, 'edit', 'First edit', b)
+    append(first, {kind:'edit',step:editStep(futureFixtureOperation('First edit'))}, b)
     await first.flusher.flush()
     assert.equal(first.writer.write(), true)
     const before = journalOf(storage, session.id)
@@ -125,7 +126,7 @@ test('storage unavailable, edit, reload, edit: the reload continues from its own
     assert.equal(resumed.id, session.id)
     assert.equal(resumed.chainId, session.chainId)
     const c = widen(b, 1)
-    append(second, 'edit', 'Second edit', c)
+    append(second, {kind:'edit',step:editStep(futureFixtureOperation('Second edit'))}, c)
     await second.flusher.flush()
     assert.equal(second.writer.write(), true)
 
@@ -148,7 +149,7 @@ test('two tabs keep separate journals while storage is unavailable', async () =>
     const a = stateOf(goldenChart())
     const sessions = pages.map((page, i) => {
         const session = beginSession(page, a, 'new')
-        append(page, 'edit', `Edit ${i}`, widen(a, i))
+        append(page, {kind:'edit',step:editStep(futureFixtureOperation(`Edit ${i}`))}, widen(a, i))
         return session
     })
     for (const page of pages) assert.equal(page.writer.write(), true)
@@ -163,7 +164,7 @@ test('a journal written with storage unavailable becomes a session and chain at 
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'new')
     const b = widen(a)
-    append(page, 'edit', 'Edit', b)
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, b)
     assert.equal(page.writer.write(), true)
 
     const { events, recovery } = await recover(world, world.tab('next'), storage)
@@ -183,7 +184,7 @@ test('a journal of a live tab is left alone', async () => {
     const page = await unavailable(world, 'live', storage)
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'new')
-    append(page, 'edit', 'Edit', widen(a))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(page.writer.write(), true)
     const lock = holdSessionLock(page.tab.locks, session.id)
     await page.tab.run(() => lock.granted)

@@ -146,7 +146,7 @@ export type SaveOptions = {
     bgm: boolean
     /** `revision.fileName`: the name this write uses. */
     fileName?: string
-    /** This write's `save` entry, created before the build: its time and label. */
+    /** This write's `save` entry, created before the build: its time and captured operation. */
     save: { time: number; operation: JsonValue }
     context: { now: number; newId: () => string; device: DeviceForm; appVersion: string }
     /** The saved session: the chain's head unless given (Save to File… gives its own). */

@@ -7,7 +7,7 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 3930504061,
+      "crc32": 1815267727,
       "uncompressedSize": 1552,
       "parts": [
         {
@@ -15,7 +15,7 @@
           "json": {
             "format": "nxsp",
             "version": 1,
-            "minor": 0,
+            "minor": 1,
             "levelVersion": 1,
             "appVersion": "0.6.0",
             "id": "d0c00000-0000-4000-8000-000000000000",
@@ -1590,48 +1590,104 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 3030723706,
-      "uncompressedSize": 5879,
+      "crc32": 1029335288,
+      "uncompressedSize": 7537,
       "parts": [
         {
           "kind": "bytes",
           "json": {
-            "version": 1,
+            "version": 2,
             "entries": [
               {
                 "kind": "init",
+                "operation": {
+                  "id": "nse.origin",
+                  "data": {
+                    "origin": "import"
+                  },
+                  "version": 1,
+                  "fallback": {
+                    "locale": "en",
+                    "text": "Origin: import"
+                  }
+                },
                 "time": 1792126795000,
-                "label": "Imported LevelData",
                 "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
                 "noteCount": 9
               },
               {
                 "kind": "edit",
+                "step": {
+                  "kind": "edit",
+                  "operation": {
+                    "id": "test.future.golden-thinned",
+                    "version": 1,
+                    "data": {},
+                    "fallback": {
+                      "text": "Moved notes",
+                      "locale": "en"
+                    }
+                  }
+                },
                 "time": 1792126796000,
-                "label": "Moved notes",
                 "snapshot": "fe800dbfd4e0a5df36f976b3895eb373",
                 "noteCount": 12,
                 "kept": false
               },
               {
                 "kind": "edit",
+                "step": {
+                  "kind": "edit",
+                  "operation": {
+                    "id": "test.future.golden-added",
+                    "version": 1,
+                    "data": {},
+                    "fallback": {
+                      "text": "Added note",
+                      "locale": "en"
+                    }
+                  }
+                },
                 "time": 1792126797000,
-                "label": "Added note",
                 "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
                 "noteCount": 10,
                 "dirty": true
               },
               {
                 "kind": "edit",
+                "step": {
+                  "kind": "edit",
+                  "operation": {
+                    "id": "test.future.golden-bgm",
+                    "version": 1,
+                    "data": {},
+                    "fallback": {
+                      "text": "Changed BGM",
+                      "locale": "en"
+                    }
+                  }
+                },
                 "time": 1792126798000,
-                "label": "Changed BGM",
                 "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
                 "noteCount": 10
               },
               {
                 "kind": "save",
+                "operation": {
+                  "id": "nse.file.save",
+                  "data": {
+                    "file": {
+                      "text": "golden.nxsp"
+                    },
+                    "delivery": "file"
+                  },
+                  "version": 1,
+                  "fallback": {
+                    "locale": "en",
+                    "text": "Saved golden.nxsp"
+                  }
+                },
                 "time": 1792126799000,
-                "label": "Saved golden.nxsp",
                 "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
                 "noteCount": 10,
                 "revisionId": "r001-0000-4000-8000-000000000000",
@@ -1642,29 +1698,77 @@
               },
               {
                 "kind": "continue",
+                "operation": {
+                  "id": "nse.continue",
+                  "data": {
+                    "fromTime": 1792126799000,
+                    "source": {
+                      "text": "golden.nxsp"
+                    }
+                  },
+                  "version": 1,
+                  "fallback": {
+                    "locale": "en",
+                    "text": "Opened golden.nxsp"
+                  }
+                },
                 "time": 1792126801000,
-                "label": "Opened golden.nxsp",
                 "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
                 "noteCount": 10
               },
               {
                 "kind": "edit",
+                "step": {
+                  "kind": "edit",
+                  "operation": {
+                    "id": "test.future.golden-added",
+                    "version": 1,
+                    "data": {},
+                    "fallback": {
+                      "text": "Added note",
+                      "locale": "en"
+                    }
+                  }
+                },
                 "time": 1792126802000,
-                "label": "Added note",
                 "snapshot": "62ec8c54f72706d4f858580e17638e14",
                 "noteCount": 11
               },
               {
                 "kind": "edit",
+                "step": {
+                  "kind": "edit",
+                  "operation": {
+                    "id": "test.future.golden-cover",
+                    "version": 1,
+                    "data": {},
+                    "fallback": {
+                      "text": "Changed cover",
+                      "locale": "en"
+                    }
+                  }
+                },
                 "time": 1792126803000,
-                "label": "Changed cover",
                 "snapshot": "13e67c11e41ad8e3283563651152a750",
                 "noteCount": 11
               },
               {
                 "kind": "save",
+                "operation": {
+                  "id": "nse.file.save",
+                  "data": {
+                    "file": {
+                      "text": "golden.nxsp"
+                    },
+                    "delivery": "file"
+                  },
+                  "version": 1,
+                  "fallback": {
+                    "locale": "en",
+                    "text": "Saved golden.nxsp"
+                  }
+                },
                 "time": 1792126804000,
-                "label": "Saved golden.nxsp",
                 "snapshot": "13e67c11e41ad8e3283563651152a750",
                 "noteCount": 11,
                 "revisionId": "s001-0000-4000-8000-000000000000",
@@ -2017,23 +2121,80 @@
               "slots": [
                 {
                   "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
-                  "label": "Imported LevelData"
+                  "step": {
+                    "kind": "init",
+                    "operation": {
+                      "id": "nse.origin",
+                      "data": {
+                        "origin": "import"
+                      },
+                      "version": 1,
+                      "fallback": {
+                        "locale": "en",
+                        "text": "Origin: import"
+                      }
+                    }
+                  }
                 },
                 {
                   "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
-                  "label": "Added note"
+                  "step": {
+                    "kind": "edit",
+                    "operation": {
+                      "id": "test.future.golden-added",
+                      "version": 1,
+                      "data": {},
+                      "fallback": {
+                        "text": "Added note",
+                        "locale": "en"
+                      }
+                    }
+                  }
                 },
                 {
                   "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
-                  "label": "Changed BGM"
+                  "step": {
+                    "kind": "edit",
+                    "operation": {
+                      "id": "test.future.golden-bgm",
+                      "version": 1,
+                      "data": {},
+                      "fallback": {
+                        "text": "Changed BGM",
+                        "locale": "en"
+                      }
+                    }
+                  }
                 },
                 {
                   "snapshot": "62ec8c54f72706d4f858580e17638e14",
-                  "label": "Added note"
+                  "step": {
+                    "kind": "edit",
+                    "operation": {
+                      "id": "test.future.golden-added",
+                      "version": 1,
+                      "data": {},
+                      "fallback": {
+                        "text": "Added note",
+                        "locale": "en"
+                      }
+                    }
+                  }
                 },
                 {
                   "snapshot": "13e67c11e41ad8e3283563651152a750",
-                  "label": "Changed cover"
+                  "step": {
+                    "kind": "edit",
+                    "operation": {
+                      "id": "test.future.golden-cover",
+                      "version": 1,
+                      "data": {},
+                      "fallback": {
+                        "text": "Changed cover",
+                        "locale": "en"
+                      }
+                    }
+                  }
                 }
               ],
               "index": 4
@@ -2052,7 +2213,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 3,
-          "dataOffset": 3310,
+          "dataOffset": 3449,
           "check": {
             "kind": "entryCrc"
           }
@@ -2085,7 +2246,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 5,
-          "dataOffset": 4616,
+          "dataOffset": 4755,
           "check": {
             "kind": "entryCrc"
           }
@@ -2102,7 +2263,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 6,
-          "dataOffset": 4685,
+          "dataOffset": 4824,
           "check": {
             "kind": "entryCrc"
           }

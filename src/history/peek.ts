@@ -45,7 +45,7 @@ export type PeekSource = {
 }
 
 export type PeekEffects = {
-    /** The stored label of a Restore's entry, "Restored to 2:40:31 PM". */
+    /** Captures a Restore operation before changing the live stack. */
     restoredOperation: (time: number) => NativeOperation
     /** After a Restore: "Restored to 2:40:31 PM". */
     restored: (time: number) => void

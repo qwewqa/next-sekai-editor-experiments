@@ -1,3 +1,4 @@
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import type { FlushSession } from '../../../src/local/flush'
@@ -64,7 +65,7 @@ test('Reopen right after a switch continues the session left, and offers the one
         setTimeout(lock.release, 100)
     }
     const left = beginSession(page, a, 'import', { id: 'left', done: release })
-    append(page, 'edit', 'Edit', widen(a))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     await page.flusher.flush({ strict: true })
     const replacing = beginSession(page, widen(a, 4), 'new')
     leftSession(left.id, { kind: 'date' }, 0, page.flusher.outgoing)
@@ -131,7 +132,7 @@ test('Local Data’s rows: Discard removes a row only while it holds what was li
     )
     const a = stateOf(goldenChart())
     const session = beginSession(earlier, a, 'new')
-    append(earlier, 'edit', 'Edit', widen(a))
+    append(earlier, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(earlier.writer.write(), true)
     earlier.tab.kill()
     const journalKey = `journal.${session.id}`
@@ -195,7 +196,7 @@ const pendingJournal = async (world: World, storage: MemoryStorage) => {
     const a = stateOf(goldenChart())
     const session = beginSession(other, a, 'import')
     await other.flusher.flush({ strict: true })
-    append(other, 'edit', 'Only journalled', widen(a, 6))
+    append(other, {kind:'edit',step:editStep(futureFixtureOperation('Only journalled'))}, widen(a, 6))
     assert.equal(other.writer.write(), true)
     other.tab.kill()
     const text = storage.getItem(`nse.journal.${session.id}`)!
@@ -255,9 +256,9 @@ test('Reopen over a failed journal a flush covered since takes up the stored ses
     const a = stateOf(goldenChart())
     const session = beginSession(other, a, 'import')
     await other.flusher.flush({ strict: true })
-    append(other, 'edit', 'Journalled', widen(a, 6))
+    append(other, {kind:'edit',step:editStep(futureFixtureOperation('Journalled'))}, widen(a, 6))
     assert.equal(other.writer.write(), true)
-    append(other, 'edit', 'Stored past it', widen(a, 7))
+    append(other, {kind:'edit',step:editStep(futureFixtureOperation('Stored past it'))}, widen(a, 7))
     await other.flusher.flush()
     const stored = toHex((await readOpen(other, session.id)).head)
     other.tab.kill()
@@ -287,7 +288,7 @@ test('applyPendingJournal applies a dead tab’s journal under the session’s l
     await dead.flusher.flush({ strict: true })
     // Open in a live tab, which owns its journal.
     assert.equal(await loaded.page.tab.run(() => applyPendingJournal(session.id)), 'held')
-    append(dead, 'edit', 'Edit', widen(a))
+    append(dead, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(dead.writer.write(), true)
     dead.tab.kill()
     const outcome = await loaded.page.tab.run(() => applyPendingJournal(session.id))

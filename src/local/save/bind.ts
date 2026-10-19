@@ -13,7 +13,7 @@ import { fromHex16 } from '../hash'
 import type { KvTx } from '../kv/types'
 import { isReadableSessionVersion } from '../records/unknownValues'
 import { clampTime, nextTime } from '../time'
-import { clearIdentityExport, storeMarks, type IdentityUnit } from './commit'
+import { clearIdentityExport, storeMarks, sessionVersionReader, writableSession, type IdentityUnit } from './commit'
 
 // The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
 // chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
@@ -212,10 +212,13 @@ export const finishOwnSave = async (
 ) => {
     const chain = await tx.get('chains', chainId)
     if (!isRow(chain)) return false
-    const session = await tx.get('sessions', entry.sessionId)
+    const read = sessionVersionReader(tx)
+    if (typeof chain.head !== 'string' || !writableSession(await read(chain.head))) return false
+    const session = await read(entry.sessionId)
     const held = await tx.getKey('entries', [entry.sessionId, entry.seq])
     if (isRow(session) && !isReadableSessionVersion(session.v)) return false
-    if (!(await storeMarks(tx, unit.marks))) return false
+    const operation = captureOperation(entry.operation)
+    if (!(await storeMarks(tx, unit.marks, read))) return false
     if (isRow(session) && session.chainId === chainId && held === undefined) {
         const maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
         const now = nextTime(maxSeen, wall)
@@ -227,7 +230,7 @@ export const finishOwnSave = async (
             time,
             day,
             kind: 'save',
-            operation: captureOperation(entry.operation),
+            operation,
             snapshot: fromHex16(entry.snapshot),
             noteCount: entry.noteCount,
             dirty: false,

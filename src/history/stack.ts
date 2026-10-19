@@ -59,7 +59,7 @@ export const isDirty = computed(() => (current.value as Slot | undefined)?.isDir
 /** The current slot's stored root, when it has one: a restored slot, or one a flush has stored. */
 export const headSnapshot = computed(() => (current.value as Slot | undefined)?.snapshot)
 
-/** The name of the step that made the current state: the Timeline's Now row. */
+/** The complete step that made the current state: the Timeline's Now row. */
 export const headStep = computed(() => (current.value as Slot | undefined)?.step)
 
 /** The last head seen: what watchers read while a stored stack replaces the slots. */
@@ -230,7 +230,7 @@ const settle = async () => {
     prefetch()
 }
 
-/** Queues a move onto a slot not loaded; held keys add to it. Returns the step's name. */
+/** Queues a move onto a slot not loaded; held keys add to it. Returns the complete crossed step. */
 const queue = (direction: -1 | 1) => {
     const from = index.value + pendingMove.value
     const crossed = direction < 0 ? states[from]?.step : states[from + 1]?.step
@@ -345,7 +345,7 @@ export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new
 }
 
 /**
- * A slot of a stored stack: its root and label, and whether it was changed since the file event.
+ * A slot of a stored stack: its root and complete step, and whether it was changed since the file event.
  * A slot given loaded with no root (a journal's head while storage is unavailable) stays loaded.
  */
 export type RestoredSlot = { snapshot?: Uint8Array; step: UndoableStep; isDirty: boolean }

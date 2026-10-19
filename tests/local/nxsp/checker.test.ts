@@ -405,9 +405,9 @@ top = ["bpms", 1, [leaf_key] * repeat]
 top_key = key(top)
 root = [1, header, [["bpms", top_key]], 0]
 root_key = key(root)
-manifest = dict(version=1, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
+manifest = dict(version=2, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
                 chunks=[[header, 0, 1], [body, 1, 1]],
-                undoStack=dict(base=0, index=0, slots=[dict(snapshot=root_key, label="")]))
+                undoStack=dict(base=0, index=0, slots=[dict(snapshot=root_key, step=dict(kind="init", operation={"id":"future.fixture", "version":1, "data":{}, "fallback":{"locale":"en", "text":"Graph fixture"}}))]))
 Edges.visits = 0
 history, issues = m["combine_parts"]([], manifest, 0, 2)
 assert history is not None and not issues, issues

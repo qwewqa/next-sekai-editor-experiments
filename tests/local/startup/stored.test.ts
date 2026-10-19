@@ -1,3 +1,5 @@
+import { createRecoveryContext, captureStep } from '../../../src/history/operations'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
@@ -16,10 +18,10 @@ const twoChains = async (world: World) => {
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
     const older = beginIn(page, a)
-    page.flusher.append('edit', () => 'Edit', widen(a), true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a), true)
     await page.flusher.flush()
     const newer = beginIn(page, widen(a, 1))
-    page.flusher.append('edit', () => 'Edit', widen(a, 2), true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a, 2), true)
     await page.flusher.flush()
     return { page, older, newer }
 }
@@ -72,7 +74,7 @@ test('missing, removed, deleting and newer sessions are never opened', async () 
         const chain = (await tx.get('chains', newer.chainId)) as Record<string, unknown>
         await tx.put('chains', { ...chain, deleting: undefined })
         const session = (await tx.get('sessions', newer.id)) as Record<string, unknown>
-        await tx.put('sessions', { ...session, v: 2 })
+        await tx.put('sessions', { ...session, v: 3 })
     })
     assert.equal((await read(newer.id)).kind, 'later')
 })
@@ -120,7 +122,7 @@ test('a continuation’s missing stack is rebuilt over its parent’s stored one
     const { page, newer } = await twoChains(world)
     const read = await readOpen(page, newer.id)
     const continuation = continueIn(page, read)
-    page.flusher.append('edit', () => 'Again', widen(stateOf(goldenChart()), 5), true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Again')) }, widen(stateOf(goldenChart()), 5), true)
     await page.flusher.flush()
     await tamper(world, async (tx) => {
         const session = (await tx.get('sessions', continuation.id)) as Record<string, unknown>
@@ -145,12 +147,12 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     const parent = beginIn(page, a)
     // Over 5,000 slots: the parent's stored window starts above slot 0.
     for (let i = 1; i < 6_000; i++)
-        page.flusher.append('edit', () => `Edit ${i}`, i % 2 ? b : a, true)
+        page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) }, i % 2 ? b : a, true)
     await page.flusher.flush()
     const read = await readOpen(page, parent.id)
     assert.ok(read.stack.window.base > 0)
     const continuation = continueIn(page, read)
-    page.flusher.append('edit', () => 'Edit', widen(a, 2), true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a, 2), true)
     await page.flusher.flush()
     // A journal applied with an unmatched stack keeps no slot; then the stack is lost.
     await tamper(world, async (tx) => {
@@ -162,12 +164,13 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
             time: 1,
             day: 0,
             kind: 'recovered',
-            label: 'Recovered last change',
+            operation: futureFixtureOperation('collapsed-recovery'),
+            recoveryContext: createRecoveryContext(read.stack.slots.at(-1)!.step, [], 0),
             snapshot: read.head,
             noteCount: 0,
             dirty: true,
             kept: true,
-            stack: { keep: 0, push: [{ snapshot: read.head, label: 'Recovered' }], index: 0 },
+            stack: { keep: 0, push: [{ snapshot: read.head, step: captureStep({kind:'edit',operation:futureFixtureOperation('collapsed-recovery'),recoveryContext:createRecoveryContext(read.stack.slots.at(-1)!.step,[],0)}) }], index: 0 },
         })
         const rest: Record<string, unknown> = { ...session, lastSeq: seq }
         Reflect.deleteProperty(rest, 'stack')

@@ -1,3 +1,4 @@
+import { editStep, futureFixtureOperation, nativeOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
@@ -52,12 +53,12 @@ const journalledOnly = async (world: World, storage: MemoryStorage) => {
     const a = stateOf(goldenChart())
     const session = beginSession(page, a)
     recordTab(tab, { sessionId: session.id, start: 'stored' })
-    append(page, 'edit', 'E0', widen(a))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E0'))}, widen(a))
     await page.flusher.flush({ strict: true })
     const last = widen(a, 3)
-    append(page, 'edit', 'E1', widen(a, 1))
-    append(page, 'edit', 'E2', widen(a, 2))
-    append(page, 'edit', 'E3', last)
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E1'))}, widen(a, 1))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E2'))}, widen(a, 2))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E3'))}, last)
     assert.equal(page.writer.write(), true)
     page.tab.kill()
     // What the journal holds, as its level data reads back.
@@ -99,7 +100,7 @@ test('a reload whose own journal fails to apply continues its session from the j
     assert.equal(continued.parent?.id, session.id)
     // The newest work is on screen, so Local Data doesn't offer the key, and the line says so.
     assert.equal(rootOf(reload.page.live.state), root)
-    assert.equal(reload.shown.at(-1)?.slots.at(-1)?.label, 'Recovered last change')
+    assert.equal((reload.shown.at(-1)?.slots.at(-1)?.step.operation as {fallback:{text:string}}).fallback.text, 'Recovered last change')
     assert.deepEqual(reload.recovery.keptForLocalData, [])
     assert.deepEqual(
         reload.events.filter((event) => event.kind !== 'bgmNotLoaded').map((event) => event.kind),
@@ -176,15 +177,15 @@ test('a reload whose own journal was kept as a recovery session continues that o
         parent: { id: session.id, uptoSeq: read.session.lastSeq as number },
         stack: {
             first: read.stack.window.base,
-            slots: read.stack.slots.map(({ snapshot, label }) => ({ hash: snapshot, label })),
+            slots: read.stack.slots.map(({ snapshot, step }) => ({ hash: snapshot, step })),
             index: read.stack.window.index,
         },
         chain: read.chain,
-        label: () => 'Continued',
+        operation: nativeOperation({id:'nse.continue',data:{fromTime:read.session.updatedAt as number}},'Continued'),
         dirty: false,
     })
     other.live.state = widen(last, 20)
-    append(other, 'edit', 'Elsewhere', widen(last, 20))
+    append(other, {kind:'edit',step:editStep(futureFixtureOperation('Elsewhere'))}, widen(last, 20))
     await other.flusher.flush({ strict: true })
     other.tab.kill()
 
@@ -202,7 +203,7 @@ test('an unstored continuation killed before its first flush: its journal is app
     const first = await openJournalPage(world, 'first', storage)
     const a = stateOf(goldenChart())
     const parent = beginSession(first, a)
-    append(first, 'edit', 'E1', widen(a))
+    append(first, {kind:'edit',step:editStep(futureFixtureOperation('E1'))}, widen(a))
     await first.flusher.flush({ strict: true })
     first.tab.kill()
 
@@ -210,7 +211,7 @@ test('an unstored continuation killed before its first flush: its journal is app
     const visit = await load(world, 'visit', storage)
     const continuation = openSession(visit)
     assert.equal(continuation.parent?.id, parent.id)
-    append(visit.page, 'edit', 'E2', widen(a, 3))
+    append(visit.page, {kind:'edit',step:editStep(futureFixtureOperation('E2'))}, widen(a, 3))
     assert.equal(visit.page.writer.write(), true)
     const edited = journalRoot(journalText(storage, continuation.id) ?? '', continuation.id)
     visit.page.tab.kill()
@@ -247,7 +248,7 @@ test('an unstored continuation’s journal whose chain moved on is kept as a rec
     first.tab.kill()
     const visit = await load(world, 'visit', storage)
     const continuation = openSession(visit)
-    append(visit.page, 'edit', 'E2', widen(a, 3))
+    append(visit.page, {kind:'edit',step:editStep(futureFixtureOperation('E2'))}, widen(a, 3))
     assert.equal(visit.page.writer.write(), true)
     visit.page.tab.kill()
     // Another visit continues the chain meanwhile, while the journal's session reads as live.
@@ -256,7 +257,7 @@ test('an unstored continuation’s journal whose chain moved on is kept as a rec
     await holder.run(() => held.granted)
     const back = await load(world, 'back', storage)
     assert.equal(openSession(back).parent?.id, parent.id)
-    append(back.page, 'edit', 'Later', widen(a, 5))
+    append(back.page, {kind:'edit',step:editStep(futureFixtureOperation('Later'))}, widen(a, 5))
     await back.page.flusher.flush({ strict: true })
     back.page.tab.kill()
     held.release()
@@ -306,7 +307,7 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
         )
         const a = stateOf(goldenChart())
         const session = beginSession(earlier, a, 'new')
-        append(earlier, 'edit', 'Edit', widen(a))
+        append(earlier, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
         assert.equal(earlier.writer.write(), true)
         earlier.tab.kill()
         recordTab(tab, { sessionId: session.id, start: 'new' })
@@ -349,7 +350,7 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
         const resumed = openSession(reload)
         assert.notEqual(resumed.id, session.id)
         assert.equal(resumed.chainId, session.chainId)
-        append(reload.page, 'edit', 'Again', widen(a, 2))
+        append(reload.page, {kind:'edit',step:editStep(futureFixtureOperation('Again'))}, widen(a, 2))
         assert.equal(reload.page.writer.write(), true)
         assert.ok(storage.getItem(`nse.journal.${session.id}`))
         assert.ok(storage.getItem(`nse.journal.${resumed.id}`))
@@ -410,7 +411,7 @@ test('a load never opens a stored session over a chart made meanwhile', async ()
     first.tab.kill()
     const visit = await load(world, 'visit', storage, {
         meanwhile: (page: JournalPage) => {
-            append(page, 'edit', 'Typed meanwhile', widen(a, 7))
+            append(page, {kind:'edit',step:editStep(futureFixtureOperation('Typed meanwhile'))}, widen(a, 7))
         },
     })
     assert.equal(visit.opened, false)
@@ -471,7 +472,7 @@ test('a session this build can’t open is never passed over silently: a reload�
     recordTab(tab, { sessionId: newer.id, start: 'stored' })
     await tamper(world, async (tx) => {
         const row = (await tx.get('sessions', newer.id)) as Record<string, unknown>
-        await tx.put('sessions', { ...row, v: 2 })
+        await tx.put('sessions', { ...row, v: 3 })
     })
 
     const reload = await load(world, 'reload', storage, { tab })
@@ -492,7 +493,7 @@ test('a newer database outside safe mode: a reload continues from its own journa
     assert.equal(visit.page.core.status.mode, 'readOnly')
     const a = stateOf(goldenChart())
     const session = beginSession(visit.page, a, 'new')
-    append(visit.page, 'edit', 'Edit', widen(a))
+    append(visit.page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(visit.page.writer.write(), true)
     visit.page.tab.kill()
     recordTab(visit.tab, { sessionId: session.id, start: 'new' })
@@ -612,7 +613,7 @@ test('without Web Locks, a copy of a hidden tab never takes its key: both go on 
         )
         const a = stateOf(goldenChart())
         const session = beginSession(original, a, 'new')
-        append(original, 'edit', 'Edit', widen(a))
+        append(original, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
         assert.equal(original.writer.write(), true)
         // Hidden: the marker is in its sessionStorage, which Duplicate Tab copies.
         recordTab(tab, { sessionId: session.id, start: 'new' })
@@ -623,10 +624,10 @@ test('without Web Locks, a copy of a hidden tab never takes its key: both go on 
         })
         assert.equal(copy.claim.kind, 'reload')
         assert.notEqual(openSession(copy).id, session.id)
-        append(copy.page, 'edit', 'In the copy', widen(a, 3))
+        append(copy.page, {kind:'edit',step:editStep(futureFixtureOperation('In the copy'))}, widen(a, 3))
         assert.equal(copy.page.writer.write(), true)
         // The original's next edit is journalled as before, never refused.
-        append(original, 'edit', 'In the original', widen(a, 4))
+        append(original, {kind:'edit',step:editStep(futureFixtureOperation('In the original'))}, widen(a, 4))
         assert.equal(original.writer.write(), true)
         assert.ok(storage.getItem(`nse.journal.${session.id}`))
         assert.ok(storage.getItem(`nse.journal.${openSession(copy).id}`))
@@ -641,7 +642,7 @@ test('the writer writes again a key removed behind it, even with nothing new to 
     const page = await openJournalPage(world, 'page', storage, {}, { flags: { noStorage: true } })
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'new')
-    append(page, 'edit', 'Edit', widen(a))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
     assert.equal(page.writer.write(), true)
     const key = `nse.journal.${session.id}`
     const text = storage.getItem(key)
@@ -660,13 +661,13 @@ test('a failed own journal a flush covered since goes, and the reload takes up t
     const a = stateOf(goldenChart())
     const session = beginSession(page, a)
     recordTab(tab, { sessionId: session.id, start: 'stored' })
-    append(page, 'edit', 'E0', widen(a))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E0'))}, widen(a))
     await page.flusher.flush({ strict: true })
     // A hide's journal, then edits relaxed flushes stored past it.
-    append(page, 'edit', 'E1', widen(a, 1))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E1'))}, widen(a, 1))
     assert.equal(page.writer.write(), true)
-    append(page, 'edit', 'E2', widen(a, 2))
-    append(page, 'edit', 'E3', widen(a, 3))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E2'))}, widen(a, 2))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('E3'))}, widen(a, 3))
     await page.flusher.flush()
     const stored = toHex((await readOpen(page, session.id)).head)
     page.tab.kill()
@@ -711,7 +712,7 @@ test('a never-stored blank start whose own journal fails to apply reopens that w
     const a = stateOf(goldenChart())
     const blank = beginSession(page, a, 'new')
     recordTab(tab, { sessionId: blank.id, start: 'blank' })
-    append(page, 'edit', 'Edit', widen(a, 4))
+    append(page, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a, 4))
     assert.equal(page.writer.write(), true)
     const root = journalRoot(journalText(storage, blank.id) ?? '', blank.id)
     page.tab.kill()
@@ -743,7 +744,7 @@ test('starting from a failed own journal keeps the session held until its key go
     const other = world.tab('other')
     assert.equal(await other.run(() => claimSessionLock(other.locks, session.id)), undefined)
     // Its own journal holds the work: the key goes, and so does the hold.
-    append(reload.page, 'edit', 'More', widen(stateOf(goldenChart()), 9))
+    append(reload.page, {kind:'edit',step:editStep(futureFixtureOperation('More'))}, widen(stateOf(goldenChart()), 9))
     assert.equal(reload.page.writer.write(), true)
     assert.equal(journalText(storage, session.id), null)
     const lock = await other.run(() => claimSessionLock(other.locks, session.id))
@@ -758,8 +759,8 @@ test('a stored stack whose window starts after slot 0 opens saying earlier steps
         const first = await openJournalPage(world, 'first', storage)
         const a = stateOf(goldenChart())
         const stored = beginSession(first, a)
-        append(first, 'edit', 'One', widen(a))
-        append(first, 'edit', 'Two', widen(a, 1))
+        append(first, {kind:'edit',step:editStep(futureFixtureOperation('One'))}, widen(a))
+        append(first, {kind:'edit',step:editStep(futureFixtureOperation('Two'))}, widen(a, 1))
         await first.flusher.flush({ strict: true })
         // As a capped stack stores it: the window's first slot is past slot 0.
         if (base) {

@@ -3,7 +3,7 @@ import type { JournalLike } from '../../platform/types'
 import { isHash16Hex } from '../hash'
 import { RECORDS_V, SESSION_V } from '../records/version'
 
-// Journal v1 (Part 1 §1.6.11.3), a frozen format: the object a `journal.<sessionId>` key holds,
+// Structured journal v2: the object a `journal.<sessionId>` key holds,
 // and the checks a reader makes before it trusts one. A newer journal is left in place for a
 // later build; one this build can't read keeps its bytes in the `recovered` store (§1.6.4).
 

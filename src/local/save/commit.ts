@@ -1,5 +1,6 @@
 import { deleteHandleRow } from '../handleRows'
 import type { KvTx } from '../kv/types'
+import { isReadableSessionVersion } from '../records/unknownValues'
 import type { RowKey, SaveIdentity } from './build'
 
 // The identity unit a write that binds commits (§1.3.2, §1.6.11.6): the chain's `docId`, its
@@ -9,6 +10,32 @@ import type { RowKey, SaveIdentity } from './build'
 
 /** The stores `commitIdentity` writes and reads. */
 export const IDENTITY_STORES = ['chains', 'sessions', 'entries', 'handles'] as const
+
+export const sessionVersionReader = (tx: KvTx, known: readonly (readonly [string, unknown])[] = []) => {
+    const rows = new Map(known.map(([id, row]) => [id, Promise.resolve(row)]))
+    return (id: string) => {
+        let row = rows.get(id)
+        if (!row) {
+            row = tx.get('sessions', id)
+            rows.set(id, row)
+        }
+        return row
+    }
+}
+
+export const writableSession = (row: unknown) =>
+    typeof row === 'object' && row !== null && isReadableSessionVersion((row as {v?: unknown}).v)
+
+export const marksHaveSupportedSessions = async (
+    marks: readonly RowKey[],
+    read: ReturnType<typeof sessionVersionReader>,
+) => {
+    for (const id of new Set(marks.map(mark => mark.sessionId))) {
+        const row = await read(id)
+        if (row !== undefined && !writableSession(row)) return false
+    }
+    return true
+}
 
 export type IdentityUnit = {
     clearExport?: true
@@ -42,14 +69,15 @@ export const unitApplies = (chain: Record<string, unknown>, unit: IdentityUnit) 
  * row isn't stored but its session is; a row whose session was deleted needs no mark. The flush
  * that commits a Save's identity unit runs it first (the seam `commitIdentity` shares).
  */
-export const storeMarks = async (tx: KvTx, marks: readonly RowKey[]) => {
+export const storeMarks = async (tx: KvTx, marks: readonly RowKey[], read = sessionVersionReader(tx)) => {
+    if (!(await marksHaveSupportedSessions(marks, read))) return false
     const marked: Record<string, unknown>[] = []
     for (const { sessionId, seq } of marks) {
         const stored = (await tx.get('entries', [sessionId, seq])) as
             Record<string, unknown> | undefined
         if (stored) {
             if (stored.kept !== false) marked.push(stored)
-        } else if (await tx.get('sessions', sessionId)) return false
+        } else if (await read(sessionId)) return false
     }
     for (const row of marked) await tx.put('entries', { ...row, kept: false })
     return true
@@ -64,7 +92,9 @@ export const storeMarks = async (tx: KvTx, marks: readonly RowKey[]) => {
 export const commitIdentity = async (tx: KvTx, chainId: string, unit: IdentityUnit) => {
     const chain = (await tx.get('chains', chainId)) as Record<string, unknown> | undefined
     if (!chain) return false
-    if (!(await storeMarks(tx, unit.marks))) return false
+    const read = sessionVersionReader(tx)
+    if (typeof chain.head !== 'string' || !writableSession(await read(chain.head))) return false
+    if (!(await storeMarks(tx, unit.marks, read))) return false
     const record = {
         ...chain,
         docId: unit.docId,
