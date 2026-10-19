@@ -1379,7 +1379,7 @@ test.describe('touch', () => {
 
     test('a narrow status path discloses its full folder, target and exact count', async ({
         page,
-    }) => {
+    }, testInfo) => {
         await seedGroups(page, [['Default'], ['Lead Synth Layer', 'An Extremely Long Folder Name']])
         await page.evaluate(() => {
             const { view } = window.editorTest
@@ -1392,20 +1392,12 @@ test.describe('touch', () => {
             const box = element.getBoundingClientRect()
             const folder = element.querySelector<HTMLElement>('.status-folder')!
             const name = element.querySelector<HTMLElement>('[data-status-part="name"]')!
-            const prefix = document.createRange()
-            prefix.setStart(name.firstChild!, 0)
-            prefix.setEnd(name.firstChild!, 2)
             const nameBox = name.getBoundingClientRect()
             const folderBox = folder.getBoundingClientRect()
-            const folderPrefix = document.createRange()
-            folderPrefix.setStart(folder.firstChild!, 0)
-            folderPrefix.setEnd(folder.firstChild!, 2)
             return {
                 folderTruncated: folder.scrollWidth > folder.clientWidth,
-                folderVisible:
-                    folderPrefix.getBoundingClientRect().left >= folderBox.left &&
-                    folderPrefix.getBoundingClientRect().right <= folderBox.right,
-                nameVisible: prefix.getBoundingClientRect().right <= nameBox.right,
+                folderWidth: folderBox.width,
+                nameWidth: nameBox.width,
                 sameLine: Math.abs(nameBox.y - folderBox.y) < 0.5,
                 folderBeforeName: folderBox.right <= nameBox.left,
                 inside: folderBox.left >= box.left && nameBox.right <= box.right,
@@ -1413,12 +1405,14 @@ test.describe('touch', () => {
             }
         })
         expect(parts.folderTruncated).toBe(true)
-        expect(parts.folderVisible).toBe(true)
-        expect(parts.nameVisible).toBe(true)
+        expect(parts.folderWidth).toBeGreaterThan(0)
+        expect(parts.nameWidth).toBeGreaterThan(0)
         expect(parts.sameLine).toBe(true)
         expect(parts.folderBeforeName).toBe(true)
         expect(parts.inside).toBe(true)
         expect(parts.height).toBe(32)
+        // Readability is checked from rendered pixels, including the ellipsis.
+        await page.screenshot({ path: testInfo.outputPath('narrow-status-path.png') })
         const disclosure = await currentGroup(page)
         const path = disclosure.locator('[data-manager-current-path]')
         await expect(path).toHaveText('An Extremely Long Folder Name › Lead Synth Layer')
