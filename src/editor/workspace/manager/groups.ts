@@ -2,8 +2,8 @@ import type { FolderId } from '../../../chart/folders'
 import { addToGroups, type GroupId } from '../../../chart/groups'
 import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { captureName } from '../../../history/operations'
 import { groupFolders, groups } from '../../../history/groups'
+import { captureName } from '../../../history/operations'
 import { stageFolders } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -39,10 +39,7 @@ export const addGroup = (folder?: FolderId) => {
             gathered: 0,
         },
     })
-    pushState(
-        operation,
-        result,
-    )
+    pushState(operation, result)
 
     notify(() => operation.fallback.text)
 
@@ -169,11 +166,7 @@ export const deleteGroup = (groupId: GroupId) => {
             target: { kind: 'group', id: groupId, name: captureName(nameOf(groupId)) },
         },
     } as const
-    groupFolderOps.commitRemoval(
-        ids,
-        removeGroups(ids),
-        operation,
-    )
+    groupFolderOps.commitRemoval(ids, removeGroups(ids), operation)
     view.entities = {
         hovered: [],
         creating: [],

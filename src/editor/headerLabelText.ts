@@ -44,7 +44,13 @@ export const groupEditInput = <K extends GroupEditKey>(
               id: 'nse.owner.set',
               data: {
                   target,
-                  changes: [{ field: key, before: old.forceNoteSpeed ?? null, after: (value as number | undefined) ?? null }],
+                  changes: [
+                      {
+                          field: key,
+                          before: old.forceNoteSpeed ?? null,
+                          after: (value as number | undefined) ?? null,
+                      },
+                  ],
               },
           }
 }
@@ -62,10 +68,15 @@ export const stageEditInput = <K extends StageEditKey>(
             id: 'nse.owner.rename',
             data: { target, before: target.name, after: captureName(String(value)) },
         }
-    const change: OwnerChange = key === 'generateSimLines'
-        ? { field: 'generateSimLines', before: old.generateSimLines, after: value as StageObject['generateSimLines'] }
-        : key === 'isFromStart'
-          ? { field: 'isFromStart', before: old.isFromStart, after: value as boolean }
-          : { field: 'isUntilEnd', before: old.isUntilEnd, after: value as boolean }
+    const change: OwnerChange =
+        key === 'generateSimLines'
+            ? {
+                  field: 'generateSimLines',
+                  before: old.generateSimLines,
+                  after: value as StageObject['generateSimLines'],
+              }
+            : key === 'isFromStart'
+              ? { field: 'isFromStart', before: old.isFromStart, after: value as boolean }
+              : { field: 'isUntilEnd', before: old.isUntilEnd, after: value as boolean }
     return { id: 'nse.owner.set', data: { target, changes: [change] } }
 }
