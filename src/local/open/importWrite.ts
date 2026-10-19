@@ -1,3 +1,9 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type EntryDescription,
+    type JsonValue,
+} from '../../history/operations'
 import { ChunkVerifyError, verifyChunk, type VerifiedChunk } from '../chunkVerify'
 import { countDayOfUse } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
@@ -23,6 +29,7 @@ import {
 } from '../records/rows'
 import type { KindName } from '../records/schema'
 import { headerMedia } from '../records/snapshot'
+import { SESSION_V } from '../records/version'
 import { directWaiter, type Waiter } from '../scheduler'
 import type { StateBatch } from '../stateBatch'
 import { nextTime } from '../time'
@@ -61,7 +68,7 @@ export type OpenStoreRequest = {
     level?: StateBatch
     /** The live state's summary, when it's the history's head. */
     summary?: ChainSummary
-    labels: { opened: string; changedOutside: string }
+    operations: { opened: JsonValue; changedOutside: JsonValue }
     wall: number
     appVersion: string
     /** `replaced`: the version on disk Replace keeps first, an ordinary unbound session (§1.4.7). */
@@ -154,8 +161,7 @@ const entryRow = (
         // Imported rows keep their time, and it never feeds `maxSeenTime` (r11g-format M10).
         time: entry.time,
         day,
-        kind: entry.kind,
-        label: entry.label,
+        ...captureEntryDescription(entry),
         snapshot: fromHex16(entry.snapshot),
         noteCount: root ? root[3] : entry.noteCount,
         dirty: entry.dirty === true,
@@ -167,9 +173,9 @@ const entryRow = (
             : {
                   stack: {
                       keep: entry.stack.keep,
-                      push: entry.stack.push.map(({ snapshot, label }) => ({
+                      push: entry.stack.push.map(({ snapshot, step }) => ({
                           snapshot: fromHex16(snapshot),
-                          label,
+                          step: captureStep(step),
                       })),
                       index: entry.stack.index,
                   },
@@ -364,22 +370,21 @@ export const writeOpenHead = async (
     let index = 0
     if (history) {
         base = history.undoStack.base
-        slots = history.undoStack.slots.map(({ snapshot, label }) => ({
+        slots = history.undoStack.slots.map(({ snapshot, step }) => ({
             snapshot: fromHex16(snapshot),
-            label,
+            step: captureStep(step),
         }))
         index = history.undoStack.index
     }
     const ownEntries: Row[] = []
     let seq = count
-    const entry = (kind: string, label: string, snapshot: Uint8Array, noteCount: number) => {
+    const entry = (description: EntryDescription, snapshot: Uint8Array, noteCount: number) => {
         ownEntries.push({
             sessionId,
             seq: ++seq,
             time: now,
             day,
-            kind,
-            label,
+            ...captureEntryDescription(description),
             snapshot,
             noteCount,
             // The file holds this state: not changed since the file event.
@@ -390,12 +395,18 @@ export const writeOpenHead = async (
     let head: Uint8Array
     if (levelRoot && history) {
         slots.length = index - base + 1
-        slots.push({ snapshot: levelRoot, label: request.labels.changedOutside })
+        const step = captureStep({ kind: 'edit', operation: request.operations.changedOutside })
+        slots.push({ snapshot: levelRoot, step })
         index++
-        entry('edit', request.labels.changedOutside, levelRoot, levelNotes)
+        entry({ kind: 'edit', step }, levelRoot, levelNotes)
         head = levelRoot
     } else if (levelRoot) {
-        slots = [{ snapshot: levelRoot, label: request.labels.opened }]
+        slots = [
+            {
+                snapshot: levelRoot,
+                step: captureStep({ kind: 'init', operation: request.operations.opened }),
+            },
+        ]
         head = levelRoot
     } else if (history) {
         head = fromHex16(history.head)
@@ -403,7 +414,7 @@ export const writeOpenHead = async (
     const headNotes = levelRoot
         ? levelNotes
         : ((history?.roots.get(history.head)?.[3] as number | undefined) ?? 0)
-    entry('continue', request.labels.opened, head, headNotes)
+    entry({ kind: 'continue', operation: request.operations.opened }, head, headNotes)
     for (const row of prepared.entries ?? []) await tx.put('entries', { ...row, day })
     for (const row of ownEntries) await tx.put('entries', row)
 
@@ -413,6 +424,7 @@ export const writeOpenHead = async (
     const importPending = !!history
     await tx.put('sessions', {
         id: sessionId,
+        v: SESSION_V,
         chainId,
         startedAt: now,
         updatedAt: now,

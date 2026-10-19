@@ -1,3 +1,4 @@
+import type { EntryDescription } from '../../../src/history/operations'
 import type { Flusher, FlushSession } from '../../../src/local/flush'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import { replayJournal, type ReplayDeps } from '../../../src/local/journal/replay'
@@ -7,6 +8,7 @@ import type { Tab, World } from '../../../src/local/testing/world'
 import type { CoreDeps } from '../../../src/local/worker/core'
 import type { JournalStore } from '../../../src/platform/types'
 import type { State } from '../../../src/state'
+import { nativeOperation, originOperation } from '../../helpers/historySteps'
 import {
     openPage,
     openSplitPage,
@@ -154,16 +156,16 @@ export const beginSession = (
         docId: testId(),
         origin,
         state,
-        label: () => 'Initialize',
+        operation: originOperation(origin),
         dirty: false,
         ...(extra.done ? { done: extra.done } : {}),
     })
 }
 
 /** Appends an entry as the undo stack would, the state becoming the live one. */
-export const append = (page: Live, kind: 'edit' | 'undo' | 'redo', label: string, state: State) => {
+export const append = (page: Live, description: EntryDescription, state: State) => {
     page.live.state = state
-    page.flusher.append(kind, () => label, state, true)
+    page.flusher.append(description, state, true)
 }
 
 /** A second tab's replay of every pending journal in `storage`. */
@@ -185,10 +187,11 @@ export const replayIn = async (
         store,
         locks: tab.locks,
         appVersion: '0.6.0',
-        label: (dropped) =>
-            dropped
-                ? `Recovered last change. ${dropped} undo step${dropped === 1 ? ' was' : 's were'} dropped.`
-                : 'Recovered last change',
+        operation: (droppedSteps) =>
+            nativeOperation(
+                { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                'Recovered last change',
+            ),
         now: () => 1_792_130_500_000,
         worker: {
             applyJournal: (batch) => tab.run(() => handlers.applyJournal(batch)),

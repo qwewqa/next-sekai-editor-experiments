@@ -7,6 +7,7 @@ import { addStageMaskEventJoint } from '../state/mutations/events/stage/mask'
 import { addStagePivotEventJoint } from '../state/mutations/events/stage/pivot'
 import { addStageStyleEventJoint } from '../state/mutations/events/stage/style'
 import { createTransaction } from '../state/transaction'
+import { createHistoryOperation } from './createHistoryOperation'
 import { isPeeking, pushState, state } from './index.ts'
 import { refuseWhilePeeking } from './peek'
 import { selectedEntities } from './selectedEntities'
@@ -72,7 +73,7 @@ export const checkDynamicStages = async () => {
         eventEase: 'linear',
     })
 
-    pushState(() => i18n.value.history.dynamicStages.enabled, {
+    pushState(createHistoryOperation({ id: 'nse.dynamicStages.enable', data: {} }), {
         ...transaction.commit([...selectedEntities.value]),
         isDynamicStages: true,
     })

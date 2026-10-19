@@ -1,3 +1,4 @@
+import { captureEntryDescription, type EntryDescription } from '../../history/operations'
 import { toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
 import type { WorkerContext } from './handlers'
@@ -10,12 +11,10 @@ import type { CallScope } from './rpc'
 // one day each, for Go To.
 
 /** A stored entry row as the Timeline reads it. */
-export type TimelineEntry = {
+export type TimelineEntry = EntryDescription & {
     sessionId: string
     seq: number
     time: number
-    kind: string
-    label: string
     /** The snapshot's root, as hex. */
     snapshot: string
     noteCount: number
@@ -92,12 +91,17 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
     )
         return
     const snapshot = row.snapshot
+    let description: EntryDescription
+    try {
+        description = captureEntryDescription(row)
+    } catch {
+        return
+    }
     return {
         sessionId: row.sessionId,
         seq: row.seq,
         time: row.time,
-        kind: row.kind,
-        label: typeof row.label === 'string' ? row.label : '',
+        ...description,
         snapshot: snapshot instanceof Uint8Array ? toHex(snapshot) : '',
         noteCount: typeof row.noteCount === 'number' ? row.noteCount : 0,
         dirty: row.dirty === true,

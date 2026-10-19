@@ -3,10 +3,10 @@ import { addToGroups, type Groups } from '../chart/groups'
 import { addDefaultStageToStages, type Stages } from '../chart/stages'
 import { closeElevationEditor, isElevationSideBySide } from '../editor/elevation/state'
 import { switchToolTo } from '../editor/tools'
-import { i18n } from '../i18n'
 import { createState, type State, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
-import { setFileEventMessages } from './markers'
+import { createHistoryOperation } from './createHistoryOperation'
+import { captureStep } from './operations'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
 import { resetStates, restoreStates, type RestoredSlot } from './stack'
@@ -15,6 +15,7 @@ export { markExported, markSaved } from './markers'
 export {
     canUndo,
     earlierSteps,
+    headStep,
     isDirty,
     isPeeking,
     isPristine,
@@ -61,11 +62,12 @@ const createDefaultChart = (): Chart => {
 
 resetStates({
     isDirty: false,
-    name: () => i18n.value.history.initialize,
+    step: captureStep({
+        kind: 'init',
+        operation: createHistoryOperation({ id: 'nse.origin', data: { origin: 'new' } }),
+    }),
     state: createState(createDefaultChart(), 0),
 })
-
-setFileEventMessages(() => i18n.value)
 
 /**
  * Starts over with a chart, or the default one, in a session (§1.3.5): the
@@ -83,7 +85,13 @@ export const resetState = (
     resetStates(
         {
             isDirty,
-            name: () => i18n.value.history.initialize,
+            step: captureStep({
+                kind: 'init',
+                operation: createHistoryOperation({
+                    id: 'nse.origin',
+                    data: { origin: chart ? 'import' : 'new' },
+                }),
+            }),
             state: createState(chart ?? createDefaultChart(), offset ?? 0, extras),
         },
         chart ? 'import' : 'new',
@@ -122,7 +130,20 @@ export const openStoredState = (
 export const openState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = createSessionDescriptor(descriptor)
-    resetStates({ isDirty: true, name: () => i18n.value.entry.recovered, state }, 'import')
+    resetStates(
+        {
+            isDirty: true,
+            step: captureStep({
+                kind: 'init',
+                operation: createHistoryOperation({
+                    id: 'nse.origin',
+                    data: { origin: 'recovery' },
+                }),
+            }),
+            state,
+        },
+        'import',
+    )
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()

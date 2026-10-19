@@ -1,3 +1,9 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type EntryDescription,
+    type UndoableStep,
+} from '../../history/operations'
 import { hash16Sync, isHash16Hex, toHex } from '../hash'
 import { canonicalBytes, type RecordValue } from '../records/canonical'
 import { checkRecord, kindNames, SchemaError, type KindName } from '../records/schema'
@@ -26,13 +32,11 @@ export const ENTRY_KINDS = [
 
 export type EntryKindForm = (typeof ENTRY_KINDS)[number]
 
-export type SlotForm = { snapshot: string; label: string }
+export type SlotForm = { snapshot: string; step: UndoableStep }
 
 /** An entry as a file holds it: hashes in hex, `dirty` and `kept` only when unusual. */
-export type EntryForm = {
-    kind: EntryKindForm
+export type EntryForm = EntryDescription & {
     time: number
-    label: string
     snapshot: string
     noteCount: number
     dirty?: true
@@ -112,7 +116,9 @@ const unknownKeys = (
 const ENTRY_KEYS = [
     'kind',
     'time',
-    'label',
+    'operation',
+    'recoveryContext',
+    'step',
     'snapshot',
     'noteCount',
     'dirty',
@@ -125,9 +131,13 @@ const ENTRY_KEYS = [
 
 const checkSlot = (value: unknown, path: string, issues: Issues) => {
     if (!isObject(value)) return issues.push({ reason: 'damaged', path })
-    unknownKeys(value, ['snapshot', 'label'], path, issues)
-    if (!isHash16Hex(value.snapshot) || !isString(value.label))
-        issues.push({ reason: 'damaged', path })
+    unknownKeys(value, ['snapshot', 'step'], path, issues)
+    if (!isHash16Hex(value.snapshot)) issues.push({ reason: 'damaged', path })
+    try {
+        captureStep(value.step)
+    } catch {
+        issues.push({ reason: 'damaged', path: `${path}.step` })
+    }
 }
 
 /** Checks one entry of the entry form; returns false when it can't be used. */
@@ -138,8 +148,7 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         return false
     }
     unknownKeys(value, ENTRY_KEYS, path, issues)
-    const { kind, time, label, snapshot, noteCount, dirty, kept, revisionId, device, stack, x } =
-        value
+    const { kind, time, snapshot, noteCount, dirty, kept, revisionId, device, stack, x } = value
     // An unknown kind is newer content: its fields are that kind's, so nothing else is checked.
     if (isString(kind) && !(ENTRY_KINDS as readonly string[]).includes(kind)) {
         issues.push({ reason: 'newer', path: `${path}.kind`, detail: kind })
@@ -150,7 +159,11 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
     // A field another kind has: a key this kind doesn't (§1.6.11.8).
     const foreign = (key: string) => issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
     if (!isUint(time)) fail('time')
-    if (!isString(label)) fail('label')
+    try {
+        captureEntryDescription(value)
+    } catch {
+        fail('description')
+    }
     if (!isHash16Hex(snapshot)) fail('snapshot')
     if (!isUint(noteCount)) fail('noteCount')
     if (dirty !== undefined && dirty !== true) fail('dirty')
@@ -228,7 +241,7 @@ export const checkPart = (
         const { version } = value
         if (!Number.isSafeInteger(version) || (version as number) < 1)
             return { issues: [{ reason: 'damaged', path: `${path}.version` }] }
-        if ((version as number) > MANIFEST_VERSION)
+        if (version !== MANIFEST_VERSION)
             return {
                 issues: [{ reason: 'newer', path: `${path}.version`, detail: String(version) }],
             }

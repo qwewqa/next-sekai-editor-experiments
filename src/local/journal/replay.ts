@@ -1,3 +1,4 @@
+import type { JsonValue } from '../../history/operations'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import type { Extractor } from '../chunks'
 import { sessionLock } from '../locks'
@@ -6,7 +7,7 @@ import { RECORDS_V } from '../records/version'
 import { stateBatch } from '../stateBatch'
 import type { JournalApplyBatch, JournalApplyResult } from './apply'
 import { journalState } from './content'
-import { readJournal, type JournalV1 } from './format'
+import { readJournal, type Journal } from './format'
 import type { RecoveredBytes } from './handlers'
 import { recoveredId, recoveryIds } from './ids'
 
@@ -47,13 +48,13 @@ export type ReplayDeps = {
     worker: JournalWorker
     appVersion: string
     /** The `recovered` entry's label, naming the undo steps that weren't kept (§1.6.4 step 4). */
-    label: (dropped: number) => string
+    operation: (dropped: number) => JsonValue
     now?: () => number
 }
 
 /** The journal's state as a batch for the worker: every chunk new, as a fresh memo plans it. */
 const planBatch = (
-    journal: JournalV1,
+    journal: Journal,
     state: Parameters<Extractor['plan']>[0],
     deps: ReplayDeps,
 ): JournalApplyBatch => {
@@ -67,7 +68,9 @@ const planBatch = (
         ends,
         snapshot,
         summary,
-        label: deps.label(journal.stack.droppedCount ?? journal.stack.dropped.length),
+        operation: deps.operation(
+            journal.stack.context.dropped.length + journal.stack.context.omitted,
+        ),
         recovery: recoveryIds(journal),
         appVersion: deps.appVersion,
         wall: (deps.now ?? Date.now)(),

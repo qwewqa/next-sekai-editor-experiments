@@ -5,6 +5,7 @@ import {
 } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { addLoadNotice, notify } from '../../editor/notification'
+import { type JsonValue } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
 import { isPeeking, liveState, replaceState } from '../../history/stack'
 import { i18n } from '../../i18n'
@@ -109,7 +110,7 @@ export type StoreOpen = {
     /** "Separate copy of …": a partial open, or the same file open in another tab. */
     copyOf?: { name: string; bound: true }
     sourceName: string
-    labels: { opened: string; changedOutside: string }
+    operations: { opened: JsonValue; changedOutside: JsonValue }
     appVersion: string
     newId?: () => string
 }
@@ -183,7 +184,7 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
                 chain: await chainFields(open),
                 ...(open.level ? { level: open.level } : {}),
                 ...(open.summary ? { summary: open.summary } : {}),
-                labels: open.labels,
+                operations: open.operations,
                 wall: Date.now(),
                 appVersion: open.appVersion,
             },
@@ -246,7 +247,7 @@ export type KeepVersion = {
     name: string
     level?: StateBatch
     summary?: ChainSummary
-    labels: { opened: string; changedOutside: string }
+    operations: { opened: JsonValue; changedOutside: JsonValue }
     appVersion: string
 }
 
@@ -280,7 +281,7 @@ export const storeKept = async (keep: KeepVersion) => {
                 origin: 'replaced',
                 ...(keep.level ? { level: keep.level } : {}),
                 ...(keep.summary ? { summary: keep.summary } : {}),
-                labels: keep.labels,
+                operations: keep.operations,
                 wall: Date.now(),
                 appVersion: keep.appVersion,
             },

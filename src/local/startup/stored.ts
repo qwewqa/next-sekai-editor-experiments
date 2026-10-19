@@ -81,6 +81,7 @@ const rebuild = async (
     if (depth > MAX_DEPTH) throw new Error('Too many parent links')
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) throw new Error(`No session ${sessionId}`)
+    if (!isReadableSessionVersion(session.v)) throw new Error(`Unsupported session ${sessionId}`)
     const parent = session.parent as { id?: unknown; uptoSeq?: unknown } | undefined
     let inherited: Rebuilt | undefined
     if (typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number')
@@ -100,7 +101,13 @@ const storedAt = async (
     upto: number,
 ): Promise<Rebuilt | undefined> => {
     const session = await tx.get('sessions', sessionId)
-    if (!isRow(session) || session.lastSeq !== upto || !isWindow(session.stack)) return
+    if (
+        !isRow(session) ||
+        !isReadableSessionVersion(session.v) ||
+        session.lastSeq !== upto ||
+        !isWindow(session.stack)
+    )
+        return
     const read = await readStored(tx, sessionId, session.stack)
     if (!read) return
     // Holes below the window: an undo onto one fails replay, as a missing slot does.
@@ -128,7 +135,7 @@ const readStored = async (
     }
     const blocks: StackRead['blocks'] = []
     for (const [block, row] of rows)
-        if (row) blocks.push({ block, first: row.first, end: row.first + row.labels.length })
+        if (row) blocks.push({ block, first: row.first, end: row.first + row.steps.length })
     return { window, slots, blocks }
 }
 

@@ -2,7 +2,7 @@ import type { JournalFound, JournalStore } from '../../platform/types'
 import type { State } from '../../state'
 import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
-import type { JournalV1 } from './format'
+import type { Journal } from './format'
 
 // The last-chance journal's writer (Part 1 §1.6.4 #7): written synchronously on hide, pagehide,
 // beforeunload and freeze whenever the open session has entries not committed strictly, and
@@ -31,7 +31,7 @@ export type JournalWriterDeps = {
     /** Each write's figures, for the timing specs. */
     onWrite?: (write: JournalWrite) => void
     /** A verified journal and the state it holds: the legacy slot is written from it (§1.8). */
-    onJournal?: (journal: JournalV1, state: State) => void
+    onJournal?: (journal: Journal, state: State) => void
 }
 
 /** A write's figures; `size` is the gzipped level data's, most of the journal. */

@@ -13,7 +13,7 @@ import { serializeToLevelData } from '../../levelData/serialize'
 import { createState, type State } from '../../state'
 import type { RecordValue } from '../records/canonical'
 import { bgmObject, bgmRecord, levelInfoObject, levelInfoRecord } from '../records/records'
-import type { JournalIds, JournalV1 } from './format'
+import type { Journal, JournalIds } from './format'
 
 // The journal's whole state (§1.6.4 #7, §1.6.11.3): level data gzipped on its own at level 1,
 // so a recovery file needs no parsing, plus what level data can't carry: the header's level info
@@ -47,7 +47,7 @@ export const idsOf = (state: State): JournalIds => ({
 /** The journal's state fields: `levelDataGz`, `editorMetadata` and `header`. */
 export const journalContent = (
     state: State,
-): Pick<JournalV1, 'levelDataGz' | 'editorMetadata' | 'header'> => {
+): Pick<Journal, 'levelDataGz' | 'editorMetadata' | 'header'> => {
     const levelData = serializeToLevelData(
         state.initialLife,
         state.isDynamicStages,
@@ -71,7 +71,7 @@ export const journalContent = (
 }
 
 /** The level data a journal holds: a valid `.nsld` once decoded. */
-export const journalLevelData = (journal: Pick<JournalV1, 'levelDataGz'>): LevelData =>
+export const journalLevelData = (journal: Pick<Journal, 'levelDataGz'>): LevelData =>
     JSON.parse(new TextDecoder().decode(ungzip(fromBase64(journal.levelDataGz)))) as LevelData
 
 /**
@@ -196,7 +196,7 @@ export type JournalState =
  * The journal's state, built as replay builds it: the level data parsed with its report, the
  * ids given back, the header's level info and BGM records decoded.
  */
-export const journalState = (journal: JournalV1): JournalState => {
+export const journalState = (journal: Journal): JournalState => {
     let levelData: LevelData
     try {
         levelData = journalLevelData(journal)

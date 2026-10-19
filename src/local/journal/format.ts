@@ -1,3 +1,5 @@
+import { captureRecoveryContext, type RecoveryContext } from '../../history/operations'
+import type { JournalLike } from '../../platform/types'
 import { isHash16Hex } from '../hash'
 import { RECORDS_V, SESSION_V } from '../records/version'
 
@@ -6,7 +8,7 @@ import { RECORDS_V, SESSION_V } from '../records/version'
 // later build; one this build can't read keeps its bytes in the `recovered` store (§1.6.4).
 
 /** The writer's own journal version (§1.6.11.8). */
-export const JOURNAL_VERSION = 1
+export const JOURNAL_VERSION = 2
 
 /** Group, stage and folder ids in level-data entity order (§1.6.11.3). */
 export type JournalIds = {
@@ -22,12 +24,10 @@ export type JournalStack = {
     keep: number
     /** The hash of slot `keep − 1` as committed, as hex; absent when `keep` is 0. */
     lastKept?: string
-    /** Labels of uncommitted slots other than the head, which aren't kept: the newest 64. */
-    dropped: string[]
-    /** How many there are, when more than `dropped` names. */
-    droppedCount?: number
-    /** The journalled state as a new slot at `keep`, or null when it's committed slot `index`. */
-    head: { label: string } | null
+    /** True when the journalled state becomes a new slot at keep. */
+    head: boolean
+    /** Descriptions survive even when the committed prefix is unavailable at recovery. */
+    context: RecoveryContext
     index: number
 }
 
@@ -37,7 +37,7 @@ export type JournalStack = {
  * fork copies kept by value.
  */
 export type JournalDescriptor = {
-    v?: number
+    v: number
     origin: string
     parent?: { id: string; uptoSeq: number }
     startedAt: number
@@ -48,7 +48,7 @@ export type JournalDescriptor = {
     lineageId: string
 } & Record<string, unknown>
 
-export type JournalV1 = {
+export type Journal = {
     journalVersion: number
     kind: 'journal'
     recordsV: number
@@ -67,7 +67,7 @@ export type JournalV1 = {
 
 /** What a reader makes of a journal's text. */
 export type JournalReading =
-    | { kind: 'journal'; journal: JournalV1 }
+    | { kind: 'journal'; journal: Journal }
     /** Written by a newer build: left in place (§1.6.4 step 2). */
     | { kind: 'later'; why: string }
     /** Not a journal this build can read: its bytes go to the `recovered` store. */
@@ -81,6 +81,31 @@ const isCount = (value: unknown): value is number =>
 
 const isIdList = (value: unknown): value is number[] =>
     Array.isArray(value) && value.every((id) => Number.isSafeInteger(id))
+
+export const trimOptionalJournalContext = (value: JournalLike): JournalLike | undefined => {
+    if (!isObject(value) || value.journalVersion !== JOURNAL_VERSION || !isObject(value.stack))
+        return
+    let context: RecoveryContext | undefined
+    try {
+        context = captureRecoveryContext(raw.stack.context)
+    } catch {
+        return
+    }
+    if (!context?.dropped.length || context.omitted === Number.MAX_SAFE_INTEGER) return
+    const trimmed = {
+        ...value,
+        stack: {
+            ...raw.stack,
+            context: {
+                head: context.head,
+                headIndex: Math.max(0, context.headIndex - 1),
+                dropped: context.dropped.slice(1),
+                omitted: context.omitted + 1,
+            },
+        },
+    }
+    return trimmed
+}
 
 /** Reads a journal's text; `sessionId` is the one its key names. */
 export const readJournal = (text: string, sessionId: string): JournalReading => {
@@ -97,7 +122,7 @@ export const readJournal = (text: string, sessionId: string): JournalReading => 
     const { journalVersion, kind, recordsV, descriptor } = value
     if (!Number.isSafeInteger(journalVersion) || (journalVersion as number) < 1)
         return unreadable('no journalVersion')
-    if ((journalVersion as number) > JOURNAL_VERSION)
+    if (journalVersion !== JOURNAL_VERSION)
         return { kind: 'later', why: `journalVersion ${String(journalVersion)}` }
     if (kind !== 'journal') return { kind: 'later', why: `kind ${String(kind)}` }
     if (!Number.isSafeInteger(recordsV) || (recordsV as number) < 1)
@@ -105,12 +130,8 @@ export const readJournal = (text: string, sessionId: string): JournalReading => 
     if ((recordsV as number) > RECORDS_V)
         return { kind: 'later', why: `recordsV ${String(recordsV)}` }
     if (!isObject(descriptor)) return unreadable('no descriptor')
-    if (descriptor.v !== undefined) {
-        if (!Number.isSafeInteger(descriptor.v) || (descriptor.v as number) < 1)
-            return unreadable('a bad descriptor v')
-        if ((descriptor.v as number) > SESSION_V)
-            return { kind: 'later', why: `descriptor v ${descriptor.v as number}` }
-    }
+    if (descriptor.v !== SESSION_V)
+        return { kind: 'later', why: `unsupported descriptor v ${String(descriptor.v)}` }
 
     if (value.sessionId !== sessionId) return unreadable('another session’s key')
     if (!isCount(value.seq) || value.seq < 1) return unreadable('no seq')
@@ -155,17 +176,14 @@ export const readJournal = (text: string, sessionId: string): JournalReading => 
         return unreadable('no stack')
     if (stack.keep > 0 ? !isHash16Hex(stack.lastKept) : stack.lastKept !== undefined)
         return unreadable('a bad stack lastKept')
-    if (!Array.isArray(stack.dropped) || !stack.dropped.every((label) => typeof label === 'string'))
-        return unreadable('a bad stack dropped')
-    if (
-        stack.droppedCount !== undefined &&
-        !(isCount(stack.droppedCount) && stack.droppedCount > stack.dropped.length)
-    )
-        return unreadable('a bad stack droppedCount')
+    try {
+        captureRecoveryContext(stack.context)
+    } catch {
+        return unreadable('a bad stack context')
+    }
     const { head } = stack
-    if (head === null) {
+    if (head === false) {
         if (stack.index >= stack.keep) return unreadable('a committed head outside keep')
-    } else if (!isObject(head) || typeof head.label !== 'string' || stack.index !== stack.keep)
-        return unreadable('a bad stack head')
-    return { kind: 'journal', journal: value as JournalV1 }
+    } else if (head !== true || stack.index !== stack.keep) return unreadable('a bad stack head')
+    return { kind: 'journal', journal: value as Journal }
 }

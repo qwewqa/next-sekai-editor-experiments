@@ -1,9 +1,11 @@
+import { captureOperation, captureStep, type JsonValue } from '../../history/operations'
 import { countDayOfUse } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
 import { FLUSH_STORES, type PreparedFlush } from '../flushWrite'
 import type { KvTx } from '../kv/types'
 import { putChunk } from '../putChunk'
 import { nodeRow, rootRow } from '../records/rows'
+import { SESSION_V } from '../records/version'
 import type { StateBatch } from '../stateBatch'
 import { nextTime } from '../time'
 import { blockRow, chainFlagsAtCreation } from '../timeline'
@@ -20,7 +22,7 @@ export type MigrationBatch = StateBatch & {
     /** The slot's file name, as the import rule names it (§1.3.5). */
     sourceName?: string
     /** The `init` entry's label: "Recovered from auto save". */
-    label: string
+    operation: JsonValue
     appVersion: string
     wall: number
 }
@@ -61,6 +63,8 @@ export const writeMigration = async (
     }
     const { chainId, docId, lineageId, sessionId } = batch.ids
     const snapshot = root.hash.slice()
+    const operation = captureOperation(batch.operation)
+    const step = captureStep({ kind: 'init', operation })
     await tx.put('chains', {
         chainId,
         head: sessionId,
@@ -77,6 +81,7 @@ export const writeMigration = async (
     })
     await tx.put('sessions', {
         id: sessionId,
+        v: SESSION_V,
         chainId,
         startedAt: time,
         updatedAt: time,
@@ -95,13 +100,13 @@ export const writeMigration = async (
         time,
         day,
         kind: 'init',
-        label: batch.label,
+        operation,
         snapshot,
         noteCount: root.noteCount,
         dirty: true,
         kept: true,
     })
-    await tx.put('stackBlocks', blockRow(sessionId, 0, 0, [{ snapshot, label: batch.label }]))
+    await tx.put('stackBlocks', blockRow(sessionId, 0, 0, [{ snapshot, step }]))
     await writeMeta(tx, 'migratedHashes', [...migrated, batch.hash])
     await writeMeta(tx, 'maxSeenTime', maxSeen)
     return { kind: 'migrated', sessionId, chainId }

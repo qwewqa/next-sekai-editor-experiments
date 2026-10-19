@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { bpms } from '../history/bpms'
+import { createHistoryOperation } from '../history/createHistoryOperation'
 import { onPeekLeft, onPeekRefused, onPeekStart, setPeekEffects } from '../history/peek'
 import { onResetState } from '../history/resetHooks'
 import { isPeeking } from '../history/stack'
@@ -29,7 +30,8 @@ import { view } from './view'
 const clock = (time: number) => () => formatEntryTime(settings.locale, time)
 
 setPeekEffects({
-    restoredLabel: (time) => interpolate(() => i18n.value.entry.restoredTo, clock(time)),
+    restoredOperation: (time) =>
+        createHistoryOperation({ id: 'nse.restore', data: { targetTime: time } }),
     restored: (time) => {
         notify(interpolate(() => i18n.value.notice.restoredTo, clock(time)))
     },

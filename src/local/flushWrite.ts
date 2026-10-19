@@ -1,14 +1,23 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type EntryDescription,
+    type HistoryEntryKind,
+    type UndoableStep,
+} from '../history/operations'
 import { forkRecord } from './chainFields'
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
 import { splitHandles } from './handleRows'
-import { fromHex16, hash16, sha256, toHex } from './hash'
+import { equalBytes, fromHex16, hash16, sha256, toHex } from './hash'
 import { KeyRange, type KvTx } from './kv/types'
 import { putChunk } from './putChunk'
 import { nodeRow, rootRow, type NodesRow } from './records/rows'
 import type { KindName } from './records/schema'
 import { buildKindNodes, buildRoot, type EncodedNode, type EncodedRoot } from './records/snapshot'
+import { isReadableSessionVersion } from './records/unknownValues'
+import { SESSION_V } from './records/version'
 import { clearIdentityExport, storeMarks, unitApplies, type IdentityUnit } from './save/commit'
 import { directWaiter, type Waiter } from './scheduler'
 import { clampTime, nextTime } from './time'
@@ -33,8 +42,7 @@ export { forkRecord } from './chainFields'
 export type SessionOrigin =
     'new' | 'import' | 'nxsp' | 'continued' | 'migrated' | 'journal' | 'replaced'
 
-export type EntryKind =
-    'init' | 'continue' | 'edit' | 'undo' | 'redo' | 'restore' | 'save' | 'export' | 'recovered'
+export type EntryKind = HistoryEntryKind
 
 /** Entries that make a chain edited (§1.6.11.2's `edited`). */
 export const EDITING_KINDS = TIMELINE_EDITING_KINDS as readonly EntryKind[]
@@ -62,15 +70,18 @@ export type BatchMedia = {
     kind: MediaKind
 }
 
-export type BatchEntry = {
+export type BatchEntry = EntryDescription & {
     seq: number
     /** Wall-clock time of the action; stored strictly increasing (§1.6.8.7). */
     wall: number
-    kind: EntryKind
-    label: string
     /** Index into the batch's snapshots, or a stored root: an undo or redo onto a slot not loaded. */
     snapshot: number | Uint8Array
     dirty: boolean
+    stack?: {
+        keep: number
+        push: { snapshot: number | Uint8Array; step: UndoableStep }[]
+        index: number
+    }
     /** A `save` entry's revision and device (§1.6.11.2). */
     revisionId?: string
     device?: { id: string; label: string }
@@ -81,7 +92,7 @@ export type BatchBlock = {
     block: number
     first: number
     slots: (number | Uint8Array)[]
-    labels: string[]
+    steps: UndoableStep[]
 }
 
 /**
@@ -270,6 +281,32 @@ export const prepareFlush = async (
     batch: FlushBatch,
     waiter: Waiter = directWaiter,
 ): Promise<PreparedFlush> => {
+    for (const entry of batch.entries) {
+        captureEntryDescription(entry)
+        if (entry.kind === 'recovered') {
+            if (
+                !entry.stack ||
+                entry.stack.keep !== 0 ||
+                entry.stack.index !== 0 ||
+                entry.stack.push.length !== 1
+            )
+                throw new FlushBatchError('Invalid pending recovery baseline')
+            const pushed = entry.stack.push[0]!
+            if (
+                typeof entry.snapshot === 'number'
+                    ? pushed.snapshot !== entry.snapshot
+                    : !(pushed.snapshot instanceof Uint8Array) ||
+                      !equalBytes(pushed.snapshot, entry.snapshot)
+            )
+                throw new FlushBatchError('Recovery baseline differs from current state')
+            captureStep(pushed.step)
+        } else if (entry.stack) throw new FlushBatchError('Unexpected entry stack')
+    }
+    for (const block of batch.stack?.blocks ?? []) {
+        if (block.steps.length !== block.slots.length)
+            throw new FlushBatchError('Stack metadata length differs')
+        for (const step of block.steps) captureStep(step)
+    }
     const chunks: VerifiedChunk[] = []
     let start = 0
     for (const end of batch.ends) {
@@ -375,6 +412,8 @@ export const writeFlush = async (
     const known: KnownAt = { db: (await readMeta(tx, 'dbInstanceId')) ?? '', epoch }
     const sessionRow = await tx.get('sessions', batch.session.id)
     const session = isRow(sessionRow) ? sessionRow : undefined
+    if (session && !isReadableSessionVersion(session.v))
+        throw new FlushBatchError('Unsupported session generation')
     const chainId = batch.session.chainId
     // A stored session never changes chain (D10): a fork is a new session.
     if (session !== undefined && session.chainId !== chainId)
@@ -578,11 +617,22 @@ export const writeFlush = async (
             seq: entry.seq,
             time,
             day,
-            kind: entry.kind,
-            label: entry.label,
+            ...captureEntryDescription(entry),
             snapshot: root.hash.slice(),
             noteCount: root.noteCount,
             dirty: entry.dirty,
+            ...(entry.stack
+                ? {
+                      stack: {
+                          keep: entry.stack.keep,
+                          push: entry.stack.push.map((slot) => ({
+                              snapshot: rootOf(slot.snapshot).hash.slice(),
+                              step: captureStep(slot.step),
+                          })),
+                          index: entry.stack.index,
+                      },
+                  }
+                : {}),
             kept: true,
             ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
             ...(entry.device ? { device: { id: entry.device.id, label: entry.device.label } } : {}),
@@ -605,7 +655,7 @@ export const writeFlush = async (
         for (const block of stack.blocks) {
             const slots: ReplaySlot[] = block.slots.map((ref, i) => ({
                 snapshot: typeof ref === 'number' ? rootOf(ref).hash : ref,
-                label: block.labels[i] ?? '',
+                step: captureStep(block.steps[i]),
             }))
             const row = blockRow(batch.session.id, block.block, block.first, slots)
             blockRows.push(row)
@@ -638,6 +688,7 @@ export const writeFlush = async (
         ? updated(session, sessionFields)
         : {
               id: batch.session.id,
+              v: SESSION_V,
               chainId,
               startedAt,
               origin: batch.session.origin,

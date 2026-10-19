@@ -1,3 +1,11 @@
+import {
+    captureEntryDescription,
+    captureOperation,
+    captureStep,
+    type EntryDescription,
+    type JsonValue,
+    type UndoableStep,
+} from '../../history/operations'
 import { centralDirectoryOf } from '../../platform/fingerprint'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfo, MediaRef } from '../../state/levelInfo'
@@ -81,16 +89,14 @@ export type SaveTarget =
  * An entry this tab hasn't flushed yet, after the stored ones of the saved session. Rows at or
  * below the session's last stored `seq` are already stored, and are taken from storage only.
  */
-export type PendingRow = {
+export type PendingRow = EntryDescription & {
     seq: number
     time: number
-    kind: string
-    label: string
     /** Its state's root, as hex. */
     snapshot: string
     noteCount: number
     dirty: boolean
-    stack?: { keep: number; push: { snapshot: string; label: string }[]; index: number }
+    stack?: { keep: number; push: { snapshot: string; step: UndoableStep }[]; index: number }
     /** A `save` entry's revision and device. */
     revisionId?: string
     device?: { id: string; label: string }
@@ -100,7 +106,7 @@ export type PendingRow = {
 export type PendingInput = {
     entries: PendingRow[]
     /** The live undo stack, absolute numbers in the session's numbering. */
-    stack?: { base: number; slots: { snapshot: string; label: string }[]; index: number }
+    stack?: { base: number; slots: { snapshot: string; step: UndoableStep }[]; index: number }
     records: PendingRecords
     /** The saved session's `startedAt`, for when storage holds no row of it. */
     startedAt?: number
@@ -141,7 +147,7 @@ export type SaveOptions = {
     /** `revision.fileName`: the name this write uses. */
     fileName?: string
     /** This write's `save` entry, created before the build: its time and label. */
-    save: { time: number; label: string }
+    save: { time: number; operation: JsonValue }
     context: { now: number; newId: () => string; device: DeviceForm; appVersion: string }
     /** The saved session: the chain's head unless given (Save to File… gives its own). */
     sessionId?: string
@@ -240,9 +246,9 @@ const refuse = (refused: SaveRefusalReason, message?: string, limit?: PlanLimit)
 export const isRefusal = (value: unknown): value is SaveRefusal =>
     isObject(value) && typeof value.refused === 'string'
 
-const slotOf = (slot: { snapshot: string; label: string }): ReplaySlot => ({
+const slotOf = (slot: { snapshot: string; step: UndoableStep }): ReplaySlot => ({
     snapshot: fromHex16(slot.snapshot),
-    label: slot.label,
+    step: captureStep(slot.step),
 })
 
 /** The saved session's stack: the live one, else the stored window, else replay of its rows. */
@@ -268,10 +274,7 @@ const writeStack = (
         return { base: 0, slots: [...replayed.slots], index: replayed.index }
     } catch (error) {
         if (!(error instanceof ReplayError)) throw error
-        const last = rows.at(-1)?.entry
-        return (
-            last && { base: 0, slots: [{ snapshot: last.snapshot, label: last.label }], index: 0 }
-        )
+        return
     }
 }
 
@@ -361,8 +364,7 @@ const withPending = (
                 sessionId,
                 seq: row.seq,
                 time: row.time,
-                kind: row.kind,
-                label: row.label,
+                ...captureEntryDescription(row),
                 snapshot: fromHex16(row.snapshot),
                 noteCount: row.noteCount,
                 dirty: row.dirty,
@@ -474,10 +476,11 @@ export const planSave = async (
     // The rows this write adds: after the cut for an append, the whole chronology otherwise.
     const own = appending && cutEntry ? rows.filter((row) => isLater(row, cutEntry)) : rows
     const stack = writeStack(cut, rows, pending)
-    if (!stack) return refuse('unreadableHead')
-    const headSlot = stack.slots[stack.index - stack.base]
-    if (!headSlot) return refuse('unreadableHead')
-    const head = toHex(headSlot.snapshot)
+    const headSlot = stack?.slots[stack.index - stack.base]
+    if (history && (!stack || !headSlot)) return refuse('unreadableHead')
+    const headSnapshot = headSlot?.snapshot ?? rows.at(-1)?.entry.snapshot
+    if (!headSnapshot) return refuse('unreadableHead')
+    const head = toHex(headSnapshot)
 
     // Rows flagged before this build: stored `kept: false`, or marked by an earlier write whose
     // binding is still in memory.
@@ -485,7 +488,10 @@ export const planSave = async (
     const flaggedBefore = (entry: EntryRow) => !entry.kept || priorMarks.has(keyOf(entry))
 
     // Bodies: every root the rows, their pushes, the stack and the head need, verified.
-    const wanted = new Set<string>([head, ...stack.slots.map((slot) => toHex(slot.snapshot))])
+    const wanted = new Set<string>([
+        head,
+        ...(stack?.slots.map((slot) => toHex(slot.snapshot)) ?? []),
+    ])
     if (history)
         for (const { entry } of own)
             if (!flaggedBefore(entry)) for (const hex of rowSnapshots(entry)) wanted.add(hex)
@@ -590,7 +596,7 @@ export const planSave = async (
     const saveEntry: EntryForm = {
         kind: 'save',
         time: options.save.time,
-        label: options.save.label,
+        operation: captureOperation(options.save.operation),
         snapshot: head,
         noteCount: headInput.summary.noteCount,
         revisionId,
@@ -599,12 +605,12 @@ export const planSave = async (
 
     let historyInput: HistoryInput | undefined
     if (history) {
+        if (!stack || !headSlot) return refuse('unreadableHead')
         const entries: EntryForm[] = []
         for (const { entry } of own)
             entries.push({
-                kind: entry.kind as EntryForm['kind'],
+                ...captureEntryDescription(entry),
                 time: entry.time,
-                label: entry.label,
                 snapshot: toHex(entry.snapshot),
                 noteCount: entry.noteCount,
                 ...(entry.dirty ? { dirty: true as const } : {}),
@@ -617,7 +623,7 @@ export const planSave = async (
                               keep: entry.stack.keep,
                               push: entry.stack.push.map((slot) => ({
                                   snapshot: toHex(slot.snapshot),
-                                  label: slot.label,
+                                  step: captureStep(slot.step),
                               })),
                               index: entry.stack.index,
                           },
@@ -634,8 +640,7 @@ export const planSave = async (
         const toReplay = (form: EntryForm) =>
             replayed.push({
                 seq: seq++,
-                kind: form.kind,
-                label: form.label,
+                ...captureEntryDescription(form),
                 snapshot: fromHex16(form.snapshot),
                 ...(form.stack
                     ? {
@@ -698,7 +703,7 @@ export const planSave = async (
                 base: undoStack.base,
                 slots: undoStack.slots.map((slot) => ({
                     snapshot: toHex(slot.snapshot),
-                    label: slot.label,
+                    step: captureStep(slot.step),
                 })),
                 index: undoStack.index,
             },

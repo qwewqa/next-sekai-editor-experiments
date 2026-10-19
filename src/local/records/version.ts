@@ -4,4 +4,4 @@
 export const RECORDS_V = 1
 
 /** How a session's stack and entries are read: a session row's `v`, absent meaning 1. */
-export const SESSION_V = 1
+export const SESSION_V = 2

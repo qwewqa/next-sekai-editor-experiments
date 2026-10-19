@@ -1,4 +1,5 @@
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
+import { captureStep, type JsonValue } from '../../history/operations'
 import { createSessionDescriptor, type SessionDescriptor } from '../../history/session'
 import type { RestoredSlot } from '../../history/stack'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
@@ -111,7 +112,10 @@ export type OpenDeps = {
     /** Whether the tab still shows its own blank start, never edited or replaced. */
     untouched: () => boolean
     newId?: () => string
-    labels: { continued: () => string; recoveredHead: () => string }
+    operations: {
+        continued: (fromTime: number) => JsonValue
+        recovered: (dropped: number) => JsonValue
+    }
     events: (event: LoadEvent) => void
 }
 
@@ -150,7 +154,7 @@ const headState = async (worker: OpenDeps['worker'], head: Uint8Array) => {
 
 const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
     first: read.stack.window.base,
-    slots: read.stack.slots.map(({ snapshot, label }) => ({ hash: snapshot, label })),
+    slots: read.stack.slots.map(({ snapshot, step }) => ({ hash: snapshot, step })),
     index: read.stack.window.index,
 })
 
@@ -201,16 +205,27 @@ export const openStored = async (
     const { session, chain } = read
     const newId = deps.newId ?? (() => crypto.randomUUID())
     const edited = chain.edited === true
-    const slots: RestoredSlot[] = read.stack.slots.map(({ snapshot, label }) => ({
+    const slots: RestoredSlot[] = read.stack.slots.map(({ snapshot, step }) => ({
         snapshot,
-        label,
+        step,
         isDirty: edited,
     }))
     let at = read.stack.window.index - read.stack.window.base
     const taken = how.mode === 'resume' ? undefined : recovered
-    if (taken) {
+    const takenContext = taken && journalledSession(taken.found)?.recoveryContext
+    if (taken && !takenContext) throw new Error('Taken journal context is unavailable')
+    const takenStep =
+        takenContext &&
+        captureStep({
+            kind: 'edit',
+            operation: deps.operations.recovered(
+                takenContext.dropped.length + takenContext.omitted,
+            ),
+            recoveryContext: takenContext,
+        })
+    if (takenStep) {
         slots.length = at + 1
-        slots.push({ label: deps.labels.recoveredHead(), isDirty: true })
+        slots.push({ step: takenStep, isDirty: true })
         at++
     }
     const shown = taken?.state ?? state
@@ -274,7 +289,9 @@ export const openStored = async (
             },
             stack: storedStack(read),
             chain,
-            label: deps.labels.continued,
+            operation: deps.operations.continued(
+                typeof session.startedAt === 'number' ? session.startedAt : 0,
+            ),
             dirty: edited,
             ...(fork
                 ? { fork: { forkOf: String(chain.chainId), ...(forkName ? { forkName } : {}) } }
@@ -291,7 +308,8 @@ export const openStored = async (
             ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
         })
         if (taken) {
-            flusher.append('edit', deps.labels.recoveredHead, taken.state, true)
+            if (!takenStep) throw new Error('Missing recovered step')
+            flusher.append({ kind: 'edit', step: takenStep }, taken.state, true)
             deps.retireJournal?.(
                 taken.found,
                 continued.id,
@@ -464,7 +482,14 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
     const flusher = deps.flusher()
     const journalled = journalledSession(found)
     if (!flusher || !journalled) return false
-    const { name, sourceName, label, state, chain } = journalled
+    const { name, sourceName, recoveryContext, state, chain } = journalled
+    const step = captureStep({
+        kind: 'edit',
+        operation: deps.operations.recovered(
+            recoveryContext.dropped.length + recoveryContext.omitted,
+        ),
+        recoveryContext,
+    })
     // Without Web Locks a copied tab can't be told from a reload, so the work goes on under a
     // new session id and its own key; the old key stays, offered in Local Data, since the tab it
     // came from may still be writing it (§1.6.7). With them, the page goes on writing this key,
@@ -480,14 +505,14 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
         }),
-        slots: [{ label, isDirty: true }],
+        slots: [{ step, isDirty: true }],
         at: 0,
         state,
     })
     flusher.resumeJournalled({
         ...journalled,
         id,
-        label: () => label || deps.labels.recoveredHead(),
+        operation: step.operation,
         ready: Promise.resolve(),
         done: lock.release,
     })

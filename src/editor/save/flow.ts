@@ -1,3 +1,5 @@
+import { createHistoryOperation } from '../../history/createHistoryOperation'
+import { captureName, entryOperation as operationOfEntry } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
 import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
@@ -187,8 +189,11 @@ const commitFirst = async (env: Env) => {
 }
 
 /** The label of the `save` entry and a file event: "Saved coconut.nxsp" (§1.3.8). */
-const entryLabel = (name: string, download: boolean) =>
-    interpolate(() => (download ? i18n.value.entry.downloaded : i18n.value.entry.saved), name)
+const saveOperation = (name: string, download: boolean) =>
+    createHistoryOperation({
+        id: 'nse.file.save',
+        data: { file: captureName(name), delivery: download ? 'download' : 'file' },
+    })
 
 const fileError = (error: unknown) =>
     error instanceof FileError
@@ -313,7 +318,7 @@ const markerOf = (
         sessionId: reservation.session.id,
         seq: reservation.seq,
         time: reservation.wall,
-        label: built.saveEntry.label,
+        operation: operationOfEntry(built.saveEntry),
         snapshot: built.saveEntry.snapshot,
         noteCount: built.saveEntry.noteCount,
         revisionId: built.revisionId,
@@ -345,7 +350,7 @@ const bindWrite = async (
         reservation,
         {
             wall: reservation.wall,
-            label: () => built.saveEntry.label,
+            operation: operationOfEntry(built.saveEntry),
             state,
             revisionId: built.revisionId,
             device: deviceForm(),
@@ -751,7 +756,7 @@ const pickReserved = async (
         fileName: request.fileName,
         save: {
             time: reservation.wall,
-            label: entryLabel(request.fileName, !platform.pickSaveFile)(),
+            operation: saveOperation(request.fileName, !platform.pickSaveFile),
         },
         state,
     }
@@ -894,7 +899,7 @@ const afterPick = async (
                         history,
                         bgm: options.bgm,
                         fileName: name,
-                        save: { time: reservation.wall, label: entryLabel(name, false)() },
+                        save: { time: reservation.wall, operation: saveOperation(name, false) },
                         state,
                     },
                     pre
@@ -1265,7 +1270,10 @@ const writeBack = async (
                         history: file.options.history,
                         bgm: file.options.bgm,
                         fileName: file.name,
-                        save: { time: reservation.wall, label: entryLabel(file.name, false)() },
+                        save: {
+                            time: reservation.wall,
+                            operation: saveOperation(file.name, false),
+                        },
                         state,
                     },
                     source ? [source] : [],
@@ -1740,7 +1748,7 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
             history: file.options.history,
             bgm: file.options.bgm,
             fileName: file.name,
-            save: { time: reservation.wall, label: entryLabel(file.name, true)() },
+            save: { time: reservation.wall, operation: saveOperation(file.name, true) },
             state,
         })
     } catch (error) {
@@ -1971,7 +1979,7 @@ const writeSessionFile = async (
                     fileName: request.fileName,
                     save: {
                         time: Date.now(),
-                        label: entryLabel(request.fileName, !platform.pickSaveFile)(),
+                        operation: saveOperation(request.fileName, !platform.pickSaveFile),
                     },
                     context: {
                         now: Date.now(),

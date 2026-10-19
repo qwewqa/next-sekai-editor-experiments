@@ -1,3 +1,12 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    equalJson,
+    pushedStep,
+    type EntryDescription,
+    type JsonValue,
+    type UndoableStep,
+} from '../history/operations'
 import { equalBytes, toHex } from './hash'
 import type { SessionOrigin } from './records/unknownValues'
 
@@ -64,7 +73,7 @@ export const chainFlagsAtCreation = (origin: SessionOrigin) => ({
     edited: origin === 'migrated' || origin === 'journal',
 })
 
-export type ReplaySlot = { readonly snapshot: Uint8Array; readonly label: string }
+export type ReplaySlot = { readonly snapshot: Uint8Array; readonly step: UndoableStep }
 
 /** A `recovered` entry's `stack` (§1.6.11.2): slots `0 … keep − 1` kept, then `push`, at `index`. */
 export type RecoveredStack = {
@@ -74,10 +83,8 @@ export type RecoveredStack = {
 }
 
 /** What replay reads of an entry row. */
-export type ReplayEntry = {
+export type ReplayEntry = EntryDescription & {
     readonly seq: number
-    readonly kind: string
-    readonly label: string
     readonly snapshot: Uint8Array
     readonly stack?: RecoveredStack
 }
@@ -105,9 +112,14 @@ export const replay = (
         const fail = (why: string): never => {
             throw new ReplayError(`Entry ${entry.seq} (${entry.kind}): ${why}`)
         }
+        try {
+            captureEntryDescription(entry)
+        } catch {
+            fail('invalid entry description')
+        }
         if (first && !FIRST_KINDS.includes(entry.kind)) fail('a session cannot begin with it')
         first = false
-        const slot = { snapshot: entry.snapshot, label: entry.label }
+        const slot = () => ({ snapshot: entry.snapshot, step: pushedStep(entry) })
         const lands = () => {
             const landed = slots[index]
             if (!landed || !equalBytes(landed.snapshot, entry.snapshot))
@@ -116,13 +128,13 @@ export const replay = (
         switch (entry.kind) {
             case 'init':
                 if (slots.length) fail('init after the first entry')
-                slots = [slot]
+                slots = [slot()]
                 index = 0
                 break
             case 'continue':
                 // The inherited stack stays; only a continuation of nothing starts from its own.
                 if (!slots.length) {
-                    slots = [slot]
+                    slots = [slot()]
                     index = 0
                 }
                 break
@@ -130,7 +142,7 @@ export const replay = (
             case 'restore':
                 if (!slots.length) fail('nothing to push onto')
                 slots.length = index + 1
-                slots.push(slot)
+                slots.push(slot())
                 index++
                 break
             case 'undo':
@@ -150,7 +162,20 @@ export const replay = (
                 break
             case 'recovered': {
                 const stack = entry.stack ?? fail('no stack')
-                slots = [...slots.slice(0, stack.keep), ...stack.push]
+                if (
+                    !Number.isSafeInteger(stack.keep) ||
+                    stack.keep < 0 ||
+                    stack.keep > slots.length ||
+                    !Number.isSafeInteger(stack.index)
+                )
+                    fail('invalid stack replacement')
+                slots = [
+                    ...slots.slice(0, stack.keep),
+                    ...stack.push.map((slot) => ({
+                        snapshot: slot.snapshot,
+                        step: captureStep(slot.step),
+                    })),
+                ]
                 index = stack.index
                 if (index < 0 || index >= slots.length) fail('its index is outside its stack')
                 break
@@ -169,7 +194,7 @@ export type StackBlockRow = {
     /** The absolute slot of its first item. */
     first: number
     hashes: Uint8Array
-    labels: string[]
+    steps: UndoableStep[]
 }
 
 /** A block's slot, or undefined when the block doesn't hold it. */
@@ -177,9 +202,13 @@ export const blockSlot = (row: StackBlockRow | undefined, slot: number): ReplayS
     if (!row) return
     const at = slot - row.first
     if (at < 0 || (at + 1) * 16 > row.hashes.byteLength) return
-    const label = row.labels[at]
-    if (typeof label !== 'string') return
-    return { snapshot: row.hashes.slice(at * 16, at * 16 + 16), label }
+    const step = row.steps?.[at]
+    if (!step) return
+    try {
+        return { snapshot: row.hashes.slice(at * 16, at * 16 + 16), step: captureStep(step) }
+    } catch {
+        return
+    }
 }
 
 /** The stored window's slots from its blocks, or undefined when a block lacks one. */
@@ -207,7 +236,7 @@ export const blockRow = (
     slots.forEach((slot, i) => {
         hashes.set(slot.snapshot, i * 16)
     })
-    return { sessionId, block, first, hashes, labels: slots.map((slot) => slot.label) }
+    return { sessionId, block, first, hashes, steps: slots.map((slot) => captureStep(slot.step)) }
 }
 
 /**
@@ -238,8 +267,10 @@ export const stackMismatches = (
                         expected ? toHex(expected.snapshot) : 'nothing'
                     }`,
                 )
-            else if (expected.label !== slot.label)
-                problems.push(`slot ${window.base + i}: label "${slot.label}"`)
+            else if (
+                !equalJson(expected.step as unknown as JsonValue, slot.step as unknown as JsonValue)
+            )
+                problems.push(`slot ${window.base + i}: step differs`)
         })
     return problems
 }
@@ -249,7 +280,7 @@ export type ModelSlot<E> = {
     readonly hash?: Uint8Array
     readonly entry?: E
     /** Text once stored; an entry's label until then, evaluated when it's written (§1.10 #7). */
-    readonly label: string | (() => string)
+    readonly step: UndoableStep
 }
 
 /** A stack numbered from `first`, as replay gives it: the page's model of a session's stack. */
@@ -369,11 +400,18 @@ export class SessionStack<E> {
     replay(
         entries: readonly { readonly kind: string }[],
         slot: (entry: E) => ModelSlot<E>,
+        recovered?: (entry: E) => ModelSlot<E>,
     ): { stack: SlotStack<ModelSlot<E>>; changedFrom: number } | undefined {
         const stack = this.committed.clone()
         const changed = { from: Infinity }
-        for (const entry of entries)
-            if (!applyKind(stack, entry.kind, () => slot(entry as E), changed)) return
+        for (const entry of entries) {
+            if (entry.kind === 'recovered' && recovered) {
+                stack.first = 0
+                stack.slots = [recovered(entry as E)]
+                stack.index = 0
+                changed.from = 0
+            } else if (!applyKind(stack, entry.kind, () => slot(entry as E), changed)) return
+        }
         if (!stack.slots.length) return
         return { stack, changedFrom: changed.from }
     }
@@ -406,14 +444,14 @@ export class SessionStack<E> {
      */
     commit(
         plan: StackPlan<E>,
-        resolve: (entry: E) => { hash: Uint8Array; label: string } | undefined,
+        resolve: (entry: E) => { hash: Uint8Array; step: UndoableStep } | undefined,
         { written, durable, at }: { written: boolean; durable: boolean; at: StoredAt },
     ) {
         const slots = plan.stack.slots.map((slot) => {
             if (!slot.entry) return slot
             const stored = resolve(slot.entry)
             if (!stored) throw new Error('A stack slot has no stored snapshot')
-            return { hash: stored.hash, label: stored.label }
+            return { hash: stored.hash, step: stored.step }
         })
         this.committed = new SlotStack(plan.stack.first, slots, plan.stack.index)
         this.window = plan.window

@@ -3,6 +3,8 @@ import { parseLevelDataChart } from '../../../chart/parse/levelData'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { isPeeking, openState } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { captureName } from '../../../history/operations'
 import { i18n } from '../../../i18n'
 import { formatDate } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
@@ -316,9 +318,12 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
                     : { level: stateBatch(live) }),
                 ...(copyOf ? { copyOf } : {}),
                 sourceName: file.name,
-                labels: {
-                    opened: interpolateRaw(i18n.value.history.openedFile, name),
-                    changedOutside: i18n.value.entry.changedOutside,
+                operations: {
+                    opened: createHistoryOperation({
+                        id: 'nse.origin',
+                        data: { origin: 'import', source: captureName(name) },
+                    }),
+                    changedOutside: createHistoryOperation({ id: 'nse.externalChange', data: {} }),
                 },
                 appVersion: appVersion().appVersion,
             })
@@ -419,9 +424,12 @@ export const keepReplaced = async (file: File, name: string): Promise<Kept> => {
         ...(headLive
             ? { summary: summaryOf(live, noteCountOf(history?.headRecords.kinds ?? [])) }
             : { level: stateBatch(live) }),
-        labels: {
-            opened: interpolateRaw(i18n.value.history.openedFile, file.name),
-            changedOutside: i18n.value.entry.changedOutside,
+        operations: {
+            opened: createHistoryOperation({
+                id: 'nse.origin',
+                data: { origin: 'import', source: captureName(file.name) },
+            }),
+            changedOutside: createHistoryOperation({ id: 'nse.externalChange', data: {} }),
         },
         appVersion: appVersion().appVersion,
     })

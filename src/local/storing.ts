@@ -16,11 +16,12 @@ import { markedSeq, removeMarker, withBind } from '../editor/save/env'
 import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
+import { createHistoryOperation } from '../history/createHistoryOperation'
 import { filename } from '../history/live'
+import { captureEntryDescription } from '../history/operations'
 import { setPeekSource } from '../history/peek'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
-import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
 import type { State } from '../state'
@@ -301,7 +302,8 @@ export const startStoring = (
         },
         forkName: (from: FlushSession) => forkNameOf(namePartsOf(from.chain, liveState.value)),
         writeChain: (request) => worker.call('writeChainFields', request),
-        continueLabel: () => i18n.value.entry.continued,
+        continueOperation: (fromTime) =>
+            createHistoryOperation({ id: 'nse.continue', data: { fromTime } }),
         onRoots: rememberRoots,
         onFlushed: (report) => {
             if (test) reports.push(report)
@@ -412,7 +414,7 @@ export const startStoring = (
                         ? {}
                         : { sourceName: descriptor.sourceName }),
                     state: action.state,
-                    label: action.name,
+                    operation: action.step.operation,
                     dirty: action.isDirty,
                     // Without Web Locks (an insecure origin) there's no other tab to keep out.
                     ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
@@ -435,8 +437,7 @@ export const startStoring = (
                 void import('../editor/save/flow').then((flow) => flow.prefetchHandle())
             }
             instance.append(
-                action.kind,
-                action.name,
+                captureEntryDescription(action),
                 action.state ?? action.snapshot,
                 action.isDirty,
             )
