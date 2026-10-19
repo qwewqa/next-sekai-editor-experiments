@@ -962,9 +962,12 @@ test('View Chart is disabled for the placeholder and for a pending different end
         const recipe = (name: string) =>
             captureOperationRecipe([
                 {
-                    description: window.editorTest.historySteps.editStep(
-                        window.editorTest.historySteps.futureFixtureOperation(name),
-                    ),
+                    description: {
+                        kind: 'edit',
+                        step: window.editorTest.historySteps.editStep(
+                            window.editorTest.historySteps.futureFixtureOperation(name),
+                        ),
+                    },
                 },
             ])
         target.requestSecond = () => selection.requestPeek({ key: b, recipe: recipe('B'), time: 2 })
