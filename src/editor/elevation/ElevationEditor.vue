@@ -2288,14 +2288,6 @@ onUnmounted(() => {
     z-index: 1;
 }
 
-/* A select with a drawn value has transparent text, so the recipe ring (currentColor) would
-   vanish; it takes the surface ink instead. High contrast keeps its own focus colour. */
-@media not (forced-colors: active) {
-    select.elevation-field:focus-visible {
-        outline-color: rgb(var(--color-fg));
-    }
-}
-
 /* Spinners are hidden (D8); arrow keys and the wheel still step. */
 .elevation-field[type='number'] {
     -moz-appearance: textfield;

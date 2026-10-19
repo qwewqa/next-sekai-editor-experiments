@@ -272,6 +272,7 @@
         .btn-toggle[aria-pressed='true']:active,
         .btn-toggle[aria-pressed='true'].is-pressed {
             forced-color-adjust: none;
+            box-shadow: none;
             @apply bg-[Highlight] fill-[HighlightText] text-[HighlightText];
         }
     }
