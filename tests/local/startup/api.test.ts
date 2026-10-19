@@ -29,7 +29,7 @@ import { readTabRecord } from '../../../src/local/startup/tab'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
 import { storageKey } from '../../../src/storage'
-import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
+import { editStep, futureFixtureOperation, initialLife } from '../../helpers/historySteps'
 import { rows } from '../flush/harness'
 import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
@@ -358,7 +358,17 @@ for (const mode of ['newer-request', 'throw'] as const) {
             assert.equal(readTabRecord()?.sessionId, installedId)
             assert.equal(notices, 0)
             if (newer) assert.equal(newer.isCurrent(), true)
-            await loaded.page.flusher.flush({ strict: true })
+            // An untouched continuation is intentionally deferred until its first own entry.
+            const head = loaded.page.live.state
+            append(
+                loaded.page,
+                {
+                    kind: 'edit',
+                    step: editStep(initialLife(head.initialLife, head.initialLife + 1)),
+                },
+                { ...head, initialLife: head.initialLife + 1 },
+            )
+            await loaded.page.tab.run(() => loaded.page.flusher.flush({ strict: true }))
             assert.equal((await readOpen(loaded.page, installedId)).session.id, installedId)
         } finally {
             newer?.dispose()
