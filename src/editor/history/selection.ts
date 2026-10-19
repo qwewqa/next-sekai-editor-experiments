@@ -82,7 +82,11 @@ export const requestRestore = async (key: EntryKey) => {
     try {
         await restoreEntry(key)
     } catch (error) {
-        if (generation !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration()) return
+        if (
+            generation !== peekSourceGeneration.value ||
+            historyGeneration !== historyViewGeneration()
+        )
+            return
         if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
