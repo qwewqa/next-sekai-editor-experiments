@@ -25,4 +25,6 @@ export const clearManagerDisclosure = (request = pending.value) => {
     if (pending.value === request) pending.value = undefined
 }
 
-onResetState(() => clearManagerDisclosure())
+onResetState(() => {
+    clearManagerDisclosure()
+})

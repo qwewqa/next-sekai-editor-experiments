@@ -12,10 +12,13 @@ export const showManagerModal = (tab: ManagerTab, options: ManagerOptions = {}) 
     const props: { tab: ManagerTab; disclosureRequest?: ManagerDisclosureRequest } = { tab }
     const result = showModal(ManagerModal, props, { size: 'large' })
     if (options.revealCurrent) {
-        const modal = modals.at(-1)!
+        const modal = modals.at(-1)
+        if (!modal) return
         const request = requestManagerDisclosure(tab, { kind: 'modal', id: modal.id })
         props.disclosureRequest = request
-        void result.finally(() => clearManagerDisclosure(request))
+        void result.finally(() => {
+            clearManagerDisclosure(request)
+        })
     } else clearManagerDisclosure()
 }
 

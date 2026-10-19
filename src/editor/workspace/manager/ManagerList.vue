@@ -97,7 +97,7 @@ const allShown = computed(() => scope.value.shownCount.value === scope.value.tot
 const disclosureTab = computed(() => props.model.owner === 'groupId' ? 'groups' : 'stages')
 const requestedDisclosure = computed(() => {
     const request = managerDisclosureRequest.value
-    if (!request || request.tab !== disclosureTab.value ||
+    if (request?.tab !== disclosureTab.value ||
         props.scrollKey !== `${request.destination.kind}:${request.tab}`) return
     if (request.destination.kind === 'modal' && request !== disclosureOwner) return
     return request
