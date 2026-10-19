@@ -349,7 +349,7 @@ const expectCounts = async (page: Page, counts?: [number, number]) => {
 // is the target; outside, it is not.
 const expectHit = async (control: Locator, width: number, height: number) => {
     const probes = await control.evaluate(
-        (element, [width, height]) => {
+        (element, { width, height }) => {
             const box = element.getBoundingClientRect()
             const x = box.x + box.width / 2
             const y = box.y + box.height / 2
@@ -376,7 +376,7 @@ const expectHit = async (control: Locator, width: number, height: number) => {
                 ],
             }
         },
-        [width, height],
+        { width, height },
     )
     expect(probes).toEqual({
         inside: [true, true, true, true],
