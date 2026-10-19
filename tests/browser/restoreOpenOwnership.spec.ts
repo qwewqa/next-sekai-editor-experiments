@@ -55,7 +55,8 @@ const write = (page: Page, content: number[], name = 'race.nxsp') =>
     )
 const launchOpen = (page: Page, name = 'race.nxsp') =>
     page.evaluate(async (name) => {
-        const { openProject } = await import('/src/editor/commands/open/project.ts')
+        const { openProject } =
+            (await import('/src/editor/commands/open/project.ts')) as typeof import('../../src/editor/commands/open/project')
         const handle = await (await navigator.storage.getDirectory()).getFileHandle(name)
         void openProject(await handle.getFile(), handle).then(() => {
             if (window.switchRace) window.switchRace.done = true
@@ -80,11 +81,16 @@ const imported = (page: Page) =>
         .toBe(0)
 const snapshot = (page: Page) =>
     page.evaluate(async () => {
-        const { session } = await import('/src/history/session.ts')
-        const { liveState, canUndo, headStep } = await import('/src/history/stack.ts')
-        const { readTabRecord } = await import('/src/local/startup/tab.ts')
-        const { previousSession } = await import('/src/local/startup/api.ts')
-        const { exportMemory } = await import('/src/editor/commands/exportLevel/memory.ts')
+        const { session } =
+            (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+        const { liveState, canUndo, headStep } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { readTabRecord } =
+            (await import('/src/local/startup/tab.ts')) as typeof import('../../src/local/startup/tab')
+        const { previousSession } =
+            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+        const { exportMemory } =
+            (await import('/src/editor/commands/exportLevel/memory.ts')) as typeof import('../../src/editor/commands/exportLevel/memory')
         return {
             session: session.value,
             life: liveState.value.initialLife,
@@ -99,7 +105,8 @@ const snapshot = (page: Page) =>
     })
 const newChart = (page: Page) =>
     page.evaluate(async () => {
-        const { resetState } = await import('/src/history/index.ts')
+        const { resetState } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history/index')
         resetState(false)
         await window.nseFlushTest!.flusher.outgoing
     })
@@ -171,7 +178,8 @@ test('Reopen forks when a different tab now binds the same physical file', async
         }, first),
     ).toBe(true)
     const result = await page.evaluate(async (first) => {
-        const { restoreSession } = await import('/src/local/startup/api.ts')
+        const { restoreSession } =
+            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
         return restoreSession(first)
     }, first)
     expect(result).toBe(true)
@@ -190,7 +198,8 @@ for (const change of ['edit-undo', 'new', 'newer-restore'] as const) {
         await newChart(page)
         await hold(page, 'readSnapshot')
         await page.evaluate(async (target) => {
-            const { restoreSession } = await import('/src/local/startup/api.ts')
+            const { restoreSession } =
+                (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             void restoreSession(target).then((result) => {
                 window.switchRace.done = true
                 window.switchRace.result = result
@@ -200,13 +209,16 @@ for (const change of ['edit-undo', 'new', 'newer-restore'] as const) {
         if (change === 'new') await newChart(page)
         else if (change === 'newer-restore')
             await page.evaluate(async (target) => {
-                const { restoreAsCopy } = await import('/src/local/startup/api.ts')
+                const { restoreAsCopy } =
+                    (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
                 await restoreAsCopy(target)
             }, target)
         else
             await page.evaluate(async () => {
-                const { liveState, pushState, undoState } = await import('/src/history/stack.ts')
-                const { initialLife } = await import('/tests/helpers/historySteps.ts')
+                const { liveState, pushState, undoState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                const { initialLife } =
+                    (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
                 const before = liveState.value
                 pushState(initialLife(before.initialLife, before.initialLife + 1), {
                     ...before,
@@ -272,7 +284,8 @@ test('unshown committed damage persists its partial safety state for a later Res
     expect(chain.file).toBeUndefined()
     const target = String(chain.head)
     await page.evaluate(async (target) => {
-        const { restoreSession } = await import('/src/local/startup/api.ts')
+        const { restoreSession } =
+            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
         await restoreSession(target)
     }, target)
     expect((await snapshot(page)).partial).toBe(true)
@@ -297,7 +310,8 @@ test('old read cleanup and batches cannot address a replacement worker read', as
         if (next.kind !== 'nxsp') throw new Error('not a project')
         await worker.call('openDrop', old.id)
         const stale = await worker.call('openBatch', { id: old.id, n: 0 })
-        const { createHistoryOperation } = await import('/src/history/createHistoryOperation.ts')
+        const { createHistoryOperation } =
+            (await import('/src/history/createHistoryOperation.ts')) as typeof import('../../src/history/createHistoryOperation')
         const stored = await worker.call('openStore', {
             id: next.id,
             ids: {
@@ -338,13 +352,19 @@ for (const hook of ['edit', 'newer-request', 'throw'] as const) {
         const result = await page.evaluate(
             async ({ target, hook }) => {
                 const { sessionContext, setSessionContext, restoreAsCopy } =
-                    await import('/src/local/startup/api.ts')
-                const { onResetState } = await import('/src/history/resetHooks.ts')
-                const { createSwitchRequest } = await import('/src/editor/switchRequest.ts')
-                const { liveState, pushState } = await import('/src/history/stack.ts')
-                const { initialLife } = await import('/tests/helpers/historySteps.ts')
-                const { session } = await import('/src/history/session.ts')
-                const { view } = await import('/src/editor/view.ts')
+                    (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+                const { onResetState } =
+                    (await import('/src/history/resetHooks.ts')) as typeof import('../../src/history/resetHooks')
+                const { createSwitchRequest } =
+                    (await import('/src/editor/switchRequest.ts')) as typeof import('../../src/editor/switchRequest')
+                const { liveState, pushState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                const { initialLife } =
+                    (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+                const { session } =
+                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                const { view } =
+                    (await import('/src/editor/view.ts')) as typeof import('../../src/editor/view')
                 const context = sessionContext()!
                 setSessionContext(
                     {
@@ -419,12 +439,18 @@ for (const navigate of [false, true]) {
     }) => {
         await start(page)
         const result = await page.evaluate(async (navigate) => {
-            const { attachOpenedBgm } = await import('/src/local/open/project.ts')
-            const { resetState } = await import('/src/history/index.ts')
-            const { session } = await import('/src/history/session.ts')
-            const { liveState, replaceState, pushState } = await import('/src/history/stack.ts')
-            const { initialLife } = await import('/tests/helpers/historySteps.ts')
-            const { createWaveform } = await import('/src/waveform.ts')
+            const { attachOpenedBgm } =
+                (await import('/src/local/open/project.ts')) as typeof import('../../src/local/open/project')
+            const { resetState } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history/index')
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            const { liveState, replaceState, pushState } =
+                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+            const { initialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            const { createWaveform } =
+                (await import('/src/waveform.ts')) as typeof import('../../src/waveform')
             const hash = 'a'.repeat(32)
             replaceState({
                 ...liveState.value,
@@ -500,7 +526,8 @@ test('Open Other captures authority before its first lazy flow import', async ({
         await route.continue()
     })
     await page.evaluate(async () => {
-        const { fileActions } = await import('/src/editor/file/actions.ts')
+        const { fileActions } =
+            (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
         fileActions.openOtherVersion?.()
     })
     await expect.poll(() => !!releaseRoute).toBe(true)
@@ -509,7 +536,7 @@ test('Open Other captures authority before its first lazy flow import', async ({
     releaseRoute!()
     // Both imports share the same module promise; the earlier action continuation runs first.
     await page.evaluate(async () => {
-        await import('/src/editor/save/flow.ts')
+        ;(await import('/src/editor/save/flow.ts')) as typeof import('../../src/editor/save/flow')
     })
     expect(await snapshot(page)).toEqual(expected)
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -521,8 +548,10 @@ for (const boundary of ['readHandle', 'getFile'] as const) {
         await opened(page)
         if (boundary === 'readHandle') await hold(page, 'readHandle')
         await page.evaluate(async (boundary) => {
-            const { openOtherVersion } = await import('/src/editor/save/flow.ts')
-            const { forgetHandle, rememberHandle } = await import('/src/editor/save/env.ts')
+            const { openOtherVersion } =
+                (await import('/src/editor/save/flow.ts')) as typeof import('../../src/editor/save/flow')
+            const { forgetHandle, rememberHandle } =
+                (await import('/src/editor/save/env.ts')) as typeof import('../../src/editor/save/env')
             const flusher = window.nseFlushTest!.flusher
             const chainId = flusher.session!.chainId
             forgetHandle(chainId)
