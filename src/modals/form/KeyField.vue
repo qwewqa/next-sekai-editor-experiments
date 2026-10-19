@@ -144,10 +144,11 @@ const onBlur = () => {
         <template #default="{ textId }">
             <!-- Unassigned is muted, and italic outside CJK, so bound keys stand out. -->
             <button
-                class="key-field-button w-full rounded-2xl bg-button px-4 py-1 text-left shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="key-field-button btn btn-secondary w-full rounded-2xl px-4 py-1 text-left"
                 :class="{
                     'animate-pulse': isActive,
-                    'key-field-unassigned text-fg/80': !isActive && !formatShortcut(modelValue),
+                    'key-field-unassigned text-fg/80 active:text-fg-strong':
+                        !isActive && !formatShortcut(modelValue),
                 }"
                 type="button"
                 :title="

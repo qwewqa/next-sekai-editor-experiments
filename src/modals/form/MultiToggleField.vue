@@ -26,14 +26,14 @@ const shown = computed(() =>
     <BaseField :label>
         <!-- Named by its row; a checkbox where it can be mixed, as ARIA has no mixed switch. -->
         <template #default="{ textId }">
-            <div class="form-field-toggle group">
+            <div class="form-field-toggle">
                 <input
-                    class="w-full rounded-full bg-button px-4 py-1 text-left shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                    class="btn btn-secondary w-full rounded-full px-4 py-1 text-left"
                     type="button"
                     :role="mixable ? 'checkbox' : 'switch'"
                     :aria-checked="modelValue ?? 'mixed'"
                     :aria-labelledby="textId"
-                    :class="{ 'text-fg/80': modelValue === undefined }"
+                    :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
                     :value="shown"
                     :title="shown"
                     @click="modelValue = !modelValue"

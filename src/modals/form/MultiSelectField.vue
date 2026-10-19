@@ -90,7 +90,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             <span
                 v-if="$slots.leading"
                 v-show="!leadless"
-                class="form-field-select-lead group-active:text-on-accent"
+                class="form-field-select-lead group-active:text-fg-strong"
                 aria-hidden="true"
             >
                 <slot name="leading" />
@@ -99,8 +99,8 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
                 v-model.lazy="modelValue"
                 :disabled
                 :title="shown"
-                :class="{ 'text-fg/80': modelValue === undefined }"
-                class="w-full appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none"
+                :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
+                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-70"
                 @change="resyncSelect($event, () => modelValue)"
             >
                 <!-- The value while objects disagree; never listed or committed. -->
@@ -145,9 +145,9 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             <SelectValue
                 :value="shown"
                 :class="{ 'text-fg/80': modelValue === undefined }"
-                class="group-active:text-on-accent"
+                class="group-active:text-fg-strong"
             />
-            <span class="form-field-select-icon group-active:text-on-accent" aria-hidden="true">
+            <span class="form-field-select-icon group-active:text-fg-strong" aria-hidden="true">
                 <ChevronIcon direction="down" />
             </span>
         </div>

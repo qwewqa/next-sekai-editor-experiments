@@ -21,9 +21,9 @@ const shown = computed(() =>
     <BaseField :label>
         <!-- A switch named by its row; the shown state stays its text. -->
         <template #default="{ textId }">
-            <div class="form-field-toggle group">
+            <div class="form-field-toggle">
                 <input
-                    class="w-full rounded-full bg-button px-4 py-1 text-left shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                    class="btn btn-secondary w-full rounded-full px-4 py-1 text-left"
                     type="button"
                     role="switch"
                     :aria-checked="modelValue"
