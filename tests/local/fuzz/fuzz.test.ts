@@ -6,8 +6,15 @@ import test from 'node:test'
 import { readJournal } from '../../../src/local/journal/format'
 import { checkPart } from '../../../src/local/nxsp/manifest'
 import { readNxsp } from '../../../src/local/nxsp/read'
+import { MANIFEST_VERSION } from '../../../src/local/nxsp/version'
 import { createWorld } from '../../../src/local/testing/world'
 import { ZipReader } from '../../../src/zip/reader'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialStep,
+    nativeOperation,
+} from '../../helpers/historySteps'
 import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
@@ -118,12 +125,29 @@ test('the ZIP reader rejects or reads every mutated archive, by its own errors',
 
 test('the manifest parser reports every mutated part, never throwing', () => {
     const base: unknown = {
-        version: 1,
-        entries: [{ kind: 'init', time: 1, label: 'x', snapshot: '0'.repeat(32), noteCount: 0 }],
+        version: MANIFEST_VERSION,
+        entries: [
+            {
+                kind: 'init',
+                time: 1,
+                operation: futureFixtureOperation('fuzz-manifest-origin'),
+                snapshot: '0'.repeat(32),
+                noteCount: 0,
+            },
+        ],
         roots: {},
         nodes: {},
         chunks: [],
-        undoStack: { base: 0, slots: [{ snapshot: '0'.repeat(32), label: 'x' }], index: 0 },
+        undoStack: {
+            base: 0,
+            slots: [
+                {
+                    snapshot: '0'.repeat(32),
+                    step: initialStep(futureFixtureOperation('fuzz-manifest-origin')),
+                },
+            ],
+            index: 0,
+        },
     }
     const values: unknown[] = [null, -1, 1.5, '', 'x', [], {}, true, 2 ** 53, '0'.repeat(32)]
     /** The base with values replaced and keys renamed, as `choices` decide in turn. */
@@ -158,7 +182,19 @@ test('the journal parser reads or refuses every mutated journal, never throwing'
     const page = await openJournalPage(world, 'a')
     const a = stateOf(goldenChart())
     const session = beginSession(page, a)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(
+        page,
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'Changed note',
+                ),
+            ),
+        },
+        widen(a),
+    )
     assert.equal(page.writer.write(), true)
     const text = page.storage.getItem(`nse.journal.${session.id}`)
     assert.ok(text)

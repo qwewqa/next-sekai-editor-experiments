@@ -9,6 +9,7 @@ import { checkStored } from '../../src/local/testing/invariants'
 import { createWorld, type World } from '../../src/local/testing/world'
 import type { WorkerContext } from '../../src/local/worker/handlers'
 import { openHandlers } from '../../src/local/worker/openHandlers'
+import { editStep, futureFixtureOperation, nativeOperation } from '../helpers/historySteps'
 import { openPage, rows, testId, workerCore, type Page } from './flush/harness'
 import { append, beginSession, openJournalPage } from './journal/harness'
 import { fresh } from './nxsp/chain'
@@ -57,7 +58,14 @@ test('an open stores the binding’s handle in its own store, and an unlink remo
                 options: { history: true, bgm: true },
             },
         },
-        labels: { opened: 'Opened coconut.nxsp', changedOutside: 'Changed outside the editor' },
+        operations: {
+            opened: futureFixtureOperation('handle-open', {}, 'Opened coconut.nxsp'),
+            changedOutside: futureFixtureOperation(
+                'handle-external-change',
+                {},
+                'Changed outside the editor',
+            ),
+        },
         wall: 2_000_000,
         appVersion: '0.6.0',
     }
@@ -182,7 +190,19 @@ test('startup and recovery read no stored handle; a Save’s write-back after th
         }),
     )
     // A change only the journal holds: the next load replays it, then continues the session.
-    append(first, 'edit', 'Changed note', widen(a))
+    append(
+        first,
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'Changed note',
+                ),
+            ),
+        },
+        widen(a),
+    )
     assert.equal(first.writer.write(), true)
     first.tab.kill()
 

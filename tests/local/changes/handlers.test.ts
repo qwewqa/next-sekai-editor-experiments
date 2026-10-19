@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { NoteObject } from '../../../src/chart/note'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { noteObjectOf } from '../../../src/local/records/extract'
@@ -15,6 +16,7 @@ import {
 import { createState, type State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { editStep, nativeOperation } from '../../helpers/historySteps'
 import { openPage } from '../flush/harness'
 import { goldenChart, note } from '../records/charts'
 import { beginIn } from '../startup/harness'
@@ -59,7 +61,19 @@ const stored = async (beats: number[]) => {
     for (const beat of beats) {
         const next = nudge(states.at(-1)!, beat)
         states.push(next)
-        page.flusher.append('edit', () => `Nudged ${beat}`, next, true)
+        page.flusher.append(
+            {
+                kind: 'edit',
+                step: editStep(
+                    nativeOperation(
+                        { id: 'nse.object.move', data: { subject: 'note', targets: 1 } },
+                        `Nudged ${beat}`,
+                    ),
+                ),
+            },
+            next,
+            true,
+        )
     }
     await page.flusher.flush({ strict: true })
     const handlers = changeHandlers({ core: page.core, test: true, emit: () => undefined })
@@ -115,8 +129,8 @@ test('findEdits: newest first, across slices, with the entry each was compared w
     const seqs = storedEntries(world, session.id)
     // Beat 12 was nudged by edits 4, 44 and 84 (the 1st edit is seq 1).
     assert.deepEqual(
-        result.matches.map((match) => match.label),
-        ['Nudged 12', 'Nudged 12', 'Nudged 12'],
+        result.matches.map(captureEntryDescription),
+        [84, 44, 4].map((n) => captureEntryDescription(seqs[n])),
     )
     assert.deepEqual(
         result.matches.map((match) => match.seq),
