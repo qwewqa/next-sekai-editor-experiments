@@ -337,7 +337,8 @@ const focusElement = (id: string, part: FocusPart) => {
 const focusedPart = (event: Event): FocusPart =>
     ((event.target as HTMLElement).dataset.historyPart as FocusPart | undefined) ?? 'row'
 const openerPart = (element: HTMLElement): FocusPart =>
-    (element.closest<HTMLElement>('[data-history-part]')?.dataset.historyPart as FocusPart | undefined) ?? 'row'
+    (element.closest<HTMLElement>('[data-history-part]')?.dataset.historyPart as
+        FocusPart | undefined) ?? 'row'
 const tabIndex = (row: Row, part: FocusPart) =>
     row.id === cursorId.value && focusPart.value === part ? 0 : -1
 const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = true) => {
@@ -796,7 +797,11 @@ const menuItems = computed(() => [
     },
     { key: 'restore', label: i18n.value.peek.restore, disabled: !menu.value?.row.selectable },
 ])
-const showDetails = (row: EntryRow, opener?: HTMLElement, part = opener ? openerPart(opener) : focusPart.value) => {
+const showDetails = (
+    row: EntryRow,
+    opener?: HTMLElement,
+    part = opener ? openerPart(opener) : focusPart.value,
+) => {
     void openOperationDetails(recipeOf(row), row.entry.time, opener, () => {
         restoreRowFocus(row.id, part)
     })
@@ -867,9 +872,11 @@ const onContextMenu = (event: MouseEvent, row: Row) => {
         if (!settings.touchLongPressContextMenu) return
         suppressClick = true
     }
-    const anchor = event.target instanceof HTMLElement
-        ? event.target.closest<HTMLElement>('[data-history-part]') ?? event.currentTarget as HTMLElement
-        : event.currentTarget as HTMLElement
+    const anchor =
+        event.target instanceof HTMLElement
+            ? (event.target.closest<HTMLElement>('[data-history-part]') ??
+              (event.currentTarget as HTMLElement))
+            : (event.currentTarget as HTMLElement)
     openMenu(row, anchor, touch)
 }
 
