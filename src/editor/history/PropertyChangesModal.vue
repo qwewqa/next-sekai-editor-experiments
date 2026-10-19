@@ -49,10 +49,12 @@ onBeforeUnmount(() => {
     <BaseModal :title="i18n.historyChanges.title" @close="emit('close')">
         <div class="min-w-0 select-text space-y-1 [overflow-wrap:anywhere]" data-property-context>
             <p class="whitespace-pre-wrap font-bold">{{ peekedLabel(comparison.request) }}</p>
-            <p class="text-sm text-fg/75">{{ formatDateTimeSeconds(comparison.request.time) }}</p>
-            <p class="whitespace-pre-wrap text-sm">{{ summary }}</p>
+            <p class="text-fg/80">{{ formatDateTimeSeconds(comparison.request.time) }}</p>
+            <p v-if="summary !== peekedLabel(comparison.request)" class="whitespace-pre-wrap">
+                {{ summary }}
+            </p>
         </div>
-        <div class="min-h-24 min-w-0 text-sm" data-property-comparison>
+        <div class="min-h-24 min-w-0" data-property-comparison>
             <p v-if="inspection?.status === 'loading' && inspection.delayed">
                 {{ i18n.peek.loadingChanges }}
             </p>
@@ -93,7 +95,7 @@ onBeforeUnmount(() => {
                         >
                         <span
                             v-if="section.status"
-                            class="rounded bg-header px-2 py-0.5 text-xs"
+                            class="rounded-full bg-fg/[.08] px-2 py-0.5 text-xs font-normal"
                             data-property-badge
                             >{{ i18n.historyChanges[section.status] }}</span
                         >
@@ -104,16 +106,18 @@ onBeforeUnmount(() => {
                         :data-property-row="row.field"
                         class="min-w-0 border-t border-fg/15 py-3"
                     >
-                        <h4 class="mb-2 font-bold">{{ propertyFieldLabel(row.field) }}</h4>
+                        <h4 class="mb-2 text-sm font-bold text-fg/80">
+                            {{ propertyFieldLabel(row.field) }}
+                        </h4>
                         <div class="grid min-w-0 grid-cols-2 gap-3">
                             <div class="min-w-0" data-property-before>
-                                <p class="mb-1 text-xs text-fg/75">
+                                <p class="mb-1 text-xs text-fg/80">
                                     {{ i18n.historyChanges.before }}
                                 </p>
                                 <PropertyChangeValue :value="row.before" :field="row.field" />
                             </div>
                             <div class="min-w-0" data-property-after>
-                                <p class="mb-1 text-xs text-fg/75">
+                                <p class="mb-1 text-xs text-fg/80">
                                     {{ i18n.historyChanges.after }}
                                 </p>
                                 <PropertyChangeValue :value="row.after" :field="row.field" />
@@ -121,7 +125,11 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </section>
-                <div class="flex flex-wrap items-center justify-between gap-2" data-property-count>
+                <div
+                    v-if="page.shown < page.total"
+                    class="flex flex-wrap items-center gap-2"
+                    data-property-count
+                >
                     <span>{{
                         interpolateRaw(
                             i18n.historyChanges.shown,
@@ -130,9 +138,8 @@ onBeforeUnmount(() => {
                         )
                     }}</span>
                     <button
-                        v-if="page.shown < page.total"
                         type="button"
-                        class="rounded-full bg-button px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2"
+                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         data-property-more
                         @click="limit += PROPERTY_PAGE_SIZE"
                     >

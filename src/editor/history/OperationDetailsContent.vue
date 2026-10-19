@@ -12,7 +12,8 @@ import {
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
-import { formatDateTimeSeconds } from '../../i18n/when'
+import { formatClockSeconds, formatDateTimeSeconds } from '../../i18n/when'
+import ChevronIcon from '../workspace/ChevronIcon.vue'
 
 const props = defineProps<{ recipe: OperationRecipe; time?: number; summaryProvided?: boolean }>()
 const PAGE = 20
@@ -32,18 +33,26 @@ const toggle = (index: number, event: Event) => {
     else next.delete(index)
     expanded.value = next
 }
+// A step on its group's day shows its clock; the group's own line gives the date.
+const childTime = (at: number) =>
+    props.time !== undefined && new Date(at).toDateString() === new Date(props.time).toDateString()
+        ? formatClockSeconds(at)
+        : formatDateTimeSeconds(at)
 </script>
 
 <template>
+    <!-- Opened from the keyboard, focus lands here, so the dialog opens at its top. -->
     <div
-        class="min-w-0 select-text space-y-5 text-sm [overflow-wrap:anywhere]"
+        class="min-w-0 select-text space-y-5 outline-none [overflow-wrap:anywhere]"
+        :tabindex="summaryProvided ? undefined : -1"
+        :data-autofocus="summaryProvided ? undefined : ''"
         data-operation-details
     >
         <div v-if="!summaryProvided" class="space-y-1">
             <p class="whitespace-pre-wrap font-bold" data-operation-description>
                 {{ details.description }}
             </p>
-            <p v-if="time !== undefined" class="text-fg/75" data-operation-time>
+            <p v-if="time !== undefined" class="text-fg/80" data-operation-time>
                 {{ formatDateTimeSeconds(time) }}
             </p>
             <p v-if="recipe.kind !== 'single'" data-operation-count>
@@ -64,11 +73,11 @@ const toggle = (index: number, event: Event) => {
                     :data-operation-field="row.key"
                     class="min-w-0"
                 >
-                    <dt class="text-xs text-fg/75">{{ row.label }}</dt>
+                    <dt class="text-xs text-fg/80">{{ row.label }}</dt>
                     <dd class="whitespace-pre-wrap">{{ row.value }}</dd>
                     <dd
                         v-if="row.nameShortened"
-                        class="text-xs text-fg/75"
+                        class="text-xs text-fg/80"
                         data-operation-shortened
                     >
                         {{ i18n.history.details.nameShortened }}
@@ -76,37 +85,44 @@ const toggle = (index: number, event: Event) => {
                 </div>
             </dl>
         </section>
+        <!-- The group's steps: one line each, the chevron leading, the time at the end. -->
         <div v-if="children.length" class="space-y-2" data-operation-children>
-            <details
-                v-for="(member, index) in children"
-                :key="member.id ?? index"
-                class="border-t border-fg/15"
-                @toggle="toggle(index, $event)"
-            >
-                <summary
-                    class="min-h-11 cursor-pointer py-3 font-bold outline-offset-2 focus-visible:outline focus-visible:outline-2"
+            <div>
+                <details
+                    v-for="(member, index) in children"
+                    :key="member.id ?? index"
+                    class="border-t border-fg/15"
+                    @toggle="toggle(index, $event)"
                 >
-                    <span class="whitespace-pre-wrap">{{
-                        describeMember(member, memberContext)
-                    }}</span>
-                    <span
-                        v-if="member.time !== undefined"
-                        class="block pl-4 text-xs font-normal text-fg/75"
-                        >{{ formatDateTimeSeconds(member.time) }}</span
+                    <summary
+                        class="ghost flex cursor-pointer list-none items-baseline gap-2 rounded-lg px-2 py-2 [&::-webkit-details-marker]:hidden"
                     >
-                </summary>
-                <OperationDetailsContent
-                    v-if="expanded.has(index)"
-                    :recipe="childRecipe(member)"
-                    :time="member.time"
-                    summary-provided
-                    class="pb-4 pl-4"
-                />
-            </details>
+                        <ChevronIcon
+                            :direction="expanded.has(index) ? 'down' : 'right'"
+                            class="self-center"
+                        />
+                        <span class="min-w-0 flex-1 whitespace-pre-wrap">{{
+                            describeMember(member, memberContext)
+                        }}</span>
+                        <span
+                            v-if="member.time !== undefined"
+                            class="shrink-0 text-xs tabular-nums text-fg/80"
+                            >{{ childTime(member.time) }}</span
+                        >
+                    </summary>
+                    <OperationDetailsContent
+                        v-if="expanded.has(index)"
+                        :recipe="childRecipe(member)"
+                        :time="member.time"
+                        summary-provided
+                        class="pb-4 pl-7 pr-2"
+                    />
+                </details>
+            </div>
             <button
                 v-if="children.length < details.children.length"
                 type="button"
-                class="min-h-11 rounded-full bg-button px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 data-operation-more
                 @click="limit += PAGE"
             >
@@ -130,12 +146,12 @@ const toggle = (index: number, event: Event) => {
             <button
                 v-if="(recovery?.length ?? 0) < details.recovery.descriptions.length"
                 type="button"
-                class="min-h-11 rounded-full bg-button px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 @click="recoveryLimit += PAGE"
             >
                 {{ i18n.historyChanges.showMore }}
             </button>
-            <p v-if="details.recovery.omitted" class="text-fg/75">
+            <p v-if="details.recovery.omitted" class="text-fg/80">
                 {{
                     message(
                         context,
