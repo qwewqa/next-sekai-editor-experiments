@@ -982,6 +982,12 @@ test.describe('touch metadata actions', () => {
         await expect(details).toBeVisible()
         expect(await selected(page)).toEqual(before)
         await capture(page, '390-touch-operation-details')
+        await page.setViewportSize({ width: 320, height: 844 })
+        const narrow = await details.boundingBox()
+        expect(narrow!.x).toBeGreaterThanOrEqual(0)
+        expect(narrow!.x + narrow!.width).toBeLessThanOrEqual(320)
+        await capture(page, '320-touch-operation-details')
+        await page.setViewportSize({ width: 390, height: 844 })
         await details.getByRole('button', { name: 'Close', exact: true }).tap()
         await expect(details).toHaveCount(0)
         await body.dispatchEvent('pointerdown', {
