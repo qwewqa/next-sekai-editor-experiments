@@ -375,6 +375,16 @@ const onRowFocus = (event: FocusEvent, row: Row) => {
 }
 const onFocusout = (event: FocusEvent) => {
     if (event.relatedTarget instanceof Node && list.value?.contains(event.relatedTarget)) return
+    // Removing the owned window's focused row is an internal focus handoff.
+    if (
+        event.relatedTarget === null &&
+        replacing.value?.token === focusToken &&
+        replacing.value.filter === historyFilter.value &&
+        !rowById(cursorId.value) &&
+        event.target instanceof Element &&
+        event.target.closest('[data-history-row]')?.id === domId(cursorId.value)
+    )
+        return
     focusInside.value = false
     focusPart.value = 'row'
     focusToken++

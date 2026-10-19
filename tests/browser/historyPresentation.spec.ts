@@ -178,7 +178,15 @@ const seedPagingEntries = async (page: Page) => {
     })
 }
 
-for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'reset'] as const)
+for (const outcome of [
+    'complete',
+    'failed',
+    'keyboard',
+    'filter',
+    'outside',
+    'blur',
+    'reset',
+] as const)
     test(`oldest window replacement preserves navigation ownership: ${outcome}`, async ({
         page,
     }) => {
@@ -191,11 +199,15 @@ for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'r
                 await window.editorTest.appImport<typeof import('../../src/local/start')>(
                     '/src/local/start.ts',
                 )
+            const index = await storageWorker!.call('readTimelineIndex', {
+                sessionId: window.nseFlushTest!.flusher.session!.id,
+            })
+            const oldestBefore = index.pieces.at(-1)!.oldestSeq + 1
             const control = window as unknown as { releaseOldest?: (fail: boolean) => void }
             storageWorker!.call = new Proxy(storageWorker!.call, {
                 async apply(target, self, args) {
                     const result = await Reflect.apply(target, self, args)
-                    if (args[0] === 'readTimeline' && args[1]?.before === 1)
+                    if (args[0] === 'readTimeline' && args[1]?.before === oldestBefore)
                         await new Promise<void>((resolve, reject) => {
                             control.releaseOldest = (fail) => {
                                 control.releaseOldest = undefined
@@ -228,6 +240,8 @@ for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'r
             await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
         } else if (outcome === 'outside') {
             await presentation(page).locator('[data-history-close]').focus()
+        } else if (outcome === 'blur') {
+            await row(page, 'Property 250').evaluate((element) => (element as HTMLElement).blur())
         } else if (outcome === 'reset') {
             await page.evaluate(() => window.editorTest.history.resetState(false))
             await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
@@ -262,6 +276,10 @@ for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'r
                 .toBe(outcome === 'keyboard' ? 'Property 249' : 'Property 250')
             if (outcome === 'outside')
                 await expect(presentation(page).locator('[data-history-close]')).toBeFocused()
+            if (outcome === 'blur')
+                expect(await page.evaluate(() => document.activeElement === document.body)).toBe(
+                    true,
+                )
         }
     })
 
@@ -355,7 +373,7 @@ for (const interruption of ['reset', 'newer jump', 'newest reset'] as const)
         if (interruption === 'reset') expect(sourceRows).toEqual([])
         else {
             expect(sourceRows).toContain(interruption === 'newer jump' ? 200 : 250)
-            expect(sourceRows).not.toContain(0)
+            expect(sourceRows).not.toContain(1)
         }
         if (interruption === 'reset') {
             await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
