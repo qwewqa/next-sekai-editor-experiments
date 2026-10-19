@@ -189,7 +189,7 @@ test('keys: Up crosses the gap, End reads the oldest entry, Home goes back to No
     await expect(selected(page)).toContainText('Day 3 edit 101')
 
     await page.keyboard.press('End')
-    await expect(selected(page)).toContainText('Started a new level')
+    await expect(selected(page)).toContainText('Imported a level')
     await page.keyboard.press('Home')
     await expect(list(page).locator('[data-history-gap]')).toHaveCount(0)
     await expect(selected(page)).toContainText('Now')

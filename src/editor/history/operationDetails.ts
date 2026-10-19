@@ -12,7 +12,7 @@ export const openOperationDetails = async (
     recipe: OperationRecipe,
     time: number,
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined,
-    restoreFocus?: () => void,
+    focusPolicy?: { captureDialog: (dialog: HTMLDialogElement) => void; restoreFocus: () => void },
 ) => {
     if (opening) return
     opening = true
@@ -30,7 +30,14 @@ export const openOperationDetails = async (
             modalOwner !== modals.at(-1)?.id
         )
             return
-        await showModal(StepDetailsModal, { recipe, time, source, peekSource, generation })
+        await showModal(StepDetailsModal, {
+            recipe,
+            time,
+            source,
+            peekSource,
+            generation,
+            captureDialog: focusPolicy?.captureDialog,
+        })
         await nextTick()
         const target = opener?.isConnected ? opener : fallback
         if (
@@ -39,7 +46,7 @@ export const openOperationDetails = async (
             generation === historyViewGeneration() &&
             modalOwner === modals.at(-1)?.id
         ) {
-            if (restoreFocus) restoreFocus()
+            if (focusPolicy) focusPolicy.restoreFocus()
             else if (target?.isConnected && target.getClientRects().length)
                 target.focus({ preventScroll: true })
         }

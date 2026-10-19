@@ -1168,10 +1168,11 @@ test.describe('ARIA', () => {
         await expect(box.locator('[aria-selected="true"]')).toHaveCount(1)
         await expect(row(page, 'Life 2')).toHaveAttribute('aria-selected', 'true')
         // The buttons on the canvas are ordinary buttons.
-        await expect(peekBar(page).locator('[data-peek-main]').getByRole('button')).toHaveText([
-            'Back to Now',
-            'Restore',
-        ])
+        const mainButtons = peekBar(page).locator('[data-peek-main]').getByRole('button')
+        await expect(mainButtons).toHaveCount(3)
+        await expect(mainButtons.nth(0)).toHaveAccessibleName('Step Details')
+        await expect(mainButtons.nth(1)).toHaveAccessibleName('Back to Now')
+        await expect(mainButtons.nth(2)).toHaveAccessibleName('Restore')
         await expect(peekBar(page).locator('[data-change-arrow]')).toHaveCount(2)
     })
 })

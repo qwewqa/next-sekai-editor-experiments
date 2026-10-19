@@ -1,7 +1,16 @@
 import { computed, shallowRef, watch, type Ref } from 'vue'
 import type { State } from '../state'
+import { sameFileContent } from '../state/fileContent'
+import { onHistoryAction } from './actions'
 import type { NativeOperation } from './operations'
-import { liveState, peek, isPeeking as peeking, pushState, stackGeneration } from './stack'
+import {
+    liveState,
+    peek,
+    isPeeking as peeking,
+    pushState,
+    stackGeneration,
+    stackMoveRequestGeneration,
+} from './stack'
 
 // Peek (Part 1 §1.4.11): a History entry's state shown read-only in place of the current one,
 // and Restore (§1.4.10.5). Writers read `liveState`, so nothing peeked reaches storage or files.
@@ -273,33 +282,124 @@ watch(
     { flush: 'sync' },
 )
 
+let restoreGeneration = 0
+let cancelRestore: (() => void) | undefined
+
 /**
  * Restores an entry (§1.4.10.5): the snapshot's chart, offset and level info with the current
  * audio, pushed as an undoable `restore` entry. Leaves any peek first. When it already matches
- * the current chart, nothing is pushed.
+ * the current chart, nothing is pushed. Current failures call onFailure synchronously or reject.
  */
-export const restoreEntry = async (key: EntryKey): Promise<void> => {
+export const restoreEntry = async (
+    key: EntryKey,
+    onFailure?: (error: unknown) => void,
+): Promise<void> => {
+    const request = ++restoreGeneration
+    cancelRestore?.()
     const stack = stackGeneration()
     const fromGeneration = sourceGeneration.value
-    const entry = await loadEntry(key)
-    // A New or an open meanwhile replaced the session it belongs to.
-    if (stackGeneration() !== stack || sourceGeneration.value !== fromGeneration) return
-    const live = liveState.value
-    const restored: State = {
-        ...entry.state,
-        bgm: { ...live.bgm, offset: entry.state.bgm.offset },
-        selectedEntities: [],
+    const move = stackMoveRequestGeneration.value
+    let peekRequest = generation.value
+    let content = liveState.value
+    let valid = true
+    let ownLeave: number | undefined
+    let ownState: State | undefined
+    let stateExpected = false
+    let actionExpected = false
+    let stopState: (() => void) | undefined
+    let stopAction: (() => void) | undefined
+
+    const dispose = () => {
+        stopState?.()
+        stopState = undefined
+        stopAction?.()
+        stopAction = undefined
+        if (cancelRestore === invalidate) cancelRestore = undefined
     }
-    if (source?.sameSnapshot(restored, live)) {
+    const invalidate = () => {
+        valid = false
+        dispose()
+    }
+
+    const current = () =>
+        valid &&
+        request === restoreGeneration &&
+        stack === stackGeneration() &&
+        fromGeneration === sourceGeneration.value &&
+        move === stackMoveRequestGeneration.value &&
+        peekRequest === generation.value
+
+    stopState = watch(
+        [liveState, generation, sourceGeneration, stackMoveRequestGeneration],
+        ([state, nextPeek, nextSource, nextMove]) => {
+            if (nextPeek !== peekRequest) {
+                if (nextPeek === ownLeave) {
+                    ownLeave = undefined
+                    peekRequest = nextPeek
+                } else {
+                    invalidate()
+                    return
+                }
+            }
+            if (nextSource !== fromGeneration || nextMove !== move) {
+                invalidate()
+                return
+            }
+            if (stateExpected && state === ownState) {
+                stateExpected = false
+                content = state
+            } else if (!sameFileContent(content, state)) invalidate()
+        },
+        { flush: 'sync' },
+    )
+    stopAction = onHistoryAction((action) => {
+        if (action.kind === 'save' || action.kind === 'export') return
+        if (actionExpected && action.kind === 'restore' && action.state === ownState)
+            actionExpected = false
+        else invalidate()
+    })
+    cancelRestore = invalidate
+
+    const leave = () => {
+        ownLeave = generation.value + 1
         leavePeek()
-        effects?.alreadyMatches()
-        return
+        ownLeave = undefined
     }
-    if (!effects) throw new Error('Restore operation factory is not installed')
-    const operation = effects.restoredOperation(entry.time)
-    leavePeek()
-    pushState(operation, restored, 'restore')
-    notifyRestored(entry.time)
+    const withCurrentAudio = (entry: PeekedEntry): State => ({
+        ...entry.state,
+        bgm: { ...liveState.value.bgm, offset: entry.state.bgm.offset },
+        selectedEntities: [],
+    })
+
+    try {
+        const entry = await loadEntry(key)
+        if (!current()) return
+        const matches = source?.sameSnapshot(withCurrentAudio(entry), liveState.value)
+        if (!current()) return
+        if (matches) {
+            leave()
+            if (current()) effects?.alreadyMatches()
+            return
+        }
+        if (!effects) throw new Error('Restore operation factory is not installed')
+        const operation = effects.restoredOperation(entry.time)
+        if (!current()) return
+        leave()
+        if (!current()) return
+        ownState = withCurrentAudio(entry)
+        stateExpected = true
+        actionExpected = true
+        pushState(operation, ownState, 'restore')
+        stateExpected = false
+        actionExpected = false
+        if (current()) notifyRestored(entry.time)
+    } catch (error) {
+        if (!current()) return
+        if (!onFailure) throw error
+        onFailure(error)
+    } finally {
+        dispose()
+    }
 }
 
 /** What a refusal names: the command's title when a command was refused. */
