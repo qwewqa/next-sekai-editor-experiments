@@ -78,6 +78,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                             ends: batch.ends,
                             snapshots: [batch.snapshot],
                             media: [],
+                            entries: [],
                         } as unknown as FlushBatch,
                         waiter,
                     ),

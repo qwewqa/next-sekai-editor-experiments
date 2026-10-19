@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { EARLY_LIMIT, onHistoryAction, type HistoryAction } from '../../../src/history/actions'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { pushState, resetStates, undoState } from '../../../src/history/stack'
 import { replay } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
+import { initialLife, initialStep } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Actions before storing starts are kept for it, but boundedly: a start that never comes mustn't
@@ -22,8 +24,9 @@ const stackOf = (actions: readonly HistoryAction[]) => {
     }
     const entries = actions.map((action, seq) => ({
         seq: seq + 1,
-        kind: action.kind === 'reset' ? 'init' : action.kind,
-        label: action.name(),
+        ...captureEntryDescription(
+            action.kind === 'reset' ? { kind: 'init', operation: action.step.operation } : action,
+        ),
         snapshot: snapshot(action.state),
     }))
     const { slots, index } = replay(entries)
@@ -35,12 +38,12 @@ const stackOf = (actions: readonly HistoryAction[]) => {
 test('early actions past the limit are cut to the stack they give, so later actions follow', () => {
     const a = stateOf(goldenChart())
     const at = (life: number): State => ({ ...a, initialLife: life })
-    resetStates({ isDirty: false, name: () => 'Initialize', state: at(0) })
+    resetStates({ isDirty: false, step: initialStep(), state: at(0) })
     // What the live stack holds, as the editor's own moves leave it.
     const live = [0]
     let index = 0
     const push = (life: number) => {
-        pushState(() => `Edit ${life}`, at(life))
+        pushState(initialLife(live[index]!, life), at(life))
         live.length = index + 1
         live.push(life)
         index++

@@ -436,6 +436,8 @@ export const writeFlush = async (
         !session && batch.session.parent
             ? await tx.get('sessions', batch.session.parent.id)
             : undefined
+    if (parentRow !== undefined && (!isRow(parentRow) || !isReadableSessionVersion(parentRow.v)))
+        throw new FlushBatchError('Unsupported parent session generation')
 
     // The closure check (§1.6.6): only hashes not known stored in this database at this epoch.
     const missingChunks: string[] = []
