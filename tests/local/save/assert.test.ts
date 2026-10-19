@@ -1,3 +1,4 @@
+import { futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { deflateRaw, inflateRaw } from 'pako'
@@ -132,8 +133,10 @@ const alterations: [string, (plan: WritePlan) => WritePlan][] = [
     [
         'a carried row changed',
         manifest((value) => {
-            const rows = value.entries as unknown as { label: string }[]
-            rows[0]!.label = 'Changed'
+            const rows = value.entries as unknown as { operation?: unknown; step?: {operation:unknown} }[]
+            const row = rows[0]!
+            if (row.step) row.step.operation = futureFixtureOperation('changed-carried-row')
+            else row.operation = futureFixtureOperation('changed-carried-row')
         }),
     ],
     [

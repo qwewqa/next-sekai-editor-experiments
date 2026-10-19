@@ -58,7 +58,7 @@ test('file events capture delivery and fallback once while known descriptions fo
         ['nse.file.save','file','Coconut.nxsp'],['nse.file.save','download','Coconut.nxsp'],
     ])
     expect(result.english).toEqual(['Exported Coconut.nsld','Exported Coconut.nsld','Saved Coconut.nxsp','Downloaded Coconut.nxsp'])
-    expect(result.french[0]).toBe('Coconut.nsld export?')
+    expect(result.french[0]).toBe('Coconut.nsld export\u00e9')
     expect(result.french).not.toEqual(result.english)
     expect(result.stable).toBe(true)
     expect(result.sameHead).toBe(true)
