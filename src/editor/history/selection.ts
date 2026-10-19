@@ -15,6 +15,7 @@ import {
     restoreEntry,
     type EntryKey,
 } from '../../history/peek'
+import { historyViewGeneration } from './state'
 
 // What the History list asks the peek to show (Part 1 §1.4.10.5, §1.4.11): the entry's key, and
 // what the peek bar says of it. Light, so the canvas's bar loads without the panel.
@@ -77,10 +78,11 @@ export const requestPeek = (info: PeekedInfo) => {
  */
 export const requestRestore = async (key: EntryKey) => {
     const generation = peekSourceGeneration.value
+    const historyGeneration = historyViewGeneration()
     try {
         await restoreEntry(key)
     } catch (error) {
-        if (generation !== peekSourceGeneration.value) return
+        if (generation !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration()) return
         if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()

@@ -196,7 +196,7 @@ for (const size of cases)
                     window.editorTest.settings.locale = locale
                 }, locale)
                 const buttons = page.locator('[data-peek-bar] button')
-                await expect(buttons).toHaveCount(5)
+                await expect(buttons).toHaveCount(6)
                 const boxes = await buttons.evaluateAll((elements) =>
                     elements.map((element) => {
                         const box = element.getBoundingClientRect()

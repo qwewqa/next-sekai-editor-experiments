@@ -163,6 +163,53 @@ test('filtering out the active peek does not announce Now as selected or replace
     expect(await selected(page)).toEqual(before)
 })
 
+test('rejected Restore from a reset session cannot damage or leave the newer peek', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { history, historySteps, appImport } = window.editorTest
+        const [peek, selection, presentation] = await Promise.all([
+            appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
+            appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        peek.setPeekSource({
+            load: (key) => key === 'newer:1'
+                ? Promise.resolve({ state: { ...history.liveState.value, initialLife: 2000 }, time: 2 })
+                : new Promise((_resolve, reject) => { pending.rejectRestore = () => reject(new peek.PeekError('damaged')) }),
+            sameSnapshot: () => false,
+        })
+        pending.restoring = selection.requestRestore('older:1')
+        history.resetState(false)
+        selection.requestPeek({ key: 'newer:1', time: 2, recipe: presentation.captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.futureInitialLife(history.liveState.value.initialLife, 2000, 'Newer source')) } }]) })
+    })
+    await expect.poll(async () => (await selected(page)).displayed).toBe('newer:1')
+    const before = await selected(page)
+    await page.evaluate(async () => {
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        pending.rejectRestore()
+        await pending.restoring
+    })
+    expect(await selected(page)).toEqual(before)
+    expect(await page.evaluate(async () => {
+        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        return damagedEntries.value.has('older:1')
+    })).toBe(false)
+    await page.evaluate(async () => {
+        const { requestRestore } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        pending.restoring = requestRestore('ordinary:1')
+        window.editorTest.settings.locale = 'fr'
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+        pending.rejectRestore()
+        await pending.restoring
+    })
+    expect(await page.evaluate(async () => {
+        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        return damagedEntries.value.has('ordinary:1')
+    })).toBe(true)
+    expect((await selected(page)).requested).toBe('newer:1')
+})
+
 test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({
     page,
 }) => {
@@ -401,6 +448,10 @@ test('selected Details keeps exact members and request identity while text reloc
     await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
         1,
     )
+    const childBody = details.locator('[data-operation-children] [data-operation-details]')
+    await expect(childBody.locator('[data-operation-description], [data-operation-time]')).toHaveCount(0)
+    await expect(childBody.locator('[data-operation-field="before"]')).toContainText('1,030')
+    await expect(childBody.locator('[data-operation-field="after"]')).toContainText('1,031')
     await capture(page, 'desktop-operation-details')
     const before = await details.locator('[data-operation-description]').first().textContent()
     await page.evaluate(() => {
@@ -760,6 +811,17 @@ for (const width of [1600, 390, 320]) {
                 await page.emulateMedia({ colorScheme: 'dark' })
                 await capture(page, `${width}-dark`)
             }
+            await row(page, 'Added 2 notes').click()
+            if (await viewChart(page).isVisible()) await viewChart(page).click()
+            await expect(page.locator('[data-peek-main]')).toBeVisible()
+            await expect(page.locator('[data-peek-change]')).toHaveText('2 changes')
+            const geometry = await page.locator('[data-peek-bar]').evaluate((bar) => {
+                const main = bar.querySelector('[data-peek-main]')!.getBoundingClientRect()
+                const navigation = bar.querySelector('[data-peek-navigation]')!.getBoundingClientRect()
+                return { primary: main.height, gap: navigation.top - main.bottom, secondary: navigation.height }
+            })
+            expect(geometry).toEqual({ primary: 52, gap: 8, secondary: 32 })
+            await capture(page, `${width}-active-peek-bars`)
         })
     })
 }
@@ -900,9 +962,12 @@ test('View Chart is disabled for the placeholder and for a pending different end
         const recipe = (name: string) =>
             captureOperationRecipe([
                 {
-                    description: window.editorTest.historySteps.editStep(
-                        window.editorTest.historySteps.futureFixtureOperation(name),
-                    ),
+                    description: {
+                        kind: 'edit',
+                        step: window.editorTest.historySteps.editStep(
+                            window.editorTest.historySteps.futureFixtureOperation(name),
+                        ),
+                    },
                 },
             ])
         target.requestSecond = () => selection.requestPeek({ key: b, recipe: recipe('B'), time: 2 })
