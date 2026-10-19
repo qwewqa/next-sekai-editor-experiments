@@ -5,6 +5,7 @@ import type { Command } from '../../src/editor/commands'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import { peek, resetStates } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { initialStep, originOperation } from '../helpers/historySteps'
 import { callSites } from './peekCallSites'
 
 const root = new URL('../../', import.meta.url)
@@ -37,7 +38,7 @@ const fakeCommand = (readOnly: boolean) => {
 }
 
 test('while peeking, runCommand runs only read-only commands', () => {
-    resetStates({ isDirty: false, name: () => '', state: {} as State })
+    resetStates({ isDirty: false, step: initialStep(originOperation()), state: {} as State })
     const edit = fakeCommand(false)
     const view = fakeCommand(true)
 

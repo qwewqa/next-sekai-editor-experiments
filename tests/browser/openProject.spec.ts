@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { captureEntryDescription } from '../../src/history/operations'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
@@ -190,14 +191,18 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
     const own = entries!
         .map((row) => row.value)
         .filter((row) => row.sessionId === session.sessionId)
-        .map((row) => [row.seq, row.kind, row.label])
-    expect(own).toEqual([
-        [1, 'init', 'Imported LevelData'],
-        [2, 'edit', 'Added note'],
-        [3, 'edit', 'Changed BGM'],
-        [4, 'save', 'Saved coconut.nxsp'],
-        [5, 'continue', 'Opened coconut.nxsp'],
-    ])
+    expect(own.map((row) => row.seq)).toEqual([1, 2, 3, 4, 5])
+    expect(own.slice(0, 4).map(captureEntryDescription)).toEqual(
+        fresh().input.history!.entries.map(captureEntryDescription),
+    )
+    expect(captureEntryDescription(own[4])).toMatchObject({
+        kind: 'continue',
+        operation: {
+            id: 'nse.origin',
+            version: 1,
+            data: { origin: 'import', source: { text: 'coconut.nxsp' } },
+        },
+    })
 
     // Undo continues where the file left off: the first state has one note fewer.
     const notes = await noteCount(page)
@@ -543,7 +548,9 @@ const edit = (page: Page, initialLife: number) =>
     page.evaluate(async (initialLife) => {
         const { pushState, state } =
             (await import('/src/history/index.ts')) as typeof import('../../src/history')
-        pushState(() => `Life ${initialLife}`, { ...state.value, initialLife })
+        const { initialLife: operation } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        pushState(operation(state.value.initialLife, initialLife), { ...state.value, initialLife })
     }, initialLife)
 
 test('opening the same file again: Reopen after editing, Restore after New in between', async ({
@@ -641,14 +648,23 @@ test('a file whose title was edited outside opens with that title and "Changed o
     expect(title).toBe('Edited Outside')
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
-    expect((await ownRows(page, session.sessionId)).map((row) => [row.kind, row.label])).toEqual([
-        ['init', 'Imported LevelData'],
-        ['edit', 'Added note'],
-        ['edit', 'Changed BGM'],
-        ['save', 'Saved coconut.nxsp'],
-        ['edit', 'Changed outside the editor'],
-        ['continue', 'Opened coconut.nxsp'],
-    ])
+    const own = await ownRows(page, session.sessionId)
+    expect(own.map((row) => row.kind)).toEqual(['init', 'edit', 'edit', 'save', 'edit', 'continue'])
+    expect(own.slice(0, 4).map(captureEntryDescription)).toEqual(
+        fresh().input.history!.entries.map(captureEntryDescription),
+    )
+    expect(captureEntryDescription(own[4])).toMatchObject({
+        kind: 'edit',
+        step: { kind: 'edit', operation: { id: 'nse.externalChange', version: 1, data: {} } },
+    })
+    expect(captureEntryDescription(own[5])).toMatchObject({
+        kind: 'continue',
+        operation: {
+            id: 'nse.origin',
+            version: 1,
+            data: { origin: 'import', source: { text: 'coconut.nxsp' } },
+        },
+    })
     // Undo goes back to the history's head, with its own title.
     await page.keyboard.press('Control+z')
     await expect

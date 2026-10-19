@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { captureEntryDescription } from '../../../src/history/operations'
+import { captureEntryDescription, captureStep } from '../../../src/history/operations'
 import { runToEnd } from '../../../src/local/chunks'
 import { setDeflateHookForTests } from '../../../src/local/chunkVerify'
 import { bumpEpoch, hashKey } from '../../../src/local/db'
@@ -511,6 +511,24 @@ for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
                         wall: entry.wall,
                         snapshot: entry.snapshot,
                         dirty: entry.dirty,
+                        ...(description.kind === 'recovered'
+                            ? {
+                                  stack: {
+                                      keep: 0,
+                                      push: [
+                                          {
+                                              snapshot: entry.snapshot,
+                                              step: captureStep({
+                                                  kind: 'edit',
+                                                  operation: description.operation,
+                                                  recoveryContext: description.recoveryContext,
+                                              }),
+                                          },
+                                      ],
+                                      index: 0,
+                                  },
+                              }
+                            : {}),
                     },
                 ]
                 return ref.page!.tab.run(() =>

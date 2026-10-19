@@ -12,16 +12,21 @@ import {
     state,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { futureFixtureOperation, futureInitialLife, initialStep } from '../helpers/historySteps'
 
 const root = new URL('../../', import.meta.url)
 
-const fakeState = (name: string) => ({ name }) as unknown as State
+const fakeState = (name: string) => ({ name, initialLife: 0 }) as unknown as State
 
 const start = () => {
     const first = fakeState('first')
     const second = fakeState('second')
-    resetStates({ isDirty: false, name: () => 'first', state: first })
-    pushState(() => 'second', second)
+    resetStates({
+        isDirty: false,
+        step: initialStep(futureFixtureOperation('live-identity-first')),
+        state: first,
+    })
+    pushState(futureInitialLife(first.initialLife, second.initialLife, 'Second'), second)
     return second
 }
 
@@ -47,7 +52,7 @@ test('pushState while peeking throws in tests and changes nothing', () => {
     peek.value = { source: 'test', state: peeked }
 
     assert.throws(() => {
-        pushState(() => 'edit', fakeState('edit'))
+        pushState(futureInitialLife(current.initialLife, 0, 'Edit'), fakeState('edit'))
     })
     assert.equal(liveState.value, current)
     assert.equal(state.value, peeked)
@@ -71,7 +76,11 @@ test('resetting the history leaves the peek', () => {
     peek.value = { source: 'test', state: fakeState('peeked') }
 
     const reset = fakeState('reset')
-    resetStates({ isDirty: false, name: () => 'reset', state: reset })
+    resetStates({
+        isDirty: false,
+        step: initialStep(futureFixtureOperation('live-identity-reset')),
+        state: reset,
+    })
     assert.equal(isPeeking.value, false)
     assert.equal(state.value, reset)
 })

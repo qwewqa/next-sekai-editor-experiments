@@ -439,7 +439,13 @@ test('a BPM change hides a cursor marker; a note marker keeps its beat', async (
             )
             const transaction = createTransaction(history.state.value)
             addBpm(transaction, { beat: 1, bpm: 60 })
-            history.pushState(() => 'BPM', transaction.commit(history.state.value.selectedEntities))
+            history.pushState(
+                window.editorTest.historySteps.nativeOperation(
+                    { id: 'nse.object.add', data: { subject: 'bpm', created: 1 } },
+                    'Add BPM',
+                ),
+                transaction.commit(history.state.value.selectedEntities),
+            )
         })
 
     await tap(page, 0, 4)

@@ -46,7 +46,15 @@ export const edit = (page: Page, beat: number) =>
             (await import('/src/state/mutations/bpm.ts')) as typeof import('../../src/state/mutations/bpm')
         const transaction = createTransaction(state.value)
         addBpm(transaction, { beat, bpm: 100 + beat })
-        pushState(() => 'Added BPM change', transaction.commit([]))
+        const { nativeOperation } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        pushState(
+            nativeOperation(
+                { id: 'nse.object.add', data: { subject: 'bpm', created: 1 } },
+                'Added BPM change',
+            ),
+            transaction.commit([]),
+        )
     }, beat)
 
 /** Writes an OPFS file, as another program would. */

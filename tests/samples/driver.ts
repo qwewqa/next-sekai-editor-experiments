@@ -119,7 +119,11 @@ const installSampleApp = async () => {
     const { beatToTime } = await appImport<typeof import('../../src/state/integrals/bpms')>(
         '/src/state/integrals/bpms.ts',
     )
-    const { headName, liveState, loadedSlotsForTests } =
+    const { describeStep } = await appImport<
+        typeof import('../../src/history/operationPresentation')
+    >('/src/history/operationPresentation/index.ts')
+    const { i18n } = await appImport<typeof import('../../src/i18n')>('/src/i18n/index.ts')
+    const { headStep, liveState, loadedSlotsForTests } =
         await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
     const { getAllEntities } =
         await appImport<typeof import('../../src/history/store')>('/src/history/store.ts')
@@ -148,7 +152,13 @@ const installSampleApp = async () => {
             const session = flusher?.session
             return {
                 length: loadedSlotsForTests().length,
-                name: headName.value,
+                name: headStep.value
+                    ? describeStep(headStep.value, {
+                          locale: settings.locale,
+                          strings: i18n.value,
+                          now: Date.now(),
+                      })
+                    : '',
                 state: id,
                 seq: flusher && session ? flusher.newestSeq(session) : 0,
             }

@@ -99,7 +99,7 @@ const addNote = (page: Page) =>
             connectorPresentation: 'default',
             elevation: 0,
         } as never)
-        history.pushState(() => 'Added note', transaction.commit([]))
+        history.pushState(window.editorTest.historySteps.noteAdd(1), transaction.commit([]))
     })
 
 test.describe('the support gate', () => {
