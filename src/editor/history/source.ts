@@ -163,6 +163,7 @@ export const refresh = async (): Promise<void> => {
     try {
         page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
     } catch {
+        if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
         if (loadedFor.value !== id) status.value = 'failed'
         return
     }
@@ -276,6 +277,8 @@ export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
  * the gap between that page and Now. Resolves with the target's entry once it is shown.
  */
 export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | undefined> => {
+    const id = session.value.sessionId
+    const mark = replaceSource()
     // Edits Here holds all it has found.
     if (filter === 'here')
         return here.matches.find(
@@ -283,9 +286,8 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
         )
     const worker = storageWorker
     if (!worker) return
-    const id = session.value.sessionId
-    const mark = replaceSource()
     const { path } = await readIndex(filter)
+    if (mark !== epoch || session.value.sessionId !== id || historyFilter.value !== filter) return
     const [below, above] = await Promise.all([
         worker.call('readTimeline', {
             sessionId: target.sessionId,
@@ -299,7 +301,7 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
             path,
         }),
     ])
-    if (mark !== epoch || session.value.sessionId !== id) return
+    if (mark !== epoch || session.value.sessionId !== id || historyFilter.value !== filter) return
     const window = [...above.entries, ...below.entries].map(entryOf)
     stored.value = window
     loadedFor.value = id
@@ -314,12 +316,16 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
         newerCount.value = 0
         await refresh()
     }
+    if (mark !== epoch || session.value.sessionId !== id || historyFilter.value !== filter) return
     return window.find((entry) => entry.sessionId === target.sessionId && entry.seq === target.seq)
 }
 
 /** Jumps to the oldest entry of the chain (shown with the filter): End. */
 export const jumpToOldest = async (filter: Filter) => {
+    const id = session.value.sessionId
+    const mark = replaceSource()
     const { pieces } = await readIndex(filter)
+    if (mark !== epoch || session.value.sessionId !== id || historyFilter.value !== filter) return
     const oldest = pieces.at(-1)
     if (!oldest) return
     return jumpTo({ sessionId: oldest.sessionId, seq: oldest.oldestSeq }, filter)
@@ -327,8 +333,8 @@ export const jumpToOldest = async (filter: Filter) => {
 
 /** Back to the newest entries after a jump: Now, Home. */
 export const resetToNewest = async () => {
-    if (!newer.value) return
     replaceSource()
+    if (!newer.value) return
     newer.value = undefined
     newerCount.value = 0
     await refresh()

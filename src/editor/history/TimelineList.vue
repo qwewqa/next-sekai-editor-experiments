@@ -462,10 +462,7 @@ watch(peekedKey, () => {
 watch(
     [rows, replacing, historyFilter],
     () => {
-        if (
-            replacing.value?.token === focusToken &&
-            replacing.value.filter === historyFilter.value
-        )
+        if (replacing.value?.token === focusToken && replacing.value.filter === historyFilter.value)
             return
         if (rowById(cursorId.value)) return
         const parent = rowById(cursorId.value.split('/')[0] ?? '')
@@ -540,7 +537,7 @@ const moveTo = (row: Row | undefined) => {
     if (!row) return
     viewRestored = true
     // After a jump, Now goes back to the newest entries.
-    if (row.type === 'now' && gap.value !== undefined) {
+    if (row.type === 'now' && (gap.value !== undefined || replacing.value)) {
         void goNow()
         return
     }
