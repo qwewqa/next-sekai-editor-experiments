@@ -63,11 +63,9 @@ const listGlyph = computed((): OptionGlyph<T> | undefined => {
 })
 
 // High contrast paints only the outlines: the track's is its edge, the segment's shows
-// focus (the style block below) and its label's the checked one.
-const segment =
-    'form-field-segment flex h-7 items-center justify-center rounded-full px-2 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-press'
-const choice =
-    'rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent'
+// focus and its label's the checked one (the segment recipes in controls.css).
+const segment = 'segment-face h-7 px-2'
+const choice = 'segment-choice'
 // Pointer clicks return shortcuts to the editor, so a swap to the select can't take them; a dialog keeps focus.
 const onClick = (event: MouseEvent) => {
     blurPointerClick(event, 'dialog, [data-tool-dialog]')
@@ -245,18 +243,3 @@ watch(
     </MultiSelectField>
     <SelectField v-else ref="field" v-model="modelValue" :label :options :disabled />
 </template>
-
-<style>
-/* The hidden radio takes focus, so its segment draws the ring: 2px, 2px inside the face, in the
-   face's own ink, as the control recipes do. High contrast paints it in Highlight. */
-.peer:focus-visible + .form-field-segment {
-    outline: 2px solid currentColor;
-    outline-offset: -4px;
-}
-
-@media (forced-colors: active) {
-    .peer:focus-visible + .form-field-segment {
-        outline-color: Highlight;
-    }
-}
-</style>

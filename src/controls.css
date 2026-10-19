@@ -282,6 +282,58 @@
         }
     }
 
+    /* --- Segmented controls: a recessed track (bg-recess shadow-track, set at the call site) of
+       labels, each holding a hidden input.peer, radio, and the span.segment-face that is its face.
+       The checked face is the raised current pill; an unchecked one hovers half a pill and presses
+       one step; a checked one keeps its pill on hover and sinks on press. The ring is the inner
+       focus ring in the face's ink, drawn while the input has keyboard focus. Size and padding
+       are the call site's. Sibling selectors, no :has(), so the faces work on Firefox 105; the
+       label's own :has() rule only draws the checked edge that high contrast paints. */
+    .segment-choice {
+        @apply rounded-full;
+    }
+
+    .segment-choice:has(:checked) {
+        outline: 1px solid transparent;
+    }
+
+    .segment-face {
+        @apply flex items-center justify-center rounded-full transition-colors;
+    }
+
+    .peer:checked + .segment-face {
+        @apply bg-button shadow-md;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .peer:hover + .segment-face {
+            @apply bg-button/50;
+        }
+
+        .peer:checked:hover + .segment-face {
+            @apply bg-button;
+        }
+    }
+
+    .peer:active + .segment-face {
+        @apply bg-ghost-press text-fg-strong;
+    }
+
+    .peer:checked:active + .segment-face {
+        @apply bg-press;
+    }
+
+    .peer:focus-visible + .segment-face {
+        outline: 2px solid currentColor;
+        outline-offset: -4px;
+    }
+
+    @media (forced-colors: active) {
+        .peer:focus-visible + .segment-face {
+            outline-color: Highlight;
+        }
+    }
+
     /* --- Switches (ToggleSwitch): mint track and ink knob when on. */
     .switch-track {
         @apply bg-toggle-off;

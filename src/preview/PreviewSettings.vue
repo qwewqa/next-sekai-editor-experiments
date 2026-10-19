@@ -437,7 +437,7 @@ const onPlacementChange = () => {
                         <label
                             v-for="[label, value] in previewAspectRatios"
                             :key="label"
-                            class="relative min-w-0 flex-1 rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent"
+                            class="segment-choice relative min-w-0 flex-1"
                         >
                             <!-- A pointer click on the checked segment changes nothing, so it returns shortcuts here. -->
                             <input
@@ -448,9 +448,7 @@ const onPlacementChange = () => {
                                 :value
                                 @click="blurPointerClick"
                             />
-                            <span
-                                class="preview-segment flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-press"
-                            >
+                            <span class="segment-face h-9 tabular-nums">
                                 {{ label }}
                             </span>
                         </label>
@@ -661,11 +659,6 @@ const onPlacementChange = () => {
     outline-offset: -4px;
 }
 
-.peer:focus-visible + .preview-segment {
-    outline: 2px solid currentColor;
-    outline-offset: -4px;
-}
-
 @media (hover: hover) and (pointer: fine) {
     .peer:hover + .preview-toggle {
         --tw-shadow: var(--glow);
@@ -677,18 +670,13 @@ const onPlacementChange = () => {
     @apply bg-press text-fg-strong;
 }
 
-/* High contrast: focus thickens the switch fields' 2px resting edge to 4px, inward, in Highlight;
-   the segments draw their 2px focus edge in Highlight. The selectors outrank the global rules in
-   index.css that still name these classes and put the outline outside the box. */
+/* High contrast: focus thickens the switch fields' 2px resting edge to 4px, inward, in Highlight.
+   The selectors outrank the global rules in index.css that still name these classes and put the
+   outline outside the box. */
 @media (forced-colors: active) {
     .peer:focus-visible + .preview-toggle {
         outline-color: Highlight;
         outline-width: 4px;
-    }
-
-    .peer:focus-visible + .preview-segment {
-        outline-color: Highlight;
-        outline-offset: -2px;
     }
 
     .preview-field:focus-visible,
