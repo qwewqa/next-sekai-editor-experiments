@@ -64,7 +64,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                     :key="item"
                     type="button"
                     role="tab"
-                    class="manager-modal-tab group flex min-w-0 items-center focus-visible:outline-none"
+                    class="manager-modal-tab flex min-w-0 items-center outline-none"
                     :class="{ 'manager-modal-tab-active': item === active }"
                     :title="panelTitle(item)"
                     :aria-selected="item === active"
@@ -75,7 +75,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                 >
                     <!-- The band's height is the hit area; the pill carries hover, press and focus. -->
                     <span
-                        class="manager-modal-tab-pill flex h-9 min-w-0 items-center rounded-full px-3 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-fg group-active:bg-accent group-active:text-on-accent"
+                        class="manager-modal-tab-pill flex h-9 min-w-0 items-center rounded-full px-3 transition-colors"
                     >
                         <span class="manager-modal-tab-label relative min-w-0">
                             <span class="block truncate">{{ panelTitle(item) }}</span>
@@ -127,9 +127,26 @@ const onTabKeydown = (event: KeyboardEvent) => {
     }
 }
 
-@media (hover: hover) {
+/* The pill is the face, so the tab's state steps it with the band's tokens (inner-face pattern in
+   docs/color-system.md): hover one step, press one more, focus a ring 2px inside in its ink. */
+@media (hover: hover) and (pointer: fine) {
     .manager-modal-tab:not(.manager-modal-tab-active):not(:active):hover .manager-modal-tab-pill {
-        @apply bg-header-hover;
+        @apply bg-band-hover;
+    }
+}
+
+.manager-modal-tab:active .manager-modal-tab-pill {
+    @apply bg-band-press text-fg-strong;
+}
+
+.manager-modal-tab:focus-visible .manager-modal-tab-pill {
+    outline: 2px solid currentColor;
+    outline-offset: -4px;
+}
+
+@media (forced-colors: active) {
+    .manager-modal-tab:focus-visible .manager-modal-tab-pill {
+        outline-width: 4px;
     }
 }
 </style>

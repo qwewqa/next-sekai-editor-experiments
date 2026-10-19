@@ -303,21 +303,37 @@ test('a vertical rail opens its tab menus beside the rail, toward the panel', as
     }
 })
 
-test('a pressed tab takes the accent fill and hides its marker', async ({ page }) => {
+/** A role token as the colour the browser computes for it (tokens are a bare triplet or a full colour). */
+const tokenColor = (page: Page, token: string) =>
+    page.evaluate((name) => {
+        const value = getComputedStyle(document.documentElement)
+            .getPropertyValue(`--color-${name}`)
+            .trim()
+        const probe = document.createElement('i')
+        probe.style.backgroundColor = value.startsWith('rgb') ? value : `rgb(${value})`
+        document.body.append(probe)
+        const colour = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return colour
+    }, token)
+
+test('a pressed tab takes the chrome press, never mint, and keeps its marker', async ({ page }) => {
     const properties = tab(page, 'Properties')
+    const marker = properties.locator('.panel-tab-marker')
     const box = (await properties.boundingBox())!
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
+    const pressed = await tokenColor(page, 'chrome-press')
+    expect(pressed).not.toBe(await tokenColor(page, 'accent'))
     await expect
         .poll(() => properties.evaluate((element) => getComputedStyle(element).backgroundColor))
-        .toBe('rgb(119, 239, 220)')
-    await expect
-        .poll(() =>
-            properties
-                .locator('.panel-tab-marker')
-                .evaluate((element) => getComputedStyle(element).opacity),
-        )
-        .toBe('0')
+        .toBe(pressed)
+    // The marker says which panel is current, which a press does not change.
+    await expect(marker).toBeVisible()
+    expect(await marker.evaluate((element) => getComputedStyle(element).opacity)).toBe('1')
+    expect(await marker.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+        await tokenColor(page, 'accent'),
+    )
     await page.mouse.up()
 })
 

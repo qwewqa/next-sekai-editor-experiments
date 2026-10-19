@@ -332,7 +332,7 @@ const chevronDirection = computed(() => {
 
 <template>
     <div
-        class="panel-rail relative z-20 flex shrink-0 select-none bg-preview text-sm font-medium"
+        class="panel-rail surface-chrome relative z-20 flex shrink-0 select-none bg-preview text-sm font-medium"
         :class="[
             vertical ? 'flex-col' : 'flex-row',
             vertical ? 'w-9' : 'h-9',
@@ -360,16 +360,12 @@ const chevronDirection = computed(() => {
                 :key="id"
                 type="button"
                 role="tab"
-                class="panel-tab relative flex shrink-0 items-center justify-center whitespace-nowrap rounded transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                class="panel-tab ghost ghost-chrome relative flex shrink-0 items-center justify-center whitespace-nowrap rounded"
                 :class="[
                     vertical
                         ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
                         : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0 last:before:right-0`,
-                    state(id) === 'visible'
-                        ? 'bg-white/10 text-white hover:bg-white/20'
-                        : menu?.id === id
-                          ? 'bg-white/10 text-white hover:bg-white/10'
-                          : 'text-white/80',
+                    state(id) === 'visible' || menu?.id === id ? 'bg-white/10 text-white' : '',
                 ]"
                 :data-panel-tab="id"
                 :aria-selected="state(id) === 'visible'"
@@ -409,7 +405,7 @@ const chevronDirection = computed(() => {
         <button
             v-if="dock.open.length"
             type="button"
-            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 transition-colors hover:text-white focus-visible:outline-none"
+            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 outline-none transition-colors hover:text-white"
             :class="[vertical ? 'w-full' : 'h-full', 'size-9']"
             :aria-label="
                 dock.collapsed ? i18n.workspace.expand[side] : i18n.workspace.collapse[side]
@@ -464,14 +460,13 @@ const chevronDirection = computed(() => {
     -webkit-touch-callout: none;
 }
 
-/* Pressed is the accent fill every control shares, as on the chevron below;
-   the marker steps aside so the fill reads as one shape. */
-.panel-tab:active {
-    @apply bg-accent text-on-accent;
-}
-
-.panel-tab:active .panel-tab-marker {
-    opacity: 0;
+/* Press is the chrome's neutral step (ghost-chrome), and the marker stays: it says which panel is
+   current, which a press does not change. A shown tab hovers one step further, so hover still
+   shows on it; the press rule above wins while pressed. */
+@media (hover: hover) and (pointer: fine) {
+    .panel-tab[aria-selected='true']:hover:not(:active) {
+        @apply bg-white/15;
+    }
 }
 
 .panel-rail-tabs::-webkit-scrollbar {
@@ -520,19 +515,22 @@ const chevronDirection = computed(() => {
     );
 }
 
+/* The chevron's face is the span, so the button's state steps it with the chrome's tokens (the
+   inner-face pattern in docs/color-system.md). Under 32px, so the ring sits 1px outside in white. */
 .panel-rail-toggle:focus-visible > span {
-    box-shadow: 0 0 0 2px theme('colors.accent');
+    outline: 2px solid white;
+    outline-offset: 1px;
 }
 
 /* Hover is the white/10 a collapsed dock holds on the chevron, as an open
    menu's button holds its hover. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .panel-rail-toggle:hover > span {
         @apply bg-white/10;
     }
 }
 
 .panel-rail-toggle:active > span {
-    @apply bg-accent text-on-accent;
+    @apply bg-chrome-press text-white;
 }
 </style>

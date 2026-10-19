@@ -214,7 +214,7 @@ const narrowKind = async (event: MouseEvent) => {
                 :id="headerId"
                 ref="title"
                 tabindex="-1"
-                class="min-w-0 flex-1 text-sm focus:outline-none"
+                class="min-w-0 flex-1 text-sm outline-none"
                 @vue:updated="measure"
             >
                 <template v-if="kind">
@@ -231,7 +231,7 @@ const narrowKind = async (event: MouseEvent) => {
             <button
                 v-if="kind && narrowable"
                 type="button"
-                class="properties-select-only -mr-2 flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
+                class="properties-select-only ghost -mr-2 flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full"
                 :class="iconOnly ? 'w-8' : 'px-3 text-sm'"
                 :title="selectOnlyLabel"
                 :aria-label="selectOnlyLabel"
@@ -246,7 +246,7 @@ const narrowKind = async (event: MouseEvent) => {
             <PropertiesFieldGroup v-if="section === 'connector' && sections.connector.length">
                 <button
                     type="button"
-                    class="properties-subsection -mx-2 flex min-h-8 items-center gap-2 rounded-lg px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
+                    class="properties-subsection ghost -mx-2 flex min-h-8 items-center gap-2 rounded-lg px-2 text-left"
                     :aria-expanded="settings.propertiesConnectorExpanded"
                     :aria-controls="connectorId"
                     @click="toggleConnector"

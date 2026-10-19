@@ -359,9 +359,21 @@ test('stacked section bands reach the panel edge with no reserved scrollbar gutt
     expect(band).toBeCloseTo(scroller, 0)
 })
 
-test('a pressed section tab takes the accent fill, as every pressed control does', async ({
-    page,
-}) => {
+/** A role token as the colour the browser computes for it (tokens are a bare triplet or a full colour). */
+const tokenColor = (page: Page, token: string) =>
+    page.evaluate((name) => {
+        const value = getComputedStyle(document.documentElement)
+            .getPropertyValue(`--color-${name}`)
+            .trim()
+        const probe = document.createElement('i')
+        probe.style.backgroundColor = value.startsWith('rgb') ? value : `rgb(${value})`
+        document.body.append(probe)
+        const colour = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return colour
+    }, token)
+
+test('a pressed section tab takes the band press, never mint', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await open(page, { showPreview: false, propertiesSection: 'view' })
     const tool = sectionTab(page, 'Tool')
@@ -374,7 +386,8 @@ test('a pressed section tab takes the accent fill, as every pressed control does
                 .locator('.properties-tab-pill')
                 .evaluate((pill) => getComputedStyle(pill).backgroundColor),
         )
-        .toBe('rgb(119, 239, 220)')
+        .toBe(await tokenColor(page, 'band-press'))
+    expect(await tokenColor(page, 'band-press')).not.toBe(await tokenColor(page, 'accent'))
     await page.mouse.up()
 })
 

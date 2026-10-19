@@ -96,7 +96,7 @@ onUnmounted(() => {
 
 <template>
     <div
-        class="resize-handle group absolute z-20 flex touch-none items-center justify-center focus:outline-none"
+        class="resize-handle group absolute z-20 flex touch-none items-center justify-center outline-none"
         :class="[
             axis === 'x'
                 ? 'inset-y-0 w-3 -translate-x-1/2 cursor-col-resize'
@@ -140,24 +140,27 @@ onUnmounted(() => {
     opacity: 0;
 }
 
-.resize-handle:focus-visible .resize-line,
-.resize-handle.is-dragging .resize-line {
-    background-color: theme('colors.accent');
-}
-
-.resize-handle:focus-visible .resize-grabber,
-.resize-handle.is-dragging .resize-grabber {
-    opacity: 1;
-}
-
+/* The line takes the dark chrome's ink: a step when hovered, full when dragged or focused. A drag
+   is a press, and mint means on, so there is no mint here. The dragged or focused look comes last
+   so it wins over hover while the pointer is still on the line. */
 @media (hover: hover) {
     .resize-handle:hover .resize-line {
-        background-color: theme('colors.accent / 60%');
+        @apply bg-white/60;
     }
 
     .resize-handle:hover .resize-grabber {
         opacity: 1;
     }
+}
+
+.resize-handle:focus-visible .resize-line,
+.resize-handle.is-dragging .resize-line {
+    @apply bg-white;
+}
+
+.resize-handle:focus-visible .resize-grabber,
+.resize-handle.is-dragging .resize-grabber {
+    opacity: 1;
 }
 
 /* Touch has no hover, so the grabber always shows where to drag. */

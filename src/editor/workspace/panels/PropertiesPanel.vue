@@ -308,7 +308,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         :key="section"
                         type="button"
                         role="tab"
-                        class="properties-tab group flex flex-auto items-center justify-center font-bold text-fg focus-visible:outline-none"
+                        class="properties-tab flex flex-auto items-center justify-center font-bold text-fg outline-none"
                         :class="[
                             section === 'selection'
                                 ? 'properties-tab-selection min-w-12'
@@ -325,7 +325,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         <!-- The whole band height is the hit area; the pill carries
                         hover, press and focus. Only the label truncates. -->
                         <span
-                            class="properties-tab-pill flex h-9 min-w-0 max-w-full items-center justify-center rounded-full px-3 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-fg group-active:bg-accent group-active:text-on-accent"
+                            class="properties-tab-pill flex h-9 min-w-0 max-w-full items-center justify-center rounded-full px-3 transition-colors"
                         >
                             <span class="properties-tab-label relative min-w-0">
                                 <span class="block truncate">{{ title(section) }}</span>
@@ -377,7 +377,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                     <button
                         :id="headerId(section)"
                         type="button"
-                        class="flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                        class="ghost ghost-band flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold"
                         :class="{
                             'after:absolute after:inset-x-0 after:-bottom-px after:h-px':
                                 !isExpanded(section) && index < propertiesSections.length - 1,
@@ -446,10 +446,27 @@ const onTabKeydown = (event: KeyboardEvent) => {
     }
 }
 
-@media (hover: hover) {
+/* The pill is the face, so the tab's state steps it with the band's tokens (inner-face pattern in
+   docs/color-system.md): hover one step, press one more, focus a ring 2px inside in its ink. */
+@media (hover: hover) and (pointer: fine) {
     /* Not while pressed, so the press fill shows as on every other control. */
     .properties-tab:not(.properties-tab-active):not(:active):hover .properties-tab-pill {
-        @apply bg-header-hover;
+        @apply bg-band-hover;
+    }
+}
+
+.properties-tab:active .properties-tab-pill {
+    @apply bg-band-press text-fg-strong;
+}
+
+.properties-tab:focus-visible .properties-tab-pill {
+    outline: 2px solid currentColor;
+    outline-offset: -4px;
+}
+
+@media (forced-colors: active) {
+    .properties-tab:focus-visible .properties-tab-pill {
+        outline-width: 4px;
     }
 }
 </style>
