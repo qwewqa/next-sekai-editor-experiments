@@ -199,7 +199,10 @@ for (const [device, options] of Object.entries({
                 'Other group': 'full',
                 Third: 'hidden',
             })
-            await expect(chip).toContainText('2/3')
+            // A phone shows the count only in the chip's name and its disclosure.
+            if (device === 'phone')
+                await expect(chip).toHaveAccessibleName('All Groups 2/3 Groups Shown')
+            else await expect(chip).toContainText('2/3')
             await expect(
                 panel.getByRole('button', { name: 'Show Third', exact: true }),
             ).toBeEnabled()

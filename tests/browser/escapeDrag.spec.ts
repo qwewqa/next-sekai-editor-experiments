@@ -392,7 +392,7 @@ test.describe('a drag that leaves the chart pane', () => {
         await command(page, 'undo')
         const box = await pane(page)
         expect(await drag({ x: box.x + box.width + 60, y: end.y })).toEqual(moved)
-        await expect(page.locator('.notification')).toHaveText('Moved 2 objects')
+        await expect(page.locator('.notification')).toHaveText('Moved 2 notes')
         expect(await undoCount(page)).toBe(1)
     })
 

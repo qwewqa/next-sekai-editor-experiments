@@ -2478,7 +2478,9 @@ test.describe('preview panel lifecycle', () => {
         await settle(page)
         await expect(page.locator('[data-workspace-dock="top"] .preview')).toBeVisible()
         await expect(
-            page.locator('[data-workspace-dock="top"]').getByText('All Groups', { exact: true }),
+            page
+                .locator('[data-workspace-dock="top"] #workspace-panel-groups')
+                .getByRole('button', { name: 'All Groups', exact: true }),
         ).toBeVisible()
         const geometry = await readPreviewChrome(page)
         expect(geometry.settings.top).toBeGreaterThanOrEqual(geometry.preview.bottom)
@@ -2813,7 +2815,9 @@ test.describe('preview panel lifecycle', () => {
             showPanel('groups')
         })
         await expect(
-            page.locator('[data-workspace-dock="left"]').getByText('All Groups', { exact: true }),
+            page
+                .locator('[data-workspace-dock="left"] #workspace-panel-groups')
+                .getByRole('button', { name: 'All Groups', exact: true }),
         ).toBeVisible()
         await expect(controls).toBeHidden()
         expect(await page.evaluate(() => window.editorTest.settings.previewControls)).toBe('auto')
