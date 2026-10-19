@@ -190,6 +190,9 @@ const headerButton =
     "btn btn-secondary btn-toggle relative flex size-8 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-0.5 before:content-['']"
 const headerField =
     'elevation-field field h-8 w-20 appearance-none rounded-full px-3 text-base tabular-nums'
+// A select presses like a secondary button, as the form selects do.
+const headerSelect =
+    'elevation-field btn btn-secondary h-8 w-20 appearance-none rounded-full px-3 text-base tabular-nums'
 let navigation: EditorNavigation | undefined
 const { cursor, cursorListeners } = useCanvasCursor(() => navigation)
 const controlListeners = { ...controlsForNavigation(() => navigation), ...cursorListeners }
@@ -2147,7 +2150,7 @@ onUnmounted(() => {
                                             ? `1/${settings.elevationSnap}`
                                             : i18n.elevation.off
                                     "
-                                    :class="headerField"
+                                    :class="headerSelect"
                                     class="cursor-pointer"
                                     :aria-label="i18n.elevation.snapping"
                                 >
@@ -2283,6 +2286,14 @@ onUnmounted(() => {
 .elevation-field {
     position: relative;
     z-index: 1;
+}
+
+/* A select with a drawn value has transparent text, so the recipe ring (currentColor) would
+   vanish; it takes the surface ink instead. High contrast keeps its own focus colour. */
+@media not (forced-colors: active) {
+    select.elevation-field:focus-visible {
+        outline-color: rgb(var(--color-fg));
+    }
 }
 
 /* Spinners are hidden (D8); arrow keys and the wheel still step. */
