@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
         <div v-if="presentation.compact" class="flex shrink-0 justify-end p-4 pt-2">
             <button
                 type="button"
-                class="h-9 max-w-full truncate rounded-full bg-button px-4 font-bold shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 :disabled="!canViewChart"
                 data-history-view-chart
                 data-history-focus="view-chart"

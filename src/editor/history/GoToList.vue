@@ -12,6 +12,7 @@ import {
 import { i18n } from '../../i18n'
 import { formatClockRange } from '../../i18n/when'
 import type { TimelinePiece } from '../../local/worker/timelineHandlers'
+import CheckIcon from './CheckIcon.vue'
 import { dayLabel, stepsText } from './labels'
 import { here, readIndex, type Target } from './source'
 import { hereRange, historyFilter, historyViewGeneration } from './state'
@@ -223,7 +224,8 @@ const labelOf = (item: Item) =>
 </script>
 
 <template>
-    <div class="popup-separator" />
+    <!-- One rule between Show and Go To: the popover draws it. Labels share one column at 40 (the
+         Now dot's slot, kept empty on days), sessions 20 px inside their day. -->
     <div :id="`${listId}-heading`" class="popup-heading">{{ i18n.history.goTo }}</div>
     <div
         ref="list"
@@ -244,7 +246,6 @@ const labelOf = (item: Item) =>
             class="goto-item"
             :class="{
                 'goto-item-active': activeId === item.id,
-                'goto-item-current': currentId === item.id,
                 'goto-item-session': item.kind === 'session',
             }"
             :aria-selected="activeId === item.id"
@@ -255,11 +256,11 @@ const labelOf = (item: Item) =>
             @pointermove="activeId = item.id"
         >
             <span
-                v-if="item.kind === 'now'"
+                v-if="item.kind !== 'session'"
                 class="flex size-4 shrink-0 items-center justify-center"
                 aria-hidden="true"
             >
-                <span class="size-2.5 rounded-full bg-fg" />
+                <span v-if="item.kind === 'now'" class="size-2.5 rounded-full bg-fg" />
             </span>
             <span v-if="item.kind === 'now'" class="min-w-0 flex-1 truncate font-bold">{{
                 i18n.history.now
@@ -270,23 +271,14 @@ const labelOf = (item: Item) =>
                 }}</span>
                 <span v-if="item.range" class="min-w-0 truncate">{{ item.range }}</span>
             </span>
-            <svg
+            <CheckIcon
                 v-if="currentId === item.id"
-                class="size-4 shrink-0"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+                class="size-4 shrink-0 fill-current"
                 data-goto-check
-            >
-                <path d="M3.5 8.5l3 3 6-7" />
-            </svg>
+            />
             <span
                 v-if="item.kind !== 'now'"
-                class="shrink-0 text-right text-xs tabular-nums text-fg/70"
+                class="shrink-0 text-right text-xs tabular-nums text-fg/80"
                 >{{ stepsText(item.count) }}</span
             >
         </div>
@@ -298,11 +290,12 @@ const labelOf = (item: Item) =>
                 aria-hidden="true"
                 data-goto-loading
             >
+                <span class="size-4 shrink-0" />
                 <span class="h-3 rounded-full bg-fg/10" :style="{ width: `${64 - n * 8}%` }" />
                 <span class="ml-auto h-3 w-12 shrink-0 rounded-full bg-fg/10" />
             </div>
         </template>
-        <div v-else-if="failed" class="px-3 py-2 text-fg/70" data-goto-failed>
+        <div v-else-if="failed" class="py-2 pl-10 pr-3 text-fg/80" data-goto-failed>
             {{ i18n.history.loadFailed }}
         </div>
     </div>
@@ -310,28 +303,26 @@ const labelOf = (item: Item) =>
 
 <style scoped>
 .goto-item {
-    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-1.5 transition-colors;
+    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-2 transition-colors;
 }
 
 .goto-item-session {
-    @apply pl-10;
+    @apply pl-[3.75rem];
 }
 
-.goto-item-current {
-    @apply bg-popup-hover;
-}
-
+/* The listbox holds focus; its active option rings at its edge (focus-edge, on the option). */
 .goto-list:focus-visible .goto-item-active {
-    @apply outline outline-2 -outline-offset-2 outline-fg;
+    outline: 2px solid rgb(var(--color-fg));
+    outline-offset: -2px;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .goto-item:hover {
         @apply bg-popup-hover;
     }
 }
 
 .goto-item:active {
-    @apply bg-accent text-on-accent;
+    @apply bg-ghost-press text-fg-strong;
 }
 </style>
