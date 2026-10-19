@@ -23,7 +23,7 @@
  * below), and combine compounds at the call site.
  *
  * tailwind.controls.js registers this file as a plugin, so templates, global CSS, the landing pages
- * and Vue <style> blocks (@apply ghost) can all use it. Restart the dev server after editing it.
+ * and Vue <style> blocks (@apply ghost) can all use it. A running dev server picks up edits.
  */
 @layer components {
     /* --- Focus: a 2px ring 2px inside the face, in the face's own ink. Face shows on both sides
