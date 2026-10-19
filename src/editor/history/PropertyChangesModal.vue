@@ -20,6 +20,7 @@ import {
     propertySectionLabel,
 } from './propertyPresentation'
 import PropertyChangeValue from './PropertyChangeValue.vue'
+import { peekedLabel } from './selection'
 
 const props = defineProps<{ comparison: InspectionComparison; summary: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -47,7 +48,7 @@ onBeforeUnmount(() => {
 <template>
     <BaseModal :title="i18n.historyChanges.title" @close="emit('close')">
         <div class="min-w-0 select-text space-y-1 [overflow-wrap:anywhere]" data-property-context>
-            <p class="whitespace-pre-wrap font-bold">{{ comparison.request.label }}</p>
+            <p class="whitespace-pre-wrap font-bold">{{ peekedLabel(comparison.request) }}</p>
             <p class="text-sm text-fg/75">{{ formatDateTimeSeconds(comparison.request.time) }}</p>
             <p class="whitespace-pre-wrap text-sm">{{ summary }}</p>
         </div>

@@ -55,7 +55,7 @@ import {
     type Stop,
 } from './changeStops'
 import { createChangePaint, createPropertyInspection, createShowEdits } from './inspection'
-import { peekedInfo, type ChainKey, type PeekedInfo } from './selection'
+import { peekedInfo, peekedLabel, type ChainKey, type PeekedInfo } from './selection'
 
 // The change view (Part 1 §1.4.11): what the peeked entry changed against the entry before it on
 // the Timeline, from the worker by roots, or diffed here from states in memory for entries not
@@ -222,7 +222,7 @@ export const changeLine = computed(() => {
             changeText(change) ??
             ((peekedInfo.value?.members?.length ?? 1) > 1
                 ? i18n.value.peek.settingsChanged
-                : peekedInfo.value?.label)
+                : peekedInfo.value && peekedLabel(peekedInfo.value))
         )
     if (comparisonStatus.value === 'initial') return i18n.value.peek.initialState
     if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailable

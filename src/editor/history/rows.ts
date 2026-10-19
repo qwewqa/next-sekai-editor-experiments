@@ -1,14 +1,14 @@
+import { decodeOperation, operationGroup, type EntryDescription } from '../../history/operations'
+
 // The Timeline's rows from a chain's entries (Part 1 §1.4.10.5): flags, ×N groups, dividers and
 // minute, hour or day headers by age. Pure, so Node tests run it without the page.
 
 /** One entry as the Timeline reads it, from storage or still waiting to be stored. */
-export type Entry = {
+export type Entry = EntryDescription & {
     sessionId: string
     seq: number
     /** When it was made, in ms. */
     time: number
-    kind: string
-    label: string
     /** Absent while the entry is only in memory. */
     noteCount?: number
     /** False for a snapshot removed to save space (§1.6.8). */
@@ -55,11 +55,13 @@ export type EntryRow = {
 
 /** After a jump: the entries between Now and the loaded window, not read yet. */
 export type GapRow = { type: 'gap'; id: 'gap'; count: number }
+export type CountRow = { type: 'count'; id: string; parent: EntryRow }
 
 export type Row =
     | { type: 'now'; id: 'now' }
     | GapRow
     | EntryRow
+    | CountRow
     | { type: 'divider'; id: string; entry: Entry }
     | Header
 
@@ -99,11 +101,15 @@ const tierOf = (time: number, now: number) => {
     return { level: 'hour' as const, key: `h:${hourStart(time)}` }
 }
 
-/** Entries that collapse into a ×N group when next to each other: the same label, or a run of undo or redo. */
+/** Supported semantic keys; availability and chronology are independent boundaries. */
 const groupKey = (entry: Entry, flags: Flags) => {
     const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}`
     if (entry.kind === 'undo' || entry.kind === 'redo') return `${entry.kind}:${flag}`
-    if (entry.kind === 'edit') return `edit:${flag}:${entry.label}`
+    if (entry.kind !== 'edit') return
+    const decoded = decodeOperation(entry.step.operation)
+    if (decoded.status !== 'known') return
+    const descriptor = operationGroup(decoded.operation)
+    if (descriptor) return `edit:${flag}:${descriptor.key}`
 }
 
 export type BuildOptions = {
@@ -164,6 +170,7 @@ export const buildRows = (
         while (key !== undefined) {
             const next = shown[i + 1]
             if (!next || groupKey(next, flagsOf(next)) !== key) break
+            if (next.sessionId !== entry.sessionId) break
             if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
             // Edits Here collapses only matches next to each other on the chain.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -226,6 +233,13 @@ export const buildRows = (
             previous = item.entry
         }
         rows.push(item)
+        if (
+            item.type === 'entry' &&
+            item.entry.kind === 'edit' &&
+            item.members.length > 1 &&
+            expanded.has(item.id)
+        )
+            rows.push({ type: 'count', id: `${item.id}/count`, parent: item })
     }
     return rows
 }
