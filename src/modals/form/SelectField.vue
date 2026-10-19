@@ -37,7 +37,7 @@ const glyphs = computed(() =>
                 v-model.lazy="modelValue"
                 :disabled
                 :title="shown"
-                class="w-full appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none"
+                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-100"
                 required
                 @change="resyncSelect($event, () => modelValue)"
             >
@@ -49,8 +49,8 @@ const glyphs = computed(() =>
                     <OptionGlyphSlot v-if="glyphs" :glyph="optionGlyph!(value)" />{{ name }}
                 </option>
             </select>
-            <SelectValue :value="shown" class="group-active:text-on-accent" />
-            <span class="form-field-select-icon group-active:text-on-accent" aria-hidden="true">
+            <SelectValue :value="shown" class="group-active:text-fg-strong" />
+            <span class="form-field-select-icon group-active:text-fg-strong" aria-hidden="true">
                 <ChevronIcon direction="down" />
             </span>
         </div>

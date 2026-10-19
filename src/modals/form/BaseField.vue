@@ -629,8 +629,10 @@ watchEffect(
     font-variant-numeric: tabular-nums;
 }
 
+/* Under 32px there is no room inside: the ring sits 1px outside, in the surface's ink. */
 .form-field-mixed-value:focus-visible {
-    box-shadow: 0 0 0 2px theme('colors.fg');
+    outline-color: theme('colors.fg');
+    outline-offset: 1px;
 }
 
 @media (hover: hover) {
@@ -640,8 +642,8 @@ watchEffect(
 }
 
 .form-field-mixed-value:enabled:active {
-    background-color: theme('colors.accent');
-    color: theme('colors.on-accent');
+    background-color: theme('colors.ghost-press');
+    color: theme('colors.fg-strong');
 }
 
 /* Labels wrap in full; a word too long for its line still breaks. */

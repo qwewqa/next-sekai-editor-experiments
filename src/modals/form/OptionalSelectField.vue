@@ -76,7 +76,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             <span
                 v-if="$slots.leading"
                 v-show="!leadless"
-                class="form-field-select-lead group-active:text-on-accent"
+                class="form-field-select-lead group-active:text-fg-strong"
                 aria-hidden="true"
             >
                 <slot name="leading" />
@@ -87,7 +87,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
                 :disabled
                 :title="shown"
                 :class="{ 'text-fg/80': modelValue === undefined }"
-                class="w-full appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none"
+                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-100"
                 @change="resyncSelect($event, () => modelValue)"
             >
                 <!-- Without the choice, an unset value still shows but is never listed. -->
@@ -134,9 +134,9 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             <SelectValue
                 :value="shown"
                 :class="{ 'text-fg/80': modelValue === undefined }"
-                class="group-active:text-on-accent"
+                class="group-active:text-fg-strong"
             />
-            <span class="form-field-select-icon group-active:text-on-accent" aria-hidden="true">
+            <span class="form-field-select-icon group-active:text-fg-strong" aria-hidden="true">
                 <ChevronIcon direction="down" />
             </span>
         </div>

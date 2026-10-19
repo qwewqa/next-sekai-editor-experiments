@@ -278,7 +278,7 @@ const onBlur = () => {
                     ? interpolateRaw(i18n.modals.form.mixedValues, range)
                     : undefined
             "
-            class="w-full appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors placeholder:text-fg/80 hover:shadow-accent focus:ring-2 focus:ring-fg active:bg-accent active:text-on-accent"
+            class="field w-full appearance-none rounded-full px-4 py-1 placeholder:text-fg/80"
             type="number"
             :min
             :max
