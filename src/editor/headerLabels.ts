@@ -21,16 +21,16 @@ export const bgmOffsetOperation = (before: number, after: number) =>
 export const bgmOperation = (old: BgmParts, next: BgmParts) =>
     createHistoryOperation(bgmInput(old, next))
 
-export const groupEditOperation = (
+export const groupEditOperation = <K extends GroupEditKey>(
     id: number,
     old: GroupObject,
-    key: GroupEditKey,
-    value: GroupObject[GroupEditKey],
+    key: K,
+    value: GroupObject[K],
 ) => createHistoryOperation(groupEditInput(id, old, key, value))
 
-export const stageEditOperation = (
+export const stageEditOperation = <K extends StageEditKey>(
     id: number,
     old: StageObject,
-    key: StageEditKey,
-    value: StageObject[StageEditKey],
+    key: K,
+    value: StageObject[K],
 ) => createHistoryOperation(stageEditInput(id, old, key, value))

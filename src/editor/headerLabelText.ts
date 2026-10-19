@@ -28,11 +28,11 @@ export const bgmInput = (old: BgmParts, next: BgmParts): NativeOperationInput =>
 }
 
 export type GroupEditKey = 'name' | 'forceNoteSpeed'
-export const groupEditInput = (
+export const groupEditInput = <K extends GroupEditKey>(
     id: number,
     old: GroupObject,
-    key: GroupEditKey,
-    value: GroupObject[GroupEditKey],
+    key: K,
+    value: GroupObject[K],
 ): NativeOperationInput => {
     const target = { kind: 'group', id, name: captureName(old.name) } as const
     return key === 'name'
@@ -50,11 +50,11 @@ export const groupEditInput = (
 }
 
 export type StageEditKey = 'name' | 'isFromStart' | 'isUntilEnd' | 'generateSimLines'
-export const stageEditInput = (
+export const stageEditInput = <K extends StageEditKey>(
     id: number,
     old: StageObject,
-    key: StageEditKey,
-    value: StageObject[StageEditKey],
+    key: K,
+    value: StageObject[K],
 ): NativeOperationInput => {
     const target = { kind: 'stage', id, name: captureName(old.name) } as const
     if (key === 'name')
@@ -63,7 +63,9 @@ export const stageEditInput = (
             data: { target, before: target.name, after: captureName(String(value)) },
         }
     const change: OwnerChange = key === 'generateSimLines'
-        ? { field: key, before: old[key], after: value as StageObject['generateSimLines'] }
-        : { field: key, before: old[key], after: value as boolean }
+        ? { field: 'generateSimLines', before: old.generateSimLines, after: value as StageObject['generateSimLines'] }
+        : key === 'isFromStart'
+          ? { field: 'isFromStart', before: old.isFromStart, after: value as boolean }
+          : { field: 'isUntilEnd', before: old.isUntilEnd, after: value as boolean }
     return { id: 'nse.owner.set', data: { target, changes: [change] } }
 }

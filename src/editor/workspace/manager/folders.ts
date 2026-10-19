@@ -38,6 +38,7 @@ import ConfirmModal from '../../../modals/ConfirmModal.vue'
 import type { State } from '../../../state'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { notify } from '../../notification'
+import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { view } from '../../view'
 import { normalizeName } from './model'
 import { ownedCounts, type OwnerKey } from './objects'
@@ -406,9 +407,13 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         },
 
         /** Deletes a folder with its members and their objects, after confirming. */
-        async remove(id: FolderId) {
+        async remove(id: FolderId, signal?: AbortSignal) {
+            const guard = createAsyncEditGuard(signal)
+            try {
+            if (!guard.isCurrent()) return
             const name = folderName(id)
             const ids = new Set(members(id))
+            const objects = [...ids].reduce((sum, member) => sum + (ownedCounts(config.owner).get(member as unknown as number) ?? 0), 0)
             if (ids.size) {
                 const confirmed = await showModal(ConfirmModal, {
                     title: () => config.strings().deleteFolderTitle,
@@ -417,19 +422,14 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                             config.strings().deleteFolderMessage,
                             name,
                             `${ids.size}`,
-                            `${[...ids].reduce(
-                                (sum, member) =>
-                                    sum +
-                                    (ownedCounts(config.owner).get(member as unknown as number) ??
-                                        0),
-                                0,
-                            )}`,
+                            `${objects}`,
                         ),
                     confirm: () => i18n.value.modals.confirm.delete,
                     destructive: true,
                 })
                 if (!confirmed || !config.folders().has(id)) return
             }
+            if (!guard.isCurrent()) return
             const target = reference(id)
             const removed = counts([...ids].filter((member) => config.entries().has(member)).length, config.folders().has(id) ? 1 : 0)
             const next = removeEntriesFromTree(removeFolderFromTree(tree(), id), ids)
@@ -447,6 +447,9 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                     hovered: [],
                     creating: [],
                 }
+            } finally {
+                guard.dispose()
+            }
         },
 
         /** The state with an entry moved to the end of a folder, as part of another edit. */

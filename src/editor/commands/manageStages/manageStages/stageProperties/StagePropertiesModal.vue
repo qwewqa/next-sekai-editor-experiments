@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { StageId, Stages } from '../../../../../chart/stages'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import type { StageId, StageObject, Stages } from '../../../../../chart/stages'
 import { pushState, state } from '../../../../../history'
+import { onHistoryAction } from '../../../../../history/actions'
+import { isPeeking, liveState, stackGeneration } from '../../../../../history/stack'
 import { stages } from '../../../../../history/stages'
 import { i18n } from '../../../../../i18n'
 import GenerateSimLinesField from '../../../../../modals/form/GenerateSimLinesField.vue'
@@ -17,24 +19,47 @@ import { normalizeName } from '../../../../workspace/manager/model'
 const props = defineProps<{
     stageId: StageId
 }>()
+const emit = defineEmits<{ close: [] }>()
+const generation = stackGeneration()
+let expected = stages.value.get(props.stageId)
+let last: StageObject = expected ?? { name: '', isFromStart: false, isUntilEnd: false, generateSimLines: 'global' }
+let current = true
+const close = () => {
+    if (!current) return
+    current = false
+    emit('close')
+}
+const isCurrent = () => current && !isPeeking.value && generation === stackGeneration() && !!expected && stages.value.get(props.stageId) === expected
+const validate = () => { if (!isCurrent()) close() }
+const stopState = watch([liveState, isPeeking], validate, { flush: 'sync' })
+const stopActions = onHistoryAction(({ kind }) => {
+    if (kind === 'reset' || kind === 'undo' || kind === 'redo' || kind === 'restore') close()
+    else validate()
+})
+onMounted(validate)
+onUnmounted(() => {
+    current = false
+    stopState()
+    stopActions()
+})
 
 const createModel = <K extends StageEditKey>(key: K) =>
     computed({
         get: () => {
             const object = stages.value.get(props.stageId)
-            if (!object) throw new Error('Unexpected missing stage')
-
-            return object[key]
+            return current && object && object === expected ? object[key] : last[key]
         },
         set: (value) => {
             const object = stages.value.get(props.stageId)
-            if (!object) throw new Error('Unexpected missing stage')
+            if (!object || !isCurrent()) return
 
             const operation = stageEditOperation(props.stageId, object, key, value)
             const newObject = { ...object, [key]: value }
 
             const newStages: Stages = new Map(stages.value)
             newStages.set(props.stageId, newObject)
+            expected = newObject
+            last = newObject
 
             pushState(operation, {
                 ...state.value,
@@ -60,7 +85,7 @@ const generateSimLines = createModel('generateSimLines')
 </script>
 
 <template>
-    <PropertiesModal :title="i18n.commands.manageStages.modal.properties.modal.title">
+    <PropertiesModal :title="i18n.commands.manageStages.modal.properties.modal.title" @close="close">
         <NameField v-model="name" />
         <IsFromStartField v-model="isFromStart" />
         <IsUntilEndField v-model="isUntilEnd" />
