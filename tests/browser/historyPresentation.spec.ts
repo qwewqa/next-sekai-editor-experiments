@@ -1186,6 +1186,7 @@ test('actual 220px French dock protects partial count and the complete unavailab
     await expect(
         dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) }),
     ).toHaveCount(2)
+    await expect(parents.first()).toBeVisible()
     await expect(parents.first()).toHaveAttribute('aria-label', /2 étapes/)
     await expect(parents.last()).toHaveAttribute('aria-label', /1\+ étape/)
     await expect(parents.first().locator('[data-history-group-count]')).toHaveText('2 étapes')
@@ -1329,10 +1330,14 @@ for (const width of [1600, 390, 320]) {
                     aboveHit: false,
                     belowHit: false,
                 })
-                const caption = group.locator('[data-history-group-caption]')
-                expect(
-                    await caption.evaluate((element) => element.scrollWidth <= element.clientWidth),
-                ).toBe(true)
+                // The caption is display: contents (both widths 0), so check the real spans. The time never
+                // shrinks; the count gives way first at 320 (F20), so it is asserted at the other widths.
+                const fits = (selector: string) =>
+                    group
+                        .locator(selector)
+                        .evaluate((element) => element.scrollWidth <= element.clientWidth)
+                expect(await fits('[data-history-group-time]')).toBe(true)
+                if (width !== 320) expect(await fits('[data-history-group-count]')).toBe(true)
             }
             await capture(page, `${width}-groups`)
             await undo.locator('[data-history-disclosure]').click()
