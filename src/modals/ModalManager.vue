@@ -42,11 +42,21 @@ watch(
     { immediate: true },
 )
 
+// A click on the dialog element itself is a backdrop click only when the press began and ended
+// on the backdrop. A press that starts in the content and is released over the backdrop, such as
+// selecting text in a field, is dispatched to the dialog too, and must not close it.
+let downOnBackdrop = false
+let upOnBackdrop = false
 // A backdrop press while the content is busy, e.g. selecting rows, keeps it open.
 let keepOpen = false
 const onBackdropDown = (event: PointerEvent) => {
     const dialog = event.currentTarget as HTMLElement
-    keepOpen = event.target === dialog && !!dialog.querySelector('[data-modal-busy]')
+    downOnBackdrop = event.target === dialog
+    upOnBackdrop = false
+    keepOpen = downOnBackdrop && !!dialog.querySelector('[data-modal-busy]')
+}
+const onBackdropUp = (event: PointerEvent) => {
+    upOnBackdrop = event.target === event.currentTarget
 }
 
 // Escape ends the busy task first, wherever focus is.
@@ -59,6 +69,13 @@ const onCancel = (event: Event) => {
 
 const onClick = (event: MouseEvent, modal: Modal) => {
     if (event.target !== event.currentTarget) return
+    const backdrop = downOnBackdrop && upOnBackdrop
+    downOnBackdrop = false
+    upOnBackdrop = false
+    if (!backdrop) {
+        keepOpen = false
+        return
+    }
     if (keepOpen) {
         keepOpen = false
         return
@@ -140,7 +157,8 @@ const vOpen = {
         :style="modal.size === 'large' ? largeStyle(modal) : undefined"
         :data-size="modal.size"
         :data-tall="modal.tall || undefined"
-        @pointerdown="onBackdropDown"
+        @pointerdown.capture="onBackdropDown"
+        @pointerup.capture="onBackdropUp"
         @click="onClick($event, modal)"
         @cancel="onCancel"
         @close="closeModal(modal)"
