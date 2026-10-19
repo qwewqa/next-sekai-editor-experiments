@@ -440,7 +440,7 @@ for (const navigate of [false, true]) {
             const buffer = new AudioBuffer({ length: 441, sampleRate: 44100, numberOfChannels: 1 })
             let own: string[] = []
             const task = attachOpenedBgm(
-                new Uint8Array([1]).buffer,
+                new Blob([new Uint8Array([1])]),
                 hash,
                 async () => {
                     await gate
