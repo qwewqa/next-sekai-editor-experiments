@@ -60,9 +60,12 @@ const notes = (page: Page) => page.evaluate(() => window.editorTest.snapshot().n
 const original = (size: number) => [{ type: 'note', beat: 5, left: 0, size }]
 const activate = async (page: Page, tool: string, shortcut: string) => {
     await page.keyboard.press(shortcut)
-    await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(
-        new RegExp(`^${tool}(?: |$)`),
-    )
+    const face = page
+        .locator('.chart-pane [data-editor-toolbar]')
+        .locator(':scope > div > div > button')
+        .and(page.getByTitle(new RegExp(`^${tool}(?: |$)`)))
+    await expect(face).toBeVisible()
+    await expect(face).toHaveAttribute('aria-pressed', 'true')
 }
 
 test.beforeEach(async ({ page }) => {

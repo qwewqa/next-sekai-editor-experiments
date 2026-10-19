@@ -1028,7 +1028,7 @@ for (const [device, viewport, mobile, dock, worded] of [
     ['desktop', { width: 1600, height: 1000 }, false, undefined, locales],
     ['336px dock', { width: 1600, height: 1000 }, false, 336, ['en', 'ko', 'tr']],
     ['260px dock', { width: 1600, height: 1000 }, false, 260, ['tr']],
-    ['phone', { width: 375, height: 812 }, true, undefined, ['en', 'ko', 'tr']],
+    ['phone', { width: 375, height: 812 }, true, undefined, locales],
 ] as const) {
     test.describe(`${device} selection bar`, () => {
         test.use({ viewport, isMobile: mobile, hasTouch: mobile })
