@@ -30,6 +30,8 @@ const prepareDynamicPaste = (page: Page) =>
         const { createElevationNote } = await appImport<
             typeof import('../../src/editor/elevation/actions')
         >('/src/editor/elevation/actions.ts')
+        const { clipboardEntry } =
+            await appImport<typeof import('../../src/clipboard')>('/src/clipboard/index.ts')
         Object.defineProperty(navigator.clipboard, 'writeText', {
             configurable: true,
             value: async () => undefined,
@@ -38,6 +40,7 @@ const prepareDynamicPaste = (page: Page) =>
         show(
             {
                 ...fixtures.interaction,
+                isDynamicStages: true,
                 slides: [[{ ...base, beat: 2 }]],
                 cameraEvents: [{ ...fixtures.events.cameraEvents[0]!, beat: 2 }],
             },
@@ -54,6 +57,9 @@ const prepareDynamicPaste = (page: Page) =>
             ],
         })
         copy.execute()
+        const copied = clipboardEntry.value?.data?.chart
+        if (copied?.cameraEvents.length !== 1 || copied.slides.flat().length !== 1)
+            throw new Error('Expected one copied native event and note')
         show({ ...fixtures.interaction, slides: [], isDynamicStages: false }, 1)
         view.layout = 'basic'
         // A real edit lets Undo/Redo return to exactly the state captured by the prompt.
@@ -137,9 +143,9 @@ test('another successful enable does not make the older Dynamic Stages request c
     const old = request()
     await expect(page.getByRole('dialog')).toHaveCount(1)
     const newer = request()
-    await expect(page.locator('[role="dialog"]')).toHaveCount(2)
+    await expect(page.locator('dialog[open]')).toHaveCount(2)
     await page
-        .locator('[role="dialog"]')
+        .locator('dialog[open]')
         .last()
         .getByRole('button', { name: 'Confirm', exact: true })
         .click()
@@ -529,7 +535,7 @@ test('all five native event tool Adds retain their typed event subjects', async 
             'stageStyleEvent',
             'stageTransformEvent',
         ] as const) {
-            show({ ...fixtures.interaction, slides: [] }, 1)
+            show({ ...fixtures.interaction, isDynamicStages: true, slides: [] }, 1)
             view.layout = 'basic'
             const at = point(0, 2)
             await tools[tool].tap!(at.x, at.y, { ctrl: false, shift: false })
@@ -753,7 +759,12 @@ for (const mode of [
             })
             const base = fixtures.interaction.slides[0]![0]!
             const scale = fixtures.events.timeScales[0]!
-            const blank = { ...fixtures.interaction, slides: [], timeScales: [] }
+            const blank = {
+                ...fixtures.interaction,
+                isDynamicStages: true,
+                slides: [],
+                timeScales: [],
+            }
             view.layout = mode.variant
             show(
                 {
@@ -878,12 +889,15 @@ test('declining Dynamic Stages preserves a zero-output Paste step with factual e
         )
         const { loadedStates } =
             await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
+        const { clipboardEntry } =
+            await appImport<typeof import('../../src/clipboard')>('/src/clipboard/index.ts')
         Object.defineProperty(navigator.clipboard, 'writeText', {
             configurable: true,
             value: async () => undefined,
         })
         show({
             ...fixtures.interaction,
+            isDynamicStages: true,
             slides: [],
             cameraEvents: [{ ...fixtures.events.cameraEvents[0]!, beat: 2 }],
         })
@@ -895,6 +909,8 @@ test('declining Dynamic Stages preserves a zero-output Paste step with factual e
             ]),
         })
         copy.execute()
+        if (clipboardEntry.value?.data?.chart.cameraEvents.length !== 1)
+            throw new Error('Expected one copied native event')
         show({ ...fixtures.interaction, slides: [], isDynamicStages: false, cameraEvents: [] })
         await pasteAtPosition(0, 0, { ctrl: false, shift: false })
         return {
