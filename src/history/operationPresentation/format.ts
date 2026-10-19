@@ -14,8 +14,8 @@ import {
     type StepDescription,
     type Subject,
 } from '../operations'
-import type { OperationMember, OperationTextContext } from './types'
 import { isEntryDescription } from './members'
+import type { OperationMember, OperationTextContext } from './types'
 import {
     joinSentences,
     message,
@@ -527,13 +527,17 @@ export const describeEntry = (entry: EntryDescription, context: OperationTextCon
             ? `${t.commands[entry.kind].title} · ${description}`
             : description
     }
-    return describeCapturedOperation(entry.operation, {
-        init: t.peek.initialState,
-        continue: t.entry.continued,
-        save: t.commands.save.title,
-        export: t.commands.exportLevel.title,
-        recovered: t.entry.recoveredChanges,
-    }[entry.kind], context)
+    return describeCapturedOperation(
+        entry.operation,
+        {
+            init: t.peek.initialState,
+            continue: t.entry.continued,
+            save: t.commands.save.title,
+            export: t.commands.exportLevel.title,
+            recovered: t.entry.recoveredChanges,
+        }[entry.kind],
+        context,
+    )
 }
 
 export const describeMember = ({ description }: OperationMember, context: OperationTextContext) =>
