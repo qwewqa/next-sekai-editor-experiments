@@ -322,6 +322,9 @@ const focusInside = ref(false)
 let focusToken = 0
 let disposed = false
 const replacing = shallowRef<{ token: number; filter: typeof historyFilter.value }>()
+const finishReplacement = (token: number) => {
+    if (replacing.value?.token === token) replacing.value = undefined
+}
 
 const selectables = computed(() =>
     rows.value.filter((row) => row.type === 'now' || row.type === 'entry'),
@@ -608,7 +611,7 @@ const goNow = async () => {
         await resetToNewest()
         await nextTick()
     } finally {
-        if (replacing.value?.token === token) replacing.value = undefined
+        finishReplacement(token)
     }
     if (
         token !== focusToken ||
@@ -652,7 +655,7 @@ const jumpTo = async (target: Target | 'now') => {
     } catch {
         // The list stays as it was.
     } finally {
-        if (replacing.value?.token === token) replacing.value = undefined
+        finishReplacement(token)
     }
 }
 
@@ -687,7 +690,7 @@ const goOldest = async (part?: FocusPart) => {
     } catch {
         return
     } finally {
-        if (replacing.value?.token === token) replacing.value = undefined
+        finishReplacement(token)
     }
 }
 
