@@ -2100,7 +2100,7 @@ const folderEyeLabel = (item: FolderItem) =>
                     <details ref="disclosure" class="min-w-0" data-manager-current>
                         <summary
                             ref="disclosureSummary"
-                            class="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg"
+                            class="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg forced-colors:focus-visible:outline forced-colors:focus-visible:outline-2 forced-colors:focus-visible:outline-[Highlight]"
                             :data-autofocus="requestedDisclosure ? '' : undefined"
                             data-manager-current-summary
                         >{{ disclosureTitle }}</summary>
