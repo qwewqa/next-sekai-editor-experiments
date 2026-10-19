@@ -39,14 +39,10 @@ const iconProps = computed(
         commands[props.name].icon.props,
 )
 
-// Tools float over the dark canvas (accent focus ring) and also sit in the light
-// Settings dialog (fg ring). Labelled flyout items get a 44px target on touch,
-// and drop the shortcut hints there, as the context menu does. High contrast
-// leaves SVG fills alone, so monochrome icons take ButtonText. The tool in use
-// takes the selected look, unforced so its text gets no backplate. The
-// transparent outline is the edge high contrast paints; inset, as tools sit close.
-// Focus on the tool in use keeps its edge and adds an inner ring of the selected
-// text colour; on another tool the shared rule in index.css thickens the edge inward.
+// Tools float over the dark canvas and also sit in the light Settings dialog; the recipes
+// (controls.css) give the on look, the press, and the focus ring in the face's own ink. Labelled
+// flyout items get a 44px target on touch, and drop the shortcut hints there, as the context
+// menu does. High contrast leaves SVG fills alone, so monochrome icons take ButtonText.
 const shortcut = computed(() =>
     isCoarsePointer.value ? undefined : formatShortcut(settings.keyboardShortcuts[props.name]),
 )
@@ -54,13 +50,19 @@ const shortcut = computed(() =>
 
 <template>
     <button
-        class="flex items-center rounded-full p-2 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 active:bg-accent active:fill-on-accent active:text-on-accent [dialog_&]:focus-visible:ring-fg"
+        class="btn btn-secondary flex items-center rounded-full p-2"
         :class="[
+            // Only a tool, mode or open panel takes the on look; a value in use keeps its check.
+            { 'btn-toggle': state?.kind !== 'value' },
+            // High contrast: icons take ButtonText, and the tool in use keeps its edge in the
+            // selected text colour (it is unforced, so the transparent edge would stay clear).
             selected
-                ? 'bg-accent fill-on-accent text-on-accent focus-visible:ring-white forced-colors:bg-[Highlight] forced-colors:fill-[HighlightText] forced-colors:text-[HighlightText] forced-colors:outline-[color:HighlightText] forced-colors:forced-color-adjust-none forced-colors:![box-shadow:none] forced-colors:focus-visible:!outline-2 forced-colors:focus-visible:!-outline-offset-2 forced-colors:focus-visible:![box-shadow:inset_0_0_0_4px_Highlight,inset_0_0_0_6px_HighlightText] forced-colors:active:bg-[Highlight] forced-colors:active:fill-[HighlightText] forced-colors:active:text-[HighlightText]'
-                : 'bg-button focus-visible:ring-accent forced-colors:fill-[ButtonText]',
+                ? 'forced-colors:outline-[color:HighlightText]'
+                : 'forced-colors:fill-[ButtonText]',
             { '[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3': showLabel },
-            { 'opacity-40': refused },
+            // A refused tool dims only its content: the face, shadow and on-state stay opaque
+            // over the chart.
+            { '*:opacity-40': refused },
         ]"
         :title
         :aria-pressed="pressed"

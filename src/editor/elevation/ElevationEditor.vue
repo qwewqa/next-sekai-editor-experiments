@@ -180,15 +180,16 @@ const header = useTemplateRef<HTMLDivElement>('header')
 const beatInput = useTemplateRef<HTMLInputElement>('beatInput')
 const headerHeight = ref(80)
 // Header controls follow the workspace chrome language: compact dark icon
-// buttons with ordinary gap-filling hit areas, and white
-// pill fields with an accent focus ring on the dark band.
+// buttons with ordinary gap-filling hit areas, and white pill fields, on the dark band.
+// The recipes (controls.css) give their hover, press and focus ring.
 const headerIconButton =
-    "relative flex size-8 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40"
-// 1:1 is a toggle, so it rests as a raised pill, as other buttons and the fields do.
+    "ghost ghost-chrome relative flex size-8 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-0.5 before:content-['']"
+// 1:1 is a toggle, so it rests as a raised pill, as other buttons and the fields do, and is flat
+// and mint while on.
 const headerButton =
-    "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-button text-fg shadow-md outline-none -outline-offset-2 transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:shadow-accent focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent"
+    "btn btn-secondary btn-toggle relative flex size-8 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-0.5 before:content-['']"
 const headerField =
-    'elevation-field h-8 w-20 appearance-none rounded-full bg-button px-3 text-base text-fg tabular-nums shadow-md transition-colors hover:shadow-accent outline-none focus:ring-accent active:bg-accent active:text-on-accent'
+    'elevation-field field h-8 w-20 appearance-none rounded-full px-3 text-base tabular-nums'
 let navigation: EditorNavigation | undefined
 const { cursor, cursorListeners } = useCanvasCursor(() => navigation)
 const controlListeners = { ...controlsForNavigation(() => navigation), ...cursorListeners }
@@ -2086,7 +2087,7 @@ onUnmounted(() => {
         <div
             ref="header"
             :[dockKeysAttribute]="''"
-            class="elevation-header absolute inset-x-0 top-0 isolate border-b border-white/10 bg-preview text-sm text-white/80"
+            class="elevation-header surface-chrome absolute inset-x-0 top-0 isolate border-b border-white/10 bg-preview text-sm text-white/80"
             @click="blurAfterPointer"
         >
             <div class="elevation-header-layout px-4">
@@ -2113,7 +2114,6 @@ onUnmounted(() => {
                                 ref="beatInput"
                                 v-model.lazy="beatField"
                                 :class="headerField"
-                                class="focus:ring-2"
                                 type="number"
                                 min="1"
                                 step="any"
@@ -2148,7 +2148,7 @@ onUnmounted(() => {
                                             : i18n.elevation.off
                                     "
                                     :class="headerField"
-                                    class="cursor-pointer focus-visible:ring-2"
+                                    class="cursor-pointer"
                                     :aria-label="i18n.elevation.snapping"
                                 >
                                     <option :value="0">{{ i18n.elevation.off }}</option>
@@ -2165,8 +2165,8 @@ onUnmounted(() => {
                                             ? `1/${settings.elevationSnap}`
                                             : i18n.elevation.off
                                     "
-                                    class="z-[2] px-3 text-base tabular-nums text-fg group-active:text-on-accent" /><span
-                                    class="elevation-select-icon group-active:text-on-accent"
+                                    class="z-[2] px-3 text-base tabular-nums text-fg group-active:text-fg-strong" /><span
+                                    class="elevation-select-icon group-active:text-fg-strong"
                                     aria-hidden="true"
                                     ><ChevronIcon direction="down" /></span></span
                         ></label>
@@ -2273,34 +2273,6 @@ onUnmounted(() => {
 /* Its hit area covers the gap before it. */
 .elevation-square::before {
     left: -0.25rem;
-}
-
-/* Pressed, it is filled and glows on hover as the toolbar's active tool does. */
-@media not (forced-colors: active) {
-    .elevation-square[aria-pressed='true']:not(:active) {
-        @apply bg-accent text-on-accent;
-    }
-
-    .elevation-square[aria-pressed='true']:focus-visible {
-        @apply ring-white;
-    }
-}
-
-/* In high contrast, pressed is Highlight; focus is an inner ring, as on the toolbar's active tool. */
-@media (forced-colors: active) {
-    .elevation-square[aria-pressed='true'] {
-        forced-color-adjust: none;
-        background-color: Highlight;
-        color: HighlightText;
-    }
-
-    .elevation-square[aria-pressed='true']:focus-visible {
-        outline: 2px solid HighlightText;
-        outline-offset: -2px;
-        box-shadow:
-            inset 0 0 0 4px Highlight,
-            inset 0 0 0 6px HighlightText;
-    }
 }
 
 .elevation-label {

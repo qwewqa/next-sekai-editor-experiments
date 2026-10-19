@@ -16,7 +16,7 @@ const onClick = (event: MouseEvent, entry: Parameters<typeof setClipboardEntry>[
             <button
                 v-if="entry.data"
                 type="button"
-                class="truncate rounded-full bg-button px-4 py-1 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="btn btn-secondary truncate rounded-full px-4 py-1"
                 @click="onClick($event, entry)"
             >
                 {{ entry.name }}

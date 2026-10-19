@@ -115,7 +115,7 @@ test.describe('touch', () => {
             await touch('touchMove', [
                 [at.x + ((to.x - at.x) * step) / 5, at.y + ((to.y - at.y) * step) / 5],
             ])
-        await expect(row(page, 'Eraser')).toHaveClass(/!bg-accent/)
+        await expect(row(page, 'Eraser')).toHaveClass(/(^|\s)is-pressed(\s|$)/)
         await touch('touchEnd', [])
         expect(await toolName(page)).toBe('eraser')
         await expect(face(page, select)).toHaveAttribute('title', 'Eraser')

@@ -164,8 +164,7 @@ const clear = () => {
             <button
                 ref="addButton"
                 type="button"
-                class="brush-add flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent"
-                :class="addMenu ? 'bg-accent text-on-accent' : 'bg-button'"
+                class="brush-add btn btn-secondary flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4"
                 :title="i18n.tools.brush.add"
                 aria-haspopup="menu"
                 :aria-expanded="addMenu ? 'true' : 'false'"
@@ -188,7 +187,7 @@ const clear = () => {
             />
             <button
                 type="button"
-                class="brush-pick min-w-0 flex-[1_0_auto] truncate rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:opacity-40 [@media(hover:hover)]:enabled:hover:shadow-accent"
+                class="brush-pick btn btn-secondary min-w-0 flex-[1_0_auto] truncate rounded-full px-4 py-1"
                 :disabled="!canPick"
                 @click="pick"
             >
@@ -197,7 +196,7 @@ const clear = () => {
             <button
                 v-if="groups.length"
                 type="button"
-                class="brush-clear shrink-0 rounded-full px-4 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
+                class="brush-clear ghost shrink-0 rounded-full px-4 py-1"
                 @click="clear"
             >
                 {{ i18n.tools.brush.clear }}
@@ -225,7 +224,7 @@ const clear = () => {
                 />
                 <button
                     type="button"
-                    class="brush-remove absolute flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:[&:not(:active)]:bg-header-hover"
+                    class="brush-remove ghost absolute flex size-8 items-center justify-center rounded-full"
                     :aria-label="
                         interpolateRaw(i18n.tools.brush.remove, fieldLabel(field, i18n, true))
                     "

@@ -1,5 +1,15 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+
+// Whether a button is painted with the on fill (the accent token).
+const isOnFill = (locator: Locator) =>
+    locator.evaluate((element) => {
+        const [r, g, b] = getComputedStyle(document.documentElement)
+            .getPropertyValue('--color-accent')
+            .trim()
+            .split(/\s+/)
+        return getComputedStyle(element).backgroundColor === `rgb(${r}, ${g}, ${b})`
+    })
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -77,12 +87,12 @@ test('Composed does not displace a chosen group action or highlight its own butt
     await flip.hover()
     const action = toolbar.getByTitle('Editor Layout', { exact: true })
     await expect(action).not.toHaveAttribute('aria-pressed')
-    await expect(action).not.toHaveClass(/(?:^|\s)bg-accent(?:\s|$)/)
+    await expect.poll(() => isOnFill(action)).toBe(false)
     await action.click()
     await action.click()
     expect(await layout(page)).toBe('composed')
     await expect(action).not.toHaveAttribute('aria-pressed')
-    await expect(action).not.toHaveClass(/(?:^|\s)bg-accent(?:\s|$)/)
+    await expect.poll(() => isOnFill(action)).toBe(false)
     await action.screenshot({ path: testInfo.outputPath('layout-tool.png') })
     // Choosing another action while Composed is active must leave it on the face.
     await action.hover()

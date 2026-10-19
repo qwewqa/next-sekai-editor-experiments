@@ -52,7 +52,7 @@ onUnmounted(() => {
                   : size === undefined && '-translate-x-1/2',
             size === undefined && '-translate-y-1/2',
             indicator.highlighted ? 'border-white' : 'border-white/25',
-            hovered && 'is-hovered ring-2 ring-accent',
+            hovered && 'is-hovered ring-2 ring-white/60',
         ]"
         :style="{
             top: `${size === undefined ? indicator.y : pixel(indicator.y - size.height / 2)}px`,

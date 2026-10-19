@@ -43,6 +43,22 @@ const placedFlyout = (page: Page) =>
             return placed ? index : 'unplaced'
         })
 
+// Which role token a button's painted background is: 'accent' (on), 'button' (raised), or its rgb.
+const fillOf = (locator: Locator) =>
+    locator.evaluate((element) => {
+        const token = (name: string) =>
+            `rgb(${getComputedStyle(document.documentElement)
+                .getPropertyValue(`--color-${name}`)
+                .trim()
+                .split(/\s+/)
+                .join(', ')})`
+        const { backgroundColor } = getComputedStyle(element)
+        return (
+            (['accent', 'button'] as const).find((name) => token(name) === backgroundColor) ??
+            backgroundColor
+        )
+    })
+
 const pressedTitles = (page: Page) =>
     shown(page).evaluateAll((buttons) =>
         buttons
@@ -64,7 +80,7 @@ test('the toolbar shows the tool in use as pressed', async ({ page }) => {
     await expect.poll(() => pressedTitles(page)).toEqual(['Select', ...values])
     const select = shown(page).and(page.getByTitle('Select', { exact: true }))
     await expect(select).toHaveAttribute('aria-pressed', 'true')
-    await expect(select).toHaveClass(/bg-accent/)
+    await expect.poll(() => fillOf(select)).toBe('accent')
     // Plain actions are not toggles; modes not in use are.
     for (const title of ['Undo', 'Open', 'Help'])
         await expect(shown(page).and(page.getByTitle(title, { exact: true }))).not.toHaveAttribute(
@@ -534,16 +550,16 @@ test('a value without a preset in its group shows on that group’s Custom face'
 test('values in use keep the resting look, and their flyout checks the one in use', async ({
     page,
 }) => {
-    // The selected fill, not the press feedback every tool has.
-    const fill = /(^|\s)bg-accent(\s|$)/
     const values = ['1/4 Division', '1/1 Lane Division', 'No Lane Limit']
     for (const title of values) {
         const face = shown(page).and(page.getByTitle(title, { exact: true }))
         await expect(face).toHaveAttribute('aria-pressed', 'true')
-        await expect(face).not.toHaveClass(fill)
-        await expect(face).toHaveClass(/(^|\s)bg-button(\s|$)/)
+        // The raised look, not the selected fill or the press feedback every tool has.
+        await expect.poll(() => fillOf(face)).toBe('button')
     }
-    await expect(shown(page).and(page.getByTitle('Select', { exact: true }))).toHaveClass(fill)
+    await expect
+        .poll(() => fillOf(shown(page).and(page.getByTitle('Select', { exact: true }))))
+        .toBe('accent')
 
     const rows = toolbar(page).locator(':scope > div > div > div button')
     const checked = () =>
@@ -564,7 +580,7 @@ test('values in use keep the resting look, and their flyout checks the one in us
         ),
     )
     expect(new Set(lefts).size).toBe(1)
-    await expect(rows.and(page.locator('[class~="bg-accent"]'))).toHaveCount(0)
+    for (const row of await rows.all()) expect(await fillOf(row)).not.toBe('accent')
     await page.keyboard.press('Escape')
 
     // A custom value checks Custom.
