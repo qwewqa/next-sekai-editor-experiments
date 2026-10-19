@@ -55,13 +55,11 @@ export type EntryRow = {
 
 /** After a jump: the entries between Now and the loaded window, not read yet. */
 export type GapRow = { type: 'gap'; id: 'gap'; count: number }
-export type CountRow = { type: 'count'; id: string; parent: EntryRow }
 
 export type Row =
     | { type: 'now'; id: 'now' }
     | GapRow
     | EntryRow
-    | CountRow
     | { type: 'divider'; id: string; entry: Entry }
     | Header
 
@@ -233,13 +231,6 @@ export const buildRows = (
             previous = item.entry
         }
         rows.push(item)
-        if (
-            item.type === 'entry' &&
-            item.entry.kind === 'edit' &&
-            item.members.length > 1 &&
-            expanded.has(item.id)
-        )
-            rows.push({ type: 'count', id: `${item.id}/count`, parent: item })
     }
     return rows
 }

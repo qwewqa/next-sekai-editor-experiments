@@ -151,7 +151,7 @@ test('same-name distinct targets receive immutable qualifiers without merging me
     assert.deepEqual(saved.qualifiers, [{ kind: 'group', id: 1 }])
 })
 
-test('a partial singleton has truthful count but no synthesized child or count-detail row', () => {
+test('a partial singleton has truthful count but no synthesized child', () => {
     const [partial] = rows([edit(100)], true)
     assert.equal(isCountedParent(partial!), true)
     assert.equal(presentRow(partial!, context).full, 'Added 100 notes · 1+ steps')
@@ -160,14 +160,13 @@ test('a partial singleton has truthful count but no synthesized child or count-d
     assert.equal(presentRow(undo!, context).full, 'Undid 1+ steps')
 })
 
-test('all unavailable entries reserve the reason while passive count rows remain28px', () => {
+test('all unavailable entries reserve the reason', () => {
     const [single] = rows([edit(1)], false, false)
     const [parent] = rows([edit(1), edit(1)], true, false)
     for (const row of [single!, parent!, { ...parent!, child: true }]) {
         assert.equal(heightOf(row), 80)
         assert.equal(heightOf({ ...row, selectable: true }), 44)
     }
-    assert.equal(heightOf({ type: 'count', id: 'count', parent: parent! }), 28)
     assert.equal(heightOf({ type: 'now', id: 'now' }), 44)
     assert.equal(heightOf({ type: 'gap', id: 'gap', count: 4 }), 44)
     assert.equal(heightOf({ type: 'header', id: 'h', level: 'day', withDay: false, time: 0 }), 28)

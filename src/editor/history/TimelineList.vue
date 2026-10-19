@@ -36,6 +36,7 @@ import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
+import GapArrowIcon from './GapArrowIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
@@ -175,18 +176,21 @@ const recipeOf = (row: EntryRow) =>
         ? peekedInfo.value.recipe
         : (recipes.value.get(row.id) ?? recipeOfRow(row))
 
-// --- Geometry: rows have fixed heights per kind, so the window needs no measuring.
-const rowHeight = computed(() => 44)
-const HEADER = 28
-const DIVIDER = 32
+// --- Geometry: rows have fixed heights per kind, so the window needs no measuring. The heights are
+// px at the 16 px rem; k, the root font size / 16 read as the list is set up, scales them as the rows’
+// classes scale (a larger browser text size).
+const k = ref((parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16)
+const rowHeight = computed(() => 44 * k.value)
+const HEADER = computed(() => 28 * k.value)
+const DIVIDER = computed(() => 32 * k.value)
 // The list's padding: 4 px above the first row, 8 px below the last.
-const PAD_TOP = 4
-const PAD_BOTTOM = 8
+const PAD_TOP = computed(() => 4 * k.value)
+const PAD_BOTTOM = computed(() => 8 * k.value)
 const geometry = computed(() => {
-    let y = PAD_TOP
+    let y = PAD_TOP.value
     const offsets = rows.value.map((row) => {
         const top = y
-        y += heightOf(row)
+        y += heightOf(row, k.value)
         return top
     })
     return {
@@ -211,24 +215,24 @@ const rowAt = ({ offsets, total }: { offsets: number[]; total: number }, y: numb
 
 // What follows the rows: the first page loading, an empty or failed timeline, an older page loading.
 const SKELETON_ROWS = 4
-const MESSAGE = 96
-const FAILED = 132
+const MESSAGE = computed(() => 96 * k.value)
+const FAILED = computed(() => 132 * k.value)
 const tail = computed(() => {
     // Edits Here: its scan's progress, then what it could not check.
     if (historyFilter.value === 'here') {
-        if (isEmpty.value) return { kind: 'empty', height: MESSAGE }
+        if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
         if (here.scanning) return { kind: 'checking', height: rowHeight.value }
         if (here.unreadable) return { kind: 'notChecked', height: rowHeight.value }
         return { kind: 'none', height: 0 }
     }
-    if (status.value === 'failed') return { kind: 'failed', height: FAILED }
+    if (status.value === 'failed') return { kind: 'failed', height: FAILED.value }
     if (status.value === 'loading')
         return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
-    if (isEmpty.value) return { kind: 'empty', height: MESSAGE }
+    if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
     if (loadingMore.value) return { kind: 'more', height: rowHeight.value }
     return { kind: 'none', height: 0 }
 })
-const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM)
+const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM.value)
 
 const OVERSCAN = 12
 /** The last row starting at or above the scroll position. */
@@ -612,11 +616,11 @@ const scrollToRow = (id: string) => {
     const row = rows.value[index]
     if (!element || !row) return
     const top = geometry.value.offsets[index] ?? 0
-    const bottom = top + heightOf(row)
-    const cover = element.scrollTop > 0 ? HEADER : 0
-    if (top < element.scrollTop + cover) element.scrollTop = Math.max(0, top - HEADER)
+    const bottom = top + heightOf(row, k.value)
+    const cover = element.scrollTop > 0 ? HEADER.value : 0
+    if (top < element.scrollTop + cover) element.scrollTop = Math.max(0, top - HEADER.value)
     else if (bottom > element.scrollTop + element.clientHeight)
-        element.scrollTop = bottom + PAD_BOTTOM - element.clientHeight
+        element.scrollTop = bottom + PAD_BOTTOM.value - element.clientHeight
 }
 
 const step = async (delta: number) => {
@@ -769,23 +773,12 @@ watch(
         const top = element.scrollTop
         if (top <= 0 && !previous.ids.includes('gap')) return
         const index = new Map(next.ids.map((id, i) => [id, i]))
-        const oldAnchor = rowAt(previous, top)
-        if (previous.kinds[oldAnchor] === 'count') {
-            const oldId = previous.ids[oldAnchor]
-            const parent = oldId?.replace(/\/count$/, '')
-            const at = parent === undefined ? undefined : index.get(parent)
-            if (at !== undefined && oldId !== undefined && !index.has(oldId)) {
-                element.scrollTop = next.offsets[at] ?? 0
-                scrollTop.value = element.scrollTop
-                return
-            }
-        }
         for (let i = rowAt(previous, top); i < previous.ids.length; i++) {
             const id = previous.ids[i]
             const at = id === undefined ? undefined : index.get(id)
             // Headers are no anchor: the span they label grows with newer rows.
             if (at === undefined || next.kinds[at] === 'now' || next.kinds[at] === 'gap') continue
-            if (next.kinds[at] === 'header' || next.kinds[at] === 'count') continue
+            if (next.kinds[at] === 'header') continue
             const shift = (next.offsets[at] ?? 0) - (previous.offsets[i] ?? 0)
             if (shift !== 0) {
                 element.scrollTop = top + shift
@@ -805,7 +798,10 @@ const gapInView = () => {
     const row = rows.value[index]
     if (!element || !row || replacing.value || loadingNewer.value) return false
     const top = geometry.value.offsets[index] ?? 0
-    return top < element.scrollTop + element.clientHeight && top + heightOf(row) > element.scrollTop
+    return (
+        top < element.scrollTop + element.clientHeight &&
+        top + heightOf(row, k.value) > element.scrollTop
+    )
 }
 watch(
     [() => geometry.value.total, viewport, gap, loadingNewer],
@@ -1248,11 +1244,28 @@ const flagTextOf = (row: EntryRow) =>
 
 const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
-// Narrow rows omit seconds and note deltas; full times remain in their names.
-const narrow = computed(() => width.value > 0 && width.value < 340)
-const inlineCount = computed(() => width.value >= 300)
-const showInlineCount = (row: EntryRow) =>
-    inlineCount.value || (recipeOf(row).partial && recipeOf(row).members.length === 1)
+// Narrow rows omit seconds and note deltas; full times remain in their names. Narrow is under 21.25rem:
+// 340 px at the default size, scaled with the root font size like the one-line threshold.
+const narrow = computed(() => width.value > 0 && width.value < 340 * k.value)
+// From 18rem a row is one line: its mark, title, count, delta and time on one centre line. Below,
+// the count, delta and time go under the title, at its edge (Part 1 §1.4.10.5).
+// One-line rows from 18rem: px at the 16 px rem, scaled like the slots (owner decision, 2026-10-19).
+const ONE_LINE = 18 * 16
+const oneLine = computed(() => width.value >= ONE_LINE * k.value)
+
+// A group's members carry its rail in their leading slot, from under the parent's disclosure to
+// the run's end: computed from the rows, so the window cannot break it.
+const isMember = (row: Row | undefined) => row?.type === 'entry' && row.child
+const memberEnds = computed(() => {
+    const first = new Set<string>()
+    const last = new Set<string>()
+    rows.value.forEach((row, i) => {
+        if (!isMember(row)) return
+        if (!isMember(rows.value[i - 1])) first.add(row.id)
+        if (!isMember(rows.value[i + 1])) last.add(row.id)
+    })
+    return { first, last }
+})
 
 const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
 
@@ -1278,7 +1291,7 @@ const headerClass = (header: Header) =>
         ? 'font-bold text-fg'
         : header.level === 'hour'
           ? 'font-bold text-fg/80'
-          : 'font-medium text-fg/70'
+          : 'font-medium text-fg/80'
 
 const notCheckedText = computed(() =>
     interpolateRaw(i18n.value.history.notChecked, String(here.unreadable)),
@@ -1301,6 +1314,7 @@ defineExpose({
             role="treegrid"
             tabindex="-1"
             class="timeline-list overlay-scroller h-full overflow-y-auto overscroll-contain outline-none"
+            :class="oneLine ? 'timeline-one-line' : 'timeline-two-line'"
             :aria-label="i18n.history.timeline"
             aria-colcount="2"
             :aria-rowcount="canLoadMore || gap !== undefined ? -1 : positions.size"
@@ -1320,7 +1334,7 @@ defineExpose({
                         data-history-row
                         data-history-part="row"
                         :tabindex="tabIndex(row, 'row')"
-                        class="timeline-row timeline-now"
+                        class="timeline-row timeline-row-plain timeline-now"
                         :class="{ 'timeline-row-selected': selectedId === row.id }"
                         :aria-selected="selectedId === row.id"
                         :aria-rowindex="positions.map.get(row.id)"
@@ -1345,7 +1359,6 @@ defineExpose({
                                         · {{ headLabel }}</template
                                     ></span
                                 >
-                                <span class="block h-4" aria-hidden="true" />
                             </span>
                         </div>
                     </div>
@@ -1360,18 +1373,7 @@ defineExpose({
                         :style="{ top: `${top}px`, height: `${rowHeight}px` }"
                         data-history-gap
                     >
-                        <svg
-                            class="size-3.5 shrink-0"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.75"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                        >
-                            <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
-                        </svg>
+                        <GapArrowIcon class="size-3.5 shrink-0 fill-current" />
                         <span class="min-w-0 truncate">{{ newerStepsText(row.count) }}</span>
                     </div>
 
@@ -1382,7 +1384,7 @@ defineExpose({
                         role="presentation"
                         aria-hidden="true"
                         data-history-continuation
-                        class="timeline-divider items-center"
+                        class="timeline-divider timeline-continuation items-center"
                         :style="{ top: `${top}px`, height: `${DIVIDER}px` }"
                     >
                         <span class="timeline-rule" aria-hidden="true" />
@@ -1395,22 +1397,11 @@ defineExpose({
                         v-else-if="row.type === 'header'"
                         role="presentation"
                         aria-hidden="true"
-                        class="timeline-divider items-end pb-1"
+                        class="timeline-divider timeline-header items-end pb-1"
                         :class="headerClass(row)"
                         :style="{ top: `${top}px`, height: `${HEADER}px` }"
                     >
                         <span class="min-w-0 truncate">{{ headerText(row) }}</span>
-                    </div>
-
-                    <div
-                        v-else-if="row.type === 'count'"
-                        role="presentation"
-                        aria-hidden="true"
-                        class="timeline-count-detail"
-                        :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
-                        data-history-count-detail
-                    >
-                        {{ presentationOf(row.parent).count }}
                     </div>
 
                     <div
@@ -1425,7 +1416,11 @@ defineExpose({
                         :class="{
                             'timeline-row-selected': selectedId === row.id,
                             'timeline-row-disabled': !row.selectable,
+                            'timeline-row-plain': row.selectable && !expandable(row),
+                            'timeline-row-group': expandable(row),
                             'timeline-row-child': row.child,
+                            'timeline-row-first': memberEnds.first.has(row.id),
+                            'timeline-row-last': memberEnds.last.has(row.id),
                             'timeline-row-counted': isCountedParent(row),
                         }"
                         :aria-selected="selectedId === row.id"
@@ -1438,7 +1433,7 @@ defineExpose({
                         :aria-description="continuationDescriptions.get(row.id)"
                         :aria-rowindex="positions.map.get(row.id)"
                         :title="titleOf(row)"
-                        :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
+                        :style="{ top: `${top}px`, height: `${heightOf(row, k)}px` }"
                         @click="onRowClick(row)"
                         @contextmenu="onContextMenu($event, row)"
                         @pointerdown="onRowPointerdown($event, row)"
@@ -1465,7 +1460,7 @@ defineExpose({
                             <span v-if="expandable(row)" role="gridcell" class="shrink-0">
                                 <button
                                     type="button"
-                                    class="timeline-leading rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
+                                    class="timeline-disclosure ghost relative z-[1] flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-y-1 before:inset-x-0"
                                     :aria-label="labelOf(row)"
                                     :aria-expanded="expandedGroups.has(row.id)"
                                     data-history-disclosure
@@ -1477,14 +1472,16 @@ defineExpose({
                                 >
                                     <ChevronIcon
                                         :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
+                                        centered
                                     />
                                 </button>
                             </span>
+                            <!-- A member's slot holds only its group's rail (the row's ::after). -->
                             <span v-else class="timeline-leading" aria-hidden="true"
-                                ><KindIcon :kind="row.entry.kind"
+                                ><KindIcon v-if="!row.child" :kind="row.entry.kind"
                             /></span>
                             <div
-                                class="min-w-0 flex-1"
+                                class="timeline-main"
                                 :role="expandable(row) ? 'gridcell' : undefined"
                                 :data-history-part="
                                     expandable(row) && row.selectable ? 'main' : undefined
@@ -1498,16 +1495,15 @@ defineExpose({
                                 <component
                                     :is="row.selectable ? 'div' : 'button'"
                                     :type="row.selectable ? undefined : 'button'"
-                                    class="timeline-entry-text block w-full"
-                                    :class="
-                                        !row.selectable
-                                            ? 'rounded-xl outline-offset-[-2px] focus-visible:outline focus-visible:outline-2'
-                                            : ''
-                                    "
+                                    class="timeline-entry-text"
+                                    :class="{ ghost: !row.selectable }"
                                     :aria-label="
                                         row.selectable
                                             ? undefined
-                                            : `${i18n.history.details.title}: ${nameOf(row)}`
+                                            : interpolateRaw(
+                                                  i18n.history.details.named,
+                                                  nameOf(row),
+                                              )
                                     "
                                     :data-history-details="row.selectable ? undefined : ''"
                                     :data-history-part="row.selectable ? undefined : 'main'"
@@ -1520,31 +1516,20 @@ defineExpose({
                                         >{{ presentationOf(row).main }}</span
                                     >
                                     <span class="timeline-entry-caption" data-history-group-caption>
-                                        <span
-                                            class="min-w-0 flex-1 truncate"
-                                            data-history-group-count
+                                        <!-- A group's step count, collapsed or open, at every width. -->
+                                        <span class="timeline-group-count" data-history-group-count
+                                            ><template v-if="presentationOf(row).count">{{
+                                                presentationOf(row).count
+                                            }}</template></span
                                         >
-                                            <template
-                                                v-if="
-                                                    showInlineCount(row) &&
-                                                    !(
-                                                        row.members.length > 1 &&
-                                                        expandedGroups.has(row.id)
-                                                    )
-                                                "
-                                                >{{ presentationOf(row).count }}</template
-                                            >
-                                        </span>
                                         <span
                                             v-if="row.selectable && !narrow && deltaOf(row)"
-                                            class="timeline-count shrink-0"
+                                            class="timeline-count"
                                             >{{ deltaOf(row) }}</span
                                         >
-                                        <span
-                                            class="timeline-time shrink-0"
-                                            data-history-group-time
-                                            >{{ timeOf(row) }}</span
-                                        >
+                                        <span class="timeline-time" data-history-group-time>{{
+                                            timeOf(row)
+                                        }}</span>
                                     </span>
                                 </component>
                             </div>
@@ -1555,15 +1540,17 @@ defineExpose({
                             data-history-flag
                         >
                             <FlagIcon :kind="flagKindOf(row)" />
-                            <span>{{ flagTextOf(row) }}</span>
+                            <!-- Two lines at most: a larger text size in a narrow dock would spill a third. -->
+                            <span class="line-clamp-2 min-w-0">{{ flagTextOf(row) }}</span>
                         </span>
                     </div>
                 </template>
 
                 <!-- What follows the rows. -->
+                <!-- Loading rows take the rows' own form, one line or two, on the same columns. -->
                 <div
                     v-if="tail.kind === 'skeleton'"
-                    class="absolute inset-x-2"
+                    class="absolute inset-x-1.5"
                     :style="{ top: `${geometry.total}px` }"
                     aria-hidden="true"
                     data-history-loading
@@ -1571,20 +1558,31 @@ defineExpose({
                     <div
                         v-for="n in SKELETON_ROWS"
                         :key="n"
-                        class="flex items-center gap-2 px-3 motion-safe:animate-pulse"
+                        class="flex items-center px-0.5 motion-safe:animate-pulse"
                         :style="{ height: `${rowHeight}px` }"
                     >
-                        <span class="size-4 shrink-0 rounded-full bg-fg/10" />
-                        <span
-                            class="h-3 rounded-full bg-fg/10"
-                            :style="{ width: `${72 - n * 9}%` }"
-                        />
-                        <span class="ml-auto h-3 w-16 shrink-0 rounded-full bg-fg/10" />
+                        <span class="flex size-9 shrink-0 items-center justify-center"
+                            ><span class="size-4 rounded-full bg-fg/10"
+                        /></span>
+                        <template v-if="oneLine">
+                            <span
+                                class="ml-2 h-3 max-w-[calc(100%-8rem)] rounded-full bg-fg/10"
+                                :style="{ width: `${72 - n * 9}%` }"
+                            />
+                            <span class="ml-auto mr-3 h-3 w-16 shrink-0 rounded-full bg-fg/10" />
+                        </template>
+                        <span v-else class="ml-2 flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+                            <span
+                                class="h-3 rounded-full bg-fg/10"
+                                :style="{ width: `${92 - n * 12}%` }"
+                            />
+                            <span class="h-2.5 w-16 rounded-full bg-fg/10" />
+                        </span>
                     </div>
                 </div>
                 <div
                     v-else-if="tail.kind === 'empty'"
-                    class="absolute inset-x-2 flex items-center justify-center px-3 text-center text-sm text-fg/70"
+                    class="absolute inset-x-1.5 flex items-center justify-center px-3 text-center text-sm text-fg/80"
                     :style="{ top: `${geometry.total}px`, height: `${MESSAGE}px` }"
                     data-history-empty
                 >
@@ -1601,31 +1599,33 @@ defineExpose({
                 <!-- Edits Here's scan: a passive status row while it runs, then what it left out. -->
                 <div
                     v-else-if="tail.kind === 'checking' || tail.kind === 'notChecked'"
-                    class="absolute inset-x-2 flex items-center gap-2 px-3 text-xs text-fg/70"
+                    class="absolute inset-x-1.5 flex items-center px-0.5 text-xs text-fg/80"
                     :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
                     role="status"
                     data-history-scan
                     :data-scan="tail.kind"
                 >
                     <span
-                        v-if="tail.kind === 'checking'"
-                        class="size-3.5 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        class="flex size-9 shrink-0 items-center justify-center"
                         aria-hidden="true"
-                    />
-                    <span class="min-w-0 truncate">{{
+                        ><span
+                            v-if="tail.kind === 'checking'"
+                            class="size-3.5 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                    /></span>
+                    <span class="min-w-0 truncate pl-2">{{
                         tail.kind === 'checking' ? i18n.history.checking : notCheckedText
                     }}</span>
                 </div>
                 <div
                     v-else-if="tail.kind === 'failed'"
-                    class="absolute inset-x-2 flex flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/70"
+                    class="absolute inset-x-1.5 flex flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/80"
                     :style="{ top: `${geometry.total}px`, height: `${FAILED}px` }"
                     data-history-failed
                 >
                     <span>{{ i18n.history.loadFailed }}</span>
                     <button
                         type="button"
-                        class="h-9 rounded-full bg-button px-4 font-bold text-fg shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         @click="retry"
                     >
                         {{ i18n.history.tryAgain }}
@@ -1633,7 +1633,7 @@ defineExpose({
                 </div>
                 <div
                     v-else-if="tail.kind === 'more'"
-                    class="absolute inset-x-2 flex items-center justify-center"
+                    class="absolute inset-x-1.5 flex items-center justify-center"
                     :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
                     aria-hidden="true"
                 >
@@ -1646,12 +1646,12 @@ defineExpose({
         <!-- The header of the rows at the top, so a long day never loses its place. -->
         <div
             v-if="pinned"
-            class="pointer-events-none absolute inset-x-0 top-0 z-10 bg-modal pt-1 shadow-band"
+            class="pointer-events-none absolute inset-x-0 top-0 z-10 bg-modal shadow-band"
             aria-hidden="true"
             data-history-pinned
         >
             <div
-                class="flex items-end truncate px-5 pb-1 text-xs"
+                class="flex items-end truncate pb-1 pl-[3.25rem] pr-3 text-xs"
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
@@ -1673,87 +1673,228 @@ defineExpose({
 </template>
 
 <style scoped>
+/*
+ * One grid for every row kind (list x): the row pill 6..W-6; one leading slot 8..44, centre 26, with
+ * one mark per row (the Now dot, a kind glyph, a group's disclosure, a member's rail); the text pill
+ * 40..W-8 with 12 px inside, so every title starts at 52 and every time ends at W-20.
+ * Rows keep their fixed 44 / 80 px slots for the window; the visible pill is the row's ::before, 2 px
+ * in top and bottom, so neighbouring pills sit 4 px apart, as manager rows do.
+ */
 .timeline-row {
-    @apply absolute inset-x-2 select-none rounded-3xl text-sm;
+    @apply absolute inset-x-1.5 select-none text-sm;
+    isolation: isolate;
+    /* Focus shows on the pill, below, not on the slot. */
+    outline: none;
+}
+
+.timeline-row::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-0 inset-y-0.5 -z-10 rounded-[1.25rem] transition-[background-color,box-shadow];
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+}
+
+/* The current row is the raised pill (row-current's tokens on the pseudo-element). Its shadow barely
+   shows in dark, so there a 1 px edge tells it from a hovered row. */
+.timeline-row-selected::before {
+    @apply bg-button shadow-md;
+}
+
+:root[data-theme='dark'] .timeline-row-selected::before {
+    @apply ring-1 ring-inset ring-fg/25;
+}
+
+/* Not while pressed, so the press shows as on every other control. */
+@media (hover: hover) and (pointer: fine) {
+    .timeline-row:not(.timeline-row-selected):not(.timeline-row-disabled):not(
+            :active
+        ):hover::before {
+        @apply bg-button/70;
+    }
+}
+
+/* A plain row is one control, so its press fills the row pill: the raised pill's press tone, sunk,
+   which differs from the current pill in dark too (a ghost press there matches it, 1.09:1). */
+.timeline-row-plain:active::before {
+    @apply bg-press shadow-pressed;
+}
+
+.timeline-row-plain:active {
+    @apply text-fg-strong;
+}
+
+/* Row focus rings the pill at its edge in fg (focus-edge, drawn on the pill). */
+.timeline-row:focus-visible::before {
+    outline-color: rgb(var(--color-fg));
 }
 
 .timeline-entry-header,
 .timeline-now {
-    @apply flex h-11 items-center pr-3;
+    @apply flex h-11 items-center px-0.5;
 }
 
+/* Passive marks are muted; the disclosure, a control, is not. */
 .timeline-leading {
-    @apply flex size-11 shrink-0 items-center justify-center;
+    @apply flex size-9 shrink-0 items-center justify-center text-fg/70;
 }
 
+.timeline-main {
+    @apply flex min-w-0 flex-1;
+}
+
+/* The text pill reaches 4 px under the slot, so its faces are balanced 12 / 12 around the text. Its
+   18 px radius is the row pill's 20 less its 2 px inset, so the two stay concentric. */
 .timeline-entry-text {
-    @apply min-w-0 flex-1 truncate py-1 text-left;
+    @apply -ml-1 flex h-9 min-w-0 flex-1 flex-col justify-center rounded-[1.125rem] px-3 text-left transition-colors;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+}
+
+/* Two lines: the face takes the row pill's 40 px, so its rounded ends clear both lines. The title's
+   line is 18 px and the text sits 2 px above the face's foot, so the ring clears ascenders and
+   descenders by 2 px or more in every script measured (Latin, French, Japanese). */
+.timeline-two-line .timeline-entry-text {
+    @apply -my-0.5 h-10 pb-0.5;
+}
+
+.timeline-two-line [data-history-group-action] {
+    @apply leading-[1.125rem];
+}
+
+/* A group's main cell presses its text pill, in the same tone; its disclosure presses its own circle. */
+.timeline-row-group:not(.timeline-row-disabled) .timeline-main:active .timeline-entry-text {
+    @apply bg-press text-fg-strong shadow-pressed;
+}
+
+/* Cell focus rings the text pill at its edge (the row exception), the unavailable row's Details
+   button too, which is that pill; the cell element itself draws nothing. */
+.timeline-entry-header[data-history-part],
+.timeline-main[data-history-part],
+.timeline-now [data-history-part] {
+    outline: none;
+}
+
+[data-history-part='main']:focus-visible .timeline-entry-text,
+.timeline-entry-text[data-history-part='main']:focus-visible {
+    outline-color: rgb(var(--color-fg));
+    outline-offset: -2px;
 }
 
 .timeline-entry-caption {
-    @apply flex gap-2 whitespace-nowrap text-xs leading-4;
+    @apply flex gap-2 whitespace-nowrap text-xs leading-4 text-fg/80;
 }
 
-.timeline-entry-reason.timeline-flag {
-    @apply h-8 items-start px-3 leading-4;
+.timeline-group-count {
+    @apply min-w-0 truncate empty:hidden;
 }
 
-.timeline-row-child {
-    @apply pl-3;
+.timeline-time,
+.timeline-count {
+    @apply shrink-0 tabular-nums;
 }
 
-.timeline-count-detail {
-    @apply absolute inset-x-2 flex items-center pl-11 pr-3 text-xs;
+/* One line: the mark, title, count, delta and time share a centre line. The count gives way first,
+   then the title; the delta and the time never shrink. */
+.timeline-one-line .timeline-entry-header .timeline-entry-text {
+    @apply flex-row items-center justify-start gap-2;
 }
 
-.timeline-row-selected {
-    @apply bg-button shadow-md;
+.timeline-one-line [data-history-group-action] {
+    @apply min-w-0 flex-auto;
 }
 
-.timeline-row-disabled {
+.timeline-one-line .timeline-entry-caption {
+    display: contents;
+}
+
+.timeline-one-line .timeline-group-count {
+    @apply flex-[0_1000_auto] text-right;
+}
+
+/* A member's rail: its slot's mark, from under the parent's disclosure to the run's end, beneath
+   the pills, so a hover shows it faintly; the current member shows a short stretch on its pill. */
+.timeline-row-child::after {
+    content: '';
+    @apply pointer-events-none absolute inset-y-0 left-[1.1875rem] -z-20 w-0.5 bg-fg/30;
+}
+
+.timeline-row-first::after {
+    @apply top-1 rounded-t-full;
+}
+
+.timeline-row-last::after {
+    @apply bottom-1 rounded-b-full;
+}
+
+.timeline-row-child.timeline-row-selected::after {
+    @apply inset-y-2 z-0 rounded-full;
+}
+
+/* Unavailable: the marks and text fade; the reason, the disclosure’s face and every focus ring stay strong. */
+.timeline-row-disabled
+    :is(
+        .timeline-leading,
+        .timeline-disclosure > svg,
+        [data-history-group-action],
+        .timeline-entry-caption > span
+    ) {
     @apply opacity-60;
 }
 
-.timeline-time {
-    @apply text-xs tabular-nums;
+.timeline-row-disabled.timeline-row-child::after {
+    @apply opacity-60;
 }
 
-.timeline-count {
-    @apply text-xs tabular-nums opacity-80;
+.timeline-row-disabled .timeline-flag {
+    @apply text-fg/80;
+}
+
+/* 14 px lines, so a reason that wraps to two lines clears the row's ring at the 80 px row's foot. */
+.timeline-entry-reason.timeline-flag {
+    @apply h-8 items-start pl-[2.875rem] pr-3 leading-[0.875rem];
 }
 
 .timeline-flag {
     @apply flex min-w-0 items-center gap-1 text-xs;
 }
 
-/* Headers and dividers: labels at the rows' text edge, inside the 8 px gutter. */
+/* On the reason's x-height, not the top of its line. */
+.timeline-flag > svg {
+    @apply mt-px;
+}
+
+/* Headers and dividers: labels on the text edge (52), rules from the glyph ink (18) to the time edge (W-20). */
 .timeline-divider {
-    @apply absolute inset-x-2 flex select-none px-3 text-xs;
+    @apply absolute inset-x-1.5 flex select-none px-3 text-xs;
+}
+
+.timeline-header {
+    @apply pl-[2.875rem];
+}
+
+.timeline-continuation {
+    @apply pr-3.5;
 }
 
 .timeline-rule {
     @apply h-px min-w-3 flex-1 bg-fg/25;
 }
 
-@media (hover: hover) {
-    .timeline-row:not(.timeline-row-selected):not(.timeline-row-disabled):hover {
-        @apply bg-fg/10;
-    }
-}
-
-.timeline-row:focus-visible,
-.timeline-row [data-history-part]:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: -2px;
-}
-
 @media (forced-colors: active) {
     .timeline-row-selected {
         outline: 2px solid Highlight;
-        outline-offset: -2px;
+        outline-offset: -4px;
     }
     .timeline-row-disabled {
         color: GrayText;
+    }
+    .timeline-row-disabled
+        :is(
+            .timeline-leading,
+            .timeline-disclosure > svg,
+            [data-history-group-action],
+            .timeline-entry-caption > span
+        ) {
         opacity: 1;
     }
 }

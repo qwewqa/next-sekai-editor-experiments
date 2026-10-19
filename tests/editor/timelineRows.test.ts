@@ -186,7 +186,7 @@ test('property field and manager typed target distinguish groups despite matchin
     )
 })
 
-test('expanded edits have passive counts before children; direction groups do not', () => {
+test('expanded groups list their members right after the parent', () => {
     for (const kind of ['edit', 'undo'] as const) {
         const list = newestFirst(
             entry({ kind, step: editStep(noteAdd(1)) }),
@@ -198,7 +198,6 @@ test('expanded edits have passive counts before children; direction groups do no
             entryRows(rows).map((row) => row.child),
             [false, true, true],
         )
-        assert.equal(rows.filter((row) => row.type === 'count').length, kind === 'edit' ? 1 : 0)
         assert.equal(selectableRows(rows).length, 4)
     }
 })
@@ -348,7 +347,7 @@ test('exact pinned membership survives page arrival at either side of a partial 
     const singleton = entryRows(buildRows([newest], { ...options, more: true }))[0]!
     assert.equal(
         buildRows([newest], { ...options, more: true, expanded: new Set([singleton.id]) }).filter(
-            (row) => row.type === 'count',
+            (row) => row.type === 'entry' && row.child,
         ).length,
         0,
     )

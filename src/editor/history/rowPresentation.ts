@@ -36,12 +36,15 @@ export const presentRow = (
     return { main, count, full: count ? `${main} · ${count}` : main }
 }
 
-/** Fixed heights drive both window offsets and the rendered rows. */
-export const heightOf = (row: Row) =>
-    row.type === 'header' || row.type === 'count'
+/**
+ * Fixed heights drive both window offsets and the rendered rows. They are px at the 16 px rem; k (the
+ * root font size / 16) scales them as the rows’ classes scale.
+ */
+export const heightOf = (row: Row, k = 1) =>
+    (row.type === 'header'
         ? 28
         : row.type === 'divider'
           ? 32
           : row.type === 'entry' && !row.selectable
             ? 80
-            : 44
+            : 44) * k

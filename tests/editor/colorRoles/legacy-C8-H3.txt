@@ -1,3 +1,0 @@
-# Colour package C8, History package H3: files that still break a rule in tests/editor/colorRoles.test.ts.
-# Delete this file as the package's last commit.
-src/editor/history/TimelineList.vue
