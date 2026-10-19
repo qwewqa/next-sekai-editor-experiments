@@ -1053,7 +1053,7 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             path: testInfo.outputPath(`navigation-loading-${locale}-pane320.png`),
         })
         await page.evaluate(() => window.historyInspectionTest.release(2))
-        await expect(stateLine).toHaveText('Undo · Imported Metadata')
+        await expect(stateLine).toHaveText(`${messages.commands.undo.title} · Imported Metadata`)
         await select(page, 1, 99)
         await expect(stateLine).toHaveText(messages.peek.unavailableShort)
         await expect(stateLine.locator('..')).toHaveAccessibleName(messages.peek.unavailable)
