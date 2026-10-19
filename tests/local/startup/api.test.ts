@@ -351,7 +351,7 @@ for (const mode of ['newer-request', 'throw'] as const) {
         try {
             const opening = loaded.page.tab.run(() => restoreAsCopy(source.id))
             if (mode === 'throw') await assert.rejects(opening, /post-install hook/)
-            else assert.deepEqual(await opening, { opened: true })
+            else assert.equal(await opening, true)
             assert.ok(installedId)
             assert.equal(editorSession.value.sessionId, installedId)
             assert.equal(loaded.page.flusher.session?.id, installedId)
