@@ -274,7 +274,9 @@ for (const changed of ['rename', 'reset', 'peekRoundTrip'] as const) {
         })
         const prompt = page.getByRole('dialog')
         await expect(prompt).toBeVisible()
-        const shown = await prompt.innerText()
+        const title = prompt.locator('[data-modal-title]')
+        const message = prompt.locator('div.overflow-y-auto > div').first()
+        const shown = { title: await title.innerText(), message: await message.innerText() }
         await page.evaluate(
             async ({ changed, id }) => {
                 const { appImport, history, fixtures } = window.editorTest
@@ -296,7 +298,8 @@ for (const changed of ['rename', 'reset', 'peekRoundTrip'] as const) {
             { changed, id: target.id },
         )
         if (await prompt.count()) {
-            expect(await prompt.innerText()).toBe(shown)
+            await expect(title).toHaveText(shown.title)
+            await expect(message).toHaveText(shown.message)
             await prompt.getByRole('button', { name: 'Delete', exact: true }).click()
         }
         await page.evaluate(() => window.editorTest.nextTick())
