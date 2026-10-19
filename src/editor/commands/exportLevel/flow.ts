@@ -39,7 +39,7 @@ export type ExportUi = {
     exported: (name: string) => void
     downloadStarted: (name: string, size: number) => void
     /** Records the export in the session's timeline (Part 1 §1.3.8). */
-    markExported?: (name: string) => void
+    markExported?: (name: string, delivery: 'file' | 'download') => void
 }
 
 export type ExportContext = {
@@ -202,7 +202,7 @@ export const exportToTarget = async (
             signal: ctx.signal,
         })
         if (result.status === 'saved') {
-            ctx.ui.markExported?.(result.name)
+            ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
         }
@@ -302,7 +302,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
 
     switch (result.status) {
         case 'saved':
-            ctx.ui.markExported?.(result.name)
+            ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
         case 'download-started':
@@ -311,7 +311,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
                 exportMemory.exportName = ctx.exportName
                 await rememberExport()
             }
-            ctx.ui.markExported?.(result.name)
+            ctx.ui.markExported?.(result.name, 'download')
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'
         case 'cancelled':

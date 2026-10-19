@@ -2,12 +2,20 @@ import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
+import { captureName } from '../../../src/history/operations'
 import { inflateStrict } from '../../../src/local/chunkVerify'
 import { toHex } from '../../../src/local/hash'
 import type { BuildInput, EntryForm, InputChunk, WritePlan } from '../../../src/local/nxsp'
 import { noteCountOf, toRecords } from '../../../src/local/records/records'
 import { chunkCrc32 } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialStep,
+    nativeOperation,
+    originOperation,
+} from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import {
     BGM_2,
@@ -84,13 +92,35 @@ export const fixedChunks = (store: Store): Map<string, InputChunk> => {
     return chunks
 }
 
+const imported = originOperation('import')
+const transportStep = (id: string, description: string) =>
+    editStep(futureFixtureOperation(id, {}, description))
+const added = transportStep('golden-added', 'Added note')
+const bgm = transportStep('golden-bgm', 'Changed BGM')
+const cover = transportStep('golden-cover', 'Changed cover')
+
 const save = (
     time: number,
     label: string,
     snapshot: string,
     noteCount: number,
     revisionId: string,
-): EntryForm => entry('save', time, label, snapshot, { noteCount, revisionId, device: DEVICE })
+): EntryForm =>
+    entry(
+        {
+            kind: 'save',
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.save',
+                    data: { file: captureName('golden.nxsp'), delivery: 'file' },
+                },
+                label,
+            ),
+        },
+        time,
+        snapshot,
+        { noteCount, revisionId, device: DEVICE },
+    )
 
 export const firstInput = (
     c: ReturnType<typeof chain>,
@@ -128,16 +158,23 @@ export const firstInput = (
         extra: { zzFixtureTop: 'kept', metadata: { zzFixtureMeta: [1, 2] } },
         history: {
             entries: [
-                entry('init', T0 - 5000, 'Imported LevelData', hashes.a, { noteCount: counts.a }),
-                entry('edit', T0 - 4000, 'Moved notes', thinned, {
-                    noteCount: thinnedCount,
-                    kept: false,
+                entry({ kind: 'init', operation: imported }, T0 - 5000, hashes.a, {
+                    noteCount: counts.a,
                 }),
-                entry('edit', T0 - 3000, 'Added note', hashes.b, {
+                entry(
+                    { kind: 'edit', step: transportStep('golden-thinned', 'Moved notes') },
+                    T0 - 4000,
+                    thinned,
+                    {
+                        noteCount: thinnedCount,
+                        kept: false,
+                    },
+                ),
+                entry({ kind: 'edit', step: added }, T0 - 3000, hashes.b, {
                     noteCount: counts.b,
                     dirty: true,
                 }),
-                entry('edit', T0 - 2000, 'Changed BGM', hashes.c, { noteCount: counts.c }),
+                entry({ kind: 'edit', step: bgm }, T0 - 2000, hashes.c, { noteCount: counts.c }),
                 save(T0 - 1000, 'Saved golden.nxsp', hashes.c, counts.c, REV_1),
             ],
             roots: store.roots,
@@ -146,9 +183,9 @@ export const firstInput = (
             undoStack: {
                 base: 0,
                 slots: [
-                    { snapshot: hashes.a, label: 'Imported LevelData' },
-                    { snapshot: hashes.b, label: 'Added note' },
-                    { snapshot: hashes.c, label: 'Changed BGM' },
+                    { snapshot: hashes.a, step: initialStep(imported) },
+                    { snapshot: hashes.b, step: added },
+                    { snapshot: hashes.c, step: bgm },
                 ],
                 index: 2,
             },
@@ -202,11 +239,25 @@ export const secondInput = (
         history: {
             append: token,
             entries: [
-                entry('continue', T0 + 1000, 'Opened golden.nxsp', hashes.c, {
-                    noteCount: counts.c,
-                }),
-                entry('edit', T0 + 2000, 'Added note', hashes.d, { noteCount: counts.d }),
-                entry('edit', T0 + 3000, 'Changed cover', hashes.e, { noteCount: counts.e }),
+                entry(
+                    {
+                        kind: 'continue',
+                        operation: nativeOperation(
+                            {
+                                id: 'nse.continue',
+                                data: { fromTime: T0 - 1000, source: captureName('golden.nxsp') },
+                            },
+                            'Opened golden.nxsp',
+                        ),
+                    },
+                    T0 + 1000,
+                    hashes.c,
+                    {
+                        noteCount: counts.c,
+                    },
+                ),
+                entry({ kind: 'edit', step: added }, T0 + 2000, hashes.d, { noteCount: counts.d }),
+                entry({ kind: 'edit', step: cover }, T0 + 3000, hashes.e, { noteCount: counts.e }),
                 save(T0 + 4000, 'Saved golden.nxsp', hashes.e, counts.e, REV_2),
             ],
             roots: store.roots,
@@ -215,11 +266,11 @@ export const secondInput = (
             undoStack: {
                 base: 0,
                 slots: [
-                    { snapshot: hashes.a, label: 'Imported LevelData' },
-                    { snapshot: hashes.b, label: 'Added note' },
-                    { snapshot: hashes.c, label: 'Changed BGM' },
-                    { snapshot: hashes.d, label: 'Added note' },
-                    { snapshot: hashes.e, label: 'Changed cover' },
+                    { snapshot: hashes.a, step: initialStep(imported) },
+                    { snapshot: hashes.b, step: added },
+                    { snapshot: hashes.c, step: bgm },
+                    { snapshot: hashes.d, step: added },
+                    { snapshot: hashes.e, step: cover },
                 ],
                 index: 4,
             },

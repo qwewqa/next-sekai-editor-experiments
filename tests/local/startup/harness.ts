@@ -2,6 +2,7 @@ import type { ContinueStart, FlushSession } from '../../../src/local/flush'
 import type { SessionRead } from '../../../src/local/startup/stored'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
+import { nativeOperation, originOperation } from '../../helpers/historySteps'
 import { testId, type Page } from '../flush/harness'
 
 // Opening stored sessions on the test core: a page reads a session as startup does, then
@@ -22,7 +23,7 @@ type Open = SessionRead & { kind: 'open' }
 /** The stored stack of a read, as the flusher takes it. */
 export const stackOf = (read: Open) => ({
     first: read.stack.window.base,
-    slots: read.stack.slots.map(({ snapshot, label }) => ({ hash: snapshot, label })),
+    slots: read.stack.slots.map(({ snapshot, step }) => ({ hash: snapshot, step })),
     index: read.stack.window.index,
 })
 
@@ -41,7 +42,10 @@ export const continueIn = (
         parent: { id: String(read.session.id), uptoSeq: read.session.lastSeq as number },
         stack: stackOf(read),
         chain: read.chain,
-        label: () => 'Continued',
+        operation: nativeOperation(
+            { id: 'nse.continue', data: { fromTime: read.session.startedAt as number } },
+            'Continued',
+        ),
         dirty: false,
         ...(asFork ? { fork: { forkOf: String(read.chain.chainId), forkName: 'Golden (2)' } } : {}),
         ...rest,
@@ -74,6 +78,6 @@ export const beginIn = (page: Page, state: State, origin: 'new' | 'import' = 'im
         docId: testId(),
         origin,
         state,
-        label: () => 'Initialize',
+        operation: originOperation(origin),
         dirty: false,
     })

@@ -1,3 +1,9 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type EntryDescription,
+    type UndoableStep,
+} from '../../history/operations'
 import { KeyRange, type KvTx } from '../kv/types'
 import {
     storedSlots,
@@ -18,19 +24,17 @@ type Row = Record<string, unknown>
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
 /** A stored entry row as the writer reads it (§1.6.11.2). */
-export type EntryRow = {
+export type EntryRow = EntryDescription & {
     sessionId: string
     seq: number
     time: number
-    kind: string
-    label: string
     snapshot: Uint8Array
     noteCount: number
     dirty: boolean
     kept: boolean
     revisionId?: string
     device?: { id: string; label: string }
-    stack?: { keep: number; push: { snapshot: Uint8Array; label: string }[]; index: number }
+    stack?: { keep: number; push: { snapshot: Uint8Array; step: UndoableStep }[]; index: number }
     x?: Record<string, unknown>
 }
 
@@ -87,10 +91,14 @@ const isHash = (value: unknown): value is Uint8Array =>
 
 const readSlots = (value: unknown) => {
     if (!Array.isArray(value)) return
-    const slots: { snapshot: Uint8Array; label: string }[] = []
+    const slots: { snapshot: Uint8Array; step: UndoableStep }[] = []
     for (const slot of value as unknown[]) {
-        if (!isRow(slot) || !isHash(slot.snapshot) || typeof slot.label !== 'string') return
-        slots.push({ snapshot: slot.snapshot, label: slot.label })
+        if (!isRow(slot) || !isHash(slot.snapshot)) return
+        try {
+            slots.push({ snapshot: slot.snapshot, step: captureStep(slot.step) })
+        } catch {
+            return
+        }
     }
     return slots
 }
@@ -98,7 +106,7 @@ const readSlots = (value: unknown) => {
 /** An entry row's fields, or undefined when it doesn't read. */
 export const readEntryRow = (value: unknown): EntryRow | undefined => {
     if (!isRow(value)) return
-    const { sessionId, seq, time, kind, label, snapshot, noteCount } = value
+    const { sessionId, seq, time, kind, snapshot, noteCount } = value
     if (
         typeof sessionId !== 'string' ||
         !Number.isSafeInteger(seq) ||
@@ -107,12 +115,17 @@ export const readEntryRow = (value: unknown): EntryRow | undefined => {
         !isHash(snapshot)
     )
         return
+    let description: EntryDescription
+    try {
+        description = captureEntryDescription(value)
+    } catch {
+        return
+    }
     const row: EntryRow = {
         sessionId,
         seq: seq as number,
         time,
-        kind,
-        label: typeof label === 'string' ? label : '',
+        ...description,
         snapshot,
         noteCount: Number.isSafeInteger(noteCount) ? (noteCount as number) : 0,
         dirty: value.dirty === true,
@@ -211,7 +224,7 @@ export const readCut = async (
         const { first, last } = windowBlocks(window)
         for (let block = first; block <= last; block++) {
             const row = await tx.get('stackBlocks', [saved, block])
-            if (isRow(row) && row.hashes instanceof Uint8Array && Array.isArray(row.labels))
+            if (isRow(row) && row.hashes instanceof Uint8Array && Array.isArray(row.steps))
                 blocks.set(block, row as unknown as StackBlockRow)
         }
         stack = { window, slots: storedSlots(window, (block) => blocks.get(block)) }

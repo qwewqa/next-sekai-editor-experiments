@@ -1,4 +1,5 @@
 import { deflateRaw } from 'pako'
+import { captureEntryDescription, captureStep } from '../../history/operations'
 import type { LevelInfo } from '../../state/levelInfo'
 import { crc32 } from '../../zip/crc32'
 import { dosFromDate } from '../../zip/writer'
@@ -273,9 +274,8 @@ const planMedia = (
 
 /** An entry with its strings well-formed and its keys in the v1 order. */
 const entryForm = (entry: EntryForm): EntryForm => ({
-    kind: entry.kind,
+    ...captureEntryDescription(entry),
     time: entry.time,
-    label: toWellFormed(entry.label),
     snapshot: entry.snapshot,
     noteCount: entry.noteCount,
     ...(entry.dirty ? { dirty: true as const } : {}),
@@ -290,7 +290,7 @@ const entryForm = (entry: EntryForm): EntryForm => ({
                   keep: entry.stack.keep,
                   push: entry.stack.push.map((slot) => ({
                       snapshot: slot.snapshot,
-                      label: toWellFormed(slot.label),
+                      step: captureStep(slot.step),
                   })),
                   index: entry.stack.index,
               },
@@ -565,7 +565,7 @@ export const planNxsp = (
                 base: history.undoStack.base,
                 slots: history.undoStack.slots.map((slot) => ({
                     snapshot: slot.snapshot,
-                    label: toWellFormed(slot.label),
+                    step: captureStep(slot.step),
                 })),
                 index: history.undoStack.index,
             },

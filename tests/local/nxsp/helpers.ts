@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { captureEntryDescription, type EntryDescription } from '../../../src/history/operations'
 import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
 import { serializeToLevelData } from '../../../src/levelData/serialize'
 import { deflateChunk } from '../../../src/local/chunkVerify'
@@ -114,12 +115,17 @@ export const headInput = (state: State) => {
 }
 
 export const entry = (
-    kind: EntryForm['kind'],
+    description: EntryDescription,
     time: number,
-    label: string,
     snapshot: string,
-    extra: Partial<EntryForm> = {},
-): EntryForm => ({ kind, time, label, snapshot, noteCount: 0, ...extra })
+    extra: Partial<Omit<EntryForm, 'kind' | 'step' | 'operation' | 'recoveryContext'>> = {},
+): EntryForm => ({
+    ...captureEntryDescription(description),
+    time,
+    snapshot,
+    noteCount: 0,
+    ...extra,
+})
 
 /** An executor source over bytes held in memory, its fingerprint fixed unless `changed` is set. */
 export const memorySource = (

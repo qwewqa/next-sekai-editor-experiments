@@ -1,3 +1,9 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type JsonValue,
+    type UndoableStep,
+} from '../../history/operations'
 import type { Flusher, FlushSession, PendingEntry } from '../../local/flush'
 import { fromHex16, toHex } from '../../local/hash'
 import { toRecords } from '../../local/records/records'
@@ -64,12 +70,20 @@ const rowOf = (entry: PendingEntry, records: PendingRecords): PendingRow | undef
     return {
         seq: entry.seq,
         time: entry.wall,
-        kind: entry.kind,
-        label: entry.label(),
+        ...captureEntryDescription(entry),
         snapshot,
         // A stored slot's count isn't known here: display only.
         noteCount: typeof root?.[3] === 'number' ? root[3] : 0,
         dirty: entry.dirty,
+        ...(entry.recoveryBaseline
+            ? {
+                  stack: {
+                      keep: 0,
+                      push: [{ snapshot, step: captureStep(entry.recoveryBaseline) }],
+                      index: 0,
+                  },
+              }
+            : {}),
         ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
         ...(entry.device ? { device: { ...entry.device } } : {}),
     }
@@ -91,8 +105,7 @@ const pendingOf = (env: BuildEnv): PendingInput | undefined => {
             : slot.hash
               ? toHex(slot.hash)
               : slot.entry?.snapshot && toHex(slot.entry.snapshot)
-        const label = typeof slot.label === 'string' ? slot.label : slot.label()
-        return snapshot === undefined ? undefined : { snapshot, label }
+        return snapshot === undefined ? undefined : { snapshot, step: captureStep(slot.step) }
     })
     return {
         entries: rows,
@@ -100,7 +113,7 @@ const pendingOf = (env: BuildEnv): PendingInput | undefined => {
             ? {
                   stack: {
                       base: stack.first,
-                      slots: slots as { snapshot: string; label: string }[],
+                      slots: slots as { snapshot: string; step: UndoableStep }[],
                       index: stack.index,
                   },
               }
@@ -142,7 +155,7 @@ export type BuildRequest = {
     bgm: boolean
     fileName: string
     /** The `save` entry's time and label. */
-    save: { time: number; label: string }
+    save: { time: number; operation: JsonValue }
     /** The state saved: the live head when the Save started. */
     state: State
     /** Save to File…: the session written, binding nothing. */

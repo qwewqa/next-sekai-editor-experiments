@@ -372,13 +372,90 @@ def media_form(form, what, prefix, entries_by_name):
     return form.get("file")
 
 
+# Stable description carriers are structural; native operation payloads are opaque.
+OP_BYTES = 256 * 1024
+CONTEXT_BYTES = 128 * 1024
+
+
+def finite_wire_json(value, path, max_bytes=OP_BYTES, max_depth=16):
+    def visit(v, depth):
+        need(depth <= max_depth, f"{path}: description depth")
+        if isinstance(v, str):
+            need(SURROGATE.search(v) is None, f"{path}: invalid Unicode")
+        elif v is None or isinstance(v, bool):
+            return
+        elif isinstance(v, (int, float)):
+            try:
+                finite = math.isfinite(float(v))
+            except OverflowError:
+                finite = False
+            need(finite, f"{path}: nonfinite number")
+        elif isinstance(v, list):
+            for item in v:
+                visit(item, depth + 1)
+        elif isinstance(v, dict):
+            for key, item in v.items():
+                need(isinstance(key, str) and SURROGATE.search(key) is None, f"{path}: invalid key")
+                visit(item, depth + 1)
+        else:
+            raise Fail(f"{path}: not JSON")
+    visit(value, 0)
+    need(len(js_json(value).encode("utf-8")) <= max_bytes, f"{path}: description bytes")
+
+
+def step_description(value, path):
+    need(isinstance(value, dict) and set(value) == {"kind", "operation"}, f"{path}: step keys")
+    need(value["kind"] in ("init", "edit", "restore"), f"{path}.kind")
+    finite_wire_json(value["operation"], f"{path}.operation")
+
+
+def recovery_context(value, path):
+    finite_wire_json(value, path, OP_BYTES + CONTEXT_BYTES + 2048, 19)
+    need(isinstance(value, dict) and set(value) == {"head", "headIndex", "dropped", "omitted"}, f"{path}: context keys")
+    step_description(value["head"], f"{path}.head")
+    dropped = value["dropped"]
+    need(isinstance(dropped, list) and len(dropped) <= 64, f"{path}.dropped")
+    need(is_uint(value["headIndex"]) and value["headIndex"] <= len(dropped), f"{path}.headIndex")
+    need(is_uint(value["omitted"]) and value["omitted"] <= SAFE - len(dropped), f"{path}.omitted")
+    for i, item in enumerate(dropped):
+        step_description(item, f"{path}.dropped[{i}]")
+    need(len(js_json(dropped).encode("utf-8")) <= CONTEXT_BYTES, f"{path}: optional context bytes")
+
+
+def step_form(value, path):
+    finite_wire_json(value, path, 2 * OP_BYTES + CONTEXT_BYTES + 4096, 20)
+    need(isinstance(value, dict), f"{path}: step object")
+    expected = {"kind", "operation"} | ({"recoveryContext"} if "recoveryContext" in value else set())
+    need(set(value) == expected, f"{path}: step keys")
+    step_description({"kind": value.get("kind"), "operation": value.get("operation")}, path)
+    if "recoveryContext" in value:
+        recovery_context(value["recoveryContext"], f"{path}.recoveryContext")
+
+
+def entry_description(e, path):
+    kind = e.get("kind")
+    if kind in ("edit", "restore", "undo", "redo"):
+        need("step" in e and "operation" not in e and "recoveryContext" not in e, f"{path}: step carrier")
+        step_form(e["step"], f"{path}.step")
+        need(e["step"]["kind"] == kind if kind in ("edit", "restore") else e["step"]["kind"] != "init", f"{path}: crossed step kind")
+    else:
+        need(kind in ("init", "continue", "save", "export", "recovered"), f"{path}.kind")
+        need("operation" in e and "step" not in e, f"{path}: event carrier")
+        finite_wire_json(e["operation"], f"{path}.operation")
+        if kind == "recovered":
+            need("recoveryContext" in e, f"{path}: missing recovery context")
+            recovery_context(e["recoveryContext"], f"{path}.recoveryContext")
+        else:
+            need("recoveryContext" not in e, f"{path}: unexpected recovery context")
+
+
 def entry_form(e, path):
     need(isinstance(e, dict), f"{path}: not an object")
-    keys_within(e, ["kind", "time", "label", "snapshot", "noteCount", "dirty", "kept", "revisionId",
+    keys_within(e, ["kind", "time", "operation", "step", "recoveryContext", "snapshot", "noteCount", "dirty", "kept", "revisionId",
                     "device", "stack", "x"], path)
     need(e.get("kind") in ENTRY_KINDS, f"{path}.kind")
     need(is_uint(e.get("time")), f"{path}.time: not a safe integer of at least 0")
-    need(is_str(e.get("label")), f"{path}.label")
+    entry_description(e, path)
     need(is_hash(e.get("snapshot")), f"{path}.snapshot")
     need(is_uint(e.get("noteCount")), f"{path}.noteCount")
     need(e.get("dirty", True) is True, f"{path}.dirty: only true")
@@ -402,8 +479,9 @@ def entry_form(e, path):
 
 
 def slot_form(slot, path):
-    keys_within(slot, ["snapshot", "label"], path)
-    need(is_hash(slot.get("snapshot")) and is_str(slot.get("label")), path)
+    keys_within(slot, ["snapshot", "step"], path)
+    need(is_hash(slot.get("snapshot")), path)
+    step_form(slot.get("step"), f"{path}.step")
 
 
 def canonical(value):
@@ -477,7 +555,7 @@ def check_file(path):
     need(isinstance(project, dict), "project.json: not an object")
     need("parts" not in project, "project.json: parts, which v0.6.0 never writes")
     need(project.get("format") == "nxsp" and num_is(project.get("version"), 1), "project.json: format or version")
-    need(num_is(project.get("minor"), 0) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
+    need((is_uint(project.get("minor")) and project["minor"] <= 1) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
     for key in ("appVersion", "id", "lineageId"):
         need(is_str(project.get(key)) and project[key] != "", f"project.json.{key}")
     for key in ("name", "exportName"):
@@ -600,7 +678,7 @@ def check_history(project, history, segments, by_name, summary, rev):
     need(len(data) <= CAPS["manifest"], "manifest: over its cap")
     manifest = parse_json(data, "manifest")
     keys_within(manifest, ["version", "entries", "roots", "nodes", "chunks", "undoStack"], "manifest")
-    need(len(manifest) == 6 and num_is(manifest["version"], 1), "manifest: version or a key missing")
+    need(len(manifest) == 6 and num_is(manifest["version"], 2), "manifest: version or a key missing")
     parts.append(("manifest", manifest))
 
     chunks_bin = by_name["history/chunks.bin"]["data"]
@@ -1273,7 +1351,7 @@ class Issues:
         return self.items + ([(self.more_reason, path)] if self.more else [])
 
 
-ENTRY_KEYS = ["kind", "time", "label", "snapshot", "noteCount", "dirty", "kept", "revisionId", "device", "stack", "x"]
+ENTRY_KEYS = ["kind", "time", "operation", "step", "recoveryContext", "snapshot", "noteCount", "dirty", "kept", "revisionId", "device", "stack", "x"]
 
 
 def part_slot(value, path, issues):
@@ -1281,9 +1359,13 @@ def part_slot(value, path, issues):
         issues.add("damaged", path)
         return
     for key in value:
-        if key not in ("snapshot", "label"):
+        if key not in ("snapshot", "step"):
             issues.add("unknown-key", f"{path}.{key}")
-    if not is_hash(value.get("snapshot")) or not is_str(value.get("label")):
+    if not is_hash(value.get("snapshot")):
+        issues.add("damaged", path)
+    try:
+        step_form(value.get("step"), f"{path}.step")
+    except Fail:
         issues.add("damaged", path)
 
 
@@ -1308,8 +1390,10 @@ def part_entry(e, path, issues):
         issues.add("unknown-key", f"{path}.{key}")
     if not is_uint(e.get("time")):
         fail("time")
-    if not is_str(e.get("label")):
-        fail("label")
+    try:
+        entry_description(e, path)
+    except Fail:
+        fail("description")
     if not is_hash(e.get("snapshot")):
         fail("snapshot")
     if not is_uint(e.get("noteCount")):
@@ -1357,7 +1441,7 @@ def check_part(value, path, manifest):
         version = value.get("version")
         if not is_safe_int(version) or version < 1:
             return None, [("damaged", f"{path}.version")]
-        if version > 1:
+        if version != 2:
             return None, [("newer", f"{path}.version")]
     issues = Issues()
     allowed = ["entries", "roots", "nodes", "chunks"] + (["version", "undoStack"] if manifest else [])
@@ -1653,7 +1737,7 @@ def read_nxsp(blob):
             project, issues = read_project(pj)
             for reason, path in issues:
                 report.append(({"unknown-key": "unknown-key", "schema": "invalid-key"}.get(reason, "damaged"), path))
-            if project["minor"] > 0:
+            if project["minor"] > 1:
                 report.append(("newer-minor", "minor"))
             if project["levelVersion"] > 1:
                 report.append(("newer-level", "levelVersion"))

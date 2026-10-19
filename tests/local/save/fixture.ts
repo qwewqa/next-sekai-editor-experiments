@@ -3,6 +3,13 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import {
+    captureEntryDescription,
+    captureName,
+    entryOperation,
+    type EntryDescription,
+    type JsonValue,
+} from '../../../src/history/operations'
 import { deflateChunk, verifyChunk } from '../../../src/local/chunkVerify'
 import { hashKey } from '../../../src/local/db'
 import { mediaRow } from '../../../src/local/flushWrite'
@@ -14,6 +21,7 @@ import { putChunk } from '../../../src/local/putChunk'
 import { toRecords } from '../../../src/local/records/records'
 import { nodeRow, rootRow } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
+import { SESSION_V } from '../../../src/local/records/version'
 import type { SaveStore } from '../../../src/local/save/bodies'
 import type { SaveOptions, SaveTarget } from '../../../src/local/save/build'
 import { commitIdentity, IDENTITY_STORES } from '../../../src/local/save/commit'
@@ -34,6 +42,13 @@ import {
     type ReplaySlot,
 } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialStep,
+    nativeOperation,
+    originOperation,
+} from '../../helpers/historySteps'
 import { workerCore } from '../flush/harness'
 import { BGM, BGM_2, chartWith, COVER, COVER_2, PREVIEW, sha256Hex } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
@@ -63,13 +78,11 @@ export const stateAt = (k: number) => {
     return known
 }
 
-type Row = {
+type Row = EntryDescription & {
     sessionId: string
     seq: number
     time: number
     day: number
-    kind: string
-    label: string
     snapshot: Uint8Array
     noteCount: number
     dirty: boolean
@@ -155,31 +168,45 @@ export class Fixture {
             session.index = last.index
         }
         this.sessions.push(session)
-        if (last) this.add('continue', 'Continued', fromHex16(this.head))
+        if (last)
+            this.add(
+                {
+                    kind: 'continue',
+                    operation: nativeOperation(
+                        { id: 'nse.continue', data: { fromTime: last.startedAt } },
+                        'Continued',
+                    ),
+                },
+                fromHex16(this.head),
+            )
         else {
             const { hex } = await (typeof k === 'number'
                 ? this.body(k)
                 : this.store_({ state: k, hex: toHex(encodeSnapshot(toRecords(k)).root.hash) }))
-            session.slots = [{ snapshot: fromHex16(hex), label: 'Imported' }]
-            this.add('init', 'Imported', fromHex16(hex))
+            const operation = originOperation('import')
+            session.slots = [{ snapshot: fromHex16(hex), step: initialStep(operation) }]
+            this.add({ kind: 'init', operation }, fromHex16(hex))
         }
         return session
     }
 
-    private add(kind: string, label: string, snapshot: Uint8Array, extra: Partial<Row> = {}) {
+    private add(
+        description: EntryDescription,
+        snapshot: Uint8Array,
+        extra: Partial<Omit<Row, 'kind' | 'step' | 'operation' | 'recoveryContext'>> = {},
+    ) {
         const session = this.session
         const row: Row = {
             sessionId: session.id,
             seq: session.nextSeq++,
             time: this.now(),
             day: 1,
-            kind,
-            label,
             snapshot,
             noteCount: 0,
             dirty: false,
             kept: true,
             ...extra,
+            ...captureEntryDescription(description),
         }
         session.rows.push(row)
         return row
@@ -233,8 +260,7 @@ export class Fixture {
                 .map((row) => ({
                     seq: row.seq,
                     time: row.time,
-                    kind: row.kind,
-                    label: row.label,
+                    ...captureEntryDescription(row),
                     dirty: row.dirty,
                     state: this.stateOf(toHex(row.snapshot)),
                     ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
@@ -244,7 +270,7 @@ export class Fixture {
                 base: 0,
                 slots: session.slots.map((slot) => ({
                     state: this.stateOf(toHex(slot.snapshot)),
-                    label: slot.label,
+                    step: slot.step,
                 })),
                 index: session.index,
             },
@@ -252,30 +278,32 @@ export class Fixture {
     }
 
     /** An edit to any state. */
-    async editState(state: State, label: string) {
+    async editState(state: State, operation: JsonValue) {
         const hex = toHex(encodeSnapshot(toRecords(state)).root.hash)
         await this.store_({ state, hex })
-        this.push(hex, label)
+        this.push(hex, operation)
     }
 
-    private push(hex: string, label: string) {
+    private push(hex: string, operation: JsonValue) {
         const session = this.session
         session.slots.length = session.index + 1
-        session.slots.push({ snapshot: fromHex16(hex), label })
+        const step = editStep(operation)
+        session.slots.push({ snapshot: fromHex16(hex), step })
         session.index++
-        this.add('edit', label, fromHex16(hex))
+        this.add({ kind: 'edit', step }, fromHex16(hex))
     }
 
-    async edit(k: number, label = `Edit ${k}`) {
+    async edit(k: number, operation: JsonValue = futureFixtureOperation(`state-${k}`)) {
         const { hex } = await this.body(k)
-        this.push(hex, label)
+        this.push(hex, operation)
     }
 
     undo() {
         const session = this.session
         if (session.index <= 0) return false
+        const step = session.slots[session.index]!.step
         session.index--
-        this.add('undo', 'Undo', fromHex16(this.head))
+        this.add({ kind: 'undo', step }, fromHex16(this.head))
         return true
     }
 
@@ -283,7 +311,7 @@ export class Fixture {
         const session = this.session
         if (session.index >= session.slots.length - 1) return false
         session.index++
-        this.add('redo', 'Redo', fromHex16(this.head))
+        this.add({ kind: 'redo', step: session.slots[session.index]!.step }, fromHex16(this.head))
         return true
     }
 
@@ -308,7 +336,7 @@ export class Fixture {
             time: reserved.time,
             day: 1,
             kind: 'save',
-            label: built.saveEntry.label,
+            operation: entryOperation(built.saveEntry),
             snapshot: fromHex16(built.saveEntry.snapshot),
             noteCount: built.saveEntry.noteCount,
             dirty: false,
@@ -325,6 +353,7 @@ export class Fixture {
                 const window = storedWindow(session.slots.length, session.index)
                 await tx.put('sessions', {
                     id: session.id,
+                    v: SESSION_V,
                     chainId: this.chainId,
                     startedAt: session.startedAt,
                     updatedAt: session.rows.at(-1)?.time ?? session.startedAt,
@@ -466,7 +495,16 @@ export const saveOptions = (fixture: Fixture, extra: Partial<SaveOptions> = {}) 
         history: true,
         bgm: true,
         fileName: 'coconut.nxsp',
-        save: { time: reserved.time, label: 'Saved coconut.nxsp' },
+        save: {
+            time: reserved.time,
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.save',
+                    data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                },
+                'Saved coconut.nxsp',
+            ),
+        },
         context: {
             now: Date.UTC(2026, 9, 16, 5, 41, 7),
             newId: () => `r${String(++revisions).padStart(3, '0')}-0000-4000-8000-000000000000`,
@@ -615,8 +653,7 @@ export const checkStack = async (blob: Blob) => {
     const { undoStack } = history
     const entries = history.entries.map((entry, seq) => ({
         seq,
-        kind: entry.kind,
-        label: entry.label,
+        ...captureEntryDescription(entry),
         snapshot: fromHex16(entry.snapshot),
         ...(entry.stack
             ? {
@@ -624,7 +661,7 @@ export const checkStack = async (blob: Blob) => {
                       keep: entry.stack.keep,
                       push: entry.stack.push.map((slot) => ({
                           snapshot: fromHex16(slot.snapshot),
-                          label: slot.label,
+                          step: slot.step,
                       })),
                       index: entry.stack.index,
                   },

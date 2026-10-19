@@ -2,10 +2,16 @@ import { computed, ref, shallowReactive, shallowRef, watch } from 'vue'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
 import { freezePublished } from './freeze'
+import {
+    captureOperation,
+    captureStep,
+    type NativeOperation,
+    type UndoableStep,
+} from './operations'
 
 export type HistoryEntry = {
     isDirty: boolean
-    name: () => string
+    step: UndoableStep
     state: State
 }
 
@@ -16,7 +22,7 @@ export type HistoryEntry = {
  */
 type Slot = {
     isDirty: boolean
-    name: () => string
+    step: UndoableStep
     state?: State
     /** The stored root, for a restored slot. */
     snapshot?: Uint8Array
@@ -54,7 +60,7 @@ export const isDirty = computed(() => (current.value as Slot | undefined)?.isDir
 export const headSnapshot = computed(() => (current.value as Slot | undefined)?.snapshot)
 
 /** The name of the step that made the current state: the Timeline's Now row. */
-export const headName = computed(() => (current.value as Slot | undefined)?.name() ?? '')
+export const headStep = computed(() => (current.value as Slot | undefined)?.step)
 
 /** The last head seen: what watchers read while a stored stack replaces the slots. */
 let lastHead: State | undefined
@@ -179,13 +185,13 @@ const load = (slot: Slot): Promise<boolean> => {
 
 /** Moves the index one step, as Undo or Redo does, emitting the entry. */
 const step = (direction: -1 | 1) => {
-    const name = direction < 0 ? current.value.name : states[index.value + 1]?.name
+    const crossed = direction < 0 ? current.value.step : states[index.value + 1]?.step
     index.value += direction
     const { state, snapshot, isDirty } = current.value
     // An intermediate slot of a coalesced move needn't load: its entry names its stored root.
     const landed = state ? { state } : snapshot ? { snapshot } : undefined
-    if (!landed || !name) throw new Error('A move landed on a slot with no state')
-    emitHistoryAction({ kind: direction < 0 ? 'undo' : 'redo', ...landed, name, isDirty })
+    if (!landed || !crossed) throw new Error('A move landed on a slot with no state')
+    emitHistoryAction({ kind: direction < 0 ? 'undo' : 'redo', ...landed, step: crossed, isDirty })
     if (state && current.value.snapshot) evictRestored(current.value)
 }
 
@@ -227,14 +233,14 @@ const settle = async () => {
 /** Queues a move onto a slot not loaded; held keys add to it. Returns the step's name. */
 const queue = (direction: -1 | 1) => {
     const from = index.value + pendingMove.value
-    const name = direction < 0 ? states[from]?.name : states[from + 1]?.name
+    const crossed = direction < 0 ? states[from]?.step : states[from + 1]?.step
     const first = pendingMove.value === 0
     pendingMove.value += direction
     if (first) {
         setBusy(true)
         void settle()
     }
-    return name
+    return crossed
 }
 
 /** Replaces the current slot, or only the peeked state, which holds its own selection. */
@@ -247,7 +253,7 @@ export const replaceState = (state: State) => {
     const old = current.value
     const slot: Slot = {
         isDirty: old.isDirty,
-        name: old.name,
+        step: old.step,
         state: publish(state),
         // A selection change keeps the slot's chart, so its stored root still holds.
         ...(old.snapshot ? { snapshot: old.snapshot } : {}),
@@ -259,22 +265,27 @@ export const replaceState = (state: State) => {
 }
 
 /** Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first. */
-export const pushState = (name: () => string, state: State, kind: 'edit' | 'restore' = 'edit') => {
+export const pushState = (
+    operation: NativeOperation,
+    state: State,
+    kind: 'edit' | 'restore' = 'edit',
+) => {
     // Every edit path is gated while peeking, so one that is not fails in development and tests.
     if (peek.value) {
         if (isProduction()) return
         throw new Error('pushState while viewing history')
     }
     // Callers built `state` from what's on screen: a queued move can never reorder it.
+    const step = captureStep({ kind, operation })
     cancelPendingMoves()
 
     states.splice(index.value + 1, states.length - index.value - 1, {
         isDirty: true,
-        name,
+        step,
         state: publish(state),
     })
     index.value++
-    emitHistoryAction({ kind, state, name, isDirty: true })
+    emitHistoryAction({ kind, state, step, isDirty: true })
 }
 
 /**
@@ -285,10 +296,10 @@ export const undoState = () => {
     if (!canUndo.value) return
     if (pendingMove.value || !states[index.value - 1]?.state) return queue(-1)
 
-    const name = current.value.name
+    const crossed = current.value.step
     step(-1)
     prefetch()
-    return name
+    return crossed
 }
 
 export const redoState = () => {
@@ -297,16 +308,21 @@ export const redoState = () => {
 
     step(1)
     prefetch()
-    return current.value.name
+    return current.value.step
 }
 
 /** Records a file event without touching the stack: a `save` or `export` entry (§1.3.8). */
 export const markFileEvent = (
     kind: 'save' | 'export',
-    name: () => string,
+    operation: NativeOperation,
     isDirty = current.value.isDirty,
 ) => {
-    emitHistoryAction({ kind, state: currentState.value, name, isDirty })
+    emitHistoryAction({
+        kind,
+        state: currentState.value,
+        operation: captureOperation(operation),
+        isDirty,
+    })
 }
 
 /** Counts the stacks replaced (a reset, a stored stack): what an entry's Restore is relative to. */
@@ -316,6 +332,7 @@ export const stackGeneration = () => stacks
 
 /** Replaces the whole history with one entry, leaving any peek. */
 export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new') => {
+    entry = { ...entry, step: captureStep(entry.step) }
     stacks++
     cancelPendingMoves()
     earlierSteps.value = false
@@ -331,7 +348,7 @@ export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new
  * A slot of a stored stack: its root and label, and whether it was changed since the file event.
  * A slot given loaded with no root (a journal's head while storage is unavailable) stays loaded.
  */
-export type RestoredSlot = { snapshot?: Uint8Array; label: string; isDirty: boolean }
+export type RestoredSlot = { snapshot?: Uint8Array; step: UndoableStep; isDirty: boolean }
 
 /**
  * Replaces the stack with a stored one, its slots lazy and the head given loaded (§1.3.8: a
@@ -346,16 +363,16 @@ export const restoreStates = (
 ) => {
     const slot = slots[at]
     if (!slot) throw new RangeError('The index is outside the stack')
+    const restored: Slot[] = slots.map(({ snapshot, step, isDirty }) => ({
+        isDirty,
+        step: captureStep(step),
+        ...(snapshot ? { snapshot: snapshot.slice() } : {}),
+    }))
     stacks++
     cancelPendingMoves()
     earlierSteps.value = earlier
     peek.value = undefined
     loadedRestored.length = 0
-    const restored: Slot[] = slots.map(({ snapshot, label, isDirty }) => ({
-        isDirty,
-        name: () => label,
-        ...(snapshot ? { snapshot: snapshot.slice() } : {}),
-    }))
     // The head is loaded before anything can read it: watchers run as the stack changes.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     restored[at]!.state = publish(head)

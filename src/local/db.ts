@@ -5,7 +5,7 @@ import type { Key, KvTx, KvUpgrade } from './kv/types'
 // database, and there is no reset path. The upgrade interface has no delete at all.
 
 export const DB_NAME = 'nse-local-data'
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 
 type StoreSpec = {
     keyPath: string | readonly string[] | null

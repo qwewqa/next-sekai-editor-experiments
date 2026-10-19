@@ -1,6 +1,7 @@
 import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
 import { sweepMarkers } from '../editor/save/env'
+import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
@@ -8,7 +9,6 @@ import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
-import { recoveredLabel } from './journal/label'
 import { resumeAfterStartup } from './open/project'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
@@ -157,9 +157,13 @@ const recoveryContext = (
     prefix: storageKey(''),
     appVersion: appVersion().appVersion,
     safe,
-    labels: {
-        recovered: (dropped) => recoveredLabel(i18n.value, dropped),
-        migrated: i18n.value.entry.migrated,
+    operations: {
+        recovered: (dropped) =>
+            createHistoryOperation({
+                id: 'nse.recovery',
+                data: { source: 'journal', droppedSteps: dropped },
+            }),
+        migrated: createHistoryOperation({ id: 'nse.origin', data: { origin: 'autoSave' } }),
     },
     ...(claim.kind === 'reload' ? { own: claim.record.sessionId } : {}),
     outcomes: [],
@@ -296,9 +300,14 @@ export const startStorage = async () => {
                 retireJournal: (found, by, seq, dropped) =>
                     journalWriter?.retire(found, by, seq, dropped),
                 untouched,
-                labels: {
-                    continued: () => i18n.value.entry.continued,
-                    recoveredHead: () => i18n.value.entry.recovered,
+                operations: {
+                    continued: (fromTime) =>
+                        createHistoryOperation({ id: 'nse.continue', data: { fromTime } }),
+                    recovered: (dropped) =>
+                        createHistoryOperation({
+                            id: 'nse.recovery',
+                            data: { source: 'journal', droppedSteps: dropped },
+                        }),
                 },
                 events: addLoadEvent,
             }

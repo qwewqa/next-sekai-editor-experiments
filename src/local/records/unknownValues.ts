@@ -81,8 +81,7 @@ export const isReadableRootVersion = (v: unknown) =>
     Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= RECORDS_V
 
 /** A session row's `v`, absent meaning 1; above `SESSION_V`, or not a number, it's newer. */
-export const isReadableSessionVersion = (v: unknown) =>
-    v === undefined || (Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= SESSION_V)
+export const isReadableSessionVersion = (v: unknown) => v === SESSION_V
 
 /** What deciding a session's readability needs. */
 export type SessionReadability = {

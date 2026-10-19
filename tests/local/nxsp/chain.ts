@@ -1,4 +1,13 @@
+import { captureName } from '../../../src/history/operations'
 import type { BuildInput, EntryForm } from '../../../src/local/nxsp'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialStep,
+    nativeOperation,
+    noteAdd,
+    originOperation,
+} from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import {
     BGM_2,
@@ -22,14 +31,31 @@ export const fresh = () => {
     const b = stateOf(chartWith({ extraNotes: 1 }))
     const c = stateOf(chartWith({ bgm: BGM_2, cover: COVER_2, extraNotes: 1 }))
     const [ha, hb, hc] = [store.add(a), store.add(b), store.add(c)]
+    const imported = originOperation('import')
+    const added = editStep(noteAdd(1))
+    const media = editStep(futureFixtureOperation('combined-media', {}, 'Changed BGM and cover'))
     const entries: EntryForm[] = [
-        entry('init', 1000, 'Imported LevelData', ha),
-        entry('edit', 2000, 'Added note', hb, { dirty: true }),
-        entry('edit', 3000, 'Changed BGM', hc),
-        entry('save', 4000, 'Saved coconut.nxsp', hc, {
-            revisionId: 'r001-0000-4000-8000-000000000000',
-            device: { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' },
-        }),
+        entry({ kind: 'init', operation: imported }, 1000, ha),
+        entry({ kind: 'edit', step: added }, 2000, hb, { dirty: true }),
+        entry({ kind: 'edit', step: media }, 3000, hc),
+        entry(
+            {
+                kind: 'save',
+                operation: nativeOperation(
+                    {
+                        id: 'nse.file.save',
+                        data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                    },
+                    'Saved coconut.nxsp',
+                ),
+            },
+            4000,
+            hc,
+            {
+                revisionId: 'r001-0000-4000-8000-000000000000',
+                device: { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' },
+            },
+        ),
     ]
     const input: BuildInput = {
         context: fixedContext(NOW),
@@ -67,9 +93,9 @@ export const fresh = () => {
             undoStack: {
                 base: 0,
                 slots: [
-                    { snapshot: ha, label: 'Imported LevelData' },
-                    { snapshot: hb, label: 'Added note' },
-                    { snapshot: hc, label: 'Changed BGM' },
+                    { snapshot: ha, step: initialStep(imported) },
+                    { snapshot: hb, step: added },
+                    { snapshot: hc, step: media },
                 ],
                 index: 2,
             },

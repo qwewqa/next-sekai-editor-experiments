@@ -1,16 +1,19 @@
+import {
+    checkedSum,
+    createRecoveryContext,
+    OperationDataError,
+    recoverySources,
+    type RecoveryContext,
+    type StepDescription,
+} from '../../history/operations'
 import type { State } from '../../state'
 import { CHAIN_OWN_FIELDS } from '../chainFields'
 import type { FlushSession, PendingEntry } from '../flush'
 import { toHex } from '../hash'
-import { RECORDS_V } from '../records/version'
+import { RECORDS_V, SESSION_V } from '../records/version'
 import type { ModelSlot, SlotStack } from '../timeline'
 import { journalContent } from './content'
-import {
-    JOURNAL_VERSION,
-    type JournalDescriptor,
-    type JournalStack,
-    type JournalV1,
-} from './format'
+import { JOURNAL_VERSION, type Journal, type JournalDescriptor, type JournalStack } from './format'
 
 // Building a journal from the tab's session (§1.6.4 #7, §1.6.11.3): the descriptor from what
 // the page knows and the chain record the last flush wrote, the whole state, and the stack by
@@ -54,6 +57,7 @@ export const descriptorOf = (session: FlushSession): JournalDescriptor => {
         ...rest
     } = stored
     return {
+        v: SESSION_V,
         origin,
         ...(session.parent ? { parent: { ...session.parent } } : {}),
         startedAt: session.startedAt,
@@ -67,11 +71,45 @@ export const descriptorOf = (session: FlushSession): JournalDescriptor => {
     }
 }
 
-/** The most dropped steps a journal names (§1.6.11.3's `dropped`). */
-export const DROPPED_LABELS = 64
-
-const labelOf = (slot: ModelSlot<PendingEntry> | undefined) =>
-    typeof slot?.label === 'function' ? slot.label() : (slot?.label ?? '')
+// Flat contexts follow slot occurrences; identical descriptions are never deduplicated.
+const contextOf = (live: SlotStack<ModelSlot<PendingEntry>>, keep: number): RecoveryContext => {
+    const current = live.at(live.index)
+    if (!current) throw new OperationDataError('No journal head')
+    const essential = recoverySources(current.step)
+    let dropped: StepDescription[] = []
+    let headIndex = 0
+    let omitted = 0
+    const append = (items: readonly StepDescription[], skipped: number) => {
+        const sum = checkedSum([omitted, skipped])
+        if (sum === undefined) throw new OperationDataError('Recovery count overflow')
+        omitted = sum
+        dropped.push(...items)
+        const excess = Math.max(0, dropped.length - 64)
+        if (excess) {
+            dropped = dropped.slice(excess)
+            headIndex = Math.max(0, headIndex - excess)
+            const total = checkedSum([omitted, excess])
+            if (total === undefined) throw new OperationDataError('Recovery count overflow')
+            omitted = total
+        }
+    }
+    const addSlot = (at: number) => {
+        const slot = live.at(at)
+        if (!slot) throw new OperationDataError('Missing journal source slot')
+        const source = at === live.index ? essential : recoverySources(slot.step)
+        if (at === live.index) {
+            headIndex = dropped.length + source.headIndex
+            append(source.dropped, source.omitted)
+        } else {
+            const ordered = [...source.dropped]
+            ordered.splice(source.headIndex, 0, source.head)
+            append(ordered, source.omitted)
+        }
+    }
+    if (live.index < keep) addSlot(live.index)
+    for (let at = Math.max(keep, live.first); at < live.end; at++) addSlot(at)
+    return createRecoveryContext(essential.head, dropped, headIndex, omitted)
+}
 
 /**
  * The journal's stack (§1.6.11.3): the committed slots the live stack still shares, up to the
@@ -99,18 +137,13 @@ export const journalStack = (
         // Slots below the window aren't stored, so they can't be referred to.
         if (keep <= window.base || keep <= live.first) keep = 0
     }
-    const head = live.index < keep ? null : { label: labelOf(live.at(live.index)) }
-    const slots: number[] = []
-    for (let slot = Math.max(keep, live.first); slot < live.end; slot++)
-        if (!(head && slot === live.index)) slots.push(slot)
-    // A long stack journalled with `keep` 0 names only its newest dropped steps, and counts all.
-    const dropped = slots.slice(-DROPPED_LABELS).map((slot) => labelOf(live.at(slot)))
+    const head = live.index >= keep
+    const context = contextOf(live, keep)
     const lastKept = keep > 0 ? committed.at(keep - 1)?.hash : undefined
     return {
         keep,
         ...(lastKept ? { lastKept: toHex(lastKept) } : {}),
-        dropped,
-        ...(slots.length > dropped.length ? { droppedCount: slots.length } : {}),
+        context,
         head,
         index: head ? keep : live.index,
     }
@@ -131,7 +164,7 @@ export const buildJournal = ({
     state: State
     appVersion: string
     writtenAt: number
-}): JournalV1 => ({
+}): Journal => ({
     journalVersion: JOURNAL_VERSION,
     kind: 'journal',
     recordsV: RECORDS_V,

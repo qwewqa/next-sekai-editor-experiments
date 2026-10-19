@@ -1,5 +1,7 @@
 import type { Command } from '..'
 import { isPristine, redoState } from '../../../history'
+import { getHistoryOperationContext } from '../../../history/createHistoryOperation'
+import { describeStep } from '../../../history/operationPresentation/format'
 import { i18n } from '../../../i18n'
 import { interpolate } from '../../../utils/interpolate'
 import { openHistoryAction } from '../../history/openHistory'
@@ -16,14 +18,19 @@ export const redo: Command = {
     leavesPeek: true,
 
     execute() {
-        const name = redoState()
-        if (name) {
+        const step = redoState()
+        if (step) {
             view.entities = {
                 hovered: [],
                 creating: [],
             }
 
-            notify(interpolate(() => i18n.value.commands.redo.redid, name))
+            notify(
+                interpolate(
+                    () => i18n.value.commands.redo.redid,
+                    () => describeStep(step, getHistoryOperationContext()),
+                ),
+            )
         } else {
             notify(() => i18n.value.commands.redo.noState, {
                 action: openHistoryAction(isPristine.value ? 'sessions' : 'timeline'),

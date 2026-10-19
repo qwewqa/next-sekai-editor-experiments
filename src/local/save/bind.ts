@@ -1,3 +1,4 @@
+import { captureOperation, type JsonValue } from '../../history/operations'
 import { countDayOfUse } from '../days'
 import { readMeta, writeMeta } from '../db'
 import {
@@ -10,6 +11,7 @@ import {
 } from '../handleRows'
 import { fromHex16 } from '../hash'
 import type { KvTx } from '../kv/types'
+import { isReadableSessionVersion } from '../records/unknownValues'
 import { clampTime, nextTime } from '../time'
 import { clearIdentityExport, storeMarks, type IdentityUnit } from './commit'
 
@@ -189,7 +191,7 @@ export type SaveEntryForm = {
     sessionId: string
     seq: number
     time: number
-    label: string
+    operation: JsonValue
     snapshot: string
     noteCount: number
     revisionId: string
@@ -212,6 +214,7 @@ export const finishOwnSave = async (
     if (!isRow(chain)) return false
     const session = await tx.get('sessions', entry.sessionId)
     const held = await tx.getKey('entries', [entry.sessionId, entry.seq])
+    if (isRow(session) && !isReadableSessionVersion(session.v)) return false
     if (!(await storeMarks(tx, unit.marks))) return false
     if (isRow(session) && session.chainId === chainId && held === undefined) {
         const maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
@@ -224,7 +227,7 @@ export const finishOwnSave = async (
             time,
             day,
             kind: 'save',
-            label: entry.label,
+            operation: captureOperation(entry.operation),
             snapshot: fromHex16(entry.snapshot),
             noteCount: entry.noteCount,
             dirty: false,

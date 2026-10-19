@@ -1,3 +1,13 @@
+import {
+    captureEntryDescription,
+    captureOperation,
+    captureStep,
+    pushedStep,
+    type EntryDescription,
+    type JsonValue,
+    type RecoveryContext,
+    type UndoableStep,
+} from '../history/operations'
 import type { State } from '../state'
 import { forkRecord } from './chainFields'
 import {
@@ -13,7 +23,6 @@ import type {
     BatchSnapshot,
     BatchStack,
     ChainSummary,
-    EntryKind,
     FlushBatch,
     FlushResult,
     SessionOrigin,
@@ -44,17 +53,16 @@ export { onFlushCommitted } from './worker/flushHooks'
 // where no database ever will, only the current session's (the journal covers the head).
 
 /** An entry not yet acknowledged by the worker, holding its state. */
-export type PendingEntry = {
+export type PendingEntry = EntryDescription & {
     readonly seq: number
     readonly wall: number
-    readonly kind: EntryKind
-    /** Evaluated when flushed, so the stored label is in the locale at write time (§1.10 #7). */
-    readonly label: () => string
     /** The state it produced or landed on; absent for an undo or redo onto a slot not loaded. */
     readonly state?: State
     /** That slot's stored root, when there's no state. */
     readonly snapshot?: Uint8Array
     readonly dirty: boolean
+    /** A journal-only reload resets its unavailable stack to this one current-state slot. */
+    readonly recoveryBaseline?: UndoableStep
     /** A `save` entry's revision and device (§1.3.3). */
     readonly revisionId?: string
     readonly device?: { readonly id: string; readonly label: string }
@@ -134,7 +142,7 @@ export type SessionStart = {
     origin: SessionOrigin
     sourceName?: string
     state: State
-    label: () => string
+    operation: JsonValue
     dirty: boolean
     ready?: Promise<unknown>
     done?: () => void
@@ -143,7 +151,7 @@ export type SessionStart = {
 /** A stored stack as read for opening: slots from `first`, every slot a stored root. */
 export type StoredStack = {
     first: number
-    slots: { hash: Uint8Array; label: string }[]
+    slots: { hash: Uint8Array; step: UndoableStep }[]
     index: number
 }
 
@@ -160,7 +168,7 @@ export type ContinueStart = {
     /** The chain record as read: the journal's descriptor carries it until the first write. */
     chain: Record<string, unknown>
     /** The `continue` entry's label. */
-    label: () => string
+    operation: JsonValue
     dirty: boolean
     /** A fork: a new chain copied from `forkOf`'s record, with `forkName`. */
     fork?: { forkOf: string; forkName?: string }
@@ -233,7 +241,7 @@ export type FlushDeps = {
     /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
     forkName?: (from: FlushSession) => string | undefined
     /** The label of a `continue` entry the flusher adds itself. */
-    continueLabel?: () => string
+    continueOperation: (fromTime: number) => JsonValue
     /** A Save's identity unit was stored in a database. */
     onIdentity?: (session: FlushSession, identity: PendingIdentity) => void
     /** A Save's identity unit was dropped: its binding was taken over meanwhile. */
@@ -447,7 +455,7 @@ export class Flusher {
             strictSeq: 0,
             edited: false,
         }
-        this.add(session, 'init', start.label, start.state, start.dirty)
+        this.add(session, { kind: 'init', operation: start.operation }, start.state, start.dirty)
         return this.switchTo(session)
     }
 
@@ -460,7 +468,7 @@ export class Flusher {
         const stack = new SessionStack<PendingEntry>()
         stack.committed = new SlotStack<ModelSlot<PendingEntry>>(
             start.stack.first,
-            start.stack.slots.map(({ hash, label }) => ({ hash, label })),
+            start.stack.slots.map(({ hash, step }) => ({ hash, step: captureStep(step) })),
             start.stack.index,
         )
         const head = start.stack.slots[start.stack.index - start.stack.first]
@@ -493,7 +501,7 @@ export class Flusher {
             edited: false,
             chain,
         }
-        this.add(session, 'continue', start.label, head.hash, start.dirty)
+        this.add(session, { kind: 'continue', operation: start.operation }, head.hash, start.dirty)
         return this.switchTo(session)
     }
 
@@ -505,7 +513,7 @@ export class Flusher {
         const stack = new SessionStack<PendingEntry>()
         stack.committed = new SlotStack<ModelSlot<PendingEntry>>(
             start.stack.first,
-            start.stack.slots.map(({ hash, label }) => ({ hash, label })),
+            start.stack.slots.map(({ hash, step }) => ({ hash, step: captureStep(step) })),
             start.stack.index,
         )
         stack.window = start.stack.window
@@ -556,7 +564,8 @@ export class Flusher {
         seq: number
         chain: Record<string, unknown>
         state: State
-        label: () => string
+        operation: JsonValue
+        recoveryContext: RecoveryContext
         ready?: Promise<unknown>
         done?: () => void
     }): FlushSession {
@@ -582,7 +591,21 @@ export class Flusher {
             edited: true,
             chain: { ...start.chain },
         }
-        this.add(session, 'init', start.label, start.state, true)
+        const step = captureStep({
+            kind: 'edit',
+            operation: start.operation,
+            recoveryContext: start.recoveryContext,
+        })
+        session.pending.push({
+            kind: 'recovered',
+            operation: step.operation,
+            recoveryContext: step.recoveryContext!,
+            recoveryBaseline: step,
+            seq: session.nextSeq++,
+            wall: this.now(),
+            state: start.state,
+            dirty: true,
+        })
         return this.switchTo(session)
     }
 
@@ -675,8 +698,10 @@ export class Flusher {
                 if (!fork.pending.length && head?.hash)
                     this.add(
                         fork,
-                        'continue',
-                        this.deps.continueLabel ?? (() => ''),
+                        {
+                            kind: 'continue',
+                            operation: this.deps.continueOperation(session.startedAt),
+                        },
                         head.hash,
                         false,
                     )
@@ -693,10 +718,10 @@ export class Flusher {
      * holding media not yet stored (a pick) flushes at once and strictly: the journal doesn't
      * carry media (§1.6.4). An undo or redo onto a slot not loaded gives its stored root instead.
      */
-    append(kind: EntryKind, label: () => string, state: State | Uint8Array, dirty: boolean) {
+    append(description: EntryDescription, state: State | Uint8Array, dirty: boolean) {
         const session = this.current
         if (!session) return
-        this.add(session, kind, label, state, dirty)
+        this.add(session, description, state, dirty)
         if (
             !(state instanceof Uint8Array) &&
             heldMediaOf(state).some(
@@ -709,20 +734,18 @@ export class Flusher {
 
     private add(
         session: FlushSession,
-        kind: EntryKind,
-        label: () => string,
+        description: EntryDescription,
         state: State | Uint8Array,
         dirty: boolean,
     ) {
         session.pending.push({
             seq: session.nextSeq++,
             wall: this.now(),
-            kind,
-            label,
+            ...captureEntryDescription(description),
             ...(state instanceof Uint8Array ? { snapshot: state } : { state }),
             dirty,
         })
-        if (isEditingKind(kind)) session.edited = true
+        if (isEditingKind(description.kind)) session.edited = true
     }
 
     /** The newest entry's `seq` in memory; 0 before any. */
@@ -753,7 +776,9 @@ export class Flusher {
      */
     endSave(
         reservation: SaveReservation,
-        entry?: Omit<PendingEntry, 'seq' | 'kind' | 'dirty'>,
+        entry?: Omit<PendingEntry, 'seq' | 'kind' | 'dirty' | 'step' | 'operation'> & {
+            operation: JsonValue
+        },
         identity?: IdentityUnit,
         keep = false,
     ): Promise<void> {
@@ -761,7 +786,13 @@ export class Flusher {
         if (session.reserved === seq) session.reserved = undefined
         if (entry && this.current === session && this.sessions.includes(session)) {
             const at = session.pending.findIndex((each) => each.seq > seq)
-            const added: PendingEntry = { ...entry, seq, kind: 'save', dirty: false }
+            const added: PendingEntry = {
+                ...entry,
+                operation: captureOperation(entry.operation),
+                seq,
+                kind: 'save',
+                dirty: false,
+            }
             if (at === -1) session.pending.push(added)
             else session.pending.splice(at, 0, added)
             if (identity) {
@@ -786,7 +817,11 @@ export class Flusher {
         const entries = [...this.takeable(session)]
         return {
             entries,
-            stack: session.stack.replay(entries, (entry) => this.slotOf(entry))?.stack,
+            stack: session.stack.replay(
+                entries,
+                (entry) => this.slotOf(entry),
+                (entry) => this.recoveredSlotOf(entry),
+            )?.stack,
         }
     }
 
@@ -811,12 +846,22 @@ export class Flusher {
 
     /** The session's stack with every pending entry replayed: what the tab shows. */
     liveStack(session: FlushSession) {
-        return session.stack.replay(session.pending, (entry) => this.slotOf(entry))?.stack
+        return session.stack.replay(
+            session.pending,
+            (entry) => this.slotOf(entry),
+            (entry) => this.recoveredSlotOf(entry),
+        )?.stack
     }
 
     /** The slot an entry pushes. */
     private slotOf(entry: PendingEntry): ModelSlot<PendingEntry> {
-        return { entry, label: entry.label }
+        return { entry, step: pushedStep(entry) }
+    }
+
+    private recoveredSlotOf(entry: PendingEntry): ModelSlot<PendingEntry> {
+        if (entry.kind !== 'recovered' || !entry.recoveryBaseline)
+            throw new Error('Pending recovery has no current-state baseline')
+        return { entry, step: entry.recoveryBaseline }
     }
 
     private storesAtOnce(session: FlushSession) {
@@ -1088,15 +1133,15 @@ export class Flusher {
         entries.forEach((entry, i) => {
             if (planned[i]) snapshotOf.set(entry, snapshotOf.size)
         })
-        // Labels evaluated once, in the locale at write time (§1.10 #7).
-        const labels = new Map(entries.map((entry) => [entry, entry.label()]))
         // A fork's inherited slots stored by a commit whose reply was lost have no known root:
         // their states go in this batch as snapshots of their own, with no entry.
-        for (const slot of session.stack.replay(entries, (entry) => this.slotOf(entry))?.stack
-            .slots ?? [])
+        for (const slot of session.stack.replay(
+            entries,
+            (entry) => this.slotOf(entry),
+            (entry) => this.recoveredSlotOf(entry),
+        )?.stack.slots ?? [])
             if (slot.entry?.state && !snapshotOf.has(slot.entry)) {
                 snapshotOf.set(slot.entry, plans.length)
-                labels.set(slot.entry, slot.entry.label())
                 plans.push(runToEnd(this.extractor.plan(slot.entry.state, batch)))
             }
 
@@ -1154,7 +1199,7 @@ export class Flusher {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const last = entries.at(-1)!
         const lastPlan = planned.at(-1)
-        const stack = this.planStack(session, entries, snapshotOf, labels)
+        const stack = this.planStack(session, entries, snapshotOf)
         // A Save's identity unit rides with its `save` entry's batch, or a later one.
         const identity =
             session.identity && last.seq >= session.identity.seq ? session.identity : undefined
@@ -1193,12 +1238,24 @@ export class Flusher {
             entries: entries.map((entry) => ({
                 seq: entry.seq,
                 wall: entry.wall,
-                kind: entry.kind,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                label: labels.get(entry)!,
+                ...captureEntryDescription(entry),
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
                 dirty: entry.dirty,
+                ...(entry.recoveryBaseline
+                    ? {
+                          stack: {
+                              keep: 0,
+                              push: [
+                                  {
+                                      snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
+                                      step: entry.recoveryBaseline,
+                                  },
+                              ],
+                              index: 0,
+                          },
+                      }
+                    : {}),
                 ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
                 ...(entry.device ? { device: entry.device } : {}),
             })),
@@ -1271,8 +1328,9 @@ export class Flusher {
                         (entry) => {
                             const at = snapshotOf.get(entry)
                             const hash = at === undefined ? undefined : result.roots[at]
-                            const label = labels.get(entry)
-                            return hash && label !== undefined ? { hash, label } : undefined
+                            return hash
+                                ? { hash, step: entry.recoveryBaseline ?? pushedStep(entry) }
+                                : undefined
                         },
                         {
                             written: result.stackWritten,
@@ -1343,9 +1401,12 @@ export class Flusher {
         session: FlushSession,
         entries: readonly PendingEntry[],
         snapshotOf: ReadonlyMap<PendingEntry, number>,
-        labels: ReadonlyMap<PendingEntry, string>,
     ): { plan: StackPlan<PendingEntry>; wire: BatchStack } | undefined {
-        const replayed = session.stack.replay(entries, (entry) => this.slotOf(entry))
+        const replayed = session.stack.replay(
+            entries,
+            (entry) => this.slotOf(entry),
+            (entry) => this.recoveredSlotOf(entry),
+        )
         if (!replayed) {
             this.deps.onError?.(new Error('The stack model could not follow the entries'))
             return
@@ -1354,20 +1415,20 @@ export class Flusher {
         const blocks: BatchStack['blocks'] = []
         for (const { block, first, end } of plan.writes) {
             const slots: (number | Uint8Array)[] = []
-            const blockLabels: string[] = []
+            const steps: UndoableStep[] = []
             for (let slot = first; slot < end; slot++) {
                 const model = plan.stack.at(slot)
                 const entry = model?.entry
                 const ref = entry ? snapshotOf.get(entry) : model?.hash
-                const label = entry ? labels.get(entry) : model?.label
-                if (ref === undefined || typeof label !== 'string') {
+                const step = model?.step
+                if (ref === undefined || !step) {
                     this.deps.onError?.(new Error(`Stack slot ${slot} has no snapshot`))
                     return
                 }
                 slots.push(ref)
-                blockLabels.push(label)
+                steps.push(step)
             }
-            blocks.push({ block, first, slots, labels: blockLabels })
+            blocks.push({ block, first, slots, steps })
         }
         return {
             plan,
@@ -1398,7 +1459,11 @@ export class Flusher {
         const forkName = this.deps.forkName?.(from)
         // The parent's stack at `uptoSeq`: what's acknowledged, then what was stored unanswered.
         const stored = from.pending.filter((entry) => lastSeq !== undefined && entry.seq <= lastSeq)
-        const inherited = from.stack.replay(stored, (entry) => this.slotOf(entry))?.stack
+        const inherited = from.stack.replay(
+            stored,
+            (entry) => this.slotOf(entry),
+            (entry) => this.recoveredSlotOf(entry),
+        )?.stack
         from.pending.length = 0
         const id = this.newId()
         const lock = this.deps.lockSession?.(id)

@@ -1,4 +1,5 @@
 import type { JournalFound, JournalLike, JournalStore } from '../../platform/types'
+import { trimOptionalJournalContext } from './format'
 
 // `JournalStore` over localStorage (§1.6.4 #7, §1.6.11.3): one key per session, overwritten on
 // each write and verified by reading it back; a write that would pass the size limits isn't
@@ -77,11 +78,17 @@ export const storageJournalStore = (
                 const key = keyOf(journal.sessionId)
                 // Another page's journal of this session (a crash's, a copied tab's) stays.
                 if (!ours(store, key)) return false
-                const text = JSON.stringify(journal)
-                if (text.length > JOURNAL_KEY_LIMIT) return false
+                let candidate = journal
+                let text = JSON.stringify(candidate)
                 const fits = (skip?: string) =>
                     othersSize(store, key, text.length, skip) + key.length + text.length <=
                     JOURNAL_TOTAL_LIMIT
+                while (text.length > JOURNAL_KEY_LIMIT || (!fits() && !fits(prefix + LEGACY))) {
+                    const trimmed = trimOptionalJournalContext(candidate)
+                    if (!trimmed) return false
+                    candidate = trimmed
+                    text = JSON.stringify(candidate)
+                }
                 if (!fits()) {
                     // The legacy slot is the one left out first when space is short (§1.6.4),
                     // only when that makes room.

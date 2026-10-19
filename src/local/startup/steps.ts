@@ -2,6 +2,7 @@ import type { Chart } from '../../chart'
 import { parseLevelDataChart } from '../../chart/parse/levelData'
 import { validateChart } from '../../chart/validate'
 import { parseAutoSave } from '../../history/autoSave/parse'
+import type { JsonValue } from '../../history/operations'
 import { LevelDataReport } from '../../levelData/report'
 import { getLevelDataRevision, getRevisionWarning } from '../../levelData/revision'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
@@ -46,7 +47,7 @@ export type RecoveryContext = {
     /** Safe mode writes nothing in localStorage but settings (§1.4.2). */
     safe: boolean
     /** The label of a `recovered` entry, and of the migrated session's `init` entry. */
-    labels: { recovered: (dropped: number) => string; migrated: string }
+    operations: { recovered: (dropped: number) => JsonValue; migrated: JsonValue }
     /** The session whose lock this tab already holds: its own reload's (§1.4.2). */
     own?: string
     now?: () => number
@@ -169,7 +170,7 @@ export const journalsStep = async (context: RecoveryContext) => {
             locks: context.locks,
             worker: context.worker,
             appVersion: context.appVersion,
-            label: context.labels.recovered,
+            operation: context.operations.recovered,
             ...(context.now ? { now: context.now } : {}),
         },
         context.own === undefined ? {} : { own: context.own },
@@ -271,7 +272,7 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
             hash,
             ids: { chainId: newId(), docId: newId(), lineageId: newId(), sessionId: newId() },
             ...(slot.filename ? { sourceName: slot.filename } : {}),
-            label: context.labels.migrated,
+            operation: context.operations.migrated,
             appVersion: context.appVersion,
             wall: (context.now ?? Date.now)(),
         }
@@ -366,7 +367,7 @@ export const replaySessionJournal = async (context: RecoveryContext, sessionId: 
             locks: context.locks,
             worker: context.worker,
             appVersion: context.appVersion,
-            label: context.labels.recovered,
+            operation: context.operations.recovered,
         },
         { held: true },
     )

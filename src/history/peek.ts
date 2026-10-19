@@ -1,5 +1,6 @@
 import { computed, shallowRef, watch, type Ref } from 'vue'
 import type { State } from '../state'
+import type { NativeOperation } from './operations'
 import { liveState, peek, isPeeking as peeking, pushState, stackGeneration } from './stack'
 
 // Peek (Part 1 §1.4.11): a History entry's state shown read-only in place of the current one,
@@ -45,7 +46,7 @@ export type PeekSource = {
 
 export type PeekEffects = {
     /** The stored label of a Restore's entry, "Restored to 2:40:31 PM". */
-    restoredLabel: (time: number) => () => string
+    restoredOperation: (time: number) => NativeOperation
     /** After a Restore: "Restored to 2:40:31 PM". */
     restored: (time: number) => void
     /** A Restore that would change nothing: "Already matches the current chart". */
@@ -283,7 +284,8 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
         effects?.alreadyMatches()
         return
     }
-    pushState(effects?.restoredLabel(entry.time) ?? (() => ''), restored, 'restore')
+    if (!effects) throw new Error('Restore operation factory is not installed')
+    pushState(effects.restoredOperation(entry.time), restored, 'restore')
     effects?.restored(entry.time)
 }
 

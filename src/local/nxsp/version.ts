@@ -7,10 +7,10 @@ export const NXSP_FORMAT = 'nxsp'
 export const NXSP_VERSION = 1
 
 /** `project.json`'s `minor`: the reader generation this build is. */
-export const NXSP_MINOR = 0
+export const NXSP_MINOR = 1
 
 /** `history/manifest.json`'s `version`. */
-export const MANIFEST_VERSION = 1
+export const MANIFEST_VERSION = 2
 
 /**
  * The `minor` that introduced each thing a file can use (§1.6.11.8): the writer writes the
@@ -19,7 +19,7 @@ export const MANIFEST_VERSION = 1
 export const MINOR_TABLE = {
     levelVersion: { 1: 0 } as Readonly<Record<number, number>>,
     rootV: { 1: 0 } as Readonly<Record<number, number>>,
-    manifestVersion: { 1: 0 } as Readonly<Record<number, number>>,
+    manifestVersion: { 2: 1 } as Readonly<Record<number, number>>,
     entryKind: {
         init: 0,
         continue: 0,

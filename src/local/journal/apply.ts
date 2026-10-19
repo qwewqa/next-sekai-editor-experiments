@@ -1,3 +1,4 @@
+import { captureOperation, captureStep, type JsonValue } from '../../history/operations'
 import { forkRecord } from '../chainFields'
 import { countDayOfUse } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
@@ -15,6 +16,7 @@ import { KeyRange, type KvTx } from '../kv/types'
 import { putChunk } from '../putChunk'
 import { nodeRow, rootRow } from '../records/rows'
 import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
+import { SESSION_V } from '../records/version'
 import { directWaiter, type Waiter } from '../scheduler'
 import { clampTime, nextTime } from '../time'
 import {
@@ -46,7 +48,7 @@ export type JournalApplyBatch = {
     snapshot: BatchSnapshot
     summary: ChainSummary
     /** The `recovered` entry's label: "Recovered last change", with the dropped steps. */
-    label: string
+    operation: JsonValue
     /** A recovery chain's and session's ids, derived from the journal: used if one is made. */
     recovery: { chainId: string; docId: string; sessionId: string }
     appVersion: string
@@ -282,7 +284,11 @@ export const writeJournalApply = async (
     }
     const time = stamp(now)
     applyHook?.(force)
-    const headLabel = stack.head?.label ?? batch.label
+    const recoveredStep = captureStep({
+        kind: 'edit',
+        operation: batch.operation,
+        recoveryContext: stack.context,
+    })
 
     if (recoveryWhy) {
         // A new chain copied from the descriptor as a fork is (§1.6.11.2), with no binding.
@@ -302,6 +308,7 @@ export const writeJournalApply = async (
         })
         await tx.put('sessions', {
             id: newSession,
+            v: SESSION_V,
             chainId: newChain,
             startedAt: time,
             updatedAt: time,
@@ -321,28 +328,30 @@ export const writeJournalApply = async (
             time,
             day,
             kind: 'recovered',
-            label: batch.label,
+            operation: captureOperation(batch.operation),
+            recoveryContext: recoveredStep.recoveryContext,
             snapshot,
             noteCount: root.noteCount,
             dirty: true,
             kept: true,
-            stack: { keep: 0, push: [{ snapshot, label: headLabel }], index: 0 },
+            stack: { keep: 0, push: [{ snapshot, step: recoveredStep }], index: 0 },
         })
-        await tx.put('stackBlocks', blockRow(newSession, 0, 0, [{ snapshot, label: headLabel }]))
+        await tx.put('stackBlocks', blockRow(newSession, 0, 0, [{ snapshot, step: recoveredStep }]))
         await writeMeta(tx, 'maxSeenTime', maxSeen)
         return { kind: 'recovery', sessionId: newSession, chainId: newChain, why: recoveryWhy }
     }
 
     // Applied: a `recovered` entry carrying the stack, and the session's stack set to it.
     const snapshot = root.hash.slice()
-    const push = stack.head ? [{ snapshot, label: headLabel }] : []
+    const push = stack.head ? [{ snapshot, step: recoveredStep }] : []
     await tx.put('entries', {
         sessionId,
         seq,
         time,
         day,
         kind: 'recovered',
-        label: batch.label,
+        operation: captureOperation(batch.operation),
+        recoveryContext: recoveredStep.recoveryContext,
         snapshot,
         noteCount: root.noteCount,
         dirty: true,
@@ -396,7 +405,7 @@ export const writeJournalApply = async (
             : {
                   id: sessionId,
                   chainId,
-                  ...(descriptor.v === undefined ? {} : { v: descriptor.v }),
+                  v: SESSION_V,
                   // Its own start, clamped as times from outside are, never after its entry.
                   startedAt: Math.min(
                       Math.max(clampTime(descriptor.startedAt, now), continuedAfter(parent)),

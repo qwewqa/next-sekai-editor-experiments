@@ -1,3 +1,4 @@
+import type { RecoveryContext } from '../../history/operations'
 import type { JournalFound } from '../../platform/types'
 import type { State } from '../../state'
 import type { SessionOrigin } from '../flushWrite'
@@ -24,8 +25,8 @@ export type JournalledSession = {
     /** The descriptor's chain fields, which the next journal carries on. */
     chain: Record<string, unknown>
     state: State
-    /** The head slot's label. */
-    label: string
+    /** The collapsed transition's essential and optional descriptions. */
+    recoveryContext: RecoveryContext
 }
 
 const SESSION_FIELDS = new Set(['v', 'origin', 'parent', 'startedAt'])
@@ -58,6 +59,6 @@ export const journalledSession = (found: JournalFound): JournalledSession | unde
         seq: journal.seq,
         chain,
         state: content.state,
-        label: journal.stack.head?.label ?? '',
+        recoveryContext: journal.stack.context,
     }
 }

@@ -19,6 +19,7 @@ import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
 import { storageKey } from '../../../src/storage'
+import { nativeOperation, originOperation } from '../../helpers/historySteps'
 import { testId } from '../flush/harness'
 import { beginSession, openJournalPage, type JournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
@@ -110,7 +111,14 @@ export const load = async (
         prefix: 'nse.',
         appVersion: options.appVersion ?? '0.6.0',
         safe: false,
-        labels: { recovered: () => 'Recovered last change', migrated: 'Recovered from auto save' },
+        operations: {
+            recovered: (droppedSteps) =>
+                nativeOperation(
+                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    'Recovered last change',
+                ),
+            migrated: originOperation('autoSave'),
+        },
         newId: testId,
         now: () => 1_792_130_500_000,
         ...(claim.kind === 'reload' ? { own: claim.record.sessionId } : {}),
@@ -168,7 +176,15 @@ export const load = async (
             return session === blank && !session.stored && session.pending.length <= 1
         },
         newId: testId,
-        labels: { continued: () => 'Continued', recoveredHead: () => 'Recovered last change' },
+        operations: {
+            continued: (fromTime) =>
+                nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
+            recovered: (droppedSteps) =>
+                nativeOperation(
+                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    'Recovered last change',
+                ),
+        },
         events: (event) => events.push(event),
     }
     const opened = await page.tab.run(() => openAtStart(deps, claim))

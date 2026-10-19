@@ -1,3 +1,9 @@
+import {
+    captureEntryDescription,
+    captureStep,
+    type EntryDescription,
+    type UndoableStep,
+} from '../../history/operations'
 import { serializeEditorMetadata } from '../../levelData/editorMetadata'
 import { LEVEL_VERSION } from '../../levelData/levelVersion'
 import { serializeToLevelData } from '../../levelData/serialize'
@@ -24,17 +30,31 @@ export const addRecords = (records: PendingRecords, state: State) => {
     return root
 }
 
-export type PendingEntry = Omit<PendingRow, 'snapshot' | 'noteCount'> & { state: State }
+export type PendingEntry = EntryDescription &
+    Omit<
+        PendingRow,
+        'snapshot' | 'noteCount' | 'kind' | 'step' | 'operation' | 'recoveryContext'
+    > & { state: State }
 
 /** This tab's unflushed rows of the saved session, its live stack and their records. */
 export const pendingInput = (
     entries: readonly PendingEntry[],
-    stack?: { base: number; slots: readonly { state: State; label: string }[]; index: number },
+    stack?: { base: number; slots: readonly { state: State; step: UndoableStep }[]; index: number },
 ): PendingInput => {
     const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
     const rows = entries.map(({ state, ...row }) => {
         const snapshot = addRecords(records, state)
-        return { ...row, snapshot, noteCount: records.roots[snapshot]?.[3] as number }
+        return {
+            seq: row.seq,
+            time: row.time,
+            dirty: row.dirty,
+            ...(row.stack ? { stack: row.stack } : {}),
+            ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
+            ...(row.device ? { device: row.device } : {}),
+            ...captureEntryDescription(row),
+            snapshot,
+            noteCount: records.roots[snapshot]?.[3] as number,
+        }
     })
     return {
         entries: rows,
@@ -42,9 +62,9 @@ export const pendingInput = (
             ? {
                   stack: {
                       base: stack.base,
-                      slots: stack.slots.map(({ state, label }) => ({
+                      slots: stack.slots.map(({ state, step }) => ({
                           snapshot: addRecords(records, state),
-                          label,
+                          step: captureStep(step),
                       })),
                       index: stack.index,
                   },

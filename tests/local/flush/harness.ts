@@ -21,6 +21,7 @@ import {
 } from '../../../src/local/worker/core'
 import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import type { WorkerContext } from '../../../src/local/worker/handlers'
+import { nativeOperation } from '../../helpers/historySteps'
 
 // A tab's storage worker and page on the test core: a StorageCore over the tab's store, the flush
 // handlers, and a Flusher whose transport runs each batch as a task of the tab. `openSplitPage`
@@ -60,9 +61,9 @@ export type Page = {
 /** States a test hands the flusher are frozen, as the undo stack publishes them. */
 const freezing = (flusher: Flusher) => {
     const { append, begin } = flusher
-    flusher.append = (kind, label, state, dirty) => {
+    flusher.append = (description, state, dirty) => {
         if (!(state instanceof Uint8Array)) freezePublished(state)
-        append.call(flusher, kind, label, state, dirty)
+        append.call(flusher, description, state, dirty)
     }
     flusher.begin = (start) => {
         freezePublished(start.state)
@@ -90,6 +91,8 @@ export const openPage = async (
     const flusher = freezing(
         new Flusher({
             appVersion: '0.6.0',
+            continueOperation: (fromTime) =>
+                nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
             now: () => (clock += 10),
             newId: testId,
             transport: async (batch) => {
@@ -305,6 +308,8 @@ export const openSplitPage = async (
     const flusher = freezing(
         new Flusher({
             appVersion: '0.6.0',
+            continueOperation: (fromTime) =>
+                nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
             now: timers.now,
             newId: testId,
             transport: (batch, _transfer, current) =>

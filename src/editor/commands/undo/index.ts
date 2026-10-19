@@ -1,5 +1,7 @@
 import type { Command } from '..'
 import { earlierSteps, isPristine, undoState } from '../../../history'
+import { getHistoryOperationContext } from '../../../history/createHistoryOperation'
+import { describeStep } from '../../../history/operationPresentation/format'
 import { i18n } from '../../../i18n'
 import { previousSession } from '../../../local/startup/events'
 import { interpolate } from '../../../utils/interpolate'
@@ -18,14 +20,19 @@ export const undo: Command = {
     leavesPeek: true,
 
     execute() {
-        const name = undoState()
-        if (name) {
+        const step = undoState()
+        if (step) {
             view.entities = {
                 hovered: [],
                 creating: [],
             }
 
-            notify(interpolate(() => i18n.value.commands.undo.undid, name))
+            notify(
+                interpolate(
+                    () => i18n.value.commands.undo.undid,
+                    () => describeStep(step, getHistoryOperationContext()),
+                ),
+            )
         } else {
             // Right after New, an open or an import, with Reopen: the habit of pressing Undo
             // after replacing the chart by mistake gets the work back (Part 1 §1.4.1). Else
