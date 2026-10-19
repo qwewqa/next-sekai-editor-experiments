@@ -43,20 +43,19 @@ export const editSelectedEditableEntities = (
     const [entity] = changed
     const own = entity && each ? each(entity) : object
     const delegate =
+        entity !== undefined &&
         selectedEntities.value.filter(isEditableEntity).length === 1 &&
         own.beat !== undefined &&
-        own.beat !== entity?.beat &&
-        (entity?.type === 'bpm' || entity?.type === 'timeScale')
+        own.beat !== entity.beat &&
+        (entity.type === 'bpm' || entity.type === 'timeScale')
     if (delegate) {
         revealAuthoringTarget(object)
-        if (entity?.type === 'bpm') {
+        if (entity.type === 'bpm') {
             editBpm(entity, own)
-            return
-        }
-        if (entity?.type === 'timeScale') {
+        } else {
             editTimeScale(entity, own)
-            return
         }
+        return
     }
 
     if (!receipt) throw new Error('Unexpected missing property receipt')

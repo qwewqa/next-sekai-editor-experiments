@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { CHANNEL_NAME } from '../../src/local/channel'
-import { DB_NAME, hashKey, STORE_NAMES, STORES_V1 } from '../../src/local/db'
+import { DB_NAME, DB_VERSION, hashKey, STORE_NAMES, STORES_V1 } from '../../src/local/db'
 import { MemoryKv } from '../../src/local/kv/memory'
 import { checkStored } from '../../src/local/testing/invariants'
 import { crashSweep } from '../../src/local/testing/sweep'
@@ -47,7 +47,7 @@ const putRow = (tab: Tab, store: StorageCore, key: string) =>
 const getRow = (tab: Tab, store: StorageCore, key: string) =>
     tab.run(() => store.read(['meta'], (tx) => tx.get('meta', key)))
 
-test('the first load creates every v1 store, index and meta row', async () => {
+test('the first load creates every current store, index and meta row', async () => {
     const world = createWorld({ seed: 1 })
     const tab = world.tab('a')
     const store = core(world, tab, {}, { deviceId: 'device-1' })
@@ -88,11 +88,11 @@ test('the first load creates every v1 store, index and meta row', async () => {
     assert.equal(meta.createdBy, '0.6.0')
     assert.equal(meta.epoch, 0)
     assert.equal(meta.deviceId, 'device-1')
-    assert.equal(world.memory.version(DB_NAME), 1)
+    assert.equal(world.memory.version(DB_NAME), DB_VERSION)
     await world.idle()
 })
 
-test('a second v1 tab opens the same database at the same version', async () => {
+test('a second current tab opens the same database at the same version', async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const a = world.tab('a')
@@ -109,23 +109,24 @@ test('a second v1 tab opens the same database at the same version', async () => 
     }
 })
 
-test('a v2 tab: the v1 tab answers upgradeWanted and onversionchange, closes and pauses', async () => {
+test('a newer tab: the current tab answers upgradeWanted and onversionchange, closes and pauses', async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const old = world.tab('old')
         const oldStore = core(world, old)
         await old.run(() => oldStore.start())
         const next = world.tab('next')
-        const nextStore = core(world, next, { dbVersion: 2 })
+        const nextStore = core(world, next, { dbVersion: DB_VERSION + 1 })
         assert.deepEqual(await next.run(() => nextStore.start()), { mode: 'stored' })
-        assert.equal(world.memory.version(DB_NAME), 2)
+        assert.equal(world.memory.version(DB_NAME), DB_VERSION + 1)
         assert.deepEqual(oldStore.status, { mode: 'stored', reason: 'upgrading' })
         await assert.rejects(putRow(old, oldStore, 'late'), StorageRefusedError)
         // The broadcast went out before the version was requested.
         assert.ok(
             world.channels.posted.some(
                 (post) =>
-                    post.from === 'next' && (post.message as { version: number }).version === 2,
+                    post.from === 'next' &&
+                    (post.message as { version: number }).version === DB_VERSION + 1,
             ),
         )
         await putRow(next, nextStore, 'x')
@@ -133,24 +134,27 @@ test('a v2 tab: the v1 tab answers upgradeWanted and onversionchange, closes and
     }
 })
 
-test('upgradeWanted alone closes a v1 tab’s connection and pauses its storing', async () => {
+test('upgradeWanted alone closes a current tab’s connection and pauses its storing', async () => {
     const world = createWorld({ seed: 4 })
     const old = world.tab('old')
     const oldStore = core(world, old)
     await old.run(() => oldStore.start())
-    world.tab('other').channel(CHANNEL_NAME).post({ type: 'upgradeWanted', version: 2 })
+    world
+        .tab('other')
+        .channel(CHANNEL_NAME)
+        .post({ type: 'upgradeWanted', version: DB_VERSION + 1 })
     await world.idle()
     assert.deepEqual(oldStore.status, { mode: 'stored', reason: 'upgrading' })
     // A message for the version it already has asks nothing.
     const fresh = world.tab('fresh')
     const freshStore = core(world, fresh)
     await fresh.run(() => freshStore.start())
-    world.tab('other2').channel(CHANNEL_NAME).post({ type: 'upgradeWanted', version: 1 })
+    world.tab('other2').channel(CHANNEL_NAME).post({ type: 'upgradeWanted', version: DB_VERSION })
     await world.idle()
     assert.deepEqual(freshStore.status, { mode: 'stored' })
 })
 
-test('onversionchange alone closes a v1 tab’s connection, letting the transaction in flight finish', async () => {
+test('onversionchange alone closes a current tab’s connection, letting the transaction in flight finish', async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const old = world.tab('old')
@@ -161,7 +165,7 @@ test('onversionchange alone closes a v1 tab’s connection, letting the transact
         const nextStore = core(
             world,
             next,
-            { dbVersion: 2 },
+            { dbVersion: DB_VERSION + 1 },
             { channel: next.channel('elsewhere') },
         )
         let starting: Promise<unknown> | undefined
@@ -180,13 +184,13 @@ test('onversionchange alone closes a v1 tab’s connection, letting the transact
     }
 })
 
-test('a frozen tab leaves a v2 tab with storage unavailable after about 3 s; Try Again never hangs', async () => {
+test('a frozen tab leaves a newer tab with storage unavailable after about 3 s; Try Again never hangs', async () => {
     const world = createWorld({ seed: 7 })
     const frozen = world.tab('frozen')
     const frozenStore = core(world, frozen, { ignoreVersionChange: true })
     await frozen.run(() => frozenStore.start())
     const next = world.tab('next')
-    const nextStore = core(world, next, { dbVersion: 2 })
+    const nextStore = core(world, next, { dbVersion: DB_VERSION + 1 })
     const started = Date.now()
     assert.deepEqual(await next.run(() => nextStore.start()), {
         mode: 'memory',
@@ -206,7 +210,7 @@ test('a frozen tab leaves a v2 tab with storage unavailable after about 3 s; Try
     frozen.kill()
     await world.scheduler.idle()
     assert.deepEqual(await next.run(() => nextStore.tryAgain()), { mode: 'stored' })
-    assert.equal(world.memory.version(DB_NAME), 2)
+    assert.equal(world.memory.version(DB_NAME), DB_VERSION + 1)
     const stored = world.memory.dump(DB_NAME).get('recovered') ?? []
     assert.deepEqual(
         stored.map((row) => row.key),
@@ -215,13 +219,13 @@ test('a frozen tab leaves a v2 tab with storage unavailable after about 3 s; Try
     await world.idle()
 })
 
-test('a v1 tab loading behind a blocked upgrade gives up in time too, and opens once it clears', async () => {
+test('a current tab loading behind a blocked upgrade gives up in time too, and opens once it clears', async () => {
     const world = createWorld({ seed: 13 })
     const frozen = world.tab('frozen')
     const frozenStore = core(world, frozen, { ignoreVersionChange: true })
     await frozen.run(() => frozenStore.start())
     const next = world.tab('next')
-    const nextStore = core(world, next, { dbVersion: 2 })
+    const nextStore = core(world, next, { dbVersion: DB_VERSION + 1 })
     await next.run(() => nextStore.start())
     // Its versionless open waits in the queue behind the pending upgrade.
     const late = world.tab('late')
@@ -241,7 +245,7 @@ test('a v1 tab loading behind a blocked upgrade gives up in time too, and opens 
 test('a tab older than the database opens it read-only', async () => {
     const world = createWorld({ seed: 8 })
     const next = world.tab('next')
-    const nextStore = core(world, next, { dbVersion: 3 })
+    const nextStore = core(world, next, { dbVersion: DB_VERSION + 2 })
     await next.run(() => nextStore.start())
     await putRow(next, nextStore, 'x')
     next.kill()
@@ -250,7 +254,7 @@ test('a tab older than the database opens it read-only', async () => {
     assert.deepEqual(await old.run(() => oldStore.start()), { mode: 'readOnly' })
     assert.deepEqual(await getRow(old, oldStore, 'x'), { key: 'x', value: 'next' })
     await assert.rejects(putRow(old, oldStore, 'y'), StorageRefusedError)
-    assert.equal(world.memory.version(DB_NAME), 3)
+    assert.equal(world.memory.version(DB_NAME), DB_VERSION + 2)
 })
 
 test('no storage at all runs in memory', async () => {

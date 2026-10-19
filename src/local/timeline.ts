@@ -4,7 +4,6 @@ import {
     equalJson,
     pushedStep,
     type EntryDescription,
-    type JsonValue,
     type UndoableStep,
 } from '../history/operations'
 import { equalBytes, toHex } from './hash'
@@ -201,7 +200,9 @@ export const blockSlot = (row: StackBlockRow | undefined, slot: number): ReplayS
     if (!row) return
     const at = slot - row.first
     if (at < 0 || (at + 1) * 16 > row.hashes.byteLength) return
-    const step = row.steps?.[at]
+    const steps: unknown = row.steps
+    if (!Array.isArray(steps)) return
+    const step: unknown = steps[at]
     if (!step) return
     try {
         return { snapshot: row.hashes.slice(at * 16, at * 16 + 16), step: captureStep(step) }
@@ -266,9 +267,7 @@ export const stackMismatches = (
                         expected ? toHex(expected.snapshot) : 'nothing'
                     }`,
                 )
-            else if (
-                !equalJson(expected.step as unknown as JsonValue, slot.step as unknown as JsonValue)
-            )
+            else if (!equalJson(expected.step, slot.step))
                 problems.push(`slot ${window.base + i}: step differs`)
         })
     return problems

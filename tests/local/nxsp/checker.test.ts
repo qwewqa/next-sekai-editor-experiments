@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { inflateRawSync } from 'node:zlib'
-import { equalJson } from '../../../src/history/operations'
+import { equalJson, type JsonValue } from '../../../src/history/operations'
 import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { readNxsp } from '../../../src/local/nxsp/read'
@@ -434,7 +434,7 @@ test(
             data: { created: 1 },
             fallback: { locale: 'fr', text: 'Description future' },
         }
-        const variants = [
+        const variants: JsonValue[] = [
             {
                 ...base,
                 id: 'future.tool',

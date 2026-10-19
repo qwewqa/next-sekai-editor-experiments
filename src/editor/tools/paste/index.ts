@@ -20,6 +20,7 @@ import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { isDynamicStages, requestDynamicStages } from '../../../history/dynamicStages'
 import { defaultGroupId, groups } from '../../../history/groups'
 import { refuseWhilePeeking } from '../../../history/peek'
+import { stackGeneration } from '../../../history/stack'
 import { defaultStageId, stages } from '../../../history/stages'
 import { i18n } from '../../../i18n'
 import { settings } from '../../../settings'
@@ -123,27 +124,44 @@ export const hasWaitingPaste = () => isPasteWaiting
  * Waits for a clipboard read before a paste. False drops it: another paste is waiting, or an
  * edit, a scope or layout change, a drag, or with `keepsTool` a tool switch came meanwhile.
  */
-export const waitToPaste = async (read: () => Promise<unknown>, keepsTool: boolean) => {
+export const waitToPaste = async (
+    read: () => Promise<unknown>,
+    keepsTool: boolean,
+    isCurrent: () => boolean = () => true,
+) => {
     if (isPasteWaiting) return false
     const source = state.value
     const scope = scopeLookup.value
     const layout = view.layout
     const tool = toolName.value
+    const generation = stackGeneration()
+    const matches = () =>
+        generation === stackGeneration() &&
+        !isPeeking.value &&
+        hasSameChartData(source, state.value) &&
+        scopeLookup.value === scope &&
+        (!source.isDynamicStages || view.layout === layout) &&
+        (!keepsTool || toolName.value === tool) &&
+        !isDragging.value &&
+        isCurrent()
+    let current = matches()
+    const stop = watch(
+        matches,
+        (matches) => {
+            current &&= matches
+        },
+        { flush: 'sync' },
+    )
     isPasteWaiting = true
     try {
         await read()
     } catch {
         // A failed read pastes what was read before.
     } finally {
+        stop()
         isPasteWaiting = false
     }
-    return (
-        hasSameChartData(source, state.value) &&
-        scopeLookup.value === scope &&
-        (!source.isDynamicStages || view.layout === layout) &&
-        (!keepsTool || toolName.value === tool) &&
-        !isDragging.value
-    )
+    return current && matches()
 }
 
 /** Where a paste at a point lands, as the view is now: its lane, and its beat offset from a copy's beat. */

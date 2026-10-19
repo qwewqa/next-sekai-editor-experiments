@@ -88,7 +88,8 @@ test('broken structural replay refuses History but chart-only Save uses the veri
     const id = fixture.session.id
     await fixture.store.write(['sessions', 'entries', 'stackBlocks'], async (tx) => {
         const row = (await tx.get('sessions', id)) as Record<string, unknown>
-        const { stack: _stack, ...rest } = row
+        const rest = { ...row }
+        delete rest.stack
         await tx.put('sessions', rest)
         await tx.delete('entries', [id, 2])
         await tx.delete('stackBlocks', KeyRange.bound([id, -Infinity], [id, Infinity]))
@@ -211,10 +212,12 @@ test('event-only recovered context survives keep-first, append, import, reload a
     assert(event?.kind === 'recovered')
     assert(
         equalJson(
-            captureEntryDescription(event),
-            captureEntryDescription(
-                (await heldRows(first.file)).history.entries.find(
-                    (row) => row.kind === 'recovered',
+            captureOperation(captureEntryDescription(event)),
+            captureOperation(
+                captureEntryDescription(
+                    (await heldRows(first.file)).history.entries.find(
+                        (row) => row.kind === 'recovered',
+                    ),
                 ),
             ),
         ),

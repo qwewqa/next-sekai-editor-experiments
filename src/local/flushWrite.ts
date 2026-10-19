@@ -291,14 +291,10 @@ export const prepareFlush = async (
     for (const entry of batch.entries) {
         captureEntryDescription(entry)
         if (entry.kind === 'recovered') {
-            if (
-                !entry.stack ||
-                entry.stack.keep !== 0 ||
-                entry.stack.index !== 0 ||
-                entry.stack.push.length !== 1
-            )
+            if (entry.stack?.keep !== 0 || entry.stack.index !== 0 || entry.stack.push.length !== 1)
                 throw new FlushBatchError('Invalid pending recovery baseline')
-            const pushed = entry.stack.push[0]!
+            const pushed = entry.stack.push[0]
+            if (!pushed) throw new FlushBatchError('Missing recovery baseline slot')
             if (
                 typeof entry.snapshot === 'number'
                     ? pushed.snapshot !== entry.snapshot

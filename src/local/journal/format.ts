@@ -91,7 +91,7 @@ export const trimOptionalJournalContext = (value: JournalLike): JournalLike | un
     } catch {
         return
     }
-    if (!context?.dropped.length || context.omitted === Number.MAX_SAFE_INTEGER) return
+    if (!context.dropped.length || context.omitted === Number.MAX_SAFE_INTEGER) return
     const trimmed = {
         ...value,
         stack: {
