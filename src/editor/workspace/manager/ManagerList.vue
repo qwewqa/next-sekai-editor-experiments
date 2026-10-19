@@ -475,7 +475,12 @@ watch(list, (element, previous) => {
 const stickyAdd = computed(() => listHeight.value >= 156)
 watch(root, (element, previous) => {
     if (previous) observer.unobserve(previous)
-    if (element) observer.observe(element)
+    if (element) {
+        // Measured now, not at the observer's first callback, so a key pressed as the list opens
+        // already sees the inline actions.
+        width.value = element.clientWidth
+        observer.observe(element)
+    }
 })
 onUnmounted(() => {
     observer.disconnect()
@@ -2191,7 +2196,7 @@ const folderEyeLabel = (item: FolderItem) =>
                     <details ref="disclosure" class="min-w-0" data-manager-current>
                         <summary
                             ref="disclosureSummary"
-                            class="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg forced-colors:focus-visible:outline forced-colors:focus-visible:outline-2 forced-colors:focus-visible:outline-[Highlight]"
+                            class="focus-edge cursor-pointer rounded-lg px-3 py-2 text-sm forced-colors:focus-visible:outline-[Highlight]"
                             :data-autofocus="requestedDisclosure ? '' : undefined"
                             data-manager-current-summary
                         >
@@ -2357,7 +2362,7 @@ const folderEyeLabel = (item: FolderItem) =>
             >
                 <button
                     type="button"
-                    class="manager-selection-done pointer-events-auto flex min-w-0 items-center rounded-full bg-button p-0.5 pr-4 shadow-md transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent"
+                    class="manager-selection-done btn btn-secondary pointer-events-auto flex min-w-0 items-center rounded-full p-0.5 pr-4"
                     :aria-label="selectionCount"
                     :title="i18n.workspace.manager.stopSelecting"
                     @click="onDone"
@@ -2485,7 +2490,7 @@ const folderEyeLabel = (item: FolderItem) =>
 /* A round companion to the Add pill, raised the same way. */
 .manager-new-folder,
 .manager-round {
-    @apply pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-button shadow-md transition-colors focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent [@media(hover:hover)]:hover:shadow-accent;
+    @apply btn btn-secondary pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full;
 }
 
 .manager-round {
