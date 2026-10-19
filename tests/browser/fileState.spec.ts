@@ -157,7 +157,7 @@ const installDisclosureScope = async (page: Page, destination: 'panel' | 'modal'
     settings.showGroups = false
     settings.showPreview = false
     const { i18n } = await import('/src/i18n/index.ts') as typeof import('../../src/i18n')
-    return { path: i18n.value.workspace.folders.path.replace('{0}', 'Chorus Folder With A Long Exact Name').replace('{1}', 'Lead Synth Layer With A Long Exact Name'), count: i18n.value.statusBar.group.shown.replace('{0}', `${groupScope.shownCount.value}`).replace('{1}', `${groupScope.totalCount.value}`) }
+    return { path: i18n.value.workspace.folders.path.replace('{0}', 'Chorus Folder With A Long Exact Name').replace('{1}', 'Lead Synth Layer With A Long Exact Name'), count: i18n.value.statusBar.group.shown.replace('{0}', `${groupScope.shownCount.value}`).replace('{1}', `${groupScope.totalCount.value}`), entries: groups.size }
 }, destination)
 
 const openOrdinaryGroups = async (page: Page) => page.evaluate(async () => {
@@ -173,7 +173,7 @@ const disclosureSnapshot = (page: Page) => page.evaluate(async () => {
     const { liveState, isPeeking } = await import('/src/history/stack.ts') as typeof import('../../src/history/stack')
     const { view } = await import('/src/editor/view.ts') as typeof import('../../src/editor/view')
     const flusher = window.nseFlushTest!.flusher
-    return { peeking: isPeeking.value, life: liveState.value.initialLife, groups: [...liveState.value.groups], target: view.groupId, overrides: [...view.groupVisibility], seq: flusher.session ? flusher.newestSeq(flusher.session) : undefined }
+    return { peeking: isPeeking.value, life: liveState.value.initialLife, groups: [...liveState.value.groups], selectedEntities: liveState.value.selectedEntities, target: view.groupId, overrides: [...view.groupVisibility], seq: flusher.session ? flusher.newestSeq(flusher.session) : undefined }
 })
 
 test.describe('the label and the title', () => {
@@ -1012,6 +1012,26 @@ test.describe('single-line disclosures', () => {
                 return { selected: getSelection()!.toString(), wrap: getComputedStyle(element).overflowWrap }
             })
             expect(full).toEqual({ selected: expected.path, wrap: 'anywhere' })
+            await summary.press('ControlOrMeta+a')
+            await expect(container.locator('.manager-list')).not.toHaveClass(/manager-list-selecting/)
+            expect(await page.evaluate(() => getSelection()!.toString())).toContain(expected.path)
+            expect(await disclosureSnapshot(page)).toEqual(before)
+            await container.locator('.manager-all .manager-name').focus()
+            await page.keyboard.press('ControlOrMeta+a')
+            await expect(container.locator('.manager-list')).toHaveClass(/manager-list-selecting/)
+            await expect(container.locator('.manager-entry .manager-check[aria-checked="true"]')).toHaveCount(expected.entries)
+            await summary.focus()
+            const dialogCount = await page.getByRole('dialog').count()
+            await summary.press('Delete')
+            await summary.press('Backspace')
+            await expect(page.getByRole('dialog')).toHaveCount(dialogCount)
+            await expect(container.locator('.manager-list')).toHaveClass(/manager-list-selecting/)
+            await expect(container.locator('.manager-entry .manager-check[aria-checked="true"]')).toHaveCount(expected.entries)
+            expect(await disclosureSnapshot(page)).toEqual(before)
+            await summary.press('Escape')
+            await expect(container.locator('.manager-list')).not.toHaveClass(/manager-list-selecting/)
+            await expect(summary).toBeFocused()
+            await expect(page.getByRole('dialog')).toHaveCount(dialogCount)
             await page.evaluate(() => { (document.querySelector('[data-status-bar]')!.parentElement as HTMLElement).style.width = '390px' })
             await expect(summary).toBeFocused()
             await page.emulateMedia({ forcedColors: 'active' })

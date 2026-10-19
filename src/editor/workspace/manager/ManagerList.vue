@@ -335,6 +335,10 @@ const selectAllFrom = async (target: HTMLElement) => {
  */
 const onKeydown = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement
+    if (target.closest('[data-manager-current]') && event.key !== 'Escape') {
+        event.stopPropagation()
+        return
+    }
     if (target instanceof HTMLInputElement) return
     noteKeyFocus(target)
     if (selecting.value && ['Escape', 'Delete', 'Backspace'].includes(event.key)) {
