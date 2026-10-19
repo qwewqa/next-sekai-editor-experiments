@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type { GroupId } from '../../src/chart/groups'
 import type { EntryDescription } from '../../src/history/operations'
@@ -289,6 +289,200 @@ const open = async (page: Page) => {
     await expect(dialog(page).locator('[data-property-row]').first()).toBeVisible()
 }
 
+const seedSpatial = async (page: Page, total = 2) => {
+    await seed(page)
+    await page.locator('[data-peek-back]').click()
+    await page.evaluate(async (total) => {
+        const { appImport, fixtures, settings, view } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const chart = structuredClone(fixtures.notes)
+        const template = chart.slides[0]![0]!
+        chart.slides = Array.from({ length: total }, (_, index) => [
+            { ...template, beat: index % 2 ? 60 : 10, left: (index % 6) - 3, size: 1 },
+        ])
+        const after = structuredClone(chart)
+        for (const slide of after.slides) slide[0]!.isCritical = !slide[0]!.isCritical
+        after.initialLife++
+        const fixture = window.historyInspectionTest
+        const before = createState(chart, 0)
+        fixture.states.set(0, before)
+        fixture.states.set(1, createState(after, 0))
+        fixture.states.set(3, before)
+        fixture.refresh()
+        view.layout = 'basic'
+        view.time = 15
+        view.lane = 0
+        settings.pps = 300
+        fixture.select(1)
+    }, total)
+    await expect(page.locator('[data-change-arrow="up"]')).toHaveAttribute('aria-disabled', 'false')
+    await expect(page.locator('[data-change-arrow="down"]')).toHaveAttribute(
+        'aria-disabled',
+        'false',
+    )
+}
+
+const expectCounts = async (page: Page, counts?: [number, number]) => {
+    for (const [index, direction] of ['up', 'down'].entries()) {
+        const arrow = page.locator(`[data-change-arrow="${direction}"]`)
+        const count = counts?.[index]
+        await expect(arrow.locator('span')).toHaveText(count === undefined ? '–' : String(count))
+        if (count === undefined) {
+            await expect(arrow).not.toHaveAttribute('data-count')
+            await expect(arrow).toHaveAccessibleName(
+                direction === 'up' ? 'Changes Above' : 'Changes Below',
+            )
+        } else {
+            await expect(arrow).toHaveAttribute('data-count', String(count))
+            await expect(arrow).toHaveAccessibleName(
+                `${direction === 'up' ? 'Changes Above' : 'Changes Below'}: ${count}`,
+            )
+        }
+    }
+}
+
+const captureContours = async (page: Page, testInfo: TestInfo, state: string) => {
+    const navigation = page.locator('[data-peek-navigation]')
+    try {
+        for (const radius of [12, 16]) {
+            await navigation.evaluate((element, radius) => {
+                element.style.borderRadius = `${radius}px`
+            }, radius)
+            await page.screenshot({ path: testInfo.outputPath(`bar-${state}-radius${radius}.png`) })
+        }
+    } finally {
+        await navigation.evaluate((element) => {
+            element.style.removeProperty('border-radius')
+        })
+    }
+}
+
+test('navigation retains arrow and count positions when its last target becomes zero', async ({
+    page,
+}, testInfo) => {
+    await seedSpatial(page)
+    await expectCounts(page, [1, 1])
+    const geometry = () =>
+        page.locator('[data-change-arrow]').evaluateAll((arrows) =>
+            arrows.map((arrow) => {
+                const rect = (element: Element) => {
+                    const { x, y, width, height } = element.getBoundingClientRect()
+                    return { x, y, width, height }
+                }
+                return {
+                    button: rect(arrow),
+                    icon: rect(arrow.querySelector('svg')!),
+                    count: rect(arrow.querySelector('span')!),
+                }
+            }),
+        )
+    const before = await geometry()
+    const up = page.locator('[data-change-arrow="up"]')
+    await up.focus()
+    await page.keyboard.press('Enter')
+    await expect(up).toHaveAttribute('data-count', '0')
+    await expect(up.locator('span')).toHaveText('0')
+    await expect(up).toHaveAttribute('aria-disabled', 'true')
+    await expect(up).toBeFocused()
+    expect(await geometry()).toEqual(before)
+    await expect.poll(() => page.evaluate(() => !!window.editorTest.view.scrollingY)).toBe(false)
+    const position = () =>
+        page.evaluate(() => ({
+            time: window.editorTest.view.time,
+            lane: window.editorTest.view.lane,
+        }))
+    const atLast = await position()
+    for (const key of ['Enter', 'Space']) {
+        await page.keyboard.press(key)
+        expect(await position()).toEqual(atLast)
+    }
+    await page.evaluate(async () => {
+        const { changeBand } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/changes')
+        >('/src/editor/history/changes.ts')
+        changeBand.value = { top: window.editorTest.view.h, bottom: 1 }
+    })
+    await expectCounts(page)
+    for (const direction of ['up', 'down'])
+        await expect(page.locator(`[data-change-arrow="${direction}"]`)).toHaveAttribute(
+            'aria-disabled',
+            'true',
+        )
+    await page.keyboard.press('Enter')
+    expect(await position()).toEqual(atLast)
+    expect(await geometry()).toEqual(before)
+    await captureContours(page, testInfo, 'covered')
+})
+
+test('omitted counts retain real spatial navigation and fixed dash slots', async ({ page }) => {
+    await seedSpatial(page, 170)
+    await expectCounts(page)
+    const up = page.locator('[data-change-arrow="up"]')
+    await expect(up).toHaveAttribute('aria-disabled', 'false')
+    const before = await page.evaluate(() => window.editorTest.view.time)
+    await up.click()
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.time)).not.toBe(before)
+    await expectCounts(page)
+})
+
+for (const scenario of [
+    { width: 320, height: 568, locale: 'fr' },
+    { width: 390, height: 844, locale: 'ko' },
+    { width: 1440, height: 900, locale: 'fr' },
+] as const) {
+    test(`paired bar contours at ${scenario.width} ${scenario.locale}`, async ({
+        page,
+    }, testInfo) => {
+        await page.setViewportSize({ width: scenario.width, height: scenario.height })
+        await seedSpatial(page)
+        await page.evaluate((locale) => {
+            window.editorTest.settings.locale = locale
+        }, scenario.locale)
+        const prefix = `${scenario.width}-${scenario.locale}`
+        await captureContours(page, testInfo, `${prefix}-positive`)
+        const up = page.locator('[data-change-arrow="up"]')
+        await up.focus()
+        await page.keyboard.press('Enter')
+        await expect(up).toHaveAttribute('data-count', '0')
+        await expect
+            .poll(() => page.evaluate(() => !!window.editorTest.view.scrollingY))
+            .toBe(false)
+        await page.locator('[data-change-arrow="down"]').hover()
+        await captureContours(page, testInfo, `${prefix}-zero`)
+        await page.locator('[data-show-edits]').click()
+        await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
+        await captureContours(page, testInfo, `${prefix}-off`)
+        await page.evaluate(() => window.historyInspectionTest.hold(2))
+        await select(page, 2, 1)
+        await expect(page.locator('[data-change-arrow="up"] span')).toHaveText('–')
+        await expect(page.locator('[data-peek-change]')).not.toHaveText('')
+        await captureContours(page, testInfo, `${prefix}-loading`)
+        await page.evaluate(() => window.historyInspectionTest.release(2))
+    })
+}
+
+for (const hasTouch of [false, true]) {
+    test.describe(`short bar composition ${hasTouch ? 'coarse' : 'fine'}`, () => {
+        test.use({ hasTouch })
+        test('keeps the same height and gap', async ({ page }, testInfo) => {
+            await page.setViewportSize({ width: 520, height: 320 })
+            await seedSpatial(page)
+            const geometry = await page.locator('[data-peek-navigation]').evaluate((element) => {
+                const bar = element.getBoundingClientRect()
+                const main = document.querySelector('[data-peek-main]')!.getBoundingClientRect()
+                return {
+                    height: bar.height,
+                    gap: bar.top - main.bottom,
+                    stack: bar.bottom - main.top,
+                }
+            })
+            expect(geometry).toEqual({ height: 32, gap: 8, stack: 92 })
+            await captureContours(page, testInfo, `short-${hasTouch ? 'coarse' : 'fine'}`)
+        })
+    })
+}
+
 test('property inspection keeps exact chronological values, whitespace and the live chart', async ({
     page,
 }, testInfo) => {
@@ -348,6 +542,7 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
         await forcePane(page, width)
         const navigation = page.locator('[data-peek-navigation]')
         await expect(navigation).toBeVisible()
+        await expectCounts(page, [0, 0])
         const boxes = await navigation.evaluate((element) => {
             const box = (node: Element) => {
                 const { x, y, width, height, right, bottom } = node.getBoundingClientRect()
@@ -387,6 +582,20 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
         const styles = await navigation.evaluate((element) => {
             const style = getComputedStyle(element)
             const glyph = element.querySelector('[data-change-arrow] svg')!
+            const inkOffsets = [
+                ...element.querySelectorAll<SVGPathElement>('[data-change-arrow] path'),
+            ].map((path) => {
+                const bounds = path.getBBox()
+                const centre = new DOMPoint(
+                    bounds.x + bounds.width / 2,
+                    bounds.y + bounds.height / 2,
+                ).matrixTransform(path.getScreenCTM()!)
+                const button = path.closest('button')!.getBoundingClientRect()
+                return centre.y - button.y - button.height / 2
+            })
+            const roundControl = element.querySelector('[data-show-edits], [data-change-options]')!
+            const face = roundControl.querySelector('span')!.getBoundingClientRect()
+            const hit = roundControl.getBoundingClientRect()
             const controlStyles = [
                 ...element.querySelectorAll('[data-change-arrow], [data-property-summary]'),
             ].map((control) => {
@@ -411,19 +620,28 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
                 font: style.fontSize,
                 background: style.backgroundColor,
                 glyph: glyph.getBoundingClientRect().width,
+                inkOffsets,
+                face: {
+                    width: face.width,
+                    height: face.height,
+                    x: face.x - hit.x,
+                    y: face.y - hit.y,
+                },
                 controls: controlStyles,
                 gapIsChart: !!gapTarget?.closest('.editor'),
                 faceIsStrip: faceTarget === element,
             }
         })
         expect(styles).toMatchObject({
-            radius: '8px',
+            radius: '16px',
             padding: '4px',
             font: '12px',
             glyph: width < 180 ? 12 : 16,
             gapIsChart: true,
             faceIsStrip: true,
+            face: { width: 24, height: 24, x: 4, y: 4 },
         })
+        for (const offset of styles.inkOffsets) expect(Math.abs(offset)).toBeLessThan(0.1)
         expect(styles.background).not.toBe('rgba(0, 0, 0, 0)')
         for (const style of styles.controls)
             expect(style).toEqual({ background: 'rgba(0, 0, 0, 0)', shadow: 'none', opacity: '1' })
@@ -445,6 +663,14 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
             await page.locator('[data-change-options]').click()
             await expect(page.locator('[data-change-options-menu]')).toBeVisible()
             await page.screenshot({ path: testInfo.outputPath(`navigation-menu-${width}.png`) })
+            await page.keyboard.press('Escape')
+        }
+        if (width === 160) await captureContours(page, testInfo, 'tiny160')
+        if (width === 180) {
+            await page.evaluate(() => {
+                window.editorTest.settings.theme = 'dark'
+            })
+            await captureContours(page, testInfo, 'tiny180-dark')
         }
     })
 }
@@ -492,6 +718,7 @@ test('full-app phone and desktop composition keeps passive states in the same st
         await page.setViewportSize(size)
         await select(page, 1)
         await expect(page.locator('[data-property-summary]')).toBeVisible()
+        await expectCounts(page, [0, 0])
         const navigation = page.locator('[data-peek-navigation]')
         await expect
             .poll(() =>
@@ -522,6 +749,7 @@ test('full-app phone and desktop composition keeps passive states in the same st
         })
         await select(page, 3)
         await expect(page.locator('[data-peek-change]')).toHaveText('No changes')
+        await expectCounts(page, [0, 0])
         await expect(page.locator('[data-property-summary]')).toHaveCount(0)
         expect(await navigation.boundingBox()).toEqual(geometry)
         await page.screenshot({
@@ -555,6 +783,7 @@ test('full-app phone and desktop composition keeps passive states in the same st
             })
         })
         await expect(page.locator('[data-peek-change]')).toHaveText('Initial state')
+        await expectCounts(page)
         expect(await navigation.boundingBox()).toEqual(geometry)
         await page.screenshot({
             path: testInfo.outputPath(`composition-initial-${size.width}.png`),
@@ -664,6 +893,7 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
     await page.evaluate(() => window.historyInspectionTest.hold(2))
     await select(page, 2, 1)
     await expect(page.locator('[data-peek-change]')).toHaveText('Loading…')
+    await expectCounts(page)
     await expect(page.locator('[data-peek-change]').locator('..')).toHaveAccessibleName(
         'Loading changes…',
     )
@@ -681,6 +911,7 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
     await page.evaluate(() => window.historyInspectionTest.release(2))
     await expect(page.locator('[data-peek-change]')).toHaveText('Undo · Imported Metadata')
     await expect(page.locator('[data-property-summary]')).toBeVisible()
+    await expectCounts(page, [0, 0])
     expect(await bounds()).toEqual(before)
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
 })
@@ -1056,6 +1287,12 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
         await expect(stateLine).toHaveText(`${messages.commands.undo.title} · Imported Metadata`)
         await select(page, 1, 99)
         await expect(stateLine).toHaveText(messages.peek.unavailableShort)
+        await expect(page.locator('[data-change-arrow="up"] span')).toHaveText('–')
+        await expect(page.locator('[data-change-arrow="down"] span')).toHaveText('–')
+        for (const direction of ['up', 'down'])
+            await expect(page.locator(`[data-change-arrow="${direction}"]`)).not.toHaveAttribute(
+                'data-count',
+            )
         await expect(stateLine.locator('..')).toHaveAccessibleName(messages.peek.unavailable)
         await expect(stateLine.locator('..')).toHaveAttribute('title', messages.peek.unavailable)
         await expect(page.locator('[data-history-announcement]')).toContainText(
@@ -1095,6 +1332,10 @@ test('forced colors preserves exposed control state and keyboard focus', async (
     await expect(arrow).toHaveAttribute('aria-disabled', 'true')
     expect(await arrow.evaluate((element) => getComputedStyle(element).opacity)).toBe('1')
     await page.screenshot({ path: testInfo.outputPath('inspection-forced-colors.png') })
+    await page.keyboard.press('Space')
+    await expect(eye).toHaveAttribute('aria-pressed', 'true')
+    await captureContours(page, testInfo, 'forced-colors')
+    await page.keyboard.press('Space')
     await forcePane(page, 160)
     await page.locator('[data-change-options]').focus()
     await page.keyboard.press('ArrowDown')
