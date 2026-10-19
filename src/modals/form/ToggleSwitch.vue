@@ -16,7 +16,7 @@ defineProps<{
             :data-on="value ? '' : undefined"
         >
             <span
-                class="switch-knob absolute top-0.5 size-2.5 rounded-full transition-[left] forced-colors:bg-[ButtonText]"
+                class="switch-knob absolute top-0.5 size-2.5 rounded-full transition-[left] forced-colors:!bg-[ButtonText]"
                 :class="[
                     value ? 'left-3' : value === undefined ? 'left-[0.4375rem]' : 'left-0.5',
                     value ? '' : 'bg-knob shadow-sm',
