@@ -413,8 +413,7 @@ const onFocusout = (event: FocusEvent) => {
         event.target instanceof Element ? event.target.closest('[data-history-row]') : null
     if (
         event.relatedTarget === null &&
-        focusHandoff &&
-        outgoing === focusHandoff.outgoing &&
+        outgoing === focusHandoff?.outgoing &&
         ownsFocus(focusHandoff.request) &&
         !rows.value.some((row) => domId(row.id) === outgoing.id)
     )
