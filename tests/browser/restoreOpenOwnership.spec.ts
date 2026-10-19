@@ -178,6 +178,17 @@ test('Reopen forks when a different tab now binds the same physical file', async
             return read.kind === 'open' && read.isHead
         }, first),
     ).toBe(true)
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async (first) =>
+                    (await navigator.locks.query()).held?.some(
+                        (lock) => lock.name === `nse-session:${first}`,
+                    ) ?? false,
+                first,
+            ),
+        )
+        .toBe(false)
     const result = await page.evaluate(async (first) => {
         const { restoreSession } =
             (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
