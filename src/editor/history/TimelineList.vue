@@ -9,7 +9,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey } from '../../history/peek'
+import { peekedKey, peekSourceGeneration } from '../../history/peek'
 import { session } from '../../history/session'
 import { headStep } from '../../history/stack'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
@@ -83,7 +83,7 @@ import {
     restoreHistoryView,
 } from './state'
 
-// The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
+// The Timeline is a rows-first treegrid of the chain's entries, newest first and windowed.
 // Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
 
 const props = defineProps<{
@@ -275,13 +275,25 @@ const pinned = computed(() => {
     return undefined
 })
 
-/** Rows a listbox counts: everything but the headers. */
+/** Logical action positions exclude passive decorations. */
 const positions = computed(() => {
     const map = new Map<string, number>()
     let n = 0
     for (const row of rows.value)
         if (row.type === 'now' || row.type === 'entry') map.set(row.id, ++n)
     return { map, size: n }
+})
+const continuationDescriptions = computed(() => {
+    const descriptions = new Map<string, string>()
+    const logical = rows.value
+    for (let i = 0; i < logical.length; i++) {
+        const divider = logical[i]
+        if (divider?.type !== 'divider') continue
+        const adjacent = logical.slice(i + 1).find((row) => row.type === 'entry')
+            ?? logical.slice(0, i).reverse().find((row) => row.type === 'entry')
+        if (adjacent) descriptions.set(adjacent.id, [descriptions.get(adjacent.id), dividerText(divider.entry)].filter(Boolean).join(' · '))
+    }
+    return descriptions
 })
 
 // --- The cursor: the row the keys and the peek are on.
@@ -306,6 +318,7 @@ const tabIndex = (row: Row, part: FocusPart) => row.id === cursorId.value && foc
 const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = true) => {
     const token = ++focusToken
     const generation = sourceGeneration.value
+    const peekGeneration = peekSourceGeneration.value
     const historyGeneration = historyViewGeneration()
     const row = rowById(id)
     if (!row || (row.type !== 'entry' && row.type !== 'now')) return
@@ -313,7 +326,7 @@ const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = t
     focusPart.value = part === 'leading' && !expandable(row) ? 'main' : part
     if (scroll) scrollToRow(id)
     await nextTick()
-    if (disposed || token !== focusToken || generation !== sourceGeneration.value || historyGeneration !== historyViewGeneration() || menu.value || modals.some((modal) => modal.presentation !== 'tool')) return
+    if (disposed || token !== focusToken || generation !== sourceGeneration.value || peekGeneration !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration() || menu.value || modals.some((modal) => modal.presentation !== 'tool')) return
     focusElement(id, focusPart.value)?.focus({ preventScroll: true })
 }
 const onRowFocus = (event: FocusEvent, row: Row) => {
@@ -407,7 +420,7 @@ watch(peekedKey, () => {
     // A peek being asked for keeps the cursor where it was put.
     if (!key && peekedInfo.value) return
     if (row && !focusInside.value) cursorId.value = row.id
-    else if (!key) cursorId.value = 'now'
+    else if (!key && !focusInside.value) cursorId.value = 'now'
 })
 watch(rows, () => {
     if (rowById(cursorId.value)) return
@@ -418,7 +431,7 @@ watch(rows, () => {
     focusPart.value = 'row'
     if (focused) void focusRow(cursorId.value, 'row', false)
 }, { flush: 'pre' })
-watch([sourceGeneration, historyViewGeneration], () => {
+watch([sourceGeneration, peekSourceGeneration, historyViewGeneration], () => {
     menu.value = undefined
     cancelLongPress()
     if (replacing) return
@@ -497,10 +510,13 @@ const step = async (delta: number) => {
     // Up crosses the gap: the newer page loads, and the cursor goes on into it.
     if (delta < 0 && at > 0 && clamp(at + delta) === 0 && gap.value !== undefined) {
         const id = cursorId.value
+        const token = focusToken
         const generation = sourceGeneration.value
+        const peekGeneration = peekSourceGeneration.value
+        const historyGeneration = historyViewGeneration()
         await loadNewer()
         await nextTick()
-        if (cursorId.value !== id || generation !== sourceGeneration.value) return
+        if (disposed || token !== focusToken || cursorId.value !== id || generation !== sourceGeneration.value || peekGeneration !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration()) return
         at = selectables.value.findIndex((row) => row.id === id)
     }
     const next = selectables.value[clamp(at + delta)]
@@ -522,6 +538,7 @@ const scrollRowToTop = (id: string) => {
 
 const goNow = async () => {
     const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
     const generation = historyViewGeneration()
     replacing = true
     try {
@@ -530,7 +547,7 @@ const goNow = async () => {
     } finally {
         replacing = false
     }
-    if (token !== focusToken || generation !== historyViewGeneration() || disposed) return
+    if (token !== focusToken || peekGeneration !== peekSourceGeneration.value || generation !== historyViewGeneration() || disposed) return
     cursorId.value = 'now'
     backToNow()
     void focusRow('now')
@@ -539,6 +556,8 @@ const goNow = async () => {
 /** Jumps to an entry, or to Now; the entry is peeked and scrolled to the top. */
 const jumpTo = async (target: Target | 'now') => {
     if (target === 'now') return goNow()
+    const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
     const historyGeneration = historyViewGeneration()
     replacing = true
     try {
@@ -546,7 +565,7 @@ const jumpTo = async (target: Target | 'now') => {
         if (!entry) return
         const generation = sourceGeneration.value
         await nextTick()
-        if (generation !== sourceGeneration.value || historyGeneration !== historyViewGeneration()) return
+        if (disposed || token !== focusToken || generation !== sourceGeneration.value || peekGeneration !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration()) return
         const row = rowOf(keyOf(entry))
         if (row) {
             cursorId.value = row.id
@@ -562,20 +581,26 @@ const jumpTo = async (target: Target | 'now') => {
 }
 
 /** End: the oldest entry, read directly when it is not loaded. */
-const goOldest = async () => {
+const goOldest = async (part?: FocusPart) => {
     if (!canLoadMore.value) {
-        moveTo(selectables.value.at(-1))
+        const row = selectables.value.at(-1)
+        if (part && row) void focusRow(row.id, part)
+        else moveTo(row)
         return
     }
+    const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
+    const historyGeneration = historyViewGeneration()
     replacing = true
     try {
         const entry = await jumpToOldest(historyFilter.value)
         if (!entry) return
         const generation = sourceGeneration.value
-        const historyGeneration = historyViewGeneration()
         await nextTick()
-        if (generation !== sourceGeneration.value || historyGeneration !== historyViewGeneration()) return
-        moveTo(selectables.value.at(-1))
+        if (disposed || token !== focusToken || generation !== sourceGeneration.value || peekGeneration !== peekSourceGeneration.value || historyGeneration !== historyViewGeneration()) return
+        const row = selectables.value.at(-1)
+        if (part && row) void focusRow(row.id, part)
+        else moveTo(row)
     } catch {
         return
     } finally {
@@ -603,6 +628,16 @@ watch(
         const top = element.scrollTop
         if (top <= 0 && !previous.ids.includes('gap')) return
         const index = new Map(next.ids.map((id, i) => [id, i]))
+        const oldAnchor = rowAt(previous, top)
+        if (previous.kinds[oldAnchor] === 'count') {
+            const parent = previous.ids[oldAnchor]?.replace(/\/count$/, '')
+            const at = parent === undefined ? undefined : index.get(parent)
+            if (at !== undefined && !index.has(previous.ids[oldAnchor]!)) {
+                element.scrollTop = next.offsets[at] ?? 0
+                scrollTop.value = element.scrollTop
+                return
+            }
+        }
         for (let i = rowAt(previous, top); i < previous.ids.length; i++) {
             const id = previous.ids[i]
             const at = id === undefined ? undefined : index.get(id)
@@ -793,7 +828,7 @@ const onKeydown = (event: KeyboardEvent) => {
         const index = controls.indexOf(part)
         if (event.shiftKey && part !== 'row') {
             handled()
-            void focusRow(row.id, index > 0 ? controls[index - 1] : 'row', false)
+            void focusRow(row.id, index > 0 ? controls[index - 1] : part === 'main' && expandable(row) ? 'leading' : 'row', false)
         } else if (!event.shiftKey && (part === 'row' || index >= 0)) {
             const next = controls[part === 'row' ? 0 : index + 1]
             if (next) {
@@ -806,8 +841,8 @@ const onKeydown = (event: KeyboardEvent) => {
     if (part !== 'row' && row && !event.altKey && !event.metaKey && !event.shiftKey) {
         if (event.ctrlKey && (event.key === 'Home' || event.key === 'End')) {
             handled()
-            const target = event.key === 'Home' ? selectables.value[0] : selectables.value.at(-1)
-            if (target) void focusRow(target.id, part)
+            if (event.key === 'End') void goOldest(part)
+            else if (selectables.value[0]) void focusRow(selectables.value[0].id, part)
             return
         }
         if (plain) {
@@ -1106,7 +1141,9 @@ defineExpose({
                     <div
                         v-else-if="row.type === 'divider'"
                         :id="domId(row.id)"
-                        role="note"
+                        role="presentation"
+                        aria-hidden="true"
+                        data-history-continuation
                         class="timeline-divider items-center"
                         :style="{ top: `${top}px`, height: `${DIVIDER}px` }"
                     >
@@ -1154,6 +1191,7 @@ defineExpose({
                         :aria-selected="selectedId === row.id"
                         :aria-expanded="row.members.length > 1 && !row.child ? expandedGroups.has(row.id) : undefined"
                         :aria-label="nameOf(row)"
+                        :aria-description="continuationDescriptions.get(row.id)"
                         :aria-rowindex="positions.map.get(row.id)"
                         :title="titleOf(row)"
                         :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
