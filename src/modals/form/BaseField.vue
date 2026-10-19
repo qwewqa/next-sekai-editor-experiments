@@ -635,7 +635,7 @@ watchEffect(
     outline-offset: 1px;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .form-field-mixed-value:enabled:hover {
         background-color: theme('colors.header-hover');
     }
