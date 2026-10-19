@@ -735,18 +735,22 @@ for (const boundary of ['readHandle', 'getFile'] as const) {
         expect(await snapshot(page)).toEqual(expected)
         await expect(page.getByRole('dialog')).toHaveCount(0)
         if (boundary === 'getFile') {
-            await page.evaluate(async (target) => {
+            const restoredSession = await page.evaluate(async (target) => {
                 window.switchRace.restore()
                 const { restoreSession } =
                     (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
                 const { openOtherVersion } =
                     (await import('/src/editor/save/flow.ts')) as typeof import('../../src/editor/save/flow')
+                const { session } =
+                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
                 await restoreSession(target)
+                const restoredSession = session.value.sessionId
                 await openOtherVersion()
+                return restoredSession
             }, originalSession)
             await imported(page)
             const current = await snapshot(page)
-            expect(current.session.sessionId).not.toBe(expected.session.sessionId)
+            expect(current.session.sessionId).not.toBe(restoredSession)
             expect(current.session.file?.name).toBe('race.nxsp')
         }
     })
