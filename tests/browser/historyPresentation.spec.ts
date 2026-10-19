@@ -250,7 +250,7 @@ for (const outcome of [
             ;(window as unknown as { releaseOldest: (fail: boolean) => void }).releaseOldest(fail)
         }, outcome === 'failed')
         if (outcome === 'complete') {
-            const oldest = row(page, 'Started a new level')
+            const oldest = row(page, 'Imported a level')
             await expect(oldest).toHaveAttribute('aria-selected', 'true')
             await expect(oldest).toBeFocused()
             await page.keyboard.press('Home')
