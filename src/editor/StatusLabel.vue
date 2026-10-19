@@ -54,8 +54,6 @@ const onClick = (event: MouseEvent) => {
             <span v-if="compactReason" class="whitespace-nowrap" data-status-state>
                 {{ shortReason }}
             </span>
-            <template v-else>{{ i18n.status.notInFile }}</template>
-            </span>
             <template v-else>
                 <span
                     v-if="statusLabel.name && !(compact && statusLabel.file)"
