@@ -461,12 +461,21 @@ const chevronDirection = computed(() => {
 }
 
 /* Press is the chrome's neutral step (ghost-chrome), and the marker stays: it says which panel is
-   current, which a press does not change. A shown tab hovers one step further, so hover still
-   shows on it; the press rule above wins while pressed. */
+   current, which a press does not change. A shown tab rests at white/10, so its hover is white/20
+   in light. In dark, where the chrome's press is white/20, hover stays white/15 and the shown
+   tab's press is white/30, so press is still a step beyond hover. */
 @media (hover: hover) and (pointer: fine) {
     .panel-tab[aria-selected='true']:hover:not(:active) {
+        @apply bg-white/20;
+    }
+
+    :root[data-theme='dark'] .panel-tab[aria-selected='true']:hover:not(:active) {
         @apply bg-white/15;
     }
+}
+
+:root[data-theme='dark'] .panel-tab[aria-selected='true']:active {
+    @apply bg-white/30;
 }
 
 .panel-rail-tabs::-webkit-scrollbar {

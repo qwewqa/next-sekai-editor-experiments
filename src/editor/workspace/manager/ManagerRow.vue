@@ -429,7 +429,7 @@ const onRenameBlur = (event: FocusEvent) => {
         <button
             v-else
             type="button"
-            class="manager-name focus-ring"
+            class="manager-name focus-edge"
             :disabled
             :aria-current="current && !folder ? 'true' : undefined"
             :data-autofocus="autofocusName ? '' : undefined"

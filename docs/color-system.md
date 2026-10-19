@@ -144,6 +144,8 @@ These are unchanged from v0.5.22:
 
 `.surface-chrome` cascades to every descendant. Put it on roots whose descendants are all chrome, not on a root that also contains light faces or popups. The toolbar flyout (white faces on `popover`, inside the toolbar row's DOM) is the case to watch: under `.surface-chrome` its `accent-strong`, `danger` and `focus-out` would flip to the pale chrome values. Today nothing in the flyout uses them, so this is a caveat, not a defect. If a flyout face ever needs one of those roles, move the class inward to the chrome parts.
 
+**Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no colour today. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
+
 **Shadows** (`tailwind.colors.js` `boxShadow`, themes.css):
 
 - `shadow-pressed`, the sink: light `inset 0 1px 3px rgb(48 51 77 / .35)`, dark `… rgb(0 0 0 / .5)`.
@@ -346,6 +348,11 @@ const { readFileSync } = require('node:fs')
 const postcss = require('postcss')
 const plugin = require('tailwindcss/plugin')
 
+// Tailwind finds a config's dependencies by scanning its files' text for require('...') calls, and builds
+// every stylesheet again when one changes. controls.css is read with readFileSync below, so it needs a
+// line Tailwind can see, or a running dev server keeps the recipes it started with. This is only text to
+// Tailwind and the file is never loaded: require('./src/controls.css')
+
 module.exports = plugin(({ addComponents }) => {
     const root = postcss.parse(readFileSync(require.resolve('./src/controls.css'), 'utf8'))
     const rules = []
@@ -355,7 +362,7 @@ module.exports = plugin(({ addComponents }) => {
 ```
 
 - Both `tailwind.config.js` and `tailwind.landing.config.js` add `plugins: [require('./tailwind.controls')]`.
-- Dev servers must restart after editing `controls.css`, as after a config change.
+- A running dev server picks up `controls.css` edits. Tailwind scans `tailwind.controls.js` for `require('...')` text to find the config's dependencies, and the file's comment names `./src/controls.css` in that form, so Tailwind treats it as one: an edit rebuilds the global CSS and every Vue `<style>` block that uses `@apply`, with no restart. Keep that line when changing the plugin. A dev server started before this was added, or one that serves a different checkout, still needs a restart.
 - Recipes set colour, elevation, state and focus only. Size and shape stay at the call site.
 - **Compound recipe selectors do not carry through a merged `@apply`.** `.row-checked.row-current` becomes `.x.row-current` and `.row-checked.x`, and neither matches. Combine such classes at the call site. A rule that must hold in scoped CSS is written with one recipe class: the on-toggle hover glow is `.btn-toggle[aria-pressed='true']:hover:not(:active)`, not `.ghost.btn-toggle…`.
 - **Hover sits under `(hover: hover) and (pointer: fine)`,** the query Tailwind's `hover:` emits under `hoverOnlyWhenSupported`, which the 71 sites it replaces used. A device that reports hover with a coarse pointer therefore keeps no glow after a tap.
@@ -378,6 +385,7 @@ module.exports = plugin(({ addComponents }) => {
 | `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5 | | | | |
 | `focus-ring` | Only the focus rule, for elements that are not buttons | | | | |
 | `focus-edge` | For rows and menu rows: a transparent 2 px edge outline that takes `fg` on `:focus-visible` (principle 10) | | | Ring at the edge, `fg` | |
+| `segment-choice` + `segment-face` | A segmented control: labels in a recessed track (`bg-recess shadow-track`), each holding a hidden `input.peer` radio and the `span.segment-face` that is its face. The checked face is the raised current pill (`button`, `shadow-md`); the label draws a transparent 1 px edge that high contrast paints. Size and padding are the call site's. Sibling selectors only, so it works without `:has()` (the label's edge rule is its own) | `button/50`; a checked face keeps `button` | `ghost-press` with `fg-strong`; a checked face `press` | Ring inside, 2 px in the face's ink, while the input has `:focus-visible` (`Highlight` in high contrast) | Set at the call site (40 %) |
 | `row-select` | A selectable row: a label holding a hidden `input.peer`, radio or checkbox. A checked radio row is the raised current row (`button`, `shadow-md`); a checkbox row keeps only its mark. A transparent 2 px edge outline | `band-hover`; a checked radio row keeps `button` | `ghost-press` with `fg-strong`; a checked radio row `press` | Ring at the edge, `fg`, while the input has `:focus-visible` (`:focus-within` where `:has()` is missing) | Set at the call site (40 %) |
 | `focus-out` | For faces under 32 px: the ring 1 px outside in `fg` (white inside `.surface-chrome`) | | | | |
 | `holds-open` | Opt-in: hold the hover look while `aria-expanded='true'` | | | | |
@@ -766,7 +774,7 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 ## 14. Risks and limits
 
 - **Mixed UI between packages.** Use an integration branch and make no release until C10.
-- **`controls.css` edits need a dev-server restart,** because they reach Tailwind through the plugin. This is noted in the file header.
+- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before a capture round all the same: probe a recently added recipe in the served `/src/index.css`.
 - **Safari 16.0–16.3** draws outlines as rectangles, so the inside ring is square on rounded pills there. Focus stays visible; this is accepted under the old-iOS rule (practical scope).
 - **Light theme, on against secondary,** differs mainly in hue (ΔE 17, protan 8). Form carries the state, as in v0.5.22.
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.

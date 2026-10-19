@@ -14,12 +14,10 @@ defineProps<{
 const strings = computed(() => i18n.value.commands.previewAssets)
 const name = useId()
 
-// High contrast paints only the outlines: the track's is its edge, the segment's shows focus.
-// The selected segment is the raised pill; a press steps it, as it does a raised button.
-const segment =
-    'chooser-mode-segment flex h-7 items-center justify-center rounded-full px-3 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-press'
-const choice =
-    'relative min-w-0 flex-1 rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent'
+// The segment recipes in controls.css: the selected segment is the raised pill, a press steps it, and
+// high contrast paints the checked label's edge and the focused segment's ring.
+const segment = 'segment-face h-7 px-3'
+const choice = 'segment-choice relative min-w-0 flex-1'
 </script>
 
 <template>
@@ -48,19 +46,3 @@ const choice =
         </label>
     </div>
 </template>
-
-<style scoped>
-/* The hidden radio takes focus, so its segment draws the ring: 2px, 2px inside the face, in the
-   face's own ink, as the control recipes and the form segments do. High contrast paints it in
-   Highlight. */
-.peer:focus-visible + .chooser-mode-segment {
-    outline: 2px solid currentColor;
-    outline-offset: -4px;
-}
-
-@media (forced-colors: active) {
-    .peer:focus-visible + .chooser-mode-segment {
-        outline-color: Highlight;
-    }
-}
-</style>
