@@ -1,0 +1,276 @@
+/*
+ * Control recipes: colour, elevation, state and focus for every button family, in one place
+ * (docs/color-system.md). Size and shape stay at the call site, as they vary legitimately.
+ *
+ * Three elevations tell the state: raised is pressable at rest, flat is on (latched), sunk is
+ * being pressed. Press is one step beyond hover and strengthens the ink, so it reads as a touch,
+ * never as on or as disabled. States come from the pointer (:hover, :active), from .is-pressed for
+ * a hold the pointer cannot see (a held key, a scrub), and, opt-in, from ARIA on the recipe's own
+ * classes, so an attribute never restyles a control that did not ask for it.
+ *
+ * Order matters: rules of equal specificity are arranged so press beats hover and on beats hover.
+ *
+ * Hover rules sit under (hover: hover) and (pointer: fine), the query Tailwind's hover: variant
+ * emits (hoverOnlyWhenSupported), so a tap on a touch screen never leaves a hover look behind.
+ *
+ * A compound selector of two recipe classes (.row-checked.row-current) does not carry through a
+ * merged @apply: the plugin rewrites each class into the new rule, so the compound no longer
+ * matches. Write rules that must hold in scoped CSS with one recipe class (as .btn-toggle does
+ * below), and combine compounds at the call site.
+ *
+ * tailwind.controls.js registers this file as a plugin, so templates, global CSS, the landing pages
+ * and Vue <style> blocks (@apply ghost) can all use it. Restart the dev server after editing it.
+ */
+@layer components {
+    /* --- Focus: a 2px ring 2px inside the face, in the face's own ink. Face shows on both sides
+       of it, so it reads on any fill over any surface. Transparent at rest: high contrast paints
+       that as the control's edge. */
+    .btn,
+    .ghost,
+    .field,
+    .focus-ring {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+    }
+
+    .btn:focus-visible,
+    .ghost:focus-visible,
+    .focus-ring:focus-visible,
+    .field:focus {
+        outline-color: currentColor;
+        outline-offset: -4px;
+    }
+
+    /* Rows and menu rows ring at their edge, in the surface's ink, which contrasts with both the
+       row and the surface (principle 10). */
+    .focus-edge {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+    }
+
+    .focus-edge:focus-visible {
+        outline-color: rgb(var(--color-fg));
+    }
+
+    /* Faces under 32px have no room inside: the ring sits 1px outside, in the surface's ink. */
+    .focus-out:focus-visible {
+        outline-color: rgb(var(--color-fg));
+        outline-offset: 1px;
+    }
+
+    .surface-chrome .focus-out:focus-visible {
+        outline-color: rgb(255 255 255);
+    }
+
+    /* --- Raised buttons: hover glows, press sinks. */
+    /* The hover glow is today's shadow-md geometry in mint (red on destructive buttons). It is
+       set whole, so a flat on-state glows too. */
+    .btn,
+    .ghost,
+    .field {
+        --glow-color: rgb(var(--color-accent));
+        --glow: 0 4px 6px -1px var(--glow-color), 0 2px 4px -2px var(--glow-color);
+    }
+
+    .btn {
+        @apply shadow-md transition-[background-color,box-shadow,color] disabled:pointer-events-none disabled:opacity-40;
+    }
+
+    .btn-secondary {
+        @apply bg-button text-fg;
+    }
+
+    /* The one action offered first: the default Enter presses, or the commit of a mode. */
+    .btn-primary {
+        @apply bg-primary text-on-primary;
+    }
+
+    /* The action a destructive dialog exists for. */
+    .btn-danger {
+        --glow-color: rgb(var(--color-danger-fill));
+        @apply bg-danger-fill text-on-danger;
+    }
+
+    /* A destructive choice offered beside a safe default: quiet until pressed. */
+    .btn-danger-quiet {
+        --glow-color: rgb(var(--color-danger-fill));
+        @apply bg-button text-danger;
+    }
+
+    /* --- Ghost buttons: no face until hovered; on a band or the dark chrome, that surface's step. */
+    .ghost {
+        @apply transition-colors disabled:pointer-events-none disabled:opacity-40;
+    }
+
+    .ghost-chrome {
+        @apply text-white/80;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .ghost:hover {
+            @apply bg-fg/10;
+        }
+
+        .ghost-band:hover {
+            @apply bg-band-hover;
+        }
+
+        .ghost-chrome:hover {
+            @apply bg-white/10 text-white;
+        }
+    }
+
+    /* --- On/off buttons opt in with .btn-toggle; the look follows aria-pressed, so it always
+       matches what is announced. On is mint and sits flat among raised neighbours. */
+    .btn-toggle[aria-pressed='true'] {
+        @apply bg-accent fill-on-accent text-on-accent shadow-none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .btn:hover {
+            --tw-shadow: var(--glow);
+        }
+
+        /* A toggle that is on has a face, so it glows like a raised one. Written without a second
+           recipe class, so it survives a merged @apply (see the note in the header). */
+        .btn-toggle[aria-pressed='true']:hover:not(:active) {
+            --tw-shadow: var(--glow);
+        }
+    }
+
+    /* A trigger whose menu or popover is open holds its hover look; a disclosure that should do
+       the same opts in with .holds-open. */
+    .btn:is([aria-haspopup], .holds-open)[aria-expanded='true']:not(:active) {
+        --tw-shadow: var(--glow);
+    }
+
+    .ghost:is([aria-haspopup], .holds-open)[aria-expanded='true']:not(:active) {
+        @apply bg-fg/10;
+    }
+
+    .ghost-band:is([aria-haspopup], .holds-open)[aria-expanded='true']:not(:active) {
+        @apply bg-band-hover;
+    }
+
+    .ghost-chrome:is([aria-haspopup], .holds-open)[aria-expanded='true']:not(:active) {
+        @apply bg-white/10 text-white;
+    }
+
+    /* --- Press: one step beyond hover, ink strengthened. A raised face steps one tone, sinks, and
+       keeps its glow, which on touch is the tap's flash; it is a shadow, so it never reads as on.
+       Filled faces step their own fill, in the direction that keeps their label at 4.5:1. */
+    .btn:active,
+    .btn.is-pressed {
+        --tw-shadow: var(--shadow-pressed), var(--glow);
+        @apply bg-press text-fg-strong;
+    }
+
+    .btn-primary:active,
+    .btn-primary.is-pressed {
+        @apply bg-primary-press text-on-primary;
+    }
+
+    .btn-danger:active,
+    .btn-danger.is-pressed {
+        @apply bg-danger-press text-on-danger;
+    }
+
+    /* Pressing shows what it does. */
+    .btn-danger-quiet:active,
+    .btn-danger-quiet.is-pressed {
+        @apply bg-danger-fill text-on-danger;
+    }
+
+    .ghost:active,
+    .ghost.is-pressed {
+        @apply bg-ghost-press text-fg-strong;
+    }
+
+    .ghost-band:active,
+    .ghost-band.is-pressed {
+        @apply bg-band-press text-fg-strong;
+    }
+
+    .ghost-chrome:active,
+    .ghost-chrome.is-pressed {
+        @apply bg-chrome-press text-white;
+    }
+
+    .btn-toggle[aria-pressed='true']:active,
+    .btn-toggle[aria-pressed='true'].is-pressed {
+        @apply bg-accent-press fill-on-accent text-on-accent;
+    }
+
+    /* --- Text and value fields: raised like a secondary button. Invalid adds a red edge, apart
+       from the focus ring, which stays inside in the field's ink. */
+    .field {
+        @apply bg-button text-fg shadow-md transition-[box-shadow] disabled:pointer-events-none disabled:opacity-40;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .field:hover {
+            --tw-shadow: var(--glow);
+        }
+    }
+
+    .field[aria-invalid='true'] {
+        @apply ring-2 ring-inset ring-danger;
+    }
+
+    /* --- Rows and lists. The current row is the raised pill; checked rows take the tint. */
+    .row-current {
+        @apply bg-button shadow-md;
+    }
+
+    .row-checked {
+        @apply bg-selected;
+    }
+
+    .row-checked.row-current {
+        @apply bg-button ring-2 ring-inset ring-accent-strong;
+    }
+
+    .row-drop {
+        @apply bg-selected ring-2 ring-inset ring-accent-strong;
+    }
+
+    /* --- Switches (ToggleSwitch): mint track and ink knob when on. */
+    .switch-track {
+        @apply bg-toggle-off;
+    }
+
+    .switch-track[data-on] {
+        @apply bg-accent;
+    }
+
+    .switch-track[data-on] > .switch-knob {
+        @apply bg-on-accent shadow-none;
+    }
+
+    /* --- The dark chrome over the chart: the status bar, rail, toolbar row, elevation header and
+       offscreen badges. It is mid-tone in light and dark in dark, so its status colours are set to
+       pass on both. */
+    .surface-chrome {
+        --color-danger: 255 205 199;
+        --color-warning: 255 218 124;
+        --color-info: 190 227 255;
+        --color-accent-strong: 119 239 220;
+    }
+
+    /* High contrast: focus thickens the edge to 4px, inward, as elsewhere in index.css. */
+    @media (forced-colors: active) {
+        .btn:focus-visible,
+        .ghost:focus-visible,
+        .focus-ring:focus-visible,
+        .focus-edge:focus-visible,
+        .field:focus {
+            outline-width: 4px;
+            outline-offset: -4px;
+        }
+
+        .btn-toggle[aria-pressed='true'] {
+            forced-color-adjust: none;
+            @apply bg-[Highlight] fill-[HighlightText] text-[HighlightText];
+        }
+    }
+}

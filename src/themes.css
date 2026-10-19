@@ -1,6 +1,7 @@
 /* Theme colours as RGB channels, so Tailwind's opacity modifiers apply; see tailwind.config.js.
    Other themes override these, and keep light's value for any they leave out. Dialog backdrops
-   don't inherit custom properties in older browsers, so they get the values directly. */
+   don't inherit custom properties in older browsers, so they get the values directly.
+   Roles and their reasons: docs/color-system.md. */
 :root,
 ::backdrop {
     color-scheme: light;
@@ -9,9 +10,21 @@
     --color-bg: 64 68 100;
     --color-scrim: 64 68 100;
     --color-button: 255 255 255;
+    /* Mint means on: a switch, the tool in use, a mode in force. The same in every theme. */
     --color-accent: 119 239 220;
     --color-on-accent: 48 51 77;
-    --color-selected: 119 239 220;
+    --color-accent-press: 72 201 182;
+    /* Thin mint marks on light surfaces, where the mint itself is too pale (1.4:1 on white; this is 4.8:1). */
+    --color-accent-strong: 20 128 116;
+    /* Rows checked for an action, at full strength. */
+    --color-selected: 165 227 214;
+    /* The one action a dialog or strip offers first: ink in light. */
+    --color-primary: 68 68 102;
+    --color-on-primary: 255 255 255;
+    --color-primary-press: 95 95 133;
+    /* A raised face while pressed: a step toward the ink, darker than the mint so a press never
+       reads as on, even without hue (deuteranopia). */
+    --color-press: 193 193 219;
     --color-header: 188 188 209;
     --color-header-hover: 215 215 227;
     --color-modal: 233 235 239;
@@ -23,13 +36,25 @@
     --popup-ring: transparent;
     --color-preview: 91 92 124;
     --color-danger: 185 28 28;
+    --color-danger-fill: 185 28 28;
     --color-on-danger: 255 255 255;
+    --color-danger-press: 205 72 64;
+    --color-warning: 146 91 12;
+    --color-info: 22 102 170;
     /* A History entry's changes on the chart: the one hue the chart's objects don't use. */
     --color-change: 255 155 66;
     --color-knob: 255 255 255;
+    --color-toggle-off: 143 143 163;
     --color-band-hover: rgb(255 255 255 / 0.4);
+    /* Pressed: one step beyond hover, in the same direction, on a panel or popup and on a band.
+       On the mid-tone chrome a lighter step would dim its white ink, so there the press darkens. */
+    --color-ghost-press: rgb(68 68 102 / 0.25);
+    --color-band-press: rgb(255 255 255 / 0.8);
+    --color-chrome-press: rgb(0 0 0 / 0.18);
     --color-recess: rgb(68 68 102 / 0.1);
     --shadow-track: inset 0 1px 2px rgb(48 51 77 / 0.2);
+    /* A pressed raised control sinks into its surface. */
+    --shadow-pressed: inset 0 1px 3px rgb(48 51 77 / 0.35);
     --shadow-band: 0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35);
     --dock-edge: rgb(0 0 0 / 0.3);
     --swatch-edge: transparent;
@@ -45,7 +70,14 @@
     --color-bg: 35 37 57;
     --color-scrim: 16 17 32;
     --color-button: 72 76 114;
-    --color-selected: 79 146 143;
+    --color-accent-strong: 119 239 220;
+    --color-selected: 40 85 90;
+    /* Periwinkle: the light primary's hue, lighter than the button and darker than the mint,
+       so action and on differ in lightness too. */
+    --color-primary: 157 159 214;
+    --color-on-primary: 35 37 57;
+    --color-primary-press: 183 185 234;
+    --color-press: 102 105 139;
     --color-header: 58 60 92;
     --color-header-hover: 68 71 106;
     --color-modal: 46 48 72;
@@ -56,10 +88,20 @@
     --popup-ring: rgb(222 222 238 / 0.25);
     --color-preview: 41 43 66;
     --color-danger: 255 184 184;
-    --color-on-danger: 48 51 77;
+    /* A coral fill with dark ink, darker than pale text so it reads as a fill. */
+    --color-danger-fill: 237 117 110;
+    --color-on-danger: 35 37 57;
+    --color-danger-press: 247 149 141;
+    --color-warning: 255 218 124;
+    --color-info: 190 227 255;
+    --color-toggle-off: 117 120 151;
     --color-band-hover: rgb(255 255 255 / 0.1);
+    --color-ghost-press: rgb(222 222 238 / 0.2);
+    --color-band-press: rgb(255 255 255 / 0.2);
+    --color-chrome-press: rgb(255 255 255 / 0.2);
     --color-recess: rgb(0 0 0 / 0.25);
     --shadow-track: inset 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-pressed: inset 0 1px 3px rgb(0 0 0 / 0.5);
     --shadow-band: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 8px -6px rgb(0 0 0 / 0.5);
     --dock-edge: rgb(255 255 255 / 0.08);
     --swatch-edge: rgb(255 255 255 / 0.45);
