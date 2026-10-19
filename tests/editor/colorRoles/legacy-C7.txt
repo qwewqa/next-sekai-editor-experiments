@@ -1,0 +1,6 @@
+# Colour package C7: files that still break a rule in tests/editor/colorRoles.test.ts.
+# Delete this file as the package's last commit.
+src/preview/AssetFallbackLine.vue
+src/preview/LevelPreview.vue
+src/preview/PreviewSettings.vue
+src/preview/PreviewTransport.vue

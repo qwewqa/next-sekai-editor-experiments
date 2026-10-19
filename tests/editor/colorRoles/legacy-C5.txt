@@ -1,0 +1,8 @@
+# Colour package C5: files that still break a rule in tests/editor/colorRoles.test.ts.
+# Delete this file as the package's last commit.
+src/editor/OffscreenNoteBadge.vue
+src/editor/elevation/ElevationEditor.vue
+src/editor/toolbar/LevelEditorToolbar.vue
+src/editor/toolbar/LevelEditorToolbarTool.vue
+src/editor/tools/brush/BrushPropertiesFields.vue
+src/editor/tools/paste/PasteSidebar.vue

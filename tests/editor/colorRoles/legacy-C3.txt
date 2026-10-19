@@ -1,0 +1,18 @@
+# Colour package C3: files that still break a rule in tests/editor/colorRoles.test.ts.
+# Delete this file as the package's last commit.
+src/editor/save/PreparingDialog.vue
+src/editor/save/SaveDialog.vue
+src/editor/settings/DiagnosticsModal.vue
+src/editor/settings/SettingsAbout.vue
+src/editor/settings/SettingsIndex.vue
+src/editor/settings/SettingsLocalData.vue
+src/editor/settings/SettingsPreview.vue
+src/editor/settings/SettingsSection.vue
+src/editor/settings/toolbar/SettingsToolbarAddButton.vue
+src/editor/utilities/UtilitiesModal.vue
+src/editor/utilities/coverEditor/CoverEditorModal.vue
+src/editor/utilities/previewEditor/PreviewEditorModal.vue
+src/landing/landing.css
+src/rendering/RenderingError.vue
+src/startup/SafeModeBar.vue
+src/startup/StartupGate.vue
