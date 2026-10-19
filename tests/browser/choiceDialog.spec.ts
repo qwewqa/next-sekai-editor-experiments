@@ -113,12 +113,18 @@ test('buttons run Cancel, the other choices, then the safe default on the right,
                     text: button.textContent.trim(),
                     x: button.getBoundingClientRect().x,
                     background: getComputedStyle(button).backgroundColor,
+                    color: getComputedStyle(button).color,
                 })),
         )
     expect(boxes.map((box) => box.text)).toEqual(['Cancel', 'Replace', 'Save as a Separate File'])
     expect(boxes[0]!.x).toBeLessThan(boxes[1]!.x)
     expect(boxes[1]!.x).toBeLessThan(boxes[2]!.x)
-    expect(new Set(boxes.map((box) => box.background)).size).toBe(3)
+    // Only the safe default is filled (primary). The danger choice is quiet: a neutral face like
+    // Cancel's, told apart by its red label.
+    expect(boxes[1]!.background).toBe(boxes[0]!.background)
+    expect(boxes[2]!.background).not.toBe(boxes[0]!.background)
+    expect(boxes[1]!.color).not.toBe(boxes[0]!.color)
+    expect(boxes[2]!.color).not.toBe(boxes[0]!.color)
     await settle(page)
     await dialog(page).getByRole('button', { name: 'Replace' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
