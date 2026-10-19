@@ -4,6 +4,7 @@ import {
     captureJson,
     captureName,
     captureOperation,
+    captureRecoveryContext,
     captureStep,
     checkedSum,
     createOperation,
@@ -553,4 +554,42 @@ test('persisted recovery head position survives demotion and newest-context trim
             }),
         /Invalid History step/,
     )
+})
+
+test('recovered events retain immutable context independently of a pushed step', () => {
+    const head = step(1)
+    const raw = { head, headIndex: 1, dropped: [step(0), step(2)], omitted: 3 }
+    const recoveryContext = captureRecoveryContext(raw)
+    const operation = wire('future.recovery', { version: 8 })
+    const event = captureEntryDescription({ kind: 'recovered', operation, recoveryContext })
+    raw.dropped.length = 0
+    assert.equal(event.kind, 'recovered')
+    if (event.kind !== 'recovered') throw new Error('Expected recovered event')
+    assert.equal(event.recoveryContext.dropped.length, 2)
+    assert.equal(event.recoveryContext.headIndex, 1)
+    assert(Object.isFrozen(event.recoveryContext.dropped))
+    assert(equalJson(entryOperation(event), operation))
+    assert(
+        equalJson(
+            captureEntryDescription(JSON.parse(JSON.stringify(event))) as unknown as JsonValue,
+            event as unknown as JsonValue,
+        ),
+    )
+    assert.throws(
+        () => captureEntryDescription({ kind: 'recovered', operation }),
+        /recovered entry/,
+    )
+    assert.throws(
+        () => captureEntryDescription({ kind: 'save', operation, recoveryContext }),
+        /event description/,
+    )
+    assert.throws(
+        () => captureEntryDescription({ kind: 'edit', step: head, recoveryContext }),
+        /step entry/,
+    )
+    assert.throws(
+        () => captureRecoveryContext({ ...recoveryContext, omitted: Number.MAX_SAFE_INTEGER }),
+        /recovery context/,
+    )
+    assert.throws(() => pushedStep(event), /does not push/)
 })

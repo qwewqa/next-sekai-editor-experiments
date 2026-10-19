@@ -1,13 +1,29 @@
 import { isObject, OperationDataError, owns, type JsonValue } from './json'
 import { captureOperation } from './registry'
-import { captureStep, type UndoableStep } from './steps'
+import {
+    captureRecoveryContext,
+    captureStep,
+    type RecoveryContext,
+    type UndoableStep,
+} from './steps'
 
 export type StepEntryKind = 'edit' | 'restore' | 'undo' | 'redo'
 export type EventEntryKind = 'init' | 'continue' | 'save' | 'export' | 'recovered'
 export type HistoryEntryKind = StepEntryKind | EventEntryKind
 export type EntryDescription =
     | { readonly kind: StepEntryKind; readonly step: UndoableStep; readonly operation?: never }
-    | { readonly kind: EventEntryKind; readonly operation: JsonValue; readonly step?: never }
+    | {
+          readonly kind: Exclude<EventEntryKind, 'recovered'>
+          readonly operation: JsonValue
+          readonly step?: never
+          readonly recoveryContext?: never
+      }
+    | {
+          readonly kind: 'recovered'
+          readonly operation: JsonValue
+          readonly recoveryContext: RecoveryContext
+          readonly step?: never
+      }
 
 export const captureEntryDescription = (value: unknown): EntryDescription => {
     if (!isObject(value) || !owns(value, 'kind')) throw new OperationDataError('Invalid entry kind')
@@ -16,7 +32,7 @@ export const captureEntryDescription = (value: unknown): EntryDescription => {
         case 'restore':
         case 'undo':
         case 'redo': {
-            if (!owns(value, 'step') || owns(value, 'operation'))
+            if (!owns(value, 'step') || owns(value, 'operation') || owns(value, 'recoveryContext'))
                 throw new OperationDataError('Invalid step entry description')
             const step = captureStep(value.step)
             if ((value.kind === 'edit' || value.kind === 'restore') && step.kind !== value.kind)
@@ -29,10 +45,17 @@ export const captureEntryDescription = (value: unknown): EntryDescription => {
         case 'continue':
         case 'save':
         case 'export':
-        case 'recovered':
-            if (!owns(value, 'operation') || owns(value, 'step'))
+            if (!owns(value, 'operation') || owns(value, 'step') || owns(value, 'recoveryContext'))
                 throw new OperationDataError('Invalid event description')
             return Object.freeze({ kind: value.kind, operation: captureOperation(value.operation) })
+        case 'recovered':
+            if (!owns(value, 'operation') || owns(value, 'step') || !owns(value, 'recoveryContext'))
+                throw new OperationDataError('Invalid recovered entry description')
+            return Object.freeze({
+                kind: value.kind,
+                operation: captureOperation(value.operation),
+                recoveryContext: captureRecoveryContext(value.recoveryContext),
+            })
         default:
             throw new OperationDataError('Invalid entry kind')
     }
