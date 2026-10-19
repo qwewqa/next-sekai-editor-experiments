@@ -134,7 +134,7 @@ const isErrorDetailOpen = ref(false)
                             >
                                 <!-- The shared chevron in place of the native marker. -->
                                 <summary
-                                    class="flex cursor-pointer list-none items-center justify-center gap-2 rounded-full px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"
+                                    class="focus-ring flex cursor-pointer list-none items-center justify-center gap-2 rounded-full px-2 [&::-webkit-details-marker]:hidden"
                                 >
                                     <ChevronIcon
                                         :direction="isErrorDetailOpen ? 'down' : 'right'"
@@ -145,7 +145,7 @@ const isErrorDetailOpen = ref(false)
                             </details>
                             <button
                                 type="button"
-                                class="h-8 rounded-full bg-button px-4 text-fg shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-accent active:bg-accent active:text-on-accent"
+                                class="btn btn-secondary h-8 rounded-full px-4"
                                 @click="reload"
                             >
                                 {{ i18n.preview.reload }}

@@ -321,13 +321,7 @@ const onPlacementChange = () => {
         v-show="!buttonHidden"
         ref="toggle"
         type="button"
-        class="preview-settings-toggle absolute z-10 flex items-center justify-center rounded-full shadow-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent"
-        :class="[
-            'size-9',
-            expanded
-                ? 'bg-button text-fg shadow-accent active:bg-accent active:text-on-accent'
-                : 'bg-button text-fg hover:shadow-accent active:bg-accent active:text-on-accent',
-        ]"
+        class="preview-settings-toggle btn btn-secondary holds-open absolute z-10 flex size-9 items-center justify-center rounded-full"
         :style="buttonStyle"
         :aria-expanded="expanded"
         :aria-controls="id"
@@ -359,7 +353,7 @@ const onPlacementChange = () => {
             <button
                 ref="header"
                 type="button"
-                class="flex h-12 w-full shrink-0 items-center gap-2 bg-header px-4 font-bold transition-colors hover:bg-header-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="ghost ghost-band flex h-12 w-full shrink-0 items-center gap-2 bg-header px-4 font-bold"
                 :aria-expanded="true"
                 :aria-controls="`${id}-body`"
                 :aria-label="i18n.preview.minimizeSettings"
@@ -380,7 +374,7 @@ const onPlacementChange = () => {
                     <span class="preview-setting-control flex items-center gap-2">
                         <input
                             v-model.number="settings.previewNoteSpeed"
-                            class="preview-range min-w-0 flex-1"
+                            class="preview-range focus-edge min-w-0 flex-1"
                             type="range"
                             :aria-label="i18n.settings.preview.noteSpeed"
                             :title="i18n.settings.preview.noteSpeed"
@@ -391,7 +385,7 @@ const onPlacementChange = () => {
                         <input
                             ref="noteSpeedInput"
                             v-model.lazy="noteSpeedField"
-                            class="preview-number"
+                            class="preview-number field"
                             type="number"
                             :aria-label="i18n.settings.preview.noteSpeed"
                             :title="i18n.settings.preview.noteSpeed"
@@ -420,9 +414,7 @@ const onPlacementChange = () => {
                                     : i18n.modals.form.toggle.disabled
                             "
                         />
-                        <span
-                            class="preview-field preview-toggle peer-hover:shadow-accent peer-focus-visible:ring-2 peer-active:bg-accent peer-active:text-on-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"
-                        >
+                        <span class="preview-field preview-toggle field">
                             {{
                                 settings[key]
                                     ? i18n.modals.form.toggle.enabled
@@ -457,7 +449,7 @@ const onPlacementChange = () => {
                                 @click="blurPointerClick"
                             />
                             <span
-                                class="flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"
+                                class="preview-segment flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-ghost-press"
                             >
                                 {{ label }}
                             </span>
@@ -472,7 +464,7 @@ const onPlacementChange = () => {
                     <span class="preview-setting-control flex items-center gap-2">
                         <input
                             v-model.number="settings.previewRenderScale"
-                            class="preview-range min-w-0 flex-1"
+                            class="preview-range focus-edge min-w-0 flex-1"
                             type="range"
                             :aria-label="i18n.settings.preview.renderScale"
                             :title="i18n.settings.preview.renderScale"
@@ -483,7 +475,7 @@ const onPlacementChange = () => {
                         <input
                             ref="renderScaleInput"
                             v-model.lazy="renderScaleField"
-                            class="preview-number"
+                            class="preview-number field"
                             type="number"
                             :aria-label="i18n.settings.preview.renderScale"
                             :title="i18n.settings.preview.renderScale"
@@ -512,9 +504,7 @@ const onPlacementChange = () => {
                                     : i18n.modals.form.toggle.disabled
                             "
                         />
-                        <span
-                            class="preview-field preview-toggle peer-hover:shadow-accent peer-focus-visible:ring-2 peer-active:bg-accent peer-active:text-on-accent forced-colors:peer-focus-visible:outline-[color:Highlight]"
-                        >
+                        <span class="preview-field preview-toggle field">
                             {{
                                 settings.previewAntialias
                                     ? i18n.modals.form.toggle.enabled
@@ -539,7 +529,7 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="preview-field cursor-pointer appearance-none pr-9 hover:shadow-accent focus-visible:ring-2 active:bg-accent active:text-on-accent"
+                            class="preview-field field cursor-pointer appearance-none pr-9"
                         >
                             <option
                                 v-for="[label, value] in previewTransportOptions"
@@ -556,10 +546,10 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="pl-4 pr-9 group-active:text-on-accent"
+                            class="pl-4 pr-9"
                         />
                         <span
-                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-on-accent"
+                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center"
                             aria-hidden="true"
                         >
                             <ChevronIcon direction="down" />
@@ -578,7 +568,7 @@ const onPlacementChange = () => {
                             v-model="positionField"
                             :aria-labelledby="`${id}-placement`"
                             :title="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="preview-field cursor-pointer appearance-none pr-9 hover:shadow-accent focus-visible:ring-2 active:bg-accent active:text-on-accent"
+                            class="preview-field field cursor-pointer appearance-none pr-9"
                             @change="onPlacementChange"
                         >
                             <option
@@ -591,10 +581,10 @@ const onPlacementChange = () => {
                         </select>
                         <SelectValue
                             :value="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="pl-4 pr-9 group-active:text-on-accent"
+                            class="pl-4 pr-9"
                         />
                         <span
-                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-on-accent"
+                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center"
                             aria-hidden="true"
                         >
                             <ChevronIcon direction="down" />
@@ -638,9 +628,15 @@ const onPlacementChange = () => {
     line-height: 1.25;
 }
 
-/* High contrast paints the transparent outline as the edge, and Highlight on focus. */
+/* Colour, hover, focus and shadow come from the field recipe in the template. */
 .preview-field {
-    @apply block w-full truncate rounded-full bg-button px-4 py-1 text-left shadow-md outline-none ring-fg transition-colors;
+    @apply block w-full truncate rounded-full px-4 py-1 text-left;
+}
+
+/* A select that draws its value in a sibling has transparent text, so its focus ring takes the
+   surface ink instead of currentColor. */
+select.preview-field:focus {
+    outline-color: rgb(var(--color-fg));
 }
 
 /* On/off fields carry the same trailing switch as form toggles. */
@@ -653,8 +649,55 @@ const onPlacementChange = () => {
 }
 
 .preview-number {
-    @apply w-16 shrink-0 rounded-full bg-button px-3 py-1 text-left tabular-nums shadow-md outline-none ring-fg transition-colors hover:shadow-accent focus-visible:ring-2;
+    @apply w-16 shrink-0 rounded-full px-3 py-1 text-left tabular-nums;
     appearance: textfield;
+}
+
+/* The switch fields and the aspect segments are faces after a hidden input, which takes the
+   pointer and the focus, so the input's state steps the face with the recipes' tokens: the glow
+   on hover, a sunk neutral press, and the focus ring 2px inside in the face's ink. */
+.preview-toggle,
+.preview-segment {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+}
+
+.peer:focus-visible + .preview-toggle,
+.peer:focus-visible + .preview-segment {
+    outline-color: currentColor;
+    outline-offset: -4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .peer:hover + .preview-toggle {
+        --tw-shadow: var(--glow);
+    }
+}
+
+.peer:active + .preview-toggle {
+    --tw-shadow: var(--shadow-pressed), var(--glow);
+    @apply bg-press text-fg-strong;
+}
+
+/* High contrast: focus thickens the 2px resting edge to 4px, inward, in Highlight. The segments
+   keep the 2px outline they always had. The selectors outrank the global rules in index.css that
+   still name these classes and put the outline outside the box. */
+@media (forced-colors: active) {
+    .peer:focus-visible + .preview-toggle {
+        outline-color: Highlight;
+        outline-width: 4px;
+    }
+
+    .peer:focus-visible + .preview-segment {
+        outline-color: Highlight;
+        outline-offset: -2px;
+    }
+
+    .preview-field:focus-visible,
+    .preview-number:focus-visible {
+        outline-width: 4px;
+        outline-offset: -4px;
+    }
 }
 
 .preview-number::-webkit-outer-spin-button,
@@ -664,16 +707,13 @@ const onPlacementChange = () => {
 }
 
 /* Sliders look alike in every browser: an inset track like the segmented
-   control's, with a raised white thumb that glows on hover and fills on press. */
+   control's, with a raised white thumb that glows on hover and takes the press tone on press. */
 .preview-range {
     appearance: none;
     background: transparent;
     cursor: pointer;
     height: 2rem;
-}
-
-.preview-range:focus-visible {
-    @apply rounded-full outline-none ring-2 ring-fg;
+    @apply rounded-full;
 }
 
 .preview-range::-webkit-slider-runnable-track {
@@ -704,11 +744,11 @@ const onPlacementChange = () => {
 }
 
 .preview-range:active::-webkit-slider-thumb {
-    @apply bg-accent;
+    @apply bg-press;
 }
 
 .preview-range:active::-moz-range-thumb {
-    @apply bg-accent;
+    @apply bg-press;
 }
 
 /* Narrow panels give labels a little more of the row, then stack them. */
