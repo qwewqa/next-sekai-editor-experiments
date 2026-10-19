@@ -203,7 +203,8 @@ export const storeAndShow = async (
     let kept: Promise<Blob | undefined> | undefined
     let damaged: { record: Record<string, unknown>; first: boolean } | undefined
     const retainBytes = () => {
-        if (open.handle) kept ??= keepCopy(deps.worker, chainId, open.file, open.handle)
+        if (open.handle)
+            kept ??= keepCopy(deps.worker, chainId, open.file, open.handle).catch(() => undefined)
         return kept
     }
     const applyDamage = (record: Record<string, unknown>, first: boolean) => {
@@ -318,7 +319,7 @@ export const storeAndShow = async (
     } finally {
         // An unshown committed import keeps its session lock until its batches settle.
         if (!transferred) await job
-        await kept?.catch(() => undefined)
+        if (!transferred) await kept
         if (!job) await deps.worker.call('openDrop', open.read.id).catch(() => undefined)
         else
             void job.finally(() =>

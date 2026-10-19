@@ -2,7 +2,7 @@ import { AssertError } from 'typebox/value'
 import { parseLevelDataChart } from '../../../chart/parse/levelData'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
-import { isPeeking, openState } from '../../../history'
+import { openState } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
 import { i18n } from '../../../i18n'
@@ -374,6 +374,24 @@ const openRequestedProject = async (
                     },
                     request,
                 )
+                const bgm = opened.media.bgm
+                committing = committing.then((result) => {
+                    if (
+                        result.kind === 'stored' &&
+                        result.shown &&
+                        bgm &&
+                        live.bgm.meta?.hash === mediaHash(bgm.form)
+                    )
+                        void project
+                            .attachOpenedBgm(
+                                bgm.bytes,
+                                live.bgm.meta.hash,
+                                decodeBgm,
+                                result.sessionId,
+                            )
+                            .catch(() => undefined)
+                    return result
+                })
                 request.retainUntil(committing)
                 stored = await committing
             } finally {
@@ -420,12 +438,6 @@ const openRequestedProject = async (
             },
         })
     } else notifyOpened(name, earlier, left)
-
-    // The file's BGM decodes in the background (§1.6.8.4).
-    if (bgm && live.bgm.meta?.hash === mediaHash(bgm.form) && !isPeeking.value)
-        void project
-            .attachOpenedBgm(bgm.bytes, live.bgm.meta.hash, decodeBgm, stored.sessionId)
-            .catch(() => undefined)
 }
 
 /** How Replace's keep-first went (§1.4.7): only `kept` lets it write. */
