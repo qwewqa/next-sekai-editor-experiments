@@ -316,10 +316,15 @@ test.describe('status bar on a phone', () => {
             expect(item.left).toBeGreaterThanOrEqual(0)
             expect(item.right).toBeLessThanOrEqual(390)
         }
-        // The tool title keeps room to be read.
-        expect(
-            (await bar.locator('[data-status-tool]').boundingBox())!.width,
-        ).toBeGreaterThanOrEqual(48)
+        await expect(bar.locator('[data-status-tool]')).toHaveCount(0)
+        await expect(bar.locator('[data-status-division]')).toHaveCount(0)
+        const target = bar.locator('[data-status-part="name"]').first()
+        expect(await target.evaluate((element) => {
+            const range = document.createRange()
+            range.setStart(element.firstChild!, 0)
+            range.setEnd(element.firstChild!, 'A Very'.length)
+            return range.getBoundingClientRect().right <= element.getBoundingClientRect().right - 12
+        })).toBe(true)
     })
 })
 
@@ -346,17 +351,19 @@ for (const hasTouch of [false, true]) {
                 ;(bar.parentElement as HTMLElement).style.width = '360px'
             })
             const bar = page.locator('[data-status-bar]')
-            await expect(bar.locator('[data-file-chip]')).toHaveText('Newer')
+            await expect(bar.locator('[data-file-chip]')).toHaveText('')
+            await expect(bar.locator('[data-file-chip]')).toHaveAccessibleName(/newer on disk/)
             await expect(bar).toHaveCSS('column-gap', '4px')
             expect((await bar.boundingBox())!.width).toBe(360)
-            expect((await bar.boundingBox())!.height).toBe(64)
+            expect((await bar.boundingBox())!.height).toBe(32)
             await expect(bar.locator('[data-status-label]')).toHaveCSS('min-width', '0px')
             const identity = bar.locator('[data-status-label]')
             const original = await identity.elementHandle()
+            const scopes = await bar.locator('.status-chip').count()
             await identity.focus()
             for (const [width, height] of [
-                [559, 64],
-                [560, 32],
+                [319, 32],
+                [320, 32],
                 [767, 32],
                 [768, 24],
             ]) {
@@ -365,6 +372,9 @@ for (const hasTouch of [false, true]) {
                     ;(bar.parentElement as HTMLElement).style.width = `${width}px`
                 }, width!)
                 await expect.poll(async () => (await bar.boundingBox())!.height).toBe(height)
+                await expect(bar.locator('[data-status-tool]')).toHaveCount(width! < 768 ? 0 : 1)
+                await expect(bar.locator('[data-status-division]')).toHaveCount(width! < 768 ? 0 : 1)
+                await expect(bar.locator('[data-status-target]')).toHaveCount(width! < 320 ? 0 : scopes)
                 await expect(identity).toBeFocused()
                 expect(
                     await identity.evaluate((element, original) => element === original, original),
@@ -382,6 +392,34 @@ for (const hasTouch of [false, true]) {
         })
     })
 }
+
+test('omitted compact tool and division remain usable in View properties', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(async () => {
+        const { settings, appImport } = window.editorTest
+        settings.showSidebar = true
+        settings.propertiesPosition = 'right'
+        settings.propertiesSection = 'view'
+        settings.propertiesCollapsed = []
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>('/src/editor/tools/index.ts')
+        const { view } = await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        switchToolTo('select')
+        view.division = 24
+        ;(document.querySelector('[data-status-bar]')!.parentElement as HTMLElement).style.width = '360px'
+    })
+    const panel = page.locator('#workspace-panel-properties')
+    const tool = panel.getByRole('combobox', { name: 'Tool', exact: true })
+    const division = panel.getByRole('combobox', { name: 'Division', exact: true })
+    await expect(tool).toBeVisible()
+    await expect(tool).toHaveValue('select')
+    await expect(division).toBeVisible()
+    await expect(division.locator('option:checked')).toHaveText('1/24')
+    await tool.selectOption('eraser')
+    await expect(tool).toHaveValue('eraser')
+    await division.selectOption('8')
+    await expect(division.locator('option:checked')).toHaveText('1/8')
+    await expect(page.locator('[data-status-tool], [data-status-division]')).toHaveCount(0)
+})
 
 test('notifications are announced from one live region', async ({ page }) => {
     await boot(page)
