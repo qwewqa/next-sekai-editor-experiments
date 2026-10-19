@@ -87,7 +87,7 @@ import {
     yToBeatOffset,
 } from '../../view'
 import { getOnlyEntityType } from '../entityType'
-import { toolName } from '../state'
+import { secondarySwitchBack, toolChoiceRevision, toolName } from '../state'
 import PasteSidebar from './PasteSidebar.vue'
 
 let active:
@@ -133,7 +133,8 @@ export const waitToPaste = async (
     const source = state.value
     const scope = scopeLookup.value
     const layout = view.layout
-    const tool = toolName.value
+    const tool = secondarySwitchBack.value ?? toolName.value
+    const choice = toolChoiceRevision.value
     const generation = stackGeneration()
     const matches = () =>
         generation === stackGeneration() &&
@@ -141,7 +142,9 @@ export const waitToPaste = async (
         hasSameChartData(source, state.value) &&
         scopeLookup.value === scope &&
         (!source.isDynamicStages || view.layout === layout) &&
-        (!keepsTool || toolName.value === tool) &&
+        (!keepsTool ||
+            ((secondarySwitchBack.value ?? toolName.value) === tool &&
+                toolChoiceRevision.value === choice)) &&
         !isDragging.value &&
         isCurrent()
     let current = matches()

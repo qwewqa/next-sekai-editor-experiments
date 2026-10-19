@@ -103,8 +103,8 @@ export const cancelMouseControls = (restoreTool = true) => {
     stopTracking()
     unlockCursor()
     const previous = secondarySwitchBack.value
+    if (restoreTool && previous) switchToolTo(previous, { temporary: true })
     secondarySwitchBack.value = undefined
-    if (restoreTool && previous) switchToolTo(previous)
 }
 // Opening the Elevation Editor ends a right press there, as its Select would if the tool changed.
 watch(
@@ -143,6 +143,7 @@ const mousedown = (event: MouseEvent) => {
                 settings.mouseSecondaryTool === 'selectContextMenu'
                     ? 'select'
                     : settings.mouseSecondaryTool,
+                { temporary: true },
             )
         } finally {
             switchingSecondaryTool = false
@@ -216,7 +217,7 @@ const mouseup = (event: MouseEvent) => {
     else mouseGesture.end([p])
 
     if (!mouseGesture.pointerCount && secondarySwitchBack.value) {
-        switchToolTo(secondarySwitchBack.value)
+        switchToolTo(secondarySwitchBack.value, { temporary: true })
         secondarySwitchBack.value = undefined
     }
     if (!mouseGesture.pointerCount) {
