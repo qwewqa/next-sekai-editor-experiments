@@ -360,7 +360,7 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
 }
 
 /* The pill is the face: the tab's hover, press and focus step it with the band's tokens. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .preview-assets-tab:not(.preview-assets-tab-active):not(:active):hover
         .preview-assets-tab-pill {
         @apply bg-band-hover;

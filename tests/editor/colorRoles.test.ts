@@ -241,6 +241,7 @@ test('the detector passes the recipes and the role tokens', () => {
         'class="btn btn-primary focus-out"',
         'class="ghost ghost-band btn-toggle"',
         'class="row-checked row-current focus-edge"',
+        'class="row-select relative flex has-[:disabled]:opacity-40"',
         'class="text-danger bg-danger-fill text-on-danger"',
         'class="bg-ghost-press text-fg-strong"',
         'class="active:bg-ghost-press"',
