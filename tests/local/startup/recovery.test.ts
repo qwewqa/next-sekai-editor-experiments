@@ -1,6 +1,6 @@
-import { equalJson, type JsonValue } from '../../../src/history/operations'
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { equalJson, type JsonValue } from '../../../src/history/operations'
 import { writeMeta } from '../../../src/local/db'
 import { sha256, toHex } from '../../../src/local/hash'
 import { journalHandlers } from '../../../src/local/journal/handlers'
