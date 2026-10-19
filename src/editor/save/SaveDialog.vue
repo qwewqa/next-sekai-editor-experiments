@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
 
 const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 const rowClass =
-    'relative flex min-h-10 items-start gap-3 rounded-xl px-3 py-2 transition-colors has-[:active]:bg-ghost-press has-[:active]:text-fg-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover'
+    'relative flex min-h-10 items-start gap-3 rounded-xl px-3 py-2 transition-colors has-[:active]:bg-ghost-press has-[:active]:text-fg-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover [@media(hover:hover)]:has-[:active]:bg-ghost-press'
 const boxClass =
     'pointer-events-none relative mt-0.5 size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100 peer-disabled:opacity-50'
 </script>

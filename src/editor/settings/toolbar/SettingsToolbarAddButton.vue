@@ -10,7 +10,7 @@ import { i18n } from '../../../i18n'
         :title="i18n.settings.toolbar.add"
     >
         <svg
-            class="size-4"
+            class="size-4 fill-current"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 448 512"
             aria-hidden="true"
