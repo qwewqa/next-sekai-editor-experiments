@@ -548,7 +548,9 @@ test('a notice card stays clear of the adjacent spatial controls', async ({ page
     }).toPass()
 })
 
-test('equal-count action groups retain exact group, child and Restore scopes', async ({ page }) => {
+test('equal-count action groups retain exact group, child and Restore scopes', async ({
+    page,
+}, testInfo) => {
     for (const beat of [40, 50]) await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] })
     for (const beat of [40, 50]) await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] })
     for (const beat of [40, 50])
@@ -565,7 +567,8 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
         >('/src/editor/history/source.ts')
         return listedEntries.value.slice(0, 7).map(({ sessionId, seq }) => `${sessionId}:${seq}`)
     })
-    for (const [index, action] of ['Deleted 1 note', 'Moved 1 note', 'Added 1 note'].entries()) {
+    const actions = ['Deleted 1 note', 'Moved 1 note', 'Added 1 note']
+    for (const [index, action] of actions.entries()) {
         const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
         await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
         if (index !== 1) {
@@ -573,6 +576,13 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
             await expect(group.locator('.timeline-count')).toBeVisible()
         } else await expect(group.locator('.timeline-count')).toHaveCount(0)
         await expect(group).toHaveAttribute('aria-label', new RegExp(`${action} · 2 edits`))
+    }
+    await page.screenshot({
+        path: testInfo.outputPath('440-wide-action-deltas.png'),
+        animations: 'disabled',
+    })
+    for (const [index, action] of actions.entries()) {
+        const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
         await group.click()
         await expect(peekLine(page)).toHaveText('2 changes')
         expect(
