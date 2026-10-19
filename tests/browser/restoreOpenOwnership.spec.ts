@@ -113,7 +113,7 @@ const opened = async (page: Page, content?: number[]) => {
 }
 
 // Hold a real RPC reply after its actual worker operation, never replace its data or mechanics.
-const hold = (page: Page, method: 'readSnapshot' | 'openRead' | 'openStore') =>
+const hold = (page: Page, method: 'readSnapshot' | 'openRead' | 'openStore' | 'readHandle') =>
     page.evaluate((method) => {
         const worker = window.nseStorageTest!.worker
         const original = worker.call.bind(worker)
@@ -164,6 +164,12 @@ test('Reopen forks when a different tab now binds the same physical file', async
     await imported(other)
     const second = (await snapshot(other)).session
     expect(second.sessionId).not.toBe(first)
+    expect(
+        await page.evaluate(async (first) => {
+            const read = await window.nseStorageTest!.worker.call('readSession', first)
+            return read.kind === 'open' && read.isHead
+        }, first),
+    ).toBe(true)
     const result = await page.evaluate(async (first) => {
         const { restoreSession } = await import('/src/local/startup/api.ts')
         return restoreSession(first)
@@ -474,5 +480,88 @@ for (const navigate of [false, true]) {
         expect(result.attached).toBe(!navigate)
         for (const url of result.own) expect(result.revoked.includes(url)).toBe(navigate)
         for (const url of result.other) expect(result.revoked).not.toContain(url)
+    })
+}
+
+test('Open Other captures authority before its first lazy flow import', async ({ page }) => {
+    await start(page)
+    await opened(page)
+    const loaded = await page.evaluate(() =>
+        performance
+            .getEntriesByType('resource')
+            .some((entry) => new URL(entry.name).pathname === '/src/editor/save/flow.ts'),
+    )
+    expect(loaded, 'fixture must exercise the first lazy flow import').toBe(false)
+    let releaseRoute: (() => void) | undefined
+    await page.route('**/src/editor/save/flow.ts*', async (route) => {
+        await new Promise<void>((resolve) => {
+            releaseRoute = resolve
+        })
+        await route.continue()
+    })
+    await page.evaluate(async () => {
+        const { fileActions } = await import('/src/editor/file/actions.ts')
+        fileActions.openOtherVersion?.()
+    })
+    await expect.poll(() => !!releaseRoute).toBe(true)
+    await newChart(page)
+    const expected = await snapshot(page)
+    releaseRoute!()
+    // Both imports share the same module promise; the earlier action continuation runs first.
+    await page.evaluate(async () => {
+        await import('/src/editor/save/flow.ts')
+    })
+    expect(await snapshot(page)).toEqual(expected)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+for (const boundary of ['readHandle', 'getFile'] as const) {
+    test(`Open Other cannot acquire fresh authority after a held ${boundary}`, async ({ page }) => {
+        await start(page)
+        await opened(page)
+        if (boundary === 'readHandle') await hold(page, 'readHandle')
+        await page.evaluate(async (boundary) => {
+            const { openOtherVersion } = await import('/src/editor/save/flow.ts')
+            const { forgetHandle, rememberHandle } = await import('/src/editor/save/env.ts')
+            const flusher = window.nseFlushTest!.flusher
+            const chainId = flusher.session!.chainId
+            forgetHandle(chainId)
+            if (boundary === 'getFile') {
+                const handle = await (
+                    await navigator.storage.getDirectory()
+                ).getFileHandle('race.nxsp')
+                const getFile = handle.getFile.bind(handle)
+                window.switchRace = {
+                    held: false,
+                    released: false,
+                    dropped: 0,
+                    done: false,
+                    release() {},
+                    restore() {},
+                }
+                handle.getFile = async () => {
+                    const file = await getFile()
+                    window.switchRace.held = true
+                    await new Promise<void>((resolve) => {
+                        window.switchRace.release = () => {
+                            window.switchRace.released = true
+                            resolve()
+                        }
+                    })
+                    return file
+                }
+                rememberHandle(chainId, handle)
+            }
+            void openOtherVersion().then(() => {
+                window.switchRace.done = true
+            })
+        }, boundary)
+        await held(page)
+        await newChart(page)
+        const expected = await snapshot(page)
+        await release(page)
+        await expect.poll(() => page.evaluate(() => window.switchRace.done)).toBe(true)
+        expect(await snapshot(page)).toEqual(expected)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
     })
 }
