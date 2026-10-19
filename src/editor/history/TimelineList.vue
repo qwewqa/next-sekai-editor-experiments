@@ -1757,6 +1757,11 @@ defineExpose({
     @apply -my-0.5 h-10 pb-0.5;
 }
 
+/* The Now row is one line: its text stays centred on its dot, with no foot padding. */
+.timeline-two-line .timeline-now .timeline-entry-text {
+    @apply pb-0;
+}
+
 .timeline-two-line [data-history-group-action] {
     @apply leading-[1.125rem];
 }
