@@ -16,19 +16,27 @@ test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    const startup = await page.evaluate(async () => {
+        const { flusher } = await import('/src/local/storing.ts')
+        return flusher?.session?.id
+    })
     await page.evaluate(installEditorFixture)
-    // Storing follows the fixture's chart: its session is the one peeked.
+    // Storing follows the fixture's chart: its session is the one peeked. The fixture starts a
+    // new session with the chart as its first entry. Entries are pending only until the next
+    // flush (about a second), which a loaded machine can pass before this first looks, so wait
+    // for the entry itself, not for it to be unsent.
     await expect
         .poll(() =>
-            page.evaluate(async () => {
+            page.evaluate(async (startup) => {
                 const { flusher } =
                     await window.editorTest.appImport<typeof import('../../src/local/storing')>(
                         '/src/local/storing.ts',
                     )
-                return flusher?.session?.pending.length ?? 0
-            }),
+                const session = flusher?.session
+                return !!session && session.id !== startup && flusher.newestSeq(session) > 0
+            }, startup),
         )
-        .toBeGreaterThan(0)
+        .toBe(true)
 })
 
 test.afterEach(({ page }) => {
