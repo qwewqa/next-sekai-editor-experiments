@@ -334,7 +334,6 @@ export const jumpToOldest = async (filter: Filter) => {
 /** Back to the newest entries after a jump: Now, Home. */
 export const resetToNewest = async () => {
     replaceSource()
-    if (!newer.value) return
     newer.value = undefined
     newerCount.value = 0
     await refresh()

@@ -363,6 +363,68 @@ for (const interruption of ['reset', 'newer jump', 'newest reset'] as const)
         }
     })
 
+for (const outcome of ['complete', 'failed'] as const)
+    test(`Go To Now replaces a held initial Timeline read: ${outcome}`, async ({ page }) => {
+        await page.evaluate(async (outcome) => {
+            const { storageWorker } =
+                await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                    '/src/local/start.ts',
+                )
+            const control = window as unknown as {
+                initialReads: number
+                releaseInitial: () => void
+            }
+            control.initialReads = 0
+            storageWorker!.call = new Proxy(storageWorker!.call, {
+                async apply(target, self, args) {
+                    const read = args[0] === 'readTimeline' ? ++control.initialReads : 0
+                    if (read === 2 && outcome === 'failed')
+                        throw new Error('unreadable newest page')
+                    const result = await Reflect.apply(target, self, args)
+                    if (read === 1)
+                        await new Promise<void>((resolve) => {
+                            control.releaseInitial = resolve
+                        })
+                    return result
+                },
+            })
+        }, outcome)
+        await open(page)
+        await expect(list(page).locator('[data-history-loading]')).toBeVisible()
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => typeof (window as unknown as { releaseInitial?: unknown }).releaseInitial,
+                ),
+            )
+            .toBe('function')
+        await presentation(page).locator('[data-history-goto-button]').click()
+        await page.locator('[data-history-goto] [data-goto-item]').first().click()
+        await expect
+            .poll(() =>
+                page.evaluate(() => (window as unknown as { initialReads: number }).initialReads),
+            )
+            .toBe(2)
+        await page.evaluate(() =>
+            (window as unknown as { releaseInitial: () => void }).releaseInitial(),
+        )
+        await expect(list(page).locator('[data-history-loading]')).toHaveCount(0)
+        if (outcome === 'failed') {
+            await expect(list(page).locator('[data-history-failed]')).toBeVisible()
+            await list(page)
+                .locator('[data-history-failed]')
+                .getByRole('button', { name: 'Try Again' })
+                .click()
+        }
+        await expect(row(page, 'Property 30')).toBeVisible()
+        await expect(list(page).locator('[data-history-failed]')).toHaveCount(0)
+        await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        )
+        await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+    })
+
 test('refresh rejection affects only its current source generation', async ({ page }) => {
     await open(page)
     await page.evaluate(async () => {
