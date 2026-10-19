@@ -475,7 +475,12 @@ watch(list, (element, previous) => {
 const stickyAdd = computed(() => listHeight.value >= 156)
 watch(root, (element, previous) => {
     if (previous) observer.unobserve(previous)
-    if (element) observer.observe(element)
+    if (element) {
+        // Measured now, not at the observer's first callback, so a key pressed as the list opens
+        // already sees the inline actions.
+        width.value = element.clientWidth
+        observer.observe(element)
+    }
 })
 onUnmounted(() => {
     observer.disconnect()
