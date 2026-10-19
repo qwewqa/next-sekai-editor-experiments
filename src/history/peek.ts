@@ -71,6 +71,11 @@ export const setPeekEffects = (next: PeekEffects | undefined) => {
     effects = next
 }
 
+// Re-read hooks after synchronous stack listeners have run.
+const notifyRestored = (time: number) => {
+    effects?.restored(time)
+}
+
 /** Whether a History entry is shown in place of the current state: set from the request on. */
 export const isPeeking: Readonly<Ref<boolean>> = peeking
 
@@ -293,7 +298,7 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
     const operation = effects.restoredOperation(entry.time)
     leavePeek()
     pushState(operation, restored, 'restore')
-    effects?.restored(entry.time)
+    notifyRestored(entry.time)
 }
 
 /** What a refusal names: the command's title when a command was refused. */
