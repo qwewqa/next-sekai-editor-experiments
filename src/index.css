@@ -185,7 +185,12 @@ html[data-app-inactive] *::after {
     }
 
     .popup-item {
-        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded px-3 py-2 text-left transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-accent enabled:active:text-on-accent disabled:opacity-40;
+        @apply focus-edge flex min-h-9 w-full shrink-0 items-center gap-3 rounded px-3 py-2 text-left transition-colors enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
+    }
+
+    /* Pressing a destructive row shows what it does. */
+    .popup-item.text-danger:enabled:active {
+        @apply bg-danger-fill text-on-danger;
     }
 
     .popup-heading {
