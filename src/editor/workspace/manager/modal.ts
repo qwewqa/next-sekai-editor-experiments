@@ -2,7 +2,12 @@ import { watchEffect } from 'vue'
 import { isPanelEnabled, isPanelVisible, showPanel, type PanelId } from '..'
 import { modals, showModal } from '../../../modals'
 import ManagerModal from './ManagerModal.vue'
-import { clearManagerDisclosure, managerDisclosureRequest, requestManagerDisclosure, type ManagerDisclosureRequest } from './disclosure'
+import {
+    clearManagerDisclosure,
+    managerDisclosureRequest,
+    requestManagerDisclosure,
+    type ManagerDisclosureRequest,
+} from './disclosure'
 
 export type ManagerTab = Extract<PanelId, 'groups' | 'stages'>
 
@@ -28,12 +33,16 @@ export const showManager = (tab: ManagerTab, options: ManagerOptions = {}) => {
     } else showManagerModal(tab, options)
 }
 
-watchEffect(() => {
-    const request = managerDisclosureRequest.value
-    if (!request) return
-    const top = modals.filter((modal) => modal.presentation !== 'tool').at(-1)
-    const visible = request.destination.kind === 'panel'
-        ? !top && isPanelVisible(request.tab)
-        : top?.id === request.destination.id
-    if (!visible) clearManagerDisclosure(request)
-}, { flush: 'post' })
+watchEffect(
+    () => {
+        const request = managerDisclosureRequest.value
+        if (!request) return
+        const top = modals.filter((modal) => modal.presentation !== 'tool').at(-1)
+        const visible =
+            request.destination.kind === 'panel'
+                ? !top && isPanelVisible(request.tab)
+                : top?.id === request.destination.id
+        if (!visible) clearManagerDisclosure(request)
+    },
+    { flush: 'post' },
+)

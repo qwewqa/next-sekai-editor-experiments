@@ -319,12 +319,17 @@ test.describe('status bar on a phone', () => {
         await expect(bar.locator('[data-status-tool]')).toHaveCount(0)
         await expect(bar.locator('[data-status-division]')).toHaveCount(0)
         const target = bar.locator('[data-status-part="name"]').first()
-        expect(await target.evaluate((element) => {
-            const range = document.createRange()
-            range.setStart(element.firstChild!, 0)
-            range.setEnd(element.firstChild!, 'A Very'.length)
-            return range.getBoundingClientRect().right <= element.getBoundingClientRect().right - 12
-        })).toBe(true)
+        expect(
+            await target.evaluate((element) => {
+                const range = document.createRange()
+                range.setStart(element.firstChild!, 0)
+                range.setEnd(element.firstChild!, 'A Very'.length)
+                return (
+                    range.getBoundingClientRect().right <=
+                    element.getBoundingClientRect().right - 12
+                )
+            }),
+        ).toBe(true)
     })
 })
 
@@ -373,8 +378,12 @@ for (const hasTouch of [false, true]) {
                 }, width!)
                 await expect.poll(async () => (await bar.boundingBox())!.height).toBe(height)
                 await expect(bar.locator('[data-status-tool]')).toHaveCount(width! < 768 ? 0 : 1)
-                await expect(bar.locator('[data-status-division]')).toHaveCount(width! < 768 ? 0 : 1)
-                await expect(bar.locator('[data-status-target]')).toHaveCount(width! < 320 ? 0 : scopes)
+                await expect(bar.locator('[data-status-division]')).toHaveCount(
+                    width! < 768 ? 0 : 1,
+                )
+                await expect(bar.locator('[data-status-target]')).toHaveCount(
+                    width! < 320 ? 0 : scopes,
+                )
                 await expect(identity).toBeFocused()
                 expect(
                     await identity.evaluate((element, original) => element === original, original),
@@ -401,11 +410,15 @@ test('omitted compact tool and division remain usable in View properties', async
         settings.propertiesPosition = 'right'
         settings.propertiesSection = 'view'
         settings.propertiesCollapsed = []
-        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>('/src/editor/tools/index.ts')
-        const { view } = await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
+        const { switchToolTo } = await appImport<typeof import('../../src/editor/tools')>(
+            '/src/editor/tools/index.ts',
+        )
+        const { view } =
+            await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
         switchToolTo('select')
         view.division = 24
-        ;(document.querySelector('[data-status-bar]')!.parentElement as HTMLElement).style.width = '360px'
+        ;(document.querySelector('[data-status-bar]')!.parentElement as HTMLElement).style.width =
+            '360px'
     })
     const panel = page.locator('#workspace-panel-properties')
     const tool = panel.getByRole('combobox', { name: 'Tool', exact: true })

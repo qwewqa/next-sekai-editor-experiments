@@ -40,7 +40,9 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
                 d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm-.8 3.2h1.6v1.6H7.2zm0 3h1.6v4.6H7.2z"
             />
         </svg>
-        <span v-if="!compact" class="whitespace-nowrap" aria-hidden="true">{{ chipText(chip.kind, compact) }}</span>
+        <span v-if="!compact" class="whitespace-nowrap" aria-hidden="true">{{
+            chipText(chip.kind, compact)
+        }}</span>
     </button>
 </template>
 

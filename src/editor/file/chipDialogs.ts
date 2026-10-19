@@ -61,13 +61,14 @@ export const openChipDialog = async () => {
     // bound file for it.
     if (kind === 'notStored') {
         if (fileActions.openNotStored) fileActions.openNotStored()
-        else await showChoice({
-            title: () => i18n.value.prompt.title,
-            message: () => lines(chipSentence(kind), rest),
-            choices: [],
-            cancelIsDefault: true,
-            cancelLabel: () => i18n.value.modals.close,
-        })
+        else
+            await showChoice({
+                title: () => i18n.value.prompt.title,
+                message: () => lines(chipSentence(kind), rest),
+                choices: [],
+                cancelIsDefault: true,
+                cancelLabel: () => i18n.value.modals.close,
+            })
         return
     }
     const file = boundFile.value

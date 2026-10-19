@@ -7,7 +7,9 @@ export type ManagerDisclosureRequest = {
     destination: { kind: 'panel' } | { kind: 'modal'; id: number }
 }
 
-export const managerDisclosureOwnerKey: InjectionKey<ManagerDisclosureRequest> = Symbol('manager disclosure owner')
+export const managerDisclosureOwnerKey: InjectionKey<ManagerDisclosureRequest> = Symbol(
+    'manager disclosure owner',
+)
 
 const pending = shallowRef<ManagerDisclosureRequest>()
 export const managerDisclosureRequest = computed(() => pending.value)

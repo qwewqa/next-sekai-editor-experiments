@@ -204,12 +204,22 @@ const stage = computed((): NamePart[] =>
 const groupPath = computed(() =>
     view.groupId === undefined
         ? group.value
-        : folderPathParts(groups.value, groupFolders.value, view.groupId, i18n.value.workspace.folders.path),
+        : folderPathParts(
+              groups.value,
+              groupFolders.value,
+              view.groupId,
+              i18n.value.workspace.folders.path,
+          ),
 )
 const stagePath = computed(() =>
     view.stageId === undefined
         ? stage.value
-        : folderPathParts(stages.value, stageFolders.value, view.stageId, i18n.value.workspace.folders.path),
+        : folderPathParts(
+              stages.value,
+              stageFolders.value,
+              view.stageId,
+              i18n.value.workspace.folders.path,
+          ),
 )
 
 // Shown separately from the authoring target, and only while something is hidden.
@@ -289,16 +299,11 @@ const stageCount = computed(() =>
         <!-- Status height stays fixed when warnings arrive. -->
         <div
             class="status-bar z-10 flex shrink-0 flex-nowrap whitespace-nowrap bg-preview text-xs text-white/80"
-            :class="[
-                compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2',
-            ]"
+            :class="[compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2']"
             data-status-bar
         >
             <template v-for="item in statusItems" :key="item">
-                <StatusLabel
-                    v-if="item === 'label'"
-                    :compact="compactStatus"
-                />
+                <StatusLabel v-if="item === 'label'" :compact="compactStatus" />
                 <FileChip v-else-if="item === 'warning'" :compact="compactStatus" />
                 <span
                     v-else-if="item === 'tool' && !compactStatus"
@@ -314,7 +319,13 @@ const stageCount = computed(() =>
                     :icon="item === 'group' ? ManageGroupsIcon : ManageStagesIcon"
                     :icons-only="iconStatus"
                     :count="item === 'group' ? groupCount : stageCount"
-                    :class="compactStatus ? iconStatus ? 'w-8 flex-none' : 'min-w-[5.5rem] flex-1 basis-[5.5rem]' : 'min-w-0 max-w-[40%]'"
+                    :class="
+                        compactStatus
+                            ? iconStatus
+                                ? 'w-8 flex-none'
+                                : 'min-w-[5.5rem] flex-1 basis-[5.5rem]'
+                            : 'min-w-0 max-w-[40%]'
+                    "
                     :title="
                         item === 'group'
                             ? i18n.commands.manageGroups.title
@@ -342,5 +353,4 @@ const stageCount = computed(() =>
 .status-bar-compact {
     --status-row-height: 32px;
 }
-
 </style>

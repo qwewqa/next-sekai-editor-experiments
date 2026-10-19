@@ -29,7 +29,7 @@ const partClass = ({ text, role }: NamePart) =>
     <button
         type="button"
         class="status-chip relative flex items-center whitespace-nowrap px-1"
-        :class="compact ? iconsOnly ? 'justify-center' : 'gap-1' : ''"
+        :class="compact ? (iconsOnly ? 'justify-center' : 'gap-1') : ''"
         :aria-label="accessibleName"
         @click="$emit('click', $event)"
     >
@@ -39,7 +39,13 @@ const partClass = ({ text, role }: NamePart) =>
                 <span
                     v-for="(part, i) in path"
                     :key="i"
-                    :class="part.role === 'folder' ? 'status-folder min-w-[2em] truncate' : part.role === 'name' ? 'min-w-[2em] truncate' : 'shrink-0 whitespace-pre'"
+                    :class="
+                        part.role === 'folder'
+                            ? 'status-folder min-w-[2em] truncate'
+                            : part.role === 'name'
+                              ? 'min-w-[2em] truncate'
+                              : 'shrink-0 whitespace-pre'
+                    "
                     :data-status-part="part.role"
                     >{{ part.text }}</span
                 >

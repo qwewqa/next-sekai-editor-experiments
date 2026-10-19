@@ -118,5 +118,4 @@ export const useScrollMemory = (
             record(toValue(key), element)
         },
     }
-
 }

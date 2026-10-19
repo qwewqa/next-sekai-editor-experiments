@@ -422,7 +422,10 @@ test('header-only and unavailable comparisons have explicit stable summaries', a
             previous: { key: 'missing:1', snapshot: '0'.repeat(32) },
         })
     })
-    await expect(page.locator('[data-peek-change]')).toHaveText('Modifications indisponibles')
+    const comparison = page.locator('[data-peek-change]')
+    await expect(comparison).toHaveText('Indisponible')
+    await expect(comparison.locator('..')).toHaveAccessibleName('Modifications indisponibles')
+    await expect(comparison.locator('..')).toHaveAttribute('title', 'Modifications indisponibles')
     await page.screenshot({ path: `${shots}/phone-fr-unavailable.png` })
 })
 
