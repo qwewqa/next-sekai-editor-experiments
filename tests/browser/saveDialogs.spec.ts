@@ -752,7 +752,12 @@ test.describe('the feedback after a write', () => {
         await page.evaluate(async () => {
             const { pushState, state, peek } =
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
-            pushState(() => 'Life', { ...state.value, initialLife: 990 })
+            const { initialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(initialLife(state.value.initialLife, 990), {
+                ...state.value,
+                initialLife: 990,
+            })
             void peek
         })
         await feedback(page, plain)

@@ -23,6 +23,7 @@ import { createWorld } from '../../../src/local/testing/world'
 import type { StorageWorker } from '../../../src/local/worker/client'
 import { peekHandlers } from '../../../src/local/worker/peekHandlers'
 import type { State } from '../../../src/state'
+import { editStep, initialStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 import { beginIn } from '../startup/harness'
 import { storedEntries, widen } from '../timeline/helpers'
@@ -44,8 +45,32 @@ const stored = async (seed: number) => {
     const b = widen(a)
     const c = widen(b, 1)
     const session = beginIn(page, a)
-    page.flusher.append('edit', () => 'B', b, true)
-    page.flusher.append('edit', () => 'C', c, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'B',
+                ),
+            ),
+        },
+        b,
+        true,
+    )
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'C',
+                ),
+            ),
+        },
+        c,
+        true,
+    )
     await page.flusher.flush({ strict: true })
     const handlers = peekHandlers({ core: page.core, test: true, emit: () => undefined })
     const read = (hex: string) => page.tab.run(() => handlers.readSnapshotVerified(hex))
@@ -113,11 +138,18 @@ test('a chunk whose bytes changed reads damaged: peek rejects, and Undo never la
     await assert.rejects(slotLoader(read)(encoded(b).root.hash))
 
     // The restored stack's slot for B fails to load: the move is cancelled, C stays live.
-    resetStates({ isDirty: false, name: () => 'Reset', state: a })
+    resetStates({ isDirty: false, step: initialStep(originOperation('import')), state: a })
     setSlotLoader(slotLoader(read))
-    const slots = [a, b, c].map((state) => ({
+    const slots = [a, b, c].map((state, index) => ({
         snapshot: encoded(state).root.hash,
-        label: 'Step',
+        step: index
+            ? editStep(
+                  nativeOperation(
+                      { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                      index === 1 ? 'B' : 'C',
+                  ),
+              )
+            : initialStep(originOperation('import')),
         isDirty: false,
     }))
     await quietly(async () => {
@@ -127,7 +159,7 @@ test('a chunk whose bytes changed reads damaged: peek rejects, and Undo never la
     })
     assert.equal(liveState.value, c)
     setSlotLoader(undefined)
-    resetStates({ isDirty: false, name: () => 'Reset', state: a })
+    resetStates({ isDirty: false, step: initialStep(originOperation('import')), state: a })
 })
 
 test('a missing node reads damaged', async () => {

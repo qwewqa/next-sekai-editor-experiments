@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
@@ -8,6 +9,7 @@ import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { editStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 import { openPage, rows, testId, type Page } from './harness'
 
@@ -29,7 +31,7 @@ const begin = (page: Page, state: State) =>
         docId: testId(),
         origin: 'import',
         state,
-        label: () => 'Imported',
+        operation: originOperation('import'),
         dirty: false,
     })
 
@@ -52,7 +54,19 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
     assert.equal(page.flusher.newestSeq(session), 1)
 
     const edited = widen(first)
-    page.flusher.append('edit', () => 'Changed note', edited, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'Changed note',
+                ),
+            ),
+        },
+        edited,
+        true,
+    )
     await page.flusher.flush()
     // Held behind the reservation.
     assert.equal(rows(world, 'entries').size, 1)
@@ -64,7 +78,13 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
         reservation,
         {
             wall: reservation.wall,
-            label: () => 'Saved coconut.nxsp',
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.save',
+                    data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                },
+                'Saved coconut.nxsp',
+            ),
             state: first,
             revisionId: 'rev-1',
             device: DEVICE,
@@ -141,7 +161,13 @@ test('a mark the identity unit needs that isn’t stored keeps the binding in me
         reservation,
         {
             wall: reservation.wall,
-            label: () => 'Saved',
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.save',
+                    data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                },
+                'Saved',
+            ),
             state: first,
             revisionId: 'rev-1',
             device: DEVICE,
@@ -184,7 +210,13 @@ test('an identity unit whose binding was taken over meanwhile is dropped, never 
         reservation,
         {
             wall: reservation.wall,
-            label: () => 'Saved coconut.nxsp',
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.save',
+                    data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                },
+                'Saved coconut.nxsp',
+            ),
             state: first,
             revisionId: 'rev-1',
             device: DEVICE,
@@ -325,7 +357,10 @@ test('new Export metadata commits after a pending Save As identity and survives 
         reservation,
         {
             wall: reservation.wall,
-            label: () => 'Saved copy',
+            operation: nativeOperation(
+                { id: 'nse.file.save', data: { file: captureName('copy.nxsp'), delivery: 'file' } },
+                'Saved copy',
+            ),
             state,
             revisionId: 'new-revision',
             device: DEVICE,
@@ -342,7 +377,19 @@ test('new Export metadata commits after a pending Save As identity and survives 
     fail(false)
     assert.equal(await page.flusher.setChainFieldsNow(exportFields), true)
     assert.equal(session.identity, undefined)
-    page.flusher.append('edit', () => 'Later edit', widen(state), true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    'Later edit',
+                ),
+            ),
+        },
+        widen(state),
+        true,
+    )
     await page.flusher.flush()
     const [chain] = rows(world, 'chains').values()
     assert.equal(chain!.docId, 'new-document')

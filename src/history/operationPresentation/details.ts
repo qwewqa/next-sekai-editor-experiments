@@ -11,6 +11,7 @@ import {
 } from '../operations'
 import { renderOperationRecipe } from './aggregate'
 import { operationTime } from './format'
+import { memberOperation, memberRecoveryContext } from './members'
 import type {
     OperationDetailRow,
     OperationDetails,
@@ -434,8 +435,8 @@ export const operationDetails = (
     }
     const member = recipe.members[0]
     if (!member) throw new Error('Missing Details member')
-    const decoded = decodeOperation(member.step.operation)
-    const recovery = member.step.recoveryContext
+    const decoded = decodeOperation(memberOperation(member))
+    const recovery = memberRecoveryContext(member)
     return {
         ...base,
         ...(decoded.status === 'unsupported'

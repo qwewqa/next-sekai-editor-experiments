@@ -15,7 +15,7 @@ const capture = async (page: Page, name: string) => {
 }
 const row = (page: Page, label: string) =>
     list(page)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.getByText(label, { exact: true }) })
 
 const load = async (page: Page) => {
@@ -35,10 +35,17 @@ const load = async (page: Page) => {
     await page.evaluate(async () => {
         const { history } = window.editorTest
         for (let i = 1; i <= 30; i++)
-            history.pushState(() => `Property ${i}`, {
-                ...history.state.value,
-                initialLife: history.state.value.initialLife + 1,
-            })
+            history.pushState(
+                window.editorTest.historySteps.futureInitialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
+                    `Property ${i}`,
+                ),
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                },
+            )
         await window.nseFlushTest!.flusher.flush({ strict: true })
     })
 }
@@ -66,7 +73,7 @@ const selected = (page: Page) =>
         return {
             requested: peek.peekedKey.value,
             displayed: peek.displayedPeekKey.value,
-            label: selection.peekedInfo.value?.label,
+            label: selection.peekedInfo.value && selection.peekedLabel(selection.peekedInfo.value),
             life: window.editorTest.history.state.value.initialLife,
         }
     })
@@ -74,6 +81,288 @@ const selected = (page: Page) =>
 test.beforeEach(async ({ page }) => load(page))
 test.afterEach(({ page }) => {
     expect(errors.get(page)).toEqual([])
+})
+
+const seedNativeLifeGroup = async (page: Page, unavailable = false) => {
+    await page.evaluate(async (unavailable) => {
+        const { history, historySteps, appImport } = window.editorTest
+        for (let i = 0; i < 2; i++) {
+            const before = history.state.value.initialLife
+            history.pushState(historySteps.initialLife(before, before + 1), {
+                ...history.state.value,
+                initialLife: before + 1,
+            })
+        }
+        const flusher = window.nseFlushTest!.flusher
+        await flusher.flush({ strict: true })
+        if (unavailable) {
+            const { damagedEntries, keyOf } = await appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            const seq = flusher.newestSeq(flusher.session!)
+            damagedEntries.value = new Set(
+                [seq, seq - 1].map((seq) => keyOf({ sessionId: flusher.session!.id, seq })),
+            )
+        }
+    }, unavailable)
+}
+
+test('compact History returns to its own row and keeps a virtualized Tab entry point', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seedNativeLifeGroup(page, true)
+    await open(page)
+    const now = list(page).getByRole('row', { name: /^Now/ })
+    await expect(now).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    const group = row(page, 'Changed Initial Life')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog', { name: 'Step Details', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Home')
+    await expect(now).toBeFocused()
+    await list(page).evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await expect(now).toBeFocused()
+    await presentation(page).locator('[data-history-close]').focus()
+    await expect(now).toHaveAttribute('tabindex', '0')
+    await page.keyboard.press('Tab')
+    await expect(now).toBeFocused()
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
+})
+
+test('filtering out the active peek does not announce Now as selected or replace its request', async ({ page }) => {
+    await open(page)
+    await row(page, 'Property 30').click()
+    const before = await selected(page)
+    await page.evaluate(async () => {
+        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        historyFilter.value = 'saves'
+    })
+    await expect(list(page).getByRole('row', { selected: true })).toHaveCount(0)
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute('aria-selected', 'false')
+    expect(await selected(page)).toEqual(before)
+    await page.evaluate(async () => {
+        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        historyFilter.value = 'all'
+    })
+    await expect(row(page, 'Property 30')).toHaveAttribute('aria-selected', 'true')
+    expect(await selected(page)).toEqual(before)
+})
+
+test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.nativeOperation({ id: 'nse.header.set', data: { field: 'bgmOffset', before: 0, after: 1.2345678901234567 } }, 'Captured offset')) } }]), 1234)
+    })
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details.locator('[data-operation-field="after"] dd')).toHaveText('1,234.5678901234567')
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'export', operation: historySteps.futureFixtureOperation('future-export', { futureParameter: 9 }, '<b>Future export</b>') } }]), 1234)
+    })
+    await expect(details.locator('[data-operation-description]')).toHaveText('<b>Future export</b>')
+    await expect(details.locator('[data-operation-unsupported]')).toHaveText('This editor cannot interpret this action.')
+    await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
+    await expect(details.locator('[data-operation-section]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        const head = historySteps.editStep(historySteps.futureFixtureOperation('recovery-head', {}, 'Source metadata'))
+        const dropped = Array.from({ length: 25 }, (_, i) => historySteps.editStep(historySteps.futureFixtureOperation(`context-${i}`, {}, `Earlier action ${i}`)))
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'recovered', operation: historySteps.nativeOperation({ id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } }, 'Recovered'), recoveryContext: { head, headIndex: 2, dropped, omitted: 5 } } }]), 1234)
+    })
+    const recovery = details.locator('[data-operation-recovery]')
+    await expect(recovery).toHaveCount(1)
+    await expect(recovery.locator('li')).toHaveCount(20)
+    await expect(recovery.locator('li').nth(2)).toContainText('Source metadata')
+    await expect(recovery.locator('[data-operation-recovery-head]')).toHaveCount(1)
+    await expect(recovery).toContainText('Earlier action descriptions omitted: 5')
+    await expect(details.locator('[data-operation-children]')).toHaveCount(0)
+    await recovery.getByRole('button', { name: 'Show More', exact: true }).click()
+    await expect(recovery.locator('li')).toHaveCount(26)
+    await expect(recovery.getByText('Source metadata', { exact: true })).toHaveCount(1)
+    expect((await selected(page)).requested).toBeUndefined()
+})
+
+test('treegrid native controls, cell navigation and metadata focus preserve the selected snapshot', async ({
+    page,
+}) => {
+    await seedNativeLifeGroup(page)
+    await open(page)
+    const group = row(page, 'Changed Initial Life')
+    await group.click()
+    const before = await selected(page)
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Tab')
+    const disclosure = group.locator('[data-history-disclosure]')
+    await expect(disclosure).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    expect(await selected(page)).toEqual(before)
+    await expect(list(page).locator('[data-history-count-detail]')).toHaveText('2 steps')
+    await expect(list(page).getByRole('option')).toHaveCount(0)
+    await expect(group.getByRole('gridcell')).toHaveCount(2)
+    await page.keyboard.press('ArrowRight')
+    await expect(group.locator('[data-history-part="main"]')).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    const child = list(page)
+        .getByRole('row', { name: /^Set Initial Life/ })
+        .first()
+    await expect(child.locator('[data-history-part="main"]')).toBeFocused()
+    expect(await selected(page)).toEqual(before)
+    await page.keyboard.press('ArrowLeft')
+    await expect(child).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(disclosure).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await expect(list(page).locator(':focus')).toHaveCount(0)
+    await expect(group).toHaveAttribute('tabindex', '0')
+})
+
+test('unavailable Details is keyboard reachable at Now and source replacement dismisses stale metadata', async ({
+    page,
+}) => {
+    await seedNativeLifeGroup(page, true)
+    await open(page)
+    const group = row(page, 'Changed Initial Life')
+    const now = list(page).getByRole('row', { name: /^Now/ })
+    await now.focus()
+    await page.keyboard.press('ArrowDown')
+    await expect(group).toBeFocused()
+    await expect(now).toHaveAttribute('aria-selected', 'true')
+    await expect(group).toHaveAttribute('aria-selected', 'false')
+    await expect(group).not.toHaveAttribute('aria-disabled')
+    const before = await selected(page)
+    await page.keyboard.press('Tab')
+    await expect(group.locator('[data-history-disclosure]')).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    await page.keyboard.press('Tab')
+    const detailsButton = group.locator('[data-history-details]')
+    await expect(detailsButton).toBeFocused()
+    await page.keyboard.press('Enter')
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details).toBeVisible()
+    await expect(details.locator('[data-operation-count]').first()).toHaveText('2 steps')
+    await expect(details.locator('[data-operation-children] > details')).toHaveCount(2)
+    expect(await selected(page)).toEqual(before)
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await expect(detailsButton).toBeFocused()
+    await page.keyboard.press('Shift+F10')
+    await expect(page.getByRole('menuitem', { name: 'Restore', exact: true })).toBeDisabled()
+    await expect(page.getByRole('menuitem', { name: 'Show Change', exact: true })).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await expect(detailsButton).toBeFocused()
+    await page.keyboard.press('Shift+F10')
+    await page.getByRole('menuitem', { name: 'Details', exact: true }).click()
+    await expect(details).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(detailsButton).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(details).toBeVisible()
+    await page.evaluate(async () => {
+        const { setPeekSource } =
+            await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                '/src/history/peek.ts',
+            )
+        setPeekSource(undefined)
+    })
+    await expect(details).toHaveCount(0)
+    expect((await selected(page)).requested).toBeUndefined()
+})
+
+test('selected Details keeps exact members and request identity while text relocalizes', async ({
+    page,
+}) => {
+    await seedNativeLifeGroup(page)
+    await open(page)
+    await row(page, 'Changed Initial Life').click()
+    await page.evaluate(async () => {
+        const { peekedInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        ;(window as unknown as { selectedRecipe: unknown }).selectedRecipe = peekedInfo.value
+    })
+    await row(page, 'Changed Initial Life').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Details', exact: true }).click()
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details.locator('[data-operation-children] > details')).toHaveCount(2)
+    await details.locator('summary').first().click()
+    await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
+        1,
+    )
+    await capture(page, 'desktop-operation-details')
+    const before = await details.locator('[data-operation-description]').first().textContent()
+    await page.evaluate(() => {
+        window.editorTest.settings.locale = 'fr'
+    })
+    await expect(page.locator('[data-operation-description]').first()).not.toHaveText(before!)
+    expect(
+        await page.evaluate(async () => {
+            const { peekedInfo } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return (
+                peekedInfo.value ===
+                (window as unknown as { selectedRecipe: unknown }).selectedRecipe
+            )
+        }),
+    ).toBe(true)
+    await expect(page.locator('[data-operation-children] > details')).toHaveCount(2)
+})
+
+test.describe('touch metadata actions', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+    test('unavailable body tap opens Details and long-press release only opens the menu', async ({ page }) => {
+        await seedNativeLifeGroup(page, true)
+        await open(page)
+        const group = row(page, 'Changed Initial Life')
+        const body = group.locator('[data-history-details]')
+        const before = await selected(page)
+        await body.tap()
+        const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+        await expect(details).toBeVisible()
+        expect(await selected(page)).toEqual(before)
+        await capture(page, '390-touch-operation-details')
+        await details.getByRole('button', { name: 'Close', exact: true }).tap()
+        await expect(details).toHaveCount(0)
+        await body.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 2, isPrimary: true, clientX: 150, clientY: 180 })
+        await expect(page.getByRole('menu')).toBeVisible()
+        await body.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 2, isPrimary: true })
+        await body.dispatchEvent('click')
+        await expect(details).toHaveCount(0)
+        await expect(page.getByRole('menu')).toBeVisible()
+        expect(await selected(page)).toEqual(before)
+        await page.getByRole('menuitem', { name: 'Details', exact: true }).tap()
+        await expect(details).toBeVisible()
+        await details.getByRole('button', { name: 'Close', exact: true }).tap()
+        expect((await group.boundingBox())!.height).toBe(80)
+        expect((await group.locator('[data-history-entry-header]').boundingBox())!.height).toBe(44)
+        expect(await selected(page)).toEqual(before)
+    })
 })
 
 test('unavailable group height and expansion preserve virtual offsets and the visible anchor', async ({
@@ -93,14 +382,27 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
                 return {
                     ...timeline,
                     entries: timeline.entries.map((entry, i) =>
-                        i < 2 ? { ...entry, label: 'Grouped property' } : entry,
+                        i < 2
+                            ? {
+                                  ...entry,
+                                  kind: 'edit',
+                                  step: window.editorTest.historySteps.editStep(
+                                      window.editorTest.historySteps.initialLife(
+                                          window.editorTest.history.liveState.value.initialLife -
+                                              i -
+                                              1,
+                                          window.editorTest.history.liveState.value.initialLife - i,
+                                      ),
+                                  ),
+                              }
+                            : entry,
                     ),
                 }
             },
         })
     })
     await open(page)
-    const group = row(page, 'Grouped property').filter({
+    const group = row(page, 'Changed Initial Life').filter({
         has: page.locator('[data-history-group-header]'),
     })
     const anchor = row(page, 'Property 26')
@@ -137,7 +439,9 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
     )
     await group.locator('[data-history-disclosure]').dispatchEvent('click')
     await expect(group).toHaveAttribute('aria-expanded', 'true')
-    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36 + 88)
+    await expect
+        .poll(() => list(page).evaluate((element) => element.scrollTop))
+        .toBe(top + 36 + 188)
     expect((await anchor.boundingBox())!.y).toBe(before!.y)
     expect(
         await following.evaluate((element) =>
@@ -145,7 +449,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
         ),
     ).toBe(
         await group.evaluate(
-            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 88,
+            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 188,
         ),
     )
 })
@@ -167,14 +471,35 @@ test('actual 220px French dock protects partial count and the complete unavailab
                 const timeline =
                     result as import('../../src/local/worker/timelineHandlers').TimelinePage
                 const first = timeline.entries[0]!
+                const { historySteps, history } = window.editorTest
+                const native = (index: number) =>
+                    historySteps.editStep(
+                        historySteps.initialLife(
+                            history.liveState.value.initialLife - index - 1,
+                            history.liveState.value.initialLife - index,
+                        ),
+                    )
+                const foreign = historySteps.editStep(
+                    historySteps.futureFixtureOperation(
+                        'foreign',
+                        { extension: true },
+                        'ノーツを追加',
+                    ),
+                )
                 return {
                     ...timeline,
                     entries: [
-                        { ...first, label: 'ノーツを追加' },
-                        { ...timeline.entries[1]!, label: 'ノーツを追加' },
-                        { ...timeline.entries[2]!, label: 'Added 1 note', kept: false },
-                        { ...timeline.entries[3]!, label: 'Added 1 note', kept: false },
-                        { ...timeline.entries[4]!, label: 'Moved 3 notes', kept: false },
+                        { ...first, kind: 'edit', step: foreign },
+                        { ...timeline.entries[1]!, kind: 'edit', step: foreign },
+                        { ...timeline.entries[2]!, kind: 'edit', step: native(2), kept: false },
+                        { ...timeline.entries[3]!, kind: 'edit', step: native(3), kept: false },
+                        {
+                            ...timeline.entries[4]!,
+                            sessionId: 'older',
+                            kind: 'edit',
+                            step: native(4),
+                            kept: false,
+                        },
                     ],
                     next: { sessionId: first.sessionId, before: 0 },
                 }
@@ -196,20 +521,20 @@ test('actual 220px French dock protects partial count and the complete unavailab
     await expect(dockList).toBeVisible()
     await expect.poll(() => dockList.evaluate((element) => element.clientWidth)).toBe(220)
     const parents = dockList
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.locator('[data-history-group-header]') })
-    await expect(parents).toHaveCount(3)
-    await expect(parents.first().locator('[data-history-group-action]')).toHaveText('ノーツを追加')
-    await expect(parents.first().locator('[data-history-group-count]')).toHaveText(
-        '2 modifications',
-    )
-    await expect(parents.last().locator('[data-history-group-count]')).toHaveText(
-        '1+ modifications',
-    )
+    await expect(parents).toHaveCount(2)
+    await expect(
+        dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) }),
+    ).toHaveCount(2)
+    await expect(parents.first()).toHaveAttribute('aria-label', /2 étapes/)
+    await expect(parents.last()).toHaveAttribute('aria-label', /1\+ étape/)
+    await expect(parents.first().locator('[data-history-group-count]')).toHaveText('')
+    await expect(parents.last().locator('[data-history-group-count]')).toHaveText(/1\+ étape/)
+    await expect(parents.last().locator('[data-history-group-count]')).toBeVisible()
     await expect(parents.last().locator('[data-history-disclosure]')).toHaveCount(0)
-    await expect(parents.locator('[data-history-group-time]')).toHaveCount(0)
-    await expect(parents.locator('[data-history-group-header] > svg')).toHaveCount(0)
-    for (const parent of [parents.nth(1), parents.last()]) {
+    await expect(parents.locator('[data-history-group-time]')).toHaveCount(2)
+    for (const parent of [parents.first(), parents.last()]) {
         expect((await parent.boundingBox())!.height).toBe(80)
         const reason = parent.locator('[data-history-flag]')
         await expect(reason).toHaveText('supprimé pour libérer de l’espace')
@@ -236,34 +561,86 @@ for (const width of [1600, 390, 320]) {
             page,
         }) => {
             await page.evaluate(async () => {
-                const { history } = window.editorTest
-                for (const label of [
-                    'Added 1 note',
-                    'Added 1 note',
-                    'Moved 3 notes',
-                    'Moved 3 notes',
-                    'Renamed chart',
-                    'Adjusted life',
+                const { history, historySteps, appImport } = window.editorTest
+                const [
+                    { createTransaction },
+                    { addNote, replaceNote },
+                    { noteObjectOf },
+                    { createSlideId },
+                ] = await Promise.all([
+                    appImport<typeof import('../../src/state/transaction')>(
+                        '/src/state/transaction.ts',
+                    ),
+                    appImport<typeof import('../../src/state/mutations/slides/note')>(
+                        '/src/state/mutations/slides/note.ts',
+                    ),
+                    appImport<typeof import('../../src/local/records/extract')>(
+                        '/src/local/records/extract.ts',
+                    ),
+                    appImport<typeof import('../../src/state/entities/slides')>(
+                        '/src/state/entities/slides/index.ts',
+                    ),
                 ])
-                    history.pushState(() => label, {
-                        ...history.state.value,
-                        initialLife: history.state.value.initialLife + 1,
-                    })
+                for (const beat of [40, 50]) {
+                    const state = history.state.value
+                    const transaction = createTransaction(state)
+                    const template = [...state.store.slides.note.values()].flat()[0]!
+                    addNote(transaction, createSlideId(), { ...noteObjectOf(template), beat })
+                    history.pushState(historySteps.noteAdd(1), transaction.commit([]))
+                }
+                for (let index = 0; index < 2; index++) {
+                    const state = history.state.value
+                    const transaction = createTransaction(state)
+                    const targets = [...state.store.slides.note.values()].flat().slice(0, 3)
+                    for (const note of targets)
+                        replaceNote(transaction, note, {
+                            ...noteObjectOf(note),
+                            left: note.left + 1,
+                        })
+                    history.pushState(
+                        historySteps.nativeOperation(
+                            {
+                                id: 'nse.object.move',
+                                data: { subject: 'note', targets: targets.length },
+                            },
+                            'Moved notes',
+                        ),
+                        transaction.commit([]),
+                    )
+                }
+                history.pushState(historySteps.initialLife(history.state.value.initialLife, 1200), {
+                    ...history.state.value,
+                    initialLife: 1200,
+                })
+                history.pushState(
+                    historySteps.nativeOperation(
+                        {
+                            id: 'nse.header.set',
+                            data: {
+                                field: 'bgmOffset',
+                                before: history.state.value.bgm.offset,
+                                after: 0.25,
+                            },
+                        },
+                        'Offset',
+                    ),
+                    { ...history.state.value, bgm: { ...history.state.value.bgm, offset: 0.25 } },
+                )
                 history.undoState()
                 history.undoState()
                 await window.nseFlushTest!.flusher.flush({ strict: true })
             })
             await open(page)
             const groups = list(page)
-                .getByRole('option')
+                .getByRole('row')
                 .filter({ has: page.locator('[data-history-group-header]') })
             await expect(groups).toHaveCount(3)
             const undo = row(page, 'Undid 2 steps')
-            await expect(undo.locator('[data-history-group-count]')).toHaveCount(0)
-            await expect(undo).not.toContainText('Adjusted life')
-            for (const action of ['Added 1 note', 'Moved 3 notes']) {
+            await expect(undo.locator('[data-history-group-count]')).toHaveText('')
+            await expect(undo).not.toContainText('Initial Life')
+            for (const action of ['Added 2 notes', 'Moved notes']) {
                 const group = row(page, action)
-                await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
+                await expect(group.locator('[data-history-group-count]')).toHaveText('2 steps')
                 expect(
                     (await group.locator('[data-history-disclosure]').boundingBox())!.width,
                 ).toBe(44)
@@ -274,8 +651,11 @@ for (const width of [1600, 390, 320]) {
             }
             await capture(page, `${width}-groups`)
             await undo.locator('[data-history-disclosure]').click()
-            await expect(row(page, 'Undo · Adjusted life')).toBeVisible()
-            await expect(row(page, 'Undo · Renamed chart')).toBeVisible()
+            await expect(
+                list(page)
+                    .getByRole('row')
+                    .filter({ hasText: /^Undo · Set/ }),
+            ).toHaveCount(2)
             await capture(page, `${width}-undo-expanded`)
             if (width === 1600) {
                 await page.emulateMedia({ colorScheme: 'dark' })
@@ -367,7 +747,7 @@ test('a portrait sheet promotes once without ending peek, losing the cursor or r
     await page.setViewportSize({ width: 520, height: 320 })
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
     await expect(presentation(page)).toHaveCount(1)
-    await expect(list(page)).toBeFocused()
+    await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
     await expect(row(page, 'Property 29')).toHaveAttribute('aria-selected', 'true')
     expect(await selected(page)).toEqual(before)
     expect(
@@ -415,8 +795,19 @@ test('View Chart is disabled for the placeholder and for a pending different end
                 }),
             sameSnapshot: (left, right) => left === right,
         })
-        target.requestSecond = () => selection.requestPeek({ key: b, label: 'B', time: 2 })
-        selection.requestPeek({ key: a, label: 'A', time: 1 })
+        const { captureOperationRecipe } = await window.editorTest.appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
+        const recipe = (name: string) =>
+            captureOperationRecipe([
+                {
+                    description: window.editorTest.historySteps.editStep(
+                        window.editorTest.historySteps.futureFixtureOperation(name),
+                    ),
+                },
+            ])
+        target.requestSecond = () => selection.requestPeek({ key: b, recipe: recipe('B'), time: 2 })
+        selection.requestPeek({ key: a, recipe: recipe('A'), time: 1 })
     })
     await expect(viewChart(page)).toBeDisabled()
     await page.evaluate(() =>
@@ -482,7 +873,7 @@ test('reopening restores the scroll anchor without selecting again; command clos
     await open(page)
     await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top)
     expect(await selected(page)).toEqual(before)
-    await expect(list(page).getByRole('option', { selected: true })).toContainText(before.label!)
+    await expect(list(page).getByRole('row', { selected: true })).toContainText(before.label!)
     await viewChart(page).focus()
     await page.keyboard.press('Shift+H')
     await expect(presentation(page)).toHaveCount(0)
@@ -606,11 +997,11 @@ test('promotion waits for an interrupted Edits Here scan before restoring its an
     await expect
         .poll(() => page.evaluate(() => (window as unknown as { hereCalls: number }).hereCalls))
         .toBe(3)
-    await expect(list(page).getByRole('option')).toHaveCount(1)
+    await expect(list(page).getByRole('row')).toHaveCount(1)
     await page.evaluate(() => (window as unknown as { releaseHere: () => void }).releaseHere())
     await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top)
-    await expect(list(page).getByRole('option', { selected: true })).toContainText(before.label!)
-    await expect(list(page)).toBeFocused()
+    await expect(list(page).getByRole('row', { selected: true })).toContainText(before.label!)
+    await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
     expect(await selected(page)).toEqual(before)
     expect(await pinned()).toEqual(beforePinned)
 })
@@ -643,7 +1034,7 @@ test.describe('touch compact History', () => {
         await goTo.getByRole('radio', { name: 'All', exact: true }).tap()
         await goTo.getByRole('option', { name: 'Now', exact: true }).tap()
         await expect(goTo).toHaveCount(0)
-        await expect(list(page)).toBeFocused()
+        await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
     })
 })
 
@@ -665,8 +1056,8 @@ test('compact Go To supports pointer filters and keyboard picks inside the nativ
     await page.keyboard.press('Home')
     await page.keyboard.press('Enter')
     await expect(goTo).toHaveCount(0)
-    await expect(list(page)).toBeFocused()
-    await expect(list(page).getByRole('option', { selected: true })).toContainText('Now')
+    await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
+    await expect(list(page).getByRole('row', { selected: true })).toContainText('Now')
 })
 
 test('reset closes an in-progress Go To chooser before a later presentation change', async ({
@@ -845,7 +1236,14 @@ test('peek-control Escape preserves the live selection and ignores modified or c
     await page.evaluate(async () => {
         const { history, fixtures, show } = window.editorTest
         show(fixtures.notes)
-        history.pushState(() => 'Selected notes', { ...history.state.value, initialLife: 1234 })
+        history.pushState(
+            window.editorTest.historySteps.futureInitialLife(
+                history.state.value.initialLife,
+                1234,
+                'Selected notes',
+            ),
+            { ...history.state.value, initialLife: 1234 },
+        )
         const note = [...history.state.value.store.slides.note.values()].flat()[0]!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         await window.nseFlushTest!.flusher.flush({ strict: true })

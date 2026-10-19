@@ -10,6 +10,7 @@ import {
 import { planImport } from '../../../src/local/open/plan'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { decodeSnapshot } from '../../../src/local/records/snapshot'
+import { futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { jsonOf, readCrafted, setJson } from './craft'
 
 const hash = (json: RecordValue[]) => toHex(hash16Sync(canonicalBytes(json)))
@@ -20,7 +21,7 @@ const graph = (repeat: number): ManifestForm => {
     const top: RecordValue[] = ['bpms', 1, Array<string>(repeat).fill(hash(leaf))]
     const root: RecordValue[] = [1, header, [['bpms', hash(top)]], 0]
     return {
-        version: 1,
+        version: 2,
         entries: [],
         roots: { [hash(root)]: root },
         nodes: { [hash(leaf)]: leaf, [hash(top)]: top },
@@ -28,7 +29,13 @@ const graph = (repeat: number): ManifestForm => {
             [header, 0, 1],
             [body, 1, 1],
         ],
-        undoStack: { base: 0, index: 0, slots: [{ snapshot: hash(root), label: '' }] },
+        undoStack: {
+            base: 0,
+            index: 0,
+            slots: [
+                { snapshot: hash(root), step: initialStep(futureFixtureOperation('shared-graph')) },
+            ],
+        },
     }
 }
 

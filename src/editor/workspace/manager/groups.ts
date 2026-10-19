@@ -1,7 +1,9 @@
 import type { FolderId } from '../../../chart/folders'
 import { addToGroups, type GroupId } from '../../../chart/groups'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { groupFolders, groups } from '../../../history/groups'
+import { captureName } from '../../../history/operations'
 import { stageFolders } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -11,7 +13,6 @@ import { removeNote } from '../../../state/mutations/slides/note'
 import { removeTimeScale } from '../../../state/mutations/timeScale'
 import { duplicateOwned } from '../../../state/operations/duplicateOwned'
 import { createTransaction } from '../../../state/transaction'
-import { interpolate } from '../../../utils/interpolate'
 import GroupPropertiesModal from '../../commands/manageGroups/manageGroups/groupProperties/GroupPropertiesModal.vue'
 import { notify } from '../../notification'
 import { groupScope } from '../../scope'
@@ -28,12 +29,19 @@ export const addGroup = (folder?: FolderId) => {
     const [groupId, name] = addToGroups(newGroups)
 
     const added = { ...state.value, groups: newGroups }
-    pushState(
-        interpolate(() => i18n.value.commands.manageGroups.modal.added, name),
-        folder === undefined ? added : groupFolderOps.placedIn(added, groupId, folder),
-    )
+    const result = folder === undefined ? added : groupFolderOps.placedIn(added, groupId, folder)
+    const destination = result.groups.get(groupId)?.folderId
+    const operation = createHistoryOperation({
+        id: 'nse.owner.create',
+        data: {
+            target: { kind: 'group', id: groupId, name: captureName(name) },
+            destination: destination === undefined ? null : groupFolderOps.reference(destination),
+            gathered: 0,
+        },
+    })
+    pushState(operation, result)
 
-    notify(interpolate(() => i18n.value.commands.manageGroups.modal.added, name))
+    notify(() => operation.fallback.text)
 
     return groupId
 }
@@ -46,13 +54,20 @@ export const renameGroup = (groupId: GroupId, value: string) => {
     const newGroups = new Map(groups.value)
     newGroups.set(groupId, { ...object, name })
 
-    const message = interpolate(() => i18n.value.workspace.groups.renamed, object.name, name)
-    pushState(message, {
+    const operation = createHistoryOperation({
+        id: 'nse.owner.rename',
+        data: {
+            target: { kind: 'group', id: groupId, name: captureName(object.name) },
+            before: captureName(object.name),
+            after: captureName(name),
+        },
+    })
+    pushState(operation, {
         ...state.value,
         groups: newGroups,
     })
 
-    notify(message)
+    notify(() => operation.fallback.text)
 }
 
 export const openGroupProperties = async (groupId: GroupId) => {
@@ -142,14 +157,16 @@ export const groupFolderOps = createFolderOps({
 /** Deletes a group with its notes and time scales, keeping at least one group. */
 export const deleteGroup = (groupId: GroupId) => {
     if (!groups.value.has(groupId)) return
-    const name = nameOf(groupId)
-
     const ids = new Set([groupId])
-    groupFolderOps.commitRemoval(
-        ids,
-        removeGroups(ids),
-        interpolate(() => i18n.value.commands.manageGroups.modal.deleted, name),
-    )
+    const operation = {
+        id: 'nse.owner.delete',
+        data: {
+            domain: 'group',
+            removed: { group: 1 },
+            target: { kind: 'group', id: groupId, name: captureName(nameOf(groupId)) },
+        },
+    } as const
+    groupFolderOps.commitRemoval(ids, removeGroups(ids), operation)
     view.entities = {
         hovered: [],
         creating: [],

@@ -116,7 +116,9 @@ const edit = (page: Page, initialLife: number) =>
     page.evaluate(async (initialLife) => {
         const { pushState, state } =
             (await import('/src/history/index.ts')) as typeof import('../../src/history')
-        pushState(() => `Life ${initialLife}`, { ...state.value, initialLife })
+        const { initialLife: operation } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        pushState(operation(state.value.initialLife, initialLife), { ...state.value, initialLife })
     }, initialLife)
 
 const undo = (page: Page) =>
@@ -1178,14 +1180,34 @@ test.describe('single-line disclosures', () => {
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
             const groups = new Map(liveState.value.groups)
             groups.set(1002 as never, { ...groups.get(1002 as never)!, name: 'Live Only Name' })
-            pushState(() => 'Live scope rename', { ...liveState.value, groups, initialLife: 980 })
+            const { initialLife, nativeOperation } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            const before = { text: liveState.value.groups.get(1002 as never)!.name }
+            pushState(
+                nativeOperation(
+                    {
+                        id: 'nse.owner.rename',
+                        data: {
+                            target: { kind: 'group', id: 1002, name: before },
+                            before,
+                            after: { text: 'Live Only Name' },
+                        },
+                    },
+                    'Live scope rename',
+                ),
+                { ...liveState.value, groups },
+            )
+            pushState(initialLife(liveState.value.initialLife, 980), {
+                ...liveState.value,
+                initialLife: 980,
+            })
         })
         await settled(page)
         await page.evaluate(async () => {
             const flusher = window.nseFlushTest!.flusher
             const { peekEntry, entryKey } =
                 (await import('/src/history/peek.ts')) as typeof import('../../src/history/peek')
-            await peekEntry(entryKey(flusher.session!.id, flusher.newestSeq(flusher.session!) - 1))
+            await peekEntry(entryKey(flusher.session!.id, flusher.newestSeq(flusher.session!) - 2))
         })
         const before = await disclosureSnapshot(page)
         await page.locator('[data-status-bar] .status-chip').first().click()

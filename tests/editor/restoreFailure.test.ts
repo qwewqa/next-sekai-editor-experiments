@@ -6,6 +6,7 @@ import {
     requestPeek,
     requestRestore,
 } from '../../src/editor/history/selection'
+import { captureOperationRecipe } from '../../src/history/operationPresentation'
 import {
     entryKey,
     isPeeking,
@@ -18,6 +19,12 @@ import {
 } from '../../src/history/peek'
 import { resetStates } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialStep,
+    nativeOperation,
+} from '../helpers/historySteps'
 
 // A Restore that cannot read its entry (Part 1 §1.4.10.5): the row is marked damaged, as a failed
 // peek marks it, so it never fails silently.
@@ -40,7 +47,8 @@ setPeekSource({
 })
 
 setPeekEffects({
-    restoredLabel: (time) => () => `Restored to ${time}`,
+    restoredOperation: (targetTime) =>
+        nativeOperation({ id: 'nse.restore', data: { targetTime } }, `Restored to ${targetTime}`),
     restored: () => undefined,
     alreadyMatches: () => undefined,
 })
@@ -50,7 +58,11 @@ beforeEach(async () => {
     damagedEntries.value = new Set()
     peekedInfo.value = undefined
     await wait(110)
-    resetStates({ isDirty: false, name: () => 'live', state: fake('live') })
+    resetStates({
+        isDirty: false,
+        step: initialStep(futureFixtureOperation('restore-failure-live')),
+        state: fake('live'),
+    })
 })
 
 test('restoring an entry that cannot be read marks its row damaged', async () => {
@@ -60,7 +72,20 @@ test('restoring an entry that cannot be read marks its row damaged', async () =>
 })
 
 test('a failed Restore of an entry other than the peeked one keeps that peek', async () => {
-    requestPeek({ key: key(1), time: 1000, label: 'Life 1' })
+    requestPeek({
+        key: key(1),
+        time: 1000,
+        recipe: captureOperationRecipe([
+            {
+                description: {
+                    kind: 'edit',
+                    step: editStep(futureFixtureOperation('restore-failure-entry', {}, 'Life 1')),
+                },
+                time: 1000,
+                id: key(1),
+            },
+        ]),
+    })
     await wait(150)
     await requestRestore(key(99))
     assert.equal(isPeeking.value, true)

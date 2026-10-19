@@ -1,5 +1,6 @@
 import type { Tool } from '.'
 import { pushState, replaceState, state } from '../../history'
+import { createHistoryOperation } from '../../history/createHistoryOperation'
 import { selectedEntities } from '../../history/selectedEntities'
 import { i18n } from '../../i18n'
 import type { Entity } from '../../state/entities'
@@ -12,6 +13,7 @@ import { removeStageStyleEventJoint } from '../../state/mutations/events/stage/s
 import { removeStageTransformEventJoint } from '../../state/mutations/events/stage/transform'
 import { removeNote } from '../../state/mutations/slides/note'
 import { removeTimeScale } from '../../state/mutations/timeScale'
+import { countNativeEntities } from '../../state/operations/historyReceipts'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { clearNotification, notify } from '../notification'
@@ -190,10 +192,7 @@ const removes: {
 
 export const canRemove = (entity: Entity) => canRemoves[entity.type]?.(entity as never) ?? true
 
-export const remove = (
-    entities: Entity[],
-    message: () => string = () => i18n.value.tools.eraser.erased,
-) => {
+export const remove = (entities: Entity[]) => {
     entities = entities.filter(canRemove)
     if (!entities.length) {
         replaceState({
@@ -215,11 +214,15 @@ export const remove = (
         removes[entity.type]?.(transaction, entity as never)
     }
 
-    pushState(interpolate(message, `${entities.length}`), transaction.commit([]))
+    const operation = createHistoryOperation({
+        id: 'nse.object.delete',
+        data: { removed: countNativeEntities(entities.filter((entity) => removes[entity.type])) },
+    })
+    pushState(operation, transaction.commit([]))
     view.entities = {
         hovered: [],
         creating: [],
     }
 
-    notify(interpolate(message, `${entities.length}`))
+    notify(() => operation.fallback.text)
 }

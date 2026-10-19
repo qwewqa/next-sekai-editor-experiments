@@ -4,7 +4,9 @@ import { bgm as currentBgm } from '../../../history/live'
 import { refuseWhilePeeking } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
-import { bgmLabel } from '../../headerLabels'
+import { releaseWaveform } from '../../../waveform'
+import { createAsyncEditGuard } from '../../asyncEditGuard'
+import { bgmOperation } from '../../headerLabels'
 import { notify } from '../../notification'
 import BgmIcon from './BgmIcon.vue'
 import BgmModal from './BgmModal.vue'
@@ -26,27 +28,36 @@ export const changeBgm = async (file?: File) => {
         refuseWhilePeeking()
         return
     }
-    const newBgm = await showModal(BgmModal, {
-        bgm: currentBgm.value,
-        file,
-    })
-    // A peek begun meanwhile closed the dialog.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!newBgm || isPeeking.value) return
-    // Confirming it unchanged is no edit.
-    const old = currentBgm.value
-    if (
-        newBgm.buffer === old.buffer &&
-        newBgm.offset === old.offset &&
-        newBgm.filename === old.filename
-    )
-        return
+    const guard = createAsyncEditGuard()
+    const openingBgm = currentBgm.value
+    try {
+        const newBgm = await showModal(BgmModal, {
+            bgm: openingBgm,
+            file,
+        })
+        // A stale prompt cannot replace later edits.
+        if (!newBgm) return
+        if (!guard.isCurrent()) {
+            if (newBgm.waveform !== openingBgm.waveform) releaseWaveform(newBgm.waveform)
+            return
+        }
+        // Confirming it unchanged is no edit.
+        const old = currentBgm.value
+        if (
+            newBgm.buffer === old.buffer &&
+            newBgm.offset === old.offset &&
+            newBgm.filename === old.filename
+        )
+            return
 
-    const label = bgmLabel(old, newBgm)
-    pushState(label, {
-        ...liveState.value,
-        bgm: newBgm,
-    })
+        const operation = bgmOperation(old, newBgm)
+        pushState(operation, {
+            ...liveState.value,
+            bgm: newBgm,
+        })
 
-    notify(label)
+        notify(() => operation.fallback.text)
+    } finally {
+        guard.dispose()
+    }
 }

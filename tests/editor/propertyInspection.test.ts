@@ -7,8 +7,10 @@ import {
     createShowEdits,
     type InspectionComparison,
 } from '../../src/editor/history/inspection'
+import { captureOperationRecipe } from '../../src/history/operationPresentation'
 import { entryKey, loadEntryState, resetPeekForTests, setPeekSource } from '../../src/history/peek'
 import type { State } from '../../src/state'
+import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import { goldenChart, stateOf } from '../local/records/charts'
 
 const state = (title: string) => {
@@ -20,7 +22,9 @@ const comparison = (after = state('After'), before = 1): InspectionComparison =>
     request: {
         key: entryKey('session', 4),
         time: 1,
-        label: 'Edit',
+        recipe: captureOperationRecipe([
+            { description: editStep(futureFixtureOperation('property-inspection')) },
+        ]),
         oldest: entryKey('session', 2),
     },
     previous: { key: entryKey('session', before), snapshot: `snapshot-${before}` },

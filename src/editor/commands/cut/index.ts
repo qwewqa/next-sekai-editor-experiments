@@ -1,6 +1,7 @@
 import type { Command } from '..'
 import { setClipboardData } from '../../../clipboard/index.ts'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { isDynamicStages } from '../../../history/dynamicStages.ts'
 import { groups } from '../../../history/groups'
 import { initialLife } from '../../../history/initialLife'
@@ -19,10 +20,11 @@ import { removeStageStyleEventJoint } from '../../../state/mutations/events/stag
 import { removeStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { removeNote } from '../../../state/mutations/slides/note'
 import { removeTimeScale } from '../../../state/mutations/timeScale'
+import { countNativeEntities } from '../../../state/operations/historyReceipts'
 import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
+import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction } from '../../../state/transaction'
-import { interpolate } from '../../../utils/interpolate'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { view, xToLane, yToValidBeat } from '../../view'
@@ -95,7 +97,9 @@ export const cut: Command = {
         const removeEntities = entities.filter(
             (entity) => canRemoves[entity.type]?.(entity as never) ?? true,
         )
+        let operation: ReturnType<typeof createHistoryOperation>
         if (!removeEntities.length) {
+            operation = createHistoryOperation({ id: 'nse.object.cut', data: { removed: {} } })
             replaceState({
                 ...state.value,
                 selectedEntities: [],
@@ -111,17 +115,27 @@ export const cut: Command = {
                 removes[entity.type]?.(transaction, entity as never)
             }
 
-            pushState(
-                interpolate(() => i18n.value.commands.cut.cut, `${entities.length}`),
-                transaction.commit([]),
+            const result = transaction.commit([])
+            const removed = removeEntities.filter(
+                (entity) =>
+                    removes[entity.type] &&
+                    getInStoreGrid(state.value.store.grid, entity.type, entity.beat)?.includes(
+                        entity,
+                    ) &&
+                    !getInStoreGrid(result.store.grid, entity.type, entity.beat)?.includes(entity),
             )
+            operation = createHistoryOperation({
+                id: 'nse.object.cut',
+                data: { removed: countNativeEntities(removed) },
+            })
+            pushState(operation, result)
             view.entities = {
                 hovered: [],
                 creating: [],
             }
         }
 
-        notify(interpolate(() => i18n.value.commands.cut.cut, `${entities.length}`))
+        notify(() => operation.fallback.text)
     },
 }
 

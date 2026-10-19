@@ -42,7 +42,13 @@ test('BPM edits move attached notes to their time fraction, and undo moves them 
         const { addBpm } = await import('/src/state/mutations/bpm.ts')
         const transaction = createTransaction(history.state.value)
         addBpm(transaction, { beat: 1, bpm: 120 })
-        history.pushState(() => 'add bpm', transaction.commit([]))
+        history.pushState(
+            window.editorTest.historySteps.nativeOperation(
+                { id: 'nse.object.add', data: { subject: 'bpm', created: 1 } },
+                'Add BPM',
+            ),
+            transaction.commit([]),
+        )
     })
     // 60 BPM, then 120 BPM from beat 1: beat 2 is 1.5 s into a 2.5 s slide.
     expect(await page.evaluate(attachedCenter)).toBeCloseTo(1.8, 12)
@@ -60,7 +66,14 @@ test('edits without BPM changes keep attached note objects', async ({ page }) =>
                     .flat()
                     .find((entity) => entity.isAttached)
             const before = find()
-            history.pushState(() => 'noop', createTransaction(history.state.value).commit([]))
+            history.pushState(
+                window.editorTest.historySteps.futureInitialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife,
+                    'No-op',
+                ),
+                createTransaction(history.state.value).commit([]),
+            )
             return find() === before
         }),
     ).toBe(true)
@@ -79,7 +92,13 @@ test('BPM edits after a slide leave its attached notes alone', async ({ page }) 
             const before = find()
             const transaction = createTransaction(history.state.value)
             addBpm(transaction, { beat: 10, bpm: 120 })
-            history.pushState(() => 'add bpm', transaction.commit([]))
+            history.pushState(
+                window.editorTest.historySteps.nativeOperation(
+                    { id: 'nse.object.add', data: { subject: 'bpm', created: 1 } },
+                    'Add BPM',
+                ),
+                transaction.commit([]),
+            )
             return find() === before
         }),
     ).toBe(true)

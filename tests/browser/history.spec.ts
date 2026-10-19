@@ -488,7 +488,10 @@ for (const { label, crash } of [
         await page.evaluate(() => {
             const { history, fixtures } = window.editorTest
             history.resetState(false, fixtures.interaction, 0, { sourceName: 'named-chart' })
-            history.pushState(() => 'edit', { ...history.state.value, initialLife: 990 })
+            history.pushState(
+                window.editorTest.historySteps.initialLife(history.state.value.initialLife, 990),
+                { ...history.state.value, initialLife: 990 },
+            )
         })
         page.on('dialog', (dialog) => void dialog.accept())
         await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
@@ -517,7 +520,12 @@ for (const { label, crash } of [
                     .map((entry) => entry.name)
                     .find((name) => new URL(name).pathname === pathname) ?? pathname
             const { pushState, state } = (await import(url)) as typeof import('../../src/history')
-            pushState(() => 'edit', { ...state.value, initialLife: 980 })
+            const { initialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(initialLife(state.value.initialLife, 980), {
+                ...state.value,
+                initialLife: 980,
+            })
         })
         // Without handlers, only the flush stores it: about 1 s after the edit.
         if (crash) await other.waitForTimeout(2500)

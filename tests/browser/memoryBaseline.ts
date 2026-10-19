@@ -69,9 +69,12 @@ export const makeEdits = (
             const { editSelectedEditableEntities } = await appImport<
                 typeof import('../../src/editor/sidebars/default')
             >('/src/editor/sidebars/default/index.ts')
-            const { translateSelection } = await appImport<
+            const { translateSelectionWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/translateSelection')
             >('/src/state/operations/translateSelection.ts')
+            const { checkedSum, subjectOfCounts } = await appImport<
+                typeof import('../../src/history/operations')
+            >('/src/history/operations/index.ts')
             const { isEditableEntity } = await appImport<
                 typeof import('../../src/state/operations/editable')
             >('/src/state/operations/editable.ts')
@@ -90,9 +93,21 @@ export const makeEdits = (
                 if (i % wholeEvery === wholeEvery - 1) {
                     const all = [...store.getAllEntities()].filter(isEditableEntity)
                     const sign = whole % 2 ? -1 : 1
-                    const moved = translateSelection(before, all, 'width', sign * 0.25)
-                    if (moved === before) throw new Error('The whole-chart move changed nothing')
-                    history.pushState(() => 'Move', moved)
+                    const moved = translateSelectionWithReceipt(before, all, 'width', sign * 0.25)
+                    if (moved.state === before)
+                        throw new Error('The whole-chart move changed nothing')
+                    const targets = checkedSum(Object.values(moved.counts))
+                    if (targets === undefined) throw new Error('Invalid whole-chart move count')
+                    history.pushState(
+                        window.editorTest.historySteps.nativeOperation(
+                            {
+                                id: 'nse.object.move',
+                                data: { subject: subjectOfCounts(moved.counts), targets },
+                            },
+                            'Move',
+                        ),
+                        moved.state,
+                    )
                     whole++
                     continue
                 }

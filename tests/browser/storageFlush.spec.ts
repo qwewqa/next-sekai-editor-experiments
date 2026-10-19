@@ -70,7 +70,7 @@ const addNotes = (page: Page, n: number, from = 0) =>
                     connectorPresentation: 'default',
                     elevation: 0,
                 } as never)
-                history.pushState(() => 'Added note', transaction.commit([]))
+                history.pushState(window.editorTest.historySteps.noteAdd(1), transaction.commit([]))
             }
         },
         { n, from },

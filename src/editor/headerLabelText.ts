@@ -1,72 +1,82 @@
 import type { GroupObject } from '../chart/groups'
 import type { StageObject } from '../chart/stages'
-import type en from '../i18n/en/index.json'
-import { languageTag } from '../i18n/plural'
-import { interpolateRaw } from '../utils/interpolate'
+import { captureName, type NativeOperationInput, type OwnerChange } from '../history/operations'
 
-// The words of History labels for edits that change something with no chart position (§1.4.19).
+export const initialLifeInput = (before: number, after: number) =>
+    ({ id: 'nse.header.set', data: { field: 'initialLife', before, after } }) as const
 
-type Messages = typeof en
+export const bgmOffsetInput = (before: number, after: number) =>
+    ({ id: 'nse.header.set', data: { field: 'bgmOffset', before, after } }) as const
 
-const number = (locale: string, value: number) =>
-    new Intl.NumberFormat(languageTag(locale), { maximumFractionDigits: 6 }).format(value)
+export type BgmParts = { buffer?: unknown; filename?: string; offset: number }
 
-/** "Set Initial Life to 1,000". */
-export const initialLifeText = (m: Messages, locale: string, value: number) =>
-    interpolateRaw(m.commands.properties.lifeSet, number(locale, value))
-
-/** "Set BGM Offset to 0.15 s" (the offset is in seconds). */
-export const bgmOffsetText = (m: Messages, locale: string, seconds: number) =>
-    interpolateRaw(m.commands.bgm.offsetSet, number(locale, seconds))
-
-export type BgmParts = { buffer?: unknown; filename?: unknown; offset: number }
-
-/** What a BGM dialog change says: the file, the offset or, for both, just the BGM. */
-export const bgmText = (m: Messages, locale: string, old: BgmParts, next: BgmParts) => {
+export const bgmInput = (old: BgmParts, next: BgmParts): NativeOperationInput => {
     if (next.buffer === old.buffer && next.filename === old.filename)
-        return bgmOffsetText(m, locale, next.offset)
-    return next.offset === old.offset ? m.commands.bgm.fileChanged : m.commands.bgm.changed
+        return bgmOffsetInput(old.offset, next.offset)
+    return {
+        id: 'nse.bgm.change',
+        data: {
+            file: {
+                before: old.filename === undefined ? null : captureName(old.filename),
+                after: next.filename === undefined ? null : captureName(next.filename),
+            },
+            ...(next.offset === old.offset
+                ? {}
+                : { offset: { before: old.offset, after: next.offset } }),
+        },
+    }
 }
 
-/** A group's property edit: a rename, or one field named with its new value. */
-export const groupEditText = (
-    m: Messages,
-    locale: string,
+export type GroupEditKey = 'name' | 'forceNoteSpeed'
+export const groupEditInput = <K extends GroupEditKey>(
+    id: number,
     old: GroupObject,
-    key: keyof GroupObject,
-    value: GroupObject[keyof GroupObject],
-) => {
-    if (key === 'name') return interpolateRaw(m.workspace.groups.renamed, old.name, String(value))
-
-    const field = m.commands.manageGroups.modal.properties.modal.forceNoteSpeed
-    return typeof value === 'number'
-        ? interpolateRaw(m.workspace.groups.propertySet, old.name, field, number(locale, value))
-        : interpolateRaw(m.workspace.groups.propertyCleared, old.name, field)
+    key: K,
+    value: GroupObject[K],
+): NativeOperationInput => {
+    const target = { kind: 'group', id, name: captureName(old.name) } as const
+    return key === 'name'
+        ? {
+              id: 'nse.owner.rename',
+              data: { target, before: target.name, after: captureName(String(value)) },
+          }
+        : {
+              id: 'nse.owner.set',
+              data: {
+                  target,
+                  changes: [
+                      {
+                          field: key,
+                          before: old.forceNoteSpeed ?? null,
+                          after: (value as number | undefined) ?? null,
+                      },
+                  ],
+              },
+          }
 }
 
-/** A stage's property edit: a rename, or one field named with its new value. */
-export const stageEditText = (
-    m: Messages,
+export type StageEditKey = 'name' | 'isFromStart' | 'isUntilEnd' | 'generateSimLines'
+export const stageEditInput = <K extends StageEditKey>(
+    id: number,
     old: StageObject,
-    key: keyof StageObject,
-    value: StageObject[keyof StageObject],
-) => {
-    if (key === 'name') return interpolateRaw(m.workspace.stages.renamed, old.name, String(value))
-
-    const form = m.modals.form
-    const field =
-        key === 'isFromStart'
-            ? form.isFromStart.label
-            : key === 'isUntilEnd'
-              ? form.isUntilEnd.label
-              : form.generateSimLines.label
-    const shown =
-        typeof value === 'boolean'
-            ? value
-                ? form.toggle.enabled
-                : form.toggle.disabled
-            : value === 'global'
-              ? form.generateSimLines.global
-              : form.generateSimLines.isolated
-    return interpolateRaw(m.workspace.stages.propertySet, old.name, field, shown)
+    key: K,
+    value: StageObject[K],
+): NativeOperationInput => {
+    const target = { kind: 'stage', id, name: captureName(old.name) } as const
+    if (key === 'name')
+        return {
+            id: 'nse.owner.rename',
+            data: { target, before: target.name, after: captureName(String(value)) },
+        }
+    const change: OwnerChange =
+        key === 'generateSimLines'
+            ? {
+                  field: 'generateSimLines',
+                  before: old.generateSimLines,
+                  after: value as StageObject['generateSimLines'],
+              }
+            : key === 'isFromStart'
+              ? { field: 'isFromStart', before: old.isFromStart, after: value as boolean }
+              : { field: 'isUntilEnd', before: old.isUntilEnd, after: value as boolean }
+    return { id: 'nse.owner.set', data: { target, changes: [change] } }
 }

@@ -1,9 +1,16 @@
 import { shallowRef, watch } from 'vue'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import {
+    operationStepCount,
+    renderOperationRecipe,
+    type OperationRecipe,
+} from '../../history/operationPresentation'
 import {
     PeekError,
     entryKey,
     leavePeek,
     peekEntry,
+    peekSourceGeneration,
     peekedKey,
     restoreEntry,
     type EntryKey,
@@ -22,7 +29,7 @@ export type ChainKey = { key: EntryKey; snapshot?: string }
 export type PeekedInfo = {
     key: EntryKey
     time: number
-    label: string
+    recipe: OperationRecipe
     snapshot?: string
     previous?: ChainKey
     oldest?: EntryKey
@@ -39,13 +46,23 @@ export const keyOf = (entry: { sessionId: string; seq: number }): EntryKey =>
 /** What the bar names, set when the list asks for a peek. */
 export const peekedInfo = shallowRef<PeekedInfo>()
 
+export const peekedLabel = (info: PeekedInfo) => {
+    const context = getHistoryOperationContext()
+    const title = renderOperationRecipe(info.recipe, context)
+    return info.recipe.kind === 'group'
+        ? `${title} · ${operationStepCount(info.recipe, context)}`
+        : title
+}
+
 /** Entries whose state could not be read, by key: shown as damaged (§1.4.10.5). */
 export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())
 
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
 export const requestPeek = (info: PeekedInfo) => {
+    const generation = peekSourceGeneration.value
     peekedInfo.value = info
     peekEntry(info.key).catch((error: unknown) => {
+        if (generation !== peekSourceGeneration.value) return
         // Peek has ended it. A state that fails its check reads damaged from then on; a removed
         // one already reads so from its row, and one not stored yet can be tried again.
         if (error instanceof PeekError && error.reason === 'damaged')
@@ -59,9 +76,11 @@ export const requestPeek = (info: PeekedInfo) => {
  * peek ends, so a Restore that fails is never silent.
  */
 export const requestRestore = async (key: EntryKey) => {
+    const generation = peekSourceGeneration.value
     try {
         await restoreEntry(key)
     } catch (error) {
+        if (generation !== peekSourceGeneration.value) return
         if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()

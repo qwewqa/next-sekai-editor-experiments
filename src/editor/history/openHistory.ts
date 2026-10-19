@@ -23,6 +23,10 @@ import { historyFilter, historyTab, listFocus, type HistoryTab } from './state'
 const historyId = shallowRef<number>()
 const historyModal = computed(() => modals.find(({ id }) => id === historyId.value))
 export const isHistoryDialogOpen = computed(() => !!historyModal.value)
+export const canFocusHistory = (surface: 'panel' | 'dialog') =>
+    surface === 'dialog'
+        ? historyId.value !== undefined && modals.at(-1)?.id === historyId.value
+        : modals.length === 0
 const canFocusChart = () =>
     isPeeking.value && !isBlockingModalOpen.value && !isHistoryDialogOpen.value
 

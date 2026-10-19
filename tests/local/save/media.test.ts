@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Inflate } from 'pako'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { headInput, pendingInput } from '../../../src/local/save/pending'
+import { editStep, futureFixtureOperation, noteAdd } from '../../helpers/historySteps'
 import { BGM, BGM_2, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, save, SECOND, stateAt } from './fixture'
 
@@ -16,7 +18,7 @@ const ok = <T extends object>(value: T) => {
 const chain = async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     return fixture
 }
@@ -96,7 +98,10 @@ test('a tab’s copy of the head’s media is used when storage lacks it', async
 test('after Undo across a BGM change, the file holds the undone-to BGM and never the later one', async () => {
     const fixture = await chain()
     await fixture.storeMedia([BGM, BGM_2, COVER, PREVIEW])
-    await fixture.edit(SECOND + 2)
+    await fixture.edit(
+        SECOND + 2,
+        futureFixtureOperation('media-replacement', {}, 'Changed media and notes'),
+    )
     fixture.undo()
     await fixture.flush()
     const { file } = await save(fixture, { kind: 'copy' }, { event: 'downloaded' })
@@ -114,13 +119,14 @@ test('this tab’s unflushed rows, stack and records are the build’s first sou
     const fixture = await chain()
     const head = stateAt(4).state
     const session = fixture.session
+    const unstoredStep = editStep(noteAdd(3))
     const pending = pendingInput(
         [
             {
                 seq: session.nextSeq++,
                 time: 9_000_000,
                 kind: 'edit',
-                label: 'Unstored',
+                step: unstoredStep,
                 state: head,
                 dirty: true,
             },
@@ -128,9 +134,9 @@ test('this tab’s unflushed rows, stack and records are the build’s first sou
         {
             base: 0,
             slots: [
-                { state: stateAt(0).state, label: 'Imported' },
-                { state: stateAt(1).state, label: 'Edit 1' },
-                { state: head, label: 'Unstored' },
+                { state: stateAt(0).state, step: session.slots[0]!.step },
+                { state: stateAt(1).state, step: session.slots[1]!.step },
+                { state: head, step: unstoredStep },
             ],
             index: 2,
         },
@@ -145,16 +151,18 @@ test('this tab’s unflushed rows, stack and records are the build’s first sou
     assert.equal(plan.saveEntry.snapshot, stateAt(4).hex)
     const { history, read } = await heldRows(file)
     assert.equal(read.open, 'full')
-    assert.deepEqual(
-        history.entries.map((entry) => entry.label),
-        ['Imported', 'Edit 1', 'Unstored', 'Saved coconut.nxsp'],
-    )
+    assert.deepEqual(history.entries.map(captureEntryDescription), [
+        captureEntryDescription(session.rows[0]),
+        captureEntryDescription(session.rows[1]),
+        { kind: 'edit', step: unstoredStep },
+        captureEntryDescription(plan.saveEntry),
+    ])
     assert.equal(history.head, stateAt(4).hex)
 })
 
 test('a download with the head given inflates no chunk taken from storage', async () => {
     const fixture = await chain()
-    for (let k = 2; k < 12; k++) await fixture.edit(k)
+    for (let k = 2; k < 12; k++) await fixture.edit(k, noteAdd(1))
     await fixture.flush()
     const stored = new Set<string>()
     await fixture.store.read(['chunks'], async (tx) => {

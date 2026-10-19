@@ -12,7 +12,8 @@ import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import ChangeArrows from './ChangeArrows.vue'
-import { backToNow, peekedInfo, requestRestore } from './selection'
+import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
+import { openOperationDetails } from './operationDetails'
 
 // --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
 const announcement = ref('')
@@ -59,6 +60,10 @@ const text = computed(() => {
 const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)
 }
+const details = () => {
+    const info = peekedInfo.value
+    if (info) void openOperationDetails(info.recipe, info.time)
+}
 const onKeydown = (event: KeyboardEvent) => {
     const target = event.target
     const host = event.currentTarget
@@ -103,23 +108,33 @@ const button =
         >
             <div
                 class="pointer-events-auto flex w-full max-w-lg items-center rounded-3xl bg-modal p-1 text-sm text-fg shadow-md"
-                :class="tiny ? 'flex-wrap gap-1' : compact ? 'gap-1' : 'gap-2'"
+                :class="compact ? 'gap-1' : 'gap-2'"
                 data-peek-main
             >
-                <span
-                    class="min-w-0 truncate pl-3"
-                    :class="
-                        tiny
-                            ? 'w-full pt-1 text-center leading-5'
-                            : view.w < 350
-                              ? 'flex-1 text-xs'
-                              : 'flex-1'
-                    "
-                    :title="peekedInfo?.label"
+                <button
+                    type="button"
+                    class="flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-2 outline-offset-[-3px] transition-colors hover:bg-header-hover focus-visible:outline focus-visible:outline-2"
+                    :class="view.w < 350 ? 'flex-1 text-xs' : 'flex-1'"
+                    :title="peekedInfo && peekedLabel(peekedInfo)"
+                    :aria-label="i18n.history.details.title"
                     data-peek-text
-                    >{{ text }}</span
+                    data-peek-details
+                    @click="details"
                 >
-                <span class="size-4 shrink-0" :class="tiny ? 'ml-auto' : ''" aria-hidden="true">
+                    <svg
+                        class="size-4 shrink-0"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        aria-hidden="true"
+                    >
+                        <circle cx="8" cy="8" r="6" />
+                        <path d="M8 7v4M8 4.5v1" />
+                    </svg>
+                    <span v-if="!tiny" class="min-w-0 truncate">{{ text }}</span>
+                </button>
+                <span class="size-4 shrink-0" aria-hidden="true">
                     <span
                         v-if="peekLoading"
                         class="block size-4 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
@@ -141,7 +156,7 @@ const button =
                 <button
                     type="button"
                     class="bg-accent text-on-accent"
-                    :class="[button, tiny ? 'mr-auto' : '']"
+                    :class="button"
                     data-peek-restore
                     @click="restore"
                 >

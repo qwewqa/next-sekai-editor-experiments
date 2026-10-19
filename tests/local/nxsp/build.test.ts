@@ -13,6 +13,7 @@ import {
     type WritePlan,
 } from '../../../src/local/nxsp'
 import { minorOf } from '../../../src/local/nxsp/version'
+import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import { fresh, NOW } from './chain'
 import type { Loose } from './craft'
@@ -47,14 +48,39 @@ const longChain = (count: number, lateAt?: number) => {
     const entries: EntryForm[] = []
     for (let i = 0; i < count - 1; i++) {
         const snapshot = i === lateAt ? late : (hashes[i % 3] as string)
-        entries.push(entry(i ? 'edit' : 'init', 1000 + i, `Step ${i}`, snapshot))
+        entries.push(
+            entry(
+                i
+                    ? {
+                          kind: 'edit',
+                          step: editStep(
+                              futureFixtureOperation('segmented-row', { index: i }, `Step ${i}`),
+                          ),
+                      }
+                    : {
+                          kind: 'init',
+                          operation: futureFixtureOperation(
+                              'segmented-origin',
+                              { index: i },
+                              `Step ${i}`,
+                          ),
+                      },
+                1000 + i,
+                snapshot,
+            ),
+        )
     }
     const head = hashes[(count - 2) % 3] as string
     entries.push(
-        entry('save', 1000 + count, 'Saved', head, {
-            revisionId: 'r001-0000-4000-8000-000000000000',
-            device: DEVICE,
-        }),
+        entry(
+            { kind: 'save', operation: futureFixtureOperation('segmented-save', {}, 'Saved') },
+            1000 + count,
+            head,
+            {
+                revisionId: 'r001-0000-4000-8000-000000000000',
+                device: DEVICE,
+            },
+        ),
     )
     const { input } = fresh()
     const { bgm, levelInfo } = chartWith().extras
@@ -72,7 +98,13 @@ const longChain = (count: number, lateAt?: number) => {
             roots: store.roots,
             nodes: store.nodes,
             chunks: store.chunks,
-            undoStack: { base: 0, slots: [{ snapshot: head, label: 'Saved' }], index: 0 },
+            undoStack: {
+                base: 0,
+                slots: [
+                    { snapshot: head, step: initialStep(futureFixtureOperation('segmented-head')) },
+                ],
+                index: 0,
+            },
         },
     }
     return { store, hashes, late, input: built }
@@ -173,7 +205,13 @@ const appendInput = (
             ...history,
             append: source.token,
             entries,
-            undoStack: { base: 0, slots: [{ snapshot: head, label: 'x' }], index: 0 },
+            undoStack: {
+                base: 0,
+                slots: [
+                    { snapshot: head, step: initialStep(futureFixtureOperation('append-head')) },
+                ],
+                index: 0,
+            },
         },
     }
 }
@@ -184,11 +222,23 @@ test('an append: a source manifest of 500 or more becomes a segment; fewer are c
     const source = await inspectNxsp(first, { token: 't', role: 'target', fingerprint: 'f' })
     const head = chain.hashes[0] as string
     const rows = [
-        entry('continue', 9000, 'Continued', head),
-        entry('save', 9001, 'Saved', head, {
-            revisionId: 's001-0000-4000-8000-000000000000',
-            device: DEVICE,
-        }),
+        entry(
+            {
+                kind: 'continue',
+                operation: futureFixtureOperation('append-continue', {}, 'Continued'),
+            },
+            9000,
+            head,
+        ),
+        entry(
+            { kind: 'save', operation: futureFixtureOperation('segmented-save', {}, 'Saved') },
+            9001,
+            head,
+            {
+                revisionId: 's001-0000-4000-8000-000000000000',
+                device: DEVICE,
+            },
+        ),
     ]
     const second = planNxsp(appendInput(chain.input, source, rows, head), [source])
     const names = second.plan.entries.map((e) => e.name)
@@ -216,10 +266,15 @@ test('an append: a source manifest of 500 or more becomes a segment; fewer are c
     // The next append copies that segment whole and carries the small manifest.
     const source2 = await inspectNxsp(file2, { token: 'u', role: 'target', fingerprint: 'g' })
     const rows3 = [
-        entry('save', 9100, 'Saved', head, {
-            revisionId: 's001-0000-4000-8000-000000000000',
-            device: DEVICE,
-        }),
+        entry(
+            { kind: 'save', operation: futureFixtureOperation('segmented-save', {}, 'Saved') },
+            9100,
+            head,
+            {
+                revisionId: 's001-0000-4000-8000-000000000000',
+                device: DEVICE,
+            },
+        ),
     ]
     const third = planNxsp(appendInput(chain.input, source2, rows3, head), [source2])
     const segmentEntry = third.plan.entries.find((e) => e.name === 'history/segments/1.json')
@@ -339,7 +394,16 @@ test('a kept: false row keeps its root only when every node and chunk it reaches
     const thinned = extra.add(stateOf(chartWith({ extraNotes: 7 })))
     const roots = new Map([...history.roots, [thinned, extra.roots.get(thinned) ?? []]])
     const entries = [...history.entries]
-    entries.splice(1, 0, entry('edit', 1500, 'Thinned', thinned, { kept: false }))
+    entries.splice(
+        1,
+        0,
+        entry(
+            { kind: 'edit', step: editStep(futureFixtureOperation('thinned-row', {}, 'Thinned')) },
+            1500,
+            thinned,
+            { kept: false },
+        ),
+    )
     const without = planNxsp({
         ...base.input,
         context: fixedContext(NOW),
@@ -525,11 +589,11 @@ test('minor is computed from the table; a value it lacks fails', () => {
         minorOf({
             levelVersion: 1,
             rootVs: [1],
-            manifestVersion: 1,
+            manifestVersion: 2,
             entryKinds: ['save'],
             zipEntries: ['project.json', 'bgm/a.mp3'],
         }),
-        0,
+        1,
     )
     assert.throws(() => minorOf({ levelVersion: 2, rootVs: [], entryKinds: [], zipEntries: [] }))
     assert.throws(() => minorOf({ levelVersion: 1, rootVs: [2], entryKinds: [], zipEntries: [] }))
@@ -551,20 +615,29 @@ test('the same input gives the same plan', () => {
     })
 })
 
-test('strings are written well-formed', () => {
+test('project names are written well-formed and malformed operation text is refused', () => {
     const { input } = fresh()
     const history = input.history
     assert.ok(history)
-    const entries = history.entries.map((e, i) =>
-        i === 1 ? { ...e, label: 'bad \ud800 label' } : e,
-    )
-    const { project, plan } = planNxsp({
-        ...input,
-        name: 'name \udc00',
-        history: { ...history, entries },
-    })
+    const { project } = planNxsp({ ...input, name: 'name \udc00' })
     assert.equal(project.name, 'name �')
-    assert.equal(jsonPart(plan, 'history/manifest.json').entries[1].label, 'bad � label')
+    const entries = history.entries.map((e, i) =>
+        i === 1 && e.kind === 'edit'
+            ? {
+                  ...e,
+                  step: {
+                      kind: 'edit' as const,
+                      operation: {
+                          id: 'test.future.malformed-text',
+                          version: 1,
+                          data: {},
+                          fallback: { text: 'bad \ud800 fallback', locale: 'en' },
+                      },
+                  },
+              }
+            : e,
+    )
+    assert.throws(() => planNxsp({ ...input, history: { ...history, entries } }), PlanError)
 })
 
 test('extra keys named __proto__ are written back', () => {

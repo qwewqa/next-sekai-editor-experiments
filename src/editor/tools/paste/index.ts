@@ -15,6 +15,7 @@ import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
 import { clipboardEntry, joinClipboardRead, updateClipboard } from '../../../clipboard/index.ts'
 import { isPeeking, pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { chartSessionId } from '../../../history/chartSession'
 import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
 import { defaultGroupId, groups } from '../../../history/groups'
@@ -59,6 +60,7 @@ import { addStageStyleEventJoint } from '../../../state/mutations/events/stage/s
 import { addStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { addNote } from '../../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale } from '../../../state/mutations/timeScale'
+import { countNativeEntities } from '../../../state/operations/historyReceipts'
 import { createStore } from '../../../state/store/creates'
 import { getInStoreGrid } from '../../../state/store/grid'
 import type { StoreSlides } from '../../../state/store/slides'
@@ -210,6 +212,7 @@ export const paste: Tool = {
             modifiers,
             {
                 composed: true,
+                at: 'pointer',
             },
         )
         if (beat !== undefined) markTouchBeat(beat)
@@ -284,6 +287,7 @@ export const paste: Tool = {
 
         revealPasteTargets(active.entities)
         const transaction = createTransaction(state.value)
+        const displaced: Entity[] = []
 
         const lane = xToLane(x)
         const beatOffset = toPasteBeatOffset(
@@ -302,7 +306,11 @@ export const paste: Tool = {
                     modifiers.shift,
                     active.anchor,
                     active.beat,
+                    displaced,
                 ),
+                modifiers.shift,
+                'pointer',
+                displaced,
             )
             active = undefined
             return
@@ -321,23 +329,23 @@ export const paste: Tool = {
                 beat,
                 modifiers.shift,
                 selectedEntities,
+                displaced,
             )
             if (!result) continue
 
             selectedEntities.push(...result)
         }
 
-        pushState(
-            interpolate(() => i18n.value.tools.paste.pasted, `${selectedEntities.length}`),
-            transaction.commit(selectedEntities),
-        )
+        const result = transaction.commit(selectedEntities)
+        const operation = pasteOperation(result, 'basic', modifiers.shift, 'pointer', displaced)
+        pushState(operation, result)
         view.entities = {
             hovered: [],
             creating: [],
         }
         clearPasteGhost()
 
-        notify(interpolate(() => i18n.value.tools.paste.pasted, `${selectedEntities.length}`))
+        notify(() => operation.fallback.text)
 
         active = undefined
     },
@@ -604,6 +612,7 @@ export type PastePositionOptions = {
     composed?: boolean
     notesOnly?: boolean
     mapNote?: (entity: NoteEntity, beat: number) => Partial<NoteObject>
+    at?: 'pointer' | 'position'
 }
 
 /** Pastes, and returns the beat the copy's beat lands on. */
@@ -629,6 +638,7 @@ export const pasteAtPosition = async (
 
     const onlyType = getOnlyEntityType(entities)
     const shiftedOffset = toPasteBeatOffset(landing(entities), beatOffset)
+    const displaced: Entity[] = []
 
     if (options.composed && isComposedPaste()) {
         finishPaste(
@@ -641,7 +651,11 @@ export const pasteAtPosition = async (
                 modifiers.shift,
                 data.anchor,
                 data.beat,
+                displaced,
             ),
+            modifiers.shift,
+            options.at ?? 'position',
+            displaced,
         )
         return toMovedBeat(data.beat, shiftedOffset)
     }
@@ -669,23 +683,23 @@ export const pasteAtPosition = async (
             beat,
             modifiers.shift,
             selectedEntities,
+            displaced,
         )
         if (!result) continue
 
         selectedEntities.push(...result)
     }
 
-    pushState(
-        interpolate(() => i18n.value.tools.paste.pasted, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
+    const result = transaction.commit(selectedEntities)
+    const operation = pasteOperation(result, 'basic', modifiers.shift, options.at ?? 'position', displaced)
+    pushState(operation, result)
     view.entities = {
         hovered: [],
         creating: [],
     }
     clearPasteGhost()
 
-    notify(interpolate(() => i18n.value.tools.paste.pasted, `${selectedEntities.length}`))
+    notify(() => operation.fallback.text)
     return toMovedBeat(data.beat, shiftedOffset)
 }
 
@@ -708,6 +722,7 @@ const buildComposedPaste = (
     flip: boolean,
     anchorIndex?: number,
     anchorBeat = 0,
+    displaced?: Entity[],
 ) => {
     const notes = entities.filter((entity) => entity.type === 'note')
     if (!notes.length) {
@@ -723,6 +738,7 @@ const buildComposedPaste = (
                 toMovedBeat(entity.beat, beatOffset),
                 flip,
                 selected,
+                displaced,
             )
             if (added) selected.push(...added)
         }
@@ -737,7 +753,7 @@ const buildComposedPaste = (
         anchorIndex,
         anchorBeat,
     )
-    return pasteAuthored(entities, startLane, beatOffset, flip, delta ?? 0, delta !== undefined)
+    return pasteAuthored(entities, startLane, beatOffset, flip, delta ?? 0, delta !== undefined, displaced)
 }
 
 /** The pasted note placed under the pointer: the copied anchor, else the one nearest it. */
@@ -842,6 +858,7 @@ const pasteAuthored = (
     flip: boolean,
     delta: number,
     limited: boolean,
+    displaced?: Entity[],
 ) => {
     const transaction = createTransaction(state.value)
     const selected: Entity[] = []
@@ -871,6 +888,7 @@ const pasteAuthored = (
                     common.beat,
                     false,
                     selected,
+                    displaced,
                 )
                 break
             case 'note':
@@ -969,15 +987,17 @@ const peekedMeanwhile = () => {
     return true
 }
 
-const finishPaste = (result: State) => {
-    const message = interpolate(
-        () => i18n.value.tools.paste.pasted,
-        `${result.selectedEntities.length}`,
-    )
-    pushState(message, result)
+const pasteOperation = (result: State, variant: 'basic' | 'composed', flipped: boolean, at: 'pointer' | 'position', displaced: Entity[]) => createHistoryOperation({
+    id: 'nse.object.paste',
+    data: { placed: countNativeEntities(result.selectedEntities), displaced: countNativeEntities(displaced), variant, flipped, at },
+})
+
+const finishPaste = (result: State, flipped: boolean, at: 'pointer' | 'position', displaced: Entity[]) => {
+    const operation = pasteOperation(result, 'composed', flipped, at, displaced)
+    pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     clearPasteGhost()
-    notify(message)
+    notify(() => operation.fallback.text)
 }
 
 // Pastes into the copying chart keep their own groups and stages; others map by position.
@@ -1292,22 +1312,26 @@ type Paste<T extends Entity> = (
     flip: boolean,
     /** Objects already placed by this paste; they never replace each other. */
     batch: readonly Entity[],
+    displaced?: Entity[],
 ) => Entity[] | undefined
 
 const pastes: {
     [T in Entity as T['type']]: Paste<T> | undefined
 } = {
-    bpm: (transaction, onlyType, entity, startLane, lane, beat, flip, batch) => {
+    bpm: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
         const object = toMovedBpmObject(entity, beat)
 
         const overlap = getInStoreGrid(transaction.store.grid, 'bpm', object.beat)?.find(
             (entity) => entity.beat === object.beat && !batch.includes(entity),
         )
-        if (overlap) removeBpm(transaction, overlap)
+        if (overlap) {
+            displaced?.push(overlap)
+            removeBpm(transaction, overlap)
+        }
 
         return addBpm(transaction, object)
     },
-    timeScale: (transaction, onlyType, entity, startLane, lane, beat, flip, batch) => {
+    timeScale: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
         const object = toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, flip)
 
         // Replaces every one of its group at the beat, a pair too, but not its own batch.
@@ -1317,8 +1341,10 @@ const pastes: {
                 overlap.beat === object.beat &&
                 overlap.groupId === object.groupId &&
                 !batch.includes(overlap)
-            )
+            ) {
+                displaced?.push(overlap)
                 removeTimeScale(transaction, overlap)
+            }
 
         return addTimeScale(transaction, object)
     },

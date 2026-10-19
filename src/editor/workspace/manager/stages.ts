@@ -6,7 +6,9 @@ import {
     type Stages,
 } from '../../../chart/stages'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { groupFolders } from '../../../history/groups'
+import { captureName } from '../../../history/operations'
 import { stageFolders, stages } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -19,7 +21,6 @@ import { removeStageTransformEventJoint } from '../../../state/mutations/events/
 import { removeNote } from '../../../state/mutations/slides/note'
 import { duplicateOwned } from '../../../state/operations/duplicateOwned'
 import { createTransaction } from '../../../state/transaction'
-import { interpolate } from '../../../utils/interpolate'
 import StagePropertiesModal from '../../commands/manageStages/manageStages/stageProperties/StagePropertiesModal.vue'
 import { notify } from '../../notification'
 import { stageScope } from '../../scope'
@@ -36,12 +37,19 @@ export const addStage = (folder?: FolderId) => {
     const [stageId, name] = addToStages(newStages)
 
     const added = { ...state.value, stages: newStages }
-    pushState(
-        interpolate(() => i18n.value.commands.manageStages.modal.added, name),
-        folder === undefined ? added : stageFolderOps.placedIn(added, stageId, folder),
-    )
+    const result = folder === undefined ? added : stageFolderOps.placedIn(added, stageId, folder)
+    const destination = result.stages.get(stageId)?.folderId
+    const operation = createHistoryOperation({
+        id: 'nse.owner.create',
+        data: {
+            target: { kind: 'stage', id: stageId, name: captureName(name) },
+            destination: destination === undefined ? null : stageFolderOps.reference(destination),
+            gathered: 0,
+        },
+    })
+    pushState(operation, result)
 
-    notify(interpolate(() => i18n.value.commands.manageStages.modal.added, name))
+    notify(() => operation.fallback.text)
 
     return stageId
 }
@@ -54,13 +62,20 @@ export const renameStage = (stageId: StageId, value: string) => {
     const newStages: Stages = new Map(stages.value)
     newStages.set(stageId, { ...object, name })
 
-    const message = interpolate(() => i18n.value.workspace.stages.renamed, object.name, name)
-    pushState(message, {
+    const operation = createHistoryOperation({
+        id: 'nse.owner.rename',
+        data: {
+            target: { kind: 'stage', id: stageId, name: captureName(object.name) },
+            before: captureName(object.name),
+            after: captureName(name),
+        },
+    })
+    pushState(operation, {
         ...state.value,
         stages: newStages,
     })
 
-    notify(message)
+    notify(() => operation.fallback.text)
 }
 
 export const openStageProperties = async (stageId: StageId) => {
@@ -162,14 +177,16 @@ export const stageFolderOps = createFolderOps({
 /** Deletes a stage with its events and notes, keeping at least one stage. */
 export const deleteStage = (stageId: StageId) => {
     if (!stages.value.has(stageId)) return
-    const name = nameOf(stageId)
-
     const ids = new Set([stageId])
-    stageFolderOps.commitRemoval(
-        ids,
-        removeStages(ids),
-        interpolate(() => i18n.value.commands.manageStages.modal.deleted, name),
-    )
+    const operation = {
+        id: 'nse.owner.delete',
+        data: {
+            domain: 'stage',
+            removed: { stage: 1 },
+            target: { kind: 'stage', id: stageId, name: captureName(nameOf(stageId)) },
+        },
+    } as const
+    stageFolderOps.commitRemoval(ids, removeStages(ids), operation)
     view.entities = {
         hovered: [],
         creating: [],

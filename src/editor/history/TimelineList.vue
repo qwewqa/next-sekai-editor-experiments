@@ -9,9 +9,16 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey } from '../../history/peek'
+import { peekedKey, peekSourceGeneration } from '../../history/peek'
 import { session } from '../../history/session'
-import { headName } from '../../history/stack'
+import { headStep } from '../../history/stack'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import {
+    captureOperationRecipe,
+    describeStep,
+    disambiguateOperationRecipes,
+    type OperationRecipe,
+} from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import {
     formatClock,
@@ -32,16 +39,10 @@ import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
-import { heightOf, isCountedParent, presentRow } from './rowPresentation'
-import {
-    buildRows,
-    previousOf,
-    selectableRows,
-    type Entry,
-    type EntryRow,
-    type Header,
-    type Row,
-} from './rows'
+import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import { openOperationDetails } from './operationDetails'
+import { canFocusHistory } from './openHistory'
+import { buildRows, previousOf, type Entry, type EntryRow, type Header, type Row } from './rows'
 import {
     backToNow,
     damagedEntries,
@@ -67,6 +68,7 @@ import {
     resetToNewest,
     retry,
     status,
+    sourceGeneration,
     type Target,
 } from './source'
 import {
@@ -79,7 +81,7 @@ import {
     restoreHistoryView,
 } from './state'
 
-// The Timeline (Part 1 §1.4.10.5): an ARIA listbox of the chain's entries, newest first, windowed.
+// The Timeline is a rows-first treegrid of the chain's entries, newest first and windowed.
 // Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
 
 const props = defineProps<{
@@ -140,6 +142,38 @@ const isEmpty = computed(
         ),
 )
 const rows = computed(() => (isEmpty.value ? built.value.slice(0, 1) : built.value))
+const operationContext = computed(getHistoryOperationContext)
+const headLabel = computed(
+    () => headStep.value && describeStep(headStep.value, operationContext.value),
+)
+const recipes = computed(() => {
+    const result = new Map<string, OperationRecipe>()
+    let adjacent: EntryRow[] = []
+    const flush = () => {
+        const qualified = disambiguateOperationRecipes(
+            adjacent.map(recipeOfRow),
+            operationContext.value,
+        )
+        adjacent.forEach((row, index) => {
+            const recipe = qualified[index]
+            if (recipe) result.set(row.id, recipe)
+        })
+        adjacent = []
+    }
+    for (const row of rows.value) {
+        if (row.type === 'divider' || row.type === 'gap') flush()
+        else if (row.type === 'entry') {
+            if (row.child) result.set(row.id, recipeOfRow(row))
+            else adjacent.push(row)
+        }
+    }
+    flush()
+    return result
+})
+const recipeOf = (row: EntryRow) =>
+    peekedInfo.value?.rowId === row.id
+        ? peekedInfo.value.recipe
+        : (recipes.value.get(row.id) ?? recipeOfRow(row))
 
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring.
 const rowHeight = computed(() => 44)
@@ -219,12 +253,22 @@ const range = computed(() => {
     return { first, end: Math.min(count, end + OVERSCAN) }
 })
 
-const visibleRows = computed(() =>
-    rows.value.slice(range.value.first, range.value.end).map((row, i) => ({
-        row,
-        top: geometry.value.offsets[range.value.first + i] ?? 0,
-    })),
-)
+const visibleRows = computed(() => {
+    const indexes = new Set(
+        Array.from(
+            { length: range.value.end - range.value.first },
+            (_, i) => range.value.first + i,
+        ),
+    )
+    const focused = rows.value.findIndex((row) => row.id === cursorId.value)
+    if (focused >= 0) indexes.add(focused)
+    return [...indexes]
+        .sort((a, b) => a - b)
+        .flatMap((index) => {
+            const row = rows.value[index]
+            return row ? [{ row, top: geometry.value.offsets[index] ?? 0 }] : []
+        })
+})
 
 // The header of the rows at the top, pinned there once they scroll under it.
 const pinned = computed(() => {
@@ -239,20 +283,103 @@ const pinned = computed(() => {
     return undefined
 })
 
-/** Rows a listbox counts: everything but the headers. */
+/** Logical action positions exclude passive decorations. */
 const positions = computed(() => {
     const map = new Map<string, number>()
     let n = 0
-    for (const row of rows.value) if (row.type !== 'header') map.set(row.id, ++n)
+    for (const row of rows.value)
+        if (row.type === 'now' || row.type === 'entry') map.set(row.id, ++n)
     return { map, size: n }
+})
+const continuationDescriptions = computed(() => {
+    const descriptions = new Map<string, string>()
+    const logical = rows.value
+    for (let i = 0; i < logical.length; i++) {
+        const divider = logical[i]
+        if (divider?.type !== 'divider') continue
+        const adjacent =
+            logical.slice(i + 1).find((row) => row.type === 'entry') ??
+            logical
+                .slice(0, i)
+                .reverse()
+                .find((row) => row.type === 'entry')
+        if (adjacent)
+            descriptions.set(
+                adjacent.id,
+                [descriptions.get(adjacent.id), dividerText(divider.entry)]
+                    .filter(Boolean)
+                    .join(' · '),
+            )
+    }
+    return descriptions
 })
 
 // --- The cursor: the row the keys and the peek are on.
 const cursorId = ref('now')
+type FocusPart = 'row' | 'leading' | 'main'
+const focusPart = ref<FocusPart>('row')
+const focusInside = ref(false)
+let focusToken = 0
+let disposed = false
 
-const selectables = computed(() => selectableRows(rows.value))
+const selectables = computed(() =>
+    rows.value.filter((row) => row.type === 'now' || row.type === 'entry'),
+)
 
 const rowById = (id: string) => rows.value.find((row) => row.id === id)
+const expandable = (row: Row) => row.type === 'entry' && row.members.length > 1 && !row.child
+const focusElement = (id: string, part: FocusPart) => {
+    const element = list.value?.querySelector<HTMLElement>(`#${CSS.escape(domId(id))}`)
+    return part === 'row'
+        ? element
+        : element?.querySelector<HTMLElement>(`[data-history-part="${part}"]`)
+}
+const focusedPart = (event: Event): FocusPart =>
+    ((event.target as HTMLElement).dataset.historyPart as FocusPart | undefined) ?? 'row'
+const openerPart = (element: HTMLElement): FocusPart =>
+    (element.closest<HTMLElement>('[data-history-part]')?.dataset.historyPart as FocusPart | undefined) ?? 'row'
+const tabIndex = (row: Row, part: FocusPart) =>
+    row.id === cursorId.value && focusPart.value === part ? 0 : -1
+const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = true) => {
+    const token = ++focusToken
+    const generation = sourceGeneration.value
+    const peekGeneration = peekSourceGeneration.value
+    const historyGeneration = historyViewGeneration()
+    const row = rowById(id)
+    if (!row || (row.type !== 'entry' && row.type !== 'now')) return
+    cursorId.value = id
+    focusPart.value = part === 'leading' && !expandable(row) ? 'main' : part
+    if (scroll) scrollToRow(id)
+    await nextTick()
+    if (
+        disposed ||
+        token !== focusToken ||
+        generation !== sourceGeneration.value ||
+        peekGeneration !== peekSourceGeneration.value ||
+        historyGeneration !== historyViewGeneration() ||
+        menu.value ||
+        !canFocusHistory(props.surface)
+    )
+        return
+    focusElement(id, focusPart.value)?.focus({ preventScroll: true })
+}
+const onRowFocus = (event: FocusEvent, row: Row) => {
+    cursorId.value = row.id
+    focusPart.value = focusedPart(event)
+    focusInside.value = true
+}
+const onFocusout = (event: FocusEvent) => {
+    if (event.relatedTarget instanceof Node && list.value?.contains(event.relatedTarget)) return
+    focusInside.value = false
+    focusPart.value = 'row'
+    focusToken++
+}
+const restoreRowFocus = (id: string, part: FocusPart) => {
+    if (disposed) return
+    const target =
+        rowById(id) ?? rowById(id.split('/')[0] ?? '') ?? rowById(cursorId.value) ?? rows.value[0]
+    if (target) void focusRow(target.id, part, false)
+}
 
 // The peeked entry's row, or its group's while the group is closed.
 const rowOf = (key: string | undefined) => {
@@ -322,13 +449,41 @@ const restoreView = () => {
 }
 watch([geometry, status, () => here.scanning], () => void nextTick(restoreView), { flush: 'post' })
 
-watch([peekedKey, () => rows.value], () => {
+watch(peekedKey, () => {
     const key = peekedKey.value
     const row = rowOf(key)
     // A peek being asked for keeps the cursor where it was put.
     if (!key && peekedInfo.value) return
-    if (row) cursorId.value = row.id
-    else if (!key) cursorId.value = 'now'
+    if (row && !focusInside.value) cursorId.value = row.id
+    else if (!key && !focusInside.value) cursorId.value = 'now'
+})
+watch(
+    rows,
+    () => {
+        if (rowById(cursorId.value)) return
+        const parent = rowById(cursorId.value.split('/')[0] ?? '')
+        const target = parent?.type === 'entry' ? parent : rows.value[0]
+        const focused = focusInside.value
+        cursorId.value = target?.id ?? 'now'
+        focusPart.value = 'row'
+        if (focused) void focusRow(cursorId.value, 'row', false)
+    },
+    { flush: 'pre' },
+)
+watch(
+    [sourceGeneration, peekSourceGeneration, historyViewGeneration],
+    () => {
+        menu.value = undefined
+        cancelLongPress()
+        if (replacing) return
+        focusToken++
+        if (focusInside.value) void focusRow('now', 'row', false)
+    },
+    { flush: 'sync' },
+)
+const selectedId = computed(() => {
+    const key = peekedInfo.value?.key ?? peekedKey.value
+    return key ? rowOf(key)?.id : 'now'
 })
 
 /** What a peek of an entry names, and what it is compared with: before `oldest`, its run's. */
@@ -337,7 +492,9 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
     return {
         key: keyOf(entry),
         time: entry.time,
-        label: entry.label,
+        recipe: captureOperationRecipe([
+            { description: entry, time: entry.time, id: keyOf(entry) },
+        ]),
         oldest: keyOf(oldest),
         initial: oldest.kind === 'init' && !previous,
         ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
@@ -355,7 +512,7 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
 /** A row's peek: a closed ×N row stands for its run, so it is compared with the entry before it. */
 const rowInfo = (row: EntryRow): PeekedInfo => ({
     ...infoOf(row.entry, row.child ? row.entry : (row.members.at(-1) ?? row.entry)),
-    label: labelOf(row),
+    recipe: recipes.value.get(row.id) ?? recipeOfRow(row),
     rowId: row.id,
     members: row.members.map(keyOf),
     pinned: (row.child
@@ -378,7 +535,7 @@ const moveTo = (row: Row | undefined) => {
     cursorId.value = row.id
     if (row.type === 'now') backToNow()
     else if (row.type === 'entry' && row.selectable) requestPeek(rowInfo(row))
-    scrollToRow(row.id)
+    void focusRow(row.id)
 }
 
 // Brings a row into view, clear of the pinned header.
@@ -401,9 +558,21 @@ const step = async (delta: number) => {
     // Up crosses the gap: the newer page loads, and the cursor goes on into it.
     if (delta < 0 && at > 0 && clamp(at + delta) === 0 && gap.value !== undefined) {
         const id = cursorId.value
+        const token = focusToken
+        const generation = sourceGeneration.value
+        const peekGeneration = peekSourceGeneration.value
+        const historyGeneration = historyViewGeneration()
         await loadNewer()
         await nextTick()
-        if (cursorId.value !== id) return
+        if (
+            disposed ||
+            token !== focusToken ||
+            cursorId.value !== id ||
+            generation !== sourceGeneration.value ||
+            peekGeneration !== peekSourceGeneration.value ||
+            historyGeneration !== historyViewGeneration()
+        )
+            return
         at = selectables.value.findIndex((row) => row.id === id)
     }
     const next = selectables.value[clamp(at + delta)]
@@ -424,6 +593,9 @@ const scrollRowToTop = (id: string) => {
 }
 
 const goNow = async () => {
+    const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
+    const generation = historyViewGeneration()
     replacing = true
     try {
         await resetToNewest()
@@ -431,25 +603,45 @@ const goNow = async () => {
     } finally {
         replacing = false
     }
+    if (
+        token !== focusToken ||
+        peekGeneration !== peekSourceGeneration.value ||
+        generation !== historyViewGeneration() ||
+        disposed
+    )
+        return
     cursorId.value = 'now'
     backToNow()
-    scrollToRow('now')
+    void focusRow('now')
 }
 
 /** Jumps to an entry, or to Now; the entry is peeked and scrolled to the top. */
 const jumpTo = async (target: Target | 'now') => {
     if (target === 'now') return goNow()
+    const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
+    const historyGeneration = historyViewGeneration()
     replacing = true
     try {
         const entry = await jumpToEntry(target, historyFilter.value)
         if (!entry) return
+        const generation = sourceGeneration.value
         await nextTick()
+        if (
+            disposed ||
+            token !== focusToken ||
+            generation !== sourceGeneration.value ||
+            peekGeneration !== peekSourceGeneration.value ||
+            historyGeneration !== historyViewGeneration()
+        )
+            return
         const row = rowOf(keyOf(entry))
         if (row) {
             cursorId.value = row.id
             scrollRowToTop(row.id)
         }
         requestPeek(row?.type === 'entry' ? rowInfo(row) : infoOf(entry))
+        if (row) void focusRow(row.id, 'row', false)
     } catch {
         // The list stays as it was.
     } finally {
@@ -458,21 +650,38 @@ const jumpTo = async (target: Target | 'now') => {
 }
 
 /** End: the oldest entry, read directly when it is not loaded. */
-const goOldest = async () => {
+const goOldest = async (part?: FocusPart) => {
     if (!canLoadMore.value) {
-        moveTo(selectables.value.at(-1))
+        const row = selectables.value.at(-1)
+        if (part && row) void focusRow(row.id, part)
+        else moveTo(row)
         return
     }
+    const token = ++focusToken
+    const peekGeneration = peekSourceGeneration.value
+    const historyGeneration = historyViewGeneration()
     replacing = true
     try {
-        await jumpToOldest(historyFilter.value)
+        const entry = await jumpToOldest(historyFilter.value)
+        if (!entry) return
+        const generation = sourceGeneration.value
         await nextTick()
+        if (
+            disposed ||
+            token !== focusToken ||
+            generation !== sourceGeneration.value ||
+            peekGeneration !== peekSourceGeneration.value ||
+            historyGeneration !== historyViewGeneration()
+        )
+            return
+        const row = selectables.value.at(-1)
+        if (part && row) void focusRow(row.id, part)
+        else moveTo(row)
     } catch {
         return
     } finally {
         replacing = false
     }
-    moveTo(selectables.value.at(-1))
 }
 
 /** The entry at the top of the list, or Now: Go To's current piece. */
@@ -495,12 +704,23 @@ watch(
         const top = element.scrollTop
         if (top <= 0 && !previous.ids.includes('gap')) return
         const index = new Map(next.ids.map((id, i) => [id, i]))
+        const oldAnchor = rowAt(previous, top)
+        if (previous.kinds[oldAnchor] === 'count') {
+            const oldId = previous.ids[oldAnchor]
+            const parent = oldId?.replace(/\/count$/, '')
+            const at = parent === undefined ? undefined : index.get(parent)
+            if (at !== undefined && oldId !== undefined && !index.has(oldId)) {
+                element.scrollTop = next.offsets[at] ?? 0
+                scrollTop.value = element.scrollTop
+                return
+            }
+        }
         for (let i = rowAt(previous, top); i < previous.ids.length; i++) {
             const id = previous.ids[i]
             const at = id === undefined ? undefined : index.get(id)
             // Headers are no anchor: the span they label grows with newer rows.
             if (at === undefined || next.kinds[at] === 'now' || next.kinds[at] === 'gap') continue
-            if (next.kinds[at] === 'header') continue
+            if (next.kinds[at] === 'header' || next.kinds[at] === 'count') continue
             const shift = (next.offsets[at] ?? 0) - (previous.offsets[i] ?? 0)
             if (shift !== 0) {
                 element.scrollTop = top + shift
@@ -535,8 +755,15 @@ const toggleGroup = (row: EntryRow, open: boolean) => {
     const next = new Set(expandedGroups.value)
     if (open) next.add(row.id)
     else next.delete(row.id)
+    if (
+        !open &&
+        (cursorId.value.startsWith(`${row.id}/`) ||
+            peekedInfo.value?.rowId?.startsWith(`${row.id}/`))
+    ) {
+        focusElement(row.id, 'row')?.focus({ preventScroll: true })
+        moveTo(row)
+    }
     expandedGroups.value = next
-    if (!open && cursorId.value.startsWith(`${row.id}/`)) moveTo(row)
 }
 
 // --- Restore
@@ -545,20 +772,35 @@ const restore = async (row: EntryRow) => {
 }
 
 // --- Menu: Show Change and Restore, by right click, long press, Shift+F10 or the Menu key.
-const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean }>()
+const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean; part: FocusPart }>()
 const openMenu = (row: EntryRow, anchor: HTMLElement, touch = false) => {
-    if (!row.selectable || menu.value?.row.id === row.id) return
-    menu.value = { row, anchor, touch }
+    if (menu.value?.row.id === row.id) return
+    const part = openerPart(anchor)
+    cursorId.value = row.id
+    focusPart.value = part
+    focusToken++
+    menu.value = { row, anchor, touch, part }
 }
 const closeMenu = (restoreFocus: boolean) => {
     if (!menu.value) return
+    const { row, part } = menu.value
     menu.value = undefined
-    if (restoreFocus) list.value?.focus({ preventScroll: true })
+    if (restoreFocus) restoreRowFocus(row.id, part)
 }
 const menuItems = computed(() => [
-    { key: 'showChange', label: commands.showChange.title() },
-    { key: 'restore', label: i18n.value.peek.restore },
+    { key: 'details', label: i18n.value.history.details.action },
+    {
+        key: 'showChange',
+        label: commands.showChange.title(),
+        disabled: !menu.value?.row.selectable,
+    },
+    { key: 'restore', label: i18n.value.peek.restore, disabled: !menu.value?.row.selectable },
 ])
+const showDetails = (row: EntryRow, opener?: HTMLElement, part = opener ? openerPart(opener) : focusPart.value) => {
+    void openOperationDetails(recipeOf(row), row.entry.time, opener, () => {
+        restoreRowFocus(row.id, part)
+    })
+}
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {
     const info = rowInfo(row)
@@ -576,8 +818,9 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
     closeMenu(keyboard)
     if (!current) return
-    if (key === 'restore') void restore(current.row)
-    else if (key === 'showChange') showRowChange(current.row)
+    if (key === 'details') showDetails(current.row, current.anchor, current.part)
+    else if (current.row.selectable && key === 'restore') void restore(current.row)
+    else if (current.row.selectable && key === 'showChange') showRowChange(current.row)
 }
 // iOS fires no contextmenu event for a long press: a touch held still opens the menu itself.
 const LONG_PRESS_MS = 500
@@ -624,7 +867,10 @@ const onContextMenu = (event: MouseEvent, row: Row) => {
         if (!settings.touchLongPressContextMenu) return
         suppressClick = true
     }
-    openMenu(row, event.currentTarget as HTMLElement, touch)
+    const anchor = event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>('[data-history-part]') ?? event.currentTarget as HTMLElement
+        : event.currentTarget as HTMLElement
+    openMenu(row, anchor, touch)
 }
 
 // --- Pointer
@@ -635,7 +881,15 @@ const onRowClick = (row: Row) => {
     }
     if (row.type === 'now') moveTo(row)
     else if (row.type === 'entry' && row.selectable) moveTo(row)
-    list.value?.focus({ preventScroll: true })
+    if (row.type === 'entry' && !row.selectable) void focusRow(row.id)
+}
+const onDetailsClick = (event: MouseEvent, row: EntryRow) => {
+    event.stopPropagation()
+    if (suppressClick) {
+        suppressClick = false
+        return
+    }
+    showDetails(row, event.currentTarget as HTMLElement)
 }
 
 // --- Keyboard
@@ -645,13 +899,89 @@ const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
-    if (event.target instanceof Element && event.target.closest('[data-history-disclosure]')) return
+    if (!(event.target instanceof HTMLElement) || !event.target.closest('[data-history-row]'))
+        return
     const row = rowById(cursorId.value)
     const handled = () => {
         event.preventDefault()
         event.stopPropagation()
     }
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey
+    const part = focusedPart(event)
+    const native = event.target instanceof HTMLButtonElement
+    if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+        handled()
+        if (row?.type === 'entry') openMenu(row, event.target)
+        return
+    }
+    if (event.key === 'Tab' && plain && row) {
+        const controls: FocusPart[] = [
+            ...(expandable(row) ? ['leading' as const] : []),
+            ...(row.type === 'entry' && !row.selectable ? ['main' as const] : []),
+        ]
+        const index = controls.indexOf(part)
+        if (event.shiftKey && part !== 'row') {
+            handled()
+            void focusRow(
+                row.id,
+                index > 0
+                    ? controls[index - 1]
+                    : part === 'main' && expandable(row)
+                      ? 'leading'
+                      : 'row',
+                false,
+            )
+        } else if (!event.shiftKey && (part === 'row' || index >= 0)) {
+            const next = controls[part === 'row' ? 0 : index + 1]
+            if (next) {
+                handled()
+                void focusRow(row.id, next, false)
+            }
+        }
+        return
+    }
+    if (part !== 'row' && row && !event.altKey && !event.metaKey && !event.shiftKey) {
+        if (event.ctrlKey && (event.key === 'Home' || event.key === 'End')) {
+            handled()
+            if (event.key === 'End') void goOldest(part)
+            else if (selectables.value[0]) void focusRow(selectables.value[0].id, part)
+            return
+        }
+        if (plain) {
+            if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) {
+                handled()
+                const delta = { ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 }[event.key] ?? 0
+                const index = selectables.value.findIndex((candidate) => candidate.id === row.id)
+                const target =
+                    selectables.value[
+                        Math.max(0, Math.min(selectables.value.length - 1, index + delta))
+                    ]
+                if (target) void focusRow(target.id, part)
+                return
+            }
+            if (
+                event.key === 'ArrowLeft' ||
+                event.key === 'ArrowRight' ||
+                event.key === 'Home' ||
+                event.key === 'End'
+            ) {
+                handled()
+                const next =
+                    event.key === 'ArrowLeft'
+                        ? part === 'main' && expandable(row)
+                            ? 'leading'
+                            : 'row'
+                        : event.key === 'Home'
+                          ? expandable(row)
+                              ? 'leading'
+                              : 'main'
+                          : 'main'
+                void focusRow(row.id, next, false)
+                return
+            }
+        }
+    }
+    if (native && (event.key === 'Enter' || event.key === ' ')) return
     if (plain && !event.shiftKey) {
         switch (event.key) {
             case 'ArrowDown':
@@ -670,9 +1000,12 @@ const onKeydown = (event: KeyboardEvent) => {
                 void goOldest()
                 return
             case 'Enter':
-                if (row?.type === 'entry' && row.selectable) {
+                if (row?.type === 'entry') {
                     handled()
-                    if (!event.repeat) void restore(row)
+                    if (!event.repeat) {
+                        if (row.selectable) void restore(row)
+                        else showDetails(row, event.target)
+                    }
                 }
                 return
             case 'Escape':
@@ -680,12 +1013,18 @@ const onKeydown = (event: KeyboardEvent) => {
                 // Back to now first; then the dialog closes, and the tab hands focus to the chart.
                 if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
                 else if (props.surface === 'dialog') emit('close')
-                else list.value?.blur()
+                else event.target.blur()
                 return
             case 'ArrowRight':
-                if (row?.type === 'entry' && row.members.length > 1 && !row.child) {
+                if (row) {
                     handled()
-                    toggleGroup(row, true)
+                    if (
+                        row.type === 'entry' &&
+                        expandable(row) &&
+                        !expandedGroups.value.has(row.id)
+                    )
+                        toggleGroup(row, true)
+                    else void focusRow(row.id, expandable(row) ? 'leading' : 'main', false)
                 }
                 return
             case 'ArrowLeft':
@@ -700,20 +1039,11 @@ const onKeydown = (event: KeyboardEvent) => {
                         )
                         if (group?.type === 'entry') {
                             toggleGroup(group, false)
-                            moveTo(group)
                         }
                     } else toggleGroup(row, false)
                 }
                 return
         }
-    }
-    if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
-        handled()
-        const element = list.value?.querySelector<HTMLElement>(
-            `#${CSS.escape(domId(cursorId.value))}`,
-        )
-        if (row?.type === 'entry' && element) openMenu(row, element)
-        return
     }
     // Keys the list passes on: History, Play, Copy and Show Change run as from the editor.
     const matched = matchBindings(
@@ -726,6 +1056,7 @@ const onKeydown = (event: KeyboardEvent) => {
     const name = matched.names.find((candidate) => passed.includes(candidate))
     if (name && !event.repeat) {
         handled()
+        if (name === 'showChange' && row?.type === 'entry' && !row.selectable) return
         void runCommand(commands[name])
     }
 }
@@ -776,6 +1107,8 @@ onMounted(() => {
     })
 })
 onBeforeUnmount(() => {
+    disposed = true
+    focusToken++
     rememberView()
     cancelAnimationFrame(restoreFrame)
     observer?.disconnect()
@@ -796,12 +1129,7 @@ watch(
 // --- Text
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
-const presentationOf = (row: EntryRow) =>
-    presentRow(row, {
-        ...i18n.value.history,
-        undo: i18n.value.commands.undo.title,
-        redo: i18n.value.commands.redo.title,
-    })
+const presentationOf = (row: EntryRow) => presentRow(row, operationContext.value, recipeOf(row))
 
 const labelOf = (row: EntryRow) => presentationOf(row).full
 
@@ -816,8 +1144,9 @@ const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed'
 
 // Narrow rows omit seconds and note deltas; full times remain in their names.
 const narrow = computed(() => width.value > 0 && width.value < 340)
-const parentTime = computed(() => width.value >= 300)
-const parentIcon = computed(() => width.value >= 280)
+const inlineCount = computed(() => width.value >= 300)
+const showInlineCount = (row: EntryRow) =>
+    inlineCount.value || (recipeOf(row).partial && recipeOf(row).members.length === 1)
 
 const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
 
@@ -835,8 +1164,6 @@ const titleOf = (row: EntryRow) =>
 const nameOf = (row: EntryRow) =>
     [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
 
-const nowTime = computed(() => entries.value[0]?.time ?? session.value.startedAt ?? Date.now())
-
 const dividerText = (entry: Entry) =>
     interpolateRaw(i18n.value.history.continuedFrom, formatDateTime(entry.from ?? entry.time))
 
@@ -852,7 +1179,7 @@ const notCheckedText = computed(() =>
 )
 
 defineExpose({
-    focus: () => list.value?.focus({ preventScroll: true }),
+    focus: () => void focusRow(cursorId.value, 'row', false),
     jumpTo,
     topEntry,
     rememberView,
@@ -865,13 +1192,16 @@ defineExpose({
             ref="list"
             data-history-list
             data-history-focus="list"
-            role="listbox"
-            tabindex="0"
+            role="treegrid"
+            tabindex="-1"
             class="timeline-list overlay-scroller h-full overflow-y-auto overscroll-contain outline-none"
             :aria-label="i18n.history.timeline"
-            :aria-activedescendant="domId(cursorId)"
+            aria-colcount="2"
+            :aria-rowcount="canLoadMore || gap !== undefined ? -1 : positions.size"
             @scroll.passive="onScroll"
             @keydown="onKeydown"
+            @focus.self="focusRow(cursorId, 'row', false)"
+            @focusout="onFocusout"
         >
             <div class="relative" :style="{ height: `${contentHeight}px` }">
                 <template v-for="{ row, top } in visibleRows" :key="row.id">
@@ -879,40 +1209,48 @@ defineExpose({
                     <div
                         v-if="row.type === 'now'"
                         :id="domId(row.id)"
-                        role="option"
-                        class="timeline-row"
-                        :class="{ 'timeline-row-selected': cursorId === row.id }"
-                        :aria-selected="cursorId === row.id"
-                        :aria-posinset="positions.map.get(row.id)"
-                        :aria-setsize="positions.size"
+                        role="row"
+                        aria-level="1"
+                        data-history-row
+                        data-history-part="row"
+                        :tabindex="tabIndex(row, 'row')"
+                        class="timeline-row timeline-now"
+                        :class="{ 'timeline-row-selected': selectedId === row.id }"
+                        :aria-selected="selectedId === row.id"
+                        :aria-rowindex="positions.map.get(row.id)"
                         :style="{ top: `${top}px`, height: `${rowHeight}px` }"
                         @click="onRowClick(row)"
+                        @focusin="onRowFocus($event, row)"
                     >
-                        <span
-                            class="flex size-4 shrink-0 items-center justify-center"
-                            aria-hidden="true"
+                        <div
+                            role="gridcell"
+                            aria-colspan="2"
+                            class="flex min-w-0 flex-1 items-center"
+                            data-history-part="main"
+                            :tabindex="tabIndex(row, 'main')"
                         >
-                            <span class="size-2.5 rounded-full bg-fg" />
-                        </span>
-                        <span class="min-w-0 flex-1 truncate font-bold"
-                            >{{ i18n.history.now
-                            }}<template v-if="headName && !isEmpty">
-                                · {{ headName }}</template
-                            ></span
-                        >
-                        <span class="timeline-time shrink-0">{{ clockOf(nowTime) }}</span>
+                            <span class="timeline-leading" aria-hidden="true">
+                                <span class="size-2.5 rounded-full bg-fg" />
+                            </span>
+                            <span class="timeline-entry-text font-bold">
+                                <span class="block truncate leading-5"
+                                    >{{ i18n.history.now
+                                    }}<template v-if="headLabel && !isEmpty">
+                                        · {{ headLabel }}</template
+                                    ></span
+                                >
+                                <span class="block h-4" aria-hidden="true" />
+                            </span>
+                        </div>
                     </div>
 
                     <!-- After a jump: the newer entries not read yet, read as it comes into view. -->
                     <div
                         v-else-if="row.type === 'gap'"
                         :id="domId(row.id)"
-                        role="option"
-                        aria-disabled="true"
+                        role="status"
                         class="timeline-divider items-center justify-center gap-1.5 font-medium text-fg/80"
                         :class="{ 'motion-safe:animate-pulse': loadingNewer }"
-                        :aria-posinset="positions.map.get(row.id)"
-                        :aria-setsize="positions.size"
                         :style="{ top: `${top}px`, height: `${rowHeight}px` }"
                         data-history-gap
                     >
@@ -935,11 +1273,10 @@ defineExpose({
                     <div
                         v-else-if="row.type === 'divider'"
                         :id="domId(row.id)"
-                        role="option"
-                        aria-disabled="true"
+                        role="presentation"
+                        aria-hidden="true"
+                        data-history-continuation
                         class="timeline-divider items-center"
-                        :aria-posinset="positions.map.get(row.id)"
-                        :aria-setsize="positions.size"
                         :style="{ top: `${top}px`, height: `${DIVIDER}px` }"
                     >
                         <span class="timeline-rule" aria-hidden="true" />
@@ -960,26 +1297,40 @@ defineExpose({
                     </div>
 
                     <div
+                        v-else-if="row.type === 'count'"
+                        role="presentation"
+                        aria-hidden="true"
+                        class="timeline-count-detail"
+                        :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
+                        data-history-count-detail
+                    >
+                        {{ presentationOf(row.parent).count }}
+                    </div>
+
+                    <div
                         v-else
                         :id="domId(row.id)"
-                        role="option"
+                        role="row"
+                        data-history-row
+                        data-history-part="row"
+                        :tabindex="tabIndex(row, 'row')"
+                        :aria-level="row.child ? 2 : 1"
                         class="timeline-row"
                         :class="{
-                            'timeline-row-selected': cursorId === row.id,
+                            'timeline-row-selected': selectedId === row.id,
                             'timeline-row-disabled': !row.selectable,
                             'timeline-row-child': row.child,
                             'timeline-row-counted': isCountedParent(row),
                         }"
-                        :aria-selected="cursorId === row.id"
-                        :aria-disabled="row.selectable ? undefined : true"
+                        :aria-selected="selectedId === row.id"
                         :aria-expanded="
                             row.members.length > 1 && !row.child
                                 ? expandedGroups.has(row.id)
                                 : undefined
                         "
                         :aria-label="nameOf(row)"
-                        :aria-posinset="positions.map.get(row.id)"
-                        :aria-setsize="positions.size"
+                        :aria-description="continuationDescriptions.get(row.id)"
+                        :aria-rowindex="positions.map.get(row.id)"
                         :title="titleOf(row)"
                         :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
                         @click="onRowClick(row)"
@@ -988,95 +1339,118 @@ defineExpose({
                         @pointermove="onRowPointermove"
                         @pointerup="cancelLongPress"
                         @pointercancel="cancelLongPress"
+                        @focusin="onRowFocus($event, row)"
                     >
-                        <template v-if="isCountedParent(row)">
-                            <div class="timeline-group-header" data-history-group-header>
-                                <KindIcon v-if="parentIcon" :kind="row.entry.kind" />
-                                <div class="min-w-0 flex-1 py-1">
-                                    <div class="truncate leading-5" data-history-group-action>
-                                        {{ presentationOf(row).main }}
-                                    </div>
-                                    <div
-                                        v-if="
-                                            presentationOf(row).count ||
-                                            (row.selectable && parentTime)
-                                        "
-                                        class="flex whitespace-nowrap text-xs leading-4"
-                                        data-history-group-caption
-                                    >
-                                        <span
-                                            v-if="presentationOf(row).count"
-                                            class="shrink-0"
-                                            data-history-group-count
-                                            >{{ presentationOf(row).count }}</span
-                                        >
-                                        <span
-                                            v-if="row.selectable && parentTime"
-                                            class="min-w-0 truncate tabular-nums"
-                                            data-history-group-time
-                                            ><template v-if="presentationOf(row).count"
-                                                >&nbsp;· </template
-                                            >{{ timeOf(row) }}</span
-                                        >
-                                    </div>
-                                </div>
-                                <span
-                                    v-if="row.selectable && deltaOf(row)"
-                                    class="timeline-count shrink-0"
-                                    :class="{ hidden: narrow }"
-                                    >{{ deltaOf(row) }}</span
-                                >
+                        <div
+                            class="timeline-entry-header"
+                            :role="expandable(row) ? 'presentation' : 'gridcell'"
+                            :aria-colspan="expandable(row) ? undefined : 2"
+                            :data-history-part="
+                                !expandable(row) && row.selectable ? 'main' : undefined
+                            "
+                            :tabindex="
+                                !expandable(row) && row.selectable
+                                    ? tabIndex(row, 'main')
+                                    : undefined
+                            "
+                            data-history-entry-header
+                            :data-history-group-header="isCountedParent(row) ? '' : undefined"
+                        >
+                            <span v-if="expandable(row)" role="gridcell" class="shrink-0">
                                 <button
-                                    v-if="row.members.length > 1 && !row.child"
                                     type="button"
-                                    class="flex size-11 shrink-0 items-center justify-center rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
+                                    class="timeline-leading rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
                                     :aria-label="labelOf(row)"
                                     :aria-expanded="expandedGroups.has(row.id)"
                                     data-history-disclosure
+                                    data-history-part="leading"
+                                    :tabindex="tabIndex(row, 'leading')"
                                     @pointerdown.stop="cancelLongPress"
-                                    @contextmenu.stop.prevent
+                                    @contextmenu.stop="onContextMenu($event, row)"
                                     @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
                                 >
                                     <ChevronIcon
                                         :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
                                     />
                                 </button>
+                            </span>
+                            <span v-else class="timeline-leading" aria-hidden="true"
+                                ><KindIcon :kind="row.entry.kind"
+                            /></span>
+                            <div
+                                class="min-w-0 flex-1"
+                                :role="expandable(row) ? 'gridcell' : undefined"
+                                :data-history-part="
+                                    expandable(row) && row.selectable ? 'main' : undefined
+                                "
+                                :tabindex="
+                                    expandable(row) && row.selectable
+                                        ? tabIndex(row, 'main')
+                                        : undefined
+                                "
+                            >
+                                <component
+                                    :is="row.selectable ? 'div' : 'button'"
+                                    :type="row.selectable ? undefined : 'button'"
+                                    class="timeline-entry-text block w-full"
+                                    :class="
+                                        !row.selectable
+                                            ? 'rounded-xl outline-offset-[-2px] focus-visible:outline focus-visible:outline-2'
+                                            : ''
+                                    "
+                                    :aria-label="
+                                        row.selectable
+                                            ? undefined
+                                            : `${i18n.history.details.title}: ${nameOf(row)}`
+                                    "
+                                    :data-history-details="row.selectable ? undefined : ''"
+                                    :data-history-part="row.selectable ? undefined : 'main'"
+                                    :tabindex="row.selectable ? undefined : tabIndex(row, 'main')"
+                                    @click="!row.selectable && onDetailsClick($event, row)"
+                                >
+                                    <span
+                                        class="block truncate leading-5"
+                                        data-history-group-action
+                                        >{{ presentationOf(row).main }}</span
+                                    >
+                                    <span class="timeline-entry-caption" data-history-group-caption>
+                                        <span
+                                            class="min-w-0 flex-1 truncate"
+                                            data-history-group-count
+                                        >
+                                            <template
+                                                v-if="
+                                                    showInlineCount(row) &&
+                                                    !(
+                                                        row.members.length > 1 &&
+                                                        expandedGroups.has(row.id)
+                                                    )
+                                                "
+                                                >{{ presentationOf(row).count }}</template
+                                            >
+                                        </span>
+                                        <span
+                                            v-if="row.selectable && !narrow && deltaOf(row)"
+                                            class="timeline-count shrink-0"
+                                            >{{ deltaOf(row) }}</span
+                                        >
+                                        <span
+                                            class="timeline-time shrink-0"
+                                            data-history-group-time
+                                            >{{ timeOf(row) }}</span
+                                        >
+                                    </span>
+                                </component>
                             </div>
-                            <span
-                                v-if="flagTextOf(row)"
-                                class="timeline-group-reason timeline-flag"
-                                data-history-flag
-                            >
-                                <FlagIcon :kind="flagKindOf(row)" />
-                                <span>{{ flagTextOf(row) }}</span>
-                            </span>
-                        </template>
-                        <template v-else>
-                            <KindIcon :kind="row.entry.kind" />
-                            <span
-                                v-if="row.selectable || !narrow"
-                                class="min-w-0 flex-1 truncate"
-                                >{{ labelOf(row) }}</span
-                            >
-                            <!-- A removed or damaged row says why; the label gives way to it. -->
-                            <span
-                                v-if="flagTextOf(row)"
-                                class="timeline-flag flex-1"
-                                data-history-flag
-                            >
-                                <FlagIcon :kind="flagKindOf(row)" />
-                                <span class="leading-tight">{{ flagTextOf(row) }}</span>
-                            </span>
-                            <span
-                                v-if="row.selectable && deltaOf(row)"
-                                class="timeline-count shrink-0"
-                                :class="{ hidden: narrow }"
-                                >{{ deltaOf(row) }}</span
-                            >
-                            <span v-if="row.selectable || !narrow" class="timeline-time shrink-0">{{
-                                timeOf(row)
-                            }}</span>
-                        </template>
+                        </div>
+                        <span
+                            v-if="flagTextOf(row)"
+                            class="timeline-entry-reason timeline-flag"
+                            data-history-flag
+                        >
+                            <FlagIcon :kind="flagKindOf(row)" />
+                            <span>{{ flagTextOf(row) }}</span>
+                        </span>
                     </div>
                 </template>
 
@@ -1194,23 +1568,36 @@ defineExpose({
 
 <style scoped>
 .timeline-row {
-    @apply absolute inset-x-2 flex select-none items-center gap-2 rounded-full px-3 text-sm;
+    @apply absolute inset-x-2 select-none rounded-3xl text-sm;
 }
 
-.timeline-row-counted {
-    @apply block p-0;
+.timeline-entry-header,
+.timeline-now {
+    @apply flex h-11 items-center pr-3;
 }
 
-.timeline-group-header {
-    @apply flex h-11 items-center gap-2 px-3;
+.timeline-leading {
+    @apply flex size-11 shrink-0 items-center justify-center;
 }
 
-.timeline-group-reason.timeline-flag {
+.timeline-entry-text {
+    @apply min-w-0 flex-1 truncate py-1 text-left;
+}
+
+.timeline-entry-caption {
+    @apply flex gap-2 whitespace-nowrap text-xs leading-4;
+}
+
+.timeline-entry-reason.timeline-flag {
     @apply h-8 items-start px-3 leading-4;
 }
 
 .timeline-row-child {
-    @apply pl-8;
+    @apply pl-3;
+}
+
+.timeline-count-detail {
+    @apply absolute inset-x-2 flex items-center pl-11 pr-3 text-xs;
 }
 
 .timeline-row-selected {
@@ -1248,7 +1635,8 @@ defineExpose({
     }
 }
 
-.timeline-list:focus-visible .timeline-row-selected {
+.timeline-row:focus-visible,
+.timeline-row [data-history-part]:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: -2px;
 }

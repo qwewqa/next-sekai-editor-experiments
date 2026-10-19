@@ -24,12 +24,20 @@ import {
     type FolderTreeRef,
 } from '../../../chart/folders'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import {
+    captureName,
+    type NativeOperationInput,
+    type OwnerCounts,
+    type OwnerReference,
+} from '../../../history/operations'
 import { onResetState } from '../../../history/resetHooks'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
 import type { State } from '../../../state'
-import { interpolate, interpolateRaw } from '../../../utils/interpolate'
+import { interpolateRaw } from '../../../utils/interpolate'
+import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { notify } from '../../notification'
 import { view } from '../../view'
 import { normalizeName } from './model'
@@ -78,6 +86,8 @@ export type FolderStrings = {
 /** Folder editing for one collection; every change is one undoable step. */
 export type FolderOps<K> = ReturnType<typeof createFolderOps<K, FolderMember & { name: string }>>
 
+type FolderReference = Extract<NativeOperationInput, { id: 'nse.owner.ungroup' }>['data']['target']
+
 // A declaration, so groups and stages can build their ops while this module is still loading.
 export function createFolderOps<K, V extends FolderMember & { name: string }>(config: {
     entries: () => ReadonlyMap<K, V>
@@ -100,16 +110,52 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
 
     const nameOf = (id: K) => config.entries().get(id)?.name ?? ''
     const folderName = (id: FolderId) => config.folders().get(id)?.name ?? ''
+    const domain = config.owner === 'groupId' ? 'group' : 'stage'
+    const folderKind = domain === 'group' ? 'groupFolder' : 'stageFolder'
+    const reference = (id: FolderId): FolderReference => ({
+        kind: folderKind,
+        id,
+        name: captureName(folderName(id)),
+    })
+    const entryReference = (id: K): OwnerReference => ({
+        kind: domain,
+        id: id as unknown as number,
+        name: captureName(nameOf(id)),
+    })
+    const counts = (entries: number, folders = 0): OwnerCounts => ({
+        ...(entries ? { [domain]: entries } : {}),
+        ...(folders ? { [folderKind]: folders } : {}),
+    })
+    const moveInput = (
+        id: K,
+        before: readonly FolderTreeItem<K>[],
+        next: readonly FolderTreeItem<K>[],
+    ): NativeOperationInput => {
+        const from = folderOfEntry(before, id)?.id
+        const to = folderOfEntry(next, id)?.id
+        return {
+            id: 'nse.owner.move',
+            data: {
+                target: entryReference(id),
+                destination: to === undefined ? null : reference(to),
+                category:
+                    to !== from ? (to === undefined ? 'outOfFolder' : 'intoFolder') : 'reorder',
+                fromIndex: entriesInTreeOrder(before).indexOf(id),
+                toIndex: entriesInTreeOrder(next).indexOf(id),
+            },
+        }
+    }
 
     const commit = (
         next: readonly FolderTreeItem<K>[],
-        message: () => string,
+        input: NativeOperationInput,
         folders: Folders = config.folders(),
         base: State = state.value,
     ) => {
         const flat = flattenFolderTree(next, config.entriesOf(base), folders)
-        pushState(message, config.withData(base, flat.entries, flat.folders))
-        notify(message)
+        const operation = createHistoryOperation(input)
+        pushState(operation, config.withData(base, flat.entries, flat.folders))
+        notify(() => operation.fallback.text)
     }
 
     /** "#1", "#2", … as new groups and stages are named. */
@@ -121,7 +167,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
      */
     const duplicateIn = (
         ids: readonly K[],
-        message: (copies: ReadonlyMap<K, K>) => () => string,
+        source: OwnerReference | undefined,
         folderCopies: ReadonlyMap<FolderId, FolderId> = new Map(),
         folders: Folders = config.folders(),
     ) => {
@@ -143,7 +189,19 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             config.withData(state.value, entries, config.folders()),
             copies,
         )
-        commit(insertCopiesInTree(tree(), copies, folderCopies), message(copies), folders, base)
+        commit(
+            insertCopiesInTree(tree(), copies, folderCopies),
+            {
+                id: 'nse.owner.duplicate',
+                data: {
+                    domain,
+                    created: counts(copies.size, folderCopies.size),
+                    ...(source ? { source } : {}),
+                },
+            },
+            folders,
+            base,
+        )
         return copies
     }
 
@@ -171,6 +229,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         tree,
         members,
         name: folderName,
+        reference,
 
         /**
          * Adds a folder: at the end, or holding entries where the first of them
@@ -201,7 +260,16 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             }
             commit(
                 next,
-                interpolate(() => i18n.value.workspace.folders.added, name),
+                {
+                    id: 'nse.owner.create',
+                    data: {
+                        target: { kind: folderKind, id, name: captureName(name) },
+                        destination: null,
+                        gathered: next.flatMap((item) =>
+                            item.type === 'folder' && item.id === id ? item.members : [],
+                        ).length,
+                    },
+                },
                 folders,
             )
             return id
@@ -215,33 +283,24 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             folders.set(id, { ...folder, name })
             commit(
                 tree(),
-                interpolate(() => i18n.value.workspace.folders.renamed, folder.name, name),
+                {
+                    id: 'nse.owner.rename',
+                    data: {
+                        target: reference(id),
+                        before: captureName(folder.name),
+                        after: captureName(name),
+                    },
+                },
                 folders,
             )
         },
 
         /** Moves an entry into, within or out of folders. */
         placeEntry(id: K, place: EntryPlace<K>) {
-            const from = folderOfEntry(tree(), id)?.id
-            const next = moveEntryInTree(tree(), id, place)
+            const before = tree()
+            const next = moveEntryInTree(before, id, place)
             if (!next) return
-            const name = nameOf(id)
-            const to = place.folder
-            const message =
-                to !== undefined && to !== from
-                    ? interpolate(
-                          () => i18n.value.workspace.folders.movedInto,
-                          name,
-                          folderName(to),
-                      )
-                    : place.folder === undefined && from !== undefined
-                      ? interpolate(
-                            () => i18n.value.workspace.folders.movedOut,
-                            name,
-                            folderName(from),
-                        )
-                      : interpolate(() => config.strings().movedEntry, name)
-            commit(next, message)
+            commit(next, moveInput(id, before, next))
         },
 
         /** Moves entries to a folder's end, or out of their folders, as one step; those already there stay put. */
@@ -249,63 +308,66 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             const before = tree()
             const next = moveEntriesInTree(before, ids, folder)
             if (!next) return
-            const count = `${[...ids].filter((id) => folderOfEntry(before, id)?.id !== folder).length}`
-            commit(
-                next,
-                folder === undefined
-                    ? interpolate(() => config.strings().movedSelectedOut, count)
-                    : interpolate(
-                          () => config.strings().movedSelectedInto,
-                          count,
-                          folderName(folder),
-                      ),
-            )
+            const targets = [...ids].filter(
+                (id) =>
+                    config.entries().has(id) &&
+                    folderOfEntry(before, id)?.id !== folderOfEntry(next, id)?.id,
+            ).length
+            commit(next, {
+                id: 'nse.owner.moveMany',
+                data: {
+                    domain,
+                    targets,
+                    destination: folder === undefined ? null : reference(folder),
+                },
+            })
         },
 
         /** Steps an entry, crossing folder edges; collapsed folders are passed whole. */
         stepEntry(id: K, offset: -1 | 1) {
-            const from = folderOfEntry(tree(), id)?.id
-            const next = stepEntryInTree(tree(), id, offset, isFolderExpanded)
+            const before = tree()
+            const next = stepEntryInTree(before, id, offset, isFolderExpanded)
             if (!next) return
-            const to = folderOfEntry(next, id)?.id
-            const name = nameOf(id)
-            commit(
-                next,
-                to !== undefined && to !== from
-                    ? interpolate(
-                          () => i18n.value.workspace.folders.movedInto,
-                          name,
-                          folderName(to),
-                      )
-                    : to === undefined && from !== undefined
-                      ? interpolate(
-                            () => i18n.value.workspace.folders.movedOut,
-                            name,
-                            folderName(from),
-                        )
-                      : interpolate(() => config.strings().movedEntry, name),
-            )
+            commit(next, moveInput(id, before, next))
         },
 
         canStepEntry: (id: K, offset: -1 | 1) =>
             !!stepEntryInTree(tree(), id, offset, isFolderExpanded),
 
         placeFolder(id: FolderId, before?: FolderTreeRef<K>) {
-            const next = moveFolderInTree(tree(), id, before)
+            const previous = tree()
+            const next = moveFolderInTree(previous, id, before)
             if (!next) return
-            commit(
-                next,
-                interpolate(() => i18n.value.workspace.folders.moved, folderName(id)),
-            )
+            commit(next, {
+                id: 'nse.owner.move',
+                data: {
+                    target: reference(id),
+                    destination: null,
+                    category: 'reorder',
+                    fromIndex: previous.findIndex(
+                        (item) => item.type === 'folder' && item.id === id,
+                    ),
+                    toIndex: next.findIndex((item) => item.type === 'folder' && item.id === id),
+                },
+            })
         },
 
         stepFolder(id: FolderId, offset: -1 | 1) {
-            const next = stepFolderInTree(tree(), id, offset)
+            const previous = tree()
+            const next = stepFolderInTree(previous, id, offset)
             if (!next) return
-            commit(
-                next,
-                interpolate(() => i18n.value.workspace.folders.moved, folderName(id)),
-            )
+            commit(next, {
+                id: 'nse.owner.move',
+                data: {
+                    target: reference(id),
+                    destination: null,
+                    category: 'reorder',
+                    fromIndex: previous.findIndex(
+                        (item) => item.type === 'folder' && item.id === id,
+                    ),
+                    toIndex: next.findIndex((item) => item.type === 'folder' && item.id === id),
+                },
+            })
         },
 
         canStepFolder: (id: FolderId, offset: -1 | 1) => !!stepFolderInTree(tree(), id, offset),
@@ -314,10 +376,9 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         duplicate(ids: ReadonlySet<K>): K[] {
             const sources = entriesInTreeOrder(tree()).filter((id) => ids.has(id))
             if (!sources.length) return []
-            const copies = duplicateIn(sources, (copies) =>
-                copies.size === 1
-                    ? interpolate(() => config.strings().duplicated, nameOf(sources[0] as K))
-                    : interpolate(() => config.strings().duplicatedSelected, `${copies.size}`),
+            const copies = duplicateIn(
+                sources,
+                sources.length === 1 ? entryReference(sources[0] as K) : undefined,
             )
             return sources.flatMap((id) => {
                 const copy = copies.get(id)
@@ -327,17 +388,11 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
 
         /** Duplicates a folder with its members and their objects; returns the copy. */
         duplicateFolder(id: FolderId) {
-            const name = folderName(id)
             const folders: Folders = new Map(config.folders())
             const copies = copyFolders(folders, [id])
             const copy = copies.get(id)
             if (copy === undefined) return
-            duplicateIn(
-                [],
-                () => interpolate(() => i18n.value.workspace.folders.duplicated, name),
-                copies,
-                folders,
-            )
+            duplicateIn([], reference(id), copies, folders)
             return copy
         },
 
@@ -351,22 +406,13 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             const sources = entriesInTreeOrder(tree()).filter((id) => ids.includes(id))
             if (!sources.length && !folderCopies.size) return { entries: [], folders: [] }
             const [only] = folderCopies.keys()
-            const message = (copies: ReadonlyMap<K, K>) =>
-                !folderCopies.size && copies.size === 1
-                    ? interpolate(() => config.strings().duplicated, nameOf(sources[0] as K))
-                    : !folderCopies.size
-                      ? interpolate(() => config.strings().duplicatedSelected, `${copies.size}`)
-                      : !sources.length && folderCopies.size === 1 && only !== undefined
-                        ? interpolate(
-                              () => i18n.value.workspace.folders.duplicated,
-                              folderName(only),
-                          )
-                        : interpolate(
-                              () => config.strings().duplicatedSelectedFolders,
-                              `${folderCopies.size}`,
-                              `${copies.size}`,
-                          )
-            const copies = new Set(duplicateIn(sources, message, folderCopies, folders).values())
+            const source =
+                !folderCopies.size && sources.length === 1
+                    ? entryReference(sources[0] as K)
+                    : !sources.length && folderCopies.size === 1 && only !== undefined
+                      ? reference(only)
+                      : undefined
+            const copies = new Set(duplicateIn(sources, source, folderCopies, folders).values())
             return {
                 entries: entriesInTreeOrder(tree()).filter((id) => copies.has(id)),
                 folders: [...folderCopies.values()],
@@ -375,56 +421,69 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
 
         /** Removes a folder, keeping its members where they are. */
         ungroup(id: FolderId) {
-            const name = folderName(id)
+            const target = reference(id)
+            const released = members(id).length
             const folders: Folders = new Map(config.folders())
             folders.delete(id)
             commit(
                 ungroupInTree(tree(), id),
-                interpolate(() => i18n.value.workspace.folders.ungrouped, name),
+                { id: 'nse.owner.ungroup', data: { target, released } },
                 folders,
             )
         },
 
         /** Deletes a folder with its members and their objects, after confirming. */
-        async remove(id: FolderId) {
-            const name = folderName(id)
-            const ids = new Set(members(id))
-            if (ids.size) {
-                const confirmed = await showModal(ConfirmModal, {
-                    title: () => config.strings().deleteFolderTitle,
-                    message: () =>
-                        interpolateRaw(
-                            config.strings().deleteFolderMessage,
-                            name,
-                            `${ids.size}`,
-                            `${[...ids].reduce(
-                                (sum, member) =>
-                                    sum +
-                                    (ownedCounts(config.owner).get(member as unknown as number) ??
-                                        0),
-                                0,
-                            )}`,
-                        ),
-                    confirm: () => i18n.value.modals.confirm.delete,
-                    destructive: true,
-                })
-                if (!confirmed || !config.folders().has(id)) return
-            }
-            const next = removeEntriesFromTree(removeFolderFromTree(tree(), id), ids)
-            const base = ids.size ? config.removeEntries(ids) : state.value
-            const folders: Folders = new Map(config.folders())
-            folders.delete(id)
-            commit(
-                next,
-                interpolate(() => i18n.value.workspace.folders.deleted, name),
-                folders,
-                base,
-            )
-            if (ids.size)
-                view.entities = {
-                    hovered: [],
-                    creating: [],
+        async remove(id: FolderId, signal?: AbortSignal) {
+            const guard = createAsyncEditGuard(signal)
+            try {
+                if (!guard.isCurrent() || !config.folders().has(id)) return false
+                const name = folderName(id)
+                const ids = new Set(members(id))
+                const objects = [...ids].reduce(
+                    (sum, member) =>
+                        sum + (ownedCounts(config.owner).get(member as unknown as number) ?? 0),
+                    0,
+                )
+                if (ids.size) {
+                    const confirmed = await showModal(ConfirmModal, {
+                        title: () => config.strings().deleteFolderTitle,
+                        message: () =>
+                            interpolateRaw(
+                                config.strings().deleteFolderMessage,
+                                name,
+                                `${ids.size}`,
+                                `${objects}`,
+                            ),
+                        confirm: () => i18n.value.modals.confirm.delete,
+                        destructive: true,
+                    })
+                    if (!confirmed || !config.folders().has(id)) return false
                 }
+                if (!guard.isCurrent()) return false
+                const target = reference(id)
+                const removed = counts(
+                    [...ids].filter((member) => config.entries().has(member)).length,
+                    config.folders().has(id) ? 1 : 0,
+                )
+                const next = removeEntriesFromTree(removeFolderFromTree(tree(), id), ids)
+                const base = ids.size ? config.removeEntries(ids) : state.value
+                const folders: Folders = new Map(config.folders())
+                folders.delete(id)
+                commit(
+                    next,
+                    { id: 'nse.owner.delete', data: { domain, removed, target } },
+                    folders,
+                    base,
+                )
+                if (ids.size)
+                    view.entities = {
+                        hovered: [],
+                        creating: [],
+                    }
+                return true
+            } finally {
+                guard.dispose()
+            }
         },
 
         /** The state with an entry moved to the end of a folder, as part of another edit. */
@@ -439,8 +498,8 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         },
 
         /** Drops deleted entries from the tree, keeping folders in place. */
-        commitRemoval(ids: ReadonlySet<K>, base: State, message: () => string) {
-            commit(removeEntriesFromTree(tree(), ids), message, config.folders(), base)
+        commitRemoval(ids: ReadonlySet<K>, base: State, input: NativeOperationInput) {
+            commit(removeEntriesFromTree(tree(), ids), input, config.folders(), base)
         },
 
         /**
@@ -452,23 +511,30 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             const gone = new Set([...folderIds].filter((id) => config.folders().has(id)))
             if (!ids.size && !gone.size) return
             const [only] = gone
-            const name = only === undefined ? '' : folderName(only)
-            const message = !gone.size
-                ? interpolate(() => config.strings().deletedSelected, `${ids.size}`)
-                : gone.size === 1 && only !== undefined && members(only).length === ids.size
-                  ? interpolate(() => i18n.value.workspace.folders.deleted, name)
-                  : interpolate(
-                        () => config.strings().deletedSelectedFolders,
-                        `${gone.size}`,
-                        `${ids.size}`,
-                    )
+            const target =
+                gone.size === 1 &&
+                only !== undefined &&
+                members(only).length === ids.size &&
+                members(only).every((id) => ids.has(id))
+                    ? reference(only)
+                    : !gone.size && ids.size === 1
+                      ? entryReference([...ids][0] as K)
+                      : undefined
+            const input = {
+                id: 'nse.owner.delete',
+                data: {
+                    domain,
+                    removed: counts(ids.size, gone.size),
+                    ...(target ? { target } : {}),
+                },
+            } as const
             const folders: Folders = new Map(config.folders())
             for (const id of gone) folders.delete(id)
             commit(
                 removeEntriesFromTree(tree(), ids).filter(
                     (item) => item.type !== 'folder' || !gone.has(item.id),
                 ),
-                message,
+                input,
                 folders,
                 ids.size ? config.removeEntries(ids) : state.value,
             )

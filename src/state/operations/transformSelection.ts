@@ -1,4 +1,5 @@
 import type { State } from '..'
+import type { NativeCounts } from '../../history/operations'
 import type { Entity } from '../entities'
 import { addBpm, removeBpm } from '../mutations/bpm'
 import { addCameraEventJoint, removeCameraEventJoint } from '../mutations/events/camera'
@@ -25,6 +26,7 @@ import { editSelectedStageMaskEvent } from './events/stage/mask'
 import { editSelectedStagePivotEvent } from './events/stage/pivot'
 import { editSelectedStageStyleEvent } from './events/stage/style'
 import { editSelectedStageTransformEvent } from './events/stage/transform'
+import { changedNativeCounts } from './historyReceipts'
 import { editSelectedNote } from './note'
 import { editSelectedTimeScale } from './timeScale'
 
@@ -126,11 +128,18 @@ export const inStoredOrder = <T>(
         .map(({ item }) => item)
 }
 
-export const transformSelection = (
+export type SelectionTransformResult = {
+    state: State
+    counts: NativeCounts
+    replacements: ReadonlyMap<Entity, Entity>
+    applications: ReadonlyMap<Entity, Entity>
+}
+
+export const transformSelectionWithReceipt = (
     source: State,
     selected: Entity[],
     changes: Map<EditableEntity, EditableProperties>,
-): State => {
+): SelectionTransformResult => {
     const destinations = new Map<string, number>()
     const destinationOf = (entity: TimingEntity, object: EditableProperties) =>
         `${entity.type}:${'groupId' in entity ? entity.groupId : ''}:${'stageId' in entity ? entity.stageId : ''}:${object.beat ?? entity.beat}`
@@ -147,7 +156,13 @@ export const transformSelection = (
                 ([key, value]) => value !== (entity as unknown as Record<string, unknown>)[key],
             ) || collides(entity, object),
     )
-    if (!changed.length) return source
+    if (!changed.length)
+        return {
+            state: source,
+            counts: {},
+            replacements: new Map(selected.map((entity) => [entity, entity])),
+            applications: new Map<Entity, Entity>(),
+        }
     const stays = (entity: EditableEntity, object: EditableProperties) =>
         (object.beat ?? entity.beat) === entity.beat && !collides(entity, object)
     const transaction = createTransaction(source)
@@ -203,11 +218,36 @@ export const transformSelection = (
     ) {
         addBpm(transaction, initialBpm)
     }
-    const result = transaction.commit(
-        [...new Set(selected)].flatMap((entity) => replacements.get(entity) ?? [entity]),
+    const selection = [...new Set(selected)].flatMap(
+        (entity) => replacements.get(entity) ?? [entity],
     )
+    const result = transaction.commit(selection)
+    const effective = new Map(
+        selection.map((entity, index) => [entity, result.selectedEntities[index]]),
+    )
+    const applied = new Map<Entity, Entity>()
+    const live = new Map<Entity, Entity>()
+    for (const entity of new Set(selected)) {
+        const raw = replacements.get(entity)?.[0] ?? entity
+        const after = effective.get(raw)
+        if (!after) continue
+        if (replacements.has(entity)) applied.set(entity, after)
+        if (getInStoreGrid(result.store.grid, after.type, after.beat)?.includes(after))
+            live.set(entity, after)
+    }
     result.selectedEntities = result.selectedEntities.filter((entity) =>
         getInStoreGrid(result.store.grid, entity.type, entity.beat)?.includes(entity),
     )
-    return result
+    return {
+        state: result,
+        counts: changedNativeCounts([...applied].map(([before, after]) => ({ before, after }))),
+        replacements: live,
+        applications: applied,
+    }
 }
+
+export const transformSelection = (
+    source: State,
+    selected: Entity[],
+    changes: Map<EditableEntity, EditableProperties>,
+): State => transformSelectionWithReceipt(source, selected, changes).state
