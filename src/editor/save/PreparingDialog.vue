@@ -52,8 +52,7 @@ watch(
     },
 )
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg'
+const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
@@ -76,7 +75,7 @@ const buttonClass =
         <div class="flex justify-end gap-2">
             <button
                 type="button"
-                class="bg-button active:bg-accent active:text-on-accent"
+                class="btn-secondary"
                 :class="buttonClass"
                 @click="emit('close', false)"
             >
@@ -87,7 +86,7 @@ const buttonClass =
                 ref="readyButton"
                 type="button"
                 :aria-describedby="`${ids}-text`"
-                class="bg-accent text-on-accent active:bg-button active:text-fg"
+                class="btn-primary"
                 :class="buttonClass"
                 @click="emit('close', true)"
             >

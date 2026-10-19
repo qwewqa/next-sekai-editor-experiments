@@ -35,7 +35,7 @@ const links = computed(() => [
 ])
 
 const buttonClass =
-    'inline-flex h-9 max-w-full items-center gap-1 rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
+    'btn btn-secondary inline-flex h-9 max-w-full items-center gap-1 rounded-full px-4'
 
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)

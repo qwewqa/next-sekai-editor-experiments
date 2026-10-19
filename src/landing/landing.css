@@ -8,12 +8,12 @@
 @layer components {
     /* Links are underlined ink, never accent: mint fails contrast on the light surface. */
     .link {
-        @apply rounded-sm text-fg-strong underline underline-offset-2 outline-none transition-colors hover:decoration-2 focus-visible:ring-2 focus-visible:ring-fg;
+        @apply focus-out rounded-sm text-fg-strong underline underline-offset-2 outline outline-2 outline-transparent transition-colors hover:decoration-2;
     }
 
     /* A button on a header band, as in the editor's dialogs. */
     .band-button {
-        @apply inline-flex h-9 shrink-0 items-center rounded-full px-4 font-bold outline-none transition-colors hover:bg-band-hover focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent;
+        @apply ghost ghost-band inline-flex h-9 shrink-0 items-center rounded-full px-4 font-bold;
     }
 }
 

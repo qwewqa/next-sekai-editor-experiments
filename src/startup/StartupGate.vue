@@ -54,8 +54,7 @@ watch(
     { flush: 'post' },
 )
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
+const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
@@ -72,7 +71,7 @@ const buttonClass =
         <template v-if="shown">
             <svg
                 v-if="startupGate.phase === 'opening'"
-                class="size-8 animate-spin text-accent motion-reduce:animate-none"
+                class="size-8 animate-spin text-fg motion-reduce:animate-none"
                 viewBox="0 0 24 24"
                 fill="none"
                 aria-hidden="true"
