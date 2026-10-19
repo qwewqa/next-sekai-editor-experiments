@@ -8,6 +8,10 @@
  * a hold the pointer cannot see (a held key, a scrub), and, opt-in, from ARIA on the recipe's own
  * classes, so an attribute never restyles a control that did not ask for it.
  *
+ * Rows: .row-current, .row-checked and .row-drop colour a row by state; .row-select is a whole
+ * selectable row (a label holding a hidden radio or checkbox) with its hover, press, checked and
+ * focus looks.
+ *
  * Order matters: rules of equal specificity are arranged so press beats hover and on beats hover.
  *
  * Hover rules sit under (hover: hover) and (pointer: fine), the query Tailwind's hover: variant
@@ -234,6 +238,50 @@
         @apply bg-selected ring-2 ring-inset ring-accent-strong;
     }
 
+    /* A selectable row: a label holding a hidden input.peer, radio or checkbox. A checked radio row
+       is the raised current row; a checkbox row keeps only its mark. Hover and press are one step
+       each; a checked radio row keeps its raised face on hover and sinks on press. The ring is the
+       edge ring of .focus-edge, drawn while the input has keyboard focus.
+       Specificity does the ordering, so none of it needs !important: the checked rule outranks
+       hover, press follows hover, and the checked press outranks the checked rule.
+       Every :has() rule stands alone, since a selector list holding one is dropped whole on
+       Firefox 105. */
+    .row-select {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+        @apply transition-colors;
+    }
+
+    .row-select:has(input[type='radio']:checked) {
+        @apply bg-button shadow-md;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .row-select:hover {
+            @apply bg-band-hover;
+        }
+    }
+
+    .row-select:has(:active) {
+        @apply bg-ghost-press text-fg-strong;
+    }
+
+    .row-select:has(input[type='radio']:checked):has(:active) {
+        @apply bg-press;
+    }
+
+    .row-select:has(:focus-visible) {
+        outline-color: rgb(var(--color-fg));
+    }
+
+    /* Firefox before 121 has no :has(): the row rings whenever its input has focus, a click
+       included. */
+    @supports not selector(:has(*)) {
+        .row-select:focus-within {
+            outline-color: rgb(var(--color-fg));
+        }
+    }
+
     /* --- Switches (ToggleSwitch): mint track and ink knob when on. */
     .switch-track {
         @apply bg-toggle-off;
@@ -264,6 +312,27 @@
         .focus-ring:focus-visible,
         .focus-edge:focus-visible,
         .field:focus {
+            outline-width: 4px;
+            outline-offset: -4px;
+        }
+
+        /* A row has no resting edge; the checked radio row is outlined, and focus thickens inward. */
+        .row-select {
+            outline-style: none;
+        }
+
+        .row-select:has(input[type='radio']:checked) {
+            outline-style: solid;
+            outline-color: Highlight;
+        }
+
+        .row-select:has(:focus-visible) {
+            outline-style: solid;
+            outline-width: 4px;
+            outline-offset: -4px;
+        }
+
+        .focus-edge:has(:focus-visible) {
             outline-width: 4px;
             outline-offset: -4px;
         }

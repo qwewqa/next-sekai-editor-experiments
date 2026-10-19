@@ -378,6 +378,7 @@ module.exports = plugin(({ addComponents }) => {
 | `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5 | | | | |
 | `focus-ring` | Only the focus rule, for elements that are not buttons | | | | |
 | `focus-edge` | For rows and menu rows: a transparent 2 px edge outline that takes `fg` on `:focus-visible` (principle 10) | | | Ring at the edge, `fg` | |
+| `row-select` | A selectable row: a label holding a hidden `input.peer`, radio or checkbox. A checked radio row is the raised current row (`button`, `shadow-md`); a checkbox row keeps only its mark. A transparent 2 px edge outline | `band-hover`; a checked radio row keeps `button` | `ghost-press` with `fg-strong`; a checked radio row `press` | Ring at the edge, `fg`, while the input has `:focus-visible` (`:focus-within` where `:has()` is missing) | Set at the call site (40 %) |
 | `focus-out` | For faces under 32 px: the ring 1 px outside in `fg` (white inside `.surface-chrome`) | | | | |
 | `holds-open` | Opt-in: hold the hover look while `aria-expanded='true'` | | | | |
 | `surface-chrome` | The chrome tier (3.1) | | | | |

@@ -32,7 +32,7 @@ watch(
 
 <template>
     <label
-        class="asset-row focus-edge relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:disabled]:pointer-events-none has-[:active]:!bg-ghost-press has-[:checked]:bg-button has-[:checked]:has-[:active]:!bg-press has-[:active]:!text-fg-strong has-[:disabled]:opacity-40 has-[:checked]:shadow-md has-[:focus-visible]:outline-fg [@media(hover:hover)]:hover:bg-band-hover [@media(hover:hover)]:has-[:checked]:hover:bg-button"
+        class="asset-row row-select relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-40"
     >
         <input
             type="radio"
