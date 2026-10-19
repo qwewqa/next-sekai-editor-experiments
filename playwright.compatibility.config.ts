@@ -48,10 +48,10 @@ export default defineConfig({
             timeout: 60_000,
             use: { browserName: 'webkit' },
         },
-        // Firefox-specific keyboard defaults such as quick find and Backspace.
+        // Firefox-specific keyboard defaults such as quick find and Backspace, and dialog backdrop presses.
         {
             name: 'firefox-chrome',
-            testMatch: ['editorChrome.spec.ts', 'shortcuts.spec.ts'],
+            testMatch: ['editorChrome.spec.ts', 'shortcuts.spec.ts', 'modalBackdrop.spec.ts'],
             use: { browserName: 'firefox' },
         },
         {
