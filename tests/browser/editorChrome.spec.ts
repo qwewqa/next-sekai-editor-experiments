@@ -357,7 +357,9 @@ for (const hasTouch of [false, true]) {
             })
             const bar = page.locator('[data-status-bar]')
             await expect(bar.locator('[data-file-chip]')).toHaveText('')
-            await expect(bar.locator('[data-file-chip]')).toHaveAccessibleName(/newer on disk/)
+            await expect(bar.locator('[data-file-chip]')).toHaveAccessibleName(
+                /a newer version is on disk/,
+            )
             await expect(bar).toHaveCSS('column-gap', '4px')
             expect((await bar.boundingBox())!.width).toBe(360)
             expect((await bar.boundingBox())!.height).toBe(32)
@@ -365,6 +367,9 @@ for (const hasTouch of [false, true]) {
             const identity = bar.locator('[data-status-label]')
             const original = await identity.elementHandle()
             const scopes = await bar.locator('.status-chip').count()
+            const scopeNames = await bar
+                .locator('.status-chip [data-status-part="name"]')
+                .allTextContents()
             await identity.focus()
             for (const [width, height] of [
                 [319, 32],
@@ -382,8 +387,20 @@ for (const hasTouch of [false, true]) {
                     width! < 768 ? 0 : 1,
                 )
                 await expect(bar.locator('[data-status-target]')).toHaveCount(
-                    width! < 320 ? 0 : scopes,
+                    width! >= 320 && width! < 768 ? scopes : 0,
                 )
+                if (width! >= 768) {
+                    const names = bar.locator('.status-chip [data-status-part="name"]')
+                    await expect(names).toHaveText(scopeNames)
+                    for (const name of await names.all()) {
+                        await expect(name).toBeVisible()
+                        expect(
+                            await name.evaluate(
+                                (element) => element.scrollWidth <= element.clientWidth,
+                            ),
+                        ).toBe(true)
+                    }
+                }
                 await expect(identity).toBeFocused()
                 expect(
                     await identity.evaluate((element, original) => element === original, original),
