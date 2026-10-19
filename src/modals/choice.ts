@@ -1,10 +1,6 @@
 import { showModal } from '.'
 import { i18n } from '../i18n'
-import { GUARD_MS } from './activationGuard'
 import ChoiceModal from './ChoiceModal.vue'
-
-// The guard has one definition, in activationGuard.ts; it is re-exported here for importers of choice.ts.
-export { GUARD_MS }
 
 export type Choice<T> = {
     value: T

@@ -50,7 +50,7 @@ const titleId = useId()
         <slot name="header" />
         <button
             type="button"
-            class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+            class="ghost ghost-band flex size-9 shrink-0 items-center justify-center rounded-full"
             :aria-label="i18n.modals.close"
             :title="i18n.modals.close"
             @click="$emit('close')"

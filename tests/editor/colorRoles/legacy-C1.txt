@@ -1,11 +1,8 @@
 # Colour package C1: files that still break a rule in tests/editor/colorRoles.test.ts.
 # Delete this file as the package's last commit.
-src/modals/BaseModal.vue
-src/modals/InfoModal.vue
 src/modals/form/BaseField.vue
 src/modals/form/ChoiceField.vue
 src/modals/form/FileField.vue
-src/modals/form/FormModal.vue
 src/modals/form/KeyField.vue
 src/modals/form/MultiNumberField.vue
 src/modals/form/MultiSelectField.vue

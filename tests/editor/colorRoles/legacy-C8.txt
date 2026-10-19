@@ -1,9 +1,0 @@
-# Colour package C8: files that still break a rule in tests/editor/colorRoles.test.ts.
-# Delete this file as the package's last commit.
-src/editor/history/ChangeArrows.vue
-src/editor/history/GoToIcon.vue
-src/editor/history/GoToList.vue
-src/editor/history/HistoryDialog.vue
-src/editor/history/HistoryPanel.vue
-src/editor/history/PeekBar.vue
-src/editor/history/TimelineList.vue
