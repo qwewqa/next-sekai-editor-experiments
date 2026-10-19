@@ -5,7 +5,7 @@ import {
 } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { addLoadNotice, notify } from '../../editor/notification'
-import { type JsonValue } from '../../history/operations'
+import type { JsonValue } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
 import { isPeeking, liveState, replaceState } from '../../history/stack'
 import { i18n } from '../../i18n'

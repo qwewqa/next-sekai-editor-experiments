@@ -596,10 +596,11 @@ export class Flusher {
             operation: start.operation,
             recoveryContext: start.recoveryContext,
         })
+        if (!step.recoveryContext) throw new Error('Recovery baseline has no context')
         session.pending.push({
             kind: 'recovered',
             operation: step.operation,
-            recoveryContext: step.recoveryContext!,
+            recoveryContext: step.recoveryContext,
             recoveryBaseline: step,
             seq: session.nextSeq++,
             wall: this.now(),
@@ -693,7 +694,7 @@ export class Flusher {
             if (result.kind === 'notHead' && this.sessions.includes(session)) {
                 // Another tab continued the chain: this session goes on as a fork (D10), which
                 // starts with a `continue` entry at the head when it has no entries of its own.
-                const fork = this.fork(session, result.lastSeq ?? session.ackedSeq)
+                const fork = this.fork(session, result.lastSeq)
                 const head = fork.stack.committed.at(fork.stack.committed.index)
                 if (!fork.pending.length && head?.hash)
                     this.add(
@@ -1239,30 +1240,33 @@ export class Flusher {
                 hash,
                 ...(memo.known ? { known: memo.known } : {}),
             })),
-            entries: entries.map((entry) => ({
-                seq: entry.seq,
-                wall: entry.wall,
-                ...captureEntryDescription(entry),
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
-                dirty: entry.dirty,
-                ...(entry.recoveryBaseline
-                    ? {
-                          stack: {
-                              keep: 0,
-                              push: [
-                                  {
-                                      snapshot: entry.snapshot ?? snapshotOf.get(entry)!,
-                                      step: entry.recoveryBaseline,
-                                  },
-                              ],
-                              index: 0,
-                          },
-                      }
-                    : {}),
-                ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
-                ...(entry.device ? { device: entry.device } : {}),
-            })),
+            entries: entries.map((entry) => {
+                const snapshot = entry.snapshot ?? snapshotOf.get(entry)
+                if (snapshot === undefined) throw new Error('Missing flush entry snapshot')
+                return {
+                    seq: entry.seq,
+                    wall: entry.wall,
+                    ...captureEntryDescription(entry),
+                    snapshot,
+                    dirty: entry.dirty,
+                    ...(entry.recoveryBaseline
+                        ? {
+                              stack: {
+                                  keep: 0,
+                                  push: [
+                                      {
+                                          snapshot,
+                                          step: entry.recoveryBaseline,
+                                      },
+                                  ],
+                                  index: 0,
+                              },
+                          }
+                        : {}),
+                    ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+                    ...(entry.device ? { device: entry.device } : {}),
+                }
+            }),
             media,
             held,
             ...(unconfirmed.length ? { unconfirmed } : {}),

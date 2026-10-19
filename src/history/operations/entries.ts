@@ -72,6 +72,11 @@ export const pushedStep = (entry: EntryDescription): UndoableStep => {
         case 'init':
         case 'continue':
             return captureStep({ kind: 'init', operation: entry.operation })
+        case 'undo':
+        case 'redo':
+        case 'save':
+        case 'export':
+        case 'recovered':
         default:
             throw new OperationDataError('Entry does not push a step')
     }
