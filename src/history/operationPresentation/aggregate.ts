@@ -13,8 +13,8 @@ import {
     type OwnerReference,
 } from '../operations'
 import {
-    describeOperation,
     describeMember,
+    describeOperation,
     nativeDescription,
     ownerCountsDescription,
     ownerDomain,
@@ -23,8 +23,8 @@ import {
     removalOrBrushDescription,
     renameDescription,
 } from './format'
-import type { OperationMember, OperationRecipe, OperationTextContext, OwnerIdentity } from './types'
 import { captureOperationMember, isEntryDescription, memberOperation } from './members'
+import type { OperationMember, OperationRecipe, OperationTextContext, OwnerIdentity } from './types'
 import { joinFields, message, numberText, ownerFieldLabel, ownerName } from './values'
 
 export type OperationRecipeOptions = {
@@ -78,11 +78,14 @@ export const captureOperationRecipe = (
     const partial = options.partial ?? false
     const base = { members, qualifiers, partial }
     if (options.direction) {
-        if (members.some(({ description }) =>
-            isEntryDescription(description)
-                ? description.kind !== options.direction
-                : description.kind === 'init',
-        )) throw new Error('Only matching crossed steps form direction groups')
+        if (
+            members.some(({ description }) =>
+                isEntryDescription(description)
+                    ? description.kind !== options.direction
+                    : description.kind === 'init',
+            )
+        )
+            throw new Error('Only matching crossed steps form direction groups')
         return Object.freeze({ ...base, kind: options.direction })
     }
     if (members.length === 1 && !partial) return Object.freeze({ ...base, kind: 'single' })

@@ -5,14 +5,14 @@ import { eases } from '../../src/ease'
 import {
     captureOperationRecipe,
     describeCapturedOperation,
-    describeOperation,
-    describeStep,
     describeEntry,
     describeMember,
+    describeOperation,
+    describeStep,
     disambiguateOperationRecipes,
     operationDetails,
-    operationStepCount,
     operationFieldLabel,
+    operationStepCount,
     operationValueText,
     renderOperationRecipe,
     type OperationTextContext,
@@ -311,7 +311,9 @@ test('known text relocalizes while unknown text and actual coarse kind remain li
         const op = captureOperation(raw)
         assert.equal(describeCapturedOperation(op, 'Save', ja), raw.fallback.text)
         const details = operationDetails(
-            captureOperationRecipe([{ description: captureStep({ kind: 'restore', operation: op }) }]),
+            captureOperationRecipe([
+                { description: captureStep({ kind: 'restore', operation: op }) },
+            ]),
             ja,
         )
         assert.equal(details.description, raw.fallback.text)
@@ -571,7 +573,11 @@ test('singleton named owners and uniform reference values qualify only colliding
 })
 
 test('actual recovered events retain one immutable ordered context without a pushed step', () => {
-    const unknown = captureOperation({ id: 'future.change', version: 9, fallback: { locale: 'en', text: '{0}|<opaque>' } })
+    const unknown = captureOperation({
+        id: 'future.change',
+        version: 9,
+        fallback: { locale: 'en', text: '{0}|<opaque>' },
+    })
     const head = captureStep({ kind: 'restore', operation: unknown })
     const same = member(fixture[0]).description
     const entry = captureEntryDescription({
@@ -579,7 +585,9 @@ test('actual recovered events retain one immutable ordered context without a pus
         operation: captured(fixture[33]),
         recoveryContext: { head, headIndex: 1, dropped: [same, same], omitted: 2 },
     })
-    const selected = captureOperationRecipe([{ description: entry, id: 'recovered-event', time: 123 }])
+    const selected = captureOperationRecipe([
+        { description: entry, id: 'recovered-event', time: 123 },
+    ])
     const snapshot = JSON.stringify(selected)
     for (const locale of locales) {
         const ctx = context(locale)
@@ -597,15 +605,31 @@ test('actual recovered events retain one immutable ordered context without a pus
     assert.equal('step' in selected.members[0]!.description, false)
     assert.throws(() => captureOperationRecipe([{ description: entry }], { direction: 'undo' }))
     assert.throws(() => captureOperationRecipe([{ description: entry }, { description: entry }]))
-    const crossed = captureStep({ kind: 'edit', operation: captured(fixture[33]), recoveryContext: entry.kind === 'recovered' ? entry.recoveryContext : undefined })
+    const crossed = captureStep({
+        kind: 'edit',
+        operation: captured(fixture[33]),
+        recoveryContext: entry.kind === 'recovered' ? entry.recoveryContext : undefined,
+    })
     const undone = captureEntryDescription({ kind: 'undo', step: crossed })
     const undoDetails = operationDetails(captureOperationRecipe([{ description: undone }]), en)
     assert.equal(undoDetails.description, 'Undo · Recovered changes')
     assert.deepEqual(undoDetails.recovery?.descriptions, [same, head, same])
-    assert.equal(describeEntry(captureEntryDescription({ kind: 'save', operation: null }), en), 'Save')
-    assert.equal(describeEntry(captureEntryDescription({ kind: 'export', operation: null }), en), en.strings.commands.exportLevel.title)
-    assert.equal(describeEntry(captureEntryDescription({ kind: 'continue', operation: unknown }), en), '{0}|<opaque>')
-    const partial = captureOperationRecipe([{ description: undone }], { direction: 'undo', partial: true })
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'save', operation: null }), en),
+        'Save',
+    )
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'export', operation: null }), en),
+        en.strings.commands.exportLevel.title,
+    )
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'continue', operation: unknown }), en),
+        '{0}|<opaque>',
+    )
+    const partial = captureOperationRecipe([{ description: undone }], {
+        direction: 'undo',
+        partial: true,
+    })
     assert.equal(renderOperationRecipe(partial, en), 'Undid 1+ steps')
     assert.equal(operationStepCount(partial, en), '1+ steps')
     assert.equal(operationStepCount(selected, en), '1 step')
@@ -637,9 +661,12 @@ test('Details keeps BGM same-name replacements, recovery insertion order and laz
         ['edit', 'restore', 'edit'],
     )
     assert.equal(details.recovery?.omitted, 7)
-    const undo = captureOperationRecipe([{ description: before }, { description: head }, { description: after }], {
-        direction: 'undo',
-    })
+    const undo = captureOperationRecipe(
+        [{ description: before }, { description: head }, { description: after }],
+        {
+            direction: 'undo',
+        },
+    )
     const undoDetails = operationDetails(undo, context('ja'))
     assert.equal(undoDetails.children, undo.members)
     assert.equal(undoDetails.sections.length, 0)
