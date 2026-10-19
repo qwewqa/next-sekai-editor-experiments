@@ -1420,7 +1420,9 @@ test.describe('touch', () => {
         await count.scrollIntoViewIfNeeded()
         await expect(count).toBeInViewport({ ratio: 1 })
         await expect(count).toHaveText('1/2 Groups Shown')
-        expect(await path.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+        expect(await path.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+            true,
+        )
         const bar = chip.locator('..')
         await expect(bar.locator('[data-status-division]')).toHaveCount(0)
     })
