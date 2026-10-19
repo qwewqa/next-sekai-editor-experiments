@@ -11,7 +11,7 @@ const capture = async (page: Page, name: string) => {
     const folder = process.env.NSE_HISTORY_SHOTS
     if (!folder) return
     await mkdir(folder, { recursive: true })
-    await page.screenshot({ path: join(folder, `${name}.png`) })
+    await page.screenshot({ path: join(folder, `${name}.png`), animations: 'disabled' })
 }
 const row = (page: Page, label: string) =>
     list(page)
