@@ -5,16 +5,20 @@ import { eases } from '../../src/ease'
 import {
     captureOperationRecipe,
     describeCapturedOperation,
+    describeEntry,
+    describeMember,
     describeOperation,
     describeStep,
     disambiguateOperationRecipes,
     operationDetails,
     operationFieldLabel,
+    operationStepCount,
     operationValueText,
     renderOperationRecipe,
     type OperationTextContext,
 } from '../../src/history/operationPresentation'
 import {
+    captureEntryDescription,
     captureName,
     captureOperation,
     captureStep,
@@ -22,6 +26,7 @@ import {
     fieldCodecs,
     fieldSubjects,
     operationCodecs,
+    type EntryDescription,
     type FieldId,
     type FieldValue,
     type NativeOperationInput,
@@ -50,7 +55,7 @@ const captured = (input: NativeOperationInput, ctx = en) =>
         describe: (input) => describeOperation(input, ctx),
     })
 const member = (input: NativeOperationInput, kind: StepDescription['kind'] = 'edit') => ({
-    step: captureStep({ kind, operation: captured(input) }),
+    description: captureStep({ kind, operation: captured(input) }),
 })
 const recipe = (inputs: readonly NativeOperationInput[], partial = false) =>
     captureOperationRecipe(
@@ -287,7 +292,7 @@ test('all 61 fields retain their qualified labels, applicability, typed values a
 })
 
 test('known text relocalizes while unknown text and actual coarse kind remain literal', () => {
-    const step = member(fixture[0]).step
+    const step = member(fixture[0]).description
     const ja = context('ja')
     assert.equal(describeStep(step, ja), '3個のノーツを追加しました')
     assert.equal((step.operation as { fallback: { text: string } }).fallback.text, 'Added 3 notes')
@@ -307,7 +312,9 @@ test('known text relocalizes while unknown text and actual coarse kind remain li
         const op = captureOperation(raw)
         assert.equal(describeCapturedOperation(op, 'Save', ja), raw.fallback.text)
         const details = operationDetails(
-            captureOperationRecipe([{ step: captureStep({ kind: 'restore', operation: op }) }]),
+            captureOperationRecipe([
+                { description: captureStep({ kind: 'restore', operation: op }) },
+            ]),
             ja,
         )
         assert.equal(details.description, raw.fallback.text)
@@ -566,6 +573,167 @@ test('singleton named owners and uniform reference values qualify only colliding
     assert.notEqual(renderOperationRecipe(a, en), renderOperationRecipe(b, en))
 })
 
+test('full Timeline carriers project every coarse kind while bare initial steps retain context', () => {
+    const recoveryContext = {
+        head: { kind: 'init' as const, operation: null },
+        headIndex: 0,
+        dropped: [],
+        omitted: 0,
+    }
+    for (const operation of [
+        null,
+        { id: 'future', fallback: { locale: 'xx', text: '{0}|<literal>' } },
+        { id: 'future', fallback: { locale: 'xx', text: 17 } },
+    ]) {
+        const edit = captureStep({ kind: 'edit', operation, recoveryContext })
+        const restore = captureStep({ kind: 'restore', operation, recoveryContext })
+        const descriptions: EntryDescription[] = [
+            { kind: 'init', operation },
+            { kind: 'continue', operation },
+            { kind: 'save', operation },
+            { kind: 'export', operation },
+            { kind: 'recovered', operation, recoveryContext },
+            { kind: 'edit', step: edit },
+            { kind: 'restore', step: restore },
+            { kind: 'undo', step: edit },
+            { kind: 'redo', step: restore },
+        ]
+        for (const description of descriptions) {
+            for (const snapshot of ['abc123', new Uint8Array([1, 2, 3])]) {
+                const entry = {
+                    ...description,
+                    sessionId: 'session',
+                    seq: 0,
+                    time: 123,
+                    kept: true,
+                    noteCount: 2,
+                    snapshot,
+                    device: { id: 'device', name: 'Desktop' },
+                    previous: { sessionId: 'old', seq: 3, snapshot: 'old-root' },
+                }
+                // Timeline recipeOfRow passes full entries through this member projection.
+                const members = [entry].reverse().map((item) => ({
+                    description: item,
+                    id: `${item.sessionId}:${item.seq}`,
+                    time: item.time,
+                }))
+                const selected = captureOperationRecipe(members)
+                assert.deepEqual(
+                    selected.members[0]?.description,
+                    captureEntryDescription(description),
+                )
+                assert.equal(selected.members[0]?.id, 'session:0')
+                assert.equal(selected.members[0]?.time, 123)
+                assert(Object.isFrozen(selected.members[0]?.description))
+                for (const locale of locales) {
+                    const ctx = context(locale)
+                    assert.equal(
+                        renderOperationRecipe(selected, ctx),
+                        describeEntry(description, ctx),
+                    )
+                    const details = operationDetails(selected, ctx)
+                    assert.equal(
+                        !!details.recovery,
+                        description.kind === 'recovered' || !!description.step,
+                    )
+                }
+                if (description.kind === 'init' && operation === null)
+                    assert.equal(renderOperationRecipe(selected, en), 'Initial state')
+            }
+        }
+        for (const kind of ['init', 'edit', 'restore'] as const) {
+            for (const withContext of [false, true]) {
+                const step = captureStep({
+                    kind,
+                    operation,
+                    ...(withContext ? { recoveryContext } : {}),
+                })
+                const selected = captureOperationRecipe([{ description: step }])
+                assert.deepEqual({ ...selected.members[0]?.description }, { ...step })
+                assert.equal(!!operationDetails(selected, en).recovery, withContext)
+                assert.equal(renderOperationRecipe(selected, en), describeStep(step, en))
+            }
+        }
+    }
+    assert.throws(() =>
+        captureStep({ kind: 'init', operation: null, snapshot: new Uint8Array([1]) }),
+    )
+    assert.throws(() =>
+        captureOperationRecipe([
+            {
+                description: {
+                    kind: 'init',
+                    operation: null,
+                    recoveryContext: undefined,
+                },
+            },
+        ]),
+    )
+})
+
+test('actual recovered events retain one immutable ordered context without a pushed step', () => {
+    const unknown = captureOperation({
+        id: 'future.change',
+        version: 9,
+        fallback: { locale: 'en', text: '{0}|<opaque>' },
+    })
+    const head = captureStep({ kind: 'restore', operation: unknown })
+    const same = member(fixture[0]).description
+    const entry = captureEntryDescription({
+        kind: 'recovered',
+        operation: captured(fixture[33]),
+        recoveryContext: { head, headIndex: 1, dropped: [same, same], omitted: 2 },
+    })
+    const selected = captureOperationRecipe([
+        { description: entry, id: 'recovered-event', time: 123 },
+    ])
+    const snapshot = JSON.stringify(selected)
+    for (const locale of locales) {
+        const ctx = context(locale)
+        const details = operationDetails(selected, ctx)
+        assert.equal(details.description, ctx.strings.entry.recoveredChanges)
+        assert.equal(details.recovery?.descriptions.length, 3)
+        assert.deepEqual(details.recovery?.descriptions, [same, head, same])
+        assert.equal(details.recovery?.headIndex, 1)
+        assert.equal(details.recovery?.omitted, 2)
+        assert.equal(details.children.length, 0)
+        assert(Object.isFrozen(details.recovery?.descriptions))
+        assert.equal(describeStep(details.recovery!.descriptions[1]!, ctx), '{0}|<opaque>')
+    }
+    assert.equal(JSON.stringify(selected), snapshot)
+    assert.equal('step' in selected.members[0]!.description, false)
+    assert.throws(() => captureOperationRecipe([{ description: entry }], { direction: 'undo' }))
+    assert.throws(() => captureOperationRecipe([{ description: entry }, { description: entry }]))
+    const crossed = captureStep({
+        kind: 'edit',
+        operation: captured(fixture[33]),
+        recoveryContext: entry.kind === 'recovered' ? entry.recoveryContext : undefined,
+    })
+    const undone = captureEntryDescription({ kind: 'undo', step: crossed })
+    const undoDetails = operationDetails(captureOperationRecipe([{ description: undone }]), en)
+    assert.equal(undoDetails.description, 'Undo · Recovered changes')
+    assert.deepEqual(undoDetails.recovery?.descriptions, [same, head, same])
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'save', operation: null }), en),
+        'Save',
+    )
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'export', operation: null }), en),
+        en.strings.commands.exportLevel.title,
+    )
+    assert.equal(
+        describeEntry(captureEntryDescription({ kind: 'continue', operation: unknown }), en),
+        '{0}|<opaque>',
+    )
+    const partial = captureOperationRecipe([{ description: undone }], {
+        direction: 'undo',
+        partial: true,
+    })
+    assert.equal(renderOperationRecipe(partial, en), 'Undid 1+ steps')
+    assert.equal(operationStepCount(partial, en), '1+ steps')
+    assert.equal(operationStepCount(selected, en), '1 step')
+})
+
 test('Details keeps BGM same-name replacements, recovery insertion order and lazy crossed children', () => {
     const bgm = detail(fixture[18])
     assert.deepEqual(
@@ -578,31 +746,34 @@ test('Details keeps BGM same-name replacements, recovery insertion order and laz
     })
     assert.equal(clear.description, 'Changed BGM')
     assert.equal(clear.sections.length, 2)
-    const before = member(fixture[0]).step
-    const head = member(fixture[32], 'restore').step
-    const after = member(fixture[22]).step
+    const before = member(fixture[0]).description
+    const head = member(fixture[32], 'restore').description
+    const after = member(fixture[22]).description
     const recovery = captureStep({
-        ...member(fixture[33]).step,
+        ...member(fixture[33]).description,
         recoveryContext: { head, headIndex: 1, dropped: [before, after], omitted: 7 },
     })
-    const details = operationDetails(captureOperationRecipe([{ step: recovery }]), en)
+    const details = operationDetails(captureOperationRecipe([{ description: recovery }]), en)
     assert.equal(details.recovery?.headIndex, 1)
     assert.deepEqual(
         details.recovery?.descriptions.map((step) => step.kind),
         ['edit', 'restore', 'edit'],
     )
     assert.equal(details.recovery?.omitted, 7)
-    const undo = captureOperationRecipe([{ step: before }, { step: head }, { step: after }], {
-        direction: 'undo',
-    })
+    const undo = captureOperationRecipe(
+        [{ description: before }, { description: head }, { description: after }],
+        {
+            direction: 'undo',
+        },
+    )
     const undoDetails = operationDetails(undo, context('ja'))
     assert.equal(undoDetails.children, undo.members)
     assert.equal(undoDetails.sections.length, 0)
-    assert.equal(undoDetails.children[1]?.step.kind, 'restore')
+    assert.equal(undoDetails.children[1]?.description.kind, 'restore')
     assert.equal(undoDetails.stepCount, 3)
     assert.match(renderOperationRecipe(undo, en), /^Undid 3 steps$/)
     assert.equal(
-        describeStep(undoDetails.children[0]!.step, context('ja')),
+        describeMember(undoDetails.children[0]!, context('ja')),
         '3個のノーツを追加しました',
     )
 })
