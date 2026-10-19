@@ -853,9 +853,10 @@ const pasteAtPoint = async (
     waits = true,
 ) => {
     const position = positionAtPoint(x, y)
-    if (waits && !(await waitToPaste(updateClipboard, keepsTool))) return false
-    if (!mounted || !isElevationEditorOpen.value || !sameBeat(elevationBeat.value, position.beat))
-        return false
+    const isCurrent = () =>
+        mounted && isElevationEditorOpen.value && sameBeat(elevationBeat.value, position.beat)
+    if (waits && !(await waitToPaste(updateClipboard, keepsTool, isCurrent))) return false
+    if (!isCurrent()) return false
     await pasteElevationNotes(
         position.lane,
         position.elevation,
