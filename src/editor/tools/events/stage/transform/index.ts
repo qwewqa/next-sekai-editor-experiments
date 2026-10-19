@@ -1,10 +1,9 @@
-import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
-import { countNativeEntities, nativeTargetChanged } from '../../../../../state/operations/historyReceipts'
 import { ref } from 'vue'
 import type { Tool } from '../../..'
 import type { Anchor, StageTransformEventObject } from '../../../../../chart/events/stage/transform'
 import { applyEaseEdit, cycleEase, type EaseEdit, type WithEaseEdits } from '../../../../../ease'
 import { pushState, replaceState, state } from '../../../../../history'
+import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
 import { selectedEntities } from '../../../../../history/selectedEntities'
 import { defaultStageId } from '../../../../../history/stages'
 import { i18n } from '../../../../../i18n'
@@ -16,6 +15,10 @@ import {
 } from '../../../../../state/entities/events/joints/stage/transform'
 import { addStageTransformEventJoint } from '../../../../../state/mutations/events/stage/transform'
 import { editSelectedStageTransformEvent } from '../../../../../state/operations/events/stage/transform'
+import {
+    countNativeEntities,
+    nativeTargetChanged,
+} from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
 import { interpolate } from '../../../../../utils/interpolate'
 import { constrainLaneObject } from '../../../../laneLimits'
@@ -386,9 +389,23 @@ const update = (
     const entities = action(transaction)
     const result = transaction.commit(entities)
     const after = result.selectedEntities[0]
-    const operation = createHistoryOperation(intent === 'add'
-        ? { id: 'nse.object.add', data: { subject: 'stageTransformEvent', created: countNativeEntities(entities).stageTransformEvent ?? 0 } }
-        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'stageTransformEvent', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    const operation = createHistoryOperation(
+        intent === 'add'
+            ? {
+                  id: 'nse.object.add',
+                  data: {
+                      subject: 'stageTransformEvent',
+                      created: countNativeEntities(entities).stageTransformEvent ?? 0,
+                  },
+              }
+            : {
+                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
+                  data: {
+                      subject: 'stageTransformEvent',
+                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)
@@ -397,10 +414,7 @@ const update = (
 const add = (object: StageTransformEventObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
-    update(
-        'add',
-        (transaction) => addStageTransformEventJoint(transaction, object),
-    )
+    update('add', (transaction) => addStageTransformEventJoint(transaction, object))
 }
 
 const edit = (

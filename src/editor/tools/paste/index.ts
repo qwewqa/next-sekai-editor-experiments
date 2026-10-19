@@ -15,9 +15,9 @@ import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { ClipboardData } from '../../../clipboard/data/schema'
 import { clipboardEntry, joinClipboardRead, updateClipboard } from '../../../clipboard/index.ts'
 import { isPeeking, pushState, state } from '../../../history'
-import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { chartSessionId } from '../../../history/chartSession'
-import { checkDynamicStages, isDynamicStages } from '../../../history/dynamicStages'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { isDynamicStages, requestDynamicStages } from '../../../history/dynamicStages'
 import { defaultGroupId, groups } from '../../../history/groups'
 import { refuseWhilePeeking } from '../../../history/peek'
 import { defaultStageId, stages } from '../../../history/stages'
@@ -65,7 +65,6 @@ import { createStore } from '../../../state/store/creates'
 import { getInStoreGrid } from '../../../state/store/grid'
 import type { StoreSlides } from '../../../state/store/slides'
 import { createTransaction, type Transaction } from '../../../state/transaction'
-import { interpolate } from '../../../utils/interpolate'
 import { align, alignComputed, shiftComputed } from '../../../utils/math'
 import { bisect } from '../../../utils/ordered'
 import { committedGrid } from '../../beatGrid'
@@ -280,32 +279,42 @@ export const paste: Tool = {
     },
 
     async dragEnd(x, y, modifiers) {
-        if (!active) return
+        const dragging = active
+        if (!dragging) return
 
-        if (active.entities.some(isEventJoint)) await checkDynamicStages()
+        const outcome = dragging.entities.some(isEventJoint)
+            ? await requestDynamicStages(() => active === dragging)
+            : undefined
+        if (active !== dragging) return
+        if (outcome === 'stale') {
+            active = undefined
+            clearPasteGhost()
+            view.entities = { hovered: [], creating: [] }
+            return
+        }
         if (peekedMeanwhile()) return
 
-        revealPasteTargets(active.entities)
+        revealPasteTargets(dragging.entities)
         const transaction = createTransaction(state.value)
         const displaced: Entity[] = []
 
         const lane = xToLane(x)
         const beatOffset = toPasteBeatOffset(
-            landing(active.entities),
-            yToBeatOffset(y, active.beat),
+            landing(dragging.entities),
+            yToBeatOffset(y, dragging.beat),
         )
 
         if (isComposedPaste()) {
             finishPaste(
                 buildComposedPaste(
-                    active.entities,
-                    active.onlyType,
-                    active.lane,
+                    dragging.entities,
+                    dragging.onlyType,
+                    dragging.lane,
                     lane,
                     beatOffset,
                     modifiers.shift,
-                    active.anchor,
-                    active.beat,
+                    dragging.anchor,
+                    dragging.beat,
                     displaced,
                 ),
                 modifiers.shift,
@@ -317,14 +326,14 @@ export const paste: Tool = {
         }
 
         const selectedEntities: Entity[] = []
-        for (const entity of active.entities) {
+        for (const entity of dragging.entities) {
             const beat = toMovedBeat(entity.beat, beatOffset)
 
             const result = pastes[entity.type]?.(
                 transaction,
-                active.onlyType,
+                dragging.onlyType,
                 entity as never,
-                active.lane,
+                dragging.lane,
                 lane,
                 beat,
                 modifiers.shift,
@@ -630,7 +639,7 @@ export const pasteAtPosition = async (
     )
     if (!entities.length) return
 
-    if (entities.some(isEventJoint)) await checkDynamicStages()
+    if (entities.some(isEventJoint) && (await requestDynamicStages()) === 'stale') return
     if (peekedMeanwhile()) return
 
     revealPasteTargets(entities)
@@ -691,7 +700,13 @@ export const pasteAtPosition = async (
     }
 
     const result = transaction.commit(selectedEntities)
-    const operation = pasteOperation(result, 'basic', modifiers.shift, options.at ?? 'position', displaced)
+    const operation = pasteOperation(
+        result,
+        'basic',
+        modifiers.shift,
+        options.at ?? 'position',
+        displaced,
+    )
     pushState(operation, result)
     view.entities = {
         hovered: [],
@@ -753,7 +768,15 @@ const buildComposedPaste = (
         anchorIndex,
         anchorBeat,
     )
-    return pasteAuthored(entities, startLane, beatOffset, flip, delta ?? 0, delta !== undefined, displaced)
+    return pasteAuthored(
+        entities,
+        startLane,
+        beatOffset,
+        flip,
+        delta ?? 0,
+        delta !== undefined,
+        displaced,
+    )
 }
 
 /** The pasted note placed under the pointer: the copied anchor, else the one nearest it. */
@@ -987,12 +1010,30 @@ const peekedMeanwhile = () => {
     return true
 }
 
-const pasteOperation = (result: State, variant: 'basic' | 'composed', flipped: boolean, at: 'pointer' | 'position', displaced: Entity[]) => createHistoryOperation({
-    id: 'nse.object.paste',
-    data: { placed: countNativeEntities(result.selectedEntities), displaced: countNativeEntities(displaced), variant, flipped, at },
-})
+const pasteOperation = (
+    result: State,
+    variant: 'basic' | 'composed',
+    flipped: boolean,
+    at: 'pointer' | 'position',
+    displaced: Entity[],
+) =>
+    createHistoryOperation({
+        id: 'nse.object.paste',
+        data: {
+            placed: countNativeEntities(result.selectedEntities),
+            displaced: countNativeEntities(displaced),
+            variant,
+            flipped,
+            at,
+        },
+    })
 
-const finishPaste = (result: State, flipped: boolean, at: 'pointer' | 'position', displaced: Entity[]) => {
+const finishPaste = (
+    result: State,
+    flipped: boolean,
+    at: 'pointer' | 'position',
+    displaced: Entity[],
+) => {
     const operation = pasteOperation(result, 'composed', flipped, at, displaced)
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

@@ -1,10 +1,9 @@
-import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
-import { countNativeEntities, nativeTargetChanged } from '../../../../../state/operations/historyReceipts'
 import { ref } from 'vue'
 import type { Tool } from '../../..'
 import type { DivisionParity, StagePivotEventObject } from '../../../../../chart/events/stage/pivot'
 import { applyEaseEdit, cycleEase, type EaseEdit, type WithEaseEdits } from '../../../../../ease'
 import { pushState, replaceState, state } from '../../../../../history'
+import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
 import { selectedEntities } from '../../../../../history/selectedEntities'
 import { defaultStageId } from '../../../../../history/stages.ts'
 import { i18n } from '../../../../../i18n'
@@ -16,6 +15,10 @@ import {
 } from '../../../../../state/entities/events/joints/stage/pivot'
 import { addStagePivotEventJoint } from '../../../../../state/mutations/events/stage/pivot'
 import { editSelectedStagePivotEvent } from '../../../../../state/operations/events/stage/pivot'
+import {
+    countNativeEntities,
+    nativeTargetChanged,
+} from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
 import { interpolate } from '../../../../../utils/interpolate'
 import { constrainLaneObject } from '../../../../laneLimits'
@@ -379,9 +382,23 @@ const update = (
     const entities = action(transaction)
     const result = transaction.commit(entities)
     const after = result.selectedEntities[0]
-    const operation = createHistoryOperation(intent === 'add'
-        ? { id: 'nse.object.add', data: { subject: 'stagePivotEvent', created: countNativeEntities(entities).stagePivotEvent ?? 0 } }
-        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'stagePivotEvent', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    const operation = createHistoryOperation(
+        intent === 'add'
+            ? {
+                  id: 'nse.object.add',
+                  data: {
+                      subject: 'stagePivotEvent',
+                      created: countNativeEntities(entities).stagePivotEvent ?? 0,
+                  },
+              }
+            : {
+                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
+                  data: {
+                      subject: 'stagePivotEvent',
+                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)
@@ -390,10 +407,7 @@ const update = (
 const add = (object: StagePivotEventObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
-    update(
-        'add',
-        (transaction) => addStagePivotEventJoint(transaction, object),
-    )
+    update('add', (transaction) => addStagePivotEventJoint(transaction, object))
 }
 
 const edit = (

@@ -68,8 +68,8 @@ import {
 } from '../../state/mutations/events/stage/transform'
 import { replaceNote } from '../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../../state/mutations/timeScale'
-import { editChanges } from '../../state/operations/properties/plan'
 import { changedNativeCounts, countNativeEntities } from '../../state/operations/historyReceipts'
+import { editChanges } from '../../state/operations/properties/plan'
 import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
@@ -513,14 +513,7 @@ export const select: Tool = {
                     clearNotification()
                     break
                 }
-                const moved = moveEntities(
-                    state.value,
-                    active,
-                    lane,
-                    beatOffset,
-                    plan,
-                    rawMove,
-                )
+                const moved = moveEntities(state.value, active, lane, beatOffset, plan, rawMove)
                 const focus = isPinned(active.focus, beatOffset)
                     ? undefined
                     : creates[active.focus.type]?.(
@@ -534,7 +527,10 @@ export const select: Tool = {
                           plan,
                       )
 
-                const operation = createHistoryOperation({ id: 'nse.object.move', data: moved.receipt })
+                const operation = createHistoryOperation({
+                    id: 'nse.object.move',
+                    data: moved.receipt,
+                })
                 pushState(operation, moved.state)
                 view.entities = {
                     hovered: [],
@@ -697,17 +693,27 @@ const moveEntities = (
         }
     }
     const result = transaction.commit(selectedEntities)
-    const changed = changedNativeCounts([...applied].flatMap(([before, index]) => {
-        const after = result.selectedEntities[index]
-        return after ? [{ before, after }] : []
-    }))
+    const changed = changedNativeCounts(
+        [...applied].flatMap(([before, index]) => {
+            const after = result.selectedEntities[index]
+            return after ? [{ before, after }] : []
+        }),
+    )
     return {
         state: result,
         receipt: {
             subject: subjectOfCounts(changed),
             targets: Object.values(changed).reduce((sum, count) => sum + count, 0),
             displaced: countNativeEntities(displaced),
-            ...(entities.some((entity) => entity.type === 'bpm' && !entity.beat && !isPinned(entity, beatOffset) && toMovedBeat(entity.beat, beatOffset) !== entity.beat) ? { retainedInitialBpm: true as const } : {}),
+            ...(entities.some(
+                (entity) =>
+                    entity.type === 'bpm' &&
+                    !entity.beat &&
+                    !isPinned(entity, beatOffset) &&
+                    toMovedBeat(entity.beat, beatOffset) !== entity.beat,
+            )
+                ? { retainedInitialBpm: true as const }
+                : {}),
         },
         focus: result.selectedEntities[focusIndex],
         // A moved note as committed.
@@ -1336,7 +1342,19 @@ type Move<T extends Entity> = (
 const moves: {
     [T in Entity as T['type']]: Move<T> | undefined
 } = {
-    bpm: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan, displaced) => {
+    bpm: (
+        transaction,
+        onlyType,
+        entity,
+        startLane,
+        lane,
+        beat,
+        focus,
+        batch,
+        rawMove,
+        plan,
+        displaced,
+    ) => {
         const object = toMovedBpmObject(entity, beat)
         // A move along its beat is an edit: it keeps its place and replaces nothing.
         if (object.beat === entity.beat) return replaceBpm(transaction, entity, object)
@@ -1353,7 +1371,19 @@ const moves: {
 
         return addBpm(transaction, object)
     },
-    timeScale: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan, displaced) => {
+    timeScale: (
+        transaction,
+        onlyType,
+        entity,
+        startLane,
+        lane,
+        beat,
+        focus,
+        batch,
+        rawMove,
+        plan,
+        displaced,
+    ) => {
         const object = toMovedTimeScaleObject(
             onlyType,
             entity,
