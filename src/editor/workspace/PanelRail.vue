@@ -405,7 +405,7 @@ const chevronDirection = computed(() => {
         <button
             v-if="dock.open.length"
             type="button"
-            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 outline-none transition-colors hover:text-white"
+            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 transition-colors hover:text-white"
             :class="[vertical ? 'w-full' : 'h-full', 'size-9']"
             :aria-label="
                 dock.collapsed ? i18n.workspace.expand[side] : i18n.workspace.collapse[side]
@@ -517,6 +517,10 @@ const chevronDirection = computed(() => {
 
 /* The chevron's face is the span, so the button's state steps it with the chrome's tokens (the
    inner-face pattern in docs/color-system.md). Under 32px, so the ring sits 1px outside in white. */
+.panel-rail-toggle {
+    outline: none;
+}
+
 .panel-rail-toggle:focus-visible > span {
     outline: 2px solid white;
     outline-offset: 1px;

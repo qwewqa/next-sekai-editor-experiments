@@ -96,7 +96,7 @@ onUnmounted(() => {
 
 <template>
     <div
-        class="resize-handle group absolute z-20 flex touch-none items-center justify-center outline-none"
+        class="resize-handle group absolute z-20 flex touch-none items-center justify-center"
         :class="[
             axis === 'x'
                 ? 'inset-y-0 w-3 -translate-x-1/2 cursor-col-resize'
@@ -136,6 +136,18 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Scoped rather than the utility, whose transparent outline forced colours paint as a resting edge. */
+.resize-handle {
+    outline: none;
+}
+
+/* High contrast drops the line's fill, so the keyboard focus shows as a 4px outline, as on other controls. */
+@media (forced-colors: active) {
+    .resize-handle:focus-visible {
+        outline: 4px solid Highlight;
+    }
+}
+
 .resize-grabber {
     opacity: 0;
 }

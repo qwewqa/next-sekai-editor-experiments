@@ -152,7 +152,7 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
                     <component :is="components[tile.id]" />
                 </section>
                 <!-- Tiles sit apart on the dock's chrome, like the rail beside
-                them, so the handle between them takes the dock edge's mint states. -->
+                them, so the handle between them shows the same white line states as the dock edge handle. -->
                 <div
                     v-if="index < dock.tiles.length - 1"
                     class="relative z-20 shrink-0 bg-preview"

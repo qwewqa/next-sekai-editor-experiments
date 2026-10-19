@@ -64,7 +64,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                     :key="item"
                     type="button"
                     role="tab"
-                    class="manager-modal-tab flex min-w-0 items-center outline-none"
+                    class="manager-modal-tab flex min-w-0 items-center"
                     :class="{ 'manager-modal-tab-active': item === active }"
                     :title="panelTitle(item)"
                     :aria-selected="item === active"
@@ -110,6 +110,12 @@ const onTabKeydown = (event: KeyboardEvent) => {
 </template>
 
 <style scoped>
+/* The pill carries focus. Scoped rather than the utility, whose transparent outline forced colours
+   paint as a resting edge and a second focus outline. */
+.manager-modal-tab {
+    outline: none;
+}
+
 /* Keeps the manager's band from merging with the header band above it. */
 .manager-modal-panel :deep(.manager-band) {
     @apply border-t border-fg/25;

@@ -214,7 +214,7 @@ const narrowKind = async (event: MouseEvent) => {
                 :id="headerId"
                 ref="title"
                 tabindex="-1"
-                class="min-w-0 flex-1 text-sm outline-none"
+                class="properties-block-title min-w-0 flex-1 text-sm"
                 @vue:updated="measure"
             >
                 <template v-if="kind">
@@ -311,6 +311,12 @@ const narrowKind = async (event: MouseEvent) => {
 </template>
 
 <style>
+/* A focus target for the keyboard, not a control. Not the utility, whose transparent outline forced
+   colours paint as an edge. */
+.properties-block-title {
+    outline: none;
+}
+
 /* Fields disabled while peeking look it, and take no pointer input of their own. */
 .properties-peek:disabled > * {
     opacity: 0.5;

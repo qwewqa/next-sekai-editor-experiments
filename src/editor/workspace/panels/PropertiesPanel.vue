@@ -308,7 +308,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         :key="section"
                         type="button"
                         role="tab"
-                        class="properties-tab flex flex-auto items-center justify-center font-bold text-fg outline-none"
+                        class="properties-tab flex flex-auto items-center justify-center font-bold text-fg"
                         :class="[
                             section === 'selection'
                                 ? 'properties-tab-selection min-w-12'
@@ -370,14 +370,14 @@ const onTabKeydown = (event: KeyboardEvent) => {
                 while they do. Section headers are occasional toggles, so they are
                 more compact than a panel band: 40px. -->
                 <h2
-                    class="sticky top-0 z-10 bg-modal transition-shadow"
+                    class="sticky top-0 z-10 bg-header transition-shadow"
                     :class="{ 'shadow-band': raisedSection === section }"
                 >
                     <!-- Collapsed headers take the divider below; reaching above shifts the sticky band at fractional scales. -->
                     <button
                         :id="headerId(section)"
                         type="button"
-                        class="ghost ghost-band flex h-10 w-full items-center gap-2 bg-header px-4 text-left font-bold"
+                        class="ghost ghost-band flex h-10 w-full items-center gap-2 px-4 text-left font-bold"
                         :class="{
                             'after:absolute after:inset-x-0 after:-bottom-px after:h-px':
                                 !isExpanded(section) && index < propertiesSections.length - 1,
@@ -407,6 +407,12 @@ const onTabKeydown = (event: KeyboardEvent) => {
 </template>
 
 <style scoped>
+/* The pill carries focus. Scoped rather than the utility, whose transparent outline forced colours
+   paint as a resting edge and a second focus outline. */
+.properties-tab {
+    outline: none;
+}
+
 /* The overlay bar takes no room. Forced colors keep classic scrollbars, which
    keep their room so selecting more objects never shifts the fields sideways. */
 @media (forced-colors: active) {
