@@ -298,7 +298,7 @@ const stageCount = computed(() =>
         </div>
         <!-- Status height stays fixed when warnings arrive. -->
         <div
-            class="status-bar z-10 flex shrink-0 flex-nowrap whitespace-nowrap bg-preview text-xs text-white/80"
+            class="status-bar surface-chrome z-10 flex shrink-0 flex-nowrap whitespace-nowrap bg-preview text-xs text-white/80"
             :class="[compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2']"
             data-status-bar
         >

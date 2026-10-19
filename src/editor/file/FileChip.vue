@@ -16,7 +16,7 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
     <button
         v-if="chip"
         type="button"
-        class="file-chip relative flex shrink-0 items-center gap-1"
+        class="file-chip ghost focus-out ghost-chrome relative flex shrink-0 items-center gap-1"
         :class="compact ? 'w-6 justify-center' : 'px-1'"
         :aria-label="chipSentence(chip.kind)"
         :title="chipSentence(chip.kind)"
@@ -25,7 +25,7 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
     >
         <svg
             class="size-3 shrink-0 fill-current"
-            :class="severity === 'warning' ? 'text-amber-300' : 'text-sky-300'"
+            :class="severity === 'warning' ? 'text-warning' : 'text-info'"
             viewBox="0 0 16 16"
             aria-hidden="true"
         >
@@ -50,21 +50,5 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
 .file-chip {
     height: var(--status-row-height);
     border-radius: 9999px;
-    transition: color 150ms;
-}
-
-.file-chip:active {
-    color: theme('colors.white');
-}
-
-.file-chip:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: 0 0 0 2px theme('colors.accent');
-}
-
-@media (hover: hover) {
-    .file-chip:hover {
-        color: theme('colors.white');
-    }
 }
 </style>

@@ -122,7 +122,7 @@ test('status bar chips show keyboard focus', async ({ page }) => {
     await focus(chip)
     expect(await outline(chip)).toEqual({
         style: 'solid',
-        width: '2px',
+        width: '4px',
         color: await highlight(page),
     })
 })

@@ -40,10 +40,10 @@ const onClick = (event: MouseEvent) => {
 <template>
     <button
         type="button"
-        class="status-label relative flex shrink-[1000] items-center px-1"
+        class="status-label ghost focus-out ghost-chrome relative flex shrink-[1000] items-center px-1"
         :class="[
             compact ? 'min-w-0' : 'min-w-[4.5rem] max-w-[60%]',
-            { 'text-amber-300': raised.notStored.value },
+            { 'text-warning': raised.notStored.value },
         ]"
         :aria-label="statusName"
         :aria-describedby="describedBy"
@@ -93,21 +93,5 @@ const onClick = (event: MouseEvent) => {
 .status-label {
     height: var(--status-row-height);
     border-radius: 9999px;
-    transition: color 150ms;
-}
-
-.status-label:active {
-    color: theme('colors.white');
-}
-
-.status-label:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: 0 0 0 2px theme('colors.accent');
-}
-
-@media (hover: hover) {
-    .status-label:hover {
-        color: theme('colors.white');
-    }
 }
 </style>
