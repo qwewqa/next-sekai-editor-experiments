@@ -649,7 +649,7 @@ test('full Timeline carriers project every coarse kind while bare initial steps 
                     ...(withContext ? { recoveryContext } : {}),
                 })
                 const selected = captureOperationRecipe([{ description: step }])
-                assert.deepEqual(selected.members[0]?.description, step)
+                assert.deepEqual({ ...selected.members[0]?.description }, { ...step })
                 assert.equal(!!operationDetails(selected, en).recovery, withContext)
                 assert.equal(renderOperationRecipe(selected, en), describeStep(step, en))
             }
