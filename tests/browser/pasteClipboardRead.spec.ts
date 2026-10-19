@@ -565,6 +565,137 @@ test("the context menu's Paste while a click waits on the same read pastes nothi
     expect(await pastedBeats(page)).toEqual([6])
 })
 
+const secondaryToolState = (page: Page) =>
+    page.evaluate(async () => {
+        const { toolName, secondarySwitchBack, toolChoiceRevision } =
+            await window.editorTest.appImport<typeof import('../../src/editor/tools/state')>(
+                '/src/editor/tools/state.ts',
+            )
+        return {
+            effective: toolName.value,
+            base: secondarySwitchBack.value ?? toolName.value,
+            saved: secondarySwitchBack.value,
+            choice: toolChoiceRevision.value,
+        }
+    })
+
+const pressSecondaryWhileWaiting = async (page: Page) => {
+    await clickWaiting(page, 6)
+    await expect.poll(() => waiting(page)).toBe(true)
+    await page.evaluate(() => {
+        const { settings, history } = window.editorTest
+        settings.mouseSecondaryTool = 'selectContextMenu'
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+    })
+    const state = await secondaryToolState(page)
+    const at = await point(page, 0, 8)
+    await page.mouse.move(at.x, at.y)
+    await page.mouse.down({ button: 'right' })
+    expect(await secondaryToolState(page)).toMatchObject({
+        effective: 'select',
+        base: 'paste',
+        saved: 'paste',
+        choice: state.choice,
+    })
+    return state
+}
+
+for (const restore of [true, false])
+    test(`a ${restore ? 'restored' : 'non-restored'} secondary cancellation ${restore ? 'preserves' : 'abandons'} the waiting Paste`, async ({
+        page,
+    }) => {
+        const initial = await pressSecondaryWhileWaiting(page)
+        await page.evaluate(async (restore) => {
+            const { cancelMouseControls } = await window.editorTest.appImport<
+                typeof import('../../src/editor/controls/mouse')
+            >('/src/editor/controls/mouse.ts')
+            cancelMouseControls(restore)
+            if (restore) {
+                const { paste } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/commands/paste')
+                >('/src/editor/commands/paste/index.ts')
+                paste.execute()
+            }
+        }, restore)
+        await page.mouse.up({ button: 'right' })
+        expect(await secondaryToolState(page)).toMatchObject({
+            effective: restore ? 'paste' : 'select',
+            base: restore ? 'paste' : 'select',
+            saved: undefined,
+            choice: initial.choice,
+        })
+        const before = await pasteEffects(page)
+        await release(page)
+        await expect.poll(() => waiting(page)).toBe(false)
+        if (restore) {
+            await expect.poll(() => pastedBeats(page)).toEqual([6])
+            expect((await pasteEffects(page)).steps).toBe(before.steps + 1)
+        } else {
+            expect(await pastedBeats(page)).toEqual([])
+            expect(await pasteEffects(page)).toEqual(before)
+        }
+    })
+
+test('an explicit Select command during its temporary override abandons the pending Paste', async ({
+    page,
+}) => {
+    const initial = await pressSecondaryWhileWaiting(page)
+    await page.evaluate(async () => {
+        const { select } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/select')
+        >('/src/editor/commands/select/index.ts')
+        select.execute()
+    })
+    expect(await secondaryToolState(page)).toMatchObject({
+        effective: 'select',
+        base: 'paste',
+        saved: 'paste',
+        choice: initial.choice + 1,
+    })
+    await page.mouse.up({ button: 'right' })
+    expect(await secondaryToolState(page)).toMatchObject({
+        effective: 'paste',
+        base: 'paste',
+        saved: undefined,
+        choice: initial.choice + 1,
+    })
+    const before = await pasteEffects(page)
+    await release(page)
+    await expect.poll(() => waiting(page)).toBe(false)
+    expect(await pasteEffects(page)).toEqual(before)
+    expect(await pastedBeats(page)).toEqual([])
+})
+
+test('an actual secondary drag still abandons the waiting Paste while its base tool is unchanged', async ({
+    page,
+}) => {
+    const initial = await pressSecondaryWhileWaiting(page)
+    const end = await point(page, 0, 9)
+    await page.mouse.move(end.x, end.y, { steps: 5 })
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { isDragging } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/controls/gestures/recognizers/drag')
+                >('/src/editor/controls/gestures/recognizers/drag.ts')
+                return isDragging.value
+            }),
+        )
+        .toBe(1)
+    expect(await secondaryToolState(page)).toMatchObject({ base: 'paste', choice: initial.choice })
+    await page.mouse.up({ button: 'right' })
+    expect(await secondaryToolState(page)).toMatchObject({
+        effective: 'paste',
+        base: 'paste',
+        choice: initial.choice,
+    })
+    const before = await pasteEffects(page)
+    await release(page)
+    await expect.poll(() => waiting(page)).toBe(false)
+    expect(await pasteEffects(page)).toEqual(before)
+    expect(await pastedBeats(page)).toEqual([])
+})
+
 test('a click where the mouse hovered waits for that read, however long it has run', async ({
     page,
 }) => {

@@ -151,7 +151,8 @@ const shown = (state: State): State => {
 }
 
 /** Counts requests and leaves, so a load that finishes after either does nothing. */
-let generation = 0
+const generation = shallowRef(0)
+export const peekRequestGeneration: Readonly<Ref<number>> = computed(() => generation.value)
 let lastRequestAt = -Infinity
 let timer: ReturnType<typeof setTimeout> | undefined
 let spinnerTimer: ReturnType<typeof setTimeout> | undefined
@@ -172,7 +173,7 @@ const stopTimers = () => {
  * leaves the peek, when the entry can't be read.
  */
 export const peekEntry = (key: EntryKey): Promise<void> => {
-    const at = ++generation
+    const at = ++generation.value
     settlePrevious?.()
     settlePrevious = undefined
     requested.value = key
@@ -200,7 +201,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
             try {
                 entry = await loadEntry(key)
             } catch (error) {
-                if (at !== generation) {
+                if (at !== generation.value) {
                     resolve()
                     return
                 }
@@ -209,7 +210,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
                 reject(error instanceof Error ? error : new Error(String(error)))
                 return
             }
-            if (at !== generation || !peek.value) {
+            if (at !== generation.value || !peek.value) {
                 resolve()
                 return
             }
@@ -246,7 +247,7 @@ export const onPeekLeft = (listener: () => void) => {
 
 /** Goes back to now: the peeked state and its selection are discarded. */
 export const leavePeek = () => {
-    generation++
+    generation.value++
     stopTimers()
     settlePrevious?.()
     settlePrevious = undefined
@@ -263,7 +264,7 @@ watch(
     (value) => {
         if (!value) displayed.value = undefined
         if (value || !requested.value) return
-        generation++
+        generation.value++
         stopTimers()
         settlePrevious?.()
         settlePrevious = undefined

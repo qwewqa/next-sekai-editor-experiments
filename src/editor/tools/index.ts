@@ -21,7 +21,7 @@ import { offset } from './offset'
 import { clearPasteGhost, paste } from './paste'
 import { select, viewSelect } from './select'
 import { slide } from './slide'
-import { toolName } from './state'
+import { secondarySwitchBack, toolChoiceRevision, toolName } from './state'
 import { timeScale } from './timeScale'
 
 export type Tool = {
@@ -98,7 +98,9 @@ export const tool = computed(() =>
             : normalTool.value,
 )
 
-export const switchToolTo = (tool: ToolName) => {
+export const switchToolTo = (tool: ToolName, { temporary = false } = {}) => {
+    if (!temporary && tool !== (secondarySwitchBack.value ?? toolName.value))
+        toolChoiceRevision.value++
     toolName.value = tool
 
     view.entities = {

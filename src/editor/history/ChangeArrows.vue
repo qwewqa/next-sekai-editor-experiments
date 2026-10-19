@@ -133,10 +133,11 @@ const inspectFromMenu = () => {
 const directions = ['up', 'down'] as const
 const countOf = (direction: 'up' | 'down') =>
     direction === 'up' ? offBand.value.above : offBand.value.below
+const reportCounts = computed(() => !!shownChange.value && usableBand.value && countsShown.value)
 const enabled = (direction: 'up' | 'down') => usableBand.value && countOf(direction) > 0
 const labelOf = (direction: 'up' | 'down') => {
     const strings = i18n.value.peek
-    return countsShown.value
+    return reportCounts.value
         ? interpolateRaw(
               direction === 'up' ? strings.changesAbove : strings.changesBelow,
               String(countOf(direction)),
@@ -150,7 +151,7 @@ const labelOf = (direction: 'up' | 'down') => {
 <template>
     <div
         v-if="isPeeking"
-        class="pointer-events-auto flex h-8 w-full max-w-96 items-center gap-2 rounded-lg bg-modal px-1 text-xs text-fg shadow-sm"
+        class="pointer-events-auto flex h-8 w-full max-w-96 items-center gap-2 rounded-2xl bg-modal px-1 text-xs text-fg shadow-sm"
         data-peek-navigation
         :data-change-options-mode="compact || undefined"
         @pointerdown.stop
@@ -163,22 +164,26 @@ const labelOf = (direction: 'up' | 'down') => {
             <button
                 ref="eye"
                 type="button"
-                class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md transition-colors active:bg-accent active:text-on-accent"
-                :class="
-                    showEdits
-                        ? 'bg-accent text-on-accent hover:bg-accent/80'
-                        : 'hover:bg-header-hover'
-                "
+                class="change-control group pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full"
                 :aria-label="i18n.peek.showEdits"
                 :title="i18n.peek.showEdits"
                 :aria-pressed="showEdits"
                 data-show-edits
                 @click="toggleShowEdits"
             >
-                <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon
-                    v-else
-                    class="size-4 fill-current"
-                />
+                <span
+                    class="change-face pointer-events-none flex size-6 items-center justify-center rounded-full transition-colors group-active:bg-accent group-active:text-on-accent"
+                    :class="
+                        showEdits
+                            ? 'bg-accent text-on-accent group-hover:bg-accent/80'
+                            : 'group-hover:bg-header-hover'
+                    "
+                >
+                    <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon
+                        v-else
+                        class="size-4 fill-current"
+                    />
+                </span>
             </button>
             <button
                 v-if="canInspectProperties"
@@ -208,7 +213,7 @@ const labelOf = (direction: 'up' | 'down') => {
             v-else
             ref="options"
             type="button"
-            class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-header-hover active:bg-accent active:text-on-accent"
+            class="change-control group pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full"
             :aria-label="i18n.peek.changeOptions"
             :title="i18n.peek.changeOptions"
             aria-haspopup="menu"
@@ -217,14 +222,17 @@ const labelOf = (direction: 'up' | 'down') => {
             @click="menuOpen = !menuOpen"
             @keydown.down.prevent="menuOpen = true"
         >
-            <MoreIcon class="size-4 fill-current" />
+            <span
+                class="change-face pointer-events-none flex size-6 items-center justify-center rounded-full transition-colors group-hover:bg-header-hover group-active:bg-accent group-active:text-on-accent"
+                ><MoreIcon class="size-4 fill-current"
+            /></span>
         </button>
         <div class="flex shrink-0 gap-1" :class="{ 'ml-auto': compact }">
             <button
                 v-for="direction in directions"
                 :key="direction"
                 type="button"
-                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center rounded-md tabular-nums transition-colors"
+                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center rounded-full tabular-nums transition-colors"
                 :class="[
                     narrowArrows ? 'w-11 gap-0.5' : 'w-14 gap-1',
                     {
@@ -236,14 +244,15 @@ const labelOf = (direction: 'up' | 'down') => {
                 :aria-label="labelOf(direction)"
                 :title="labelOf(direction)"
                 :data-change-arrow="direction"
-                :data-count="countsShown ? countOf(direction) : undefined"
+                :data-count="reportCounts ? countOf(direction) : undefined"
                 @click="enabled(direction) && showChangeToward(direction)"
             >
                 <ChevronIcon
                     :class="narrowArrows ? 'size-3' : 'size-4'"
                     :direction="direction"
-                /><span class="w-6 text-center">{{
-                    countsShown && countOf(direction) ? countOf(direction) : ''
+                    centered
+                /><span class="w-6 text-center" aria-hidden="true">{{
+                    reportCounts ? countOf(direction) : '–'
                 }}</span>
             </button>
         </div>
@@ -274,10 +283,10 @@ const labelOf = (direction: 'up' | 'down') => {
     .change-control {
         border: 1px solid ButtonText;
     }
-    .change-control[aria-pressed='true'] {
+    .change-control[aria-pressed='true'] .change-face {
+        forced-color-adjust: none;
         color: HighlightText;
         background: Highlight;
-        border-color: Highlight;
     }
     .change-arrow[aria-disabled='true'] {
         color: GrayText;
