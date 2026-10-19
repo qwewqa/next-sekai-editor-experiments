@@ -294,6 +294,14 @@ const managerEdits = [
     'runBulk',
 ]
 
+const asyncModalGate = (source: string) => {
+    assert.match(
+        source,
+        /const guard = createAsyncEditGuard\(\)[^]*?await showModal\([^]*?if \([^]*?!guard\.isCurrent\(\)\)[^]*?\breturn\b[^]*?\bpushState\(/,
+    )
+    assert.match(source, /finally \{\s*guard\.dispose\(\)/)
+}
+
 /** What each gate of the call-site list rests on, checked in the source. */
 const gateChecks: Record<string, (path: string, source: string) => void> = {
     // The command's file: its command is refused (checked above by name).
@@ -303,11 +311,11 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         if (path === 'src/history/dynamicStages.ts')
             assert.match(read(path), /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)/)
         // A load notice's Choose Audio… reaches changeBgm without runCommand.
-        else if (path === 'src/editor/commands/bgm/index.ts')
-            assert.match(
-                declaration(path, 'changeBgm') ?? '',
-                /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)[^]*showModal\(/,
-            )
+        else if (path === 'src/editor/commands/bgm/index.ts') {
+            const body = declaration(path, 'changeBgm') ?? ''
+            assert.match(body, /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)[^]*showModal\(/)
+            asyncModalGate(body)
+        }
         if (path !== 'src/history/dynamicStages.ts')
             for (const name of names)
                 assert.ok(refused.includes(name), `${path}: ${name} is refused`)
@@ -371,12 +379,14 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
     },
     // Level Info: shown read-only, and nothing is pushed while peeking.
     levelInfo: (path) => {
-        assert.match(read(path), /\|\| isPeeking\.value\) return/)
+        asyncModalGate(declaration(path, 'properties') ?? '')
     },
     // Restore leaves the peek before it pushes.
     restore: (path) => {
-        const source = read(path)
-        assert.ok(source.indexOf('leavePeek()\n    const live') < source.indexOf("'restore')"))
+        assert.match(
+            declaration(path, 'restoreEntry') ?? '',
+            /leavePeek\(\)\s*pushState\(operation, restored, 'restore'\)/,
+        )
     },
 }
 
@@ -386,6 +396,14 @@ test('every direct pushState site’s gate is in place', () => {
         assert.ok(check, `${gate} has no check`)
         check(path, read(path))
     }
+})
+
+test('the shared async modal gate refuses current and intervening peeks', () => {
+    const source = declaration('src/editor/asyncEditGuard.ts', 'createAsyncEditGuard') ?? ''
+    assert.match(source, /let current = !isPeeking\.value/)
+    assert.match(source, /const invalidate = \(\) => \{\s*current = false/)
+    assert.match(source, /watch\(\[liveState, isPeeking\], invalidate, \{ flush: 'sync' \}\)/)
+    assert.match(source, /isCurrent: \(\) => current && !isPeeking\.value/)
 })
 
 test('paste refuses when a peek began while it waited', () => {

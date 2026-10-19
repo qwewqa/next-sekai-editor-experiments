@@ -21,13 +21,13 @@ import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 test('the format constants have their v0.6.0 values', () => {
     assert.equal(NXSP_FORMAT, 'nxsp')
     assert.equal(NXSP_VERSION, 1)
-    assert.equal(NXSP_MINOR, 0)
+    assert.equal(NXSP_MINOR, 1)
     assert.equal(LEVEL_VERSION, 1)
-    assert.equal(MANIFEST_VERSION, 1)
+    assert.equal(MANIFEST_VERSION, 2)
     assert.equal(RECORDS_V, 1)
-    assert.equal(SESSION_V, 1)
-    assert.equal(JOURNAL_VERSION, 1)
-    assert.equal(DB_VERSION, 1)
+    assert.equal(SESSION_V, 2)
+    assert.equal(JOURNAL_VERSION, 2)
+    assert.equal(DB_VERSION, 2)
     assert.equal(FORMAT_VERSION, 1)
     assert.equal(DUMP_VERSION, 1)
 })
@@ -38,13 +38,13 @@ test('each RECORDS_V stands for the engine revision its writer used', () => {
     assert.equal(revisionOf[RECORDS_V], LATEST_REVISION)
 })
 
-test('the minor table: everything v1 writes maps to minor 0', () => {
+test('the minor table: manifest generation 2 requires minor 1', () => {
     // Each levelVersion, root v, manifest version, entry kind, ZIP entry and parts key, and the
     // merge revision, mapped to the minor that introduced it. A later version adds its rows here.
     assert.deepEqual(MINOR_TABLE, {
         levelVersion: { 1: 0 },
         rootV: { 1: 0 },
-        manifestVersion: { 1: 0 },
+        manifestVersion: { 2: 1 },
         entryKind: {
             init: 0,
             continue: 0,

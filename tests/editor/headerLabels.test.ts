@@ -59,7 +59,7 @@ test('BGM operations distinguish offset, file and compound changes including equ
 })
 
 test('group property values distinguish clear from zero and retain typed target identity', () => {
-    const old = { name: '12{1}<b>??', forceNoteSpeed: 8.123456789012344 }
+    const old = { name: '12{1}<b>\u{1f3b5}', forceNoteSpeed: 8.123456789012344 }
     const cleared = capture(groupEditInput(7, old, 'forceNoteSpeed', undefined))
     assert.deepEqual(cleared.data, {
         target: { kind: 'group', id: 7, name: { text: old.name } },
@@ -72,14 +72,14 @@ test('group property values distinguish clear from zero and retain typed target 
 })
 
 test('historical names are literal immutable bounded excerpts', () => {
-    const old = { name: '123{1}$&<b>??' }
-    const operation = capture(groupEditInput(5, old, 'name', '??'.repeat(257)))
+    const old = { name: '123{1}$&<b>\u{1f3b5}' }
+    const operation = capture(groupEditInput(5, old, 'name', '\u{1f3b5}'.repeat(257)))
     old.name = 'Later'
     assert.equal(operation.id, 'nse.owner.rename')
     assert.deepEqual(operation.data, {
-        target: { kind: 'group', id: 5, name: { text: '123{1}$&<b>??' } },
-        before: { text: '123{1}$&<b>??' },
-        after: { text: '??'.repeat(256), truncated: true },
+        target: { kind: 'group', id: 5, name: { text: '123{1}$&<b>\u{1f3b5}' } },
+        before: { text: '123{1}$&<b>\u{1f3b5}' },
+        after: { text: '\u{1f3b5}'.repeat(256), truncated: true },
     })
 })
 

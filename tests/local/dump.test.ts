@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { STORES_V1 } from '../../src/local/db'
+import { DB_VERSION, STORES_V1 } from '../../src/local/db'
 import {
     decodeValue,
     dumpDatabase,
@@ -27,7 +27,7 @@ const sampleDump = (): Dump => ({
     format: 'nse-local-data-dump',
     version: 1,
     appVersion: '0.6.0',
-    database: { name: 'nse-local-data', version: 1 },
+    database: { name: 'nse-local-data', version: DB_VERSION },
     stores: Object.entries(STORES_V1)
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([name, spec]) => ({
@@ -218,7 +218,7 @@ test('into an empty database the build made, meta is the dump’s as one set', a
 test('the seeder refuses a database newer than the dump', async () => {
     const world = createWorld()
     const tab = world.tab('a')
-    ;(await openLocalData(tab, 2)).close()
+    ;(await openLocalData(tab, DB_VERSION + 1)).close()
     const result = await tab.run(() => seedDump(tab.kv, sampleDump(), fakeStorage()))
     assert.equal(result.seeded, false)
     await world.idle()
