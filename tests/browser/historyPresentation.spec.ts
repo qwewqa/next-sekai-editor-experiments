@@ -385,6 +385,7 @@ for (const interruption of ['reset', 'newer jump', 'newest reset'] as const)
     }) => {
         await seedPagingEntries(page)
         await open(page)
+        const originalSession = await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)
         await row(page, 'Property 250').click()
         await page.evaluate(async () => {
             const { storageWorker } =
@@ -460,14 +461,35 @@ for (const interruption of ['reset', 'newer jump', 'newest reset'] as const)
             )
             expect(target).toBe(200)
         }
-        const sourceRows = await page.evaluate(async () => {
+        const current = await page.evaluate(async () => {
             const source = await window.editorTest.appImport<
                 typeof import('../../src/editor/history/source')
             >('/src/editor/history/source.ts')
-            return source.entries.value.map(({ seq }) => seq)
+            return {
+                session: window.nseFlushTest!.flusher.session!.id,
+                rows: source.entries.value.map((entry) => ({
+                    sessionId: entry.sessionId,
+                    seq: entry.seq,
+                    kind: entry.kind,
+                    ...(entry.kind === 'init' ? { operation: entry.operation } : {}),
+                })),
+            }
         })
-        if (interruption === 'reset') expect(sourceRows).toEqual([])
-        else {
+        if (interruption === 'reset') {
+            expect(current.session).not.toBe(originalSession)
+            expect(current.rows).toEqual([
+                {
+                    sessionId: current.session,
+                    seq: 1,
+                    kind: 'init',
+                    operation: expect.objectContaining({
+                        id: 'nse.origin',
+                        data: { origin: 'new' },
+                    }),
+                },
+            ])
+        } else {
+            const sourceRows = current.rows.map(({ seq }) => seq)
             expect(sourceRows).toContain(interruption === 'newer jump' ? 200 : 250)
             expect(sourceRows).not.toContain(1)
         }
