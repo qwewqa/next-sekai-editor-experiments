@@ -1,6 +1,8 @@
 import { setVerticalScale } from '../../editor/navigation'
 import { view } from '../../editor/view'
 import { openState, openStoredState } from '../../history'
+import { session } from '../../history/session'
+import { stackGeneration } from '../../history/stack'
 import type { State } from '../../state'
 import type { Shown } from './open'
 
@@ -18,9 +20,24 @@ const restoreView = (stored: unknown, state: State) => {
 }
 
 /** Shows an opened session: its stack with the head loaded, then its view. */
-export const showSession = ({ descriptor, slots, at, state, view: stored, earlier }: Shown) => {
-    openStoredState(descriptor, slots, at, state, earlier)
-    restoreView(stored, state)
+export const showSession = ({
+    descriptor,
+    slots,
+    at,
+    state,
+    view: stored,
+    earlier,
+    installed,
+    canRestoreView,
+}: Shown) => {
+    const generation = stackGeneration() + 1
+    openStoredState(descriptor, slots, at, state, earlier, installed)
+    if (
+        session.value.sessionId === descriptor.sessionId &&
+        stackGeneration() === generation &&
+        (!canRestoreView || canRestoreView())
+    )
+        restoreView(stored, state)
 }
 
 /** Shows a state as a new session, as Local Data's Open does. */

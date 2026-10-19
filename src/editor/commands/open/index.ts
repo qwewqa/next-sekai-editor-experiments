@@ -9,7 +9,8 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { resetState } from '../../../history'
+import { resetImportedState } from '../../../history'
+import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -23,6 +24,7 @@ import { showChoice } from '../../../modals/choice'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { levelDataDiskState } from '../../../platform'
+import { createState } from '../../../state'
 import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
 import { errorMessage } from '../../../utils/error'
@@ -31,6 +33,7 @@ import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
+import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
 import { installDropGuard } from './dropGuard'
@@ -47,135 +50,160 @@ export const open: Command = {
     leavesPeek: true,
 
     async execute() {
-        if (!(await confirmSwitch())) return
+        return withSwitchRequest(undefined, async (request) => {
+            if (!(await confirmSwitch()) || !request.isCurrent()) return
 
-        // Unfiltered, keeping the handle where the picker exists (§1.5.3).
-        const { file, handle } = await pickFileForOpen('nse-open')
-        if (!file) return
+            // Unfiltered, keeping the handle where the picker exists (§1.5.3).
+            const { file, handle } = await pickFileForOpen('nse-open')
+            if (!file || !request.isCurrent()) return
 
-        // A failed read here surfaces in the loading modal below.
-        const detected = await detectHead(file).catch(() => 'data' as const)
-        if (detected === 'audio') {
-            void changeBgm(file)
-            return
-        }
-        // A ZIP is a project file, read in the storage worker (§1.5.4).
-        if (detected === 'zip') {
-            const { openProject } = await import('./project')
-            try {
-                await openProject(file, handle)
-            } catch (error) {
-                console.error(error)
-                notify(() => errorMessage(error), { card: true })
+            // A failed read here surfaces in the loading modal below.
+            const detected = await detectHead(file).catch(() => 'data' as const)
+            if (!request.isCurrent()) return
+            if (detected === 'audio') {
+                void changeBgm(file)
+                return
             }
-            return
-        }
-
-        let warning: RevisionWarning | 'unsupportedParts' | undefined
-        // Values this build doesn't know: the level opens only after its confirm (§1.5.4).
-        let newerValues:
-            (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
-        await showModal(LoadingModal, {
-            title: () => i18n.value.commands.open.title,
-            async *task(signal: AbortSignal) {
-                yield () => i18n.value.commands.open.loading
-
-                const buffer = await file.arrayBuffer()
-                signal.throwIfAborted()
-
-                yield () => i18n.value.commands.open.importing
-                await timeout(50)
-                signal.throwIfAborted()
-
-                const [type, data] = tryImport(buffer)
-                let partial = false
+            // A ZIP is a project file, read in the storage worker (§1.5.4).
+            if (detected === 'zip') {
+                const { openProject } = await import('./project')
                 try {
-                    switch (type) {
-                        case 'chcy': {
-                            const { offset, objects } = chcyToUsc(parseLevelData(data))
-
-                            const chart = parseUscChart(objects)
-                            validateChart(chart)
-
-                            resetState(false, chart, offset, { sourceName: getFilename(file) })
-                            break
-                        }
-                        case 'levelData': {
-                            const levelData = parseLevelData(data)
-                            const report = new LevelDataReport()
-                            const chart = parseLevelDataChart(
-                                levelData.entities,
-                                undefined,
-                                undefined,
-                                report,
-                            )
-                            validateChart(chart)
-                            const apply = () =>
-                                applyLevelData(file, handle, buffer, levelData, chart, report)
-                            if (report.hasUnknownValue) {
-                                newerValues = apply
-                                return
-                            }
-                            partial = !report.isEmpty
-                            warning = await apply()
-                            break
-                        }
-                        case 'usc': {
-                            const { usc } = parseUsc(data)
-
-                            const chart = parseUscChart(usc.objects)
-                            validateChart(chart)
-
-                            resetState(false, chart, usc.offset, { sourceName: getFilename(file) })
-                            break
-                        }
-                        case 'sus': {
-                            const sus = parseSus(data)
-
-                            const chart = parseSusChart(sus)
-                            validateChart(chart)
-
-                            resetState(false, chart, sus.offset, { sourceName: getFilename(file) })
-                            break
-                        }
-                    }
+                    if (!request.isCurrent()) return
+                    await openProject(file, handle, request)
                 } catch (error) {
-                    // A file its format's schema refuses is one the editor cannot read.
-                    if (error instanceof AssertError) throw new UnsupportedFileError()
-                    if (error instanceof ImportRefusal) throw new RefusedFileError(type, error)
-                    throw error
+                    console.error(error)
+                    if (request.isCurrent()) notify(() => errorMessage(error), { card: true })
                 }
+                return
+            }
 
-                await opened(handle, buffer, type, partial)
-            },
-        })
-        if (newerValues) {
-            const apply = newerValues
-            const choice = await showChoice({
-                title: interpolate(() => i18n.value.open.newerValues.title, file.name),
-                message: () => i18n.value.open.newerValues.body,
-                choices: [
-                    {
-                        value: true,
-                        label: () => i18n.value.open.newerValues.openCopy,
-                        default: true,
-                    },
-                ],
+            let sourceBuffer: ArrayBuffer | undefined
+            let warning: RevisionWarning | 'unsupportedParts' | undefined
+            // Values this build doesn't know: the level opens only after its confirm (§1.5.4).
+            let newerValues:
+                (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
+            await showModal(LoadingModal, {
+                title: () => i18n.value.commands.open.title,
+                async *task(signal: AbortSignal) {
+                    const stopAbort = request.observeAbort(signal)
+                    try {
+                        yield () => i18n.value.commands.open.loading
+
+                        const buffer = await file.arrayBuffer()
+                        sourceBuffer = buffer
+                        signal.throwIfAborted()
+                        if (!request.isCurrent()) return
+
+                        yield () => i18n.value.commands.open.importing
+                        await timeout(50)
+                        signal.throwIfAborted()
+                        if (!request.isCurrent()) return
+
+                        const [type, data] = tryImport(buffer)
+                        let partial = false
+                        try {
+                            switch (type) {
+                                case 'chcy': {
+                                    const { offset, objects } = chcyToUsc(parseLevelData(data))
+
+                                    const chart = parseUscChart(objects)
+                                    validateChart(chart)
+
+                                    if (!resetImported(request, chart, offset, file)) return
+                                    break
+                                }
+                                case 'levelData': {
+                                    const levelData = parseLevelData(data)
+                                    const report = new LevelDataReport()
+                                    const chart = parseLevelDataChart(
+                                        levelData.entities,
+                                        undefined,
+                                        undefined,
+                                        report,
+                                    )
+                                    validateChart(chart)
+                                    const apply = () =>
+                                        applyLevelData(
+                                            file,
+                                            handle,
+                                            buffer,
+                                            levelData,
+                                            chart,
+                                            report,
+                                            request,
+                                        )
+                                    if (report.hasUnknownValue) {
+                                        newerValues = apply
+                                        return
+                                    }
+                                    partial = !report.isEmpty
+                                    warning = await apply()
+                                    break
+                                }
+                                case 'usc': {
+                                    const { usc } = parseUsc(data)
+
+                                    const chart = parseUscChart(usc.objects)
+                                    validateChart(chart)
+
+                                    if (!resetImported(request, chart, usc.offset, file)) return
+                                    break
+                                }
+                                case 'sus': {
+                                    const sus = parseSus(data)
+
+                                    const chart = parseSusChart(sus)
+                                    validateChart(chart)
+
+                                    if (!resetImported(request, chart, sus.offset, file)) return
+                                    break
+                                }
+                            }
+                        } catch (error) {
+                            // A file its format's schema refuses is one the editor cannot read.
+                            if (error instanceof AssertError) throw new UnsupportedFileError()
+                            if (error instanceof ImportRefusal)
+                                throw new RefusedFileError(type, error)
+                            throw error
+                        }
+
+                        await opened(handle, buffer, type, partial, request)
+                    } catch (error) {
+                        if (request.isCurrent()) throw error
+                    } finally {
+                        stopAbort()
+                    }
+                },
             })
-            // Cancel opens nothing and leaves the session as it was.
-            if (!choice) return
-            warning = await apply()
-            await opened(handle, await file.arrayBuffer(), 'levelData', true)
-        }
-        if (!warning) return
+            if (!request.isCurrent()) return
+            if (newerValues) {
+                const apply = newerValues
+                const choice = await showChoice({
+                    title: interpolate(() => i18n.value.open.newerValues.title, file.name),
+                    message: () => i18n.value.open.newerValues.body,
+                    choices: [
+                        {
+                            value: true,
+                            label: () => i18n.value.open.newerValues.openCopy,
+                            default: true,
+                        },
+                    ],
+                })
+                // Cancel opens nothing and leaves the session as it was.
+                if (!choice || !sourceBuffer || !request.isCurrent()) return
+                warning = await apply()
+                await opened(handle, sourceBuffer, 'levelData', true, request)
+            }
+            if (!warning || !request.isCurrent()) return
 
-        const message = warning
-        void showModal(InfoModal, {
-            title: () => i18n.value.commands.open.title,
-            message: () =>
-                message === 'unsupportedParts'
-                    ? i18n.value.commands.open.unsupportedParts
-                    : i18n.value.commands.open.revision[message],
+            const message = warning
+            void showModal(InfoModal, {
+                title: () => i18n.value.commands.open.title,
+                message: () =>
+                    message === 'unsupportedParts'
+                        ? i18n.value.commands.open.unsupportedParts
+                        : i18n.value.commands.open.revision[message],
+            })
         })
     },
 }
@@ -191,24 +219,23 @@ const applyLevelData = async (
     levelData: ReturnType<typeof parseLevelData>,
     chart: Chart,
     report: LevelDataReport,
+    request: SwitchRequest,
 ): Promise<RevisionWarning | 'unsupportedParts' | undefined> => {
     const revisionWarning = getRevisionWarning(getLevelDataRevision(levelData.entities), chart)
     const complete = report.isEmpty
-    resetState(false, chart, levelData.bgmOffset, { sourceName: getFilename(file) })
-    // Pickers then suggest "<name> (2)", never the original (§1.4.7).
-    if (!complete) exportMemory.partial = true
-    if (complete && isGzip(buffer)) {
-        // Export's own format: its file is the remembered target (§1.4.8).
-        exportMemory.sourceName = file.name
-        if (handle)
-            exportMemory.target = {
-                name: handle.name,
-                handle,
-                disk: await levelDataDiskState(
-                    new File([buffer], file.name, { lastModified: file.lastModified }),
-                ),
-                exported: false,
-            }
+    const disk =
+        complete && isGzip(buffer) && handle
+            ? await levelDataDiskState(
+                  new File([buffer], file.name, { lastModified: file.lastModified }),
+              )
+            : undefined
+    if (resetImported(request, chart, levelData.bgmOffset, file)) {
+        if (!complete) exportMemory.partial = true
+        if (complete && isGzip(buffer)) {
+            exportMemory.sourceName = file.name
+            if (handle && disk)
+                exportMemory.target = { name: handle.name, handle, disk, exported: false }
+        }
     }
     return complete ? revisionWarning : 'unsupportedParts'
 }
@@ -219,7 +246,9 @@ const opened = async (
     buffer: ArrayBuffer,
     type: keyof typeof openedMessages,
     partial: boolean,
+    request: SwitchRequest,
 ) => {
+    if (!request.isCurrent()) return
     // The source's bytes, so a save picker that empties it can be undone (D5).
     if (handle)
         exportMemory.opened = {
@@ -235,7 +264,7 @@ const opened = async (
     // The target and the partial flag are the new chain's (§1.4.8).
     await rememberExport()
     // With Reopen while the session left can be reopened (Part 1 §1.4.1).
-    notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
+    if (request.isCurrent()) notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
 }
 
 const openedMessages = {
@@ -309,4 +338,12 @@ const tryImportSus = (buffer: ArrayBuffer) => {
     } catch {
         return
     }
+}
+
+const resetImported = (request: SwitchRequest, chart: Chart, offset: number, file: File) => {
+    const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
+    const state = createState(chart, offset)
+    return request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () =>
+        resetImportedState(state, descriptor),
+    )
 }

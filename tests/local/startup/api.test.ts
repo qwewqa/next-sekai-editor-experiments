@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
+import { createSwitchRequest } from '../../../src/editor/switchRequest'
+import { session as editorSession } from '../../../src/history/session'
+import { liveState } from '../../../src/history/stack'
 import type { FlushSession } from '../../../src/local/flush'
 import { toHex } from '../../../src/local/hash'
 import { journalState } from '../../../src/local/journal/content'
@@ -22,10 +25,11 @@ import {
     setSessionContext,
 } from '../../../src/local/startup/api'
 import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY } from '../../../src/local/startup/legacy'
+import { readTabRecord } from '../../../src/local/startup/tab'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
 import { storageKey } from '../../../src/storage'
-import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
+import { editStep, futureFixtureOperation, initialLife } from '../../helpers/historySteps'
 import { rows } from '../flush/harness'
 import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
@@ -312,3 +316,63 @@ test('applyPendingJournal applies a dead tab’s journal under the session’s l
     // Nothing pending any more.
     assert.equal(await loaded.page.tab.run(() => applyPendingJournal(session.id)), undefined)
 })
+
+for (const mode of ['newer-request', 'throw'] as const) {
+    test(`installed Restore keeps destination and flusher coherent after a ${mode} hook`, async () => {
+        const world = createWorld({ seed: 101 })
+        const storage = new MemoryStorage()
+        const loaded = await load(world, 'current', storage)
+        const other = await openJournalPage(world, 'source', storage)
+        const target = stateOf(goldenChart())
+        const source = beginSession(other, target, 'import')
+        await other.flusher.flush({ strict: true })
+        other.tab.kill()
+        let newer: ReturnType<typeof createSwitchRequest> | undefined
+        let installedId: string | undefined
+        let notices = 0
+        setSessionContext(
+            {
+                ...loaded.deps,
+                show: (shown) => {
+                    loaded.deps.show(shown)
+                    installedId = shown.descriptor.sessionId
+                    assert.equal(loaded.page.flusher.session?.id, installedId)
+                    assert.equal(editorSession.value.sessionId, installedId)
+                    assert.equal(liveState.value, shown.state)
+                    if (mode === 'throw') throw new Error('post-install hook')
+                    newer = createSwitchRequest()
+                },
+                onLeft: () => {
+                    notices++
+                },
+            },
+            loaded.recovery,
+        )
+        try {
+            const opening = loaded.page.tab.run(() => restoreAsCopy(source.id))
+            if (mode === 'throw') await assert.rejects(opening, /post-install hook/)
+            else assert.equal(await opening, true)
+            assert.ok(installedId)
+            assert.equal(editorSession.value.sessionId, installedId)
+            assert.equal(loaded.page.flusher.session?.id, installedId)
+            assert.equal(readTabRecord()?.sessionId, installedId)
+            assert.equal(notices, 0)
+            if (newer) assert.equal(newer.isCurrent(), true)
+            // An untouched continuation is intentionally deferred until its first own entry.
+            const head = loaded.page.live.state
+            append(
+                loaded.page,
+                {
+                    kind: 'edit',
+                    step: editStep(initialLife(head.initialLife, head.initialLife + 1)),
+                },
+                { ...head, initialLife: head.initialLife + 1 },
+            )
+            await loaded.page.tab.run(() => loaded.page.flusher.flush({ strict: true }))
+            assert.equal((await readOpen(loaded.page, installedId)).session.id, installedId)
+        } finally {
+            newer?.dispose()
+            loaded.page.tab.kill()
+        }
+    })
+}

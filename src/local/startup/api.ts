@@ -1,3 +1,4 @@
+import { withSwitchRequest, type SwitchRequest } from '../../editor/switchRequest'
 import type { JournalFound } from '../../platform/types'
 import type { State } from '../../state'
 import { createState } from '../../state'
@@ -13,7 +14,7 @@ import {
     LEGACY_RECOVERY_KEY,
     toRecoveryFile,
 } from './legacy'
-import { holdShared, openStored, type OpenDeps } from './open'
+import { boundElsewhere, holdShared, openStored, type OpenDeps } from './open'
 import { journalledSession } from './resume'
 import { parseAutoSaveSlot, replaySessionJournal, type RecoveryContext } from './steps'
 import { claimSessionLock, MARKER_WAIT_MS } from './tab'
@@ -60,15 +61,21 @@ export type OpenResult =
  * under its lock (§1.6.4, between loads), then a continuation, or a fork when it isn't its
  * chain's latest session or is open in another tab.
  */
-const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> => {
+const openSession = async (
+    asked: string,
+    asCopy: boolean,
+    request: SwitchRequest,
+): Promise<OpenResult> => {
     let sessionId = asked
     if (!context) return { opened: false, why: 'none' }
-    const { open, recovery } = context
+    const captured = context
+    const { open, recovery } = captured
     const flusher = open.flusher()
     const leaving = flusher?.session
     // Its own tab lets it go once its strict commit lands; the release itself comes a little
     // later, so the session this tab just left is waited for, as a reload waits (§1.6.6).
     await flusher?.outgoing
+    if (!request.isCurrent() || context !== captured) return { opened: false, why: 'blank' }
     const own = leaving?.id === sessionId || previousSession.value?.sessionId === sessionId
     const lock = await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
     let opened = false
@@ -105,7 +112,7 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
         const held = result?.kind === 'recovery' ? undefined : lock
         const elsewhere =
             !held && hasWebLocks() && (await open.client.heldElsewhere(sessionLock(sessionId)))
-        const fork = asCopy || elsewhere || !read.isHead
+        const fork = asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read))
         const file = read.chain.file as { name?: unknown } | undefined
         const copyOf =
             typeof file?.name === 'string'
@@ -119,12 +126,22 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
             fork || !parentLock
                 ? { mode: 'fork', ...(parentLock ? { parentLock } : {}), copyOf }
                 : { mode: 'continue', parentLock },
-            { replace: true, ...(recovered ? { recovered } : {}) },
+            {
+                replace: true,
+                request,
+                canShow: () => context === captured,
+                onTransferred: () => {
+                    opened = true
+                },
+                onShown: (left) => {
+                    if (left && flusher) open.onLeft?.(left, flusher.outgoing)
+                },
+                ...(recovered ? { recovered } : {}),
+            },
         )
         if (!state) return { opened: false, why: 'blank' }
         opened = true
         // The session this replaced is offered by Reopen in turn (§1.4.1).
-        if (leaving) open.onLeft?.(leaving, flusher.outgoing)
         return { opened: true }
     } finally {
         // Otherwise the opened session holds it (released twice is harmless).
@@ -133,27 +150,29 @@ const openSession = async (asked: string, asCopy: boolean): Promise<OpenResult> 
 }
 
 /** Reopen (§1.4.1): continues the session this tab left last, saying why when it can't. */
-export const reopenSession = async (): Promise<OpenResult> => {
-    const left = previousSession.value
-    if (!left) return { opened: false, why: 'none' }
-    const result = await openSession(left.sessionId, false)
-    if (result.opened && previousSession.value === left) previousSession.value = undefined
-    return result
-}
+export const reopenSession = (supplied?: SwitchRequest): Promise<OpenResult> =>
+    withSwitchRequest(supplied, async (request): Promise<OpenResult> => {
+        const left = previousSession.value
+        if (!left) return { opened: false, why: 'none' }
+        const result = await openSession(left.sessionId, false, request)
+        if (result.opened && request.isCurrent() && previousSession.value === left)
+            previousSession.value = undefined
+        return result
+    })
 
-/** Reopen (§1.4.1): continues the session this tab left last. */
-export const reopen = async () => (await reopenSession()).opened
+export const reopen = async (request?: SwitchRequest) => (await reopenSession(request)).opened
 
-/** Restore as a Copy (§1.4.2's notice): a fork of a session open in another tab. */
-export const restoreAsCopy = async (sessionId: string) =>
-    (await openSession(sessionId, true)).opened
+export const restoreAsCopy = (sessionId: string, supplied?: SwitchRequest) =>
+    withSwitchRequest(
+        supplied,
+        async (request) => (await openSession(sessionId, true, request)).opened,
+    )
 
-/**
- * Restore (the open notice's, §1.5.4 step 4): continues a session that isn't open, its pending
- * journal applied first under its lock.
- */
-export const restoreSession = async (sessionId: string) =>
-    (await openSession(sessionId, false)).opened
+export const restoreSession = (sessionId: string, supplied?: SwitchRequest) =>
+    withSwitchRequest(
+        supplied,
+        async (request) => (await openSession(sessionId, false, request)).opened,
+    )
 
 /** What opening a session in this tab needs, once startup has run. */
 export const sessionContext = () => context

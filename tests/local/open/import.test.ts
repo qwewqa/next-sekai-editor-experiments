@@ -242,8 +242,11 @@ test('a chunk failing its hash in the import is damage: the chain unlinks and it
         }),
     )
     assert.equal(record?.docId, 'doc-2')
+    assert.equal(record?.partialImport, true)
     const chain = chainRow(s.world)!
     assert.equal(chain.docId, 'doc-2')
+    // No page publication callback runs here: the transaction retains this safety state.
+    assert.equal(chain.partialImport, true)
     assert.equal(chain.file, undefined)
     assert.equal(chain.revision, undefined)
     assert.equal(chain.lineageId, 'lineage')

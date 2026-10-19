@@ -14,6 +14,7 @@ import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
 import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
+import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { createHistoryOperation } from '../history/createHistoryOperation'
@@ -476,7 +477,15 @@ export const startStoring = (
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
-        openOtherVersion: () => void flows().then((flow) => flow.openOtherVersion()),
+        openOtherVersion: () =>
+            void withSwitchRequest(undefined, async (request) => {
+                try {
+                    const flow = await flows()
+                    if (request.isCurrent()) await flow.openOtherVersion(request)
+                } catch (error) {
+                    if (request.isCurrent()) throw error
+                }
+            }),
         persistConfirmed: () =>
             void flows().then((flow) => {
                 flow.persistConfirmed()

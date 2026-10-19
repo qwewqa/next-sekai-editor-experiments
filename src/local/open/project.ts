@@ -5,6 +5,7 @@ import {
 } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { addLoadNotice, notify } from '../../editor/notification'
+import type { SwitchRequest } from '../../editor/switchRequest'
 import type { JsonValue } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
 import { isPeeking, liveState, replaceState } from '../../history/stack'
@@ -12,8 +13,9 @@ import { i18n } from '../../i18n'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import { interpolate } from '../../utils/interpolate'
+import { releaseWaveform } from '../../waveform'
 import type { ChainSummary } from '../flushWrite'
-import { handleOf, storableHandle } from '../handles'
+import { resolveHandle, storableHandle } from '../handles'
 import { hasWebLocks, sessionLock } from '../locks'
 import { placedCompleteFrom } from '../nxsp/project'
 import { holdSessionLock } from '../sessions'
@@ -41,15 +43,28 @@ const context = () => {
     return found
 }
 
-/** A picked file's worker read; the worker keeps a `.nxsp` under the reply's id. */
-export const readProjectFile = (file: File) =>
-    context().open.worker.call('openRead', file, { timeoutMs: 120_000 })
+const reads = new Map<string, ReturnType<typeof context>>()
 
-/** Forgets a read the user cancelled. */
+/** The read keeps its original worker, even if startup context is replaced. */
+export const readProjectFile = async (file: File) => {
+    const owner = context()
+    const result = await owner.open.worker.call('openRead', file, { timeoutMs: 120_000 })
+    if (result.kind === 'nxsp') reads.set(result.id, owner)
+    return result
+}
+
+const takeRead = (id: string) => {
+    const owner = reads.get(id)
+    if (!owner) throw new Error('The opened read has no owner')
+    reads.delete(id)
+    return owner
+}
+
 export const dropProjectRead = (id: string) => {
-    void context()
-        .open.worker.call('openDrop', id)
-        .catch(() => undefined)
+    const owner = reads.get(id)
+    if (!owner) return
+    reads.delete(id)
+    void owner.open.worker.call('openDrop', id).catch(() => undefined)
 }
 
 /**
@@ -68,11 +83,14 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
             .map((lock) => lock.name.slice('nse-session:'.length))
         if (!others.length) return false
         for (const { chainId } of await open.worker.call('readBindings', others)) {
-            const other = await handleOf(open.worker, chainId, 'file')
-            if (other && (await other.isSameEntry(handle).catch(() => false))) return true
+            const raw = await open.worker.call('readHandle', { chainId, role: 'file' })
+            if (raw === undefined) continue
+            const other = resolveHandle(raw)
+            if (!other || (await other.isSameEntry(handle))) return true
         }
     } catch {
-        // Where the browser can't tell, the open binds; Save's own check guards the file.
+        // Uncertain ownership opens a separate copy.
+        return true
     }
     return false
 }
@@ -115,12 +133,16 @@ export type StoreOpen = {
     newId?: () => string
 }
 
-export type StoredOpen = {
-    sessionId: string
-    chainId: string
-    state: State
-    import?: Promise<ImportOutcome>
-}
+export type StoredOpen =
+    | { kind: 'cancelled' }
+    | {
+          kind: 'stored'
+          sessionId: string
+          chainId: string
+          shown: boolean
+          state?: State
+          import?: Promise<ImportOutcome>
+      }
 
 const isEmpty = (value: object) => !Object.keys(value).length
 
@@ -164,8 +186,12 @@ const chainFields = async (open: StoreOpen) => {
  * Stores the open (its first transaction), then opens the new session in this tab, as a reload
  * resumes one, and starts the background import. The session left is offered by Reopen.
  */
-export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
-    const { open: deps } = context()
+export const storeAndShow = async (
+    open: StoreOpen,
+    request: SwitchRequest,
+): Promise<StoredOpen> => {
+    const owner = takeRead(open.read.id)
+    const { open: deps } = owner
     const newId = open.newId ?? (() => crypto.randomUUID())
     const { project } = open.read
     const sessionId = newId()
@@ -173,15 +199,39 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
     const docId = open.identity && project ? project.id : newId()
     const lineageId = project?.lineageId ?? newId()
     const lock = holdSessionLock(deps.locks, sessionId)
-    let shown = false
+    let transferred = false
+    let job: Promise<ImportOutcome> | undefined
+    let kept: Promise<Blob | undefined> | undefined
+    let damaged: { record: Record<string, unknown>; first: boolean } | undefined
+    const retainBytes = () => {
+        if (open.handle)
+            kept ??= keepCopy(deps.worker, chainId, open.file, open.handle).catch(() => undefined)
+        return kept
+    }
+    const applyDamage = (record: Record<string, unknown>, first: boolean) => {
+        const copy = retainBytes()
+        unlinkedSession(
+            sessionId,
+            open.bind?.name ?? open.file.name,
+            record,
+            first,
+            false,
+            open.handle
+                ? { file: open.file, handle: open.handle, ...(copy ? { copy } : {}) }
+                : undefined,
+            () => transferred && request.isCurrent(),
+        )
+    }
     try {
-        await lock.granted.catch(() => undefined)
+        await lock.granted
+        const chain = await chainFields(open)
+        if (!request.isCurrent() || sessionContext() !== owner) return { kind: 'cancelled' }
         const stored = await deps.worker.call(
             'openStore',
             {
                 id: open.read.id,
                 ids: { chainId, sessionId, docId, lineageId },
-                chain: await chainFields(open),
+                chain,
                 ...(open.level ? { level: open.level } : {}),
                 ...(open.summary ? { summary: open.summary } : {}),
                 operations: open.operations,
@@ -191,50 +241,94 @@ export const storeAndShow = async (open: StoreOpen): Promise<StoredOpen> => {
             { timeoutMs: 120_000 },
         )
         if (stored.kind !== 'stored') throw new Error('The opened file is no longer read')
-        const read = await deps.worker.call('readSession', sessionId)
-        if (read.kind !== 'open') throw new Error(`The opened session is ${read.kind}`)
-        const leaving = flusher?.session
-        // The BGM's "not loaded" is the open's own notice to give (§1.6.8.4), never a load notice.
-        const quiet = {
-            ...deps,
-            events: (event: Parameters<typeof deps.events>[0]) => {
-                if (event.kind !== 'bgmNotLoaded') deps.events(event)
-            },
+        if (!open.bind) retainBytes()
+        if (stored.batches > 0)
+            job = startImport({
+                worker: deps.worker,
+                locks: deps.locks,
+                sessionId,
+                chainId,
+                id: open.read.id,
+                batches: stored.batches,
+                source: {
+                    file: open.file,
+                    ...(open.handle ? { handle: open.handle } : {}),
+                    ...(open.read.disk ? { disk: open.read.disk } : {}),
+                    ...(project?.revision ? { revisionId: project.revision.id } : {}),
+                },
+                appVersion: open.appVersion,
+                newId,
+                onUnlink: (record, first) => {
+                    damaged = { record, first }
+                    applyDamage(record, first)
+                },
+            })
+        if (job) request.retainUntil(job)
+        let state: State | undefined
+        if (request.isCurrent() && sessionContext() === owner) {
+            const read = await deps.worker.call('readSession', sessionId)
+            if (read.kind !== 'open') throw new Error(`The opened session is ${read.kind}`)
+            const quiet = {
+                ...deps,
+                events: (event: Parameters<typeof deps.events>[0]) => {
+                    if (event.kind !== 'bgmNotLoaded') deps.events(event)
+                },
+            }
+            state = await openStored(
+                quiet,
+                read,
+                { mode: 'resume', lock },
+                {
+                    replace: true,
+                    request,
+                    keepUnshownLock: true,
+                    canShow: () => sessionContext() === owner,
+                    onTransferred: () => {
+                        transferred = true
+                    },
+                    onShown: (leaving) => {
+                        if (leaving)
+                            deps.onLeft?.(
+                                leaving,
+                                deps.flusher()?.outgoing ?? Promise.resolve(false),
+                            )
+                    },
+                    onDestination: () => {
+                        if (open.copyOf) {
+                            currentSession.value = { ...currentSession.value, copyOf: open.copyOf }
+                            writeTabRecord({ sessionId, start: 'stored', copyOf: open.copyOf })
+                        }
+                        if (open.handle)
+                            exportMemory.opened = {
+                                handle: open.handle,
+                                levelData: false,
+                                partial: !open.bind,
+                                project: true,
+                                ...(kept ? { keptCopy: kept } : {}),
+                            }
+                        if (damaged) applyDamage(damaged.record, damaged.first)
+                    },
+                },
+            )
         }
-        const state = await openStored(quiet, read, { mode: 'resume', lock }, { replace: true })
-        if (!state) throw new Error('The opened session did not open')
-        shown = true
-        if (leaving && flusher) deps.onLeft?.(leaving, flusher.outgoing)
-        if (open.copyOf) {
-            currentSession.value = { ...currentSession.value, copyOf: open.copyOf }
-            writeTabRecord({ sessionId, start: 'stored', copyOf: open.copyOf })
+        return {
+            kind: 'stored',
+            sessionId,
+            chainId,
+            shown: transferred,
+            ...(state ? { state } : {}),
+            ...(job ? { import: job } : {}),
         }
-        keepOpenedBytes(open, chainId, !open.bind)
-        const job =
-            stored.batches > 0
-                ? startImport({
-                      worker: deps.worker,
-                      locks: deps.locks,
-                      sessionId,
-                      chainId,
-                      id: open.read.id,
-                      batches: stored.batches,
-                      source: {
-                          file: open.file,
-                          ...(open.handle ? { handle: open.handle } : {}),
-                          ...(open.read.disk ? { disk: open.read.disk } : {}),
-                          ...(project?.revision ? { revisionId: project.revision.id } : {}),
-                      },
-                      appVersion: open.appVersion,
-                      newId,
-                      onUnlink: (record, first) => {
-                          unlinked(open, sessionId, record, first)
-                      },
-                  })
-                : undefined
-        return { sessionId, chainId, state, ...(job ? { import: job } : {}) }
     } finally {
-        if (!shown) lock.release()
+        // An unshown committed import keeps its session lock until its batches settle.
+        if (!transferred) await job
+        if (!transferred) await kept
+        if (!job) await deps.worker.call('openDrop', open.read.id).catch(() => undefined)
+        else
+            void job.finally(() =>
+                deps.worker.call('openDrop', open.read.id).catch(() => undefined),
+            )
+        if (!transferred) lock.release()
     }
 }
 
@@ -258,9 +352,12 @@ export type KeepVersion = {
  * nothing otherwise.
  */
 export const storeKept = async (keep: KeepVersion) => {
-    const { open: deps } = context()
+    const { open: deps } = takeRead(keep.read.id)
     const { project } = keep.read
-    if (!project) return false
+    if (!project) {
+        await deps.worker.call('openDrop', keep.read.id).catch(() => undefined)
+        return false
+    }
     const sessionId = crypto.randomUUID()
     const chainId = crypto.randomUUID()
     const lock = holdSessionLock(deps.locks, sessionId)
@@ -303,25 +400,8 @@ export const storeKept = async (keep: KeepVersion) => {
     } catch {
         return false
     } finally {
+        await deps.worker.call('openDrop', keep.read.id).catch(() => undefined)
         lock.release()
-    }
-}
-
-/**
- * The bytes read at the open, kept with its handle (§1.5.4, D5, D26): a save picker that empties a
- * file the editor won't write over puts them back, after a reload too.
- */
-const keepOpenedBytes = (open: StoreOpen, chainId: string, keep: boolean) => {
-    if (open.handle) keepBytes(open.file, open.handle, chainId, keep)
-}
-
-const keepBytes = (file: Blob, handle: FileSystemFileHandle, chainId: string, keep: boolean) => {
-    exportMemory.opened = {
-        handle,
-        levelData: false,
-        partial: keep,
-        project: true,
-        ...(keep ? { keptCopy: keepCopy(context().open.worker, chainId, file, handle) } : {}),
     }
 }
 
@@ -337,10 +417,16 @@ const unlinkedSession = (
     record: Record<string, unknown>,
     first: boolean,
     resumed: boolean,
-    kept?: { file: Blob; handle: FileSystemFileHandle },
+    kept?: { file: Blob; handle: FileSystemFileHandle; copy?: Promise<Blob | undefined> },
+    canNotify: () => boolean = () => true,
 ) => {
     const docId = record.docId
     if (typeof docId !== 'string') return
+    const chainId = record.chainId
+    const copy =
+        kept && typeof chainId === 'string'
+            ? (kept.copy ?? keepCopy(context().open.worker, chainId, kept.file, kept.handle))
+            : undefined
     const session = flusher?.session
     if (session?.id === sessionId) {
         session.docId = docId
@@ -354,30 +440,20 @@ const unlinkedSession = (
         writeTabRecord({ sessionId, start: 'stored', copyOf })
         exportMemory.partial = true
         void rememberExport()
-        const chainId = record.chainId
-        if (kept && typeof chainId === 'string') keepBytes(kept.file, kept.handle, chainId, true)
+        if (kept)
+            exportMemory.opened = {
+                handle: kept.handle,
+                levelData: false,
+                partial: true,
+                project: true,
+                ...(copy ? { keptCopy: copy } : {}),
+            }
     }
-    if (!first) return
+    if (!first || !canNotify() || (!resumed && currentSession.value.sessionId !== sessionId)) return
     // Its notice: a card after an open, a load notice after a resume (§1.4.3).
     const message = interpolate(() => i18n.value.open.damagedHistory, name)
     if (resumed) addLoadNotice(message, undefined, LOAD_ORDER.damagedHistory)
     else notify(message, { card: true })
-}
-
-const unlinked = (
-    open: StoreOpen,
-    sessionId: string,
-    record: Record<string, unknown>,
-    first: boolean,
-) => {
-    unlinkedSession(
-        sessionId,
-        open.bind?.name ?? open.file.name,
-        record,
-        first,
-        false,
-        open.handle ? { file: open.file, handle: open.handle } : undefined,
-    )
 }
 
 /**
@@ -410,13 +486,22 @@ export const attachOpenedBgm = async (
     bytes: Blob,
     hash: string,
     decode: (data: ArrayBuffer) => Promise<Partial<Bgm>>,
+    destination: string,
 ) => {
     const data = await bytes.arrayBuffer()
     const source = data.slice(0)
     const decoded = await decode(data)
     const live = liveState.value
     // A peek holds its own state: the live one isn't replaced under it.
-    if (isPeeking.value || live.bgm.meta?.hash !== hash || live.bgm.buffer) return false
+    if (
+        currentSession.value.sessionId !== destination ||
+        isPeeking.value ||
+        live.bgm.meta?.hash !== hash ||
+        live.bgm.buffer
+    ) {
+        releaseWaveform(decoded.waveform)
+        return false
+    }
     replaceState({ ...live, bgm: { ...live.bgm, ...decoded, source } })
     return true
 }

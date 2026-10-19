@@ -1,3 +1,5 @@
+import { createSessionDescriptor, session } from '../../../src/history/session'
+import { resetStates, restoreStates } from '../../../src/history/stack'
 import type { FlushSession } from '../../../src/local/flush'
 import { readHandleRow, type HandleRole } from '../../../src/local/handleRows'
 import { journalHandlers } from '../../../src/local/journal/handlers'
@@ -19,7 +21,7 @@ import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
 import { storageKey } from '../../../src/storage'
-import { nativeOperation, originOperation } from '../../helpers/historySteps'
+import { initialStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import { testId } from '../flush/harness'
 import { beginSession, openJournalPage, type JournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
@@ -128,7 +130,10 @@ export const load = async (
     }
     await runRecovery(recovery)
     // The page's own blank start, as the first reset begins it.
-    const blank = beginSession(page, stateOf(goldenChart()), 'new')
+    const blankState = stateOf(goldenChart())
+    const blank = beginSession(page, blankState, 'new')
+    session.value = createSessionDescriptor({ sessionId: blank.id, docId: blank.docId })
+    resetStates({ state: blankState, step: initialStep(), isDirty: false })
     options.meanwhile?.(page)
     // The core's own `readHandle`, as `handlers.ts` has it.
     const readHandle = ({ chainId, role }: { chainId: string; role: HandleRole }) =>
@@ -164,7 +169,10 @@ export const load = async (
         flusher: () => page.flusher,
         show: (each) => {
             shown.push(each)
+            session.value = each.descriptor
+            restoreStates(each.slots, each.at, each.state, each.earlier)
             page.live.state = each.state
+            each.installed?.()
         },
         // As `openState` does: a new session begins with it.
         showState: (state) => {

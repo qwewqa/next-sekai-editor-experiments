@@ -2,9 +2,10 @@ import { AssertError } from 'typebox/value'
 import { parseLevelDataChart } from '../../../chart/parse/levelData'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
-import { isPeeking, openState } from '../../../history'
+import { openState } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
+import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { formatDate } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
@@ -39,6 +40,7 @@ import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
 import { dismissNoticeCard, notify } from '../../notification'
 import { notifyLeft } from '../../switch'
+import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm'
 
 // Open File… on a `.nxsp` (Part 1 §1.5.4): read and checked in the storage worker, its level
@@ -121,12 +123,14 @@ const thisDevice = () => {
 const restoreAction = (sessionId: string) => ({
     label: () => i18n.value.open.restoreIt,
     run: () => {
-        void (async () => {
+        void withSwitchRequest(undefined, async (request) => {
             const { confirmSwitch } = await import('../../switch')
-            if (!(await confirmSwitch())) return
+            if (!(await confirmSwitch()) || !request.isCurrent()) return
             const { restoreSession } = await import('../../../local/startup/api')
-            if (await restoreSession(sessionId)) dismissNoticeCard()
-        })()
+            if (!request.isCurrent()) return
+            if ((await restoreSession(sessionId, request)) && request.isCurrent())
+                dismissNoticeCard()
+        })
     },
 })
 
@@ -171,9 +175,20 @@ const decodeBgm = async (data: ArrayBuffer) => {
  * Opens a picked `.nxsp`; resolves once its session shows (or nothing opened). Throws `Error`s
  * whose message the loading dialog shows.
  */
-export const openProject = async (file: File, handle: FileSystemFileHandle | undefined) => {
+export const openProject = (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    supplied?: SwitchRequest,
+) => withSwitchRequest(supplied, (request) => openRequestedProject(file, handle, request))
+
+const openRequestedProject = async (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    request: SwitchRequest,
+) => {
     const project = await import('../../../local/open/project')
     const { previousSession } = await import('../../../local/startup/events')
+    if (!request.isCurrent()) return
 
     // Read and checked in the worker, the level parsed here (§1.5.4 steps 2–3).
     let read: NxspReply | undefined
@@ -182,27 +197,38 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
     await showModal(LoadingModal, {
         title,
         async *task(signal: AbortSignal) {
-            yield () => i18n.value.commands.open.loading
-            const result = await project.readProjectFile(file)
-            if (signal.aborted) {
-                if (result.kind === 'nxsp') project.dropProjectRead(result.id)
-                return
-            }
-            if (result.kind === 'not-project') throw new Error(i18n.value.open.notProject)
-            if (result.kind === 'unreadable') throw new Error(i18n.value.open.damagedUnopened)
-            read = result
-            // A newer major version asks first; its level is parsed after.
-            if (result.report.some(({ reason }) => reason === 'newer-version')) return
-            yield () => i18n.value.commands.open.importing
+            const stopAbort = request.observeAbort(signal)
             try {
-                parsed = parseLevel(result)
+                yield () => i18n.value.commands.open.loading
+                const result = await project.readProjectFile(file)
+                if (!request.isCurrent()) {
+                    if (result.kind === 'nxsp') project.dropProjectRead(result.id)
+                    return
+                }
+                if (result.kind === 'not-project') throw new Error(i18n.value.open.notProject)
+                if (result.kind === 'unreadable') throw new Error(i18n.value.open.damagedUnopened)
+                read = result
+                // A newer major version asks first; its level is parsed after.
+                if (result.report.some(({ reason }) => reason === 'newer-version')) return
+                yield () => i18n.value.commands.open.importing
+                try {
+                    parsed = parseLevel(result)
+                } catch (error) {
+                    if (!(error instanceof OpenRefused)) throw error
+                    refusal = error.message
+                }
             } catch (error) {
-                if (!(error instanceof OpenRefused)) throw error
-                refusal = error.message
+                if (request.isCurrent()) throw error
+            } finally {
+                stopAbort()
             }
         },
     })
     if (!read) return
+    if (!request.isCurrent()) {
+        project.dropProjectRead(read.id)
+        return
+    }
     const opened = read
     const cancel = () => {
         project.dropProjectRead(opened.id)
@@ -226,7 +252,7 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
             message: () => i18n.value.open.newerMajorNote,
             choices: [{ value: true, label: () => i18n.value.open.openLevel, default: true }],
         })
-        if (!choice) {
+        if (!choice || !request.isCurrent()) {
             cancel()
             return
         }
@@ -254,7 +280,7 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
                 { value: true, label: () => i18n.value.open.newerValues.openCopy, default: true },
             ],
         })
-        if (!choice) {
+        if (!choice || !request.isCurrent()) {
             cancel()
             return
         }
@@ -278,6 +304,10 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
 
     // The same file bound in another tab's open session opens as a separate copy (§1.3.2).
     const elsewhere = whole && !!handle && (await project.boundInAnotherTab(handle))
+    if (!request.isCurrent()) {
+        cancel()
+        return
+    }
     const identity = whole && !elsewhere
     const name = bindingName(file.name, opened.project?.revision?.fileName, !!handle)
     const copyOf = identity ? undefined : { name, bound: true as const }
@@ -289,50 +319,96 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
     const { storageStatus } = await import('../../../local/startup/events')
     if (storageStatus.value?.mode === 'readOnly') {
         cancel()
-        openState(live, { sourceName: file.name })
-        notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
+        const descriptor = createSessionDescriptor({ sourceName: file.name })
+        if (
+            request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () =>
+                openState(live, descriptor),
+            )
+        )
+            notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
         return
     }
 
-    let stored: Awaited<ReturnType<typeof project.storeAndShow>> | undefined
-    await showModal(LoadingModal, {
-        title,
-        async *task() {
-            yield () => i18n.value.commands.open.importing
-            // Never cancelled once sent: a stored session always shows.
-            stored = await project.storeAndShow({
-                read: opened,
-                file,
-                ...(handle ? { handle } : {}),
-                ...(identity && opened.project
-                    ? {
-                          bind: {
-                              name,
-                              options: bindingOptions(opened.project, live),
-                          },
-                      }
-                    : {}),
-                identity,
-                ...(asHead
-                    ? { summary: summaryOf(live, noteCountOf(history?.headRecords.kinds ?? [])) }
-                    : { level: stateBatch(live) }),
-                ...(copyOf ? { copyOf } : {}),
-                sourceName: file.name,
-                operations: {
-                    opened: createHistoryOperation({
-                        id: 'nse.origin',
-                        data: { origin: 'import', source: captureName(name) },
-                    }),
-                    changedOutside: createHistoryOperation({ id: 'nse.externalChange', data: {} }),
-                },
-                appVersion: appVersion().appVersion,
-            })
-        },
-    })
-    if (!stored) {
+    if (!request.isCurrent()) {
         cancel()
         return
     }
+    let stored: Awaited<ReturnType<typeof project.storeAndShow>> | undefined
+    let committing: Promise<Awaited<ReturnType<typeof project.storeAndShow>>> | undefined
+    await showModal(LoadingModal, {
+        title,
+        async *task(signal: AbortSignal) {
+            const stopAbort = request.observeAbort(signal)
+            try {
+                yield () => i18n.value.commands.open.importing
+                if (!request.isCurrent()) return
+                committing = project.storeAndShow(
+                    {
+                        read: opened,
+                        file,
+                        ...(handle ? { handle } : {}),
+                        ...(identity && opened.project
+                            ? {
+                                  bind: {
+                                      name,
+                                      options: bindingOptions(opened.project, live),
+                                  },
+                              }
+                            : {}),
+                        identity,
+                        ...(asHead
+                            ? {
+                                  summary: summaryOf(
+                                      live,
+                                      noteCountOf(history?.headRecords.kinds ?? []),
+                                  ),
+                              }
+                            : { level: stateBatch(live) }),
+                        ...(copyOf ? { copyOf } : {}),
+                        sourceName: file.name,
+                        operations: {
+                            opened: createHistoryOperation({
+                                id: 'nse.origin',
+                                data: { origin: 'import', source: captureName(name) },
+                            }),
+                            changedOutside: createHistoryOperation({
+                                id: 'nse.externalChange',
+                                data: {},
+                            }),
+                        },
+                        appVersion: appVersion().appVersion,
+                    },
+                    request,
+                )
+                const bgm = opened.media.bgm
+                committing = committing.then((result) => {
+                    if (
+                        result.kind === 'stored' &&
+                        result.shown &&
+                        bgm &&
+                        live.bgm.meta?.hash === mediaHash(bgm.form)
+                    )
+                        void project
+                            .attachOpenedBgm(
+                                bgm.bytes,
+                                live.bgm.meta.hash,
+                                decodeBgm,
+                                result.sessionId,
+                            )
+                            .catch(() => undefined)
+                    return result
+                })
+                request.retainUntil(committing)
+                stored = await committing
+            } catch (error) {
+                if (request.isCurrent()) throw error
+            } finally {
+                stopAbort()
+            }
+        },
+    })
+    if (!committing) cancel()
+    if (!stored || stored.kind !== 'stored' || !stored.shown || !request.isCurrent()) return
 
     // A file this browser wrote confirms that its downloads work (§1.3.4); no other row changes.
     const device = opened.project?.revision?.device.id
@@ -346,6 +422,7 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
               await project.earlierChains(opened.project?.id ?? '', stored.chainId),
           )
         : undefined
+    if (!request.isCurrent()) return
     const bgm = opened.media.bgm
     const bgmMissing =
         live.bgm.meta !== undefined && (!bgm || mediaHash(bgm.form) !== live.bgm.meta.hash)
@@ -369,12 +446,6 @@ export const openProject = async (file: File, handle: FileSystemFileHandle | und
             },
         })
     } else notifyOpened(name, earlier, left)
-
-    // The file's BGM decodes in the background (§1.6.8.4).
-    if (bgm && live.bgm.meta?.hash === mediaHash(bgm.form) && !isPeeking.value)
-        void project
-            .attachOpenedBgm(bgm.bytes, live.bgm.meta.hash, decodeBgm)
-            .catch(() => undefined)
 }
 
 /** How Replace's keep-first went (§1.4.7): only `kept` lets it write. */
