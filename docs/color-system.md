@@ -1,6 +1,6 @@
 # Colour system
 
-The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 11) enforces the rules. This file replaces the earlier colour proposals.
+The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 11) enforces the rules.
 
 - **Scope.** UI colour roles. Chart content keeps its own colours (section 13).
 - **Migration.** The system lands in stages; section 12 lists them and what each covers.
@@ -511,7 +511,7 @@ export const useActivationGuard = () => {
 - **Change:** every Remove confirms. The unused one reuses the in-use dialog: title and danger button `remove`, a new message `commands.previewAssets.removeUnused`, `cancelIsDefault: true`, so Cancel is the focused primary and a stray Enter removes nothing.
 - **Strings:** one new key, `commands.previewAssets.removeUnused`, in seven locales.
 - **Code:** `StoredAssets.vue` picks the message by `row.users.length` and always confirms.
-- **Test:** `previewAssetsFile.spec.ts:678–682` ("One that is not in use goes at once") now confirms.
+- **Test:** `previewAssetsFile.spec.ts` ("One that is not in use goes at once") now confirms.
 
 ---
 
@@ -659,7 +659,7 @@ Adding to either list needs a reason in the entry.
 
 ### 11.4 Transition
 
-- An allowlist file per package, `tests/editor/colorRoles/legacy-C1.txt` … `legacy-C7.txt`, and for the History package C8 one file per History package (`legacy-C8-H1.txt`, `legacy-C8-H2.txt`, `legacy-C8-H3.txt`), lists only that package's flagged files, that is, the files that still violate the guard (section 12). A package file that is already clean (a token file, `choice.ts`, `activationGuard.ts`, a locale file) is not listed, because the test fails on a listed file that is clean. The foundation package, C0, has no list: its files are fixed in its own commit.
+- An allowlist file per package, `tests/editor/colorRoles/legacy-C1.txt` … `legacy-C7.txt`, and for the History package C8 one file per History package (`legacy-C8-H1.txt`, `legacy-C8-H2.txt`, `legacy-C8-H3.txt`), lists only that package's flagged files, that is, the files that still violate the guard. A package file that is already clean (a token file, `choice.ts`, `activationGuard.ts`, a locale file) is not listed, because the test fails on a listed file that is clean. The foundation package, C0, has no list: its files are fixed in its own commit.
 - The test fails if a listed file is already clean, so stale entries cannot linger.
 - Each package deletes its own list file as its last commit, so the lists are disjoint and conflict-free.
 - C10 deletes the directory and its loader.
