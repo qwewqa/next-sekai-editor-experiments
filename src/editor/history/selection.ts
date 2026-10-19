@@ -1,4 +1,6 @@
 import { shallowRef, watch } from 'vue'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import { operationStepCount, renderOperationRecipe, type OperationRecipe } from '../../history/operationPresentation'
 import {
     PeekError,
     entryKey,
@@ -22,7 +24,7 @@ export type ChainKey = { key: EntryKey; snapshot?: string }
 export type PeekedInfo = {
     key: EntryKey
     time: number
-    label: string
+    recipe: OperationRecipe
     snapshot?: string
     previous?: ChainKey
     oldest?: EntryKey
@@ -38,6 +40,14 @@ export const keyOf = (entry: { sessionId: string; seq: number }): EntryKey =>
 
 /** What the bar names, set when the list asks for a peek. */
 export const peekedInfo = shallowRef<PeekedInfo>()
+
+export const peekedLabel = (info: PeekedInfo) => {
+    const context = getHistoryOperationContext()
+    const title = renderOperationRecipe(info.recipe, context)
+    return info.recipe.kind === 'group'
+        ? `${title} · ${operationStepCount(info.recipe, context)}`
+        : title
+}
 
 /** Entries whose state could not be read, by key: shown as damaged (§1.4.10.5). */
 export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())

@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref, shallowReactive, shallowRef, watch } from 'vue'
 import { onHistoryAction } from '../../history/actions'
+import { captureEntryDescription } from '../../history/operations'
 import { session } from '../../history/session'
 import { toHex } from '../../local/hash'
 import { storageWorker } from '../../local/start'
@@ -50,13 +51,17 @@ let loadingAbove: Promise<void> | undefined
 const version = ref(0)
 /** Bumped when the loaded run is replaced: reads begun before it land nowhere. */
 let epoch = 0
+export const sourceGeneration = ref(0)
+const replaceSource = () => {
+    sourceGeneration.value++
+    return ++epoch
+}
 
 const entryOf = (entry: TimelineEntry): Entry => ({
     sessionId: entry.sessionId,
     seq: entry.seq,
     time: entry.time,
-    kind: entry.kind,
-    label: entry.label,
+    ...captureEntryDescription(entry),
     noteCount: entry.noteCount,
     kept: entry.kept,
     ...(entry.from === undefined ? {} : { from: entry.from }),
@@ -73,8 +78,7 @@ const pendingEntries = (): Entry[] => {
             sessionId: open.id,
             seq: entry.seq,
             time: entry.wall,
-            kind: entry.kind,
-            label: entry.label(),
+            ...captureEntryDescription(entry),
             kept: true,
             pending: true,
             ...(entry.snapshot && !entry.state ? { snapshot: toHex(entry.snapshot) } : {}),
@@ -150,7 +154,7 @@ export const refresh = async (): Promise<void> => {
     if (newer.value) {
         if (loadedFor.value === id) return recount()
         // Another session's window: its chain is read from the top.
-        epoch++
+        replaceSource()
         newer.value = undefined
         newerCount.value = 0
     }
@@ -280,7 +284,7 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
     const worker = storageWorker
     if (!worker) return
     const id = session.value.sessionId
-    const mark = ++epoch
+    const mark = replaceSource()
     const { path } = await readIndex(filter)
     const [below, above] = await Promise.all([
         worker.call('readTimeline', {
@@ -324,7 +328,7 @@ export const jumpToOldest = async (filter: Filter) => {
 /** Back to the newest entries after a jump: Now, Home. */
 export const resetToNewest = async () => {
     if (!newer.value) return
-    epoch++
+    replaceSource()
     newer.value = undefined
     newerCount.value = 0
     await refresh()
@@ -367,7 +371,7 @@ export const followEntries = () => {
     const stop = onHistoryAction((action) => {
         indexes.clear()
         if (action.kind === 'reset') {
-            epoch++
+            replaceSource()
             stored.value = []
             cursor = undefined
             newer.value = undefined

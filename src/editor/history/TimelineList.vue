@@ -11,7 +11,9 @@ import {
 } from 'vue'
 import { peekedKey } from '../../history/peek'
 import { session } from '../../history/session'
-import { headName } from '../../history/stack'
+import { headStep } from '../../history/stack'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import { captureOperationRecipe, describeStep, disambiguateOperationRecipes, type OperationRecipe } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import {
     formatClock,
@@ -32,7 +34,8 @@ import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
-import { heightOf, isCountedParent, presentRow } from './rowPresentation'
+import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import { openOperationDetails } from './operationDetails'
 import {
     buildRows,
     previousOf,
@@ -67,6 +70,7 @@ import {
     resetToNewest,
     retry,
     status,
+    sourceGeneration,
     type Target,
 } from './source'
 import {
@@ -140,6 +144,32 @@ const isEmpty = computed(
         ),
 )
 const rows = computed(() => (isEmpty.value ? built.value.slice(0, 1) : built.value))
+const operationContext = computed(getHistoryOperationContext)
+const headLabel = computed(() => headStep.value && describeStep(headStep.value, operationContext.value))
+const recipes = computed(() => {
+    const result = new Map<string, OperationRecipe>()
+    let adjacent: EntryRow[] = []
+    const flush = () => {
+        const qualified = disambiguateOperationRecipes(adjacent.map(recipeOfRow), operationContext.value)
+        adjacent.forEach((row, index) => {
+            const recipe = qualified[index]
+            if (recipe) result.set(row.id, recipe)
+        })
+        adjacent = []
+    }
+    for (const row of rows.value) {
+        if (row.type === 'divider' || row.type === 'gap') flush()
+        else if (row.type === 'entry') {
+            if (row.child) result.set(row.id, recipeOfRow(row))
+            else adjacent.push(row)
+        }
+    }
+    flush()
+    const selected = peekedInfo.value
+    if (selected?.rowId) result.set(selected.rowId, selected.recipe)
+    return result
+})
+const recipeOf = (row: EntryRow) => recipes.value.get(row.id) ?? recipeOfRow(row)
 
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring.
 const rowHeight = computed(() => 44)
@@ -243,7 +273,8 @@ const pinned = computed(() => {
 const positions = computed(() => {
     const map = new Map<string, number>()
     let n = 0
-    for (const row of rows.value) if (row.type !== 'header') map.set(row.id, ++n)
+    for (const row of rows.value)
+        if (row.type !== 'header' && row.type !== 'count') map.set(row.id, ++n)
     return { map, size: n }
 })
 
@@ -337,7 +368,7 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
     return {
         key: keyOf(entry),
         time: entry.time,
-        label: entry.label,
+        recipe: captureOperationRecipe([{ description: entry, time: entry.time, id: keyOf(entry) }]),
         oldest: keyOf(oldest),
         initial: oldest.kind === 'init' && !previous,
         ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
@@ -355,7 +386,7 @@ const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
 /** A row's peek: a closed ×N row stands for its run, so it is compared with the entry before it. */
 const rowInfo = (row: EntryRow): PeekedInfo => ({
     ...infoOf(row.entry, row.child ? row.entry : (row.members.at(-1) ?? row.entry)),
-    label: labelOf(row),
+    recipe: recipeOf(row),
     rowId: row.id,
     members: row.members.map(keyOf),
     pinned: (row.child
@@ -401,9 +432,10 @@ const step = async (delta: number) => {
     // Up crosses the gap: the newer page loads, and the cursor goes on into it.
     if (delta < 0 && at > 0 && clamp(at + delta) === 0 && gap.value !== undefined) {
         const id = cursorId.value
+        const generation = sourceGeneration.value
         await loadNewer()
         await nextTick()
-        if (cursorId.value !== id) return
+        if (cursorId.value !== id || generation !== sourceGeneration.value) return
         at = selectables.value.findIndex((row) => row.id === id)
     }
     const next = selectables.value[clamp(at + delta)]
@@ -443,7 +475,9 @@ const jumpTo = async (target: Target | 'now') => {
     try {
         const entry = await jumpToEntry(target, historyFilter.value)
         if (!entry) return
+        const generation = sourceGeneration.value
         await nextTick()
+        if (generation !== sourceGeneration.value) return
         const row = rowOf(keyOf(entry))
         if (row) {
             cursorId.value = row.id
@@ -500,7 +534,7 @@ watch(
             const at = id === undefined ? undefined : index.get(id)
             // Headers are no anchor: the span they label grows with newer rows.
             if (at === undefined || next.kinds[at] === 'now' || next.kinds[at] === 'gap') continue
-            if (next.kinds[at] === 'header') continue
+            if (next.kinds[at] === 'header' || next.kinds[at] === 'count') continue
             const shift = (next.offsets[at] ?? 0) - (previous.offsets[i] ?? 0)
             if (shift !== 0) {
                 element.scrollTop = top + shift
@@ -547,7 +581,7 @@ const restore = async (row: EntryRow) => {
 // --- Menu: Show Change and Restore, by right click, long press, Shift+F10 or the Menu key.
 const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean }>()
 const openMenu = (row: EntryRow, anchor: HTMLElement, touch = false) => {
-    if (!row.selectable || menu.value?.row.id === row.id) return
+    if (menu.value?.row.id === row.id) return
     menu.value = { row, anchor, touch }
 }
 const closeMenu = (restoreFocus: boolean) => {
@@ -556,9 +590,12 @@ const closeMenu = (restoreFocus: boolean) => {
     if (restoreFocus) list.value?.focus({ preventScroll: true })
 }
 const menuItems = computed(() => [
-    { key: 'showChange', label: commands.showChange.title() },
-    { key: 'restore', label: i18n.value.peek.restore },
+    { key: 'details', label: i18n.value.history.details.action },
+    { key: 'showChange', label: commands.showChange.title(), disabled: !menu.value?.row.selectable },
+    { key: 'restore', label: i18n.value.peek.restore, disabled: !menu.value?.row.selectable },
 ])
+const showDetails = (row: EntryRow, opener?: HTMLElement) =>
+    void openOperationDetails(recipeOf(row), row.entry.time, opener)
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {
     const info = rowInfo(row)
@@ -576,8 +613,9 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
     closeMenu(keyboard)
     if (!current) return
-    if (key === 'restore') void restore(current.row)
-    else if (key === 'showChange') showRowChange(current.row)
+    if (key === 'details') showDetails(current.row, keyboard ? list.value ?? undefined : current.anchor)
+    else if (current.row.selectable && key === 'restore') void restore(current.row)
+    else if (current.row.selectable && key === 'showChange') showRowChange(current.row)
 }
 // iOS fires no contextmenu event for a long press: a touch held still opens the menu itself.
 const LONG_PRESS_MS = 500
@@ -645,7 +683,7 @@ const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
-    if (event.target instanceof Element && event.target.closest('[data-history-disclosure]')) return
+    if (event.target instanceof Element && event.target.closest('[data-history-disclosure], [data-history-details]')) return
     const row = rowById(cursorId.value)
     const handled = () => {
         event.preventDefault()
@@ -797,11 +835,7 @@ watch(
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
 const presentationOf = (row: EntryRow) =>
-    presentRow(row, {
-        ...i18n.value.history,
-        undo: i18n.value.commands.undo.title,
-        redo: i18n.value.commands.redo.title,
-    })
+    presentRow(row, operationContext.value, recipeOf(row))
 
 const labelOf = (row: EntryRow) => presentationOf(row).full
 
@@ -816,8 +850,7 @@ const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed'
 
 // Narrow rows omit seconds and note deltas; full times remain in their names.
 const narrow = computed(() => width.value > 0 && width.value < 340)
-const parentTime = computed(() => width.value >= 300)
-const parentIcon = computed(() => width.value >= 280)
+const inlineCount = computed(() => width.value >= 300)
 
 const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
 
@@ -834,8 +867,6 @@ const titleOf = (row: EntryRow) =>
 
 const nameOf = (row: EntryRow) =>
     [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
-
-const nowTime = computed(() => entries.value[0]?.time ?? session.value.startedAt ?? Date.now())
 
 const dividerText = (entry: Entry) =>
     interpolateRaw(i18n.value.history.continuedFrom, formatDateTime(entry.from ?? entry.time))
@@ -880,7 +911,7 @@ defineExpose({
                         v-if="row.type === 'now'"
                         :id="domId(row.id)"
                         role="option"
-                        class="timeline-row"
+                        class="timeline-row timeline-now"
                         :class="{ 'timeline-row-selected': cursorId === row.id }"
                         :aria-selected="cursorId === row.id"
                         :aria-posinset="positions.map.get(row.id)"
@@ -888,19 +919,15 @@ defineExpose({
                         :style="{ top: `${top}px`, height: `${rowHeight}px` }"
                         @click="onRowClick(row)"
                     >
-                        <span
-                            class="flex size-4 shrink-0 items-center justify-center"
-                            aria-hidden="true"
-                        >
+                        <span class="timeline-leading" aria-hidden="true">
                             <span class="size-2.5 rounded-full bg-fg" />
                         </span>
-                        <span class="min-w-0 flex-1 truncate font-bold"
+                        <span class="timeline-entry-text font-bold"
                             >{{ i18n.history.now
-                            }}<template v-if="headName && !isEmpty">
-                                · {{ headName }}</template
+                            }}<template v-if="headLabel && !isEmpty">
+                                · {{ headLabel }}</template
                             ></span
                         >
-                        <span class="timeline-time shrink-0">{{ clockOf(nowTime) }}</span>
                     </div>
 
                     <!-- After a jump: the newer entries not read yet, read as it comes into view. -->
@@ -960,9 +987,17 @@ defineExpose({
                     </div>
 
                     <div
+                        v-else-if="row.type === 'count'"
+                        role="presentation"
+                        class="timeline-count-detail"
+                        :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
+                        data-history-count-detail
+                    >{{ presentationOf(row.parent).count }}</div>
+
+                    <div
                         v-else
                         :id="domId(row.id)"
-                        role="option"
+                        :role="row.selectable ? 'option' : 'group'"
                         class="timeline-row"
                         :class="{
                             'timeline-row-selected': cursorId === row.id,
@@ -970,16 +1005,11 @@ defineExpose({
                             'timeline-row-child': row.child,
                             'timeline-row-counted': isCountedParent(row),
                         }"
-                        :aria-selected="cursorId === row.id"
-                        :aria-disabled="row.selectable ? undefined : true"
-                        :aria-expanded="
-                            row.members.length > 1 && !row.child
-                                ? expandedGroups.has(row.id)
-                                : undefined
-                        "
+                        :aria-selected="row.selectable ? cursorId === row.id : undefined"
+                        :aria-expanded="row.members.length > 1 && !row.child ? expandedGroups.has(row.id) : undefined"
                         :aria-label="nameOf(row)"
-                        :aria-posinset="positions.map.get(row.id)"
-                        :aria-setsize="positions.size"
+                        :aria-posinset="row.selectable ? positions.map.get(row.id) : undefined"
+                        :aria-setsize="row.selectable ? positions.size : undefined"
                         :title="titleOf(row)"
                         :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
                         @click="onRowClick(row)"
@@ -989,94 +1019,44 @@ defineExpose({
                         @pointerup="cancelLongPress"
                         @pointercancel="cancelLongPress"
                     >
-                        <template v-if="isCountedParent(row)">
-                            <div class="timeline-group-header" data-history-group-header>
-                                <KindIcon v-if="parentIcon" :kind="row.entry.kind" />
-                                <div class="min-w-0 flex-1 py-1">
-                                    <div class="truncate leading-5" data-history-group-action>
-                                        {{ presentationOf(row).main }}
-                                    </div>
-                                    <div
-                                        v-if="
-                                            presentationOf(row).count ||
-                                            (row.selectable && parentTime)
-                                        "
-                                        class="flex whitespace-nowrap text-xs leading-4"
-                                        data-history-group-caption
-                                    >
-                                        <span
-                                            v-if="presentationOf(row).count"
-                                            class="shrink-0"
-                                            data-history-group-count
-                                            >{{ presentationOf(row).count }}</span
-                                        >
-                                        <span
-                                            v-if="row.selectable && parentTime"
-                                            class="min-w-0 truncate tabular-nums"
-                                            data-history-group-time
-                                            ><template v-if="presentationOf(row).count"
-                                                >&nbsp;· </template
-                                            >{{ timeOf(row) }}</span
-                                        >
-                                    </div>
-                                </div>
-                                <span
-                                    v-if="row.selectable && deltaOf(row)"
-                                    class="timeline-count shrink-0"
-                                    :class="{ hidden: narrow }"
-                                    >{{ deltaOf(row) }}</span
-                                >
-                                <button
-                                    v-if="row.members.length > 1 && !row.child"
-                                    type="button"
-                                    class="flex size-11 shrink-0 items-center justify-center rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
-                                    :aria-label="labelOf(row)"
-                                    :aria-expanded="expandedGroups.has(row.id)"
-                                    data-history-disclosure
-                                    @pointerdown.stop="cancelLongPress"
-                                    @contextmenu.stop.prevent
-                                    @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
-                                >
-                                    <ChevronIcon
-                                        :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
-                                    />
-                                </button>
-                            </div>
-                            <span
-                                v-if="flagTextOf(row)"
-                                class="timeline-group-reason timeline-flag"
-                                data-history-flag
+                        <div class="timeline-entry-header" data-history-entry-header :data-history-group-header="isCountedParent(row) ? '' : undefined">
+                            <button
+                                v-if="row.members.length > 1 && !row.child"
+                                type="button"
+                                class="timeline-leading rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
+                                :aria-label="labelOf(row)"
+                                :aria-expanded="expandedGroups.has(row.id)"
+                                data-history-disclosure
+                                @pointerdown.stop="cancelLongPress"
+                                @contextmenu.stop.prevent
+                                @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
                             >
-                                <FlagIcon :kind="flagKindOf(row)" />
-                                <span>{{ flagTextOf(row) }}</span>
-                            </span>
-                        </template>
-                        <template v-else>
-                            <KindIcon :kind="row.entry.kind" />
-                            <span
-                                v-if="row.selectable || !narrow"
-                                class="min-w-0 flex-1 truncate"
-                                >{{ labelOf(row) }}</span
+                                <ChevronIcon :direction="expandedGroups.has(row.id) ? 'down' : 'right'" />
+                            </button>
+                            <span v-else class="timeline-leading" aria-hidden="true"><KindIcon :kind="row.entry.kind" /></span>
+                            <component
+                                :is="row.selectable ? 'div' : 'button'"
+                                :type="row.selectable ? undefined : 'button'"
+                                class="timeline-entry-text"
+                                :class="!row.selectable ? 'rounded-xl outline-offset-[-2px] focus-visible:outline focus-visible:outline-2' : ''"
+                                :aria-label="row.selectable ? undefined : `${i18n.history.details.title}: ${nameOf(row)}`"
+                                :data-history-details="row.selectable ? undefined : ''"
+                                @click="!row.selectable && showDetails(row, $event.currentTarget as HTMLElement)"
                             >
-                            <!-- A removed or damaged row says why; the label gives way to it. -->
-                            <span
-                                v-if="flagTextOf(row)"
-                                class="timeline-flag flex-1"
-                                data-history-flag
-                            >
-                                <FlagIcon :kind="flagKindOf(row)" />
-                                <span class="leading-tight">{{ flagTextOf(row) }}</span>
-                            </span>
-                            <span
-                                v-if="row.selectable && deltaOf(row)"
-                                class="timeline-count shrink-0"
-                                :class="{ hidden: narrow }"
-                                >{{ deltaOf(row) }}</span
-                            >
-                            <span v-if="row.selectable || !narrow" class="timeline-time shrink-0">{{
-                                timeOf(row)
-                            }}</span>
-                        </template>
+                                <span class="block truncate leading-5" data-history-group-action>{{ presentationOf(row).main }}</span>
+                                <span class="timeline-entry-caption" data-history-group-caption>
+                                    <span class="min-w-0 flex-1 truncate" data-history-group-count>
+                                        <template v-if="inlineCount && !(row.members.length > 1 && expandedGroups.has(row.id))">{{ presentationOf(row).count }}</template>
+                                    </span>
+                                    <span v-if="row.selectable && !narrow && deltaOf(row)" class="timeline-count shrink-0">{{ deltaOf(row) }}</span>
+                                    <span class="timeline-time shrink-0" data-history-group-time>{{ timeOf(row) }}</span>
+                                </span>
+                            </component>
+                        </div>
+                        <span v-if="flagTextOf(row)" class="timeline-entry-reason timeline-flag" data-history-flag>
+                            <FlagIcon :kind="flagKindOf(row)" />
+                            <span>{{ flagTextOf(row) }}</span>
+                        </span>
                     </div>
                 </template>
 
@@ -1194,23 +1174,36 @@ defineExpose({
 
 <style scoped>
 .timeline-row {
-    @apply absolute inset-x-2 flex select-none items-center gap-2 rounded-full px-3 text-sm;
+    @apply absolute inset-x-2 select-none rounded-3xl text-sm;
 }
 
-.timeline-row-counted {
-    @apply block p-0;
+.timeline-entry-header,
+.timeline-now {
+    @apply flex h-11 items-center pr-3;
 }
 
-.timeline-group-header {
-    @apply flex h-11 items-center gap-2 px-3;
+.timeline-leading {
+    @apply flex size-11 shrink-0 items-center justify-center;
 }
 
-.timeline-group-reason.timeline-flag {
+.timeline-entry-text {
+    @apply min-w-0 flex-1 truncate py-1 text-left;
+}
+
+.timeline-entry-caption {
+    @apply flex gap-2 whitespace-nowrap text-xs leading-4;
+}
+
+.timeline-entry-reason.timeline-flag {
     @apply h-8 items-start px-3 leading-4;
 }
 
 .timeline-row-child {
-    @apply pl-8;
+    @apply pl-3;
+}
+
+.timeline-count-detail {
+    @apply absolute inset-x-2 flex items-center pl-11 pr-3 text-xs;
 }
 
 .timeline-row-selected {
