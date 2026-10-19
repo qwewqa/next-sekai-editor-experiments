@@ -279,10 +279,9 @@ test('toolbar tools keep their edge, and the tool in use is selected', async ({ 
     const select = toolbar.getByTitle('Select', { exact: true })
     await expect.poll(() => fills(select, 'path')).toEqual([selectedText])
 
-    // Focus keeps the edge and adds an inner ring, distinct from the resting look.
+    // Focus thickens the edge inward, in the selected text colour, distinct from the resting look.
     await focus(select)
-    expect(await outline(select)).toEqual({ style: 'solid', width: '2px', color: selectedText })
-    expect(await innerRing(select)).toBe(selectedText)
+    expect(await outline(select)).toEqual({ style: 'solid', width: '4px', color: selectedText })
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
 
     // Pressing it keeps the selected colours, as other buttons keep theirs.
@@ -339,7 +338,7 @@ const innerRing = (locator: Locator) =>
     })
 
 for (const colorScheme of ['light', 'dark'] as const)
-    test(`focus on the tool in use is an inner ring on its fill (${colorScheme})`, async ({
+    test(`focus on the tool in use is a thick edge on its fill (${colorScheme})`, async ({
         page,
     }) => {
         await page.emulateMedia({ forcedColors: 'active', colorScheme })
@@ -349,7 +348,9 @@ for (const colorScheme of ['light', 'dark'] as const)
             .locator(':scope > div > div > button')
             .and(page.getByTitle('Select', { exact: true }))
         await focus(select)
-        await expect.poll(() => innerRing(select)).toBe(selectedText)
+        await expect
+            .poll(() => outline(select))
+            .toEqual({ style: 'solid', width: '4px', color: selectedText })
         // Not in use: no inner ring.
         const undo = toolbar
             .locator(':scope > div > div > button')
@@ -374,8 +375,10 @@ for (const colorScheme of ['light', 'dark'] as const)
             .and(page.getByTitle('Select', { exact: true }))
         await expect(row).toHaveAttribute('aria-pressed', 'true')
         await focus(row)
-        await expect.poll(() => innerRing(row)).toBe(selectedText)
-        expect(await edge(row)).toBe('2px -2px')
+        await expect
+            .poll(() => outline(row))
+            .toEqual({ style: 'solid', width: '4px', color: selectedText })
+        expect(await edge(row)).toBe('4px -4px')
         // A row not in use thickens its edge too.
         const other = toolbar
             .locator(':scope > div > div > div button')
@@ -386,7 +389,7 @@ for (const colorScheme of ['light', 'dark'] as const)
     })
 
 for (const colorScheme of ['light', 'dark'] as const)
-    test(`focus on the pressed 1:1 Grid is an inner ring, as on the tool in use (${colorScheme})`, async ({
+    test(`focus on the pressed 1:1 Grid is a thick edge, as on the tool in use (${colorScheme})`, async ({
         page,
     }) => {
         await page.emulateMedia({ forcedColors: 'active', colorScheme })
@@ -400,8 +403,9 @@ for (const colorScheme of ['light', 'dark'] as const)
         await lock.click()
         await expect(lock).toHaveAttribute('aria-pressed', 'true')
         await focus(lock)
-        expect(await outline(lock)).toEqual({ style: 'solid', width: '2px', color: selectedText })
-        await expect.poll(() => innerRing(lock)).toBe(selectedText)
+        await expect
+            .poll(() => outline(lock))
+            .toEqual({ style: 'solid', width: '4px', color: selectedText })
     })
 
 const systemColor = (page: Page, name: string) =>

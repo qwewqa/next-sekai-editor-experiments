@@ -144,6 +144,36 @@ test('a peek shows the entry while writers keep the live chart, and edits are re
     ).toBe(0)
 })
 
+test('a refused toolbar tool dims only its content and still shows the refusal on a tap', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await peek(page, first)
+
+    const refused = page.locator('[data-editor-toolbar] button[aria-disabled="true"]').first()
+    await expect(refused).toBeVisible()
+    const tool = page
+        .locator('[data-editor-toolbar]')
+        .getByTitle((await refused.getAttribute('title'))!, { exact: true })
+        .first()
+    await expect(tool).toBeVisible()
+    const opacities = await tool.evaluate((button) => ({
+        face: getComputedStyle(button).opacity,
+        children: [...button.children].map((child) => getComputedStyle(child).opacity),
+    }))
+    expect(opacities.face).toBe('1')
+    expect(opacities.children.length).toBeGreaterThan(0)
+    expect(opacities.children.every((opacity) => opacity === '0.4')).toBe(true)
+
+    // aria-disabled reads as not enabled to Playwright; the click is still a real press.
+    await tool.click({ force: true })
+    await expect(notice(page)).toHaveText('Read-only while viewing history')
+    await expect(tool).toHaveAttribute('aria-disabled', 'true')
+    await leave(page)
+    await expect(tool).not.toHaveAttribute('aria-disabled', 'true')
+})
+
 test('Undo leaves the peek first, then undoes', async ({ page }) => {
     const first = await newestSeq(page)
     await deleteAt(page, 3)
@@ -336,7 +366,7 @@ test('Properties shows fields disabled while peeking', async ({ page }) => {
     await peek(page, first)
     const point = await notePoint(page, 3)
     await page.mouse.click(point.x, point.y)
-    const beat = page.getByLabel('Beat', { exact: true })
+    const beat = page.getByLabel('Beat', { exact: true }).first()
     await expect(beat).toBeVisible()
     await expect(beat).toBeDisabled()
     await leave(page)

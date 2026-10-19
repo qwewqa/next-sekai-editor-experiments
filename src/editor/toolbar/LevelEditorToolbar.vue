@@ -559,9 +559,10 @@ onBeforeUnmount(() => {
                 :class="{ 'z-20': activeIndex === i }"
                 :inert="activeIndex !== -1 && activeIndex !== i"
             >
-                <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned. -->
+                <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned.
+                     The chrome tier is on the shown tool, not the row, so the flyout's faces keep the surface values. -->
                 <LevelEditorToolbarTool
-                    class="size-[--tool-size] justify-center before:absolute before:size-[--tool-size]"
+                    class="surface-chrome size-[--tool-size] justify-center before:absolute before:size-[--tool-size]"
                     :class="{ 'toolbar-quick-switch': settings.toolbarQuickSwitch }"
                     :name="activeName"
                     :state="stateOf(activeName, i)"
@@ -598,9 +599,7 @@ onBeforeUnmount(() => {
                         v-for="(name, j) in toolbar[i]"
                         :key="j"
                         class="relative mb-1 w-full before:absolute before:-inset-y-0.5 before:inset-x-0 last:before:-bottom-1"
-                        :class="{
-                            '!bg-accent !fill-on-accent !text-on-accent': quickOver === j,
-                        }"
+                        :class="{ 'is-pressed': quickOver === j }"
                         :name
                         :state="stateOf(name, i)"
                         gated

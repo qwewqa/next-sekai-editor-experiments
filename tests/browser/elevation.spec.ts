@@ -2549,3 +2549,37 @@ test('a key scroll mid-drag moves the elevation preview to where the drop lands'
     await settle(page)
     expect(await shown()).toEqual(during)
 })
+
+for (const scheme of ['light', 'dark'] as const) {
+    test(`the snap select shows its focus ring in the surface ink in ${scheme}`, async ({
+        page,
+    }) => {
+        await page.emulateMedia({ colorScheme: scheme })
+        await open(page)
+        const select = page.locator('select.elevation-field')
+        await page.locator('.elevation-field').first().focus()
+        for (
+            let i = 0;
+            i < 6 && !(await select.evaluate((el) => el === document.activeElement));
+            i++
+        )
+            await page.keyboard.press('Tab')
+        await expect(select).toBeFocused()
+        await expect
+            .poll(() =>
+                select.evaluate((element) => {
+                    const { outlineStyle, outlineWidth, outlineColor } = getComputedStyle(element)
+                    const fg = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--color-fg')
+                        .trim()
+                        .split(/\s+/)
+                        .join(', ')
+                    return {
+                        visible: outlineStyle !== 'none' && parseFloat(outlineWidth) > 0,
+                        ink: outlineColor === `rgb(${fg})`,
+                    }
+                }),
+            )
+            .toEqual({ visible: true, ink: true })
+    })
+}
