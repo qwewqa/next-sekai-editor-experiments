@@ -142,10 +142,9 @@ onBeforeUnmount(() => {
     clearTimeout(pause)
 })
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40'
+const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 const rowClass =
-    'relative flex min-h-10 items-start gap-3 rounded-xl px-3 py-2 transition-colors has-[:active]:bg-accent has-[:active]:text-on-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover'
+    'relative flex min-h-10 items-start gap-3 rounded-xl px-3 py-2 transition-colors has-[:active]:bg-ghost-press has-[:active]:text-fg-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover [@media(hover:hover)]:has-[:active]:bg-ghost-press'
 const boxClass =
     'pointer-events-none relative mt-0.5 size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100 peer-disabled:opacity-50'
 </script>
@@ -169,7 +168,7 @@ const boxClass =
                         <input
                             ref="field"
                             v-model="value"
-                            class="w-full min-w-0 appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors placeholder:text-fg/50 hover:shadow-accent focus:ring-2 focus:ring-fg"
+                            class="field w-full min-w-0 appearance-none rounded-full px-4 py-1 placeholder:text-fg/50"
                             type="text"
                             spellcheck="false"
                             autocomplete="off"
@@ -201,7 +200,7 @@ const boxClass =
                     <input
                         v-model="history"
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none disabled:cursor-default"
+                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
                         :disabled="historyDisabled"
                         :aria-labelledby="`${ids}-history-label`"
                         :aria-describedby="`${ids}-history`"
@@ -231,7 +230,7 @@ const boxClass =
                     <input
                         v-model="bgm"
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none disabled:cursor-default"
+                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
                         :disabled="bgmDisabled"
                         :aria-labelledby="`${ids}-bgm-label`"
                         :aria-describedby="`${ids}-bgm`"
@@ -261,7 +260,7 @@ const boxClass =
                         >{{ hintParts[0]
                         }}<button
                             type="button"
-                            class="underline outline-none focus-visible:ring-2 focus-visible:ring-fg"
+                            class="focus-out rounded-sm underline outline outline-2 outline-transparent"
                             @click="emit('close', { action: 'export' })"
                         >
                             {{ hintParts[1] }}</button
@@ -270,7 +269,7 @@ const boxClass =
                     <button
                         v-else
                         type="button"
-                        class="text-left underline outline-none focus-visible:ring-2 focus-visible:ring-fg"
+                        class="focus-out rounded-sm text-left underline outline outline-2 outline-transparent"
                         @click="emit('close', { action: 'export' })"
                     >
                         {{ hint }}
@@ -288,17 +287,12 @@ const boxClass =
             </div>
 
             <div class="flex justify-end gap-2">
-                <button
-                    type="button"
-                    class="bg-button active:bg-accent active:text-on-accent"
-                    :class="buttonClass"
-                    @click="cancel"
-                >
+                <button type="button" class="btn-secondary" :class="buttonClass" @click="cancel">
                     {{ i18n.modals.confirm.cancel }}
                 </button>
                 <button
                     type="submit"
-                    class="bg-accent text-on-accent active:bg-button active:text-fg"
+                    class="btn-primary"
                     :class="buttonClass"
                     :disabled="!!problem"
                 >

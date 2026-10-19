@@ -7,8 +7,7 @@ defineEmits<{
     go: [id: SettingsSectionId]
 }>()
 
-const pill =
-    'h-8 shrink-0 rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
+const pill = 'btn btn-secondary h-8 shrink-0 rounded-full px-3 text-sm'
 </script>
 
 <template>

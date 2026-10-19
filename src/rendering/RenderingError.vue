@@ -18,7 +18,7 @@ defineEmits<{ reload: [] }>()
             <p>{{ i18n.preview.graphicsHelp }}</p>
             <button
                 type="button"
-                class="min-h-11 rounded-full bg-button px-4 text-fg shadow-md focus-visible:ring-2 focus-visible:ring-accent"
+                class="btn btn-secondary min-h-11 rounded-full px-4"
                 @click="$emit('reload')"
             >
                 {{ i18n.preview.reload }}

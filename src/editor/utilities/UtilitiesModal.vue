@@ -17,7 +17,7 @@ const utilities = {
             <button
                 v-for="(modal, name) in utilities"
                 :key="name"
-                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 @click="showModal(modal, {})"
             >
                 {{ i18n.utilities[name].title }}

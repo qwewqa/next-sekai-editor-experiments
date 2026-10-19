@@ -18,7 +18,7 @@ provide(stackLongValuesKey, true)
         <h2
             tabindex="-1"
             data-settings-heading
-            class="mb-2 rounded font-bold outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            class="focus-out mb-2 rounded font-bold outline outline-2 outline-transparent"
         >
             {{ title }}
         </h2>

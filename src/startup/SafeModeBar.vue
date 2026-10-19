@@ -38,7 +38,7 @@ onBeforeUnmount(() => {
         <span class="min-w-0">{{ i18n.safe.bar }}</span>
         <button
             type="button"
-            class="h-8 shrink-0 rounded-full bg-button px-3 shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+            class="btn btn-secondary h-8 shrink-0 rounded-full px-3"
             @click="void leaveSafeMode()"
         >
             {{ i18n.safe.leave }}

@@ -140,8 +140,7 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
 // iPhone and iPad never show the close prompt (§1.4.9), so the setting isn't offered there.
 const showsClosePrompt = detection().os !== 'ios'
 
-const buttonClass =
-    'inline-flex h-9 max-w-full items-center rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
+const buttonClass = 'btn btn-secondary inline-flex h-9 max-w-full items-center rounded-full px-4'
 
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {
