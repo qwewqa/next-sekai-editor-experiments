@@ -87,7 +87,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
                 :disabled
                 :title="shown"
                 :class="{ 'text-fg/80': modelValue === undefined }"
-                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-100"
+                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-70"
                 @change="resyncSelect($event, () => modelValue)"
             >
                 <!-- Without the choice, an unset value still shows but is never listed. -->

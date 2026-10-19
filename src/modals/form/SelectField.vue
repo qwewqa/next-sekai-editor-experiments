@@ -37,7 +37,7 @@ const glyphs = computed(() =>
                 v-model.lazy="modelValue"
                 :disabled
                 :title="shown"
-                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-100"
+                class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-70"
                 required
                 @change="resyncSelect($event, () => modelValue)"
             >
