@@ -1,8 +1,13 @@
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
+import { sameFileContent } from '../../editor/file/content'
 import type { SwitchRequest } from '../../editor/switchRequest'
 import { captureStep, type JsonValue } from '../../history/operations'
-import { createSessionDescriptor, type SessionDescriptor } from '../../history/session'
-import type { RestoredSlot } from '../../history/stack'
+import {
+    createSessionDescriptor,
+    session as currentSession,
+    type SessionDescriptor,
+} from '../../history/session'
+import { liveState, stackGeneration, type RestoredSlot } from '../../history/stack'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
@@ -71,6 +76,7 @@ export const claimTab = async (locks: LockService): Promise<Claim> => {
 /** What an opened session shows: its descriptor, its stack with the head loaded, its view. */
 export type Shown = {
     descriptor: SessionDescriptor
+    installed?: () => boolean
     slots: RestoredSlot[]
     at: number
     state: State
@@ -180,6 +186,7 @@ export const openStored = async (
         request,
         canShow,
         onShown,
+        onDestination,
         onTransferred,
         keepUnshownLock = false,
     }: {
@@ -188,6 +195,7 @@ export const openStored = async (
         request?: SwitchRequest
         canShow?: () => boolean
         onShown?: (leaving: FlushSession | undefined) => void
+        onDestination?: () => void
         onTransferred?: () => void
         keepUnshownLock?: boolean
         /**
@@ -224,7 +232,7 @@ export const openStored = async (
         const edited = chain.edited === true
         const slots: RestoredSlot[] = read.stack.slots.map(({ snapshot, step }) => ({
             snapshot,
-            step,
+            step: captureStep(step),
             isDirty: edited,
         }))
         let at = read.stack.window.index - read.stack.window.base
@@ -255,109 +263,138 @@ export const openStored = async (
         const boundFile = boundFileOf(chain)
         const docId = fork ? newId() : (text(chain.docId) ?? newId())
         const name = fork ? forkName : text(chain.name)
-        const publish = () => {
+        const descriptor = createSessionDescriptor({
+            sessionId: id,
+            docId,
+            ...(name === undefined ? {} : { name }),
+            ...(sourceName === undefined ? {} : { sourceName }),
+            ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+            ...(typeof session.startedAt === 'number' ? { startedAt: session.startedAt } : {}),
+            ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
+        })
+        const expectedGeneration = stackGeneration() + 1
+        const destinationMatches = () =>
+            currentSession.value.sessionId === id && stackGeneration() === expectedGeneration
+        const continuedOperation =
+            how.mode === 'resume'
+                ? undefined
+                : deps.operations.continued(session.updatedAt as number)
+        const continuedChain = fork ? newId() : String(chain.chainId)
+        if (how.mode !== 'resume') own = holdOwn(deps.locks, id)
+        const publish = (acknowledge?: () => boolean) => {
             const leaving = flusher.session
-            deps.show({
-                descriptor: createSessionDescriptor({
-                    sessionId: id,
-                    docId,
-                    ...(name === undefined ? {} : { name }),
-                    ...(sourceName === undefined ? {} : { sourceName }),
-                    ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
-                    ...(typeof session.startedAt === 'number'
-                        ? { startedAt: session.startedAt }
-                        : {}),
-                    ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
-                }),
-                slots,
-                at,
-                state: shown,
-                view: session.view,
-                ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
-            })
-            if (how.mode === 'resume') {
-                flusher.resumeSession({
-                    id,
-                    chainId: String(chain.chainId),
-                    docId,
-                    lineageId,
-                    origin: (text(session.origin) ?? 'new') as FlushSession['origin'],
-                    startedAt:
-                        typeof session.startedAt === 'number' ? session.startedAt : Date.now(),
-                    ...(isParent(session.parent) ? { parent: session.parent } : {}),
-                    ...(sourceName === undefined ? {} : { sourceName }),
-                    lastSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
-                    chain,
-                    stack: {
-                        ...storedStack(read),
-                        window: read.stack.window,
-                        blocks: read.stack.blocks,
-                        at: read.at,
-                    },
-                    ready: Promise.resolve(),
-                    done: how.lock.release,
+            let installed = false
+            const adopt = () => {
+                if (installed) throw new Error('Session installation ran twice')
+                installed = true
+                if (
+                    !destinationMatches() ||
+                    !sameFileContent(liveState.value, shown) ||
+                    (acknowledge && !acknowledge())
+                )
+                    return false
+                if (how.mode === 'resume') {
+                    flusher.resumeSession({
+                        id,
+                        chainId: String(chain.chainId),
+                        docId,
+                        lineageId,
+                        origin: (text(session.origin) ?? 'new') as FlushSession['origin'],
+                        startedAt:
+                            typeof session.startedAt === 'number' ? session.startedAt : Date.now(),
+                        ...(isParent(session.parent) ? { parent: session.parent } : {}),
+                        ...(sourceName === undefined ? {} : { sourceName }),
+                        lastSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
+                        chain,
+                        stack: {
+                            ...storedStack(read),
+                            window: read.stack.window,
+                            blocks: read.stack.blocks,
+                            at: read.at,
+                        },
+                        ready: Promise.resolve(),
+                        done: how.lock.release,
+                    })
+                    handoff()
+                } else {
+                    const acquired = own
+                    if (!acquired || continuedOperation === undefined)
+                        throw new Error('Session adoption was not prepared')
+                    const continued = flusher.continueSession({
+                        id,
+                        chainId: continuedChain,
+                        docId,
+                        lineageId,
+                        ...(sourceName === undefined ? {} : { sourceName }),
+                        parent: {
+                            id: String(session.id),
+                            uptoSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
+                        },
+                        stack: storedStack(read),
+                        chain,
+                        operation: continuedOperation,
+                        dirty: edited,
+                        ...(fork
+                            ? {
+                                  fork: {
+                                      forkOf: String(chain.chainId),
+                                      ...(forkName ? { forkName } : {}),
+                                  },
+                              }
+                            : {}),
+                        ready: acquired.granted.catch(() => undefined),
+                        // Starting from a journal, the parent stays held until its key goes, so no other
+                        // load keeps that key as a second copy meanwhile.
+                        done: taken
+                            ? () => {
+                                  acquired.release()
+                                  how.parentLock?.release()
+                              }
+                            : acquired.release,
+                        ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
+                    })
+                    handoff()
+                    if (taken) {
+                        if (!takenStep) throw new Error('Missing recovered step')
+                        flusher.append({ kind: 'edit', step: takenStep }, taken.state, true)
+                        deps.retireJournal?.(
+                            taken.found,
+                            continued.id,
+                            flusher.newestSeq(continued),
+                            how.parentLock?.release,
+                        )
+                    }
+                }
+                return true
+            }
+            try {
+                deps.show({
+                    descriptor,
+                    slots,
+                    at,
+                    state: shown,
+                    view: session.view,
+                    ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
+                    installed: adopt,
                 })
-                handoff()
-            } else {
-                const acquired = holdOwn(deps.locks, id)
-                own = acquired
-                const continued = flusher.continueSession({
-                    id,
-                    chainId: fork ? newId() : String(chain.chainId),
-                    docId,
-                    lineageId,
-                    ...(sourceName === undefined ? {} : { sourceName }),
-                    parent: {
-                        id: String(session.id),
-                        uptoSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
-                    },
-                    stack: storedStack(read),
-                    chain,
-                    operation: deps.operations.continued(session.updatedAt as number),
-                    dirty: edited,
-                    ...(fork
-                        ? {
-                              fork: {
-                                  forkOf: String(chain.chainId),
-                                  ...(forkName ? { forkName } : {}),
-                              },
-                          }
-                        : {}),
-                    ready: acquired.granted.catch(() => undefined),
-                    // Starting from a journal, the parent stays held until its key goes, so no other
-                    // load keeps that key as a second copy meanwhile.
-                    done: taken
-                        ? () => {
-                              acquired.release()
-                              how.parentLock?.release()
-                          }
-                        : acquired.release,
-                    ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
-                })
-                handoff()
-                if (taken) {
-                    if (!takenStep) throw new Error('Missing recovered step')
-                    flusher.append({ kind: 'edit', step: takenStep }, taken.state, true)
-                    deps.retireJournal?.(
-                        taken.found,
-                        continued.id,
-                        flusher.newestSeq(continued),
-                        how.parentLock?.release,
-                    )
+            } finally {
+                if (transferred && destinationMatches()) {
+                    // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
+                    restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
+                    writeTabRecord({
+                        sessionId: id,
+                        start: how.mode === 'resume' ? 'stored' : 'continuation',
+                        ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
+                        ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+                    })
+                    onDestination?.()
                 }
             }
-            // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
-            restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
-            writeTabRecord({
-                sessionId: id,
-                start: how.mode === 'resume' ? 'stored' : 'continuation',
-                ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
-                ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
-            })
+            if (!transferred || !destinationMatches() || (request && !request.isCurrent())) return
             if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
             onShown?.(leaving)
         }
-        if (request) request.publish(publish)
+        if (request) request.publish({ state: shown, sessionId: id, reset: false }, publish)
         else publish()
         return transferred ? shown : undefined
     } finally {

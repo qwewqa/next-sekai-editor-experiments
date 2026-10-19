@@ -114,10 +114,12 @@ export const openStoredState = (
     at: number,
     head: State,
     earlier = false,
+    installed?: () => boolean,
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = descriptor
     restoreStates(slots, at, head, earlier)
+    if (installed && !installed()) return
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()

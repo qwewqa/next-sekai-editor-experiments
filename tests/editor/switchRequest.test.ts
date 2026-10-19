@@ -63,7 +63,10 @@ test('edit and Undo/Redo ABA permanently revoke a pending switch', () => {
         undoState()
         assert.equal(liveState.value, before)
         assert.equal(
-            request.publish(() => assert.fail('stale publication')),
+            request.publish(
+                { state: before, sessionId: session.value.sessionId, reset: true },
+                () => assert.fail('stale publication'),
+            ),
             false,
         )
     } finally {
@@ -96,17 +99,19 @@ test('the newest issued request wins even if it is cancelled', () => {
 
 test('own synchronous publication rebases, but a reentrant newer request or edit never does', () => {
     const request = createSwitchRequest()
-    assert.equal(
-        request.publish(() => {
-            reset()
-            session.value = createSessionDescriptor()
-        }),
-        true,
-    )
+    const publish = (owner: ReturnType<typeof createSwitchRequest>, after = () => {}) => {
+        const descriptor = createSessionDescriptor()
+        const state = stateOf(goldenChart())
+        return owner.publish({ state, sessionId: descriptor.sessionId, reset: true }, () => {
+            session.value = descriptor
+            resetStates({ state, step: initialStep(), isDirty: false })
+            after()
+        })
+    }
+    assert.equal(publish(request), true)
     let newer: ReturnType<typeof createSwitchRequest> | undefined
     assert.equal(
-        request.publish(() => {
-            reset()
+        publish(request, () => {
             newer = createSwitchRequest()
         }),
         false,
@@ -114,7 +119,6 @@ test('own synchronous publication rebases, but a reentrant newer request or edit
     assert.equal(newer?.isCurrent(), true)
     request.dispose()
     newer?.dispose()
-
     const edited = createSwitchRequest()
     const stop = onHistoryAction(({ kind }) => {
         if (kind !== 'reset') return
@@ -125,11 +129,21 @@ test('own synchronous publication rebases, but a reentrant newer request or edit
         })
     })
     try {
-        assert.equal(edited.publish(reset), false)
+        assert.equal(publish(edited), false)
     } finally {
         stop()
         edited.dispose()
     }
+    const replaced = createSwitchRequest()
+    assert.equal(
+        publish(replaced, () => {
+            const before = liveState.value
+            replaceState({ ...before, initialLife: before.initialLife + 1 })
+            replaceState(before)
+        }),
+        false,
+    )
+    replaced.dispose()
 })
 
 test('normal modal unmount differs from active-task cancellation and retained cleanup settles', async () => {

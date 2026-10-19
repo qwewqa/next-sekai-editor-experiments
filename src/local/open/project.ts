@@ -13,6 +13,7 @@ import { i18n } from '../../i18n'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import { interpolate } from '../../utils/interpolate'
+import { releaseWaveform } from '../../waveform'
 import type { ChainSummary } from '../flushWrite'
 import { resolveHandle, storableHandle } from '../handles'
 import { hasWebLocks, sessionLock } from '../locks'
@@ -291,6 +292,8 @@ export const storeAndShow = async (
                                 leaving,
                                 deps.flusher()?.outgoing ?? Promise.resolve(false),
                             )
+                    },
+                    onDestination: () => {
                         if (open.copyOf) {
                             currentSession.value = { ...currentSession.value, copyOf: open.copyOf }
                             writeTabRecord({ sessionId, start: 'stored', copyOf: open.copyOf })
@@ -495,8 +498,10 @@ export const attachOpenedBgm = async (
         isPeeking.value ||
         live.bgm.meta?.hash !== hash ||
         live.bgm.buffer
-    )
+    ) {
+        releaseWaveform(decoded.waveform)
         return false
+    }
     replaceState({ ...live, bgm: { ...live.bgm, ...decoded, source } })
     return true
 }

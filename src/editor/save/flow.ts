@@ -50,6 +50,7 @@ import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile, unbindFile } from '../file'
 import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
+import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
     BuildRefused,
     headHashOf,
@@ -2228,15 +2229,21 @@ export const fileDownloadAgain = () =>
  * Open the Other Version (§0.9.6): the file on disk as a new session in place of this one, which
  * keeps its changes. A file that can't be read says so.
  */
-const openOther = async (handle: FileSystemFileHandle | undefined, name: string) => {
-    const opened = await handle?.getFile().catch(() => undefined)
-    if (!handle || !opened) {
-        saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
-        return
-    }
-    const { openProject } = await import('../commands/open/project')
-    await openProject(opened, handle)
-}
+const openOther = (
+    handle: FileSystemFileHandle | undefined,
+    name: string,
+    supplied?: SwitchRequest,
+) =>
+    withSwitchRequest(supplied, async (request) => {
+        const opened = await handle?.getFile().catch(() => undefined)
+        if (!request.isCurrent()) return
+        if (!handle || !opened) {
+            saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
+            return
+        }
+        const { openProject } = await import('../commands/open/project')
+        if (request.isCurrent()) await openProject(opened, handle, request)
+    })
 
 /** Reads the bound file's stored handle ahead of a Save, once the session is edited (n5). */
 export const prefetchHandle = async () => {
@@ -2248,12 +2255,14 @@ export const prefetchHandle = async () => {
 }
 
 /** The chip's Open the Other Version: the bound file on disk (§1.3.4). */
-export const openOtherVersion = async () => {
-    const env = environment()
-    const file = env && quickBinding(env).file
-    if (!env || !file) return
-    await openOther(await bindingHandle(env, file), file.name)
-}
+export const openOtherVersion = (supplied?: SwitchRequest) =>
+    withSwitchRequest(supplied, async (request) => {
+        const env = environment()
+        const file = env && quickBinding(env).file
+        if (!env || !file || !request.isCurrent()) return
+        const handle = await bindingHandle(env, file)
+        if (request.isCurrent()) await openOther(handle, file.name, request)
+    })
 
 /** I Have the File: `file.confirmed` stored on the chain record (§1.3.4). */
 export const persistConfirmed = () => {

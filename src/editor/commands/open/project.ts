@@ -5,6 +5,7 @@ import { validateChart } from '../../../chart/validate'
 import { openState } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
+import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { formatDate } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
@@ -216,6 +217,8 @@ const openRequestedProject = async (
                     if (!(error instanceof OpenRefused)) throw error
                     refusal = error.message
                 }
+            } catch (error) {
+                if (request.isCurrent()) throw error
             } finally {
                 stopAbort()
             }
@@ -316,10 +319,13 @@ const openRequestedProject = async (
     const { storageStatus } = await import('../../../local/startup/events')
     if (storageStatus.value?.mode === 'readOnly') {
         cancel()
-        request.publish(() => {
-            openState(live, { sourceName: file.name })
+        const descriptor = createSessionDescriptor({ sourceName: file.name })
+        if (
+            request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () =>
+                openState(live, descriptor),
+            )
+        )
             notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
-        })
         return
     }
 
@@ -394,6 +400,8 @@ const openRequestedProject = async (
                 })
                 request.retainUntil(committing)
                 stored = await committing
+            } catch (error) {
+                if (request.isCurrent()) throw error
             } finally {
                 stopAbort()
             }

@@ -10,6 +10,7 @@ import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
 import { resetState } from '../../../history'
+import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -23,6 +24,7 @@ import { showChoice } from '../../../modals/choice'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { levelDataDiskState } from '../../../platform'
+import { createState } from '../../../state'
 import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
 import { errorMessage } from '../../../utils/error'
@@ -107,14 +109,7 @@ export const open: Command = {
                                     const chart = parseUscChart(objects)
                                     validateChart(chart)
 
-                                    if (
-                                        !request.publish(() =>
-                                            resetState(false, chart, offset, {
-                                                sourceName: getFilename(file),
-                                            }),
-                                        )
-                                    )
-                                        return
+                                    if (!resetImported(request, chart, offset, file)) return
                                     break
                                 }
                                 case 'levelData': {
@@ -151,14 +146,7 @@ export const open: Command = {
                                     const chart = parseUscChart(usc.objects)
                                     validateChart(chart)
 
-                                    if (
-                                        !request.publish(() =>
-                                            resetState(false, chart, usc.offset, {
-                                                sourceName: getFilename(file),
-                                            }),
-                                        )
-                                    )
-                                        return
+                                    if (!resetImported(request, chart, usc.offset, file)) return
                                     break
                                 }
                                 case 'sus': {
@@ -167,14 +155,7 @@ export const open: Command = {
                                     const chart = parseSusChart(sus)
                                     validateChart(chart)
 
-                                    if (
-                                        !request.publish(() =>
-                                            resetState(false, chart, sus.offset, {
-                                                sourceName: getFilename(file),
-                                            }),
-                                        )
-                                    )
-                                        return
+                                    if (!resetImported(request, chart, sus.offset, file)) return
                                     break
                                 }
                             }
@@ -187,6 +168,8 @@ export const open: Command = {
                         }
 
                         await opened(handle, buffer, type, partial, request)
+                    } catch (error) {
+                        if (request.isCurrent()) throw error
                     } finally {
                         stopAbort()
                     }
@@ -246,15 +229,14 @@ const applyLevelData = async (
                   new File([buffer], file.name, { lastModified: file.lastModified }),
               )
             : undefined
-    request.publish(() => {
-        resetState(false, chart, levelData.bgmOffset, { sourceName: getFilename(file) })
+    if (resetImported(request, chart, levelData.bgmOffset, file)) {
         if (!complete) exportMemory.partial = true
         if (complete && isGzip(buffer)) {
             exportMemory.sourceName = file.name
             if (handle && disk)
                 exportMemory.target = { name: handle.name, handle, disk, exported: false }
         }
-    })
+    }
     return complete ? revisionWarning : 'unsupportedParts'
 }
 
@@ -356,4 +338,12 @@ const tryImportSus = (buffer: ArrayBuffer) => {
     } catch {
         return
     }
+}
+
+const resetImported = (request: SwitchRequest, chart: Chart, offset: number, file: File) => {
+    const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
+    return request.publish(
+        { state: createState(chart, offset), sessionId: descriptor.sessionId, reset: true },
+        () => resetState(false, chart, offset, descriptor),
+    )
 }

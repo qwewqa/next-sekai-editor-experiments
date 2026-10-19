@@ -1,3 +1,5 @@
+import { session } from '../../../src/history/session'
+import { restoreStates } from '../../../src/history/stack'
 import type { FlushSession } from '../../../src/local/flush'
 import { readHandleRow, type HandleRole } from '../../../src/local/handleRows'
 import { journalHandlers } from '../../../src/local/journal/handlers'
@@ -164,7 +166,10 @@ export const load = async (
         flusher: () => page.flusher,
         show: (each) => {
             shown.push(each)
+            session.value = each.descriptor
+            restoreStates(each.slots, each.at, each.state, each.earlier)
             page.live.state = each.state
+            each.installed?.()
         },
         // As `openState` does: a new session begins with it.
         showState: (state) => {

@@ -1,9 +1,12 @@
 import { watch } from 'vue'
 import { onHistoryAction } from '../history/actions'
-import { peekedInfo, peekedKey, peekSourceGeneration } from '../history/peek'
+import { peekRequestGeneration, peekSourceGeneration } from '../history/peek'
 import { session } from '../history/session'
-import { liveState, stackGeneration } from '../history/stack'
+import { liveState, peek, stackGeneration, stackMoveRequestGeneration } from '../history/stack'
+import type { State } from '../state'
 import { sameFileContent } from './file/content'
+
+export type SwitchDestination = { state: State; sessionId: string; reset: boolean }
 
 let latest = 0
 
@@ -11,37 +14,61 @@ let latest = 0
 export const createSwitchRequest = () => {
     const serial = ++latest
     let current = true
-    let publishing = false
+    let publishing: SwitchDestination | undefined
+    let established = false
+    let leftPeek = false
     let resetSeen = false
     let retained = 0
     let finished = false
     let generation = stackGeneration()
     let content = liveState.value
     const invalidate = () => {
-        if (!publishing) current = false
+        current = false
     }
+    const matches = () =>
+        !!publishing &&
+        session.value.sessionId === publishing.sessionId &&
+        stackGeneration() === generation + 1 &&
+        sameFileContent(liveState.value, publishing.state)
     const stopContent = watch(
         liveState,
         (state) => {
-            if (!publishing && !sameFileContent(content, state)) current = false
+            if (!sameFileContent(content, state) && !(publishing && !established) && !matches())
+                current = false
             content = state
         },
         { flush: 'sync' },
     )
-    const stopContext = watch(
-        [() => session.value.sessionId, peekedKey, peekedInfo, peekSourceGeneration],
-        invalidate,
+    const stopSession = watch(
+        () => session.value.sessionId,
+        (id) => {
+            if (!publishing || id !== publishing.sessionId) invalidate()
+        },
         { flush: 'sync' },
     )
+    const stopPeek = watch(
+        peekRequestGeneration,
+        () => {
+            if (publishing && !leftPeek && !peek.value && stackGeneration() === generation + 1) {
+                leftPeek = true
+            } else invalidate()
+        },
+        { flush: 'sync' },
+    )
+    const stopContext = watch([peekSourceGeneration, stackMoveRequestGeneration], invalidate, {
+        flush: 'sync',
+    })
     const stopActions = onHistoryAction(({ kind }) => {
         if (kind === 'save' || kind === 'export') return
-        if (publishing && kind === 'reset' && !resetSeen) {
+        if (publishing?.reset && kind === 'reset' && !resetSeen && matches()) {
             resetSeen = true
+            established = true
             return
         }
         current = false
     })
-    const isCurrent = () => current && serial === latest && generation === stackGeneration()
+    const isCurrent = () =>
+        current && serial === latest && (generation === stackGeneration() || matches())
     const cancel = () => {
         current = false
     }
@@ -51,20 +78,32 @@ export const createSwitchRequest = () => {
         cancel()
         stopContent()
         stopContext()
+        stopSession()
+        stopPeek()
         stopActions()
     }
     return {
         isCurrent,
         cancel,
-        publish(action: () => void) {
+        publish(destination: SwitchDestination, action: (installed: () => boolean) => void) {
             if (!isCurrent()) return false
-            publishing = true
+            publishing = destination
+            established = false
+            leftPeek = false
             resetSeen = false
             try {
-                action()
+                action(() => {
+                    established = true
+                    if (!matches()) {
+                        current = false
+                        return false
+                    }
+                    return true
+                })
             } finally {
-                publishing = false
-                if (serial !== latest) current = false
+                if (!matches() || resetSeen !== destination.reset || serial !== latest)
+                    current = false
+                publishing = undefined
                 generation = stackGeneration()
                 content = liveState.value
             }
