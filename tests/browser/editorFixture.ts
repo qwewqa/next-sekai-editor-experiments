@@ -572,19 +572,25 @@ export const closePage = async (page: Page, { runBeforeUnload }: { runBeforeUnlo
     await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload })])
     if (clientId === undefined) return
     const probe = await context.newPage()
-    await probe.goto('/privacy/')
-    await expect
-        .poll(
-            () =>
-                probe.evaluate(
-                    async (clientId) =>
-                        (await navigator.locks.query()).held?.some(
-                            (lock) => lock.clientId === clientId,
-                        ) ?? false,
-                    clientId,
-                ),
-            { timeout: 10_000 },
-        )
-        .toBe(false)
-    await probe.close()
+    try {
+        await probe.goto('/privacy/')
+        await expect
+            .poll(
+                () =>
+                    probe.evaluate(
+                        async (clientId) =>
+                            (await navigator.locks.query()).held?.some(
+                                (lock) => lock.clientId === clientId,
+                            ) ?? false,
+                        clientId,
+                    ),
+                {
+                    message: 'the closed page still holds its Web Locks after 10 s',
+                    timeout: 10_000,
+                },
+            )
+            .toBe(false)
+    } finally {
+        await probe.close()
+    }
 }

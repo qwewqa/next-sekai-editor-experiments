@@ -106,8 +106,9 @@ export const projectOf = (page: Page, name: string) =>
                 const bytes = await reader.read(entry, { maxSize: 4_000_000 })
                 return JSON.parse(new TextDecoder().decode(bytes)) as Row
             } catch (error) {
-                if ((error as Error).name !== 'NotReadableError' || performance.now() > until)
-                    throw error
+                if ((error as Error).name !== 'NotReadableError') throw error
+                if (performance.now() > until)
+                    throw new Error(`${name} was still unreadable after 5 s`, { cause: error })
                 await new Promise((resolve) => setTimeout(resolve, 50))
             }
         }
