@@ -1,31 +1,36 @@
 import type { GroupObject } from '../chart/groups'
 import type { StageObject } from '../chart/stages'
-import { i18n } from '../i18n'
-import { settings } from '../settings'
+import { createHistoryOperation } from '../history/createHistoryOperation'
 import {
-    bgmOffsetText,
-    bgmText,
-    groupEditText,
-    initialLifeText,
-    stageEditText,
+    bgmInput,
+    bgmOffsetInput,
+    groupEditInput,
+    initialLifeInput,
+    stageEditInput,
     type BgmParts,
+    type GroupEditKey,
+    type StageEditKey,
 } from './headerLabelText'
 
-// Live History labels (they follow the language) for edits with no chart position.
+export const initialLifeOperation = (before: number, after: number) =>
+    createHistoryOperation(initialLifeInput(before, after))
 
-export const initialLifeLabel = (value: number) => () =>
-    initialLifeText(i18n.value, settings.locale, value)
+export const bgmOffsetOperation = (before: number, after: number) =>
+    createHistoryOperation(bgmOffsetInput(before, after))
 
-export const bgmOffsetLabel = (seconds: number) => () =>
-    bgmOffsetText(i18n.value, settings.locale, seconds)
+export const bgmOperation = (old: BgmParts, next: BgmParts) =>
+    createHistoryOperation(bgmInput(old, next))
 
-export const bgmLabel = (old: BgmParts, next: BgmParts) => () =>
-    bgmText(i18n.value, settings.locale, old, next)
+export const groupEditOperation = <K extends GroupEditKey>(
+    id: number,
+    old: GroupObject,
+    key: K,
+    value: GroupObject[K],
+) => createHistoryOperation(groupEditInput(id, old, key, value))
 
-export const groupEditLabel =
-    (old: GroupObject, key: keyof GroupObject, value: GroupObject[keyof GroupObject]) => () =>
-        groupEditText(i18n.value, settings.locale, old, key, value)
-
-export const stageEditLabel =
-    (old: StageObject, key: keyof StageObject, value: StageObject[keyof StageObject]) => () =>
-        stageEditText(i18n.value, old, key, value)
+export const stageEditOperation = <K extends StageEditKey>(
+    id: number,
+    old: StageObject,
+    key: K,
+    value: StageObject[K],
+) => createHistoryOperation(stageEditInput(id, old, key, value))

@@ -1,5 +1,7 @@
 import { shallowRef, watch, type WatchStopHandle } from 'vue'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { subjectOfCounts } from '../../../history/operations'
 import {
     clearPreviewEdit,
     getPreviewState,
@@ -12,8 +14,9 @@ import type { State } from '../../../state'
 import { hasSameChartData } from '../../../state/data'
 import type { Entity } from '../../../state/entities'
 import { isEditableEntity, type EditableEntity } from '../../../state/operations/editable'
+import { changedNativeCounts } from '../../../state/operations/historyReceipts'
 import { getMaterializedNotePositions } from '../../../state/operations/notePositions'
-import { scaleSelection } from '../../../state/operations/scaleSelection'
+import { scaleSelectionWithReceipt } from '../../../state/operations/scaleSelection'
 import {
     canScaleSelection,
     getScaleBounds,
@@ -23,15 +26,16 @@ import {
     getTranslatedSelectionValues,
     type ScaleAxis,
 } from '../../../state/operations/scaleValues'
-import { transformSelection } from '../../../state/operations/transformSelection'
-import { translateSelection } from '../../../state/operations/translateSelection'
-import { interpolate } from '../../../utils/interpolate'
+import {
+    transformSelectionWithReceipt,
+    type SelectionTransformResult,
+} from '../../../state/operations/transformSelection'
+import { translateSelectionWithReceipt } from '../../../state/operations/translateSelection'
 import { clamp } from '../../../utils/math'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
 import { toolName } from '../../tools/state'
 import { toMovedBeat, view } from '../../view'
-import { getScaleLabels } from './labels'
 
 export type ScalingSession = {
     id: number
@@ -77,17 +81,77 @@ let baselineByDraft = new Map<EditableEntity, EditableEntity>()
 let draftByBaseline = new Map<EditableEntity, EditableEntity>()
 let baselineEntities: EditableEntity[] = []
 let baselineEntitySet = new Set<EditableEntity>()
+type AcceptedTransform = { mode: 'uniform'; factor: number; pivot: number } | { mode: 'composed' }
+type DraftTracking = {
+    live: ReadonlyMap<Entity, Entity>
+    endpoints: ReadonlyMap<Entity, Entity>
+    principals: ReadonlySet<Entity>
+    transform?: AcceptedTransform
+}
+let tracking = new WeakMap<State, DraftTracking>()
 
-const sourceIsCurrent = (session: ScalingSession) => {
-    const current = state.value
-    return (
-        current === session.source ||
-        (hasSameChartData(session.source, current) &&
-            current.bgm === session.source.bgm &&
-            current.initialLife === session.source.initialLife &&
-            current.selectedEntities.length === session.selected.length &&
-            current.selectedEntities.every((entity, index) => entity === session.selected[index]))
-    )
+const sourceMatches = (source: State, selected: readonly Entity[], candidate: State) =>
+    candidate === source ||
+    (hasSameChartData(source, candidate) &&
+        candidate.bgm === source.bgm &&
+        candidate.initialLife === source.initialLife &&
+        candidate.selectedEntities.length === selected.length &&
+        candidate.selectedEntities.every((entity, index) => entity === selected[index]))
+
+const createDraftRecorder = (session: ScalingSession) => {
+    const ledger = tracking
+    const source = session.source
+    const selected = [...session.selected]
+    const sourceTracking = ledger.get(source)
+    const get = (candidate: State) =>
+        ledger.get(candidate) ??
+        (sourceMatches(source, selected, candidate) ? sourceTracking : undefined)
+    const track = (
+        base: State,
+        result: SelectionTransformResult,
+        uniform?: { factor: number; pivot: number },
+    ) => {
+        if (result.state === base) return base
+        const prior = get(base)
+        if (!prior) throw new Error('Unexpected missing scaling correspondence')
+        const live = new Map<Entity, Entity>()
+        const endpoints = new Map(prior.endpoints)
+        const principals = new Set(prior.principals)
+        for (const [baseline, current] of prior.live) {
+            const applied = result.applications.get(current)
+            const after = result.replacements.get(current)
+            if (applied) {
+                principals.add(baseline)
+                endpoints.set(baseline, applied)
+            }
+            if (after) {
+                live.set(baseline, after)
+                if (principals.has(baseline)) endpoints.set(baseline, after)
+            }
+        }
+        ledger.set(result.state, {
+            live,
+            endpoints,
+            principals,
+            transform:
+                prior === sourceTracking && uniform
+                    ? { mode: 'uniform', ...uniform }
+                    : { mode: 'composed' },
+        })
+        return result.state
+    }
+    return { get, track }
+}
+
+const sourceIsCurrent = (session: ScalingSession, candidate = state.value) =>
+    sourceMatches(session.source, session.selected, candidate)
+const trackingFor = (candidate: State) => {
+    const known = tracking.get(candidate)
+    if (known) return known
+    const session = scalingSession.value
+    return session && sourceIsCurrent(session) && sourceIsCurrent(session, candidate)
+        ? tracking.get(session.source)
+        : undefined
 }
 const draftState = () => (ownedEdit ? getPreviewState(state.value, ownedEdit) : state.value)
 const extrema = (source: State, axis: ScaleAxis) => {
@@ -132,6 +196,7 @@ export const cancelScalingSession = () => {
     draftByBaseline.clear()
     baselineEntities = []
     baselineEntitySet.clear()
+    tracking = new WeakMap()
     view.entities = { hovered: [], creating: [] }
 }
 
@@ -144,6 +209,11 @@ export const beginScalingSession = (axis: ScaleAxis) => {
     ownerToken = Symbol('scaling')
     baselineEntities = selected.filter(isEditableEntity)
     baselineEntitySet = new Set(baselineEntities)
+    tracking.set(source, {
+        live: new Map(baselineEntities.map((entity) => [entity, entity])),
+        endpoints: new Map(),
+        principals: new Set(),
+    })
     numericBase = source
     numericBaseFactor = 1
     anchorSide = 'min'
@@ -218,11 +288,24 @@ export const setScalingFactor = (value: number) => {
     }
     const axis = session.axis
     const selected = base.selectedEntities
+    const recorder = createDraftRecorder(session)
     return publishDraft(
         () =>
             ratio === 1
                 ? base
-                : scaleSelection(base, selected, axis, ratio, pivot, toMovedBeat, view.division),
+                : recorder.track(
+                      base,
+                      scaleSelectionWithReceipt(
+                          base,
+                          selected,
+                          axis,
+                          ratio,
+                          pivot,
+                          toMovedBeat,
+                          view.division,
+                      ),
+                      { factor: ratio, pivot },
+                  ),
         value,
     )
 }
@@ -235,36 +318,39 @@ export const applyScalingSession = () => {
         return false
     }
     const result = draftState()
-    const labels = () => getScaleLabels(session.axis)
-    const message = interpolate(
-        () => labels().scaled,
-        String(getScaleEntities(session.selected, session.axis, session.source).length),
+    const accepted = trackingFor(result)
+    if (!accepted) throw new Error('Unexpected missing scaling receipt')
+    const counts = changedNativeCounts(
+        [...accepted.principals].flatMap((before) => {
+            const after = accepted.endpoints.get(before)
+            return after ? [{ before, after }] : []
+        }),
     )
+    const operation = createHistoryOperation({
+        id: 'nse.object.scale',
+        data: {
+            axis: session.axis === 'beat' ? 'beats' : session.axis,
+            subject: subjectOfCounts(counts),
+            targets: Object.values(counts).reduce((sum, count) => sum + count, 0),
+            transform: accepted.transform ?? { mode: 'composed' },
+        },
+    })
     cancelScalingSession()
     if (result === session.source) return true
-    pushState(message, result)
-    notify(message)
+    pushState(operation, result)
+    notify(() => operation.fallback.text)
     return true
 }
 
 const mapDraftEntities = (draft: State) => {
     if (draft === mappedState) return
     mappedState = draft
-    const entities = draft.selectedEntities.filter(isEditableEntity)
     baselineByDraft = new Map()
     draftByBaseline = new Map()
-    const byType = new Map<EditableEntity['type'], EditableEntity[]>()
-    for (const entity of entities) {
-        const bucket = byType.get(entity.type)
-        if (bucket) bucket.push(entity)
-        else byType.set(entity.type, [entity])
-    }
-    const offsets = new Map<EditableEntity['type'], number>()
-    for (const baseline of baselineEntities) {
-        const offset = offsets.get(baseline.type) ?? 0
-        const entity = byType.get(baseline.type)?.[offset]
-        offsets.set(baseline.type, offset + 1)
-        if (!entity) continue
+    const accepted = trackingFor(draft)
+    if (!accepted) throw new Error('Unexpected missing scaling correspondence')
+    for (const [baseline, entity] of accepted.live) {
+        if (!isEditableEntity(baseline) || !isEditableEntity(entity)) continue
         baselineByDraft.set(entity, baseline)
         draftByBaseline.set(baseline, entity)
     }
@@ -367,17 +453,24 @@ export const updateScalingDrag = (value: number) => {
     }
     const effectiveValue = active.value + delta
     if (active.lastValue === effectiveValue) return true
+    const recorder = createDraftRecorder(session)
     const constrainDraft = (result: State) => {
         if (!(settings.maxLane > 0) || active.attached) return result
-        mapDraftEntities(result)
-        const focus = draftByBaseline.get(active.baseline)
-        if (!focus) return result
+        const focus = recorder.get(result)?.live.get(active.baseline)
+        if (!focus || !isEditableEntity(focus)) return result
         const constrained = constrainLaneObject(focus, {
             resizing: axis === 'width' && active.endpoint,
         })
         return constrained === focus
             ? result
-            : transformSelection(result, result.selectedEntities, new Map([[focus, constrained]]))
+            : recorder.track(
+                  result,
+                  transformSelectionWithReceipt(
+                      result,
+                      result.selectedEntities,
+                      new Map([[focus, constrained]]),
+                  ),
+              )
     }
     if (active.endpoint) {
         const anchor = active.anchor
@@ -408,14 +501,18 @@ export const updateScalingDrag = (value: number) => {
                 constrainDraft(
                     ratio === 1
                         ? source
-                        : scaleSelection(
+                        : recorder.track(
                               source,
-                              selected,
-                              axis,
-                              ratio,
-                              anchor,
-                              toMovedBeat,
-                              view.division,
+                              scaleSelectionWithReceipt(
+                                  source,
+                                  selected,
+                                  axis,
+                                  ratio,
+                                  anchor,
+                                  toMovedBeat,
+                                  view.division,
+                              ),
+                              { factor: ratio, pivot: anchor },
                           ),
                 ),
             factor,
@@ -439,7 +536,17 @@ export const updateScalingDrag = (value: number) => {
             constrainDraft(
                 delta === 0
                     ? source
-                    : translateSelection(source, selected, axis, delta, toMovedBeat, view.division),
+                    : recorder.track(
+                          source,
+                          translateSelectionWithReceipt(
+                              source,
+                              selected,
+                              axis,
+                              delta,
+                              toMovedBeat,
+                              view.division,
+                          ),
+                      ),
             ),
         active.factor,
     )

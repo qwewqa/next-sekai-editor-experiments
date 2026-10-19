@@ -9,6 +9,7 @@ import {
     type NxspRead,
 } from '../../../src/local/nxsp'
 import { readProject } from '../../../src/local/nxsp/project'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { rawZip, type RawEntry } from '../../zip/rawZip'
 import {
     crafted,
@@ -445,7 +446,7 @@ test('versions: a newer major reads the level only; a newer minor skips the hist
 
     const minor = nxsp(
         await readCrafted((items) => {
-            setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 1 })
+            setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 2 })
         }),
     )
     assert.deepEqual(reasonsOf(minor), ['newer-minor minor'])
@@ -480,7 +481,7 @@ const changeManifest = (change: (manifest: Loose) => void) =>
     })
 
 test('a newer manifest version, root v or entry kind: newer history, not read', async () => {
-    const version = nxsp(await changeManifest((m) => (m.version = 2)))
+    const version = nxsp(await changeManifest((m) => (m.version = 3)))
     assert.deepEqual(reasonsOf(version), ['newer-history manifest.version'])
     assert.equal(version.history, undefined)
 
@@ -541,7 +542,13 @@ test('an entry’s time is a safe integer of at least 0', async () => {
 })
 
 test('a part with 200,000 entries opens: no argument-list overflow', async () => {
-    const filler = { kind: 'edit', time: 1, label: 'x', snapshot: '0'.repeat(32), noteCount: 0 }
+    const filler = {
+        kind: 'edit',
+        time: 1,
+        step: editStep(futureFixtureOperation('entry-cap')),
+        snapshot: '0'.repeat(32),
+        noteCount: 0,
+    }
     const read = nxsp(
         await readCrafted((items) => {
             const manifest = jsonOf(items, 'history/manifest.json')

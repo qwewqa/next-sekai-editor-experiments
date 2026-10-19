@@ -2,7 +2,7 @@ import type { NoteObject } from '../../chart/note'
 import { clipboardEntry } from '../../clipboard'
 import { ease } from '../../ease'
 import { pushState, state } from '../../history'
-import { i18n } from '../../i18n'
+import { createHistoryOperation } from '../../history/createHistoryOperation'
 import { previewEdit } from '../../preview/edit'
 import type { State } from '../../state'
 import { createSlideId } from '../../state/entities/slides'
@@ -11,8 +11,8 @@ import type { NoteEntity } from '../../state/entities/slides/note'
 import { isInteriorTick, toNoteEntity } from '../../state/entities/slides/note'
 import { attachFraction } from '../../state/mutations/slides'
 import { addNote } from '../../state/mutations/slides/note'
+import { countNativeEntities } from '../../state/operations/historyReceipts'
 import { createTransaction } from '../../state/transaction'
-import { interpolate } from '../../utils/interpolate'
 import { alignComputed, lerp, shiftComputed } from '../../utils/math'
 import { getComposedLayout } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
@@ -163,13 +163,13 @@ export const createElevationNote = (
     revealAuthoringTarget(note)
     const transaction = createTransaction(state.value)
     const entities = addNote(transaction, note.slideId, note, after)
-    const message = interpolate(
-        () => (asSlide ? i18n.value.tools.slide.added : i18n.value.tools.note.added),
-        `${entities.length}`,
-    )
-    pushState(message, transaction.commit(entities))
+    const operation = createHistoryOperation({
+        id: 'nse.note.add',
+        data: { created: countNativeEntities(entities).note ?? 0 },
+    })
+    pushState(operation, transaction.commit(entities))
     view.entities = { hovered: [], creating: [] }
-    notify(message)
+    notify(() => operation.fallback.text)
 }
 
 // A pasted note's shown elevation before the change; an attached one follows its pasted head and tail.
@@ -310,11 +310,13 @@ export const pasteElevationNotes = async (
     elevation: number,
     beat: number,
     modifiers: Modifiers,
+    at: 'pointer' | 'position' = 'position',
 ) => {
     const paste = getElevationPaste(lane, elevation, beat, modifiers)
     if (!paste) return
     await pasteAtPosition(lane, paste.beatOffset, modifiers, {
         notesOnly: true,
         mapNote: paste.mapNote,
+        at,
     })
 }

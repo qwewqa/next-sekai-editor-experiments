@@ -406,10 +406,23 @@ test('Cancel during a write to the target closes at once and leaves the target',
     await writeFile(page, 'LevelData', { bgmOffset: 3 })
     await openFile(page, 'LevelData')
     await page.evaluate(() => {
-        window.editorTest.history.pushState(() => 'Offset', {
-            ...window.editorTest.history.state.value,
-            bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
-        })
+        window.editorTest.history.pushState(
+            window.editorTest.historySteps.nativeOperation(
+                {
+                    id: 'nse.header.set',
+                    data: {
+                        field: 'bgmOffset',
+                        before: window.editorTest.history.state.value.bgm.offset,
+                        after: 2,
+                    },
+                },
+                'Set BGM Offset to 2',
+            ),
+            {
+                ...window.editorTest.history.state.value,
+                bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
+            },
+        )
     })
     await holdWrites(page, 'hold')
     for (const close of ['Cancel', 'Close'] as const) {
@@ -558,10 +571,23 @@ test('an opened gzipped LevelData: p saves a project file, and Shift+P exports t
     await writeFile(page, 'LevelData')
     await openFile(page, 'LevelData')
     await page.evaluate(() => {
-        window.editorTest.history.pushState(() => 'Offset', {
-            ...window.editorTest.history.state.value,
-            bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
-        })
+        window.editorTest.history.pushState(
+            window.editorTest.historySteps.nativeOperation(
+                {
+                    id: 'nse.header.set',
+                    data: {
+                        field: 'bgmOffset',
+                        before: window.editorTest.history.state.value.bgm.offset,
+                        after: 2,
+                    },
+                },
+                'Set BGM Offset to 2',
+            ),
+            {
+                ...window.editorTest.history.state.value,
+                bgm: { ...window.editorTest.history.state.value.bgm, offset: 2 },
+            },
+        )
     })
     // p never writes level data (§1.4.7): its picker suggests a project file.
     await queuePicks(page, ['coconut.nxsp'])

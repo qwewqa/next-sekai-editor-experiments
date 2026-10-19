@@ -10,6 +10,12 @@ import { CI_SEEDS, createWorld } from '../../../src/local/testing/world'
 import type { StorageStatus } from '../../../src/local/worker/core'
 import { setMediaReadBackHookForTests } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialLife,
+    originOperation,
+} from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 import { openPage, openSplitPage, rows, testId, workerCore, type Page } from './harness'
 
@@ -42,7 +48,7 @@ const begin = (page: Page, state: State) =>
         docId: testId(),
         origin: 'import',
         state,
-        label: () => 'Initialize',
+        operation: originOperation('import'),
         dirty: false,
     })
 
@@ -68,7 +74,14 @@ test('a picked BGM is stored with the entry first naming it, at once and strictl
     begin(page, base)
     await page.flusher.flush()
     const picked = await withSong(base, 1)
-    page.flusher.append('edit', () => 'Changed BGM', picked, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(futureFixtureOperation('picked-bgm-transport', {}, 'Changed BGM')),
+        },
+        picked,
+        true,
+    )
     // The pick flushes at once, without waiting for the delay.
     await page.flusher.flush()
     const batch = page.batches.at(-1)
@@ -102,7 +115,11 @@ test('a picked BGM is stored with the entry first naming it, at once and strictl
     assert.deepEqual(checkStored(world.memory), [])
 
     // A later flush doesn't carry the bytes again.
-    page.flusher.append('edit', () => 'Changed', { ...picked, initialLife: 900 }, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(initialLife(picked.initialLife, 900)) },
+        { ...picked, initialLife: 900 },
+        true,
+    )
     await page.flusher.flush()
     assert.equal(page.batches.at(-1)?.media.length, 0)
     assert.deepEqual(page.batches.at(-1)?.held, [meta.hash])
@@ -113,6 +130,14 @@ test('the head’s BGM is stored again when it went missing, while this tab hold
     const page = await openPage(world, world.tab('a'))
     const picked = await withSong(stateOf(goldenChart()), 2)
     begin(page, picked)
+    await page.flusher.flush()
+
+    const crossed = editStep(initialLife(picked.initialLife, picked.initialLife + 1))
+    page.flusher.append(
+        { kind: 'edit', step: crossed },
+        { ...picked, initialLife: picked.initialLife + 1 },
+        true,
+    )
     await page.flusher.flush()
 
     const hash = picked.bgm.meta!.hash
@@ -127,11 +152,11 @@ test('the head’s BGM is stored again when it went missing, while this tab hold
         }),
     )
     assert.equal(rows(world, 'media').size, 0)
-    page.flusher.append('undo', () => 'Changed BGM', picked, false)
+    page.flusher.append({ kind: 'undo', step: crossed }, picked, false)
     await page.flusher.flush()
     assert.deepEqual(
         page.results.map((result) => result.kind),
-        ['stored', 'missing', 'stored'],
+        ['stored', 'stored', 'missing', 'stored'],
     )
     assert.equal(page.batches.at(-1)?.media[0]?.hash, hash)
     assert.equal(rows(world, 'media').size, 1)
@@ -212,7 +237,14 @@ test('a BGM that never reads back right blocks no history, and later flushes don
         const base = await withSong(stateOf(goldenChart()), 10)
         begin(page, base)
         for (let i = 0; i < 100; i++)
-            page.flusher.append('edit', () => 'Changed', { ...base, initialLife: 1000 + i }, true)
+            page.flusher.append(
+                {
+                    kind: 'edit',
+                    step: editStep(initialLife(i ? 999 + i : base.initialLife, 1000 + i)),
+                },
+                { ...base, initialLife: 1000 + i },
+                true,
+            )
         for (let i = 0; i < 5; i++) await page.flusher.flush()
         assert.equal(rows(world, 'entries').size, 101)
         assert.equal(page.flusher.hasPending, false)
@@ -243,7 +275,11 @@ test('a Blob the database refuses, as WebKit’s private windows do, blocks no h
     const picked = await withSong(stateOf(goldenChart()), 40)
     const hash = picked.bgm.meta!.hash
     begin(page, picked)
-    page.flusher.append('edit', () => 'Changed', { ...picked, initialLife: 900 }, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(initialLife(picked.initialLife, 900)) },
+        { ...picked, initialLife: 900 },
+        true,
+    )
     await page.flusher.flush()
     // The entries are stored; the root names a BGM not held, pending beside a stored status.
     assert.equal(page.flusher.hasPending, false)
@@ -257,7 +293,11 @@ test('a Blob the database refuses, as WebKit’s private windows do, blocks no h
     await page.flusher.retryMedia()
     assert.equal(rows(world, 'media').size, 0)
     assert.deepEqual(page.core.status, { mode: 'stored', mediaPending: [hash] })
-    page.flusher.append('edit', () => 'Changed', { ...picked, initialLife: 901 }, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(initialLife(900, 901)) },
+        { ...picked, initialLife: 901 },
+        true,
+    )
     await page.flusher.flush()
     assert.equal(page.batches.at(-1)?.media.length, 0)
     assert.equal(rows(world, 'entries').size, 3)
@@ -329,7 +369,7 @@ test('a worker killed between a media flush’s commit and its read-back reads i
             docId: testId(),
             origin: 'import',
             state: await withSong(stateOf(goldenChart()), 9),
-            label: () => 'Initialize',
+            operation: originOperation('import'),
             dirty: false,
         })
         await page.flusher.flush()

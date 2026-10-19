@@ -423,7 +423,7 @@ test('only notes become vertical and other selected objects stay put and selecte
     const target = await page.evaluate(() => window.editorTest.point(-3, 2.25))
     await page.mouse.click(target.x, target.y, { button: 'right' })
     await page.getByRole('menuitem', { name: 'Make Vertical', exact: true }).click()
-    await expect(page.locator('.notification')).toHaveText('Made 3 notes vertical')
+    await expect(page.locator('.notification')).toHaveText('Made 2 notes vertical')
     expect(await values()).toEqual({
         notes: [
             [2.25, 0],

@@ -4,7 +4,7 @@ import { pushState, state } from '../../../history'
 import { bgm } from '../../../history/bgm'
 import { i18n } from '../../../i18n'
 import { align } from '../../../utils/math'
-import { bgmOffsetLabel } from '../../headerLabels'
+import { bgmOffsetOperation } from '../../headerLabels'
 import { notify } from '../../notification'
 import { yToTime } from '../../view'
 
@@ -37,13 +37,13 @@ export const offset: Tool = {
         const offset = align(bgm.value.offset + delta, 1000)
         if (!delta || offset === bgm.value.offset) return
 
-        const label = bgmOffsetLabel(offset)
-        pushState(label, {
+        const operation = bgmOffsetOperation(bgm.value.offset, offset)
+        pushState(operation, {
             ...state.value,
             bgm: { ...bgm.value, offset },
         })
 
-        notify(label)
+        notify(() => operation.fallback.text)
     },
 
     dragCancel() {

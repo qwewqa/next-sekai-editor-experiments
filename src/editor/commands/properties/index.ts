@@ -3,8 +3,9 @@ import { isPeeking, pushState, state } from '../../../history'
 import { initialLife } from '../../../history/initialLife'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
-import { initialLifeLabel } from '../../headerLabels'
+import { initialLifeOperation } from '../../headerLabels'
 import { notify } from '../../notification'
+import { createAsyncEditGuard } from '../../asyncEditGuard'
 import PropertiesIcon from './PropertiesIcon.vue'
 import PropertiesModal from './PropertiesModal.vue'
 
@@ -18,19 +19,24 @@ export const properties: Command = {
     readOnly: true,
 
     async execute() {
+        const guard = createAsyncEditGuard()
+        try {
         const newInitialLife = await showModal(PropertiesModal, {
             initialLife: initialLife.value,
             readOnly: isPeeking.value,
         })
         // Confirming it unchanged is no edit, and nothing is changed while peeking.
-        if (!newInitialLife || newInitialLife === initialLife.value || isPeeking.value) return
+        if (!newInitialLife || newInitialLife === initialLife.value || !guard.isCurrent()) return
 
-        const label = initialLifeLabel(newInitialLife)
-        pushState(label, {
+        const operation = initialLifeOperation(initialLife.value, newInitialLife)
+        pushState(operation, {
             ...state.value,
             initialLife: newInitialLife,
         })
 
-        notify(label)
+        notify(() => operation.fallback.text)
+        } finally {
+            guard.dispose()
+        }
     },
 }

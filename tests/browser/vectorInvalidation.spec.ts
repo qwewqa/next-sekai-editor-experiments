@@ -127,7 +127,22 @@ for (const layout of ['basic', 'composed'] as const) {
                 await compare('move note', () => {
                     const transaction = createTransaction(history.state.value)
                     history.pushState(
-                        () => 'Move note',
+                        window.editorTest.historySteps.nativeOperation(
+                            {
+                                id: 'nse.property.set',
+                                data: {
+                                    subject: 'note',
+                                    targets: 1,
+                                    assignments: [
+                                        {
+                                            field: 'left',
+                                            value: { mode: 'uniform', value: note.left + 0.75 },
+                                        },
+                                    ],
+                                },
+                            },
+                            'Move note',
+                        ),
                         transaction.commit(
                             replaceNote(transaction, note, { ...note, left: note.left + 0.75 }),
                         ),
@@ -149,7 +164,25 @@ for (const layout of ['basic', 'composed'] as const) {
                 await compare('stage event geometry', () => {
                     const transaction = createTransaction(history.state.value)
                     history.pushState(
-                        () => 'Move stage',
+                        window.editorTest.historySteps.nativeOperation(
+                            {
+                                id: 'nse.property.set',
+                                data: {
+                                    subject: 'stageTransformEvent',
+                                    targets: 1,
+                                    assignments: [
+                                        {
+                                            field: 'xTranslation',
+                                            value: {
+                                                mode: 'uniform',
+                                                value: event.xTranslation + 1,
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                            'Move stage',
+                        ),
                         transaction.commit(
                             replaceStageTransformEventJoint(transaction, event, {
                                 ...event,
@@ -177,7 +210,19 @@ for (const layout of ['basic', 'composed'] as const) {
                     if (bpm?.type !== 'bpm') throw new Error('Missing BPM')
                     const transaction = createTransaction(history.state.value)
                     history.pushState(
-                        () => 'Change tempo',
+                        window.editorTest.historySteps.nativeOperation(
+                            {
+                                id: 'nse.property.set',
+                                data: {
+                                    subject: 'bpm',
+                                    targets: 1,
+                                    assignments: [
+                                        { field: 'bpm', value: { mode: 'uniform', value: 150 } },
+                                    ],
+                                },
+                            },
+                            'Change tempo',
+                        ),
                         transaction.commit(replaceBpm(transaction, bpm, { ...bpm, bpm: 150 })),
                     )
                 })

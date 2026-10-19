@@ -1,3 +1,5 @@
+import { createHistoryOperation } from '../../../../history/createHistoryOperation'
+import { countNativeEntities, nativeTargetChanged } from '../../../../state/operations/historyReceipts'
 import { ref } from 'vue'
 import type { Tool } from '../..'
 import type { CameraEventObject, CameraZoomVerticalAlign } from '../../../../chart/events/camera'
@@ -481,30 +483,26 @@ const tryFind = (x: number, y: number): [CameraEventJointEntity] | [undefined, n
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }
 
-const update = (message: () => string, action: (transaction: Transaction) => Entity[]) => {
+const update = (
+    intent: 'add' | 'edit' | 'move',
+    action: (transaction: Transaction) => Entity[],
+    before?: Entity,
+) => {
     const transaction = createTransaction(state.value)
-
-    const selectedEntities = action(transaction)
-
-    pushState(
-        interpolate(message, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
-    view.entities = {
-        hovered: [],
-        creating: [],
-    }
-
-    notify(interpolate(message, `${selectedEntities.length}`))
+    const entities = action(transaction)
+    const result = transaction.commit(entities)
+    const after = result.selectedEntities[0]
+    const operation = createHistoryOperation(intent === 'add'
+        ? { id: 'nse.object.add', data: { subject: 'cameraEvent', created: countNativeEntities(entities).cameraEvent ?? 0 } }
+        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'cameraEvent', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    pushState(operation, result)
+    view.entities = { hovered: [], creating: [] }
+    notify(() => operation.fallback.text)
 }
 
 const add = (object: CameraEventObject) => {
     update(
-        interpolate(
-            () => i18n.value.tools.events.added,
-            '1',
-            () => i18n.value.eventKinds.cameraEvent,
-        ),
+        'add',
         (transaction) => addCameraEventJoint(transaction, object),
     )
 }
@@ -514,22 +512,16 @@ const edit = (
     object: Partial<WithEaseEdits<CameraEventObject>>,
 ) => {
     update(
-        interpolate(
-            () => i18n.value.tools.events.edited,
-            '1',
-            () => i18n.value.eventKinds.cameraEvent,
-        ),
+        'edit',
         (transaction) => editSelectedCameraEvent(transaction, entity, object),
+        entity,
     )
 }
 
 const move = (entity: CameraEventJointEntity, object: CameraEventObject) => {
     update(
-        interpolate(
-            () => i18n.value.tools.events.moved,
-            '1',
-            () => i18n.value.eventKinds.cameraEvent,
-        ),
+        'move',
         (transaction) => editSelectedCameraEvent(transaction, entity, object),
+        entity,
     )
 }

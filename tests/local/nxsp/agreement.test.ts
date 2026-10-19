@@ -9,6 +9,7 @@ import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { executePlan, planNxsp, readNxsp } from '../../../src/local/nxsp'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
+import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { rawZip, type RawEntry } from '../../zip/rawZip'
 import { fresh } from './chain'
 import { jsonOf, overHistoryCap, setJson, unzip, zipItems, type Item, type Loose } from './craft'
@@ -136,14 +137,37 @@ const segmentedFile = async () => {
     // The shared chain's states, its head last, so the summary and media are the head's.
     const { input, store, hashes } = fresh()
     const entries = Array.from({ length: 1099 }, (_, i) =>
-        entry(i ? 'edit' : 'init', 1000 + i, `Step ${i}`, hashes[i % 3] as string),
+        entry(
+            i
+                ? {
+                      kind: 'edit',
+                      step: editStep(
+                          futureFixtureOperation('segmented-row', { index: i }, `Step ${i}`),
+                      ),
+                  }
+                : {
+                      kind: 'init',
+                      operation: futureFixtureOperation(
+                          'segmented-origin',
+                          { index: i },
+                          `Step ${i}`,
+                      ),
+                  },
+            1000 + i,
+            hashes[i % 3] as string,
+        ),
     )
     const head = hashes[2] as string
     entries.push(
-        entry('save', 9000, 'Saved', head, {
-            revisionId: 'r001-0000-4000-8000-000000000000',
-            device: input.context.device,
-        }),
+        entry(
+            { kind: 'save', operation: futureFixtureOperation('segmented-save', {}, 'Saved') },
+            9000,
+            head,
+            {
+                revisionId: 'r001-0000-4000-8000-000000000000',
+                device: input.context.device,
+            },
+        ),
     )
     const plan = planNxsp({
         ...input,
@@ -152,7 +176,13 @@ const segmentedFile = async () => {
             roots: store.roots,
             nodes: store.nodes,
             chunks: store.chunks,
-            undoStack: { base: 0, slots: [{ snapshot: head, label: 'Saved' }], index: 0 },
+            undoStack: {
+                base: 0,
+                slots: [
+                    { snapshot: head, step: initialStep(futureFixtureOperation('segmented-head')) },
+                ],
+                index: 0,
+            },
         },
     }).plan
     return executePlan(plan, new Map())
@@ -162,7 +192,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
     const filler = {
         kind: 'edit',
         time: 1,
-        label: 'x',
+        step: editStep(futureFixtureOperation('entry-cap')),
         snapshot: '0'.repeat(32),
         noteCount: 0,
         kept: false,
@@ -267,7 +297,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'unknown-key': await probe(manifest((m) => (m.entries[0].zz = 1))),
         'extra-position': await probe(changeHeadChunk('header', (header) => [...header, 0, 1])),
         'newer-level': await probe(project((p) => (p.levelVersion = 2))),
-        'newer-minor': await probe(project((p) => (p.minor = 1))),
+        'newer-minor': await probe(project((p) => (p.minor = 2))),
         'newer-major': await probe((items) => {
             project((p) => (p.version = 2))(items)
             items.push({ name: 'video/a.mp4', data: encoder.encode('x'), method: 'store' })
