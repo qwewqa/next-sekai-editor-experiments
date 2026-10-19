@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
 import { confirmReset } from './resetConfirm'
@@ -940,6 +941,9 @@ for (const reset of [
     },
 ]) {
     test(`${reset.name} asks first, with Cancel as the safe default`, async ({ page }) => {
+        // Time is held, so the first moments of the dialog last as long as the checks need.
+        await page.clock.install()
+        await page.clock.pauseAt(new Date(Date.now() + 60_000))
         await page.evaluate(() => {
             const { settings } = window.editorTest
             settings.previewNoteSpeed = 9.25
@@ -955,7 +959,7 @@ for (const reset of [
         const before = await read(reset.changed)
         await opener.click()
         await expect(page.getByRole('dialog')).toHaveCount(2)
-        const confirm = page.getByRole('dialog').last()
+        const confirm = page.getByRole('dialog').nth(1)
         await expect(confirm.locator('[data-modal-title]')).toHaveText(reset.name)
         await expect(confirm).toContainText(reset.message)
         // Cancel is the filled, focused default, and the reset is the quiet red choice.
@@ -967,22 +971,25 @@ for (const reset of [
         await expect(cancel).toHaveClass(/btn-primary/)
         // A press in the first moments is not a choice.
         await page.keyboard.press('Enter')
+        await page.clock.runFor(100)
+        await page.keyboard.press('Enter')
         await expect(page.getByRole('dialog')).toHaveCount(2)
-        await page.waitForTimeout(400)
+        await expect(cancel).toBeFocused()
+        expect(await read(reset.changed)).toBe(before)
         // After that, Enter takes the default: nothing is reset, and focus returns to the button.
+        await page.clock.runFor(300)
         await page.keyboard.press('Enter')
         await expect(page.getByRole('dialog')).toHaveCount(1)
+        await page.clock.resume()
         expect(await read(reset.changed)).toBe(before)
         await expect(opener).toBeFocused()
 
         await opener.click()
         await expect(page.getByRole('dialog')).toHaveCount(2)
-        await page.waitForTimeout(400)
-        await page
-            .getByRole('dialog')
-            .last()
-            .getByRole('button', { name: reset.name, exact: true })
-            .click()
+        await confirmWhenReady(
+            page.getByRole('dialog').nth(1).getByRole('button', { name: reset.name, exact: true }),
+            page.getByRole('dialog').nth(1),
+        )
         await expect(page.getByRole('dialog')).toHaveCount(1)
         expect(await read(reset.changed)).not.toBe(before)
     })

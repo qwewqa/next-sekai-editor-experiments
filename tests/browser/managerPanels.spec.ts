@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { pastGuard } from './pastGuard'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
 
@@ -440,16 +440,22 @@ for (const [device, options] of Object.entries(viewports)) {
             await press(enable)
             const dialog = page.locator('dialog')
             await expect(dialog).toBeVisible()
-            await pastGuard(page)
-            await press(dialog.getByRole('button', { name: 'Cancel' }))
+            await confirmWhenReady(
+                dialog.getByRole('button', { name: 'Cancel' }),
+                dialog,
+                device === 'phone' ? 'tap' : 'click',
+            )
             await expect(dialog).toHaveCount(0)
             expect(await isDynamic()).toBe(false)
             await expect(enable).toBeVisible()
 
             await press(enable)
             await expect(dialog).toBeVisible()
-            await pastGuard(page)
-            await press(dialog.getByRole('button', { name: 'Confirm' }))
+            await confirmWhenReady(
+                dialog.getByRole('button', { name: 'Confirm' }),
+                dialog,
+                device === 'phone' ? 'tap' : 'click',
+            )
             expect(await isDynamic()).toBe(true)
             await expect(panel.locator('.manager-all .manager-name')).toHaveText('All Stages')
             await expect(panel.locator('.manager-entry')).not.toHaveCount(0)
@@ -942,8 +948,7 @@ test('stages dialog fallback shows the disabled state', async ({ page }) => {
     // Enabling stacks the confirmation over the manager, which then lists stages.
     await dialog.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(dialog).toHaveCount(2)
-    await pastGuard(page)
-    await dialog.last().getByRole('button', { name: 'Confirm' }).click()
+    await confirmWhenReady(dialog.nth(1).getByRole('button', { name: 'Confirm' }), dialog.nth(1))
     await expect(dialog).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.history.state.value.isDynamicStages)).toBe(
         true,
@@ -1194,8 +1199,10 @@ test('the disabled stages band keeps the heading row layout', async ({ page }) =
 
     await panel.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(page.locator('dialog')).toBeVisible()
-    await pastGuard(page)
-    await page.locator('dialog').getByRole('button', { name: 'Confirm' }).click()
+    await confirmWhenReady(
+        page.locator('dialog').getByRole('button', { name: 'Confirm' }),
+        page.locator('dialog'),
+    )
     await expect(panel.locator('.manager-entry')).not.toHaveCount(0)
     const after = (await label.boundingBox())!
     expect(after.x).toBe(before.x)

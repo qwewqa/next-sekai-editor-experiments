@@ -3,6 +3,7 @@ import type { EffectData, ParticleData, SkinData } from '@sonolus/core'
 import { mkdirSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { pngHeader } from '../preview/files/fixtures'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import {
     builtinBytes,
@@ -81,7 +82,13 @@ const shot = async (page: Page, name: string, target?: Locator) => {
     if (!shotsDir) return
     // Let the thumbnails and the fonts settle, with no hover left on what was clicked.
     await page.mouse.move(0, 0)
-    await page.waitForTimeout(400)
+    await page.evaluate(async () => {
+        await document.fonts.ready
+        await Promise.all(
+            [...document.images].map((image) => image.decode().catch(() => undefined)),
+        )
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    })
     await (target ?? page).screenshot({ path: `${shotsDir}/${name}.png` })
 }
 
@@ -677,38 +684,39 @@ test.describe('the Stored tab', () => {
 
         // One that is not in use asks first too, with Cancel as the default.
         await spark.locator('[data-stored-remove]').click()
-        const unused = page.locator('dialog[open]').last()
+        const unused = page.locator('dialog[open]').nth(1)
         await expect(unused).toContainText('Remove "Spark"?')
         await expect(unused).not.toContainText('Default is used instead.')
         await expect(unused.getByRole('button', { name: 'Cancel' })).toBeFocused()
-        await page.waitForTimeout(400)
-        await unused.getByRole('button', { name: 'Cancel' }).click()
+        await confirmWhenReady(unused.getByRole('button', { name: 'Cancel' }), unused)
         await expect(page.locator('dialog[open]')).toHaveCount(1)
         await expect(items).toHaveCount(2)
         await spark.locator('[data-stored-remove]').click()
         await expect(page.locator('dialog[open]')).toHaveCount(2)
-        await page.waitForTimeout(400)
-        await page.locator('dialog[open]').last().getByRole('button', { name: 'Remove' }).click()
+        await confirmWhenReady(
+            page.locator('dialog[open]').nth(1).getByRole('button', { name: 'Remove' }),
+            page.locator('dialog[open]').nth(1),
+        )
         await expect(items).toHaveCount(1)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 1 item, /)
         expect(await stored(page)).toHaveLength(1)
 
         // One in use asks first, with Cancel as the default.
         await neon.locator('[data-stored-remove]').click()
-        const confirm = page.locator('dialog[open]').last()
+        const confirm = page.locator('dialog[open]').nth(1)
         await expect(confirm).toContainText('Remove "Neon Skin"? Default is used instead.')
         await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
-        // A press in a dialog's first moments is not a choice.
-        await page.waitForTimeout(400)
-        await confirm.getByRole('button', { name: 'Cancel' }).click()
+        await confirmWhenReady(confirm.getByRole('button', { name: 'Cancel' }), confirm)
         await expect(page.locator('dialog[open]')).toHaveCount(1)
         await expect(items).toHaveCount(1)
         expect((await choices(page)).skin?.source).toBe('file')
 
         await neon.locator('[data-stored-remove]').click()
         await expect(page.locator('dialog[open]')).toHaveCount(2)
-        await page.waitForTimeout(400)
-        await page.locator('dialog[open]').last().getByRole('button', { name: 'Remove' }).click()
+        await confirmWhenReady(
+            page.locator('dialog[open]').nth(1).getByRole('button', { name: 'Remove' }),
+            page.locator('dialog[open]').nth(1),
+        )
         await expect(dialog(page).locator('[data-stored-empty]')).toHaveText('No stored items')
         await expect(dialog(page).locator('[data-stored-line]')).toHaveCount(0)
         expect(await stored(page)).toHaveLength(0)

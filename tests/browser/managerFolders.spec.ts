@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { LevelDataEntity } from '@sonolus/core'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { pastGuard } from './pastGuard'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
 
@@ -1055,14 +1055,15 @@ test('ungrouping keeps members; deleting a folder confirms and removes them', as
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Delete the Verse folder, its groups (2)')
     // Cancel changes nothing.
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     expect(await tree(page)).toBe('Default [Verse: Lead Fill] [Ending: Outro]')
 
     await folderRow(page, 'Verse').getByRole('button', { name: 'More Actions for Verse' }).click()
     await menu.getByRole('menuitem', { name: 'Delete Folder and Groups…' }).click()
-    await pastGuard(page)
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Delete' }),
+        page.getByRole('dialog'),
+    )
     expect(await tree(page)).toBe('Default [Ending: Outro]')
     // The fixture's notes in Lead went with it; undo brings everything back.
     await undo(page)
@@ -1085,8 +1086,10 @@ test('undoing an ungroup or a delete brings a collapsed folder back collapsed', 
 
     await folderRow(page, 'Verse').getByRole('button', { name: 'More Actions for Verse' }).click()
     await menu.getByRole('menuitem', { name: 'Delete Folder and Groups…' }).click()
-    await pastGuard(page)
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Delete' }),
+        page.getByRole('dialog'),
+    )
     await undo(page)
     await expect(verse).toHaveAttribute('aria-expanded', 'false')
 })
@@ -1132,8 +1135,10 @@ test('undoing a delete brings hidden groups and stages back hidden', async ({ pa
     const menu = page.getByRole('menu')
     await folderRow(page, 'Verse').getByRole('button', { name: 'More Actions for Verse' }).click()
     await menu.getByRole('menuitem', { name: 'Delete Folder and Groups…' }).click()
-    await pastGuard(page)
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Delete' }),
+        page.getByRole('dialog'),
+    )
     expect(await scope()).toEqual(['deleted', 'hidden', 'hidden'])
     await undo(page)
     expect(await scope()).toEqual(['hidden', 'hidden', 'hidden'])

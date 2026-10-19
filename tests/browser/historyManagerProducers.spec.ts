@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { NativeOperation } from '../../src/history/operations'
+import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { pastGuard } from './pastGuard'
 
 declare global {
     interface Window {
@@ -622,8 +622,7 @@ for (const outcome of ['cancel', 'reset', 'membershipChanged'] as const) {
         await dialog
             .getByRole('button', { name: outcome === 'cancel' ? 'Cancel' : 'Delete', exact: true })
             .focus()
-        await pastGuard(page)
-        await page.keyboard.press('Enter')
+        await confirmKeyWhenReady(page, 'Enter', dialog)
         await expect(dialog).toHaveCount(0)
         await page.evaluate(() => window.editorTest.nextTick())
         expect(
@@ -749,8 +748,10 @@ for (const domain of ['group', 'stage'] as const) {
             void model.folders.remove(folder)
             return { folder, owners: ids.length }
         }, domain)
-        await pastGuard(page)
-        await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+        await confirmWhenReady(
+            page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }),
+            page.getByRole('dialog'),
+        )
         await expect.poll(async () => (await operations(page)).length).toBe(1)
         expect((await operations(page))[0]).toMatchObject({
             id: 'nse.owner.delete',

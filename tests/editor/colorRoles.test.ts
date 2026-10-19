@@ -4,8 +4,9 @@
 // Chart content is exempt; the few allowed uses of mint carry their reasons.
 //
 // Transition: each colour package lists the files it still has to migrate in
-// tests/editor/colorRoles/legacy-C<n>.txt, and deletes its list as its last commit. A listed file
-// that is already clean fails the test, so stale entries cannot linger.
+// tests/editor/colorRoles/legacy-C<n>.txt (C8 is split per History package: legacy-C8-H<n>.txt), and
+// deletes its list as its last commit. A listed file that is already clean fails the test, so stale
+// entries cannot linger.
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -197,7 +198,7 @@ const isAllowed = (finding: Finding) =>
 const legacyLists = () =>
     new Map(
         readdirSync(legacyDirectory)
-            .filter((name) => /^legacy-C\d+\.txt$/.test(name))
+            .filter((name) => /^legacy-C\d+(-H\d+)?\.txt$/.test(name))
             .sort()
             .map((name): [string, string[]] => [
                 name,

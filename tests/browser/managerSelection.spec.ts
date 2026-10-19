@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { pastGuard } from './pastGuard'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
 
@@ -316,8 +316,7 @@ test('checked folders delete with their members, empty ones too, and undo restor
     await expect(dialog).toContainText(
         'Delete the selected folders (2), groups (3) and their objects (21)?',
     )
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete', exact: true }), dialog)
     expect(await tree(page)).toBe('Other Bass Drums [Outro: Pad]')
     await expect(bar).toHaveCount(0)
     await expect(
@@ -347,8 +346,7 @@ test('checked folders delete with their members, empty ones too, and undo restor
     await list.getByRole('button', { name: 'Select Multiple' }).click()
     await row(list, 'Verse').locator('.manager-check').click()
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete', exact: true }), dialog)
     expect(await tree(page)).toBe('Default Other Bass Drums [Outro: Pad] [Spare:]')
     await expect(page.locator('.notification', { hasText: 'Deleted Verse folder' })).toBeVisible()
 })
@@ -460,8 +458,10 @@ test('the dialog fallback selects and deletes folders as the panel does', async 
     await expect(manager.last()).toContainText(
         'Delete the selected folders (2), groups (1) and their objects (0)?',
     )
-    await pastGuard(page)
-    await manager.last().getByRole('button', { name: 'Delete', exact: true }).click()
+    await confirmWhenReady(
+        manager.nth(1).getByRole('button', { name: 'Delete', exact: true }),
+        manager.nth(1),
+    )
     await expect(manager).toHaveCount(1)
     expect(await tree(page)).toBe('Default Other [Verse: Lead Fill] Bass Drums')
     await undo(page)
@@ -589,14 +589,12 @@ test('deleting the selection confirms, removes all as one step, and stops select
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
     const dialog = page.locator('dialog')
     await expect(dialog).toContainText('Delete the selected groups (3) and their objects (21)?')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     expect(await tree(page)).toBe('Default Other [Verse: Lead Fill] Bass Drums [Outro: Pad]')
     expect(await checked(list)).toEqual(['Other', 'Lead', 'Drums'])
 
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete' }), dialog)
     expect(await tree(page)).toBe('Default [Verse: Fill] Bass [Outro: Pad]')
     await expect(list.locator('.manager-check')).toHaveCount(0)
     expect(await historyLength(page)).toBe(1)
@@ -658,8 +656,11 @@ test('a keyboard delete of the selection leaves focus on the row in its place', 
     await nameButton(list, 'Bass').focus()
     await page.keyboard.press('Shift+ArrowDown')
     await page.keyboard.press('Delete')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).press('Enter')
+    await confirmKeyWhenReady(
+        dialog.getByRole('button', { name: 'Delete', exact: true }),
+        'Enter',
+        dialog,
+    )
     expect(await tree(page)).toBe('Default Other [Verse: Lead Fill] [Outro: Pad]')
     await expect(nameButton(list, 'Outro')).toBeFocused()
     await undo(page)
@@ -669,8 +670,11 @@ test('a keyboard delete of the selection leaves focus on the row in its place', 
     await page.keyboard.press('Shift+ArrowDown')
     const bar = list.locator('.manager-selection-bar')
     await bar.getByRole('button', { name: 'Delete Selected…' }).press('Enter')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).press('Enter')
+    await confirmKeyWhenReady(
+        dialog.getByRole('button', { name: 'Delete', exact: true }),
+        'Enter',
+        dialog,
+    )
     await expect(nameButton(list, 'Outro')).toBeFocused()
     await undo(page)
 
@@ -678,16 +682,18 @@ test('a keyboard delete of the selection leaves focus on the row in its place', 
     await page.keyboard.press('Shift+ArrowDown')
     await bar.getByRole('button', { name: 'More Actions for Selection' }).press('Enter')
     await page.getByRole('menuitem', { name: 'Delete Selected…' }).press('Enter')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).press('Enter')
+    await confirmKeyWhenReady(
+        dialog.getByRole('button', { name: 'Delete', exact: true }),
+        'Enter',
+        dialog,
+    )
     await expect(nameButton(list, 'Outro')).toBeFocused()
     await undo(page)
 
     // A pointer delete leaves shortcuts to the editor.
     await nameButton(list, 'Bass').click({ modifiers: ['ControlOrMeta'] })
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete', exact: true }), dialog)
     await expect(dialog).toHaveCount(0)
     expect(await list.evaluate((element) => element.contains(document.activeElement))).toBe(false)
 
@@ -700,8 +706,11 @@ test('a keyboard delete of the selection leaves focus on the row in its place', 
     await nameButton(manager, 'Default').focus()
     await page.keyboard.press('Shift+ArrowDown')
     await page.keyboard.press('Delete')
-    await pastGuard(page)
-    await manager.last().getByRole('button', { name: 'Delete', exact: true }).press('Enter')
+    await confirmKeyWhenReady(
+        manager.nth(1).getByRole('button', { name: 'Delete', exact: true }),
+        'Enter',
+        manager.nth(1),
+    )
     await expect(manager).toHaveCount(1)
     await expect(nameButton(manager, 'Verse')).toBeFocused()
 })
@@ -722,8 +731,11 @@ test('a delete confirmed before timers run still focuses the row in its place', 
             original(handler, delay ? delay : 500, ...rest)) as typeof window.setTimeout
     })
     await page.keyboard.press('Delete')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).press('Enter')
+    await confirmKeyWhenReady(
+        dialog.getByRole('button', { name: 'Delete', exact: true }),
+        'Enter',
+        dialog,
+    )
     await page.evaluate(() => {
         window.setTimeout = (
             window as unknown as { originalSetTimeout: typeof setTimeout }
@@ -745,9 +757,8 @@ test('closing the delete prompt by a button returns focus to the row', async ({ 
     await page.keyboard.press('Delete')
     const dialog = page.locator('dialog')
     await expect(dialog).toContainText('Delete the selected groups (2)')
-    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).focus()
-    await page.keyboard.press('Enter')
+    await confirmKeyWhenReady(page, 'Enter', dialog)
     await expect(dialog).toHaveCount(0)
     await expect(nameButton(list, 'Lead')).toBeFocused()
     expect(await historyLength(page)).toBe(0)
@@ -947,8 +958,7 @@ test('stages select, move into a new folder and delete in one step each', async 
     await bar.getByRole('button', { name: 'Delete Selected…' }).click()
     const dialog = page.locator('dialog')
     await expect(dialog).toContainText('Delete the selected stages (2) and their objects (21)?')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete' }), dialog)
     expect(await stageTree()).toEqual(['Center'])
     await undo(page)
     expect(await stageTree()).toEqual(['Center', 'Side stage', 'Third'])
@@ -966,8 +976,10 @@ test('deleting every stage leaves the default stage a new chart starts with', as
     await list.getByRole('button', { name: 'Select Multiple' }).click()
     await list.locator('.manager-all .manager-check').click()
     await list.getByRole('button', { name: 'Delete Selected…' }).click()
-    await pastGuard(page)
-    await page.locator('dialog').getByRole('button', { name: 'Delete' }).click()
+    await confirmWhenReady(
+        page.locator('dialog').getByRole('button', { name: 'Delete' }),
+        page.locator('dialog'),
+    )
     expect(
         await page.evaluate(() => [...window.editorTest.history.state.value.stages.values()]),
     ).toEqual([{ name: '#1', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' }])
@@ -1350,14 +1362,12 @@ test('Delete Selected names the folders it deletes in its title', async ({ page 
     await nameButton(list, 'Bass').click({ modifiers: ['ControlOrMeta'] })
     await remove.click()
     await expect(dialog).toContainText('Delete Groups')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
 
     await row(list, 'Verse').locator('.manager-check').click()
     await remove.click()
     await expect(dialog).toContainText('Delete Folder and Groups')
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
 
     await row(list, 'Outro').locator('.manager-check').click()
     await remove.click()

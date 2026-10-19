@@ -1,11 +1,11 @@
 import { expect, type Page } from '@playwright/test'
-import { pastGuard } from './pastGuard'
+import { confirmWhenReady } from './confirmWhenReady'
 
-/** Confirms the dialog a Reset button opens over Settings, once its 300 ms guard has passed. */
+/** Confirms the dialog a Reset button opens over Settings, pressing again until its 300 ms guard has passed. */
 export const confirmReset = async (page: Page, name: 'Reset Settings' | 'Reset Shortcuts') => {
-    const confirm = page.getByRole('dialog').last()
+    // The second dialog, for good: after it closes this still names it, not Settings beneath.
+    const confirm = page.getByRole('dialog').nth(1)
     await expect(page.getByRole('dialog')).toHaveCount(2)
     await expect(confirm.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused()
-    await pastGuard(page)
-    await confirm.getByRole('button', { name, exact: true }).click()
+    await confirmWhenReady(confirm.getByRole('button', { name, exact: true }), confirm)
 }

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { pastGuard } from './pastGuard'
 
 // A paste that would start before beat 0 moves later as a whole, ghost included.
 
@@ -255,8 +255,7 @@ test('event joints a chart without dynamic stages drops never shift the paste', 
     await page.mouse.click(target.x, target.y)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await pastGuard(page)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
     await expect
         .poll(async () => brief(await pastedNotes(page)).map(({ beat }) => beat))
