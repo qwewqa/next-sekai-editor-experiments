@@ -15,6 +15,7 @@ import type { Entity } from '../../src/state/entities'
 import { inStoredOrder, transformSelection } from '../../src/state/operations/transformSelection'
 import { createStore } from '../../src/state/store/creates'
 import type { Transaction } from '../../src/state/transaction'
+import { futureInitialLife, initialStep, originOperation } from '../helpers/historySteps'
 import { recordsText } from '../local/records/charts'
 import {
     add,
@@ -166,9 +167,9 @@ test('undo and redo restore the same-beat order and the records of each step', (
         )
         const texts = [before, reversed, edited].map((s) => recordsText(toRecords(s)))
         peek.value = undefined
-        resetStates({ isDirty: false, name: () => '', state: before })
-        pushState(() => 'Reversed', reversed)
-        pushState(() => 'Edited', edited)
+        resetStates({ isDirty: false, step: initialStep(originOperation()), state: before })
+        pushState(futureInitialLife(before.initialLife, reversed.initialLife, 'Reversed'), reversed)
+        pushState(futureInitialLife(reversed.initialLife, edited.initialLife, 'Edited'), edited)
         const check = (index: number, order: number[]) => {
             assert.deepEqual(seen(state.value, kind, 4), order, `${kind.name} step ${index}`)
             assert.equal(recordsText(toRecords(state.value)), texts[index], kind.name)

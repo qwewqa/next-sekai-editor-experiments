@@ -46,7 +46,9 @@ const edit = (page: Page, initialLife: number) =>
     page.evaluate(async (initialLife) => {
         const { pushState, state } =
             (await import('/src/history/index.ts')) as typeof import('../../src/history')
-        pushState(() => `Life ${initialLife}`, { ...state.value, initialLife })
+        const { initialLife: operation } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        pushState(operation(state.value.initialLife, initialLife), { ...state.value, initialLife })
     }, initialLife)
 
 const lifeOf = (page: Page) =>
@@ -349,10 +351,15 @@ test.describe('the status bar label', () => {
         await page.evaluate(async () => {
             const { pushState, state } =
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
-            pushState(() => 'Title', {
-                ...state.value,
-                levelInfo: { ...state.value.levelInfo, title: 'Coconut' },
-            })
+            const { futureInitialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(
+                futureInitialLife(state.value.initialLife, state.value.initialLife, 'Title'),
+                {
+                    ...state.value,
+                    levelInfo: { ...state.value.levelInfo, title: 'Coconut' },
+                },
+            )
         })
         await expect(label(page)).toHaveText('Coconut · not saved to a file')
         await expect(page).toHaveTitle('Coconut · not saved to a file – Next SEKAI Editor')
@@ -375,7 +382,11 @@ test.describe('the status bar label', () => {
         await next.evaluate(async () => {
             const { pushState, state } =
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
-            pushState(() => 'Name', { ...state.value })
+            const { futureInitialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(futureInitialLife(state.value.initialLife, state.value.initialLife, 'Name'), {
+                ...state.value,
+            })
             const { session } =
                 (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
             session.value = { ...session.value, name: 'Coconut (Master)' }

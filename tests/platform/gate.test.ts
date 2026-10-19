@@ -5,12 +5,13 @@ import vm from 'node:vm'
 import { ungzip } from 'pako'
 import { serializeAutoSave } from '../../src/history/autoSave/serialize'
 import { journalContent, journalLevelData } from '../../src/local/journal/content'
-import { JOURNAL_VERSION, readJournal, type JournalV1 } from '../../src/local/journal/format'
+import { JOURNAL_VERSION, readJournal, type Journal } from '../../src/local/journal/format'
 import { MemoryStorage } from '../../src/local/journal/store'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 import { toRecoveryFile } from '../../src/local/startup/legacy'
 import { detectFromUa } from '../../src/platform/detect'
 import { storageKey } from '../../src/storage'
+import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import { goldenChart, stateOf } from '../local/records/charts'
 
 // The support gate (Part 1 §1.6.10, §1.6.11.3): public/gate.js is plain ES5 that runs before the
@@ -218,9 +219,9 @@ test('the gate offers an old auto save as the bundle’s recovery file does, in 
 // Journals as the bundle writes them: one ordinary, one written while storage was unavailable.
 const journalOf = (
     sessionId: string,
-    change: (journal: JournalV1) => void = () => undefined,
-): JournalV1 => {
-    const journal: JournalV1 = {
+    change: (journal: Journal) => void = () => undefined,
+): Journal => {
+    const journal: Journal = {
         journalVersion: JOURNAL_VERSION,
         kind: 'journal',
         recordsV: RECORDS_V,
@@ -244,8 +245,15 @@ const journalOf = (
         stack: {
             keep: 8,
             lastKept: '0123456789abcdef0123456789abcdef',
-            dropped: ['Moved notes'],
-            head: { label: 'Changed BPM' },
+            head: true,
+            context: {
+                head: editStep(futureFixtureOperation('gate-journal-head', {}, 'Changed BPM')),
+                headIndex: 1,
+                dropped: [
+                    editStep(futureFixtureOperation('gate-journal-dropped', {}, 'Moved notes')),
+                ],
+                omitted: 0,
+            },
             index: 8,
         },
     }
@@ -254,7 +262,17 @@ const journalOf = (
 }
 const ordinary = journalOf('s1')
 const unavailable = journalOf('s2', (journal) => {
-    journal.stack = { keep: 0, dropped: [], head: { label: 'Added note' }, index: 0 }
+    journal.stack = {
+        keep: 0,
+        head: true,
+        context: {
+            head: editStep(futureFixtureOperation('gate-unavailable-head', {}, 'Added note')),
+            headIndex: 0,
+            dropped: [],
+            omitted: 0,
+        },
+        index: 0,
+    }
     delete journal.descriptor.name
     journal.descriptor.sourceName = 'coconut.nsld'
 })
@@ -357,7 +375,7 @@ test('journals are listed newest first, with the time only when a day repeats', 
     const sameDayEarly = journalOf('b', (journal) => (journal.writtenAt = at(16, 8)))
     const sameDayLate = journalOf('c', (journal) => (journal.writtenAt = at(16, 9)))
     const noTime = journalOf('d', (journal) => {
-        delete (journal as Partial<JournalV1>).writtenAt
+        delete (journal as Partial<Journal>).writtenAt
     })
     const files = gate.recoveryFiles(
         stored({

@@ -1009,7 +1009,13 @@ test.describe('when a card goes by itself', () => {
             emitHistoryAction({
                 kind: 'save',
                 state: history.state.value,
-                name: () => 'Save',
+                operation: window.editorTest.historySteps.nativeOperation(
+                    {
+                        id: 'nse.file.save',
+                        data: { file: { text: 'fixture.nxsp' }, delivery: 'file' },
+                    },
+                    'Save',
+                ),
                 isDirty: false,
             })
         })

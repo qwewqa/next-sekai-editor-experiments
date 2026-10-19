@@ -90,18 +90,30 @@ const edit = (page: Page, kind: 'notes' | 'wholeChart' | 'bgm' | 'third' | 'guid
                 for (let i = 0; i < n; i++) {
                     const transaction = createTransaction(live())
                     addNote(transaction, createSlideId(), note(8 + notes().length))
-                    history.pushState(() => 'Added note', transaction.commit([]))
+                    history.pushState(
+                        window.editorTest.historySteps.noteAdd(1),
+                        transaction.commit([]),
+                    )
                 }
             if (kind === 'wholeChart') {
                 const transaction = createTransaction(live())
                 for (const each of notes())
                     replaceNote(transaction, each, { ...each, beat: each.beat + 1 })
-                history.pushState(() => 'Moved notes', transaction.commit([]))
+                history.pushState(
+                    window.editorTest.historySteps.nativeOperation(
+                        {
+                            id: 'nse.object.move',
+                            data: { subject: 'note', targets: notes().length },
+                        },
+                        'Moved notes',
+                    ),
+                    transaction.commit([]),
+                )
             }
             if (kind === 'third') {
                 const transaction = createTransaction(live())
                 addNote(transaction, createSlideId(), note(4, { left: 1 / 3 }))
-                history.pushState(() => 'Added note', transaction.commit([]))
+                history.pushState(window.editorTest.historySteps.noteAdd(1), transaction.commit([]))
             }
             if (kind === 'guides')
                 // Two guides, the default-coloured one created second and earlier in beat.
@@ -117,7 +129,10 @@ const edit = (page: Page, kind: 'notes' | 'wholeChart' | 'bgm' | 'third' | 'guid
                             slideId,
                             note(at, { connectorType: 'guide', connectorStyle }),
                         )
-                    history.pushState(() => 'Added guide', transaction.commit([]))
+                    history.pushState(
+                        window.editorTest.historySteps.noteAdd(2),
+                        transaction.commit([]),
+                    )
                 }
             if (kind === 'bgm') {
                 const meta = {
@@ -126,10 +141,26 @@ const edit = (page: Page, kind: 'notes' | 'wholeChart' | 'bgm' | 'third' | 'guid
                     size: 1234,
                     type: 'audio/mpeg',
                 }
-                history.pushState(() => 'Changed BGM', {
-                    ...live(),
-                    bgm: { ...live().bgm, filename: 'song.mp3', meta },
-                })
+                history.pushState(
+                    window.editorTest.historySteps.nativeOperation(
+                        {
+                            id: 'nse.bgm.change',
+                            data: {
+                                file: {
+                                    before: live().bgm.meta
+                                        ? { text: live().bgm.meta!.filename }
+                                        : null,
+                                    after: { text: 'song.mp3' },
+                                },
+                            },
+                        },
+                        'Changed BGM',
+                    ),
+                    {
+                        ...live(),
+                        bgm: { ...live().bgm, filename: 'song.mp3', meta },
+                    },
+                )
             }
         },
         { kind, n },

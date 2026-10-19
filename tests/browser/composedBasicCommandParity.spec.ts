@@ -31,7 +31,7 @@ for (const action of [
                     const scaling = await appImport<
                         typeof import('../../src/editor/commands/scaleSelection/session')
                     >('/src/editor/commands/scaleSelection/session.ts')
-                    const { transformSelection } = await appImport<
+                    const { transformSelectionWithReceipt } = await appImport<
                         typeof import('../../src/state/operations/transformSelection')
                     >('/src/state/operations/transformSelection.ts')
                     const { serializeToLevelData } = await appImport<
@@ -151,17 +151,33 @@ for (const action of [
                                 throw new Error('Scaling session failed to apply')
                         } else if (action === 'detach') {
                             const source = history.state.value
-                            history.pushState(
-                                () => 'Detach parity test',
-                                transformSelection(
-                                    source,
-                                    selected,
-                                    new Map(
-                                        selected
-                                            .filter((entity) => entity.type === 'note')
-                                            .map((entity) => [entity, { isAttached: false }]),
-                                    ),
+                            const transformed = transformSelectionWithReceipt(
+                                source,
+                                selected,
+                                new Map(
+                                    selected
+                                        .filter((entity) => entity.type === 'note')
+                                        .map((entity) => [entity, { isAttached: false }]),
                                 ),
+                            )
+                            history.pushState(
+                                window.editorTest.historySteps.nativeOperation(
+                                    {
+                                        id: 'nse.property.set',
+                                        data: {
+                                            subject: 'note',
+                                            targets: transformed.counts.note ?? 0,
+                                            assignments: [
+                                                {
+                                                    field: 'isAttached',
+                                                    value: { mode: 'uniform', value: false },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    'Detach parity test',
+                                ),
+                                transformed.state,
                             )
                         } else {
                             await commands[action].execute()
