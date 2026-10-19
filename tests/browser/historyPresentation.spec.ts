@@ -158,6 +158,8 @@ test('actual 220px French dock protects partial count and the complete unavailab
             )
         storageWorker!.call = new Proxy(storageWorker!.call, {
             async apply(target, self, args) {
+                if (args[0] === 'readTimeline' && args[1]?.before === 0)
+                    return new Promise(() => {})
                 const result = await Reflect.apply(target, self, args)
                 if (args[0] !== 'readTimeline') return result
                 const timeline =
