@@ -7,8 +7,8 @@ import {
 } from '../../../chart/stages'
 import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { captureName } from '../../../history/operations'
 import { groupFolders } from '../../../history/groups'
+import { captureName } from '../../../history/operations'
 import { stageFolders, stages } from '../../../history/stages'
 import { getAllEntities } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -47,10 +47,7 @@ export const addStage = (folder?: FolderId) => {
             gathered: 0,
         },
     })
-    pushState(
-        operation,
-        result,
-    )
+    pushState(operation, result)
 
     notify(() => operation.fallback.text)
 
@@ -189,11 +186,7 @@ export const deleteStage = (stageId: StageId) => {
             target: { kind: 'stage', id: stageId, name: captureName(nameOf(stageId)) },
         },
     } as const
-    stageFolderOps.commitRemoval(
-        ids,
-        removeStages(ids),
-        operation,
-    )
+    stageFolderOps.commitRemoval(ids, removeStages(ids), operation)
     view.entities = {
         hovered: [],
         creating: [],

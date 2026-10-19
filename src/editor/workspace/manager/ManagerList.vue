@@ -827,8 +827,16 @@ const bulkHidden = computed(() => selectedIds.value.some((id) => !scope.value.is
 const editLifetime = new AbortController()
 onUnmounted(() => editLifetime.abort())
 
-const continueDeleteFocus = async (model: ManagerModel<T>, generation: number, focus: () => void) => {
-    const isOriginCurrent = () => model === props.model && generation === stackGeneration() && !editLifetime.signal.aborted && !isPeeking.value
+const continueDeleteFocus = async (
+    model: ManagerModel<T>,
+    generation: number,
+    focus: () => void,
+) => {
+    const isOriginCurrent = () =>
+        model === props.model &&
+        generation === stackGeneration() &&
+        !editLifetime.signal.aborted &&
+        !isPeeking.value
     if (!isOriginCurrent()) return
     const guard = createAsyncEditGuard(editLifetime.signal)
     try {
@@ -845,45 +853,46 @@ const onBulkDelete = async (keyboard = false) => {
     const generation = stackGeneration()
     const guard = createAsyncEditGuard(editLifetime.signal)
     try {
-    const ids = new Set(selectedIds.value)
-    const folderIds = new Set(selectedFolderIds.value)
-    if (!ids.size && !folderIds.size) return
-    const objects = [...ids].reduce((sum, id) => sum + (counts.value.get(id) ?? 0), 0)
-    // Empty folders go without asking, as from their own menus.
-    const confirmed =
-        !ids.size ||
-        (await showModal(ConfirmModal, {
-            title: () =>
-                folderIds.size
-                    ? label(strings.value.deleteSelectedFoldersTitle, `${folderIds.size}`)
-                    : strings.value.deleteSelectedTitle,
-            message: () =>
-                folderIds.size
-                    ? label(
-                          strings.value.deleteSelectedFoldersMessage,
-                          `${folderIds.size}`,
-                          `${ids.size}`,
-                          `${objects}`,
-                      )
-                    : label(strings.value.deleteSelectedMessage, `${ids.size}`, `${objects}`),
-            confirm: () => i18n.value.modals.confirm.delete,
-            destructive: true,
-        }))
-    if (!confirmed || !guard.isCurrent() || model !== props.model || refused()) return
-    const index = [...(list.value?.querySelectorAll<HTMLElement>('[data-row]') ?? [])].findIndex(
-        (element) => {
+        const ids = new Set(selectedIds.value)
+        const folderIds = new Set(selectedFolderIds.value)
+        if (!ids.size && !folderIds.size) return
+        const objects = [...ids].reduce((sum, id) => sum + (counts.value.get(id) ?? 0), 0)
+        // Empty folders go without asking, as from their own menus.
+        const confirmed =
+            !ids.size ||
+            (await showModal(ConfirmModal, {
+                title: () =>
+                    folderIds.size
+                        ? label(strings.value.deleteSelectedFoldersTitle, `${folderIds.size}`)
+                        : strings.value.deleteSelectedTitle,
+                message: () =>
+                    folderIds.size
+                        ? label(
+                              strings.value.deleteSelectedFoldersMessage,
+                              `${folderIds.size}`,
+                              `${ids.size}`,
+                              `${objects}`,
+                          )
+                        : label(strings.value.deleteSelectedMessage, `${ids.size}`, `${objects}`),
+                confirm: () => i18n.value.modals.confirm.delete,
+                destructive: true,
+            }))
+        if (!confirmed || !guard.isCurrent() || model !== props.model || refused()) return
+        const index = [
+            ...(list.value?.querySelectorAll<HTMLElement>('[data-row]') ?? []),
+        ].findIndex((element) => {
             const key = keyOfRow(element)
             return key?.type === 'entry' ? ids.has(key.id) : !!key && folderIds.has(key.id)
-        },
-    )
-    // The Delete that opened the prompt must not refocus by its row's old index.
-    keyFocus = undefined
-    model.removeMany(ids, folderIds)
-    stopSelecting()
-    if (!keyboard) return
-    await continueDeleteFocus(model, generation, () => {
-        if (!root.value?.contains(document.activeElement)) focusAfterDelete(index, '.manager-name')
-    })
+        })
+        // The Delete that opened the prompt must not refocus by its row's old index.
+        keyFocus = undefined
+        model.removeMany(ids, folderIds)
+        stopSelecting()
+        if (!keyboard) return
+        await continueDeleteFocus(model, generation, () => {
+            if (!root.value?.contains(document.activeElement))
+                focusAfterDelete(index, '.manager-name')
+        })
     } finally {
         guard.dispose()
     }
@@ -1929,7 +1938,7 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
             const model = props.model
             const generation = stackGeneration()
             if (key.type === 'entry') model.remove(key.id)
-            else if (!await folders.value.remove(key.id, editLifetime.signal)) return
+            else if (!(await folders.value.remove(key.id, editLifetime.signal))) return
             if (!keyboard) return
             await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
             return

@@ -10,7 +10,9 @@ import {
 import { createOperation, decodeOperation } from '../../src/history/operations'
 
 const capture = (input: Parameters<typeof createOperation>[0]) =>
-    JSON.parse(JSON.stringify(createOperation(input, { locale: 'en', describe: () => 'Captured action' }))) as ReturnType<typeof createOperation>
+    JSON.parse(
+        JSON.stringify(createOperation(input, { locale: 'en', describe: () => 'Captured action' })),
+    ) as ReturnType<typeof createOperation>
 
 const stage = {
     name: 'Main',
@@ -20,7 +22,11 @@ const stage = {
 }
 
 test('header operations preserve exact before and after values without formatting', () => {
-    for (const [before, after] of [[1000, 999], [0.123456789012345, Number.MIN_VALUE], [-1e200, 1e200]]) {
+    for (const [before, after] of [
+        [1000, 999],
+        [0.123456789012345, Number.MIN_VALUE],
+        [-1e200, 1e200],
+    ]) {
         const life = capture(initialLifeInput(before!, after!))
         const offset = capture(bgmOffsetInput(before!, after!))
         assert.deepEqual(life.data, { field: 'initialLife', before, after })
@@ -95,7 +101,8 @@ test('stage properties capture exact booleans and enum transitions under the sta
         id: 'nse.owner.rename',
         data: {
             target: { kind: 'stage', id: 8, name: { text: 'Main' } },
-            before: { text: 'Main' }, after: { text: 'Side' },
+            before: { text: 'Main' },
+            after: { text: 'Side' },
         },
     })
 })

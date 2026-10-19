@@ -2,7 +2,15 @@ import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 import { createAsyncEditGuard } from '../../src/editor/asyncEditGuard'
 import { createOperation, type NativeOperationInput } from '../../src/history/operations'
-import { markFileEvent, peek, pushState, redoState, replaceState, resetStates, undoState } from '../../src/history/stack'
+import {
+    markFileEvent,
+    peek,
+    pushState,
+    redoState,
+    replaceState,
+    resetStates,
+    undoState,
+} from '../../src/history/stack'
 import type { State } from '../../src/state'
 
 const operation = (input: NativeOperationInput) =>
@@ -10,17 +18,36 @@ const operation = (input: NativeOperationInput) =>
 const first = { fixture: 'first' } as unknown as State
 const second = { fixture: 'second' } as unknown as State
 const init = operation({ id: 'nse.origin', data: { origin: 'new' } })
-const edit = operation({ id: 'nse.header.set', data: { field: 'initialLife', before: 1000, after: 999 } })
+const edit = operation({
+    id: 'nse.header.set',
+    data: { field: 'initialLife', before: 1000, after: 999 },
+})
 
-beforeEach(() => resetStates({ isDirty: false, state: first, step: { kind: 'init', operation: init } }))
+beforeEach(() =>
+    resetStates({ isDirty: false, state: first, step: { kind: 'init', operation: init } }),
+)
 
 test('async edits accept an unchanged scope and ignore Save and Export events', () => {
     const guard = createAsyncEditGuard()
     try {
-        markFileEvent('save', operation({ id: 'nse.file.save', data: { file: { text: 'a.nxsp' }, delivery: 'file' } }))
-        markFileEvent('export', operation({ id: 'nse.file.export', data: { file: { text: 'a.json' }, delivery: 'download' } }))
+        markFileEvent(
+            'save',
+            operation({
+                id: 'nse.file.save',
+                data: { file: { text: 'a.nxsp' }, delivery: 'file' },
+            }),
+        )
+        markFileEvent(
+            'export',
+            operation({
+                id: 'nse.file.export',
+                data: { file: { text: 'a.json' }, delivery: 'download' },
+            }),
+        )
         assert.equal(guard.isCurrent(), true)
-    } finally { guard.dispose() }
+    } finally {
+        guard.dispose()
+    }
 })
 
 test('an edit using the same State object permanently invalidates confirmation', () => {
@@ -30,7 +57,9 @@ test('an edit using the same State object permanently invalidates confirmation',
         undoState()
         redoState()
         assert.equal(guard.isCurrent(), false)
-    } finally { guard.dispose() }
+    } finally {
+        guard.dispose()
+    }
 })
 
 test('a temporary selection/state replacement cannot restore a stale confirmation', () => {
@@ -39,7 +68,9 @@ test('a temporary selection/state replacement cannot restore a stale confirmatio
         replaceState(second)
         replaceState(first)
         assert.equal(guard.isCurrent(), false)
-    } finally { guard.dispose() }
+    } finally {
+        guard.dispose()
+    }
 })
 
 test('same-object stack replacement invalidates confirmation through its generation', () => {
@@ -47,7 +78,9 @@ test('same-object stack replacement invalidates confirmation through its generat
     try {
         resetStates({ isDirty: false, state: first, step: { kind: 'init', operation: init } })
         assert.equal(guard.isCurrent(), false)
-    } finally { guard.dispose() }
+    } finally {
+        guard.dispose()
+    }
 })
 
 test('entering and leaving peek remains stale, including a guard opened while peeking', () => {
@@ -78,5 +111,7 @@ test('origin abort and disposal invalidate permanently while independent prompts
         const alreadyAborted = createAsyncEditGuard(controller.signal)
         assert.equal(alreadyAborted.isCurrent(), false)
         alreadyAborted.dispose()
-    } finally { other.dispose() }
+    } finally {
+        other.dispose()
+    }
 })
