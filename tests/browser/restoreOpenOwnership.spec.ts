@@ -419,10 +419,13 @@ for (const navigate of [false, true]) {
             const { liveState, replaceState, pushState } = await import('/src/history/stack.ts')
             const { initialLife } = await import('/tests/helpers/historySteps.ts')
             const { createWaveform } = await import('/src/waveform.ts')
-            const hash = 'a'.repeat(64)
+            const hash = 'a'.repeat(32)
             replaceState({
                 ...liveState.value,
-                bgm: { offset: 0, meta: { hash, name: 'fixture.wav', size: 1 } },
+                bgm: {
+                    offset: 0,
+                    meta: { hash, filename: 'fixture.wav', size: 1, type: 'audio/wav' },
+                },
             })
             let release!: () => void
             const gate = new Promise<void>((resolve) => {
