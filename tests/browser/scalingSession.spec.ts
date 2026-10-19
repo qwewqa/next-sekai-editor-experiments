@@ -347,9 +347,12 @@ test('Ctrl+Z and Ctrl+Y in the factor reach the editor only while it shows the f
     page,
 }) => {
     await page.evaluate(() => {
-        const { history } = window.editorTest
+        const { history, historySteps } = window.editorTest
         const current = history.state.value
-        history.pushState(() => 'Seeded', { ...current, initialLife: current.initialLife + 1 })
+        history.pushState(historySteps.initialLife(current.initialLife, current.initialLife + 1), {
+            ...current,
+            initialLife: current.initialLife + 1,
+        })
     })
     await open(page)
     await expect(factor(page)).toBeFocused()
