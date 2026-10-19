@@ -10,6 +10,7 @@ import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
 import { dismissNoticeCard, noticeCard, notify, type NoticeAction } from './notification'
 import { shownName } from './shownName'
+import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 
 // Leaving a session in this tab (New, Open, Reopen, Restore as a Copy, Leave Safe Mode): the
 // in-app not-stored prompt (Part 1 §1.4.9), and the Reopen notice that follows (§1.4.1). The
@@ -54,7 +55,7 @@ setLeaveSafeModeGuard(confirmSwitch)
 type Left = NonNullable<typeof previousSession.value>
 
 // Reopen clears the session it opens, which is no sign that there was nothing to reopen.
-let reopening = false
+let reopening: SwitchRequest | undefined
 
 // A session without a name of its own is named by its date, which takes no quotes.
 const reopenAction = (left: Left): NoticeAction => ({
@@ -77,28 +78,31 @@ const reopenAction = (left: Left): NoticeAction => ({
  * Reopen: continues the session this tab left last, after the prompt when the open one would
  * lose work. True when it opened.
  */
-export const reopenPrevious = async () => {
-    if (!previousSession.value || !(await confirmSwitch())) return false
-    const { reopen } = await import('../local/startup/api')
-    reopening = true
-    try {
-        const opened = await reopen()
-        // Cards belong to the session left.
-        if (opened) dismissNoticeCard()
-        return opened
-    } finally {
-        reopening = false
-    }
-}
+export const reopenPrevious = () =>
+    withSwitchRequest(undefined, async (request) => {
+        if (!previousSession.value || !(await confirmSwitch()) || !request.isCurrent()) return false
+        const { reopen } = await import('../local/startup/api')
+        if (!request.isCurrent()) return false
+        reopening = request
+        try {
+            const opened = await reopen(request)
+            if (opened && request.isCurrent()) dismissNoticeCard()
+            return opened
+        } finally {
+            if (reopening === request) reopening = undefined
+        }
+    })
 
-/** Restore as a Copy (a load notice's action): a fork of a session open in another tab. */
-export const restoreCopy = async (sessionId: string) => {
-    if (!(await confirmSwitch())) return false
-    const { restoreAsCopy } = await import('../local/startup/api')
-    const opened = await restoreAsCopy(sessionId)
-    if (opened) dismissNoticeCard()
-    return opened
-}
+/** Restore as a Copy from a load notice. */
+export const restoreCopy = (sessionId: string) =>
+    withSwitchRequest(undefined, async (request) => {
+        if (!(await confirmSwitch()) || !request.isCurrent()) return false
+        const { restoreAsCopy } = await import('../local/startup/api')
+        if (!request.isCurrent()) return false
+        const opened = await restoreAsCopy(sessionId, request)
+        if (opened && request.isCurrent()) dismissNoticeCard()
+        return opened
+    })
 
 /**
  * The notice after a switch: its message, and Reopen "<previous>" while the session left can be

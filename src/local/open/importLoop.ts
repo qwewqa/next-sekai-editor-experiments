@@ -123,53 +123,56 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
         await worker.call('openAbandon', sessionId).catch(() => undefined)
         return { kind: 'stopped' }
     }
-    for (let n = 0; n < job.batches; n++) {
-        await testDelay()
-        if (!(await unchanged(source, false))) return stop()
-        let outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
-        if (outcome.kind === 'notOpened') {
-            // A restarted worker: the file is read again, under the same plan.
-            const resumed = await worker.call(
-                'openResume',
-                {
-                    sessionId,
-                    file: source.file,
-                    ...(source.revisionId ? { revisionId: source.revisionId } : {}),
-                    ...(source.disk ? { fingerprint: source.disk.fingerprint } : {}),
-                },
-                { timeoutMs: BATCH_TIMEOUT_MS },
-            )
-            if (resumed.kind !== 'resumed') return stop()
-            id = resumed.id
-            outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
-        }
-        switch (outcome.kind) {
-            case 'done':
-                continue
-            case 'gone':
-                return { kind: 'stopped' }
-            case 'notOpened':
-            case 'readError':
-                return stop()
-            case 'damaged': {
-                // Only a hash failure with the fingerprint unchanged is damage (r12-freeze2 S8).
-                if (!(await unchanged(source, true))) return stop()
-                const first = unlinkedAs === undefined
-                unlinkedAs ??= (job.newId ?? (() => crypto.randomUUID()))()
-                const record = await worker.call('openUnlink', {
-                    id,
-                    chainId: job.chainId,
-                    docId: unlinkedAs,
-                    hashes: outcome.hashes,
-                    appVersion: job.appVersion,
-                })
-                if (record) job.onUnlink?.(record, first)
-                continue
+    try {
+        for (let n = 0; n < job.batches; n++) {
+            await testDelay()
+            if (!(await unchanged(source, false))) return stop()
+            let outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
+            if (outcome.kind === 'notOpened') {
+                // A restarted worker: the file is read again, under the same plan.
+                const resumed = await worker.call(
+                    'openResume',
+                    {
+                        sessionId,
+                        file: source.file,
+                        ...(source.revisionId ? { revisionId: source.revisionId } : {}),
+                        ...(source.disk ? { fingerprint: source.disk.fingerprint } : {}),
+                    },
+                    { timeoutMs: BATCH_TIMEOUT_MS },
+                )
+                if (resumed.kind !== 'resumed') return stop()
+                id = resumed.id
+                outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
+            }
+            switch (outcome.kind) {
+                case 'done':
+                    continue
+                case 'gone':
+                    return { kind: 'stopped' }
+                case 'notOpened':
+                case 'readError':
+                    return stop()
+                case 'damaged': {
+                    // Only a hash failure with the fingerprint unchanged is damage (r12-freeze2 S8).
+                    if (!(await unchanged(source, true))) return stop()
+                    const first = unlinkedAs === undefined
+                    unlinkedAs ??= (job.newId ?? (() => crypto.randomUUID()))()
+                    const record = await worker.call('openUnlink', {
+                        id,
+                        chainId: job.chainId,
+                        docId: unlinkedAs,
+                        hashes: outcome.hashes,
+                        appVersion: job.appVersion,
+                    })
+                    if (record) job.onUnlink?.(record, first)
+                    continue
+                }
             }
         }
+        return unlinkedAs ? { kind: 'unlinked', docId: unlinkedAs } : { kind: 'done' }
+    } finally {
+        await worker.call('openDrop', id).catch(() => undefined)
     }
-    await worker.call('openDrop', id).catch(() => undefined)
-    return unlinkedAs ? { kind: 'unlinked', docId: unlinkedAs } : { kind: 'done' }
 }
 
 const track = (sessionId: string, run: Promise<ImportOutcome>) => {

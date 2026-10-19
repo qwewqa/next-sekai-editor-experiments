@@ -1,4 +1,5 @@
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
+import type { SwitchRequest } from '../../editor/switchRequest'
 import { captureStep, type JsonValue } from '../../history/operations'
 import { createSessionDescriptor, type SessionDescriptor } from '../../history/session'
 import type { RestoredSlot } from '../../history/stack'
@@ -6,7 +7,7 @@ import type { JournalFound, JournalStore, LockService } from '../../platform/typ
 import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
 import type { FlushSession, StoredStack } from '../flush'
-import { handleOf } from '../handles'
+import { resolveHandle } from '../handles'
 import { toHex } from '../hash'
 import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, forkNameOf, namePartsOf } from '../names'
@@ -176,9 +177,19 @@ export const openStored = async (
     {
         replace = false,
         recovered,
+        request,
+        canShow,
+        onShown,
+        onTransferred,
+        keepUnshownLock = false,
     }: {
         /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
         replace?: boolean
+        request?: SwitchRequest
+        canShow?: () => boolean
+        onShown?: (leaving: FlushSession | undefined) => void
+        onTransferred?: () => void
+        keepUnshownLock?: boolean
         /**
          * A journal of the session that couldn't be applied but reads: a continuation or fork
          * starts from its state, an entry over the stored stack, so the newest work is on screen
@@ -192,140 +203,169 @@ export const openStored = async (
         if (how.mode === 'resume') how.lock.release()
         else how.parentLock?.release()
     }
-    if (!flusher) {
-        releaseAll()
-        return
+    let transferred = false
+    let own: HeldLock | undefined
+    const handoff = () => {
+        transferred = true
+        onTransferred?.()
     }
-    const state = await headState(deps.worker, read.head)
-    // Start Blank, or a chart made meanwhile, keeps what's on screen.
-    if (!replace && (isBlankRequested() || !deps.untouched())) {
-        releaseAll()
-        return
-    }
-    const { session, chain } = read
-    const newId = deps.newId ?? (() => crypto.randomUUID())
-    const edited = chain.edited === true
-    const slots: RestoredSlot[] = read.stack.slots.map(({ snapshot, step }) => ({
-        snapshot,
-        step,
-        isDirty: edited,
-    }))
-    let at = read.stack.window.index - read.stack.window.base
-    const taken = how.mode === 'resume' ? undefined : recovered
-    const takenContext = taken && journalledSession(taken.found)?.recoveryContext
-    if (taken && !takenContext) throw new Error('Taken journal context is unavailable')
-    const takenStep =
-        takenContext &&
-        captureStep({
-            kind: 'edit',
-            operation: deps.operations.recovered(
-                takenContext.dropped.length + takenContext.omitted,
-            ),
-            recoveryContext: takenContext,
-        })
-    if (takenStep) {
-        slots.length = at + 1
-        slots.push({ step: takenStep, isDirty: true })
-        at++
-    }
-    const shown = taken?.state ?? state
-    const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
-    const sourceName = text(chain.sourceName)
-    const lineageId = text(chain.lineageId) ?? newId()
-    const id = how.mode === 'resume' ? String(session.id) : newId()
-    const fork = how.mode === 'fork'
-    const forkName = fork ? forkNameOf(namePartsOf(chain, state)) : undefined
-    const boundFile = boundFileOf(chain)
-    const docId = fork ? newId() : (text(chain.docId) ?? newId())
-    const name = fork ? forkName : text(chain.name)
-    deps.show({
-        descriptor: createSessionDescriptor({
-            sessionId: id,
-            docId,
-            ...(name === undefined ? {} : { name }),
-            ...(sourceName === undefined ? {} : { sourceName }),
-            ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
-            ...(typeof session.startedAt === 'number' ? { startedAt: session.startedAt } : {}),
-            ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
-        }),
-        slots,
-        at,
-        state: shown,
-        view: session.view,
-        ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
-    })
-    if (how.mode === 'resume') {
-        flusher.resumeSession({
-            id,
-            chainId: String(chain.chainId),
-            docId,
-            lineageId,
-            origin: (text(session.origin) ?? 'new') as FlushSession['origin'],
-            startedAt: typeof session.startedAt === 'number' ? session.startedAt : Date.now(),
-            ...(isParent(session.parent) ? { parent: session.parent } : {}),
-            ...(sourceName === undefined ? {} : { sourceName }),
-            lastSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
-            chain,
-            stack: {
-                ...storedStack(read),
-                window: read.stack.window,
-                blocks: read.stack.blocks,
-                at: read.at,
-            },
-            ready: Promise.resolve(),
-            done: how.lock.release,
-        })
-    } else {
-        const own = holdOwn(deps.locks, id)
-        const continued = flusher.continueSession({
-            id,
-            chainId: fork ? newId() : String(chain.chainId),
-            docId,
-            lineageId,
-            ...(sourceName === undefined ? {} : { sourceName }),
-            parent: {
-                id: String(session.id),
-                uptoSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
-            },
-            stack: storedStack(read),
-            chain,
-            operation: deps.operations.continued(session.updatedAt as number),
-            dirty: edited,
-            ...(fork
-                ? { fork: { forkOf: String(chain.chainId), ...(forkName ? { forkName } : {}) } }
-                : {}),
-            ready: own.granted.catch(() => undefined),
-            // Starting from a journal, the parent stays held until its key goes, so no other
-            // load keeps that key as a second copy meanwhile.
-            done: taken
-                ? () => {
-                      own.release()
-                      how.parentLock?.release()
-                  }
-                : own.release,
-            ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
-        })
-        if (taken) {
-            if (!takenStep) throw new Error('Missing recovered step')
-            flusher.append({ kind: 'edit', step: takenStep }, taken.state, true)
-            deps.retireJournal?.(
-                taken.found,
-                continued.id,
-                flusher.newestSeq(continued),
-                how.parentLock?.release,
-            )
+    try {
+        if (!flusher) {
+            return
+        }
+        const state = await headState(deps.worker, read.head)
+        if ((request && !request.isCurrent()) || (canShow && !canShow())) return
+        // Start Blank, or a chart made meanwhile, keeps what's on screen.
+        if (!replace && (isBlankRequested() || !deps.untouched())) {
+            return
+        }
+        const { session, chain } = read
+        const newId = deps.newId ?? (() => crypto.randomUUID())
+        const edited = chain.edited === true
+        const slots: RestoredSlot[] = read.stack.slots.map(({ snapshot, step }) => ({
+            snapshot,
+            step,
+            isDirty: edited,
+        }))
+        let at = read.stack.window.index - read.stack.window.base
+        const taken = how.mode === 'resume' ? undefined : recovered
+        const takenContext = taken && journalledSession(taken.found)?.recoveryContext
+        if (taken && !takenContext) throw new Error('Taken journal context is unavailable')
+        const takenStep =
+            takenContext &&
+            captureStep({
+                kind: 'edit',
+                operation: deps.operations.recovered(
+                    takenContext.dropped.length + takenContext.omitted,
+                ),
+                recoveryContext: takenContext,
+            })
+        if (takenStep) {
+            slots.length = at + 1
+            slots.push({ step: takenStep, isDirty: true })
+            at++
+        }
+        const shown = taken?.state ?? state
+        const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
+        const sourceName = text(chain.sourceName)
+        const lineageId = text(chain.lineageId) ?? newId()
+        const id = how.mode === 'resume' ? String(session.id) : newId()
+        const fork = how.mode === 'fork'
+        const forkName = fork ? forkNameOf(namePartsOf(chain, state)) : undefined
+        const boundFile = boundFileOf(chain)
+        const docId = fork ? newId() : (text(chain.docId) ?? newId())
+        const name = fork ? forkName : text(chain.name)
+        const publish = () => {
+            const leaving = flusher.session
+            deps.show({
+                descriptor: createSessionDescriptor({
+                    sessionId: id,
+                    docId,
+                    ...(name === undefined ? {} : { name }),
+                    ...(sourceName === undefined ? {} : { sourceName }),
+                    ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+                    ...(typeof session.startedAt === 'number'
+                        ? { startedAt: session.startedAt }
+                        : {}),
+                    ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
+                }),
+                slots,
+                at,
+                state: shown,
+                view: session.view,
+                ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
+            })
+            if (how.mode === 'resume') {
+                flusher.resumeSession({
+                    id,
+                    chainId: String(chain.chainId),
+                    docId,
+                    lineageId,
+                    origin: (text(session.origin) ?? 'new') as FlushSession['origin'],
+                    startedAt:
+                        typeof session.startedAt === 'number' ? session.startedAt : Date.now(),
+                    ...(isParent(session.parent) ? { parent: session.parent } : {}),
+                    ...(sourceName === undefined ? {} : { sourceName }),
+                    lastSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
+                    chain,
+                    stack: {
+                        ...storedStack(read),
+                        window: read.stack.window,
+                        blocks: read.stack.blocks,
+                        at: read.at,
+                    },
+                    ready: Promise.resolve(),
+                    done: how.lock.release,
+                })
+                handoff()
+            } else {
+                const acquired = holdOwn(deps.locks, id)
+                own = acquired
+                const continued = flusher.continueSession({
+                    id,
+                    chainId: fork ? newId() : String(chain.chainId),
+                    docId,
+                    lineageId,
+                    ...(sourceName === undefined ? {} : { sourceName }),
+                    parent: {
+                        id: String(session.id),
+                        uptoSeq: typeof session.lastSeq === 'number' ? session.lastSeq : 0,
+                    },
+                    stack: storedStack(read),
+                    chain,
+                    operation: deps.operations.continued(session.updatedAt as number),
+                    dirty: edited,
+                    ...(fork
+                        ? {
+                              fork: {
+                                  forkOf: String(chain.chainId),
+                                  ...(forkName ? { forkName } : {}),
+                              },
+                          }
+                        : {}),
+                    ready: acquired.granted.catch(() => undefined),
+                    // Starting from a journal, the parent stays held until its key goes, so no other
+                    // load keeps that key as a second copy meanwhile.
+                    done: taken
+                        ? () => {
+                              acquired.release()
+                              how.parentLock?.release()
+                          }
+                        : acquired.release,
+                    ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
+                })
+                handoff()
+                if (taken) {
+                    if (!takenStep) throw new Error('Missing recovered step')
+                    flusher.append({ kind: 'edit', step: takenStep }, taken.state, true)
+                    deps.retireJournal?.(
+                        taken.found,
+                        continued.id,
+                        flusher.newestSeq(continued),
+                        how.parentLock?.release,
+                    )
+                }
+            }
+            // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
+            restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
+            writeTabRecord({
+                sessionId: id,
+                start: how.mode === 'resume' ? 'stored' : 'continuation',
+                ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
+                ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+            })
+            if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
+            onShown?.(leaving)
+        }
+        if (request) request.publish(publish)
+        else publish()
+        return transferred ? shown : undefined
+    } finally {
+        if (!transferred) {
+            own?.release()
+            if (!keepUnshownLock) releaseAll()
         }
     }
-    // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
-    restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
-    writeTabRecord({
-        sessionId: id,
-        start: how.mode === 'resume' ? 'stored' : 'continuation',
-        ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
-        ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
-    })
-    if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
-    return shown
 }
 
 const isParent = (value: unknown): value is { id: string; uptoSeq: number } =>
@@ -395,7 +435,7 @@ const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State) => {
  * handles are read only when another tab holds a session bound to a file of the same name, so a
  * load with no such tab reads none (D24).
  */
-const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open' }) => {
+export const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open' }) => {
     const name = (read.chain.file as { name?: unknown } | undefined)?.name
     if (typeof name !== 'string' || !hasWebLocks()) return false
     try {
@@ -411,14 +451,22 @@ const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open'
             ({ chainId, file }) => chainId !== read.chain.chainId && file.name === name,
         )
         if (!bindings.length) return false
-        const handle = await handleOf(deps.worker, String(read.chain.chainId), 'file')
-        if (!handle) return false
+        const raw = await deps.worker.call('readHandle', {
+            chainId: String(read.chain.chainId),
+            role: 'file',
+        })
+        if (raw === undefined) return false
+        const handle = resolveHandle(raw)
+        if (!handle) return true
         for (const { chainId } of bindings) {
-            const other = await handleOf(deps.worker, chainId, 'file')
-            if (other && (await other.isSameEntry(handle).catch(() => false))) return true
+            const raw = await deps.worker.call('readHandle', { chainId, role: 'file' })
+            if (raw === undefined) continue
+            const other = resolveHandle(raw)
+            if (!other || (await other.isSameEntry(handle))) return true
         }
     } catch {
-        // Where the browser can't tell, the session continues; Save's own check guards the file.
+        // A failed ownership check cannot authorize retaining a binding.
+        return true
     }
     return false
 }

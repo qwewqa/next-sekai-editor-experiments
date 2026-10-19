@@ -34,6 +34,7 @@ export type OpenedFile = {
 
 const opened = new Map<string, OpenedFile>()
 
+const incarnation = crypto.randomUUID()
 let nextId = 0
 
 /** What the page gets of a read: everything but the lazy chunk access. */
@@ -68,7 +69,7 @@ const lastModifiedOf = (file: Blob) => (file instanceof File ? file.lastModified
 export const readOpened = async (file: Blob): Promise<OpenReadReply> => {
     const read = await readNxsp(file)
     if (read.kind !== 'nxsp') return read
-    const id = `open-${nextId++}`
+    const id = `open-${incarnation}-${nextId++}`
     opened.set(id, { id, file, read })
     let disk: DiskState | undefined
     try {
