@@ -1331,6 +1331,7 @@
     "viewChart": "채보 보기",
     "details": {
       "title": "단계 세부 정보",
+      "named": "단계 세부 정보: {0}",
       "action": "세부 정보",
       "unsupported": "이 편집기는 이 작업의 내용을 해석할 수 없습니다.",
       "nameShortened": "이름을 줄여 표시함",

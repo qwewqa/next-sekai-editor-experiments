@@ -1331,6 +1331,7 @@
     "viewChart": "檢視譜面",
     "details": {
       "title": "步驟詳細資訊",
+      "named": "步驟詳細資訊：{0}",
       "action": "詳細資訊",
       "unsupported": "此編輯器無法解讀此操作。",
       "nameShortened": "名稱已縮短顯示",
