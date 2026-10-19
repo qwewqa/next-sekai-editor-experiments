@@ -48,8 +48,11 @@ test('early compaction preserves Restore and complete crossed steps', () => {
         pushes.map((action) => action.kind),
         ['edit', 'restore'],
     )
-    assert.equal(pushes[1]?.step.kind, 'restore')
-    for (const action of seen.filter((item) => item.kind === 'undo' || item.kind === 'redo')) {
+    const restoredAction = pushes[1]
+    assert(restoredAction && 'step' in restoredAction)
+    assert.equal(restoredAction.step.kind, 'restore')
+    for (const action of seen) {
+        if (action.kind !== 'undo' && action.kind !== 'redo') continue
         assert.equal(action.step.kind, 'restore')
         assert(equalJson(action.step.operation, operation as unknown as JsonValue))
     }

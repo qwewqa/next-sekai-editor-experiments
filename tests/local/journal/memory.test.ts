@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { JournalV1 } from '../../../src/local/journal/format'
+import { equalJson, type JsonValue } from '../../../src/history/operations'
+import type { Journal } from '../../../src/local/journal/format'
 import type { MemoryStorage } from '../../../src/local/journal/store'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openSplitJournalPage, replayAll } from './harness'
+
+const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
 // The journal while storage is unavailable (§1.6.7): the worker's in-memory store acknowledges
 // flushes, but only the journal survives the tab, so every hide writes it at the newest seq, and
@@ -20,7 +24,7 @@ const settle = async (world: World) => {
 
 const journalIn = (storage: MemoryStorage, sessionId: string) => {
     const text = storage.getItem(`nse.journal.${sessionId}`)
-    return text === null ? undefined : (JSON.parse(text) as JournalV1)
+    return text === null ? undefined : (JSON.parse(text) as Journal)
 }
 
 test('in memory from the start, every hide journals the newest seq, never cleared', async () => {
@@ -32,7 +36,11 @@ test('in memory from the start, every hide journals the newest seq, never cleare
     await page.flusher.flush()
     for (let i = 0; i < 3; i++) {
         state = widen(state, i)
-        append(page, 'edit', 'Changed note', state)
+        append(
+            page,
+            { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+            state,
+        )
         // The in-memory store acknowledges it; the journal is still due.
         await page.flusher.flush({ strict: true })
         assert.equal(page.flusher.hasPending, false)
@@ -41,7 +49,8 @@ test('in memory from the start, every hide journals the newest seq, never cleare
         const journal = journalIn(page.storage, session.id)
         assert.equal(journal?.seq, i + 2, `edit ${i}`)
         assert.equal(journal?.stack.keep, 0)
-        assert.deepEqual(journal?.stack.head, { label: 'Changed note' })
+        assert.equal(journal?.stack.head, true)
+        same(journal?.stack.context.head, editStep(futureFixtureOperation('Changed note')))
     }
     // A strict flush into memory never clears it.
     await page.flusher.flush({ strict: true })
@@ -61,7 +70,7 @@ test('after a worker restart into memory, hides journal the entries only memory 
     let state = stateOf(goldenChart())
     const session = beginSession(page, state)
     state = widen(state)
-    append(page, 'edit', 'Changed note', state)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, state)
     await page.flusher.flush({ strict: true })
     assert.equal(page.flusher.unflushed(session), false)
 
@@ -71,7 +80,7 @@ test('after a worker restart into memory, hides journal the entries only memory 
     await settle(world)
     assert.equal(page.host.core.status.mode, 'memory')
     state = widen(state, 1)
-    append(page, 'edit', 'Changed note', state)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, state)
     await page.flusher.flush({ strict: true })
     assert.equal(page.flusher.hasPending, false)
     assert.equal(page.flusher.unflushed(session), true)
@@ -89,7 +98,7 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
         await frozen.run(() => frozenCore.start())
         // A v2 tab behind the frozen v1 tab runs in memory.
-        const opening = openSplitJournalPage(world, { flags: { dbVersion: 2 } })
+        const opening = openSplitJournalPage(world, { flags: { dbVersion: 3 } })
         await world.clock.run()
         const page = await opening
         assert.deepEqual(page.status, { mode: 'memory', reason: 'olderTabs' })
@@ -97,7 +106,11 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         const session = beginSession(page, state)
         await page.flusher.flush()
         state = widen(state)
-        append(page, 'edit', 'Changed note', state)
+        append(
+            page,
+            { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+            state,
+        )
         await page.flusher.flush()
         assert.equal(page.writer.write(), true)
         assert.equal(journalIn(page.storage, session.id)?.seq, 2, `seed ${seed}`)
@@ -114,7 +127,11 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         // The first flush into the database: its stack is the whole window, never one left
         // behind lastSeq, and a relaxed commit leaves the key.
         state = widen(state, 1)
-        append(page, 'edit', 'Changed note', state)
+        append(
+            page,
+            { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+            state,
+        )
         const before = page.results.length
         await page.flusher.flush()
         assert.deepEqual(page.errors, [], `seed ${seed}`)
@@ -146,7 +163,7 @@ test('a strict sync after a worker restart into memory covers nothing the databa
     await page.flusher.flush({ strict: true })
     // An idle relaxed flush: the database holds edit 2, not yet strictly.
     state = widen(state)
-    append(page, 'edit', 'Changed note', state)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, state)
     await page.flusher.flush()
     assert.ok(session.ackedSeq > session.strictSeq)
     // The worker comes back over memory; the hide's journal, then its strict flush.

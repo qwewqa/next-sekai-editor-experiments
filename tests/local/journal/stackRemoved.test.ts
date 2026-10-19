@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { JournalV1 } from '../../../src/local/journal/format'
+import type { Journal } from '../../../src/local/journal/format'
 import { createWorld } from '../../../src/local/testing/world'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { rows } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
@@ -17,12 +18,12 @@ test('entries the stack model can’t follow remove the stored stack, and the ne
     const a = stateOf(goldenChart())
     const session = beginSession(page, a)
     const b = widen(a)
-    append(page, 'edit', 'Changed note', b)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, b)
     await page.flusher.flush({ strict: true })
     assert.ok(rows(world, 'sessions').get(session.id)?.stack)
     // An undo past the bottom of the stack: a bug the model can't follow.
-    append(page, 'undo', 'Changed note', a)
-    append(page, 'undo', 'Changed note', a)
+    append(page, { kind: 'undo', step: editStep(futureFixtureOperation('Changed note')) }, a)
+    append(page, { kind: 'undo', step: editStep(futureFixtureOperation('Changed note')) }, a)
     await page.flusher.flush({ strict: true })
     const result = page.results.at(-1)
     assert.ok(result?.kind === 'stored' && result.stackRemoved && !result.stackWritten)
@@ -34,9 +35,13 @@ test('entries the stack model can’t follow remove the stored stack, and the ne
     )
     assert.equal(session.stack.window, undefined)
     // A journal now keeps nothing of a stack that isn't stored.
-    append(page, 'edit', 'Moved notes', widen(b, 1))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Moved notes')) },
+        widen(b, 1),
+    )
     assert.equal(page.writer.write(), true)
-    const journal = JSON.parse(page.storage.getItem(`nse.journal.${session.id}`) ?? '') as JournalV1
+    const journal = JSON.parse(page.storage.getItem(`nse.journal.${session.id}`) ?? '') as Journal
     assert.equal(journal.stack.keep, 0)
     // The next flush stores the window whole.
     await page.flusher.flush({ strict: true })

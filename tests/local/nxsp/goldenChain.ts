@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import { captureName } from '../../../src/history/operations'
@@ -72,13 +72,6 @@ export const chain = () => {
 
 /** The chunks' stored forms: from `store.json`, each checked against its canonical bytes. */
 export const fixedChunks = (store: Store): Map<string, InputChunk> => {
-    if (writing) {
-        writeFileSync(
-            join(root, 'store.json'),
-            `${JSON.stringify(Object.fromEntries([...store.chunks].map(([hash, chunk]) => [hash, b64(chunk.stored)])), null, 2)}\n`,
-        )
-        return new Map(store.chunks)
-    }
     const stored = JSON.parse(readFileSync(join(root, 'store.json'), 'utf8')) as Record<
         string,
         string

@@ -118,13 +118,14 @@ const loadEntry = async (key: EntryKey) => {
     const inFlight = loading.get(key)
     if (inFlight) return inFlight
     const from = source
+    const fromGeneration = sourceGeneration.value
     const load = from.load(key).finally(() => {
         if (loading.get(key) === load) loading.delete(key)
     })
     loading.set(key, load)
     const entry = await load
     // A source replaced meanwhile holds other states.
-    if (source === from) remember(key, entry)
+    if (sourceGeneration.value === fromGeneration) remember(key, entry)
     return entry
 }
 
@@ -273,9 +274,10 @@ watch(
  */
 export const restoreEntry = async (key: EntryKey): Promise<void> => {
     const stack = stackGeneration()
+    const fromGeneration = sourceGeneration.value
     const entry = await loadEntry(key)
     // A New or an open meanwhile replaced the session it belongs to.
-    if (stackGeneration() !== stack) return
+    if (stackGeneration() !== stack || sourceGeneration.value !== fromGeneration) return
     const live = liveState.value
     const restored: State = {
         ...entry.state,
