@@ -4,6 +4,7 @@ import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import { swallowPress } from '../../utils/swallowPress'
 import { workspaceDockAttribute } from '../workspace'
+import CheckIcon from './CheckIcon.vue'
 import { filterHere, hereRangeText, takeHereRange } from './editsHere'
 import type { Filter } from './rows'
 import { historyFilter } from './state'
@@ -236,19 +237,10 @@ const onKeydown = (event: KeyboardEvent) => {
                         :data-goto-filter="filter"
                         @click="pick(filter)"
                     >
-                        <svg
-                            class="size-4 shrink-0"
+                        <CheckIcon
+                            class="size-4 shrink-0 fill-current"
                             :class="{ invisible: historyFilter !== filter }"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.75"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                        >
-                            <path d="M3.5 8.5l3 3 6-7" />
-                        </svg>
+                        />
                         <span class="flex min-w-0 flex-1 flex-col">
                             <span class="truncate">{{ filterTitle(filter) }}</span>
                             <span

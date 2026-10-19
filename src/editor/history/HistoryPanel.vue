@@ -63,8 +63,8 @@ type TimelineHandle = {
 }
 const timeline = useTemplateRef<TimelineHandle>('timeline')
 
-// --- The band: Go To shows its label when it fits beside the tabs, else only its icon, and in a
-// dock too narrow even for that it takes a second line. The dialog's × takes its share.
+// --- The band: one 48 px line. Go To shows its label when it fits beside the tabs, else only its
+// icon, and then the tabs step down to 14 px labels (the mode below). The dialog's × takes its share.
 const bandWidth = ref(0)
 let observer: ResizeObserver | undefined
 const measureChrome = () => {
@@ -119,14 +119,57 @@ defineExpose({
     },
 })
 
-const LABEL_FROM = 362
-const ICON_FROM = 236
-const mode = computed<'label' | 'icon' | 'two'>(() => {
-    const extra = props.surface === 'dialog' ? 50 : 0
-    if (bandWidth.value === 0 || bandWidth.value >= LABEL_FROM + extra) return 'label'
-    // The dialog never wraps: its tabs give way instead.
-    if (bandWidth.value >= ICON_FROM + extra || props.surface === 'dialog') return 'icon'
-    return 'two'
+// The band is one 48 px line at every width. Go To shows its label while the tabs keep whole labels
+// beside it, else its icon; when even that leaves no room, the tabs step down to 14 px labels in
+// tighter pills, and only then does Recent Sessions truncate. Measured once per language: the
+// tabs’ labels at both sizes and Go To’s label (its pill is 64 px plus the label). The fixed sizes
+// are px at the 16 px rem; k scales them with the root font size, as the classes do.
+const fit = shallowRef<{ full: number; small: number; goTo: number; k: number }>()
+const measureFit = () => {
+    const host = band.value
+    if (!host) return
+    const box = document.createElement('div')
+    box.setAttribute('aria-hidden', 'true')
+    box.style.cssText =
+        'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;white-space:nowrap'
+    const widthOf = (text: string, css: string) => {
+        const span = document.createElement('span')
+        span.style.cssText = `position:absolute;${css}`
+        span.textContent = text
+        box.append(span)
+        return span
+    }
+    const full = tabs.map((tab) => widthOf(title(tab), 'font-size:1rem;font-weight:700'))
+    const small = tabs.map((tab) => widthOf(title(tab), 'font-size:0.875rem;font-weight:700'))
+    const goTo = widthOf(i18n.value.history.goTo, 'font-size:0.875rem')
+    const k = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16
+    host.append(box)
+    const w = (span: HTMLElement) => span.getBoundingClientRect().width
+    fit.value = {
+        full: full.reduce((sum, span) => sum + 24 * k + w(span), 0),
+        small: small.reduce((sum, span) => sum + 16 * k + w(span), 0),
+        goTo: (64 + Math.min(112, w(goTo) / k)) * k,
+        k,
+    }
+    box.remove()
+}
+onMounted(() => {
+    measureFit()
+    document.fonts.addEventListener('loadingdone', measureFit)
+})
+onBeforeUnmount(() => {
+    document.fonts.removeEventListener('loadingdone', measureFit)
+})
+watch(() => i18n.value, measureFit, { flush: 'post' })
+const mode = computed<'label' | 'icon' | 'small'>(() => {
+    const f = fit.value
+    const width = bandWidth.value
+    if (!f || width === 0) return 'label'
+    // The band's 6 px gutters, the 6 px gap before Go To, and in the dialog its gap and ×.
+    const room = width - (12 + 6 + (props.surface === 'dialog' ? 42 : 0)) * f.k
+    if (f.full + f.goTo <= room) return 'label'
+    if (f.full + 36 * f.k <= room) return 'icon'
+    return 'small'
 })
 
 const filtered = computed(() => historyFilter.value !== 'all')
@@ -226,15 +269,6 @@ const blurAfterPointer = (event: MouseEvent) => {
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
 
-// High contrast paints only the outlines: the track's is its edge, the segment's shows focus.
-// A narrow band trims the segments' padding, so both labels keep their room.
-const segment = computed(
-    () =>
-        `flex h-7 items-center justify-center rounded-full text-sm transition-colors ${
-            bandWidth.value > 0 && bandWidth.value < 340 ? 'px-2' : 'px-3'
-        }`,
-)
-
 const goToButtonTitle = computed(() =>
     filtered.value ? `${i18n.value.history.goTo} · ${filterText.value}` : i18n.value.history.goTo,
 )
@@ -246,26 +280,32 @@ const goToButtonTitle = computed(() =>
         :data-history-surface="surface"
         @keydown.esc="onEscape"
     >
+        <!-- The band: 48 px, one line, the 6 px panel gutter. Pill-and-marker tabs at its start, as
+             the Properties band's; Go To, a flat band control, at its end. -->
         <div
             ref="band"
-            class="flex shrink-0 flex-wrap items-center gap-1.5 bg-header px-2 py-1.5"
+            class="flex h-12 shrink-0 items-center gap-1.5 bg-header px-1.5"
             data-history-band
             :data-band-mode="mode"
         >
             <div
                 ref="tablist"
                 role="tablist"
-                class="flex min-w-0 flex-1 rounded-full bg-recess p-0.5 shadow-track"
-                :class="mode === 'two' ? 'basis-full' : 'basis-0'"
+                class="flex h-full min-w-0 self-stretch"
                 :aria-label="i18n.history.title"
             >
+                <!-- The whole band height is the tab's hit; its pill carries hover, press and focus. -->
                 <button
                     v-for="tab in tabs"
                     :id="tabId(tab)"
                     :key="tab"
                     type="button"
                     role="tab"
-                    class="history-segment relative min-w-0 flex-1 rounded-full outline-none"
+                    class="history-tab group flex h-full items-center font-bold text-fg outline-none"
+                    :class="[
+                        tab === 'sessions' ? 'min-w-12 shrink-[10000]' : 'min-w-0',
+                        { 'history-tab-small': mode === 'small' },
+                    ]"
                     :aria-selected="historyTab === tab"
                     :aria-controls="historyTab === tab ? panelId : undefined"
                     :tabindex="historyTab === tab ? 0 : -1"
@@ -274,8 +314,12 @@ const goToButtonTitle = computed(() =>
                     @click="(select(tab), blurAfterPointer($event))"
                     @keydown="onTabKeydown"
                 >
-                    <span :class="[segment, { 'history-segment-on': historyTab === tab }]"
-                        ><span class="truncate">{{ title(tab) }}</span></span
+                    <span
+                        class="history-tab-pill flex h-9 min-w-0 max-w-full items-center rounded-full transition-colors"
+                        :class="mode === 'small' ? 'px-2 text-sm' : 'px-3'"
+                        ><span class="history-tab-label relative min-w-0"
+                            ><span class="block truncate">{{ title(tab) }}</span></span
+                        ></span
                     >
                 </button>
             </div>
@@ -287,9 +331,9 @@ const goToButtonTitle = computed(() =>
                 :aria-expanded="goToOpen"
                 :aria-hidden="onTimeline ? undefined : true"
                 :tabindex="onTimeline ? 0 : -1"
-                class="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-button text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="ghost ghost-band ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full text-sm"
                 :class="[
-                    mode === 'icon' ? 'w-8 justify-center' : 'pl-3 pr-2',
+                    mode === 'label' ? 'px-3' : 'w-9 justify-center',
                     { invisible: !onTimeline },
                 ]"
                 :title="goToButtonTitle"
@@ -299,16 +343,16 @@ const goToButtonTitle = computed(() =>
                 @click="(toggleGoTo(), blurAfterPointer($event))"
                 @keydown="onGoToKeydown"
             >
-                <GoToIcon :filtered />
-                <template v-if="mode !== 'icon'">
+                <GoToIcon />
+                <template v-if="mode === 'label'">
                     <span class="max-w-28 truncate">{{ i18n.history.goTo }}</span>
-                    <ChevronIcon direction="down" class="size-2.5" />
+                    <ChevronIcon direction="down" />
                 </template>
             </button>
             <button
                 v-if="surface === 'dialog'"
                 type="button"
-                class="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-band-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="ghost ghost-band flex size-9 shrink-0 items-center justify-center rounded-full"
                 :aria-label="i18n.modals.close"
                 :title="i18n.modals.close"
                 data-history-close
@@ -318,17 +362,18 @@ const goToButtonTitle = computed(() =>
                 <CloseIcon class="size-4" />
             </button>
         </div>
-        <!-- While filtering, a banner says so; Show All is the way back. -->
+        <!-- While filtering, a banner says so; Show All is the way back. Its text starts at the first
+             tab label's 18 px, Show All ends on Go To's edge. -->
         <div
             v-if="onTimeline && filtered"
             ref="filterBanner"
-            class="flex h-9 shrink-0 items-center justify-between border-b border-fg/15 pl-5 pr-2 text-xs"
+            class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pl-[1.125rem] pr-1.5 text-xs"
             data-history-filter-banner
         >
-            <span class="min-w-0 truncate">{{ filterText }}</span>
+            <span class="min-w-0 truncate" :title="filterText">{{ filterText }}</span>
             <button
                 type="button"
-                class="flex h-7 shrink-0 items-center rounded-full bg-button px-3 font-bold shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="btn btn-secondary relative flex h-8 shrink-0 items-center rounded-full px-4 text-sm before:absolute before:-inset-1"
                 data-history-focus="show-all"
                 @click="(showAll(), blurAfterPointer($event))"
             >
@@ -368,21 +413,41 @@ const goToButtonTitle = computed(() =>
 </template>
 
 <style scoped>
-.history-segment-on {
-    @apply bg-button shadow-md;
-}
-
-.history-segment:focus-visible > span {
-    @apply ring-2 ring-fg;
-}
-
-@media (hover: hover) {
-    .history-segment:not(:active):hover > span:not(.history-segment-on) {
-        @apply bg-button/50;
+/* The tab's pill is its face (the inner-face pattern on the band). */
+@media (hover: hover) and (pointer: fine) {
+    .history-tab:not([aria-selected='true']):not(:active):hover .history-tab-pill {
+        @apply bg-band-hover;
     }
 }
 
-.history-segment:active > span {
-    @apply bg-accent text-on-accent;
+.history-tab:active .history-tab-pill {
+    @apply bg-band-press text-fg-strong;
+}
+
+.history-tab-pill {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+}
+
+.history-tab:focus-visible .history-tab-pill {
+    outline-color: currentColor;
+    outline-offset: -4px;
+}
+
+/* The shown tab's 4 px bar sits flush with the band's lower edge, 8 px past its label: 12 px below a
+   24 px label, 14 px below a 20 px one. */
+.history-tab[aria-selected='true'] .history-tab-label::after {
+    content: '';
+    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+}
+
+.history-tab-small[aria-selected='true'] .history-tab-label::after {
+    @apply -bottom-3.5;
+}
+
+@media (forced-colors: active) {
+    .history-tab[aria-selected='true'] .history-tab-label::after {
+        background-color: CanvasText;
+    }
 }
 </style>
