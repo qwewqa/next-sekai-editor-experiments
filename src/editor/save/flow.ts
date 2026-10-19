@@ -2235,14 +2235,18 @@ const openOther = (
     supplied?: SwitchRequest,
 ) =>
     withSwitchRequest(supplied, async (request) => {
-        const opened = await handle?.getFile().catch(() => undefined)
-        if (!request.isCurrent()) return
-        if (!handle || !opened) {
-            saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
-            return
+        try {
+            const opened = await handle?.getFile().catch(() => undefined)
+            if (!request.isCurrent()) return
+            if (!handle || !opened) {
+                saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
+                return
+            }
+            const { openProject } = await import('../commands/open/project')
+            if (request.isCurrent()) await openProject(opened, handle, request)
+        } catch (error) {
+            if (request.isCurrent()) throw error
         }
-        const { openProject } = await import('../commands/open/project')
-        if (request.isCurrent()) await openProject(opened, handle, request)
     })
 
 /** Reads the bound file's stored handle ahead of a Save, once the session is edited (n5). */
@@ -2257,11 +2261,15 @@ export const prefetchHandle = async () => {
 /** The chip's Open the Other Version: the bound file on disk (§1.3.4). */
 export const openOtherVersion = (supplied?: SwitchRequest) =>
     withSwitchRequest(supplied, async (request) => {
-        const env = environment()
-        const file = env && quickBinding(env).file
-        if (!env || !file || !request.isCurrent()) return
-        const handle = await bindingHandle(env, file)
-        if (request.isCurrent()) await openOther(handle, file.name, request)
+        try {
+            const env = environment()
+            const file = env && quickBinding(env).file
+            if (!env || !file || !request.isCurrent()) return
+            const handle = await bindingHandle(env, file)
+            if (request.isCurrent()) await openOther(handle, file.name, request)
+        } catch (error) {
+            if (request.isCurrent()) throw error
+        }
     })
 
 /** I Have the File: `file.confirmed` stored on the chain record (§1.3.4). */

@@ -77,6 +77,7 @@ export const claimTab = async (locks: LockService): Promise<Claim> => {
 export type Shown = {
     descriptor: SessionDescriptor
     installed?: () => boolean
+    canRestoreView?: () => boolean
     slots: RestoredSlot[]
     at: number
     state: State
@@ -376,6 +377,10 @@ export const openStored = async (
                     view: session.view,
                     ...(read.stack.window.base > 0 ? { earlier: true as const } : {}),
                     installed: adopt,
+                    canRestoreView: () =>
+                        destinationMatches() &&
+                        sameFileContent(liveState.value, shown) &&
+                        (!request || request.isCurrent()),
                 })
             } finally {
                 if (transferred && destinationMatches()) {

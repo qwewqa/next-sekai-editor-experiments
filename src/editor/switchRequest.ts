@@ -16,6 +16,7 @@ export const createSwitchRequest = () => {
     let current = true
     let publishing: SwitchDestination | undefined
     let established = false
+    let hadPeek = false
     let leftPeek = false
     let resetSeen = false
     let retained = 0
@@ -49,7 +50,14 @@ export const createSwitchRequest = () => {
     const stopPeek = watch(
         peekRequestGeneration,
         () => {
-            if (publishing && !leftPeek && !peek.value && stackGeneration() === generation + 1) {
+            if (
+                publishing &&
+                !established &&
+                hadPeek &&
+                !leftPeek &&
+                !peek.value &&
+                stackGeneration() === generation + 1
+            ) {
                 leftPeek = true
             } else invalidate()
         },
@@ -89,6 +97,7 @@ export const createSwitchRequest = () => {
             if (!isCurrent()) return false
             publishing = destination
             established = false
+            hadPeek = !!peek.value
             leftPeek = false
             resetSeen = false
             try {

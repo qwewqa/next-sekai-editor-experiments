@@ -479,8 +479,12 @@ export const startStoring = (
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
         openOtherVersion: () =>
             void withSwitchRequest(undefined, async (request) => {
-                const flow = await flows()
-                if (request.isCurrent()) await flow.openOtherVersion(request)
+                try {
+                    const flow = await flows()
+                    if (request.isCurrent()) await flow.openOtherVersion(request)
+                } catch (error) {
+                    if (request.isCurrent()) throw error
+                }
             }),
         persistConfirmed: () =>
             void flows().then((flow) => {

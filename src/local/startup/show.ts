@@ -28,10 +28,15 @@ export const showSession = ({
     view: stored,
     earlier,
     installed,
+    canRestoreView,
 }: Shown) => {
     const generation = stackGeneration() + 1
     openStoredState(descriptor, slots, at, state, earlier, installed)
-    if (session.value.sessionId === descriptor.sessionId && stackGeneration() === generation)
+    if (
+        session.value.sessionId === descriptor.sessionId &&
+        stackGeneration() === generation &&
+        (!canRestoreView || canRestoreView())
+    )
         restoreView(stored, state)
 }
 

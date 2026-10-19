@@ -9,7 +9,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
-import { resetState } from '../../../history'
+import { resetImportedState } from '../../../history'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
@@ -342,8 +342,8 @@ const tryImportSus = (buffer: ArrayBuffer) => {
 
 const resetImported = (request: SwitchRequest, chart: Chart, offset: number, file: File) => {
     const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
-    return request.publish(
-        { state: createState(chart, offset), sessionId: descriptor.sessionId, reset: true },
-        () => resetState(false, chart, offset, descriptor),
+    const state = createState(chart, offset)
+    return request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () =>
+        resetImportedState(state, descriptor),
     )
 }

@@ -670,6 +670,7 @@ export const writeUnlink = async (tx: KvTx, request: UnlinkRequest) => {
     const record: Row = {
         ...rest,
         docId: request.docId,
+        partialImport: true,
         badChunks: packHashes(bad),
         appVersion: request.appVersion,
     }

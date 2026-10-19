@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 import { createSwitchRequest } from '../../src/editor/switchRequest'
 import { onHistoryAction } from '../../src/history/actions'
-import { setPeekSource } from '../../src/history/peek'
+import { leavePeek, peekEntry, setPeekSource } from '../../src/history/peek'
 import { createSessionDescriptor, session } from '../../src/history/session'
 import {
     liveState,
@@ -11,9 +11,11 @@ import {
     redoState,
     replaceState,
     resetStates,
+    restoreStates,
+    setSlotLoader,
     undoState,
 } from '../../src/history/stack'
-import { initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
+import { editStep, initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 import { goldenChart, stateOf } from '../local/records/charts'
 
 const reset = () =>
@@ -167,4 +169,87 @@ test('normal modal unmount differs from active-task cancellation and retained cl
     finish()
     await pending
     assert.equal(request.isCurrent(), false)
+})
+
+test('an initiating pending peek can settle, but a later peek intent revokes the switch', async () => {
+    let finish!: (value: { state: typeof liveState.value; time: number }) => void
+    const pending = new Promise<{ state: typeof liveState.value; time: number }>((resolve) => {
+        finish = resolve
+    })
+    setPeekSource({ load: () => pending, sameSnapshot: (a, b) => a === b })
+    const loading = peekEntry('test:1')
+    const request = createSwitchRequest()
+    try {
+        finish({ state: liveState.value, time: 1 })
+        await loading
+        assert.equal(request.isCurrent(), true)
+        const newer = peekEntry('test:1')
+        assert.equal(request.isCurrent(), false)
+        leavePeek()
+        await newer
+    } finally {
+        request.dispose()
+        leavePeek()
+        setPeekSource(undefined)
+    }
+})
+
+test('accepted unloaded Undo invalidates immediately; a no-op Undo does not', async () => {
+    const harmless = createSwitchRequest()
+    undoState()
+    assert.equal(harmless.isCurrent(), true)
+    harmless.dispose()
+    const before = liveState.value
+    let finish!: (state: typeof before) => void
+    const pending = new Promise<typeof before>((resolve) => {
+        finish = resolve
+    })
+    setSlotLoader(() => pending)
+    const after = { ...before, initialLife: before.initialLife + 1 }
+    restoreStates(
+        [
+            { step: initialStep(), snapshot: new Uint8Array(32), isDirty: false },
+            { step: editStep(initialLife(before.initialLife, after.initialLife)), isDirty: true },
+        ],
+        1,
+        after,
+    )
+    const request = createSwitchRequest()
+    try {
+        const moving = undoState()
+        assert.equal(liveState.value, after)
+        assert.equal(request.isCurrent(), false)
+        finish(before)
+        await moving
+        assert.equal(request.isCurrent(), false)
+    } finally {
+        request.dispose()
+        setSlotLoader(undefined)
+    }
+})
+
+test('a new peek from a reset hook is never mistaken for leaving the initial peek', async () => {
+    setPeekSource({
+        load: async () => ({ state: liveState.value, time: 1 }),
+        sameSnapshot: (a, b) => a === b,
+    })
+    const request = createSwitchRequest()
+    const descriptor = createSessionDescriptor()
+    const state = stateOf(goldenChart())
+    let loading: Promise<void> | undefined
+    try {
+        assert.equal(
+            request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () => {
+                session.value = descriptor
+                resetStates({ state, step: initialStep(), isDirty: false })
+                loading = peekEntry('hook:1')
+            }),
+            false,
+        )
+        leavePeek()
+        await loading
+    } finally {
+        request.dispose()
+        setPeekSource(undefined)
+    }
 })
