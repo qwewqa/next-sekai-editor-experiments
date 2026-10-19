@@ -1,4 +1,5 @@
 import type { State } from '../state'
+import type { JsonValue, UndoableStep } from './operations'
 
 // What the undo stack did, for the flush's entries (Part 1 §1.3.8, §1.6.4 step 1). A
 // dependency-free registry, as resetHooks is, so the storage modules can listen without the
@@ -8,22 +9,22 @@ export type HistoryAction =
     | {
           kind: 'reset'
           state: State
-          name: () => string
+          step: UndoableStep
           isDirty: boolean
           /** A blank start or New, or a chart brought in (an import, a restored auto save). */
           origin: 'new' | 'import'
       }
     /** An edit, or Restore of a History entry: both push. */
-    | { kind: 'edit' | 'restore'; state: State; name: () => string; isDirty: boolean }
+    | { kind: 'edit' | 'restore'; state: State; step: UndoableStep; isDirty: boolean }
     /**
      * The state landed on, and the name of the step undone or redone. A coalesced move's
      * intermediate steps land on slots not loaded: their stored root stands for the state.
      */
-    | ({ kind: 'undo' | 'redo'; name: () => string; isDirty: boolean } & (
+    | ({ kind: 'undo' | 'redo'; step: UndoableStep; isDirty: boolean } & (
           { state: State; snapshot?: undefined } | { state?: undefined; snapshot: Uint8Array }
       ))
     /** A file event: the stack is unchanged (Part 1 §1.3.8). */
-    | { kind: 'save' | 'export'; state: State; name: () => string; isDirty: boolean }
+    | { kind: 'save' | 'export'; state: State; operation: JsonValue; isDirty: boolean }
 
 const listeners = new Set<(action: HistoryAction) => void>()
 
@@ -34,7 +35,7 @@ const listeners = new Set<(action: HistoryAction) => void>()
 let early: HistoryAction[] | undefined = []
 
 /** A slot of the stack the early actions give. */
-type EarlySlot = { state: State; name: () => string; isDirty: boolean }
+type EarlySlot = { state: State; step: UndoableStep; isDirty: boolean }
 
 /** The undo stack the early actions give, so they can be cut down to it. */
 type EarlyStack = { origin: 'new' | 'import'; slots: EarlySlot[]; index: number }
@@ -55,7 +56,7 @@ const follow = (at: EarlyStack | undefined, action: HistoryAction): EarlyStack |
         case 'edit':
         case 'restore':
             at.slots.length = at.index + 1
-            at.slots.push({ state: action.state, name: action.name, isDirty: action.isDirty })
+            at.slots.push({ state: action.state, step: action.step, isDirty: action.isDirty })
             at.index++
             return at
         case 'undo':
@@ -71,12 +72,14 @@ const follow = (at: EarlyStack | undefined, action: HistoryAction): EarlyStack |
 
 /** The actions that give the early stack: a reset, a push per slot, then undos to its index. */
 const actionsOf = ({ origin, slots, index }: EarlyStack): HistoryAction[] => {
-    const actions: HistoryAction[] = slots.map((slot, i) =>
-        i === 0 ? { kind: 'reset', ...slot, origin } : { kind: 'edit', ...slot },
-    )
+    const actions: HistoryAction[] = slots.map((slot, i) => {
+        if (i === 0) return { kind: 'reset', ...slot, origin }
+        if (slot.step.kind === 'init') throw new Error('Initial step inside early stack')
+        return { kind: slot.step.kind, ...slot }
+    })
     for (let at = slots.length - 1; at > index; at--) {
         const [landed, undone] = [slots[at - 1], slots[at]]
-        if (landed && undone) actions.push({ kind: 'undo', ...landed, name: undone.name })
+        if (landed && undone) actions.push({ kind: 'undo', ...landed, step: undone.step })
     }
     return actions
 }
@@ -104,7 +107,7 @@ export const emitHistoryAction = (action: HistoryAction) => {
             early = [action]
             stack = {
                 origin: action.origin,
-                slots: [{ state: action.state, name: action.name, isDirty: action.isDirty }],
+                slots: [{ state: action.state, step: action.step, isDirty: action.isDirty }],
                 index: 0,
             }
         } else {

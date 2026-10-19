@@ -20,6 +20,7 @@ declare global {
         editorTest: {
             history: typeof import('../../src/history')
             store: typeof import('../../src/history/store')
+            historySteps: typeof import('../helpers/historySteps')
             settings: (typeof import('../../src/settings'))['settings']
             view: (typeof import('../../src/editor/view'))['view']
             nextTick: (typeof import('vue'))['nextTick']
@@ -185,6 +186,9 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     }
     const history = await appImport<typeof import('../../src/history')>('/src/history/index.ts')
     const store = await appImport<typeof import('../../src/history/store')>('/src/history/store.ts')
+    const historySteps = await appImport<typeof import('../helpers/historySteps')>(
+        '/tests/helpers/historySteps.ts',
+    )
     const { settings } = await appImport<typeof import('../../src/settings')>('/src/settings.ts')
     const { view } = await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
     const { nextTick } = await appImport<typeof import('vue')>('/node_modules/.vite/deps/vue.js')
@@ -429,6 +433,7 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     window.editorTest = {
         history,
         store,
+        historySteps,
         settings,
         view,
         nextTick,

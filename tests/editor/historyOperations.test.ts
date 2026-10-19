@@ -22,6 +22,11 @@ import {
     type NativeOperationInput,
     type StepDescription,
 } from '../../src/history/operations'
+import {
+    captureEntryDescription,
+    entryOperation,
+    pushedStep,
+} from '../../src/history/operations/entries'
 
 const options = { locale: 'en', describe: (input: NativeOperationInput) => input.id }
 const make = (input: NativeOperationInput) => createOperation(input, options)
@@ -277,6 +282,17 @@ test('native union rejects wrong operation parameters and field value types at c
 })
 
 test('owner domains and destination types are coupled, including bulk moves', () => {
+    for (const kind of ['group', 'stage'] as const)
+        assert.equal(
+            decodeOperation(
+                wire('nse.owner.create', {
+                    target: { kind, id: 1, name: { text: 'Owner' } },
+                    destination: null,
+                    gathered: 1,
+                }),
+            ).status,
+            'unsupported',
+        )
     const groupFolder = { kind: 'groupFolder', id: 2, name: { text: 'Folder' } } as const
     const stageFolder = { ...groupFolder, kind: 'stageFolder' } as const
     for (const [domain, wrong, right] of [
@@ -361,6 +377,19 @@ test('group keys sum only additive units and preserve visible semantic boundarie
     )
     assert.equal(replaced?.family, 'replace')
     assert.equal(replaced?.metric, undefined)
+    assert.equal(
+        operationGroup(
+            make({
+                id: 'nse.object.add',
+                data: {
+                    subject: 'bpm',
+                    created: 0,
+                    displaced: { bpm: 1 },
+                },
+            }),
+        ),
+        undefined,
+    )
     const flip = (subject: 'note' | 'bpm', axis: 'horizontal' | 'vertical') =>
         operationGroup(
             make({
@@ -378,6 +407,20 @@ test('full steps preserve original push kind and opaque values without recursive
     assert.equal(restored.kind, 'restore')
     assert(equalJson(restored.operation, raw))
     assert(Object.isFrozen(restored))
+    const event = captureEntryDescription({ kind: 'init', operation: raw })
+    assert(equalJson(entryOperation(event), raw))
+    assert.equal(pushedStep(event).kind, 'init')
+    const undo = captureEntryDescription({ kind: 'undo', step: restored })
+    assert(equalJson(entryOperation(undo), raw))
+    assert.throws(() => captureEntryDescription({ kind: 'edit', step: restored }), /disagree/)
+    assert.throws(
+        () => captureEntryDescription({ kind: 'save', step: restored }),
+        /event description/,
+    )
+    assert.throws(
+        () => captureEntryDescription({ kind: 'restore', step: restored, operation: raw }),
+        /step entry/,
+    )
     assert.throws(() => captureStep({ kind: 'undo', operation: raw }), /Invalid History step/)
     assert.throws(
         () =>

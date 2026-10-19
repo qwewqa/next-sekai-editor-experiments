@@ -80,6 +80,7 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
                 : undefined
         case 'nse.object.add': {
             const { subject, created, displaced } = operation.data
+            if (!created) return
             if (displaced && anyCount(displaced)) return group({ family: 'replace', subject })
             return created
                 ? group({
