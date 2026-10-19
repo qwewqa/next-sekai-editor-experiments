@@ -17,6 +17,7 @@ import {
     peekedKey,
     peekEntry,
     PeekError,
+    peekRequestGeneration,
     peekSourceGeneration,
     resetPeekForTests,
     restoreEntry,
@@ -26,15 +27,21 @@ import {
     type PeekedEntry,
 } from '../../src/history/peek'
 import {
+    cancelPendingMoves,
     liveState,
+    markFileEvent,
     pushState,
+    redoState,
     replaceState,
     resetStates,
+    restoreStates,
+    setSlotLoader,
+    stackMoveRequestGeneration,
     state,
     undoState,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
-import { initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
+import { editStep, initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 
 // Peek's core (Part 1 §1.4.11) in Node: the override, debounced requests, failures, leaving,
 // Restore (§1.4.10.5), the state cache and runCommand's gate with the refusal hook.
@@ -54,10 +61,12 @@ const nameOf = (value: State) => (value as Fake).name
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const deferred = <T>() => {
     let resolve!: (value: T) => void
-    const promise = new Promise<T>((done) => {
+    let reject!: (error: unknown) => void
+    const promise = new Promise<T>((done, fail) => {
         resolve = done
+        reject = fail
     })
-    return { promise, resolve }
+    return { promise, resolve, reject }
 }
 
 /** A source holding entries by key, counting loads; `fail` keys reject as damaged. */
@@ -89,6 +98,7 @@ const key = (seq: number): EntryKey => entryKey('session', seq)
 
 beforeEach(async () => {
     resetPeekForTests()
+    setSlotLoader(undefined)
     notices.length = 0
     // Clears the debounce window of an earlier test.
     await wait(110)
@@ -141,6 +151,300 @@ test('a peek starts with no selection and the live audio', async () => {
         isDirty: false,
         step: initialStep(),
         state: fake('live', 0, { bgm: { offset: 0, buffer } }),
+    })
+
+    const heldEntry = () => {
+        const read = deferred<PeekedEntry>()
+        const loads: EntryKey[] = []
+        setPeekSource({
+            load: (entry) => {
+                loads.push(entry)
+                return entry === key(1)
+                    ? read.promise
+                    : Promise.resolve({ state: fake('newer'), time: 2 })
+            },
+            sameSnapshot: () => false,
+        })
+        return { ...read, loads }
+    }
+
+    for (const outcome of ['success', 'failure'] as const)
+        test(`a newer Restore owns completion when the older read ends in ${outcome}`, async () => {
+            const held = heldEntry()
+            const failures: unknown[] = []
+            const older = restoreEntry(key(1), (error) => failures.push(error))
+            assert.deepEqual(held.loads, [key(1)])
+            await restoreEntry(key(2))
+            if (outcome === 'success') held.resolve({ state: fake('older'), time: 1 })
+            else held.reject(new PeekError('damaged'))
+            await older
+            assert.equal(nameOf(liveState.value), 'newer')
+            assert.deepEqual(notices, ['restored 2'])
+            assert.deepEqual(failures, [])
+        })
+
+    for (const outcome of ['success', 'failure'] as const)
+        test(`same-key Restores share the read but only the latest handles ${outcome}`, async () => {
+            const held = heldEntry()
+            const failures: string[] = []
+            const older = restoreEntry(key(1), () => failures.push('older'))
+            const newer = restoreEntry(key(1), () => failures.push('newer'))
+            assert.deepEqual(held.loads, [key(1)])
+            if (outcome === 'success') held.resolve({ state: fake('restored'), time: 1 })
+            else held.reject(new PeekError('damaged'))
+            await Promise.all([older, newer])
+            assert.deepEqual(notices, outcome === 'success' ? ['restored 1'] : [])
+            assert.deepEqual(failures, outcome === 'failure' ? ['newer'] : [])
+            assert.equal(nameOf(liveState.value), outcome === 'success' ? 'restored' : 'live')
+        })
+
+    for (const change of [
+        'edit and Undo',
+        'equal-content edit',
+        'content replacement and return',
+    ] as const)
+        test(`pending Restore stays stale after ${change}`, async () => {
+            const held = heldEntry()
+            const restoring = restoreEntry(key(1))
+            assert.deepEqual(held.loads, [key(1)])
+            const live = liveState.value
+            if (change === 'content replacement and return') {
+                replaceState({ ...live, initialLife: 100 })
+                replaceState(live)
+            } else {
+                pushState(initialLife(0, 1), live)
+                if (change === 'edit and Undo') undoState()
+            }
+            held.resolve({ state: fake('obsolete'), time: 1 })
+            await restoring
+            assert.equal(liveState.value, live)
+            assert.deepEqual(notices, [])
+        })
+
+    for (const change of ['same-key peek', 'different-key peek', 'leave'] as const)
+        test(`pending Restore cannot supersede a newer ${change}`, async () => {
+            const held = heldEntry()
+            const restoring = restoreEntry(key(1))
+            assert.deepEqual(held.loads, [key(1)])
+            const peeking =
+                change === 'leave' ? undefined : peekEntry(key(change === 'same-key peek' ? 1 : 2))
+            if (change === 'leave') leavePeek()
+            held.resolve({ state: fake('old'), time: 1 })
+            await Promise.all([restoring, peeking])
+            assert.equal(nameOf(liveState.value), 'live')
+            assert.equal(
+                peekedKey.value,
+                change === 'leave' ? undefined : key(change === 'same-key peek' ? 1 : 2),
+            )
+            assert.deepEqual(notices, [])
+        })
+
+    test('initiating peek completion is allowed and does not advance request generation', async () => {
+        const held = heldEntry()
+        const peeking = peekEntry(key(1))
+        const request = peekRequestGeneration.value
+        const restoring = restoreEntry(key(1))
+        assert.deepEqual(held.loads, [key(1)])
+        held.resolve({ state: fake('old'), time: 1 })
+        await Promise.all([peeking, restoring])
+        assert.equal(
+            peekRequestGeneration.value,
+            request + 1,
+            'only the successful Restore leave advances',
+        )
+        assert.equal(nameOf(liveState.value), 'old')
+        assert.deepEqual(notices, ['restored 1'])
+    })
+
+    test('selection, file events and audio cache completion keep a pending Restore valid', async () => {
+        const held = heldEntry()
+        const restoring = restoreEntry(key(1))
+        assert.deepEqual(held.loads, [key(1)])
+        const buffer = {} as AudioBuffer
+        replaceState({
+            ...liveState.value,
+            selectedEntities: [{}] as State['selectedEntities'],
+            bgm: { ...liveState.value.bgm, buffer },
+        })
+        for (const kind of ['save', 'export'] as const)
+            markFileEvent(
+                kind,
+                nativeOperation(
+                    {
+                        id: kind === 'save' ? 'nse.file.save' : 'nse.file.export',
+                        data: { file: { text: 'chart.nxsp' }, delivery: 'file' },
+                    },
+                    kind,
+                ),
+            )
+        held.resolve({ state: fake('old'), time: 1 })
+        await restoring
+        assert.equal(nameOf(liveState.value), 'old')
+        assert.equal(liveState.value.bgm.buffer, buffer)
+        assert.deepEqual(liveState.value.selectedEntities, [])
+        assert.deepEqual(notices, ['restored 1'])
+    })
+
+    const lazyStack = () => {
+        const read = deferred<State>()
+        let loads = 0
+        setSlotLoader(() => {
+            loads++
+            return read.promise
+        })
+        restoreStates(
+            [
+                { snapshot: new Uint8Array([1]), step: initialStep(), isDirty: false },
+                { step: editStep(initialLife(0, 1)), isDirty: true },
+            ],
+            1,
+            fake('live'),
+        )
+        return { ...read, loads: () => loads }
+    }
+
+    for (const returnToStart of [false, true])
+        test(`new lazy Undo invalidates Restore before settlement${returnToStart ? ', even after queued Redo' : ''}`, async () => {
+            const slot = lazyStack()
+            const held = heldEntry()
+            const restoring = restoreEntry(key(1))
+            assert.deepEqual(held.loads, [key(1)])
+            const request = stackMoveRequestGeneration.value
+            undoState()
+            assert.equal(slot.loads(), 1)
+            if (returnToStart) redoState()
+            assert.equal(stackMoveRequestGeneration.value, request + (returnToStart ? 2 : 1))
+            held.resolve({ state: fake('obsolete'), time: 1 })
+            await restoring
+            assert.equal(nameOf(liveState.value), 'live')
+            assert.deepEqual(notices, [])
+            slot.resolve(fake('undone'))
+            await settleTasks()
+            assert.equal(nameOf(liveState.value), returnToStart ? 'live' : 'undone')
+        })
+
+    for (const order of ['Restore first', 'Undo first', 'Undo cancelled', 'Undo failed'] as const)
+        test(`an older lazy Undo is initial context: ${order}`, async (t) => {
+            const slot = lazyStack()
+            undoState()
+            assert.equal(slot.loads(), 1)
+            const request = stackMoveRequestGeneration.value
+            const held = heldEntry()
+            const restoring = restoreEntry(key(1))
+            assert.deepEqual(held.loads, [key(1)])
+            if (order === 'Undo first') {
+                slot.resolve(fake('undone'))
+                await settleTasks()
+            } else if (order === 'Undo cancelled') cancelPendingMoves()
+            else if (order === 'Undo failed') {
+                t.mock.method(console, 'error', () => undefined)
+                slot.reject(new Error('Failed older slot'))
+                await settleTasks()
+            }
+            held.resolve({ state: fake('restored'), time: 1 })
+            await restoring
+            if (order === 'Restore first' || order === 'Undo cancelled') {
+                slot.resolve(fake('undone'))
+                await settleTasks()
+            }
+            assert.equal(
+                stackMoveRequestGeneration.value,
+                request,
+                'completion and cancellation are not requests',
+            )
+            assert.equal(nameOf(liveState.value), order === 'Undo first' ? 'undone' : 'restored')
+            assert.deepEqual(notices, order === 'Undo first' ? [] : ['restored 1'])
+        })
+
+    test('refused Undo and Redo do not advance accepted request generation', () => {
+        const request = stackMoveRequestGeneration.value
+        undoState()
+        redoState()
+        assert.equal(stackMoveRequestGeneration.value, request)
+    })
+
+    test('failure callback runs once and cleans up even when it throws', async () => {
+        const held = heldEntry()
+        let calls = 0
+        const restoring = restoreEntry(key(1), () => {
+            calls++
+            throw new Error('Callback failed')
+        })
+        assert.deepEqual(held.loads, [key(1)])
+        held.reject(new PeekError('damaged'))
+        await assert.rejects(restoring, /Callback failed/)
+        assert.equal(calls, 1)
+        await restoreEntry(key(2))
+        assert.equal(nameOf(liveState.value), 'newer')
+        assert.deepEqual(notices, ['restored 2'])
+    })
+
+    test('current read failures still reject without a callback', async () => {
+        const held = heldEntry()
+        const restoring = restoreEntry(key(1))
+        assert.deepEqual(held.loads, [key(1)])
+        held.reject(new PeekError('removed'))
+        await assert.rejects(
+            restoring,
+            (error: unknown) => error instanceof PeekError && error.reason === 'removed',
+        )
+    })
+
+    test('Restore re-grafts audio changed by its synchronous leave hook', async () => {
+        source({ [key(1)]: { state: fake('old', 3), time: 1 } })
+        await peekEntry(key(1))
+        const buffer = {} as AudioBuffer
+        const stop = onPeekLeft(() =>
+            replaceState({
+                ...liveState.value,
+                bgm: { ...liveState.value.bgm, buffer },
+            }),
+        )
+        try {
+            await restoreEntry(key(1))
+            assert.equal(nameOf(liveState.value), 'old')
+            assert.equal(liveState.value.bgm.offset, 3)
+            assert.equal(liveState.value.bgm.buffer, buffer)
+            assert.deepEqual(notices, ['restored 1'])
+        } finally {
+            stop()
+        }
+    })
+
+    test('a synchronous leave hook starting a newer peek prevents the obsolete push', async () => {
+        source({
+            [key(1)]: { state: fake('old'), time: 1 },
+            [key(2)]: { state: fake('newer'), time: 2 },
+        })
+        await peekEntry(key(1))
+        let next: Promise<void> | undefined
+        const stop = onPeekLeft(() => {
+            next = peekEntry(key(2))
+        })
+        try {
+            await restoreEntry(key(1))
+            await next
+            assert.equal(nameOf(liveState.value), 'live')
+            assert.equal(peekedKey.value, key(2))
+            assert.deepEqual(notices, [])
+        } finally {
+            stop()
+        }
+    })
+
+    test('a synchronous action listener edit suppresses obsolete Restore feedback', async () => {
+        source({ [key(1)]: { state: fake('old'), time: 1 } })
+        const stop = onHistoryAction((action) => {
+            if (action.kind === 'restore')
+                pushState(initialLife(0, 2), fake('new edit', 0, { initialLife: 2 }))
+        })
+        try {
+            await restoreEntry(key(1))
+            assert.equal(nameOf(liveState.value), 'new edit')
+            assert.deepEqual(notices, [])
+        } finally {
+            stop()
+        }
     })
     const selected = [{}] as State['selectedEntities']
     source({ [key(1)]: { state: fake('old', 2, { selectedEntities: selected }), time: 1 } })
