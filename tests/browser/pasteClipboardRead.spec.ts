@@ -262,8 +262,9 @@ const settle = (page: Page) =>
     page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
 
 /** Clicks with Paste where its hover's read is held, so the paste waits. */
-const clickWaiting = async (page: Page, beat: number) => {
+const clickWaiting = async (page: Page, beat: number, beforeWait?: () => Promise<void>) => {
     await setup(page)
+    await beforeWait?.()
     await pasteTool(page)
     await hold(page)
     const before = await reads(page)
@@ -272,6 +273,212 @@ const clickWaiting = async (page: Page, beat: number) => {
     await expect.poll(() => reads(page)).toBe(before + 1)
     await page.mouse.click(x, y)
 }
+
+const waiting = (page: Page) =>
+    page.evaluate(async () => {
+        const { hasWaitingPaste } = await window.editorTest.appImport<
+            typeof import('../../src/editor/tools/paste')
+        >('/src/editor/tools/paste/index.ts')
+        return hasWaitingPaste()
+    })
+
+const pasteEffects = (page: Page) =>
+    page.evaluate(async () => {
+        const { history, view, snapshot, appImport } = window.editorTest
+        const { loadedStates } =
+            await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
+        const { notification } = await appImport<typeof import('../../src/editor/notification')>(
+            '/src/editor/notification.ts',
+        )
+        return {
+            notes: snapshot().notes,
+            step: history.headStep.value,
+            steps: loadedStates().length,
+            notification: notification.value.id,
+            marker: view.touchMarker,
+        }
+    })
+
+for (const boundary of ['noteUndoRedo', 'peekRoundTrip', 'replacedStack'] as const)
+    test(`a held read cannot revive a waiting Paste after ${boundary} returns to the same chart references`, async ({
+        page,
+    }) => {
+        await clickWaiting(page, 6, async () => {
+            if (boundary !== 'noteUndoRedo') return
+            await page.evaluate(async () => {
+                const { editSelectedEditableEntities } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/sidebars/default')
+                >('/src/editor/sidebars/default/index.ts')
+                editSelectedEditableEntities({ size: 5 })
+            })
+        })
+        await expect.poll(() => waiting(page)).toBe(true)
+        const sameReferences = await page.evaluate(async (boundary) => {
+            const { history, appImport } = window.editorTest
+            const before = history.state.value
+            if (boundary === 'noteUndoRedo') {
+                history.undoState()
+                history.redoState()
+            } else if (boundary === 'peekRoundTrip') {
+                history.peek.value = { source: 'clipboard-read-test', state: before }
+                history.peek.value = undefined
+            } else {
+                const { resetStates } =
+                    await appImport<typeof import('../../src/history/stack')>(
+                        '/src/history/stack.ts',
+                    )
+                resetStates({ isDirty: false, step: history.headStep.value!, state: before })
+            }
+            return history.state.value === before
+        }, boundary)
+        expect(sameReferences).toBe(true)
+        const before = await pasteEffects(page)
+        await release(page)
+        await expect.poll(() => waiting(page)).toBe(false)
+        expect(await pasteEffects(page)).toEqual(before)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        expect(await pastedBeats(page)).toEqual([])
+    })
+
+for (const boundary of ['toolRoundTrip', 'cancelledDrag'] as const)
+    test(`a held read cannot revive the old Paste tap after ${boundary}`, async ({ page }) => {
+        await clickWaiting(page, 6)
+        await expect.poll(() => waiting(page)).toBe(true)
+        if (boundary === 'toolRoundTrip') {
+            await page.evaluate(async () => {
+                const { switchToolTo } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/tools')
+                >('/src/editor/tools/index.ts')
+                switchToolTo('select')
+                switchToolTo('paste')
+            })
+        } else {
+            const start = await point(page, 0, 8)
+            const end = await point(page, 0, 9)
+            await page.mouse.move(start.x, start.y)
+            await page.mouse.down()
+            await page.mouse.move(end.x, end.y, { steps: 5 })
+            await expect
+                .poll(() =>
+                    page.evaluate(async () => {
+                        const { isDragging } = await window.editorTest.appImport<
+                            typeof import('../../src/editor/controls/gestures/recognizers/drag')
+                        >('/src/editor/controls/gestures/recognizers/drag.ts')
+                        return isDragging.value
+                    }),
+                )
+                .toBe(1)
+            await page.keyboard.press('Escape')
+            await page.mouse.up()
+        }
+        const before = await pasteEffects(page)
+        await release(page)
+        await expect.poll(() => waiting(page)).toBe(false)
+        expect(await pasteEffects(page)).toEqual(before)
+        expect(await pastedBeats(page)).toEqual([])
+    })
+
+test('selection and metadata edits including a metadata Undo/Redo preserve the saved Paste coordinate', async ({
+    page,
+}) => {
+    await clickWaiting(page, 6)
+    await expect.poll(() => waiting(page)).toBe(true)
+    const metadata = page.evaluate(async () => {
+        const { properties } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/properties')
+        >('/src/editor/commands/properties/index.ts')
+        await properties.execute()
+    })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('777')
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await metadata
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.undoState()
+        history.redoState()
+        const current = history.state.value
+        history.replaceState({
+            ...current,
+            selectedEntities: [],
+            levelInfo: { ...current.levelInfo, title: 'Changed during read' },
+            bgm: { ...current.bgm, offset: 0.125 },
+        })
+    })
+    const before = await pasteEffects(page)
+    const time = await page.evaluate(() => window.editorTest.view.time)
+    await page.mouse.move((await point(page, 0, 6)).x, (await point(page, 0, 6)).y)
+    await page.mouse.wheel(0, -300)
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.time)).not.toBe(time)
+    await release(page)
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+    const after = await pasteEffects(page)
+    expect(after.steps).toBe(before.steps + 1)
+    expect(after.step?.operation).toMatchObject({
+        id: 'nse.object.paste',
+        data: { placed: { note: 1 }, at: 'pointer' },
+    })
+    expect(
+        await page.evaluate(() => {
+            const { initialLife, levelInfo, bgm } = window.editorTest.history.state.value
+            return { initialLife, title: levelInfo.title, offset: bgm.offset }
+        }),
+    ).toEqual({ initialLife: 777, title: 'Changed during read', offset: 0.125 })
+})
+
+test('the clipboard wait ends before a valid Dynamic Stages enable and Paste', async ({ page }) => {
+    await clickWaiting(page, 6, async () => {
+        await page.evaluate(async () => {
+            const { show, fixtures, history, appImport } = window.editorTest
+            const { copy } = await appImport<typeof import('../../src/editor/commands/copy')>(
+                '/src/editor/commands/copy/index.ts',
+            )
+            show(
+                {
+                    ...fixtures.interaction,
+                    isDynamicStages: true,
+                    slides: [[{ ...fixtures.interaction.slides[0]![0]!, beat: 2 }]],
+                    cameraEvents: [{ ...fixtures.events.cameraEvents[0]!, beat: 2 }],
+                },
+                1.1,
+            )
+            const current = history.state.value
+            history.replaceState({
+                ...current,
+                selectedEntities: [
+                    ...[...current.store.slides.note.values()].flat(),
+                    ...[...current.store.grid.cameraEventJoint.values()].flatMap((bucket) => [
+                        ...bucket,
+                    ]),
+                ],
+            })
+            copy.execute()
+            const { clipboardEntry } =
+                await appImport<typeof import('../../src/clipboard')>('/src/clipboard/index.ts')
+            if (clipboardEntry.value?.data?.chart.cameraEvents.length !== 1)
+                throw new Error('Expected a copied native event')
+            show({ ...fixtures.interaction, isDynamicStages: false, slides: [] }, 1.1)
+        })
+    })
+    await expect.poll(() => waiting(page)).toBe(true)
+    const before = await pasteEffects(page)
+    await release(page)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect.poll(() => waiting(page)).toBe(false)
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.poll(() => pastedBeats(page)).toEqual([6])
+    const after = await pasteEffects(page)
+    expect(after.steps).toBe(before.steps + 2)
+    expect(after.step?.operation).toMatchObject({
+        id: 'nse.object.paste',
+        data: { placed: { note: 1, cameraEvent: 1 }, variant: 'basic', at: 'pointer' },
+    })
+    expect(await page.evaluate(() => window.editorTest.history.state.value.isDynamicStages)).toBe(
+        true,
+    )
+})
 
 test('a click that waits for a read pastes where it clicked, though the view scrolls meanwhile', async ({
     page,
@@ -400,6 +607,37 @@ test('an Elevation Editor Paste tap waits at most 15 s for a read', async ({ pag
     expect(await pastedBeats(page)).toEqual([])
     await page.clock.runFor(1100)
     await expect.poll(() => pastedBeats(page)).toEqual([6])
+})
+
+test('an Elevation beat away and back cannot revive a waiting Paste tap', async ({ page }) => {
+    await setup(page)
+    await page.evaluate(async () => {
+        const { settings, appImport } = window.editorTest
+        settings.elevationEditorSideBySide = 'disallow'
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(6)
+    })
+    const canvas = page.locator('.elevation-canvas')
+    await expect(canvas).toBeVisible()
+    await useTool(page, 'paste')
+    await hold(page)
+    const bounds = (await canvas.boundingBox())!
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    await expect.poll(() => waiting(page)).toBe(true)
+    await page.evaluate(async () => {
+        const { elevationBeat } = await window.editorTest.appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        elevationBeat.value = 8
+        elevationBeat.value = 6
+    })
+    const before = await pasteEffects(page)
+    await release(page)
+    await expect.poll(() => waiting(page)).toBe(false)
+    expect(await pasteEffects(page)).toEqual(before)
+    expect(await pastedBeats(page)).toEqual([])
 })
 
 test("the context menu's Paste waits at most 15 s for a read", async ({ page }) => {
