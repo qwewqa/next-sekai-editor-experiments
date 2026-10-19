@@ -163,6 +163,53 @@ test('filtering out the active peek does not announce Now as selected or replace
     expect(await selected(page)).toEqual(before)
 })
 
+test('rejected Restore from a reset session cannot damage or leave the newer peek', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { history, historySteps, appImport } = window.editorTest
+        const [peek, selection, presentation] = await Promise.all([
+            appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
+            appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        peek.setPeekSource({
+            load: (key) => key === 'newer:1'
+                ? Promise.resolve({ state: { ...history.liveState.value, initialLife: 2000 }, time: 2 })
+                : new Promise((_resolve, reject) => { pending.rejectRestore = () => reject(new peek.PeekError('damaged')) }),
+            sameSnapshot: () => false,
+        })
+        pending.restoring = selection.requestRestore('older:1')
+        history.resetState(false)
+        selection.requestPeek({ key: 'newer:1', time: 2, recipe: presentation.captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.futureInitialLife(history.liveState.value.initialLife, 2000, 'Newer source')) } }]) })
+    })
+    await expect.poll(async () => (await selected(page)).displayed).toBe('newer:1')
+    const before = await selected(page)
+    await page.evaluate(async () => {
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        pending.rejectRestore()
+        await pending.restoring
+    })
+    expect(await selected(page)).toEqual(before)
+    expect(await page.evaluate(async () => {
+        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        return damagedEntries.value.has('older:1')
+    })).toBe(false)
+    await page.evaluate(async () => {
+        const { requestRestore } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
+        pending.restoring = requestRestore('ordinary:1')
+        window.editorTest.settings.locale = 'fr'
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+        pending.rejectRestore()
+        await pending.restoring
+    })
+    expect(await page.evaluate(async () => {
+        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        return damagedEntries.value.has('ordinary:1')
+    })).toBe(true)
+    expect((await selected(page)).requested).toBe('newer:1')
+})
+
 test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({
     page,
 }) => {
