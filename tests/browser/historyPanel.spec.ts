@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
-import { installEditorFixture, waitForStartup } from './editorFixture'
+import { closePage, installEditorFixture, waitForStartup } from './editorFixture'
 
 // The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
 // Entries are made through the undo stack's own `pushState`, as history.spec.ts does.
@@ -479,7 +479,7 @@ test.describe('the dialog', () => {
         await expect(peekBar(page)).toBeVisible()
         // One line on a 390 px pane, with the time alone.
         const bar = await peekBar(page).locator('> div').first().boundingBox()
-        expect(bar?.height).toBe(52)
+        expect(bar?.height).toBe(44)
         await expect(page.locator('[data-peek-text]')).toHaveText(/\d/)
         await expect(page.locator('[data-peek-text]')).not.toContainText('Viewing')
         // The band holds Go To as an icon beside the close button, in one line.
@@ -648,7 +648,7 @@ test.describe('links', () => {
         await stored(page)
         // The first page held the session's lock: closed, a new visit continues it.
         const context = page.context()
-        await page.close()
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await next.goto('/')
         await expect(next.locator('canvas.editor-chart')).toBeVisible()
@@ -734,10 +734,10 @@ test.describe('the Timeline', () => {
         await page.keyboard.press('Escape')
         await expect(popover).toHaveCount(0)
         await expect(goTo).toBeFocused()
-        // The banner says so, with Show All; the icon keeps an accent dot.
+        // The banner says so, with Show All; the button's title repeats the filter.
         const banner = page.locator('[data-history-filter-banner]')
         await expect(banner).toContainText('Saves and Exports')
-        await expect(goTo.locator('[data-filter-dot]')).toBeVisible()
+        await expect(goTo).toHaveAttribute('title', 'Go To · Saves and Exports')
         await expect(row(page, 'Saved coconut.nxsp')).toBeVisible()
         await expect(row(page, 'Exported coconut.nsld')).toBeVisible()
         await expect(row(page, 'Life 1')).toHaveCount(0)
@@ -747,18 +747,39 @@ test.describe('the Timeline', () => {
         await expect(row(page, 'Life 1')).toBeVisible()
     })
 
-    test('the band is one line with the label, with the icon, or two lines by width', async ({
+    test('the band is one 48 px line, with the label, with the icon, or with smaller tabs by width', async ({
         page,
     }) => {
-        const mode = () => page.locator('[data-history-band]').getAttribute('data-band-mode')
+        const band = page.locator('[data-history-band]')
+        const mode = () => band.getAttribute('data-band-mode')
+        // One line: the band is 48 px, and Go To sits on the tabs' line.
+        const oneLine = async () => {
+            const bandBox = await band.boundingBox()
+            const goTo = await surface(page, 'panel')
+                .locator('[data-history-goto-button]')
+                .boundingBox()
+            const tabs = await surface(page, 'panel').getByRole('tablist').boundingBox()
+            if (!bandBox || !goTo || !tabs) throw new Error('no layout')
+            expect(bandBox.height).toBe(48)
+            expect(goTo.y).toBeGreaterThanOrEqual(bandBox.y)
+            expect(goTo.y + goTo.height).toBeLessThanOrEqual(bandBox.y + bandBox.height)
+            expect(tabs.y).toBeGreaterThanOrEqual(bandBox.y)
+            expect(tabs.y + tabs.height).toBeLessThanOrEqual(bandBox.y + bandBox.height)
+            // Go To starts after the tabs end: nothing wraps beneath them.
+            expect(goTo.x).toBeGreaterThanOrEqual(tabs.x + tabs.width - 2)
+            return goTo
+        }
         // The desktop's right dock is wide enough for the label.
         await openTab(page)
         expect(await mode()).toBe('label')
-        // A narrow left dock under 236 px takes two lines.
+        const labelled = await oneLine()
+        expect(labelled.width).toBeGreaterThan(36)
+        // A left dock under the label's fit (349 px in English) takes the icon alone, and under
+        // the whole tabs' fit (285 px) the tabs take their smaller labels. Neither wraps.
         await page.setViewportSize({ width: 844, height: 390 })
         await settle(page)
         await page.evaluate(() => {
-            window.editorTest.settings.leftDockWidth = 220
+            window.editorTest.settings.leftDockWidth = 310
         })
         await settle(page)
         await page.evaluate(() => {
@@ -766,14 +787,14 @@ test.describe('the Timeline', () => {
         })
         await settle(page)
         await expect(surface(page, 'panel')).toBeVisible()
-        expect(await mode()).toBe('two')
-        const goTo = await surface(page, 'panel')
-            .locator('[data-history-goto-button]')
-            .boundingBox()
-        const tabs = await surface(page, 'panel').getByRole('tablist').boundingBox()
-        if (!goTo || !tabs) throw new Error('no layout')
-        expect(goTo.y).toBeGreaterThan(tabs.y + tabs.height - 2)
-        expect(goTo.width).toBeLessThan(160)
+        expect(await mode()).toBe('icon')
+        expect((await oneLine()).width).toBe(36)
+        await page.evaluate(() => {
+            window.editorTest.settings.leftDockWidth = 220
+        })
+        await settle(page)
+        expect(await mode()).toBe('small')
+        expect((await oneLine()).width).toBe(36)
     })
 
     test('the list is windowed, with ARIA positions, and a header pins while it scrolls', async ({
@@ -1170,7 +1191,7 @@ test.describe('ARIA', () => {
         // The buttons on the canvas are ordinary buttons.
         const mainButtons = peekBar(page).locator('[data-peek-main]').getByRole('button')
         await expect(mainButtons).toHaveCount(3)
-        await expect(mainButtons.nth(0)).toHaveAccessibleName('Step Details')
+        await expect(mainButtons.nth(0)).toHaveAccessibleName(/^Step Details: .*\d/)
         await expect(mainButtons.nth(1)).toHaveAccessibleName('Back to Now')
         await expect(mainButtons.nth(2)).toHaveAccessibleName('Restore')
         await expect(peekBar(page).locator('[data-change-arrow]')).toHaveCount(2)
@@ -1189,13 +1210,29 @@ test.describe('touch targets', () => {
         const rowBox = await row(page, 'Life 1').boundingBox()
         expect(rowBox?.height).toBe(44)
         const goTo = await page.locator('[data-history-goto-button]').boundingBox()
-        expect(goTo?.height).toBe(32)
-        const track = await page.getByRole('tablist', { name: 'History' }).boundingBox()
-        expect(track?.height).toBe(32)
+        expect(goTo?.height).toBe(36)
+        // The tabs fill the 48 px band; there is no track behind them.
+        const tabList = await page.getByRole('tablist', { name: 'History' }).boundingBox()
+        expect(tabList?.height).toBe(48)
         await row(page, 'Life 1').tap()
         await expect(peekBar(page)).toBeVisible()
-        const restore = await peekBar(page).getByRole('button', { name: 'Restore' }).boundingBox()
-        expect(restore?.height).toBeGreaterThanOrEqual(44)
+        // Restore's face is 36 px; its hit reaches 4 px past each edge, to 44 px.
+        const restoreButton = peekBar(page).getByRole('button', { name: 'Restore' })
+        const restore = await restoreButton.boundingBox()
+        if (!restore) throw new Error('no Restore')
+        expect(restore.height).toBe(36)
+        const hits = (y: number) =>
+            restoreButton.evaluate(
+                (button, point) => {
+                    const hit = document.elementFromPoint(point.x, point.y)
+                    return hit !== null && (hit === button || button.contains(hit))
+                },
+                { x: restore.x + restore.width / 2, y },
+            )
+        expect(await hits(restore.y - 3.5)).toBe(true)
+        expect(await hits(restore.y + restore.height + 3.5)).toBe(true)
+        expect(await hits(restore.y - 5)).toBe(false)
+        expect(await hits(restore.y + restore.height + 5)).toBe(false)
         await expect(page.locator('[data-peek-hint]')).toHaveCount(0)
         await shoot(page, 'tab-phone')
         // Folded, there is nothing left to tap.
