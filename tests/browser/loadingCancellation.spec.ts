@@ -148,28 +148,23 @@ test('a cancelled open cannot replace edits made after its dialog is dismissed',
     await expect.poll(() => page.evaluate(() => window.loadingReview.held)).toBe(true)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.evaluate(() => {
-        const { history } = window.editorTest
-        history.pushState(
-            window.editorTest.historySteps.futureFixtureOperation(
-                'loading-stale-identity',
-                { title: 'later-edit' },
-                'Later edit',
-            ),
-            {
-                ...history.state.value,
-                levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
-            },
-        )
+    const editedLife = await page.evaluate(() => {
+        const { history, historySteps } = window.editorTest
+        const initialLife = history.state.value.initialLife + 1
+        history.pushState(historySteps.initialLife(history.state.value.initialLife, initialLife), {
+            ...history.state.value,
+            initialLife,
+        })
         window.loadingReview.release()
+        return initialLife
     })
     await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)
     expect(
         await page.evaluate(() => ({
-            filename: window.editorTest.history.state.value.levelInfo.title,
+            initialLife: window.editorTest.history.state.value.initialLife,
             canUndo: window.editorTest.history.canUndo.value,
         })),
-    ).toEqual({ filename: 'later-edit', canUndo: true })
+    ).toEqual({ initialLife: editedLife, canUndo: true })
 })
 
 test('cancelled cover decoding cannot replace a newer selected image', async ({ page }) => {

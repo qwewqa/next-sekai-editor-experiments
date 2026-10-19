@@ -285,12 +285,15 @@ test.describe('the update line', () => {
             const { history, fixtures, show } = window.editorTest
             show(fixtures.interaction, 3)
             history.pushState(
-                window.editorTest.historySteps.futureFixtureOperation(
-                    'notice-dismissal',
-                    {},
-                    'Edit',
+                window.editorTest.historySteps.initialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
                 ),
-                { ...history.state.value, selectedEntities: [] },
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                    selectedEntities: [],
+                },
             )
         })
         await expect(pill(page)).toHaveCount(0)
@@ -894,12 +897,15 @@ test.describe('when a card goes by itself', () => {
         await page.evaluate(() => {
             const { history } = window.editorTest
             history.pushState(
-                window.editorTest.historySteps.futureFixtureOperation(
-                    'notice-dismissal',
-                    {},
-                    'Edit',
+                window.editorTest.historySteps.initialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
                 ),
-                { ...history.state.value, selectedEntities: [] },
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                    selectedEntities: [],
+                },
             )
         })
         await expect(pill(page)).toHaveCount(0)
@@ -915,12 +921,15 @@ test.describe('when a card goes by itself', () => {
                 notify(() => message, { action: { label: () => 'Undo', run: () => undefined } })
             const push = () =>
                 history.pushState(
-                    window.editorTest.historySteps.futureFixtureOperation(
-                        'notice-dismissal',
-                        {},
-                        'Edit',
+                    window.editorTest.historySteps.initialLife(
+                        history.state.value.initialLife,
+                        history.state.value.initialLife + 1,
                     ),
-                    { ...history.state.value, selectedEntities: [] },
+                    {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                        selectedEntities: [],
+                    },
                 )
             raise('Older')
             push()
@@ -934,12 +943,15 @@ test.describe('when a card goes by itself', () => {
                 action: { label: () => 'Undo', run: () => undefined },
             })
             history.pushState(
-                window.editorTest.historySteps.futureFixtureOperation(
-                    'notice-dismissal',
-                    {},
-                    'Edit',
+                window.editorTest.historySteps.initialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
                 ),
-                { ...history.state.value, selectedEntities: [] },
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                    selectedEntities: [],
+                },
             )
         }, notificationPath)
         await expect(pill(page)).toContainText('Raised before the step')
@@ -947,12 +959,15 @@ test.describe('when a card goes by itself', () => {
         await page.evaluate(() => {
             const { history } = window.editorTest
             history.pushState(
-                window.editorTest.historySteps.futureFixtureOperation(
-                    'notice-dismissal',
-                    {},
-                    'Edit',
+                window.editorTest.historySteps.initialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
                 ),
-                { ...history.state.value, selectedEntities: [] },
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                    selectedEntities: [],
+                },
             )
         })
         await expect(pill(page)).toHaveCount(0)
