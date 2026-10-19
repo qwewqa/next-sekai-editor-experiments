@@ -22,6 +22,7 @@ import type { StageId } from '../../../chart/stages'
 import type { TimeScaleEase, TimeScaleTransition } from '../../../chart/timeScale'
 import type { EaseEdit } from '../../../ease'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
@@ -236,7 +237,7 @@ export const applyBrushToEntities = (entities: Entity[]) => {
     }
 
     // The brush writes every key it holds, as it always has, but never to BPM changes.
-    const { state: brushed, changed } = planEdit(state.value, entities, brushProperties.value, {
+    const { state: brushed, changed, receipt } = planEdit(state.value, entities, brushProperties.value, {
         only: (entity) => entity.type !== 'bpm',
         single: false,
     })
@@ -253,9 +254,10 @@ export const applyBrushToEntities = (entities: Entity[]) => {
 
     // Brushing objects into a hidden group or stage reveals it, like authoring.
     revealAuthoringTarget(brushProperties.value)
-    const message = interpolate(() => i18n.value.tools.brush.brushed, `${changed.length}`)
-    pushState(message, brushed)
-    notify(message)
+    if (!receipt) throw new Error('Unexpected missing Brush receipt')
+    const operation = createHistoryOperation({ id: 'nse.object.brush', data: receipt })
+    pushState(operation, brushed)
+    notify(() => operation.fallback.text)
 }
 
 const apply = applyBrushToEntities

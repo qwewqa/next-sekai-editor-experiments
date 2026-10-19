@@ -1,3 +1,6 @@
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { countNativeEntities, editOutcomeReceipt, type EditOutcomeReceipt } from '../../../state/operations/historyReceipts'
+import { editTimeScaleWithReceipt } from '../../../state/operations/timeScale'
 import type { Tool } from '..'
 import type { GroupId } from '../../../chart/groups'
 import type { TimeScaleObject } from '../../../chart/timeScale'
@@ -382,55 +385,40 @@ const previewMove = (entity: TimeScaleEntity, object: TimeScaleObject) => {
     }, [entity, object.beat, object.editorLane])
 }
 
-const editMoveOrReplace = (
-    entity: TimeScaleEntity,
-    object: Partial<WithEaseEdits<TimeScaleObject>>,
-) => {
+const editMoveOrReplace = (entity: TimeScaleEntity, object: Partial<WithEaseEdits<TimeScaleObject>>) => {
     const beat = object.beat ?? entity.beat
-    const message =
-        entity.beat === beat
-            ? 'edited'
-            : find(object.groupId ?? entity.groupId, beat)
-              ? 'replaced'
-              : 'moved'
-    update(
-        () => i18n.value.tools.timeScale[message],
-        (transaction) => applyTimeScaleEdit(transaction, entity, object),
-    )
+    update((transaction) => ({
+        intent: entity.beat === beat ? 'edit' : 'move',
+        ...editTimeScaleWithReceipt(transaction, entity, object),
+    }))
     if (entity.beat !== beat) focusEntityAtBeat(beat)
 }
 
-const update = (message: () => string, action: (transaction: Transaction) => Entity[]) => {
+type ToolOutcome =
+    | { intent: 'add'; entities: Entity[] }
+    | { intent: 'edit' | 'move'; entities: Entity[]; receipt: EditOutcomeReceipt }
+
+const update = (action: (transaction: Transaction) => ToolOutcome) => {
     const transaction = createTransaction(state.value)
-
-    const selectedEntities = action(transaction)
-
-    pushState(
-        interpolate(message, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
-    view.entities = {
-        hovered: [],
-        creating: [],
-    }
-
-    notify(interpolate(message, `${selectedEntities.length}`))
+    const outcome = action(transaction)
+    const result = transaction.commit(outcome.entities)
+    const operation = createHistoryOperation(outcome.intent === 'add'
+        ? { id: 'nse.object.add', data: { subject: 'timeScale', created: countNativeEntities(outcome.entities).timeScale ?? 0 } }
+        : { id: outcome.intent === 'edit' ? 'nse.object.edit' : Object.keys(outcome.receipt.displaced).length ? 'nse.object.replace' : 'nse.object.move', data: { subject: 'timeScale', targets: outcome.receipt.targets, displaced: outcome.receipt.displaced, ...(outcome.receipt.retainedInitialBpm ? { retainedInitialBpm: true as const } : {}) } })
+    pushState(operation, result)
+    view.entities = { hovered: [], creating: [] }
+    notify(() => operation.fallback.text)
 }
 
 const add = (object: TimeScaleObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
-    update(
-        () => i18n.value.tools.timeScale.added,
-        (transaction) => {
-            return addTimeScale(transaction, object)
-        },
-    )
+    update((transaction) => ({ intent: 'add', entities: addTimeScale(transaction, object) }))
 }
 
 const edit = (entity: TimeScaleEntity, object: TimeScaleObject) => {
-    update(
-        () => i18n.value.tools.timeScale.edited,
-        (transaction) => editSelectedTimeScale(transaction, entity, object),
-    )
+    update((transaction) => {
+        const entities = editSelectedTimeScale(transaction, entity, object)
+        return { intent: 'edit', entities, receipt: editOutcomeReceipt(entity, entities) }
+    })
 }

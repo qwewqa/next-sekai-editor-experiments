@@ -1,6 +1,7 @@
 import type { Tool } from '..'
 import { applyEaseEdit, type Ease } from '../../../ease'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { defaultGroupId } from '../../../history/groups'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages'
@@ -291,19 +292,17 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         }
     }
 
+    const operation = createHistoryOperation({ id: 'nse.note.generate', data: { created: entities.length } })
     // Nothing to fill adds no undo step.
     if (entities.length) {
         // Authoring reveals its target so generated notes never vanish.
         revealAuthoredEntities(entities)
-        pushState(
-            interpolate(() => i18n.value.tools.generateSlideNotes.generated, `${entities.length}`),
-            transaction.commit(entities),
-        )
+        pushState(operation, transaction.commit(entities))
     }
     view.entities = {
         hovered: [],
         creating: [],
     }
 
-    notify(interpolate(() => i18n.value.tools.generateSlideNotes.generated, `${entities.length}`))
+    notify(() => operation.fallback.text)
 }

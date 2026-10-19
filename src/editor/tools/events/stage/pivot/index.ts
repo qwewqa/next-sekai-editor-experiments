@@ -1,3 +1,5 @@
+import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
+import { countNativeEntities, nativeTargetChanged } from '../../../../../state/operations/historyReceipts'
 import { ref } from 'vue'
 import type { Tool } from '../../..'
 import type { DivisionParity, StagePivotEventObject } from '../../../../../chart/events/stage/pivot'
@@ -368,32 +370,28 @@ const tryFind = (
     return hit ? [hit] : [undefined, yToValidBeat(y), xToValidLane(x)]
 }
 
-const update = (message: () => string, action: (transaction: Transaction) => Entity[]) => {
+const update = (
+    intent: 'add' | 'edit' | 'move',
+    action: (transaction: Transaction) => Entity[],
+    before?: Entity,
+) => {
     const transaction = createTransaction(state.value)
-
-    const selectedEntities = action(transaction)
-
-    pushState(
-        interpolate(message, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
-    view.entities = {
-        hovered: [],
-        creating: [],
-    }
-
-    notify(interpolate(message, `${selectedEntities.length}`))
+    const entities = action(transaction)
+    const result = transaction.commit(entities)
+    const after = result.selectedEntities[0]
+    const operation = createHistoryOperation(intent === 'add'
+        ? { id: 'nse.object.add', data: { subject: 'stagePivotEvent', created: countNativeEntities(entities).stagePivotEvent ?? 0 } }
+        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'stagePivotEvent', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    pushState(operation, result)
+    view.entities = { hovered: [], creating: [] }
+    notify(() => operation.fallback.text)
 }
 
 const add = (object: StagePivotEventObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
     update(
-        interpolate(
-            () => i18n.value.tools.events.added,
-            '1',
-            () => i18n.value.eventKinds.stagePivotEvent,
-        ),
+        'add',
         (transaction) => addStagePivotEventJoint(transaction, object),
     )
 }
@@ -403,22 +401,16 @@ const edit = (
     object: Partial<WithEaseEdits<StagePivotEventObject>>,
 ) => {
     update(
-        interpolate(
-            () => i18n.value.tools.events.edited,
-            '1',
-            () => i18n.value.eventKinds.stagePivotEvent,
-        ),
+        'edit',
         (transaction) => editSelectedStagePivotEvent(transaction, entity, object),
+        entity,
     )
 }
 
 const move = (entity: StagePivotEventJointEntity, object: StagePivotEventObject) => {
     update(
-        interpolate(
-            () => i18n.value.tools.events.moved,
-            '1',
-            () => i18n.value.eventKinds.stagePivotEvent,
-        ),
+        'move',
         (transaction) => editSelectedStagePivotEvent(transaction, entity, object),
+        entity,
     )
 }

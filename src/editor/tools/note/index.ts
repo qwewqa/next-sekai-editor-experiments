@@ -1,3 +1,5 @@
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { countNativeEntities, nativeTargetChanged } from '../../../state/operations/historyReceipts'
 import { computed, ref } from 'vue'
 import type { Tool } from '..'
 import type { NoteObject } from '../../../chart/note'
@@ -445,36 +447,37 @@ const resolveDrag = (x: number, y: number) => {
     } as const
 }
 
-const update = (message: () => string, action: (transaction: Transaction) => Entity[]) => {
+const update = (
+    intent: 'add' | 'edit' | 'move',
+    action: (transaction: Transaction) => Entity[],
+    before?: Entity,
+) => {
     const transaction = createTransaction(state.value)
-
-    const selectedEntities = action(transaction)
-
-    pushState(
-        interpolate(message, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
-    view.entities = {
-        hovered: [],
-        creating: [],
-    }
-
-    notify(interpolate(message, `${selectedEntities.length}`))
+    const entities = action(transaction)
+    const result = transaction.commit(entities)
+    const after = result.selectedEntities[0]
+    const operation = createHistoryOperation(intent === 'add'
+        ? { id: 'nse.note.add', data: { created: countNativeEntities(entities).note ?? 0 } }
+        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'note', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    pushState(operation, result)
+    view.entities = { hovered: [], creating: [] }
+    notify(() => operation.fallback.text)
 }
 
 const add = (object: NoteObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
     update(
-        () => i18n.value.tools.note.added,
+        'add',
         (transaction) => addNote(transaction, createSlideId(), object),
     )
 }
 
 const edit = (entity: NoteEntity, object: Partial<WithEaseEdits<NoteObject>>) => {
     update(
-        () => i18n.value.tools.note.edited,
+        'edit',
         (transaction) => editSelectedNote(transaction, entity, object),
+        entity,
     )
 }
 
@@ -482,7 +485,8 @@ const preview = createEditPreview(editSelectedNote)
 
 const move = (entity: NoteEntity, object: NoteObject) => {
     update(
-        () => i18n.value.tools.note.moved,
+        'move',
         (transaction) => editSelectedNote(transaction, entity, object),
+        entity,
     )
 }

@@ -1,3 +1,6 @@
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { countNativeEntities, editOutcomeReceipt, type EditOutcomeReceipt } from '../../../state/operations/historyReceipts'
+import { editBpmWithReceipt } from '../../../state/operations/bpm'
 import type { Tool } from '..'
 import type { BpmObject } from '../../../chart/bpm'
 import { pushState, replaceState, state } from '../../../history'
@@ -309,43 +312,36 @@ const previewMove = (entity: BpmEntity, object: BpmObject) => {
 
 const editMoveOrReplace = (entity: BpmEntity, object: Partial<BpmObject>) => {
     const beat = object.beat ?? entity.beat
-    const message = entity.beat === beat ? 'edited' : find(beat) ? 'replaced' : 'moved'
-    update(
-        () => i18n.value.tools.bpm[message],
-        (transaction) => applyBpmEdit(transaction, entity, object),
-    )
+    update((transaction) => ({
+        intent: entity.beat === beat ? 'edit' : 'move',
+        ...editBpmWithReceipt(transaction, entity, object),
+    }))
     if (entity.beat !== beat) focusEntityAtBeat(beat)
 }
 
-const update = (message: () => string, action: (transaction: Transaction) => Entity[]) => {
+type ToolOutcome =
+    | { intent: 'add'; entities: Entity[] }
+    | { intent: 'edit' | 'move'; entities: Entity[]; receipt: EditOutcomeReceipt }
+
+const update = (action: (transaction: Transaction) => ToolOutcome) => {
     const transaction = createTransaction(state.value)
-
-    const selectedEntities = action(transaction)
-
-    pushState(
-        interpolate(message, `${selectedEntities.length}`),
-        transaction.commit(selectedEntities),
-    )
-    view.entities = {
-        hovered: [],
-        creating: [],
-    }
-
-    notify(interpolate(message, `${selectedEntities.length}`))
+    const outcome = action(transaction)
+    const result = transaction.commit(outcome.entities)
+    const operation = createHistoryOperation(outcome.intent === 'add'
+        ? { id: 'nse.object.add', data: { subject: 'bpm', created: countNativeEntities(outcome.entities).bpm ?? 0 } }
+        : { id: outcome.intent === 'edit' ? 'nse.object.edit' : Object.keys(outcome.receipt.displaced).length ? 'nse.object.replace' : 'nse.object.move', data: { subject: 'bpm', targets: outcome.receipt.targets, displaced: outcome.receipt.displaced, ...(outcome.receipt.retainedInitialBpm ? { retainedInitialBpm: true as const } : {}) } })
+    pushState(operation, result)
+    view.entities = { hovered: [], creating: [] }
+    notify(() => operation.fallback.text)
 }
 
 const add = (object: BpmObject) => {
-    update(
-        () => i18n.value.tools.bpm.added,
-        (transaction) => {
-            return addBpm(transaction, object)
-        },
-    )
+    update((transaction) => ({ intent: 'add', entities: addBpm(transaction, object) }))
 }
 
 const edit = (entity: BpmEntity, object: BpmObject) => {
-    update(
-        () => i18n.value.tools.bpm.edited,
-        (transaction) => editSelectedBpm(transaction, entity, object),
-    )
+    update((transaction) => {
+        const entities = editSelectedBpm(transaction, entity, object)
+        return { intent: 'edit', entities, receipt: editOutcomeReceipt(entity, entities) }
+    })
 }
