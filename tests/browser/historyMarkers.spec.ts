@@ -197,9 +197,29 @@ for (const size of cases)
                 }, locale)
                 const buttons = page.locator('[data-peek-bar] button')
                 await expect(buttons).toHaveCount(6)
-                const boxes = await buttons.evaluateAll((elements) =>
-                    elements.map((element) => {
-                        const box = element.getBoundingClientRect()
+                // The visual boxes, and the hits the buttons keep past them through ::before:
+                // faces 36 px tall with 44 px hits, the change controls 24 px with 32 px hits.
+                const boxes = await buttons.evaluateAll((elements) => {
+                    const rects = elements.map((element) => element.getBoundingClientRect())
+                    // The topmost element at a point is the button, or it is not.
+                    const hits = (element: Element, x: number, y: number) =>
+                        document.elementFromPoint(x, y)?.closest('button') === element
+                    return elements.map((element, index) => {
+                        const box = rects[index]!
+                        const midX = box.x + box.width / 2
+                        const midY = box.y + box.height / 2
+                        // Neighbouring hits meet in the gaps, so a side is probed only where
+                        // no other button on the row lies within 8 px of it.
+                        const clear = (side: 'left' | 'right') =>
+                            rects.every(
+                                (other, otherIndex) =>
+                                    otherIndex === index ||
+                                    other.bottom <= box.top ||
+                                    other.top >= box.bottom ||
+                                    (side === 'left'
+                                        ? other.right <= box.left - 8 || other.left >= box.right
+                                        : other.left >= box.right + 8 || other.right <= box.left),
+                            )
                         return {
                             x: box.x,
                             y: box.y,
@@ -207,13 +227,29 @@ for (const size of cases)
                             h: box.height,
                             secondary: !!element.closest('[data-peek-navigation]'),
                             name: element.getAttribute('aria-label') || element.textContent,
+                            // Just inside each hit edge, and just past the vertical ones.
+                            hitTop: hits(element, midX, box.top - 3),
+                            hitBottom: hits(element, midX, box.bottom + 3),
+                            pastTop: hits(element, midX, box.top - 5),
+                            pastBottom: hits(element, midX, box.bottom + 5),
+                            hitLeft: clear('left') ? hits(element, box.left - 3, midY) : true,
+                            hitRight: clear('right') ? hits(element, box.right + 3, midY) : true,
                         }
-                    }),
-                )
+                    })
+                })
                 for (const box of boxes) {
-                    expect(box.w).toBeGreaterThanOrEqual(box.secondary ? 32 : 44)
-                    if (box.secondary) expect(box.h).toBe(32)
-                    else expect(box.h).toBeGreaterThanOrEqual(44)
+                    const name = String(box.name)
+                    expect(box.w, name).toBeGreaterThanOrEqual(box.secondary ? 24 : 36)
+                    expect(box.h, name).toBe(box.secondary ? 24 : 36)
+                    // The hit reaches 4 px past the face on each side: 44 and 32 px tall.
+                    expect(
+                        [box.hitTop, box.hitBottom, box.hitLeft, box.hitRight],
+                        `${name} hit`,
+                    ).toEqual([true, true, true, true])
+                    expect([box.pastTop, box.pastBottom], `${name} past the hit`).toEqual([
+                        false,
+                        false,
+                    ])
                     expect(box.x).toBeGreaterThanOrEqual(0)
                     expect(box.x + box.w).toBeLessThanOrEqual(size.width)
                 }

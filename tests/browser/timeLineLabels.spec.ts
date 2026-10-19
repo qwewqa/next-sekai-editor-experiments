@@ -171,6 +171,33 @@ const expectEven = ({ runs, from, to }: Awaited<ReturnType<typeof dashes>>) => {
     }
 }
 
+// A viewport change reaches the editor in two later steps: a ResizeObserver sets the view's size,
+// which maps the pointer to times, then the canvases resize and clear. A pointer moved before
+// both are done hovers a time drawn on a canvas that is cleared after, and does not move again.
+const paneSettled = (page: Page) =>
+    expect
+        .poll(() =>
+            page.evaluate(() => {
+                const { view } = window.editorTest
+                const pane = document
+                    .querySelector<HTMLCanvasElement>('canvas.editor-chart')!
+                    .getBoundingClientRect()
+                return [
+                    ...document.querySelectorAll<HTMLCanvasElement>(
+                        'canvas.editor-chart, canvas.editor-overlay',
+                    ),
+                ].every(
+                    (canvas) =>
+                        canvas.width === Math.round(canvas.clientWidth * devicePixelRatio) &&
+                        canvas.height === Math.round(canvas.clientHeight * devicePixelRatio) &&
+                        view.w === canvas.clientWidth &&
+                        view.h === canvas.clientHeight &&
+                        view.w === pane.width,
+                )
+            }),
+        )
+        .toBe(true)
+
 // Between beats, so off the grid lines.
 const hoverAt = async (page: Page, beat: number) => {
     const { x, y } = await page.evaluate((beat) => window.editorTest.point(0, beat), beat)
@@ -220,6 +247,7 @@ for (const deviceScaleFactor of [1, 2]) {
             page,
         }) => {
             await page.setViewportSize({ width: 390, height: 844 })
+            await paneSettled(page)
             await setup(page, 'basic', 16)
             await useTool(page, 'select')
             await hoverAt(page, 10.5)

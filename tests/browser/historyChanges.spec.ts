@@ -255,29 +255,34 @@ test('peeking marks what the entry changed and dims the rest, without scrolling'
             .find((note) => note.beat === 5)!
         return window.editorTest.point(note.left + note.size, 5)
     })
-    const shot = await page.screenshot({
-        clip: { x: point.x - 30, y: point.y - 30, width: 60, height: 60 },
-    })
-    const orange = await page.evaluate(
-        async (data) => {
-            const image = await createImageBitmap(new Blob([new Uint8Array(data)]))
-            const canvas = new OffscreenCanvas(image.width, image.height)
-            const context = canvas.getContext('2d')!
-            context.drawImage(image, 0, 0)
-            const pixels = context.getImageData(0, 0, image.width, image.height).data
-            let count = 0
-            for (let i = 0; i < pixels.length; i += 4)
-                if (
-                    Math.abs(pixels[i]! - 255) < 30 &&
-                    Math.abs(pixels[i + 1]! - 155) < 40 &&
-                    Math.abs(pixels[i + 2]! - 66) < 50
-                )
-                    count++
-            return count
-        },
-        [...shot],
-    )
-    expect(orange).toBeGreaterThan(10)
+    // The marks are in state before the canvas draws them, and a loaded frame loop draws them
+    // late: look again until a frame shows the ring.
+    await expect
+        .poll(async () => {
+            const shot = await page.screenshot({
+                clip: { x: point.x - 30, y: point.y - 30, width: 60, height: 60 },
+            })
+            return page.evaluate(
+                async (data) => {
+                    const image = await createImageBitmap(new Blob([new Uint8Array(data)]))
+                    const canvas = new OffscreenCanvas(image.width, image.height)
+                    const context = canvas.getContext('2d')!
+                    context.drawImage(image, 0, 0)
+                    const pixels = context.getImageData(0, 0, image.width, image.height).data
+                    let count = 0
+                    for (let i = 0; i < pixels.length; i += 4)
+                        if (
+                            Math.abs(pixels[i]! - 255) < 30 &&
+                            Math.abs(pixels[i + 1]! - 155) < 40 &&
+                            Math.abs(pixels[i + 2]! - 66) < 50
+                        )
+                            count++
+                    return count
+                },
+                [...shot],
+            )
+        })
+        .toBeGreaterThan(10)
 })
 
 test('the bar counts the change; the arrows bring changes off screen into view', async ({
@@ -306,7 +311,10 @@ test('Show Change steps through the changes in chart order and wraps', async ({ 
     await expect(peekLine(page)).toHaveText('2 changes')
     const step = async () => {
         await runCommand(page, 'showChange')
-        await page.waitForTimeout(400)
+        // A near stop eases for a quarter second of rendered frames, and the next step reads
+        // where the view ends: wait for the ease to finish, not a fixed time a loaded frame
+        // loop can overrun.
+        await expect.poll(() => page.evaluate(() => !window.editorTest.view.scrollingY)).toBe(true)
         return Math.round(await centreBeat(page))
     }
     expect(Math.abs((await step()) - 40)).toBeLessThan(3)
@@ -615,13 +623,21 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
         window.editorTest.settings.rightDockWidth = 440
     })
     await openTab(page)
-    expect(await list(page).evaluate((element) => element.clientWidth)).toBeGreaterThanOrEqual(340)
-    const scopes = await page.evaluate(async () => {
-        const { listedEntries } = await window.editorTest.appImport<
-            typeof import('../../src/editor/history/source')
-        >('/src/editor/history/source.ts')
-        return listedEntries.value.slice(0, 7).map(({ sessionId, seq }) => `${sessionId}:${seq}`)
-    })
+    await expect
+        .poll(() => list(page).evaluate((element) => element.clientWidth))
+        .toBeGreaterThanOrEqual(340)
+    // The list loads from storage after the panel opens: read the scopes once all are in.
+    const readScopes = () =>
+        page.evaluate(async () => {
+            const { listedEntries } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/source')
+            >('/src/editor/history/source.ts')
+            return listedEntries.value
+                .slice(0, 7)
+                .map(({ sessionId, seq }) => `${sessionId}:${seq}`)
+        })
+    await expect.poll(async () => (await readScopes()).length).toBe(7)
+    const scopes = await readScopes()
     const actions = ['Deleted 2 notes', 'Moved notes', 'Added 2 notes']
     for (const [index, action] of actions.entries()) {
         const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
