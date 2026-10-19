@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type { GroupId } from '../../src/chart/groups'
+import type { EntryDescription } from '../../src/history/operations'
 import type { EntryKey } from '../../src/history/peek'
 import type english from '../../src/i18n/en/index.json'
 import type { State } from '../../src/state'
@@ -54,7 +55,10 @@ test.afterEach(({ page }) => {
 // Valid imported metadata supplies historical endpoints; every control still uses real pointer/key events.
 const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
     await page.evaluate(async (mode) => {
-        const { appImport, history, settings } = window.editorTest
+        const { appImport, history, historySteps, settings } = window.editorTest
+        const { captureOperationRecipe } = await appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
         const [peek, selection] = await Promise.all([
             appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
             appImport<typeof import('../../src/editor/history/selection')>(
@@ -152,6 +156,46 @@ const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
             [1, after],
             [2, before],
             [3, before],
+            [4, { ...before, initialLife: 1001 }],
+            [5, { ...before, initialLife: 1000 }],
+            [6, before],
+        ])
+        const metadata = historySteps.editStep(
+            historySteps.futureFixtureOperation('inspection-metadata', {}, 'Imported Metadata'),
+        )
+        const descriptions = new Map<number, EntryDescription>([
+            [
+                0,
+                {
+                    kind: 'init',
+                    operation: historySteps.futureFixtureOperation(
+                        'inspection-origin',
+                        {},
+                        'Initial state',
+                    ),
+                },
+            ],
+            [1, { kind: 'edit', step: metadata }],
+            [2, { kind: 'undo', step: metadata }],
+            [
+                3,
+                {
+                    kind: 'edit',
+                    step: historySteps.editStep(
+                        historySteps.futureFixtureOperation(
+                            'inspection-stable',
+                            {},
+                            'Imported Metadata',
+                        ),
+                    ),
+                },
+            ],
+            [4, { kind: 'edit', step: historySteps.editStep(historySteps.initialLife(999, 1001)) }],
+            [
+                5,
+                { kind: 'edit', step: historySteps.editStep(historySteps.initialLife(1001, 1000)) },
+            ],
+            [6, { kind: 'edit', step: historySteps.editStep(historySteps.initialLife(1000, 999)) }],
         ])
         const held = new Set<number>()
         const pending = new Set<number>()
@@ -187,12 +231,14 @@ const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
                     key: `inspection:${seq}`,
                     previous: { key: `inspection:${previous}` },
                     time: 1_720_000_000_000 + seq,
-                    label:
-                        seq === 2
-                            ? 'Undid Metadata'
-                            : members
-                              ? 'Grouped Metadata'
-                              : 'Imported Metadata',
+                    recipe: captureOperationRecipe(
+                        (members ?? [seq]).map((member) => ({
+                            description: descriptions.get(member)!,
+                            time: 1_720_000_000_000 + member,
+                            id: `inspection:${member}`,
+                        })),
+                    ),
+                    ...(members ? { oldest: `inspection:${members[0]}` as EntryKey } : {}),
                     ...(members
                         ? { members: members.map((member): EntryKey => `inspection:${member}`) }
                         : {}),
@@ -485,10 +531,26 @@ test('full-app phone and desktop composition keeps passive states in the same st
             const { requestPeek } = await window.editorTest.appImport<
                 typeof import('../../src/editor/history/selection')
             >('/src/editor/history/selection.ts')
+            const { captureOperationRecipe } = await window.editorTest.appImport<
+                typeof import('../../src/history/operationPresentation')
+            >('/src/history/operationPresentation/index.ts')
             requestPeek({
                 key: 'inspection:0',
                 time: 1_720_000_000_000,
-                label: 'Initial state',
+                recipe: captureOperationRecipe([
+                    {
+                        description: {
+                            kind: 'init',
+                            operation: window.editorTest.historySteps.futureFixtureOperation(
+                                'inspection-origin',
+                                {},
+                                'Initial state',
+                            ),
+                        },
+                        time: 1_720_000_000_000,
+                        id: 'inspection:0',
+                    },
+                ]),
                 initial: true,
             })
         })
@@ -565,13 +627,13 @@ test('local Show Edits survives selection and groups, then reads the default on 
     await eye.click()
     await expect(eye).toHaveAttribute('aria-pressed', 'false')
     await select(page, 2, 1)
-    await expect(page.locator('[data-peek-change]')).toHaveText('Undid Metadata')
+    await expect(page.locator('[data-peek-change]')).toHaveText('Undo · Imported Metadata')
     await expect(eye).toHaveAttribute('aria-pressed', 'false')
     await open(page)
     await expect(row(page, 'title').locator('[data-property-before]')).toContainText('After title')
     await expect(row(page, 'title').locator('[data-property-after]')).toContainText('Before title')
     await page.keyboard.press('Escape')
-    await select(page, 3, 0, [1, 2, 3])
+    await select(page, 6, 3, [4, 5, 6])
     await expect(page.locator('[data-peek-change]')).toHaveText('No changes')
     await expect(page.locator('[data-property-summary]')).toHaveCount(0)
     await expect(eye).toHaveAttribute('aria-pressed', 'false')
@@ -617,7 +679,7 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
         }),
     ).toEqual({ marks: undefined, dim: undefined })
     await page.evaluate(() => window.historyInspectionTest.release(2))
-    await expect(page.locator('[data-peek-change]')).toHaveText('Undid Metadata')
+    await expect(page.locator('[data-peek-change]')).toHaveText('Undo · Imported Metadata')
     await expect(page.locator('[data-property-summary]')).toBeVisible()
     expect(await bounds()).toEqual(before)
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
@@ -655,7 +717,7 @@ test('selection invalidates an open inspection without retargeting old values or
     await open(page)
     await select(page, 2, 1)
     await expect(dialog(page)).toHaveCount(0)
-    await expect(page.locator('[data-peek-change]')).toHaveText('Undid Metadata')
+    await expect(page.locator('[data-peek-change]')).toHaveText('Undo · Imported Metadata')
     await page.screenshot({ path: testInfo.outputPath('selection-closed-inspection.png') })
     await open(page)
     await expect(row(page, 'title').locator('[data-property-after]')).toContainText('Before title')
@@ -715,7 +777,7 @@ for (const outcome of ['resolve', 'unavailable', 'superseded'] as const) {
                 'Changes unavailable',
             )
         } else {
-            await expect(page.locator('[data-peek-change]')).toHaveText('Undid Metadata')
+            await expect(page.locator('[data-peek-change]')).toHaveText('Undo · Imported Metadata')
             await expect(dialog(page)).toHaveCount(0)
             await expect(
                 page.getByRole('button', { name: 'Keep Focus', exact: true }),
@@ -792,10 +854,28 @@ test('cached header-only comparison waits for its actual displayed entry', async
             load: async (key) => ({ state: states.get(key)!, time: 1_720_000_000_000 }),
         })
         await Promise.all([...states.keys()].map(peek.loadEntryState))
+        const { captureOperationRecipe } = await appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
         selection.requestPeek({
             key: 'readiness:1',
             previous: { key: 'readiness:0' },
-            label: 'Header A',
+            recipe: captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'edit',
+                        step: window.editorTest.historySteps.editStep(
+                            window.editorTest.historySteps.futureInitialLife(
+                                1000,
+                                1100,
+                                'Header A',
+                            ),
+                        ),
+                    },
+                    time: 1_720_000_000_001,
+                    id: 'readiness:1',
+                },
+            ]),
             time: 1_720_000_000_001,
         })
         await Promise.resolve()
@@ -823,10 +903,28 @@ test('cached header-only comparison waits for its actual displayed entry', async
         const { requestPeek } = await window.editorTest.appImport<
             typeof import('../../src/editor/history/selection')
         >('/src/editor/history/selection.ts')
+        const { captureOperationRecipe } = await window.editorTest.appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
         requestPeek({
             key: 'readiness:2',
             previous: { key: 'readiness:0' },
-            label: 'Header B',
+            recipe: captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'edit',
+                        step: window.editorTest.historySteps.editStep(
+                            window.editorTest.historySteps.futureInitialLife(
+                                1000,
+                                1200,
+                                'Header B',
+                            ),
+                        ),
+                    },
+                    time: 1_720_000_000_002,
+                    id: 'readiness:2',
+                },
+            ]),
             time: 1_720_000_000_002,
         })
     })
@@ -955,7 +1053,7 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             path: testInfo.outputPath(`navigation-loading-${locale}-pane320.png`),
         })
         await page.evaluate(() => window.historyInspectionTest.release(2))
-        await expect(stateLine).toHaveText('Undid Metadata')
+        await expect(stateLine).toHaveText('Undo · Imported Metadata')
         await select(page, 1, 99)
         await expect(stateLine).toHaveText(messages.peek.unavailableShort)
         await expect(stateLine.locator('..')).toHaveAccessibleName(messages.peek.unavailable)

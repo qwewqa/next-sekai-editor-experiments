@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { runToEnd } from '../../../src/local/chunks'
 import { setDeflateHookForTests } from '../../../src/local/chunkVerify'
 import { bumpEpoch, hashKey } from '../../../src/local/db'
@@ -12,6 +13,13 @@ import { StoragePausedError } from '../../../src/local/worker/core'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction, type Transaction } from '../../../src/state/transaction'
+import {
+    editStep,
+    futureFixtureOperation,
+    nativeOperation,
+    originOperation,
+    restoreStep,
+} from '../../helpers/historySteps'
 import { goldenChart, recordsText, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { openPage, rows, storedRecords, testId, workerCore, type Page } from './harness'
@@ -26,6 +34,13 @@ const edit = (state: State, change: (transaction: Transaction) => void) => {
 }
 
 /** The state with its n-th note one quarter wider. */
+const widenedNoteStep = editStep(
+    nativeOperation(
+        { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+        'Changed note',
+    ),
+)
+
 const widen = (state: State, n = 0) => {
     const notes = [...state.store.slides.note.values()].flat()
 
@@ -41,7 +56,7 @@ const begin = (page: Page, state: State, origin: 'new' | 'import' = 'new') =>
         docId: testId(),
         origin,
         state,
-        label: () => 'Initialize',
+        operation: originOperation(origin),
         dirty: false,
     })
 
@@ -55,7 +70,14 @@ test('a blank start is stored from its first edit, with its chain record', async
     assert.equal(rows(world, 'sessions').size, 0)
 
     const edited = widen(blank)
-    page.flusher.append('edit', () => 'Changed note', edited, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        edited,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
 
@@ -95,17 +117,30 @@ test('a blank start is stored from its first edit, with its chain record', async
 
     const entries = [...rows(world, 'entries').values()]
     assert.deepEqual(
-        entries.map(({ seq, kind, label, kept, dirty, day }) => ({
-            seq,
-            kind,
-            label,
-            kept,
-            dirty,
-            day,
+        entries.map((row) => ({
+            seq: row.seq,
+            ...captureEntryDescription(row),
+            kept: row.kept,
+            dirty: row.dirty,
+            day: row.day,
         })),
         [
-            { seq: 1, kind: 'init', label: 'Initialize', kept: true, dirty: false, day: 1 },
-            { seq: 2, kind: 'edit', label: 'Changed note', kept: true, dirty: true, day: 1 },
+            {
+                seq: 1,
+                kind: 'init',
+                operation: originOperation(),
+                kept: true,
+                dirty: false,
+                day: 1,
+            },
+            {
+                seq: 2,
+                kind: 'edit',
+                step: widenedNoteStep,
+                kept: true,
+                dirty: true,
+                day: 1,
+            },
         ],
     )
     assert.ok((entries[1]?.time as number) > (entries[0]?.time as number))
@@ -144,7 +179,7 @@ test('a blank start replaced without an edit stores nothing and lets its lock go
         docId: testId(),
         origin: 'new',
         state: stateOf(goldenChart()),
-        label: () => 'Initialize',
+        operation: originOperation(),
         dirty: false,
         done: () => released++,
     })
@@ -164,11 +199,18 @@ test('a replaced session’s pending entries are flushed strictly, then its lock
         docId: testId(),
         origin: 'new',
         state: blank,
-        label: () => 'Initialize',
+        operation: originOperation(),
         dirty: false,
         done: () => released++,
     })
-    page.flusher.append('edit', () => 'Changed note', widen(blank), true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        widen(blank),
+        true,
+    )
     begin(page, blank, 'import')
     await page.flusher.flush()
     assert.equal(released, 1)
@@ -185,7 +227,14 @@ test('an ordinary edit writes one chunk, the nodes above it, a root and an entry
     begin(page, state, 'import')
     await page.flusher.flush()
     state = widen(state, 100)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     const report = page.reports.at(-1)
     assert.ok(report)
@@ -201,7 +250,14 @@ test('a batch sent again after its commit stores nothing twice', async () => {
     const page = await openPage(world, world.tab('a'))
     const state = stateOf(goldenChart())
     begin(page, state)
-    page.flusher.append('edit', () => 'Changed note', widen(state), true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        widen(state),
+        true,
+    )
     await page.flusher.flush()
     const [batch] = page.batches
     assert.ok(batch)
@@ -234,7 +290,14 @@ test('row updates are field-level: unknown fields on the session and chain stay'
         }),
     )
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.equal(rows(world, 'sessions').get(session.id)?.future, 'kept')
     assert.deepEqual(rows(world, 'chains').get(session.chainId)?.future, { nested: 1 })
@@ -266,7 +329,14 @@ test('an epoch change re-sends only the missing windows, and the memo keeps the 
     )
 
     state = widen(state, 1500)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     const [missing, resent] = page.results.slice(1)
@@ -279,7 +349,14 @@ test('an epoch change re-sends only the missing windows, and the memo keeps the 
 
     // The rest was checked at the new epoch: the next flush checks nothing again.
     state = widen(state, 1501)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.equal(page.results.at(-1)?.kind, 'stored')
     assert.equal(page.batches.at(-1)?.ends.length, 2)
@@ -296,7 +373,14 @@ test('an epoch change with nothing missing re-sends nothing', async () => {
     await sweeper.run(() => sweeperCore.start())
     await sweeper.run(() => sweeperCore.write(['meta'], (tx) => bumpEpoch(tx)))
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(
         page.results.map((result) => result.kind),
@@ -335,7 +419,14 @@ test('a session whose chain was continued elsewhere forks into a new session, ca
     )
 
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assert.deepEqual(
@@ -435,7 +526,14 @@ test('a worker restart resets the memo and sends every pending entry again', asy
     begin(page, state, 'import')
     await page.flusher.flush()
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     failNext = true
     await page.flusher.flush()
     assert.equal(page.flusher.hasPending, true)
@@ -449,10 +547,49 @@ test('a worker restart resets the memo and sends every pending entry again', asy
 for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
     test(`a chain whose first editing entry is ${kind} is marked edited`, async () => {
         const world = createWorld({ seed: 15 })
-        const page = await openPage(world, world.tab('a'))
+        const crossed = editStep(
+            nativeOperation(
+                { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                'Changed note',
+            ),
+        )
+        const description =
+            kind === 'recovered'
+                ? {
+                      kind,
+                      operation: nativeOperation(
+                          { id: 'nse.recovery', data: { source: 'local', droppedSteps: 0 } },
+                          'Recovered',
+                      ),
+                      recoveryContext: { head: crossed, headIndex: 0, dropped: [], omitted: 0 },
+                  }
+                : kind === 'restore'
+                  ? { kind, step: restoreStep(1000) }
+                  : { kind, step: crossed }
+        const ref: { page?: Page } = {}
+        const page = await openPage(world, world.tab('a'), {
+            transport: (batch) => {
+                const entry = batch.entries.at(-1)!
+                // Worker flag classification is independent of a UI stack or a valid Undo gesture.
+                const entries = [
+                    batch.entries[0]!,
+                    {
+                        ...captureEntryDescription(description),
+                        seq: entry.seq,
+                        wall: entry.wall,
+                        snapshot: entry.snapshot,
+                        dirty: entry.dirty,
+                    },
+                ]
+                return ref.page!.tab.run(() =>
+                    ref.page!.handlers.flush({ ...batch, entries, stack: undefined }),
+                )
+            },
+        })
+        ref.page = page
         const blank = stateOf(goldenChart())
         const session = begin(page, blank)
-        page.flusher.append(kind, () => 'Changed note', widen(blank), true)
+        page.flusher.append({ kind: 'edit', step: crossed }, widen(blank), true)
         await page.flusher.flush()
         const chain = rows(world, 'chains').get(session.chainId)
         assert.equal(chain?.edited, true)
@@ -469,10 +606,24 @@ test('entry times stay strictly increasing across flushes and tabs, with the clo
     begin(b, stateB)
     for (let i = 0; i < 3; i++) {
         stateA = widen(stateA, i)
-        a.flusher.append('edit', () => 'Changed note', stateA, true)
+        a.flusher.append(
+            {
+                kind: 'edit',
+                step: widenedNoteStep,
+            },
+            stateA,
+            true,
+        )
         await a.flusher.flush()
         stateB = widen(stateB, i)
-        b.flusher.append('edit', () => 'Changed note', stateB, true)
+        b.flusher.append(
+            {
+                kind: 'edit',
+                step: widenedNoteStep,
+            },
+            stateB,
+            true,
+        )
         await b.flusher.flush()
     }
     const times = [...rows(world, 'entries').values()].map(({ time }) => time as number)
@@ -506,7 +657,14 @@ test(
         let state = stateOf(goldenChart())
         begin(page, state)
         state = widen(state)
-        page.flusher.append('edit', () => 'Changed note', state, true)
+        page.flusher.append(
+            {
+                kind: 'edit',
+                step: widenedNoteStep,
+            },
+            state,
+            true,
+        )
         const running = page.flusher.flush()
         await world.idle()
         assert.equal(page.batches.length, 0)
@@ -526,7 +684,14 @@ test('entry times are strictly increasing, whatever the clock says', async () =>
     begin(page, state)
     for (let i = 0; i < 3; i++) {
         state = widen(state, i)
-        page.flusher.append('edit', () => 'Changed note', state, true)
+        page.flusher.append(
+            {
+                kind: 'edit',
+                step: widenedNoteStep,
+            },
+            state,
+            true,
+        )
     }
     await page.flusher.flush()
     const times = [...rows(world, 'entries').values()].map(({ time }) => time as number)
@@ -547,8 +712,22 @@ test('two tabs flushing at once store both sessions whole, under the CI seeds', 
         for (let i = 0; i < 3; i++) {
             stateA = widen(stateA, i)
             stateB = widen(stateB, i + 1)
-            a.flusher.append('edit', () => 'Changed note', stateA, true)
-            b.flusher.append('edit', () => 'Changed note', stateB, true)
+            a.flusher.append(
+                {
+                    kind: 'edit',
+                    step: widenedNoteStep,
+                },
+                stateA,
+                true,
+            )
+            b.flusher.append(
+                {
+                    kind: 'edit',
+                    step: widenedNoteStep,
+                },
+                stateB,
+                true,
+            )
         }
         await Promise.all([a.flusher.flush(), b.flusher.flush()])
         await world.idle()
@@ -573,10 +752,24 @@ test('a kill at every await of two flushes leaves no dangling refs and no half-w
         scenario: async ({ world, victim }) => {
             const page = await openPage(world, victim)
             begin(page, base)
-            page.flusher.append('edit', () => 'Changed note', edited, true)
+            page.flusher.append(
+                {
+                    kind: 'edit',
+                    step: widenedNoteStep,
+                },
+                edited,
+                true,
+            )
             await page.flusher.flush()
             // A second flush updates the rows the first created.
-            page.flusher.append('edit', () => 'Changed note', again, true)
+            page.flusher.append(
+                {
+                    kind: 'edit',
+                    step: widenedNoteStep,
+                },
+                again,
+                true,
+            )
             await page.flusher.flush()
         },
         check: ({ world }) => {
@@ -653,7 +846,14 @@ test('a fork after a reply lost to a kill keeps the entries already stored out o
     const session = begin(page, state, 'import')
     await page.flusher.flush()
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     loseReply = true
     await page.flusher.flush()
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
@@ -671,7 +871,14 @@ test('a fork after a reply lost to a kill keeps the entries already stored out o
         }),
     )
     state = widen(state, 1)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     assert.equal(forks.length, 1)
     const fork = forks[0]!
@@ -707,7 +914,14 @@ test('a fork starts after its parent’s last entry, even one stamped past the s
         }),
     )
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        state,
+        true,
+    )
     await page.flusher.flush()
     const fork = forks[0]!
     const startedAt = rows(world, 'sessions').get(fork.id)?.startedAt as number
@@ -720,13 +934,27 @@ test('a batch sent again after a later one leaves the newer summary and view', a
     const page = await openPage(world, world.tab('a'), { view: () => ({ scroll, zoom: 1 }) })
     const state = stateOf(goldenChart())
     const session = begin(page, state)
-    page.flusher.append('edit', () => 'Changed note', widen(state), true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: widenedNoteStep,
+        },
+        widen(state),
+        true,
+    )
     await page.flusher.flush()
     const [first] = page.batches
     assert.ok(first)
     scroll = 2
     const later = { ...widen(state), levelInfo: { ...state.levelInfo, title: 'Later' } }
-    page.flusher.append('edit', () => 'Changed title', later, true)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(futureFixtureOperation('flush-newer-summary', {}, 'Changed title')),
+        },
+        later,
+        true,
+    )
     await page.flusher.flush()
     const chain = () => rows(world, 'chains').get(session.chainId)
     assert.equal((chain()?.summary as { title?: string }).title, 'Later')
