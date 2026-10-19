@@ -60,7 +60,7 @@ const afterGuard = (page: Page) => page.waitForTimeout(400)
 const label = (page: Page) => page.locator('[data-status-text]')
 const button = (page: Page) => page.locator('[data-status-label]')
 const chip = (page: Page) => page.locator('[data-file-chip]')
-/** The chip's text as shown: its full string, or on a phone the short label. */
+/** The chip's visible text, omitted in compact bars. */
 const chipShown = (page: Page) => chip(page).locator('span:visible')
 
 const statusGeometry = (page: Page) =>
@@ -926,7 +926,9 @@ test.describe('the chip', () => {
             })
             await bindFile(page, { name: 'coconut-long-working-copy.nxsp', event: 'saved' })
             await finding(page, 'newer')
-            await expect(chipShown(page)).toHaveText('Plus récent')
+            await expect(chipShown(page)).toHaveCount(0)
+            await expect(chip(page)).toHaveAttribute('data-file-chip', 'newerOnDisk')
+            await expect(chip(page)).toHaveAccessibleName(/une version plus récente est sur le disque\./)
             const geometry = await statusGeometry(page)
             expect(geometry.bar.height).toBe(32)
             expect(geometry.title).toBeNull()
