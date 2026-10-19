@@ -162,10 +162,11 @@ test('Reopen forks when a different tab now binds the same physical file', async
     context,
 }) => {
     await start(page)
-    const first = await opened(page)
-    await newChart(page)
+    // Both visits start blank before a bound source exists; no startup continuation masks R1.
     const other = await context.newPage()
     await start(other)
+    const first = await opened(page)
+    await newChart(page)
     await launchOpen(other)
     await expect.poll(async () => (await snapshot(other)).session.file?.name).toBe('race.nxsp')
     await imported(other)
@@ -177,6 +178,17 @@ test('Reopen forks when a different tab now binds the same physical file', async
             return read.kind === 'open' && read.isHead
         }, first),
     ).toBe(true)
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async (first) =>
+                    (await navigator.locks.query()).held?.some(
+                        (lock) => lock.name === `nse-session:${first}`,
+                    ) ?? false,
+                first,
+            ),
+        )
+        .toBe(false)
     const result = await page.evaluate(async (first) => {
         const { restoreSession } =
             (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
