@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DROPPED_LABELS } from '../../../src/local/journal/build'
-import type { JournalV1 } from '../../../src/local/journal/format'
+import { equalJson, type JsonValue } from '../../../src/history/operations'
+import type { Journal } from '../../../src/local/journal/format'
 import {
     JOURNAL_KEY_LIMIT,
     JOURNAL_TOTAL_LIMIT,
@@ -10,10 +10,13 @@ import {
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
+import { editStep, futureFixtureOperation, nativeOperation } from '../../helpers/historySteps'
 import { rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll } from './harness'
+
+const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
 // The journal's writer (§1.6.4 #7): when it writes, what it writes, when it's cleared, and the
 // size limits.
@@ -31,7 +34,7 @@ const counting = (storage: MemoryStorage) => {
 
 const journalIn = (storage: MemoryStorage, sessionId: string) => {
     const text = storage.getItem(`nse.journal.${sessionId}`)
-    return text === null ? undefined : (JSON.parse(text) as JournalV1)
+    return text === null ? undefined : (JSON.parse(text) as Journal)
 }
 
 const start = async (seed: number) => {
@@ -53,27 +56,32 @@ test('nothing is written while every entry is committed strictly', async () => {
 test('a second trigger for the same seq writes nothing; a new entry writes again', async () => {
     const { page, session, a } = await start(2)
     const writes = counting(page.storage)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     assert.equal(page.writer.write(), true)
     assert.equal(page.writer.write(), true)
     assert.equal(writes(), 1)
-    append(page, 'undo', 'Changed note', a)
+    append(page, { kind: 'undo', step: editStep(futureFixtureOperation('Changed note')) }, a)
     assert.equal(page.writer.write(), true)
     assert.equal(writes(), 2)
     const journal = journalIn(page.storage, session.id)
     // An undo onto a committed slot: the head is that slot, nothing pushed or dropped.
-    assert.deepEqual(journal?.stack, {
+    same(journal?.stack, {
         keep: 1,
         lastKept: journal?.stack.lastKept,
-        dropped: ['Changed note'],
-        head: null,
+        context: {
+            head: session.stack.committed.at(0)!.step,
+            headIndex: 0,
+            dropped: [editStep(futureFixtureOperation('Changed note'))],
+            omitted: 0,
+        },
+        head: false,
         index: 0,
     })
 })
 
 test('a key is cleared only after a strict commit covering its seq', async () => {
     const { page, session, a } = await start(3)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     page.writer.write()
     // A routine relaxed flush leaves the key for the next strict one.
     await page.flusher.flush()
@@ -87,7 +95,7 @@ test('a key is cleared only after a strict commit covering its seq', async () =>
 
 test('a journal for a session the tab no longer has open is never written', async () => {
     const { page, session, a } = await start(4)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     const next = beginSession(page, stateOf(goldenChart()), 'new')
     page.writer.write()
     assert.equal(journalIn(page.storage, session.id), undefined)
@@ -96,7 +104,7 @@ test('a journal for a session the tab no longer has open is never written', asyn
 
 test('the descriptor carries the chain as stored, the session’s fields and its flags', async () => {
     const { page, session, a } = await start(5)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     page.writer.write()
     const journal = journalIn(page.storage, session.id)
     assert.ok(journal)
@@ -132,7 +140,7 @@ test('a write that would pass a size limit isn’t made, and doesn’t verify', 
     const { page, session, a } = await start(6)
     // Other journals already hold nearly all of the 4 MB.
     page.storage.setItem('nse.journal.other', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1000))
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     assert.equal(page.writer.write(), false)
     assert.equal(page.writer.verified(session.id, 2), false)
     assert.equal(journalIn(page.storage, session.id), undefined)
@@ -144,7 +152,7 @@ test('a write that would pass a size limit isn’t made, and doesn’t verify', 
 test('localStorage full: the write fails, and the session isn’t covered', async () => {
     const { page, session, a } = await start(7)
     page.storage.quota = 100
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     assert.equal(page.writer.write(), false)
     assert.equal(page.writer.verified(session.id, 2), false)
 })
@@ -153,7 +161,7 @@ test('a BGM change is journalled with its metadata, and recovers with it', async
     const { world, page, session, a } = await start(8)
     const meta = { hash: 'ab'.repeat(16), filename: 'new.mp3', size: 1234, type: 'audio/mpeg' }
     const changed: State = { ...widen(a), bgm: { ...a.bgm, filename: 'new.mp3', meta } }
-    append(page, 'edit', 'Changed BGM', changed)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed BGM')) }, changed)
     page.writer.write()
     const journal = journalIn(page.storage, session.id)
     assert.deepEqual(journal?.header.bgm, [meta.hash, meta.filename, meta.size, meta.type])
@@ -169,7 +177,7 @@ test('a replaced session is committed strictly before it goes, and its journal i
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'import', { done: () => released.push('first') })
     await page.flusher.flush({ strict: true })
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     // A hide's journal, then a routine relaxed flush: the key stays for a strict commit.
     page.writer.write()
     await page.flusher.flush()
@@ -190,7 +198,7 @@ const relaxedAfterJournal = async (seed: number) => {
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'import', { done: () => released.push('first') })
     await page.flusher.flush({ strict: true })
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     page.writer.write()
     await page.flusher.flush()
     return { world, page, session, released, a }
@@ -205,7 +213,11 @@ test('a replaced session whose strict commit fails is kept with its lock and key
     assert.deepEqual(released, [])
     assert.ok(journalIn(page.storage, session.id))
     // The next strict flush (a hide) commits it, clears its key and lets it go.
-    append(page, 'edit', 'Changed note', widen(a, 4))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(a, 4),
+    )
     await page.flusher.flush({ strict: true })
     assert.equal(journalIn(page.storage, session.id), undefined)
     assert.deepEqual(released, ['first'])
@@ -241,11 +253,15 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
     // The chain is named, and holds a field from a newer build; this tab flushes once more.
     await changeChain({ name: 'Coconut (Master)', future: { kept: 1 } })
     const b = widen(a)
-    append(page, 'edit', 'Changed note', b)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, b)
     await page.flusher.flush({ strict: true })
     // Another tab continues the chain; this tab's next edit is journalled, then forks.
     await changeChain({ head: 'a-continuation' })
-    append(page, 'edit', 'Moved notes', widen(b, 1))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Moved notes')) },
+        widen(b, 1),
+    )
     assert.equal(page.writer.write(), true)
     assert.equal(journalIn(page.storage, session.id)?.seq, 3)
     await page.flusher.flush()
@@ -269,7 +285,7 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
 
 test('the budget counts today’s auto save, and leaves it room to grow to the journal’s size', async () => {
     const { page, session, a } = await start(11)
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     // Today's auto save holds most of the budget: no journal is written over it.
     page.storage.setItem('nse.autoSave.levelData', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1000))
     assert.equal(page.writer.write(), false)
@@ -278,7 +294,11 @@ test('the budget counts today’s auto save, and leaves it room to grow to the j
     const size = page.storage.getItem(`nse.journal.${session.id}`)?.length ?? 0
     // Earlier visits' journals leave room for this one, but not for the auto save beside it.
     page.storage.setItem('nse.journal.earlier', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1.5 * size))
-    append(page, 'edit', 'Changed note', widen(a, 1))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(a, 1),
+    )
     assert.equal(page.writer.write(), false)
     // With the auto save already that large, it fits.
     page.storage.removeItem('nse.journal.earlier')
@@ -295,7 +315,11 @@ test('where a strict commit may not be on disk yet (D14), no commit clears a key
     await page.flusher.flush({ strict: true })
     for (let i = 0; i < 3; i++) {
         state = widen(state, i)
-        append(page, 'edit', 'Changed note', state)
+        append(
+            page,
+            { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+            state,
+        )
         assert.equal(page.writer.write(), true)
         await page.flusher.flush({ strict: true })
         // Committed strictly: the key stays, one per session, at its newest seq.
@@ -305,7 +329,11 @@ test('where a strict commit may not be on disk yet (D14), no commit clears a key
     }
     // A second session's newer journal replaces the first's covered key: they don't pile up.
     const next = beginSession(page, stateOf(goldenChart()), 'new')
-    append(page, 'edit', 'Changed note', widen(state, 5))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(state, 5),
+    )
     assert.equal(page.writer.write(), true)
     assert.equal(journalIn(page.storage, session.id), undefined)
     await page.flusher.flush({ strict: true })
@@ -328,18 +356,24 @@ test('a long stack journalled with keep 0 names its newest dropped steps and cou
     const session = beginSession(page, state, 'new')
     for (let i = 0; i < 100; i++) {
         state = { ...state, initialLife: 100 + i }
-        append(page, 'edit', `Edit ${i}`, state)
+        append(page, { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) }, state)
     }
     assert.equal(page.writer.write(), true)
     const journal = journalIn(page.storage, session.id)
     assert.equal(journal?.stack.keep, 0)
-    assert.equal(journal?.stack.dropped.length, DROPPED_LABELS)
-    assert.equal(journal?.stack.dropped.at(-1), 'Edit 98')
-    assert.equal(journal?.stack.droppedCount, 100)
+    assert.equal(journal?.stack.context.dropped.length, 64)
+    same(journal?.stack.context.dropped.at(-1), editStep(futureFixtureOperation('Edit 98')))
+    assert.equal(journal!.stack.context.dropped.length + journal!.stack.context.omitted, 100)
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'applied')
     const [recovered] = [...rows(world, 'entries').values()].filter(
         (entry) => entry.sessionId === session.id,
     )
-    assert.equal(recovered?.label, 'Recovered last change. 100 undo steps were dropped.')
+    same(
+        recovered?.operation,
+        nativeOperation(
+            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 100 } },
+            'Recovered last change',
+        ),
+    )
 })

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { equalJson, type JsonValue } from '../../../src/history/operations'
 import { DB_NAME } from '../../../src/local/db'
 import type { FlushSession } from '../../../src/local/flush'
 import { toHex } from '../../../src/local/hash'
 import { setJournalApplyHookForTests } from '../../../src/local/journal/apply'
-import { readJournal, type JournalV1 } from '../../../src/local/journal/format'
+import { readJournal, type Journal } from '../../../src/local/journal/format'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { sessionLock } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
@@ -13,11 +14,14 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
+import { editStep, futureFixtureOperation, nativeOperation } from '../../helpers/historySteps'
 import { rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { replayed, storedStack, widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll, replayIn } from './harness'
+
+const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
 // Journal replay on the test core (§1.6.4 #7, Step 3b's exit): against a live session, a late
 // flush, a missing, deleted or continued session, newer journals, and a damaged key.
@@ -27,7 +31,7 @@ const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.has
 const journalOf = (storage: MemoryStorage, sessionId: string) => {
     const text = storage.getItem(`nse.journal.${sessionId}`)
     assert.ok(text, 'a journal was written')
-    return JSON.parse(text) as JournalV1
+    return JSON.parse(text) as Journal
 }
 
 const entriesOf = (world: World, sessionId: string) =>
@@ -43,12 +47,12 @@ const killedAfterEdits = async (seed: number) => {
     const a = sampleState('tests/fixtures/generated-large.json')
     const session = beginSession(page, a)
     const b = widen(a)
-    append(page, 'edit', 'Changed note', b)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, b)
     await page.flusher.flush()
     const c = widen(b, 1)
     const d = widen(c, 2)
-    append(page, 'edit', 'Moved notes', c)
-    append(page, 'edit', 'Changed BPM', d)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Moved notes')) }, c)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed BPM')) }, d)
     // The hide: the journal, then a flush that never lands.
     assert.equal(page.writer.write(), true)
     return { world, page, session, states: { a, b, c, d } }
@@ -59,8 +63,9 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
     const journal = journalOf(page.storage, session.id)
     assert.equal(journal.seq, 4)
     assert.equal(journal.stack.keep, 2)
-    assert.deepEqual(journal.stack.dropped, ['Moved notes'])
-    assert.deepEqual(journal.stack.head, { label: 'Changed BPM' })
+    same(journal.stack.context.dropped, [editStep(futureFixtureOperation('Moved notes'))])
+    assert.equal(journal.stack.head, true)
+    same(journal.stack.context.head, editStep(futureFixtureOperation('Changed BPM')))
     assert.equal(journal.descriptor.chainId, session.chainId)
 
     const { outcomes } = await replayAll(world, page.storage)
@@ -69,7 +74,13 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
     const recovered = entries.at(-1)
     assert.equal(recovered?.kind, 'recovered')
     assert.equal(recovered?.seq, 4)
-    assert.equal(recovered?.label, 'Recovered last change. 1 undo step was dropped.')
+    same(
+        recovered?.operation,
+        nativeOperation(
+            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 1 } },
+            'Recovered last change',
+        ),
+    )
     // The recovered state hashes as the flushed one would: its values survive level data.
     assert.equal(toHex(recovered?.snapshot as Uint8Array), rootOf(states.d))
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 4)
@@ -114,7 +125,7 @@ test('a session that never flushed is made from the descriptor, with its ids', a
     const page = await openJournalPage(world, 'a')
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'new')
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     page.writer.write()
     const journal = journalOf(page.storage, session.id)
     assert.equal(journal.stack.keep, 0)
@@ -201,11 +212,11 @@ const rewrite = (
 }
 
 for (const [name, change] of [
-    ['a newer journalVersion', (j: Record<string, unknown>) => (j.journalVersion = 2)],
+    ['a newer journalVersion', (j: Record<string, unknown>) => (j.journalVersion = 3)],
     ['a higher recordsV', (j: Record<string, unknown>) => (j.recordsV = 2)],
     [
-        'a descriptor v of 2',
-        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 2),
+        'a descriptor v of 3',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 3),
     ],
     ['another kind', (j: Record<string, unknown>) => (j.kind = 'headCopy')],
 ] as const)
@@ -286,7 +297,11 @@ test('replay killed at every await applies the journal once, whole or not at all
             const a = stateOf(goldenChart())
             const session = beginSession(page, a)
             await page.flusher.flush()
-            append(page, 'edit', 'Changed note', widen(a))
+            append(
+                page,
+                { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+                widen(a),
+            )
             page.writer.write()
             storages.set(world, { storage: page.storage, sessionId: session.id })
         },
@@ -481,7 +496,11 @@ test('an apply that fails by a DOMException that recurs is kept as a recovery se
 test('a late flush reaching past a replayed journal leaves no stack that isn’t replay’s', async () => {
     const { world, page, session, states } = await killedAfterEdits(19)
     // One more edit after the journal, never journalled; then the tab dies.
-    append(page, 'edit', 'Changed note', widen(states.d, 3))
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(states.d, 3),
+    )
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'applied')
     // Its flush lands late: entries up to the journal's are stored already, the last is new.

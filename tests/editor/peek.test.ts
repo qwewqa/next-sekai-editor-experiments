@@ -437,3 +437,39 @@ test('a Restore description failure preserves the current peek and live stack', 
         })
     }
 })
+
+for (const replacement of ['same', 'different', 'absent'] as const)
+    test(`a pending Restore cannot cross a ${replacement} source replacement`, async () => {
+        const pending = deferred<PeekedEntry>()
+        let loads = 0
+        const oldSource = {
+            load: () => {
+                loads++
+                return loads === 1
+                    ? pending.promise
+                    : Promise.resolve({ state: fake('fresh'), time: 2 })
+            },
+            sameSnapshot: () => false,
+        }
+        setPeekSource(oldSource)
+        const restoring = restoreEntry(key(1))
+        setPeekSource(
+            replacement === 'same'
+                ? oldSource
+                : replacement === 'absent'
+                  ? undefined
+                  : {
+                        load: async () => ({ state: fake('replacement'), time: 3 }),
+                        sameSnapshot: () => false,
+                    },
+        )
+        pending.resolve({ state: fake('stale'), time: 1 })
+        await restoring
+        assert.equal(nameOf(liveState.value), 'live')
+        assert.deepEqual(notices, [])
+        if (replacement === 'same') {
+            await peekEntry(key(1))
+            assert.equal(nameOf(state.value), 'fresh')
+            assert.equal(loads, 2, 'an old load cannot repopulate a replaced source cache')
+        }
+    })

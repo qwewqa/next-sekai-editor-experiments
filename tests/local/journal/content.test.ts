@@ -3,7 +3,7 @@ import test from 'node:test'
 import { gzip } from 'pako'
 import type { NoteObject } from '../../../src/chart/note'
 import { journalContent, journalLevelData, journalState } from '../../../src/local/journal/content'
-import type { JournalV1 } from '../../../src/local/journal/format'
+import type { Journal } from '../../../src/local/journal/format'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { State } from '../../../src/state'
@@ -18,8 +18,8 @@ import { sampleState } from '../records/samples'
 
 const rootOf = (state: State) => encodeSnapshot(toRecords(state)).root.hash
 
-const recover = (state: State, change?: (journal: JournalV1) => void) => {
-    const journal = { ...journalContent(state) } as JournalV1
+const recover = (state: State, change?: (journal: Journal) => void) => {
+    const journal = { ...journalContent(state) } as Journal
     change?.(journal)
     const read = journalState(journal)
     assert.equal(read.kind, 'state')
@@ -98,7 +98,7 @@ test('two guides, the default-coloured one created second and earlier, keep thei
 
 test('level data with content this build doesn’t read is left for a later build', () => {
     const state = stateOf(goldenChart())
-    const journal = { ...journalContent(state) } as JournalV1
+    const journal = { ...journalContent(state) } as Journal
     const levelData = journalLevelData(journal)
     levelData.entities.push({ archetype: 'FutureThing', data: [] })
     journal.levelDataGz = Buffer.from(gzip(JSON.stringify(levelData))).toString('base64')

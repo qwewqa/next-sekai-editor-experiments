@@ -68,114 +68,124 @@ test('head=false recovery preserves event context and leaves retained slot metad
     assert.equal(page.storage.getItem('nse.journal.' + session.id), null)
 })
 
-test('journal-only resume flushes one real recovered baseline with opaque source context', async () => {
-    const world = createWorld({ seed: 93702 })
-    const page = await openPage(world, world.tab('resume'))
-    const recoveryContext = createRecoveryContext(
-        editStep(operation(2)),
-        [editStep(operation(1)), editStep(operation(3))],
-        1,
-    )
-    let release!: () => void
-    const ready = new Promise<void>((resolve) => {
-        release = resolve
-    })
-    const session = page.flusher.resumeJournalled({
-        id: 'resume',
-        chainId: 'resume-chain',
-        docId: 'doc',
-        lineageId: 'lineage',
-        origin: 'import',
-        startedAt: 100,
-        seq: 7,
-        chain: {},
-        state: sampleState('tests/fixtures/generated-large.json'),
-        operation: recoveredOperation(2),
-        recoveryContext,
-        ready,
-    })
-    const pending = page.flusher.unstored(session)
-    assert.equal(pending.entries.length, 1)
-    assert.equal(pending.entries[0]!.kind, 'recovered')
-    assert.equal(pending.stack?.slots.length, 1)
-    same(pending.stack?.slots[0]?.step.recoveryContext, recoveryContext)
-    const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
-    const row = pendingFlushRow(pending.entries[0]!, records)!
-    const store: SaveStore = {
-        read: (stores, fn) => page.tab.run(() => page.core.read(stores, fn)),
-        write: (stores, fn, options) => page.tab.run(() => page.core.write(stores, fn, options)),
-    }
-    try {
-        const built = await buildSave(
-            store,
-            session.chainId,
-            { kind: 'copy' },
-            {
-                history: true,
-                bgm: false,
-                fileName: 'recovery.nxsp',
-                sessionId: session.id,
-                unstored: {
-                    chainId: session.chainId,
-                    docId: session.docId,
-                    lineageId: session.lineageId,
-                },
-                pending: {
-                    entries: [row],
-                    records,
-                    startedAt: session.startedAt,
-                    stack: {
-                        base: 0,
-                        slots: [{ snapshot: row.snapshot, step: pending.stack!.slots[0]!.step }],
-                        index: 0,
+for (const existingPrefix of [false, true])
+    test(`journal-only resume preserves one baseline and a ${existingPrefix ? 'stored' : 'missing'} prefix`, async () => {
+        const world = createWorld({ seed: 93702 })
+        const state = sampleState('tests/fixtures/generated-large.json')
+        const previous = await openJournalPage(world, 'previous')
+        const prior = existingPrefix ? beginSession(previous, state) : undefined
+        if (prior) await previous.flusher.flush()
+        const oldEntries = prior ? storedEntries(world, prior.id) : []
+        const page = await openPage(world, world.tab('resume'))
+        const recoveryContext = createRecoveryContext(
+            editStep(operation(2)),
+            [editStep(operation(1)), editStep(operation(3))],
+            1,
+        )
+        let release!: () => void
+        const ready = new Promise<void>((resolve) => {
+            release = resolve
+        })
+        const session = page.flusher.resumeJournalled({
+            id: prior?.id ?? 'resume',
+            chainId: prior?.chainId ?? 'resume-chain',
+            docId: prior?.docId ?? 'doc',
+            lineageId: prior?.lineageId ?? 'lineage',
+            origin: 'import',
+            startedAt: prior?.startedAt ?? 100,
+            seq: 7,
+            chain: prior?.chain ?? {},
+            state,
+            operation: recoveredOperation(2),
+            recoveryContext,
+            ready,
+        })
+        const pending = page.flusher.unstored(session)
+        assert.equal(pending.entries.length, 1)
+        assert.equal(pending.entries[0]!.kind, 'recovered')
+        assert.equal(pending.stack?.slots.length, 1)
+        same(pending.stack?.slots[0]?.step.recoveryContext, recoveryContext)
+        const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
+        const row = pendingFlushRow(pending.entries[0]!, records)!
+        const store: SaveStore = {
+            read: (stores, fn) => page.tab.run(() => page.core.read(stores, fn)),
+            write: (stores, fn, options) =>
+                page.tab.run(() => page.core.write(stores, fn, options)),
+        }
+        try {
+            const built = await buildSave(
+                store,
+                session.chainId,
+                { kind: 'copy' },
+                {
+                    history: true,
+                    bgm: false,
+                    fileName: 'recovery.nxsp',
+                    sessionId: session.id,
+                    unstored: {
+                        chainId: session.chainId,
+                        docId: session.docId,
+                        lineageId: session.lineageId,
+                    },
+                    pending: {
+                        entries: [row],
+                        records,
+                        startedAt: session.startedAt,
+                        stack: {
+                            base: 0,
+                            slots: [
+                                { snapshot: row.snapshot, step: pending.stack!.slots[0]!.step },
+                            ],
+                            index: 0,
+                        },
+                    },
+                    save: {
+                        time: 999,
+                        operation: nativeOperation(
+                            {
+                                id: 'nse.file.save',
+                                data: { file: captureName('recovery.nxsp'), delivery: 'file' },
+                            },
+                            'Saved recovery.nxsp',
+                        ),
+                    },
+                    context: {
+                        now: 1700000000000,
+                        newId: () => '00000000-0000-4000-8000-000000000001',
+                        device: { id: 'test', label: 'Test' },
+                        appVersion: '0.6.0',
                     },
                 },
-                save: {
-                    time: 999,
-                    operation: nativeOperation(
-                        {
-                            id: 'nse.file.save',
-                            data: { file: captureName('recovery.nxsp'), delivery: 'file' },
-                        },
-                        'Saved recovery.nxsp',
-                    ),
-                },
-                context: {
-                    now: 1700000000000,
-                    newId: () => '00000000-0000-4000-8000-000000000001',
-                    device: { id: 'test', label: 'Test' },
-                    appVersion: '0.6.0',
-                },
-            },
-        )
-        assert(!('refused' in built), JSON.stringify(built))
-        const { history } = await heldRows(built.blob)
-        const event = history.entries[0]!
+            )
+            assert(!('refused' in built), JSON.stringify(built))
+            const { history } = await heldRows(built.blob)
+            const event = history.entries.find((entry) => entry.kind === 'recovered')!
+            assert.equal(event.kind, 'recovered')
+            if (event.kind !== 'recovered') throw new Error('Missing saved recovery event')
+            same(event.recoveryContext, recoveryContext)
+            same(history.undoStack.slots[0]!.step.recoveryContext, recoveryContext)
+            assert.equal(
+                rows(world, 'entries').size,
+                oldEntries.length,
+                'Save uses the pending projection before a flush',
+            )
+        } finally {
+            release()
+        }
+        await page.flusher.flush()
+        assert.deepEqual(page.errors, [])
+        const event = captureEntryDescription(storedEntries(world, session.id).at(-1))
         assert.equal(event.kind, 'recovered')
-        if (event.kind !== 'recovered') throw new Error('Missing saved recovery event')
+        if (event.kind !== 'recovered') throw new Error('No recovery event')
         same(event.recoveryContext, recoveryContext)
-        same(history.undoStack.slots[0]!.step.recoveryContext, recoveryContext)
-        assert.equal(
-            rows(world, 'entries').size,
-            0,
-            'Save uses the pending projection before a flush',
-        )
-    } finally {
-        release()
-    }
-    await page.flusher.flush()
-    assert.deepEqual(page.errors, [])
-    const event = captureEntryDescription(storedEntries(world, session.id)[0])
-    assert.equal(event.kind, 'recovered')
-    if (event.kind !== 'recovered') throw new Error('No recovery event')
-    same(event.recoveryContext, recoveryContext)
-    const slots = storedStack(world, session.id)
-    assert.equal(slots.window.length, 1)
-    same(slots.slots?.[0]?.step.recoveryContext, recoveryContext)
-    const journal = journalStack(session, page.flusher.liveStack(session)!)
-    same(journal.context, recoveryContext)
-    assert.equal(rows(world, 'entries').size, 1)
-})
+        const slots = storedStack(world, session.id)
+        assert.equal(slots.window.length, 1)
+        same(slots.slots?.[0]?.step.recoveryContext, recoveryContext)
+        const journal = journalStack(session, page.flusher.liveStack(session)!)
+        same(journal.context, recoveryContext)
+        assert.equal(rows(world, 'entries').size, oldEntries.length + 1)
+        same(storedEntries(world, session.id).slice(0, oldEntries.length), oldEntries)
+    })
 
 test('final journal cap trims optional whole descriptions and preserves last-good on essential overflow', () => {
     const storage = new MemoryStorage()

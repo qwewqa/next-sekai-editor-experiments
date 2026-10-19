@@ -3,6 +3,7 @@ import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
 import type { JournalDescriptor } from '../../../src/local/journal/format'
 import { createWorld } from '../../../src/local/testing/world'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { rows, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
@@ -66,7 +67,7 @@ const replayWith = async (
                 })
         }),
     )
-    append(page, 'edit', 'Changed note', widen(a))
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     assert.equal(page.writer.write(), true)
     const key = `nse.journal.${session.id}`
     const journal = JSON.parse(page.storage.getItem(key) ?? '') as { descriptor: JournalDescriptor }

@@ -1,5 +1,5 @@
 import { deflateRaw } from 'pako'
-import { captureEntryDescription, captureStep } from '../../history/operations'
+import { captureEntryDescription, captureStep, OperationDataError } from '../../history/operations'
 import type { LevelInfo } from '../../state/levelInfo'
 import { crc32 } from '../../zip/crc32'
 import { dosFromDate } from '../../zip/writer'
@@ -272,9 +272,18 @@ const planMedia = (
     }
 }
 
-/** An entry with its strings well-formed and its keys in the v1 order. */
+const descriptionOf = <T>(capture: () => T): T => {
+    try {
+        return capture()
+    } catch (error) {
+        if (error instanceof OperationDataError) throw new PlanError(error.message)
+        throw error
+    }
+}
+
+/** An entry with its descriptive payload preserved and its keys in wire order. */
 const entryForm = (entry: EntryForm): EntryForm => ({
-    ...captureEntryDescription(entry),
+    ...descriptionOf(() => captureEntryDescription(entry)),
     time: entry.time,
     snapshot: entry.snapshot,
     noteCount: entry.noteCount,
@@ -290,7 +299,7 @@ const entryForm = (entry: EntryForm): EntryForm => ({
                   keep: entry.stack.keep,
                   push: entry.stack.push.map((slot) => ({
                       snapshot: slot.snapshot,
-                      step: captureStep(slot.step),
+                      step: descriptionOf(() => captureStep(slot.step)),
                   })),
                   index: entry.stack.index,
               },
@@ -565,7 +574,7 @@ export const planNxsp = (
                 base: history.undoStack.base,
                 slots: history.undoStack.slots.map((slot) => ({
                     snapshot: slot.snapshot,
-                    step: captureStep(slot.step),
+                    step: descriptionOf(() => captureStep(slot.step)),
                 })),
                 index: history.undoStack.index,
             },
