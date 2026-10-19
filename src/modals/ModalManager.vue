@@ -50,12 +50,14 @@ let upOnBackdrop = false
 // A backdrop press while the content is busy, e.g. selecting rows, keeps it open.
 let keepOpen = false
 const onBackdropDown = (event: PointerEvent) => {
+    if (!event.isPrimary) return
     const dialog = event.currentTarget as HTMLElement
     downOnBackdrop = event.target === dialog
     upOnBackdrop = false
     keepOpen = downOnBackdrop && !!dialog.querySelector('[data-modal-busy]')
 }
 const onBackdropUp = (event: PointerEvent) => {
+    if (!event.isPrimary) return
     upOnBackdrop = event.target === event.currentTarget
 }
 
