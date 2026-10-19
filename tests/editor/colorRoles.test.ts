@@ -6,9 +6,9 @@
 // Transition: each colour package lists the files it still has to migrate in
 // tests/editor/colorRoles/legacy-C<n>.txt (C8 is split per History package: legacy-C8-H<n>.txt), and
 // deletes its list as its last commit. A listed file that is already clean fails the test, so stale
-// entries cannot linger.
+// entries cannot linger. Once every package has migrated, the folder is gone and no file is exempt.
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -197,7 +197,7 @@ const isAllowed = (finding: Finding) =>
 /** The legacy lists: list name to the files its package has not migrated yet. */
 const legacyLists = () =>
     new Map(
-        readdirSync(legacyDirectory)
+        (existsSync(legacyDirectory) ? readdirSync(legacyDirectory) : [])
             .filter((name) => /^legacy-C\d+(-H\d+)?\.txt$/.test(name))
             .sort()
             .map((name): [string, string[]] => [
