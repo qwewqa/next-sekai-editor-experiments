@@ -1,4 +1,4 @@
-import { computed, ref, shallowReactive, shallowRef, watch } from 'vue'
+import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
 import { freezePublished } from './freeze'
@@ -288,12 +288,19 @@ export const pushState = (
     emitHistoryAction({ kind, state, step, isDirty: true })
 }
 
+const moveRequestGeneration = shallowRef(0)
+/** Counts accepted Undo/Redo requests, before any queued slot load. */
+export const stackMoveRequestGeneration: Readonly<Ref<number>> = computed(
+    () => moveRequestGeneration.value,
+)
+
 /**
  * Undoes a step: synchronously when the slot is loaded, as callers and tests expect; otherwise
  * the move is queued while the slot loads, and further presses coalesce (§1.6.4 #6).
  */
 export const undoState = () => {
     if (!canUndo.value) return
+    moveRequestGeneration.value++
     if (pendingMove.value || !states[index.value - 1]?.state) return queue(-1)
 
     const crossed = current.value.step
@@ -304,6 +311,7 @@ export const undoState = () => {
 
 export const redoState = () => {
     if (index.value + pendingMove.value >= states.length - 1) return
+    moveRequestGeneration.value++
     if (pendingMove.value || !states[index.value + 1]?.state) return queue(1)
 
     step(1)
