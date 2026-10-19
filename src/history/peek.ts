@@ -283,6 +283,7 @@ watch(
 )
 
 let restoreGeneration = 0
+let cancelRestore: (() => void) | undefined
 
 /**
  * Restores an entry (§1.4.10.5): the snapshot's chart, offset and level info with the current
@@ -294,6 +295,7 @@ export const restoreEntry = async (
     onFailure?: (error: unknown) => void,
 ): Promise<void> => {
     const request = ++restoreGeneration
+    cancelRestore?.()
     const stack = stackGeneration()
     const fromGeneration = sourceGeneration.value
     const move = stackMoveRequestGeneration.value
@@ -304,6 +306,20 @@ export const restoreEntry = async (
     let ownState: State | undefined
     let stateExpected = false
     let actionExpected = false
+    let stopState: (() => void) | undefined
+    let stopAction: (() => void) | undefined
+
+    const dispose = () => {
+        stopState?.()
+        stopState = undefined
+        stopAction?.()
+        stopAction = undefined
+        if (cancelRestore === invalidate) cancelRestore = undefined
+    }
+    const invalidate = () => {
+        valid = false
+        dispose()
+    }
 
     const current = () =>
         valid &&
@@ -313,29 +329,36 @@ export const restoreEntry = async (
         move === stackMoveRequestGeneration.value &&
         peekRequest === generation.value
 
-    const stopState = watch(
+    stopState = watch(
         [liveState, generation, sourceGeneration, stackMoveRequestGeneration],
         ([state, nextPeek, nextSource, nextMove]) => {
             if (nextPeek !== peekRequest) {
                 if (nextPeek === ownLeave) {
                     ownLeave = undefined
                     peekRequest = nextPeek
-                } else valid = false
+                } else {
+                    invalidate()
+                    return
+                }
             }
-            if (nextSource !== fromGeneration || nextMove !== move) valid = false
+            if (nextSource !== fromGeneration || nextMove !== move) {
+                invalidate()
+                return
+            }
             if (stateExpected && state === ownState) {
                 stateExpected = false
                 content = state
-            } else if (!sameFileContent(content, state)) valid = false
+            } else if (!sameFileContent(content, state)) invalidate()
         },
         { flush: 'sync' },
     )
-    const stopAction = onHistoryAction((action) => {
+    stopAction = onHistoryAction((action) => {
         if (action.kind === 'save' || action.kind === 'export') return
         if (actionExpected && action.kind === 'restore' && action.state === ownState)
             actionExpected = false
-        else valid = false
+        else invalidate()
     })
+    cancelRestore = invalidate
 
     const leave = () => {
         ownLeave = generation.value + 1
@@ -375,8 +398,7 @@ export const restoreEntry = async (
         if (!onFailure) throw error
         onFailure(error)
     } finally {
-        stopState()
-        stopAction()
+        dispose()
     }
 }
 
