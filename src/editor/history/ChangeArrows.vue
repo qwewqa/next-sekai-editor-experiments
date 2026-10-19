@@ -25,6 +25,7 @@ import {
 } from './changes'
 import ChangeOptionsMenu from './ChangeOptionsMenu.vue'
 import PropertyChangesModal from './PropertyChangesModal.vue'
+import { peekLayout, peekWidths } from './peekFit'
 import { peekedInfo } from './selection'
 
 const delayed = ref(false)
@@ -54,8 +55,10 @@ const visibleLine = computed(() => {
     if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailableShort
     return line.value
 })
-const compact = computed(() => view.w < 320)
-const narrowArrows = computed(() => view.w < 180)
+// By fit (peekFit.ts): the options button where the eye and summary would not fit, then narrow arrows.
+const layout = computed(() => peekLayout(view.w, peekWidths.value))
+const compact = computed(() => layout.value.compact)
+const narrowArrows = computed(() => layout.value.narrowArrows)
 const options = useTemplateRef<HTMLButtonElement>('options')
 const summary = useTemplateRef<HTMLButtonElement>('summary')
 const eye = useTemplateRef<HTMLButtonElement>('eye')
@@ -96,8 +99,9 @@ watch(
     },
     { flush: 'sync' },
 )
+// A re-measured fit can flip compact while the menu is open, like a width change.
 watch(
-    () => view.w,
+    () => [view.w, compact.value],
     () => {
         if (menuOpen.value) closeMenu(true)
     },
@@ -115,7 +119,7 @@ const inspect = async (opener: HTMLElement | null) => {
         await showModal(
             PropertyChangesModal,
             { comparison, summary: line.value },
-            { size: 'large' },
+            { size: 'large', cap: '34rem' },
         )
     } finally {
         inspecting = false
@@ -149,9 +153,10 @@ const labelOf = (direction: 'up' | 'down') => {
 </script>
 
 <template>
+    <!-- Every face is a 24 px circle or pill, 4 px in from the capsule's edge; hits reach 4 px past it. -->
     <div
         v-if="isPeeking"
-        class="pointer-events-auto flex h-8 w-full max-w-96 items-center gap-2 rounded-2xl bg-modal px-1 text-xs text-fg shadow-sm"
+        class="pointer-events-auto flex h-8 w-[calc(var(--peek-w)-0.75rem)] max-w-[calc(100%-0.75rem)] items-center gap-2 rounded-full bg-modal p-1 text-xs text-fg shadow-md ring-1 ring-fg/10"
         data-peek-navigation
         :data-change-options-mode="compact || undefined"
         @pointerdown.stop
@@ -164,56 +169,47 @@ const labelOf = (direction: 'up' | 'down') => {
             <button
                 ref="eye"
                 type="button"
-                class="change-control group pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full"
+                class="change-control ghost focus-out btn-toggle relative flex size-6 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-1"
                 :aria-label="i18n.peek.showEdits"
                 :title="i18n.peek.showEdits"
                 :aria-pressed="showEdits"
                 data-show-edits
                 @click="toggleShowEdits"
             >
-                <span
-                    class="change-face pointer-events-none flex size-6 items-center justify-center rounded-full transition-colors group-active:bg-accent group-active:text-on-accent"
-                    :class="
-                        showEdits
-                            ? 'bg-accent text-on-accent group-hover:bg-accent/80'
-                            : 'group-hover:bg-header-hover'
-                    "
-                >
-                    <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon
-                        v-else
-                        class="size-4 fill-current"
-                    />
-                </span>
+                <VisibleIcon v-if="showEdits" class="size-4 fill-current" /><HiddenIcon
+                    v-else
+                    class="size-4 fill-current"
+                />
             </button>
+            <!-- The summary hugs its words, its chevron right after them. -->
             <button
                 v-if="canInspectProperties"
                 ref="summary"
                 type="button"
-                class="change-control pointer-events-auto flex h-8 min-w-0 flex-1 items-center gap-1 rounded-md px-2 transition-colors hover:bg-header-hover active:bg-accent active:text-on-accent"
+                class="change-control ghost focus-out relative mr-auto flex h-6 min-w-0 items-center gap-1 rounded-full pl-2 pr-1.5 text-left before:absolute before:-inset-1"
                 :title="line"
                 :aria-label="i18n.historyChanges.view"
                 :aria-describedby="summaryId"
                 data-property-summary
                 @click="inspect(summary)"
             >
-                <span :id="summaryId" class="min-w-0 flex-1 truncate" data-peek-change>{{
+                <span :id="summaryId" class="min-w-0 truncate" data-peek-change>{{
                     visibleLine
                 }}</span
-                ><ChevronIcon class="size-4 shrink-0" direction="right" />
+                ><ChevronIcon class="shrink-0" direction="right" centered />
             </button>
-            <span
-                v-else
-                class="pointer-events-auto flex h-8 min-w-0 flex-1 items-center px-1"
-                :title="line"
-                :aria-label="line"
-                ><span class="min-w-0 truncate" data-peek-change>{{ visibleLine }}</span></span
+            <span v-else class="mr-auto flex h-6 min-w-0 items-center px-2" :title="line"
+                ><span class="min-w-0 truncate" aria-hidden="true" data-peek-change>{{
+                    visibleLine
+                }}</span
+                ><span class="sr-only">{{ line }}</span></span
             >
         </template>
         <button
             v-else
             ref="options"
             type="button"
-            class="change-control group pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full"
+            class="change-control ghost focus-out relative flex size-6 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-1"
             :aria-label="i18n.peek.changeOptions"
             :title="i18n.peek.changeOptions"
             aria-haspopup="menu"
@@ -222,24 +218,20 @@ const labelOf = (direction: 'up' | 'down') => {
             @click="menuOpen = !menuOpen"
             @keydown.down.prevent="menuOpen = true"
         >
-            <span
-                class="change-face pointer-events-none flex size-6 items-center justify-center rounded-full transition-colors group-hover:bg-header-hover group-active:bg-accent group-active:text-on-accent"
-                ><MoreIcon class="size-4 fill-current"
-            /></span>
+            <MoreIcon class="size-4 fill-current" />
         </button>
-        <div class="flex shrink-0 gap-1" :class="{ 'ml-auto': compact }">
+        <!-- Each arrow: its chevron's circle is the face, its count a passive label in the fixed
+             slot after it, both inside the one 48 x 24 button and its 56 x 32 hit. -->
+        <div
+            class="flex shrink-0"
+            :class="[narrowArrows ? 'gap-1' : 'gap-2', { 'ml-auto': compact }]"
+        >
             <button
                 v-for="direction in directions"
                 :key="direction"
                 type="button"
-                class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center rounded-full tabular-nums transition-colors"
-                :class="[
-                    narrowArrows ? 'w-11 gap-0.5' : 'w-14 gap-1',
-                    {
-                        'hover:bg-header-hover active:bg-accent active:text-on-accent':
-                            enabled(direction),
-                    },
-                ]"
+                class="change-arrow change-control relative flex h-6 shrink-0 items-center tabular-nums outline-none before:absolute before:-inset-1"
+                :class="narrowArrows ? 'w-11 before:-inset-x-0.5' : 'w-12'"
                 :aria-disabled="!enabled(direction)"
                 :aria-label="labelOf(direction)"
                 :title="labelOf(direction)"
@@ -247,13 +239,20 @@ const labelOf = (direction: 'up' | 'down') => {
                 :data-count="reportCounts ? countOf(direction) : undefined"
                 @click="enabled(direction) && showChangeToward(direction)"
             >
-                <ChevronIcon
-                    :class="narrowArrows ? 'size-3' : 'size-4'"
-                    :direction="direction"
-                    centered
-                /><span class="w-6 text-center" aria-hidden="true">{{
-                    reportCounts ? countOf(direction) : '–'
-                }}</span>
+                <span
+                    class="change-face flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
+                    ><ChevronIcon :direction="direction" centered
+                /></span>
+                <!-- 6 px after the circle, clear of its focus ring; three digits take 4 px, to fit the slot. -->
+                <span
+                    class="change-count text-left"
+                    :class="[
+                        narrowArrows ? 'w-5' : 'w-6',
+                        reportCounts && countOf(direction) >= 100 ? 'pl-1' : 'pl-1.5',
+                    ]"
+                    aria-hidden="true"
+                    >{{ reportCounts ? countOf(direction) : '–' }}</span
+                >
             </button>
         </div>
         <ChangeOptionsMenu
@@ -270,29 +269,41 @@ const labelOf = (direction: 'up' | 'down') => {
 </template>
 
 <style scoped>
-.change-control {
-    outline-offset: -3px;
+/* The arrows' face is the chevron's circle (the inner-face pattern, with ghost tokens): hover,
+   press and focus are drawn on it, centred on the chevron. A face under 32 px rings outside. */
+@media (hover: hover) and (pointer: fine) {
+    .change-arrow[aria-disabled='false']:hover .change-face {
+        @apply bg-fg/10;
+    }
 }
-.change-control:focus-visible {
-    outline: 2px solid currentColor;
+
+.change-arrow[aria-disabled='false']:active .change-face {
+    @apply bg-ghost-press text-fg-strong;
 }
-.change-arrow[aria-disabled='true'] > * {
-    opacity: 0.45;
+
+.change-face {
+    outline: 2px solid transparent;
+    outline-offset: 1px;
 }
+
+.change-arrow:focus-visible .change-face {
+    outline-color: rgb(var(--color-fg));
+}
+
+/* Disabled dims the chevron and the count, not the face, so a focus ring stays strong. */
+.change-arrow[aria-disabled='true'] :is(.change-face > svg, .change-count) {
+    opacity: 0.4;
+}
+
 @media (forced-colors: active) {
     .change-control {
         border: 1px solid ButtonText;
-    }
-    .change-control[aria-pressed='true'] .change-face {
-        forced-color-adjust: none;
-        color: HighlightText;
-        background: Highlight;
     }
     .change-arrow[aria-disabled='true'] {
         color: GrayText;
         border-color: GrayText;
     }
-    .change-arrow[aria-disabled='true'] > * {
+    .change-arrow[aria-disabled='true'] :is(.change-face > svg, .change-count) {
         opacity: 1;
     }
 }

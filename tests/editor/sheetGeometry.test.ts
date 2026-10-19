@@ -10,16 +10,16 @@ test('the History candidate uses the same right-sheet top and bottom insets', ()
     assert.deepEqual(getSheetGeometry({ width: 520, height: 212, peekClearance: 120 }), {
         side: 'right',
         width: 322.4,
-        height: 80,
-        top: 124,
+        height: 76,
+        top: 128,
     })
 })
 
 test('a History sheet needs 116 pixels after its actual chrome', () => {
     const input = { width: 667, height: 288, peekClearance: prospectivePeekClearance(667)! }
-    assert.equal(historySheetFits(input, 61), false)
-    assert.equal(historySheetFits(input, 60), true)
-    assert.equal(historySheetFits(input, 60 + 36), false)
+    assert.equal(historySheetFits(input, 65), false)
+    assert.equal(historySheetFits(input, 64), true)
+    assert.equal(historySheetFits(input, 64 + 40), false)
 })
 
 test('short bottom sheets include their CSS minimum, and taller sheets use rem limits', () => {
@@ -35,10 +35,11 @@ test('short bottom sheets include their CSS minimum, and taller sheets use rem l
 })
 
 test('prospective peek geometry includes top padding and retains measured wrapping', () => {
-    assert.equal(prospectivePeekClearance(520), 120)
-    assert.equal(prospectivePeekClearance(667), 100)
+    assert.equal(prospectivePeekClearance(520), 112)
+    assert.equal(prospectivePeekClearance(667), 92)
     assert.equal(prospectivePeekClearance(280), undefined)
     assert.equal(prospectivePeekClearance(280, 160), 160)
     assert.equal(prospectivePeekClearance(520, 140), 140)
-    assert.equal(prospectivePeekClearance(520, 0, 20), 150)
+    assert.equal(prospectivePeekClearance(520, 0, 20), 140)
+    assert.equal(prospectivePeekClearance(520, 0, 16, 8), 92)
 })

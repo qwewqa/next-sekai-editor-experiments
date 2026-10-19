@@ -2,6 +2,7 @@ import { shallowReactive, watch } from 'vue'
 import { historySheetFits, prospectivePeekClearance } from '../sheetGeometry'
 import { peekClearance } from '../toolModals'
 import { view } from '../view'
+import { peekLayout, peekWidths } from './peekFit'
 import type { Target } from './source'
 import { hereRange, historyFilter, historyViewGeneration } from './state'
 
@@ -37,12 +38,14 @@ export const createHistoryPresentation = (filtered: () => boolean, promote: () =
         ].join('|')
     let goTo: { identity: string; view: GoToView } | undefined
     const fits = () => {
-        const clearance = prospectivePeekClearance(view.w, peekClearance.value, rem())
+        const widths = peekWidths.value
+        const inset = widths && (peekLayout(view.w, widths).inset === 'pt-2' ? 0.5 : 1.75) * rem()
+        const clearance = prospectivePeekClearance(view.w, peekClearance.value, rem(), inset)
         return (
             clearance !== undefined &&
             historySheetFits(
                 { width: view.w, height: view.h, peekClearance: clearance, rem: rem() },
-                measuredChrome ?? (48 + (filtered() ? 36 : 0)) * (rem() / 16),
+                measuredChrome ?? (48 + (filtered() ? 40 : 0)) * (rem() / 16),
             )
         )
     }

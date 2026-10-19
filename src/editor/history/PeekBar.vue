@@ -1,17 +1,18 @@
 ﻿<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { isPeeking, peekLoading, peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
-import { formatEntryTime, formatDateTimeSeconds } from '../../i18n/when'
+import { formatDateTimeSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { changeLine } from './changes'
-import { languageTag } from '../../i18n/plural'
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import ChangeArrows from './ChangeArrows.vue'
+import InfoIcon from './InfoIcon.vue'
+import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
 import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
 
@@ -42,21 +43,28 @@ watch(changeLine, (line) => {
 })
 
 const strings = computed(() => i18n.value.peek)
-const compact = computed(() => view.w < 600)
-const tiny = computed(() => view.w < 300)
+
+// --- One width per language and width class, so the arrows below never move (peekFit.ts).
+const measure = () => {
+    peekWidths.value = measurePeekWidths(document.body, settings.locale, settings.beatDisplay, {
+        back: strings.value.backToNow,
+        restore: strings.value.restore,
+    })
+}
+onMounted(() => {
+    measure()
+    document.fonts.addEventListener('loadingdone', measure)
+})
+onBeforeUnmount(() => {
+    document.fonts.removeEventListener('loadingdone', measure)
+})
+watch(() => [settings.locale, settings.beatDisplay], measure)
+const layout = computed(() => peekLayout(view.w, peekWidths.value))
 const text = computed(() => {
     const info = peekedInfo.value
-    if (!info) return ''
-    if (view.w < 480)
-        return new Intl.DateTimeFormat(languageTag(settings.locale), {
-            year: '2-digit',
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-        }).format(info.time)
-    return formatEntryTime(info.time)
+    return info ? peekText(settings.locale, info.time, layout.value.wide) : ''
 })
+
 const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)
 }
@@ -89,8 +97,6 @@ const onKeydown = (event: KeyboardEvent) => {
     event.stopPropagation()
     backToNow()
 }
-const button =
-    'h-11 shrink-0 rounded-full px-4 font-bold outline-offset-[-3px] transition-colors focus-visible:outline focus-visible:outline-2'
 </script>
 
 <template>
@@ -100,70 +106,78 @@ const button =
             class="pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-accent forced-colors:ring-[Highlight]"
             aria-hidden="true"
         />
+        <!-- Two strips of one width, the change capsule inset 6 px so their end caps are concentric. -->
         <div
             class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-2 px-2"
-            :class="view.w < 640 ? 'pt-7' : 'pt-2'"
+            :class="layout.inset"
+            :style="{ '--peek-w': `${layout.width}px` }"
             data-peek-bar
             @keydown="onKeydown"
         >
             <div
-                class="pointer-events-auto flex w-full max-w-lg items-center rounded-3xl bg-modal p-1 text-sm text-fg shadow-md"
-                :class="compact ? 'gap-1' : 'gap-2'"
+                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 rounded-full bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
                 data-peek-main
             >
+                <!-- The date at the start, its glyph concentric with the strip's end cap. -->
                 <button
                     type="button"
-                    class="flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-2 outline-offset-[-3px] transition-colors hover:bg-header-hover focus-visible:outline focus-visible:outline-2"
-                    :class="view.w < 350 ? 'flex-1 text-xs' : 'flex-1'"
+                    class="peek-hit ghost mr-auto flex h-9 min-w-0 items-center gap-2 rounded-full"
+                    :class="layout.tiny ? 'w-9 shrink-0 justify-center' : 'px-2.5'"
                     :title="peekedInfo && peekedLabel(peekedInfo)"
-                    :aria-label="i18n.history.details.title"
+                    :aria-label="interpolateRaw(i18n.history.details.named, text)"
                     data-peek-text
                     data-peek-details
                     @click="details"
                 >
-                    <svg
-                        class="size-4 shrink-0"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        aria-hidden="true"
-                    >
-                        <circle cx="8" cy="8" r="6" />
-                        <path d="M8 7v4M8 4.5v1" />
-                    </svg>
-                    <span v-if="!tiny" class="min-w-0 truncate">{{ text }}</span>
-                </button>
-                <span class="size-4 shrink-0" aria-hidden="true">
                     <span
                         v-if="peekLoading"
-                        class="block size-4 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        class="size-4 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        aria-hidden="true"
                     />
-                </span>
+                    <InfoIcon v-else class="size-4 shrink-0 fill-current" />
+                    <span v-if="!layout.tiny" class="min-w-0 truncate tabular-nums">{{
+                        text
+                    }}</span>
+                </button>
                 <button
                     type="button"
-                    class="flex min-w-11 items-center justify-center bg-button shadow-md hover:bg-header-hover active:bg-accent active:text-on-accent"
-                    :class="button"
+                    class="peek-hit btn btn-secondary flex h-9 shrink-0 items-center justify-center rounded-full"
+                    :class="layout.back === 'label' ? 'px-4' : 'w-9'"
                     :aria-label="strings.backToNow"
                     :title="strings.backToNow"
                     data-peek-back
                     @click="backToNow"
                 >
-                    <ChevronIcon v-if="compact" direction="left" /><template v-else>{{
-                        strings.backToNow
-                    }}</template>
+                    <template v-if="layout.back === 'label'">{{ strings.backToNow }}</template
+                    ><ChevronIcon v-else direction="left" />
                 </button>
                 <button
                     type="button"
-                    class="bg-accent text-on-accent"
-                    :class="button"
+                    class="peek-hit btn btn-primary flex h-9 items-center justify-center rounded-full"
+                    :class="[
+                        layout.snug ? 'px-3' : 'px-4',
+                        layout.restoreFits ? 'shrink-0' : 'min-w-0',
+                    ]"
+                    :title="layout.restoreFits ? undefined : strings.restore"
                     data-peek-restore
                     @click="restore"
                 >
-                    {{ strings.restore }}
+                    <span class="truncate">{{ strings.restore }}</span>
                 </button>
             </div>
             <ChangeArrows />
         </div>
     </template>
 </template>
+
+<style scoped>
+/* Hits reach 4 px past each face: 44 px tall, meeting their neighbours in the 8 px gaps. */
+.peek-hit {
+    position: relative;
+}
+
+.peek-hit::before {
+    content: '';
+    @apply absolute -inset-1;
+}
+</style>

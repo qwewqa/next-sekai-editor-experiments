@@ -12,6 +12,7 @@ import {
 import { i18n } from '../../i18n'
 import { holdsCharacter, menuKeyIndex } from '../../utils/menuKeys'
 import { swallowPress } from '../../utils/swallowPress'
+import CheckIcon from './CheckIcon.vue'
 
 const props = defineProps<{
     anchor: HTMLElement
@@ -105,12 +106,18 @@ onBeforeUnmount(() => {
 
 <template>
     <Teleport :to="container">
+        <!-- Under 640 px the menus' bottom sheet, over a dimmed backdrop. -->
+        <div
+            class="manager-menu-backdrop fixed inset-0 z-40 bg-black/30 sm:hidden"
+            aria-hidden="true"
+            @mousedown.prevent
+        />
         <div
             ref="menu"
             role="menu"
             :aria-label="i18n.peek.changeOptions"
             :aria-describedby="summaryId"
-            class="popup-surface fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto"
+            class="popup-surface popup-sheet fixed z-50 sm:max-w-[min(20rem,calc(100vw-1rem))]"
             :class="{ invisible: !position }"
             :style="{
                 left: `${position?.left ?? 0}px`,
@@ -121,36 +128,40 @@ onBeforeUnmount(() => {
             @keydown.stop="keydown"
             @contextmenu.prevent
         >
-            <p
-                :id="summaryId"
-                class="whitespace-pre-wrap px-3 py-2 text-sm [overflow-wrap:anywhere]"
-                data-change-options-summary
-            >
-                {{ summary }}
-            </p>
-            <button
-                type="button"
-                role="menuitemcheckbox"
-                :aria-checked="checked"
-                class="popup-item w-full"
-                @click="emit('toggle')"
-            >
-                <span
-                    aria-hidden="true"
-                    class="flex size-4 items-center justify-center rounded border border-current"
-                    ><span v-if="checked" class="size-2 bg-current"
-                /></span>
-                <span>{{ i18n.peek.showEdits }}</span>
-            </button>
-            <button
-                v-if="inspectable"
-                type="button"
-                role="menuitem"
-                class="popup-item w-full"
-                @click="emit('inspect')"
-            >
-                {{ i18n.historyChanges.view }}
-            </button>
+            <div class="popup-scroller">
+                <p
+                    :id="summaryId"
+                    class="whitespace-pre-wrap px-3 py-2 text-sm text-fg/80 [overflow-wrap:anywhere]"
+                    data-change-options-summary
+                >
+                    {{ summary }}
+                </p>
+                <div role="separator" class="popup-separator" />
+                <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    :aria-checked="checked"
+                    class="popup-item w-full"
+                    @click="emit('toggle')"
+                >
+                    <span
+                        class="flex size-4 shrink-0 items-center justify-center"
+                        aria-hidden="true"
+                        ><CheckIcon v-if="checked" class="size-4 fill-current"
+                    /></span>
+                    <span>{{ i18n.peek.showEdits }}</span>
+                </button>
+                <button
+                    v-if="inspectable"
+                    type="button"
+                    role="menuitem"
+                    class="popup-item w-full"
+                    @click="emit('inspect')"
+                >
+                    <span class="size-4 shrink-0" aria-hidden="true" />
+                    <span>{{ i18n.historyChanges.view }}</span>
+                </button>
+            </div>
         </div>
     </Teleport>
 </template>
