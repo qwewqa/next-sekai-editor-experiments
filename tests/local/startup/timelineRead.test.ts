@@ -1,10 +1,10 @@
-import { entryOperation, fallbackOf, decodeOperation } from '../../../src/history/operations'
-import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { decodeOperation, entryOperation, fallbackOf } from '../../../src/history/operations'
 import { KeyRange } from '../../../src/local/kv/types'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import { readTimeline, readTimelineIndex } from '../../../src/local/worker/timelineHandlers'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { openPage, type Page } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
@@ -23,7 +23,11 @@ const chain = async (world: World) => {
     const parent = beginIn(page, state)
     for (const label of ['One', 'Two', 'Three']) {
         state = widen(state)
-        page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(label)) }, state, true)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(label)) },
+            state,
+            true,
+        )
     }
     await page.flusher.flush({ strict: true })
     const next = await openPage(world, world.tab('next'))
@@ -31,7 +35,11 @@ const chain = async (world: World) => {
     const child = continueIn(next, opened)
     for (const label of ['Four', 'Five']) {
         state = widen(state)
-        next.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(label)) }, state, true)
+        next.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(label)) },
+            state,
+            true,
+        )
     }
     await next.flusher.flush({ strict: true })
     return { page, next, parent, child }
@@ -54,7 +62,11 @@ test('a session’s entries come newest first, then the parent’s from where it
         ]
             .map((text) => text)
             .slice(0, 6)
-            .concat([page.entries[6] ? `${page.entries[6].kind} ${fallbackOf(entryOperation(page.entries[6]))?.text}` : '']),
+            .concat([
+                page.entries[6]
+                    ? `${page.entries[6].kind} ${fallbackOf(entryOperation(page.entries[6]))?.text}`
+                    : '',
+            ]),
     )
     assert.equal(page.next, undefined)
     // The continue entry names the time of the parent's entry it continued from.
@@ -142,7 +154,15 @@ const seed = async (
                             sessionId: id,
                             seq,
                             time,
-                            ...(kindOf(id,seq) === 'edit' ? {kind:'edit',step:editStep(futureFixtureOperation(`${id}${seq}`))} : {kind:'save',operation:futureFixtureOperation(`${id}${seq}`)}),
+                            ...(kindOf(id, seq) === 'edit'
+                                ? {
+                                      kind: 'edit',
+                                      step: editStep(futureFixtureOperation(`${id}${seq}`)),
+                                  }
+                                : {
+                                      kind: 'save',
+                                      operation: futureFixtureOperation(`${id}${seq}`),
+                                  }),
                             snapshot: new Uint8Array(32),
                             noteCount: seq,
                         })

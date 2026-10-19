@@ -40,8 +40,8 @@ import {
     replay,
     ReplayError,
     storedWindow,
-    type ReplaySlot,
     type ReplayEntry,
+    type ReplaySlot,
 } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import {
@@ -266,7 +266,18 @@ export class Fixture {
                     ...captureEntryDescription(row),
                     dirty: row.dirty,
                     state: this.stateOf(toHex(row.snapshot)),
-                    ...(row.stack ? {stack: {keep: row.stack.keep, push: row.stack.push.map(slot => ({snapshot: toHex(slot.snapshot),step:slot.step})),index:row.stack.index}} : {}),
+                    ...(row.stack
+                        ? {
+                              stack: {
+                                  keep: row.stack.keep,
+                                  push: row.stack.push.map((slot) => ({
+                                      snapshot: toHex(slot.snapshot),
+                                      step: slot.step,
+                                  })),
+                                  index: row.stack.index,
+                              },
+                          }
+                        : {}),
                     ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
                     ...(row.device ? { device: row.device } : {}),
                 })),
@@ -321,8 +332,8 @@ export class Fixture {
 
     recoverContext(operation: JsonValue, recoveryContext: RecoveryContext) {
         const session = this.session
-        this.add({kind: 'recovered',operation,recoveryContext},fromHex16(this.head),{
-            stack: {keep:session.slots.length,push:[],index:session.index},
+        this.add({ kind: 'recovered', operation, recoveryContext }, fromHex16(this.head), {
+            stack: { keep: session.slots.length, push: [], index: session.index },
         })
     }
 

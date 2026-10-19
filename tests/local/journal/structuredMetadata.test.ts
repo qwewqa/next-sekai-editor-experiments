@@ -228,3 +228,66 @@ test('final journal cap trims optional whole descriptions and preserves last-goo
         head,
     )
 })
+
+test('persisted journal recovery demotes its original head in occurrence order before trimming a later redo tail', async () => {
+    const world = createWorld({ seed: 93703 })
+    const first = await openJournalPage(world, 'first-recovery')
+    const state = sampleState('tests/fixtures/generated-large.json')
+    const original = beginSession(first, state)
+    const initial = first.flusher.liveStack(original)!.at(0)!.step
+    const oldSteps = Array.from({ length: 60 }, (_, n) => editStep(operation(n + 1)))
+    for (const step of oldSteps) append(first, { kind: 'edit', step }, state)
+    for (const step of oldSteps.slice(30).reverse()) append(first, { kind: 'undo', step }, state)
+    assert.equal(first.writer.write(), true)
+    const saved = readJournal(first.storage.getItem('nse.journal.' + original.id)!, original.id)
+    assert.equal(saved.kind, 'journal')
+    if (saved.kind !== 'journal') throw new Error('Missing journal')
+    const context = saved.journal.stack.context
+    assert.equal(context.headIndex, 30)
+    same(context.head, oldSteps[29])
+    same(context.dropped, [initial, ...oldSteps.slice(0, 29), ...oldSteps.slice(30)])
+
+    const next = await openJournalPage(world, 'second-recovery')
+    let release!: () => void
+    const ready = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    const resumed = next.flusher.resumeJournalled({
+        id: 'recovered-sequence',
+        chainId: 'recovered-chain',
+        docId: 'doc',
+        lineageId: 'lineage',
+        origin: 'import',
+        startedAt: 100,
+        seq: 100,
+        chain: {},
+        state,
+        operation: recoveredOperation(60),
+        recoveryContext: context,
+        ready,
+    })
+    next.live.state = state
+    const newer = Array.from({ length: 8 }, (_, n) => editStep(operation(n + 101)))
+    try {
+        for (const step of newer) append(next, { kind: 'edit', step }, state)
+        append(next, { kind: 'undo', step: newer[7]! }, state)
+        assert.equal(next.writer.write(), true)
+        const reread = readJournal(next.storage.getItem('nse.journal.' + resumed.id)!, resumed.id)
+        assert.equal(reread.kind, 'journal')
+        if (reread.kind !== 'journal') throw new Error('Missing second journal')
+        const expected = [initial, ...oldSteps, ...newer.slice(0, 6), newer[7]!]
+        const actual = reread.journal.stack.context
+        assert.equal(reread.journal.stack.keep, 0)
+        same(actual.head, newer[6])
+        same(actual.dropped, expected.slice(4))
+        assert.equal(actual.omitted, 4)
+        assert.equal(actual.headIndex, 63)
+        assert(
+            actual.dropped.some((step) => equalJson(step as JsonValue, oldSteps[29] as JsonValue)),
+        )
+    } finally {
+        release()
+    }
+    await next.flusher.flush()
+    assert.deepEqual(next.errors, [])
+})

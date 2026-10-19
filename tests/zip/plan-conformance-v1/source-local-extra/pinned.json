@@ -1,14 +1,14 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:5312:0:1bbef44e",
-    "size": 5312,
+    "fingerprint": "zip:5451:0:0f7ef973",
+    "size": 5451,
     "entries": [
       {
         "index": 0,
         "name": "project.json",
         "method": 8,
-        "crc32": 4257760003,
-        "compressedSize": 736,
+        "crc32": 2671559493,
+        "compressedSize": 735,
         "uncompressedSize": 1486,
         "dataOffset": 55
       },
@@ -19,16 +19,16 @@
         "crc32": 325745116,
         "compressedSize": 1279,
         "uncompressedSize": 11457,
-        "dataOffset": 844
+        "dataOffset": 843
       },
       {
         "index": 2,
         "name": "history/manifest.json",
         "method": 8,
-        "crc32": 3535329532,
-        "compressedSize": 1114,
-        "uncompressedSize": 3907,
-        "dataOffset": 2187
+        "crc32": 1726286632,
+        "compressedSize": 1254,
+        "uncompressedSize": 4829,
+        "dataOffset": 2186
       },
       {
         "index": 3,
@@ -37,7 +37,7 @@
         "crc32": 2853292100,
         "compressedSize": 1197,
         "uncompressedSize": 1197,
-        "dataOffset": 3362
+        "dataOffset": 3501
       },
       {
         "index": 4,
@@ -46,7 +46,7 @@
         "crc32": 136824160,
         "compressedSize": 15,
         "uncompressedSize": 15,
-        "dataOffset": 4618
+        "dataOffset": 4757
       },
       {
         "index": 5,
@@ -55,7 +55,7 @@
         "crc32": 3245599963,
         "compressedSize": 17,
         "uncompressedSize": 17,
-        "dataOffset": 4694
+        "dataOffset": 4833
       },
       {
         "index": 6,
@@ -64,7 +64,7 @@
         "crc32": 1553704227,
         "compressedSize": 12,
         "uncompressedSize": 12,
-        "dataOffset": 4776
+        "dataOffset": 4915
       }
     ]
   }

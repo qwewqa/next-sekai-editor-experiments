@@ -1,4 +1,3 @@
-import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
@@ -10,6 +9,7 @@ import { journalsStep, type RecoveryContext } from '../../../src/local/startup/s
 import { claimSessionLock } from '../../../src/local/startup/tab'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { openPage, rows, workerCore } from '../flush/harness'
 import { append, beginSession, openJournalPage, type JournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
@@ -62,16 +62,32 @@ test('a fork’s missing stack is rebuilt over its parent as it was forked, not 
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
     const parent = beginIn(page, a)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a), true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(a),
+        true,
+    )
     await page.flusher.flush()
     const other = await openPage(world, world.tab('b'))
     const fork = continueIn(other, await readOpen(other, parent.id), { asFork: true })
-    other.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Fork edit')) }, widen(a, 2), true)
+    other.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Fork edit')) },
+        widen(a, 2),
+        true,
+    )
     await other.flusher.flush()
     const before = await readOpen(other, fork.id)
     // The parent goes on in its own tab.
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Later')) }, widen(a, 3), true)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Later still')) }, widen(a, 4), true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Later')) },
+        widen(a, 3),
+        true,
+    )
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Later still')) },
+        widen(a, 4),
+        true,
+    )
     await page.flusher.flush()
     await dropStack(world, fork.id)
     const rebuilt = await readOpen(other, fork.id)
@@ -89,14 +105,26 @@ test('a rebuilt window never starts below the stored parent’s own window', asy
     const b = widen(a)
     const parent = beginIn(page, a)
     for (let i = 1; i < 6_000; i++)
-        page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) }, i % 2 ? b : a, true)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+            i % 2 ? b : a,
+            true,
+        )
     await page.flusher.flush()
     const read = await readOpen(page, parent.id)
     const continuation = continueIn(page, read)
     // Ten undos, then an edit: the stack ends below the parent's window's top.
     for (let i = 1; i <= 10; i++)
-        page.flusher.append({kind:'undo',step:editStep(futureFixtureOperation(`Edit ${6000 - i}`))}, (5999 - i) % 2 ? b : a, true)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a, 2), true)
+        page.flusher.append(
+            { kind: 'undo', step: editStep(futureFixtureOperation(`Edit ${6000 - i}`)) },
+            (5999 - i) % 2 ? b : a,
+            true,
+        )
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(a, 2),
+        true,
+    )
     await page.flusher.flush()
     await dropStack(world, continuation.id)
     const rebuilt = await readOpen(page, continuation.id)
@@ -112,14 +140,14 @@ test('a continuation’s journal over a parent window of two blocks keeps every 
     const parent = beginSession(first, s)
     for (let i = 0; i < 300; i++) {
         s = widen(s, i)
-        append(first, {kind:'edit',step:editStep(futureFixtureOperation(`E${i}`))}, s)
+        append(first, { kind: 'edit', step: editStep(futureFixtureOperation(`E${i}`)) }, s)
     }
     await first.flusher.flush({ strict: true })
     const parentRead = await readOpen(first, parent.id)
     first.tab.kill()
     const visit = await load(world, 'visit', storage)
     const continuation = openSession(visit)
-    append(visit.page, {kind:'edit',step:editStep(futureFixtureOperation('X'))}, widen(s, 7))
+    append(visit.page, { kind: 'edit', step: editStep(futureFixtureOperation('X')) }, widen(s, 7))
     assert.equal(visit.page.writer.write(), true)
     visit.page.tab.kill()
 
@@ -145,16 +173,24 @@ test('a continuation’s journal whose parent took its own journal first is kept
     const first = await openJournalPage(world, 'first', storage)
     const a = stateOf(goldenChart())
     const parent = beginSession(first, a)
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('E1'))}, widen(a))
+    append(first, { kind: 'edit', step: editStep(futureFixtureOperation('E1')) }, widen(a))
     await first.flusher.flush({ strict: true })
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('Only journalled'))}, widen(a, 2))
+    append(
+        first,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Only journalled')) },
+        widen(a, 2),
+    )
     assert.equal(first.writer.write(), true)
     first.tab.kill()
     // Another tab continued it from the stored state (before any replay), and died unstored.
     const second = await openJournalPage(world, 'second', storage)
     const continuation = continueIn(second, await readOpen(second, parent.id))
     second.live.state = widen(a)
-    append(second, {kind:'edit',step:editStep(futureFixtureOperation('In the continuation'))}, widen(a, 5))
+    append(
+        second,
+        { kind: 'edit', step: editStep(futureFixtureOperation('In the continuation')) },
+        widen(a, 5),
+    )
     assert.equal(second.writer.write(), true)
     second.tab.kill()
 
@@ -176,7 +212,11 @@ test('a reload over its own failed journal holds the session’s lock until its 
     const session = beginSession(first, a)
     recordTab(tab, { sessionId: session.id, start: 'stored' })
     await first.flusher.flush({ strict: true })
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('Only journalled'))}, widen(a, 2))
+    append(
+        first,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Only journalled')) },
+        widen(a, 2),
+    )
     assert.equal(first.writer.write(), true)
     first.tab.kill()
     await quiet(() =>
@@ -198,7 +238,7 @@ test('a reload’s own journal it can’t load goes to Local Data', async () => 
     const first = await openJournalPage(world, 'first', storage, {}, unavailable)
     const a = stateOf(goldenChart())
     const session = beginSession(first, a, 'new')
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
+    append(first, { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a))
     assert.equal(first.writer.write(), true)
     first.tab.kill()
     const key = `nse.journal.${session.id}`
@@ -224,7 +264,7 @@ test('without Web Locks, every other journal is offered even where the page’s 
     const first = await openJournalPage(world, 'first', storage, {}, unavailable)
     const a = stateOf(goldenChart())
     const session = beginSession(first, a, 'new')
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
+    append(first, { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a))
     assert.equal(first.writer.write(), true)
     const held = holdSessionLock(first.tab.locks, session.id)
     await first.tab.run(() => held.granted)
@@ -245,7 +285,7 @@ test('with Web Locks, a journal whose lock request fails is offered all the same
     const first = await openJournalPage(world, 'first', storage, {}, unavailable)
     const a = stateOf(goldenChart())
     beginSession(first, a, 'new')
-    append(first, {kind:'edit',step:editStep(futureFixtureOperation('Edit'))}, widen(a))
+    append(first, { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a))
     assert.equal(first.writer.write(), true)
     const later = await load(world, 'later', storage, { core: unavailable })
     const context: RecoveryContext = {
@@ -305,7 +345,11 @@ test('startup never opens over a chart made while the head loads, nor reads on o
         },
         call: (method, result) => {
             if (method === 'readSnapshot' && loading.page) {
-                append(loading.page, {kind:'edit',step:editStep(futureFixtureOperation('Typed meanwhile'))}, widen(a, 7))
+                append(
+                    loading.page,
+                    { kind: 'edit', step: editStep(futureFixtureOperation('Typed meanwhile')) },
+                    widen(a, 7),
+                )
                 loading.page = undefined
             }
             return result
@@ -319,7 +363,11 @@ test('startup never opens over a chart made while the head loads, nor reads on o
     const called: string[] = []
     const later = await load(world, 'later', storage, {
         meanwhile: (page) => {
-            append(page, {kind:'edit',step:editStep(futureFixtureOperation('Typed before'))}, widen(a, 8))
+            append(
+                page,
+                { kind: 'edit', step: editStep(futureFixtureOperation('Typed before')) },
+                widen(a, 8),
+            )
         },
         call: (method, result) => {
             called.push(method)

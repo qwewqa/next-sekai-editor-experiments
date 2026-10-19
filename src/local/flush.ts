@@ -784,9 +784,10 @@ export class Flusher {
         keep = false,
     ): Promise<void> {
         const { session, seq } = reservation
-        const captured = entry && this.current === session && this.sessions.includes(session)
-            ? { ...entry, operation: captureOperation(entry.operation) }
-            : undefined
+        const captured =
+            entry && this.current === session && this.sessions.includes(session)
+                ? { ...entry, operation: captureOperation(entry.operation) }
+                : undefined
         if (session.reserved === seq) session.reserved = undefined
         if (captured) {
             const at = session.pending.findIndex((each) => each.seq > seq)

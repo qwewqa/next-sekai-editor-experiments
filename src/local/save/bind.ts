@@ -13,7 +13,13 @@ import { fromHex16 } from '../hash'
 import type { KvTx } from '../kv/types'
 import { isReadableSessionVersion } from '../records/unknownValues'
 import { clampTime, nextTime } from '../time'
-import { clearIdentityExport, storeMarks, sessionVersionReader, writableSession, type IdentityUnit } from './commit'
+import {
+    clearIdentityExport,
+    sessionVersionReader,
+    storeMarks,
+    writableSession,
+    type IdentityUnit,
+} from './commit'
 
 // The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
 // chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
@@ -242,6 +248,7 @@ export const finishOwnSave = async (
         await tx.put('sessions', {
             ...session,
             lastSeq: Math.max(lastSeq, entry.seq),
+            ...(entry.seq > lastSeq ? { updatedAt: time } : {}),
             entryCount: (typeof session.entryCount === 'number' ? session.entryCount : 0) + 1,
         })
         await writeMeta(tx, 'maxSeenTime', Math.max(time, now))
