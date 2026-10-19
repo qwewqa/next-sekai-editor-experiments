@@ -19,7 +19,7 @@ import {
     type FolderTreeRef,
 } from '../../../chart/folders'
 import { refuseWhilePeeking } from '../../../history/peek'
-import { isPeeking } from '../../../history/stack'
+import { isPeeking, stackGeneration } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import { modals, showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
@@ -29,6 +29,7 @@ import CopyIcon from '../../commands/copy/CopyIcon.vue'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
 import ResetIcon from '../../commands/reset/ResetIcon.vue'
 import { isCommandChord } from '../../controls/bindings'
+import { createAsyncEditGuard } from '../../asyncEditGuard'
 import CloseIcon from '../CloseIcon.vue'
 import OverlayScrollbar from '../OverlayScrollbar.vue'
 import { hasScrollMemory, useScrollMemory } from '../useScrollMemory'
@@ -823,8 +824,27 @@ onMounted(() => void document.fonts.ready.then(measureBar))
 const bulkHidden = computed(() => selectedIds.value.some((id) => !scope.value.isShownInAll(id)))
 
 /** Deletes the selection; keyboard focus moves to the row taking the first deleted row's place. */
+const editLifetime = new AbortController()
+onUnmounted(() => editLifetime.abort())
+
+const continueDeleteFocus = async (model: ManagerModel<T>, generation: number, focus: () => void) => {
+    const isOriginCurrent = () => model === props.model && generation === stackGeneration() && !editLifetime.signal.aborted && !isPeeking.value
+    if (!isOriginCurrent()) return
+    const guard = createAsyncEditGuard(editLifetime.signal)
+    try {
+        await nextTick()
+        if (guard.isCurrent() && isOriginCurrent()) focus()
+    } finally {
+        guard.dispose()
+    }
+}
+
 const onBulkDelete = async (keyboard = false) => {
     if (refused()) return
+    const model = props.model
+    const generation = stackGeneration()
+    const guard = createAsyncEditGuard(editLifetime.signal)
+    try {
     const ids = new Set(selectedIds.value)
     const folderIds = new Set(selectedFolderIds.value)
     if (!ids.size && !folderIds.size) return
@@ -849,7 +869,7 @@ const onBulkDelete = async (keyboard = false) => {
             confirm: () => i18n.value.modals.confirm.delete,
             destructive: true,
         }))
-    if (!confirmed || refused()) return
+    if (!confirmed || !guard.isCurrent() || model !== props.model || refused()) return
     const index = [...(list.value?.querySelectorAll<HTMLElement>('[data-row]') ?? [])].findIndex(
         (element) => {
             const key = keyOfRow(element)
@@ -858,11 +878,15 @@ const onBulkDelete = async (keyboard = false) => {
     )
     // The Delete that opened the prompt must not refocus by its row's old index.
     keyFocus = undefined
-    props.model.removeMany(ids, folderIds)
+    model.removeMany(ids, folderIds)
     stopSelecting()
     if (!keyboard) return
-    await nextTick()
-    if (!root.value?.contains(document.activeElement)) focusAfterDelete(index, '.manager-name')
+    await continueDeleteFocus(model, generation, () => {
+        if (!root.value?.contains(document.activeElement)) focusAfterDelete(index, '.manager-name')
+    })
+    } finally {
+        guard.dispose()
+    }
 }
 
 /**
@@ -1893,19 +1917,23 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
             }
             return
         }
-        case 'ungroup':
+        case 'ungroup': {
+            const model = props.model
+            const generation = stackGeneration()
             if (key.type === 'folder') folders.value.ungroup(key.id)
             if (!keyboard) return
-            await nextTick()
-            focusAfterDelete(index)
+            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
             return
-        case 'delete':
-            if (key.type === 'entry') props.model.remove(key.id)
-            else await folders.value.remove(key.id)
+        }
+        case 'delete': {
+            const model = props.model
+            const generation = stackGeneration()
+            if (key.type === 'entry') model.remove(key.id)
+            else if (!await folders.value.remove(key.id, editLifetime.signal)) return
             if (!keyboard) return
-            await nextTick()
-            focusAfterDelete(index)
+            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
             return
+        }
     }
 }
 
