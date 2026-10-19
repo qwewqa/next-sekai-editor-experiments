@@ -392,9 +392,9 @@ const expectHit = async (control: Locator, width: number, height: number) => {
     })
 }
 
-// A passive state line fits its slot, except where the fit-based capsule (the strip less 12 px, one
-// width per language) leaves it under its words: there the line truncates (the summary's words
-// truncate, Part 1 §1.4.11) and its whole text stays in its title and its accessible text.
+// A passive state line fits its slot, except (for now) where the fit-based capsule (the strip less
+// 12 px, one width per language) leaves it under its words: there the line truncates and its whole
+// text stays in its title and its accessible text.
 // 'clippedFull' is that text, for the states known to truncate at a 320 px pane.
 const expectStateLine = async (line: Locator, clippedFull?: string) => {
     if (clippedFull === undefined) {
@@ -408,7 +408,8 @@ const expectStateLine = async (line: Locator, clippedFull?: string) => {
 }
 
 // States whose short line is wider than the capsule's room at a 320 px pane (measured: fr 110 px
-// in 100, ja 83 in 70).
+// in 100, ja 83 in 70). This is a known defect, not design: the capsule should fit the line.
+// TEMPORARY: delete clippedAtPane320, the clippedFull parameter and its branch when capsule-fit merges.
 const clippedAtPane320: Record<string, string[]> = { fr: ['noChanges'], ja: ['unavailable'] }
 
 const captureContours = async (page: Page, testInfo: TestInfo, state: string) => {
@@ -758,7 +759,10 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
                 },
                 controls: controlStyles,
                 gapIsChart: !!gapTarget?.closest('.editor'),
-                edgeIsStrip: !!edgeTarget && element.contains(edgeTarget),
+                edgeIsStrip:
+                    !!edgeTarget &&
+                    element.contains(edgeTarget) &&
+                    edgeTarget.closest('button') !== null,
             }
         })
         expect(styles).toMatchObject({
@@ -799,6 +803,7 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
                 if (document.elementFromPoint(row.x + x, row.y + 16) === element) return x
             return undefined
         })
+        if (width !== 320) expect(free).toBeDefined()
         if (free !== undefined) {
             await navigation.click({ position: { x: free, y: 16 } })
             expect(
