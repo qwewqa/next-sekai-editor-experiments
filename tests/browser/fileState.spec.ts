@@ -512,7 +512,7 @@ test.describe('the label and the title', () => {
                         outline: getComputedStyle(element).outlineStyle,
                         width: getComputedStyle(element).outlineWidth,
                     })),
-                ).toEqual({ visible: true, outline: 'solid', width: '2px' })
+                ).toEqual({ visible: true, outline: 'solid', width: '4px' })
             }
             await buttons.first().focus()
             for (let index = 0; index < 4; index++) {
@@ -805,7 +805,7 @@ test.describe('the chip', () => {
             'Changes are not being stored in this browser.',
         )
         // The label takes the warning colour too.
-        await expect(button(page)).toHaveClass(/text-amber-300/)
+        await expect(button(page)).toHaveClass(/text-warning/)
         const rest = await page.evaluate(async () => {
             const { chip } =
                 (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')

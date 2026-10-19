@@ -28,7 +28,7 @@ const partClass = ({ text, role }: NamePart) =>
 <template>
     <button
         type="button"
-        class="status-chip relative flex items-center whitespace-nowrap px-1"
+        class="status-chip ghost focus-out ghost-chrome relative flex items-center whitespace-nowrap px-1"
         :class="compact ? (iconsOnly ? 'justify-center' : 'gap-1') : ''"
         :aria-label="accessibleName"
         @click="$emit('click', $event)"
@@ -77,25 +77,9 @@ const partClass = ({ text, role }: NamePart) =>
 .status-chip {
     height: var(--status-row-height);
     border-radius: 9999px;
-    transition: color 150ms;
 }
 
 .status-folder {
     flex-shrink: 1000;
-}
-
-.status-chip:active {
-    color: theme('colors.white');
-}
-
-.status-chip:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: 0 0 0 2px theme('colors.accent');
-}
-
-@media (hover: hover) {
-    .status-chip:hover {
-        color: theme('colors.white');
-    }
 }
 </style>
