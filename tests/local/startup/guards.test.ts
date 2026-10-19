@@ -244,7 +244,7 @@ test('a reload’s own journal it can’t load goes to Local Data', async () => 
     const key = `nse.journal.${session.id}`
     storage.setItem(
         key,
-        JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 2 }),
+        JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 3 }),
     )
     recordTab(tab, { sessionId: session.id, start: 'new' })
     const reload = await load(world, 'reload', storage, { tab, core: unavailable })

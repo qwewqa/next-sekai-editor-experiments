@@ -17,7 +17,7 @@ export type HistoryAction =
     /** An edit, or Restore of a History entry: both push. */
     | { kind: 'edit' | 'restore'; state: State; step: UndoableStep; isDirty: boolean }
     /**
-     * The state landed on, and the name of the step undone or redone. A coalesced move's
+     * The state landed on, and the complete step undone or redone. A coalesced move's
      * intermediate steps land on slots not loaded: their stored root stands for the state.
      */
     | ({ kind: 'undo' | 'redo'; step: UndoableStep; isDirty: boolean } & (

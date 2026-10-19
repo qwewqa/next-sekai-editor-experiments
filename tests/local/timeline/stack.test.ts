@@ -4,6 +4,7 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import { stackMismatches, storedWindow } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
+import { editStep, futureFixtureOperation, originOperation } from '../../helpers/historySteps'
 import { openPage, testId, type Page } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { replayed, storedStack, widen } from './helpers'
@@ -18,7 +19,7 @@ const begin = (page: Page, state: State) =>
         docId: testId(),
         origin: 'import',
         state,
-        label: () => 'Initialize',
+        operation: originOperation('import'),
         dirty: false,
     })
 
@@ -37,24 +38,35 @@ const assertStack = (world: World, sessionId: string) => {
     assert.deepEqual(checkStored(world.memory), [])
 }
 
+const cross = (page: Page, kind: 'undo' | 'redo', state: State | Uint8Array) => {
+    const live = page.flusher.liveStack(page.flusher.session!)!
+    const step = live.at(live.index + (kind === 'redo' ? 1 : 0))!.step
+    page.flusher.append({ kind, step }, state, true)
+}
+
 /** A seeded run of pushes, undos and redos, as the undo stack emits them. */
 const drive = (page: Page, seed: number, steps: number, [a, b]: readonly [State, State]) => {
     let random = seed
     const next = () => (random = (random * 1103515245 + 12345) % 2 ** 31) / 2 ** 31
-    let length = 1
-    let index = 0
+    const live = page.flusher.liveStack(page.flusher.session!)!
+    let length = live.end
+    let index = live.index
     for (let i = 0; i < steps; i++) {
         const roll = next()
         if (roll < 0.25 && index > 0) {
             index--
-            page.flusher.append('undo', () => 'Undo', index % 2 ? b : a, true)
+            cross(page, 'undo', index % 2 ? b : a)
         } else if (roll < 0.4 && index < length - 1) {
             index++
-            page.flusher.append('redo', () => 'Redo', index % 2 ? b : a, true)
+            cross(page, 'redo', index % 2 ? b : a)
         } else {
             index++
             length = index + 1
-            page.flusher.append('edit', () => `Edit ${i}`, index % 2 ? b : a, true)
+            page.flusher.append(
+                { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+                index % 2 ? b : a,
+                true,
+            )
         }
     }
 }
@@ -80,15 +92,18 @@ test('an 8,000-slot stack with the index at 1,000 stores slots 0–4,999', async
     const [a, b] = states()
     const session = begin(page, a)
     for (let i = 1; i < 8000; i++)
-        page.flusher.append('edit', () => `Edit ${i}`, i % 2 ? b : a, true)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+            i % 2 ? b : a,
+            true,
+        )
     await page.flusher.flush()
     assert.deepEqual(storedStack(world, session.id).window, {
         base: 3000,
         length: 5000,
         index: 7999,
     })
-    for (let i = 7998; i >= 1000; i--)
-        page.flusher.append('undo', () => 'Undo', i % 2 ? b : a, true)
+    for (let i = 7998; i >= 1000; i--) cross(page, 'undo', i % 2 ? b : a)
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assert.deepEqual(storedStack(world, session.id).window, { base: 0, length: 5000, index: 1000 })
@@ -101,16 +116,24 @@ test('a 20,000-step stack’s flush rewrites only the block it touches', async (
     const [a, b] = states()
     const session = begin(page, a)
     for (let i = 1; i < 20_000; i++)
-        page.flusher.append('edit', () => `Edit ${i}`, i % 2 ? b : a, true)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+            i % 2 ? b : a,
+            true,
+        )
     await page.flusher.flush()
     assertStack(world, session.id)
     const blocks = () => page.reports.at(-1)?.stats.rowsByStore.stackBlocks ?? 0
     for (let i = 0; i < 5; i++) {
-        page.flusher.append('edit', () => 'One more', i % 2 ? a : b, true)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation('One more')) },
+            i % 2 ? a : b,
+            true,
+        )
         await page.flusher.flush()
         assert.equal(blocks(), 1)
     }
-    page.flusher.append('undo', () => 'Undo', a, true)
+    cross(page, 'undo', a)
     await page.flusher.flush()
     assert.equal(blocks(), 0)
     assertStack(world, session.id)
@@ -121,13 +144,13 @@ test('an undo onto a slot not loaded is stored by its root, with the stack', asy
     const page = await openPage(world, world.tab('a'))
     const [a, b] = states()
     const session = begin(page, a)
-    page.flusher.append('edit', () => 'B', b, true)
-    page.flusher.append('edit', () => 'A', a, true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('B')) }, b, true)
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('A')) }, a, true)
     await page.flusher.flush()
     const [first, second] = replayed(world, session.id).slots
-    page.flusher.append('undo', () => 'A', second!.snapshot, true)
-    page.flusher.append('undo', () => 'B', a, true)
-    page.flusher.append('redo', () => 'B', second!.snapshot, true)
+    cross(page, 'undo', second!.snapshot)
+    cross(page, 'undo', a)
+    cross(page, 'redo', second!.snapshot)
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assertStack(world, session.id)

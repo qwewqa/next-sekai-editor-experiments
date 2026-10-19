@@ -163,3 +163,55 @@ test('Save marker completion advances the source time only when its sequence bec
         )
     }
 })
+
+test('Save completion from a supported older session preserves the current session and binds its actual source', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.flush()
+    const old = fixture.session.id
+    await fixture.start()
+    await fixture.flush()
+    const current = fixture.session.id
+    const currentBefore = await fixture.store.read(['sessions'], (tx) =>
+        tx.get('sessions', current),
+    )
+    const unit: IdentityUnit = {
+        docId: fixture.docId,
+        revision: { id: 'old-save', n: 1, ancestors: [] },
+        file: { name: 'old.nxsp', entry: { sessionId: old } },
+        marks: [{ sessionId: old, seq: 1 }],
+    }
+    const entry = {
+        sessionId: old,
+        seq: 2,
+        time: 2000000,
+        operation: futureFixtureOperation('older-session-save'),
+        snapshot: fixture.head,
+        noteCount: 1,
+        revisionId: 'old-save',
+        device: { id: 'test', label: 'Test' },
+    }
+    assert.equal(
+        await fixture.store.write(BIND_STORES, (tx) =>
+            finishOwnSave(tx, fixture.chainId, entry, unit, 2000000),
+        ),
+        true,
+    )
+    assert.deepEqual(
+        await fixture.store.read(['sessions'], (tx) => tx.get('sessions', current)),
+        currentBefore,
+    )
+    const source = (await fixture.store.read(['sessions'], (tx) =>
+        tx.get('sessions', old),
+    )) as Record<string, unknown>
+    const event = (await fixture.store.read(['entries'], (tx) =>
+        tx.get('entries', [old, 2]),
+    )) as Record<string, unknown>
+    assert.equal(source.updatedAt, event.time)
+    assert.equal(source.lastSeq, 2)
+    const chain = (await fixture.store.read(['chains'], (tx) =>
+        tx.get('chains', fixture.chainId),
+    )) as { head: string; file: { entry: { sessionId: string } } }
+    assert.equal(chain.head, current)
+    assert.equal(chain.file.entry.sessionId, old)
+})

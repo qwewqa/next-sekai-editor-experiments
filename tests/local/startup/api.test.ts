@@ -239,7 +239,7 @@ test('Reopen of a session whose journal a newer build wrote opens nothing, and s
     const key = `nse.journal.${session.id}`
     storage.setItem(
         key,
-        JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 2 }),
+        JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 3 }),
     )
     setSessionContext(loaded.deps, loaded.recovery)
     leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))

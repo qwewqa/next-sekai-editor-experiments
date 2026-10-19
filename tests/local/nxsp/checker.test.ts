@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { inflateRawSync } from 'node:zlib'
+import { equalJson } from '../../../src/history/operations'
 import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
+import { readNxsp } from '../../../src/local/nxsp/read'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { jsonOf, setJson, unzip, zipItems, type Item } from './craft'
 
@@ -420,3 +422,66 @@ assert Edges.visits < repeat * 6, Edges.visits
     )
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`)
 })
+
+test(
+    'both checker modes accept opaque operation variants while structural carriers stay strict',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-opaque-'))
+        const base = {
+            id: 'nse.note.add',
+            version: 1,
+            data: { created: 1 },
+            fallback: { locale: 'fr', text: 'Description future' },
+        }
+        const variants = [
+            {
+                ...base,
+                id: 'future.tool',
+                data: { ['__proto__']: { kept: true }, newEnum: 'future' },
+            },
+            { ...base, version: 2 },
+            { ...base, futureEnvelope: { nested: [1, 'kept'] } },
+            { ...base, data: { created: 1, newField: 'future' } },
+            { ...base, data: { created: 'future-enum' } },
+            {
+                malformedKnown: { still: 'bounded JSON' },
+                fallback: { text: 'Readable fallback', locale: 'ja' },
+            },
+            null,
+        ]
+        try {
+            for (const [index, operation] of variants.entries()) {
+                const bytes = await craft((items) => {
+                    const manifest = jsonOf(items, 'history/manifest.json')
+                    manifest.entries[1].step.operation = operation
+                    setJson(items, 'history/manifest.json', manifest)
+                })
+                const file = join(dir, `opaque-${index}.nxsp`)
+                writeFileSync(file, bytes)
+                const strict = check(file)
+                assert.equal(strict.status, 0, strict.output)
+                const reader = check('--reader', file)
+                assert.equal(reader.status, 0, reader.output)
+                assert.match(reader.output, /"open": "full"/)
+                const opened = await readNxsp(new Blob([bytes]))
+                assert(opened.kind === 'nxsp' && opened.history)
+                const entry = opened.history.entries[1]!
+                assert(entry.kind === 'edit')
+                assert(equalJson(entry.step.operation, operation))
+            }
+            const bad = await craft((items) => {
+                const manifest = jsonOf(items, 'history/manifest.json')
+                manifest.entries[1].step.kind = 'future-mechanics'
+                setJson(items, 'history/manifest.json', manifest)
+            })
+            const file = join(dir, 'bad-carrier.nxsp')
+            writeFileSync(file, bad)
+            assert.notEqual(check(file).status, 0)
+            const reader = check('--reader', file)
+            assert.match(reader.output, /"open": "partial"/)
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)

@@ -165,7 +165,6 @@ export const replay = (
                 if (
                     !Number.isSafeInteger(stack.keep) ||
                     stack.keep < 0 ||
-                    stack.keep > slots.length ||
                     !Number.isSafeInteger(stack.index)
                 )
                     fail('invalid stack replacement')

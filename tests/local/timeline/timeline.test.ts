@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createRecoveryContext, type EntryDescription } from '../../../src/history/operations'
 import {
     BLOCK_SLOTS,
     blockRow,
@@ -14,6 +15,7 @@ import {
     type ModelSlot,
     type ReplayEntry,
 } from '../../../src/local/timeline'
+import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 
 // The stack's pure rules (§1.3.9, §1.6.4 #6): the stored window, replay, and which blocks a flush
 // rewrites.
@@ -25,13 +27,30 @@ const hash = (n: number) => {
 }
 
 let seq = 0
-const entry = (kind: string, n: number, extra: Partial<ReplayEntry> = {}): ReplayEntry => ({
-    seq: ++seq,
-    kind,
-    label: `${kind} ${n}`,
-    snapshot: hash(n),
-    ...extra,
-})
+const step = (n: number) => editStep(futureFixtureOperation(`edit ${n}`))
+const description = (kind: EntryDescription['kind'], n: number): EntryDescription => {
+    if (kind === 'edit' || kind === 'undo' || kind === 'redo') return { kind, step: step(n) }
+    if (kind === 'restore')
+        return {
+            kind,
+            step: { kind: 'restore', operation: futureFixtureOperation(`restore ${n}`) },
+        }
+    const operation = futureFixtureOperation(`${kind} ${n}`)
+    if (kind === 'recovered')
+        return { kind, operation, recoveryContext: createRecoveryContext(step(n), [], 0) }
+    return { kind, operation }
+}
+const entry = (
+    kind: EntryDescription['kind'],
+    n: number,
+    extra: Partial<ReplayEntry> = {},
+): ReplayEntry =>
+    ({
+        seq: ++seq,
+        ...description(kind, n),
+        snapshot: hash(n),
+        ...extra,
+    }) as ReplayEntry
 
 test('the stored window is the newest 5,000 slots, or the 5,000 that keep the index', () => {
     assert.deepEqual(storedWindow(10, 9), { base: 0, length: 10, index: 9 })
@@ -62,9 +81,9 @@ test('replay follows §1.3.9’s example: the stack after a save is the one the 
         entry('init', 1),
         entry('edit', 2),
         entry('edit', 3),
-        entry('undo', 2),
+        entry('undo', 2, { step: step(3) }),
         entry('edit', 4),
-        entry('undo', 2),
+        entry('undo', 2, { step: step(4) }),
         entry('save', 2),
     ]
     const stack = replay(entries)
@@ -74,8 +93,8 @@ test('replay follows §1.3.9’s example: the stack after a save is the one the 
     )
     assert.equal(stack.index, 1)
     assert.deepEqual(
-        stack.slots.map((slot) => slot.label),
-        ['init 1', 'edit 2', 'edit 4'],
+        stack.slots.map((slot) => slot.step),
+        [initialStep(futureFixtureOperation('init 1')), step(2), step(4)],
     )
 })
 
@@ -86,9 +105,9 @@ test('replay takes a recovered entry’s stack as it is, and continues from an i
         entry('edit', 3),
         entry('edit', 4),
         entry('recovered', 9, {
-            stack: { keep: 2, push: [{ snapshot: hash(9), label: 'Changed BPM' }], index: 2 },
+            stack: { keep: 2, push: [{ snapshot: hash(9), step: step(9) }], index: 2 },
         }),
-        entry('undo', 2),
+        entry('undo', 2, { step: step(9) }),
     ]
     const stack = replay(entries)
     assert.deepEqual(
@@ -107,7 +126,7 @@ test('replay takes a recovered entry’s stack as it is, and continues from an i
     const longer = replay([
         entry('init', 1),
         entry('recovered', 5, {
-            stack: { keep: 10, push: [{ snapshot: hash(5), label: 'x' }], index: 1 },
+            stack: { keep: 10, push: [{ snapshot: hash(5), step:step(5) }], index: 1 },
         }),
     ])
     assert.equal(longer.slots.length, 2)
@@ -115,7 +134,7 @@ test('replay takes a recovered entry’s stack as it is, and continues from an i
     assert.equal(
         replay([
             entry('recovered', 7, {
-                stack: { keep: 0, push: [{ snapshot: hash(7), label: 'x' }], index: 0 },
+                stack: { keep: 0, push: [{ snapshot: hash(7), step: step(7) }], index: 0 },
             }),
         ]).slots.length,
         1,
@@ -133,7 +152,14 @@ test('replay refuses entries that don’t describe a stack', () => {
     assert.throws(() => replay([entry('init', 1), entry('edit', 2), entry('undo', 2)]), ReplayError)
     assert.throws(() => replay([entry('init', 1), entry('redo', 1)]), ReplayError)
     assert.throws(() => replay([entry('init', 1), entry('save', 3)]), ReplayError)
-    assert.throws(() => replay([entry('init', 1), entry('future', 2)]), ReplayError)
+    assert.throws(
+        () =>
+            replay([
+                entry('init', 1),
+                { ...entry('edit', 2), kind: 'future' } as unknown as ReplayEntry,
+            ]),
+        ReplayError,
+    )
     assert.throws(
         () => replay([entry('recovered', 1, { stack: { keep: 0, push: [], index: 0 } })]),
         ReplayError,
@@ -149,7 +175,7 @@ test('chain flags at creation follow the origin', () => {
 })
 
 test('stored slots read back from blocks, and a mismatch is named', () => {
-    const slots = Array.from({ length: 600 }, (_, i) => ({ snapshot: hash(i), label: `s${i}` }))
+    const slots = Array.from({ length: 600 }, (_, i) => ({ snapshot: hash(i), step: step(i) }))
     const window = storedWindow(600, 599)
     const blocks = new Map(
         [0, 1, 2].map((block) => [
@@ -177,7 +203,10 @@ const model = () => {
     const rows = new Map<number, { first: number; slots: string[] }>()
     let writes: number[] = []
     const run = (entries: E[]) => {
-        const replayed = stack.replay(entries, (e) => ({ entry: e, label: `${e.kind} ${e.n}` }))
+        const replayed = stack.replay(entries, (e) => ({
+            entry: e,
+            step: e.kind === 'init' ? initialStep(futureFixtureOperation('model-init')) : step(e.n),
+        }))
         assert.ok(replayed)
         const plan = stack.plan(replayed.stack, replayed.changedFrom)
         writes = plan.writes.map((write) => write.block)
@@ -199,11 +228,21 @@ const model = () => {
                 block > Math.floor((plan.window.base + plan.window.length - 1) / 256)
             )
                 rows.delete(block)
-        stack.commit(plan, (e) => ({ hash: hash(e.n), label: `${e.kind} ${e.n}` }), {
-            written: true,
-            durable: true,
-            at: { db: 'db', epoch: 0 },
-        })
+        stack.commit(
+            plan,
+            (e) => ({
+                hash: hash(e.n),
+                step:
+                    e.kind === 'init'
+                        ? initialStep(futureFixtureOperation('model-init'))
+                        : step(e.n),
+            }),
+            {
+                written: true,
+                durable: true,
+                at: { db: 'db', epoch: 0 },
+            },
+        )
         return plan
     }
     return { stack, rows, run, writes: () => writes }

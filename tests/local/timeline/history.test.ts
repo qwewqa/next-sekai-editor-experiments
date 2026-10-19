@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { onHistoryAction, type HistoryAction } from '../../../src/history/actions'
+import { captureName, equalJson } from '../../../src/history/operations'
 import {
     canUndo,
     isDirty,
@@ -17,6 +18,13 @@ import {
     undoState,
 } from '../../../src/history/stack'
 import type { State } from '../../../src/state'
+import {
+    editStep,
+    futureFixtureOperation,
+    initialLife,
+    initialStep,
+    nativeOperation,
+} from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // The undo stack's lazy slots and queue rules (§1.6.4 #6): synchronous when the slot is loaded,
@@ -54,7 +62,7 @@ const restore = (count: number, at: number) => {
     restoreStates(
         Array.from({ length: count }, (_, i) => ({
             snapshot: hash(i),
-            label: `Step ${i}`,
+            step: editStep(futureFixtureOperation(`Step ${i}`)),
             isDirty: i > 2,
         })),
         at,
@@ -75,7 +83,7 @@ test('a move onto a loaded slot is synchronous; onto a restored one it waits for
     await reads.finish() // the prefetched neighbour
     const { seen, stop } = watchActions()
     // Slot 8 was prefetched: Undo is synchronous.
-    assert.equal(undoState()?.(), 'Step 9')
+    assert(equalJson(undoState()!, editStep(futureFixtureOperation('Step 9'))))
     assert.equal(liveState.value.initialLife, 108)
     // Three presses over slots not loaded: queued and coalesced; the slots passed over aren't read.
     assert.equal(loadedSlotsForTests()[7], false)
@@ -120,7 +128,10 @@ test('an edit cancels pending moves, so it applies to what is on screen', async 
     undoState()
     const { seen, stop } = watchActions()
     // The edit is built from the state on screen, slot 8.
-    pushState(() => 'Edit', { ...liveState.value, initialLife: 999 })
+    pushState(initialLife(liveState.value.initialLife, 999), {
+        ...liveState.value,
+        initialLife: 999,
+    })
     await reads.finish()
     await reads.finish()
     assert.equal(liveState.value.initialLife, 999)
@@ -193,15 +204,36 @@ test('a slot keeps isDirty while unloaded, for the leave prompt', async () => {
 })
 
 test('a file event is an entry on the current state that leaves the stack alone', () => {
-    resetStates({ isDirty: false, name: () => 'Initialize', state: base })
-    pushState(() => 'B', states[1]!)
+    resetStates({ isDirty: false, step: initialStep(), state: base })
+    pushState(initialLife(base.initialLife, states[1]!.initialLife), states[1]!)
     const { seen, stop } = watchActions()
-    markFileEvent('export', () => 'Exported coconut.nsld')
+    markFileEvent(
+        'export',
+        nativeOperation(
+            {
+                id: 'nse.file.export',
+                data: { file: captureName('coconut.nsld'), delivery: 'file' },
+            },
+            'Exported coconut.nsld',
+        ),
+    )
     stop()
     assert.equal(seen.length, 1)
     assert.equal(seen[0]?.kind, 'export')
     assert.equal(seen[0]?.state, states[1])
-    assert.equal(seen[0]?.name(), 'Exported coconut.nsld')
+    assert(seen[0]?.kind === 'export')
+    assert(
+        equalJson(
+            seen[0].operation,
+            nativeOperation(
+                {
+                    id: 'nse.file.export',
+                    data: { file: captureName('coconut.nsld'), delivery: 'file' },
+                },
+                'Exported coconut.nsld',
+            ),
+        ),
+    )
     assert.equal(liveState.value, states[1])
     assert.ok(canUndo.value)
 })

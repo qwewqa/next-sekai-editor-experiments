@@ -140,7 +140,7 @@ test('a reload whose own journal a newer build wrote continues its session in a 
     const storage = new MemoryStorage()
     const { tab, session } = await journalledOnly(world, storage)
     const key = `nse.journal.${session.id}`
-    const newer = JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 2 })
+    const newer = JSON.stringify({ ...JSON.parse(storage.getItem(key)!), journalVersion: 3 })
     storage.setItem(key, newer)
 
     const reload = await load(world, 'reload', storage, { tab })
