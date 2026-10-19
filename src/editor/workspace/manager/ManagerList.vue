@@ -128,6 +128,7 @@ watch(
         if (!request || !root.value || !list.value || !disclosure.value) return
         let current = true
         cleanup(() => { current = false })
+        const isCurrent = () => current && managerDisclosureRequest.value === request
         if (!disclosureDestination(request)) {
             if (ownedDisclosureRequest === request) clearManagerDisclosure(request)
             return
@@ -137,7 +138,7 @@ watch(
         revealOnMeasure = false
         disclosure.value.open = true
         await nextTick()
-        if (!current || managerDisclosureRequest.value !== request) return
+        if (!isCurrent()) return
         if (!disclosureDestination(request) || !disclosureSummary.value?.isConnected) {
             clearManagerDisclosure(request)
             return
@@ -468,9 +469,10 @@ watch(
 // and on opening unless the list remembers where it was.
 const revealTarget = async () => {
     const generation = revealGeneration
-    if (requestedDisclosure.value) return
+    const hasDisclosureRequest = () => !!requestedDisclosure.value
+    if (hasDisclosureRequest()) return
     await nextTick()
-    if (generation !== revealGeneration || requestedDisclosure.value) return
+    if (generation !== revealGeneration || hasDisclosureRequest()) return
     const id = focused.value
     if (id !== undefined) reveal({ type: 'entry', id })
 }
