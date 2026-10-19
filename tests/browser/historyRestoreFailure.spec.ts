@@ -18,8 +18,10 @@ test.beforeEach(async ({ page }) => {
         const selection = await appImport<typeof import('../../src/editor/history/selection')>(
             '/src/editor/history/selection.ts',
         )
+        const { resetStates } =
+            await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
         const live = { ...history.liveState.value, initialLife: 1000 }
-        history.resetStates({ isDirty: false, state: live, step: historySteps.initialStep() })
+        resetStates({ isDirty: false, state: live, step: historySteps.initialStep() })
         selection.damagedEntries.value = new Set()
         selection.peekedInfo.value = undefined
         peek.setPeekSource({
