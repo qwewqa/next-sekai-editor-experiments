@@ -1159,7 +1159,7 @@ test('New Folder adds and names a folder at the end', async ({ page }) => {
     await expect(input).toBeFocused()
     await expect(input).toHaveValue('#1')
     await input.press('Escape')
-    await expect(page.locator('.notification')).toHaveText('Added #1 folder')
+    await expect(page.locator('.notification')).toHaveText('Added group folder "#1"')
     expect(await tree(page)).toBe('Default Lead [#1:]')
     // Numbered like new groups and stages.
     await panel(page).getByRole('button', { name: 'New Folder', exact: true }).click()
@@ -1384,6 +1384,14 @@ test('the current row keeps a mark in high contrast', async ({ page }) => {
     expect(await allBar()).toBe(text)
 })
 
+/** Whether a touch at this point lands on this control's row, uncovered and unmoved. */
+const hits = (locator: Locator, point: { x: number; y: number }) =>
+    locator.evaluate(
+        (element, { x, y }) =>
+            !!element.closest('.manager-row')?.contains(document.elementFromPoint(x, y)),
+        point,
+    )
+
 test.describe('touch', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
@@ -1439,8 +1447,12 @@ test.describe('touch', () => {
 
     test('double taps on a chevron or across controls never rename', async ({ page }) => {
         await seedGroups(page, [['Default'], ['Lead', 'Verse'], ['Outro']])
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
             window.editorTest.view.groupId = 1002 as never
+            // The list reveals the new target after it renders.
+            await new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            )
         })
         const client = await page.context().newCDPSession(page)
         // Two quick taps, the second where the first was or on another control.
@@ -1450,7 +1462,9 @@ test.describe('touch', () => {
                 const box = (await locator.boundingBox())!
                 points.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 })
             }
-            for (const point of points) {
+            for (const [i, point] of points.entries()) {
+                // Each tap lands on its control: nothing moved or covers it.
+                expect(await hits([first, second][i]!, point)).toBe(true)
                 await client.send('Input.dispatchTouchEvent', {
                     type: 'touchStart',
                     touchPoints: [point],
@@ -1464,6 +1478,11 @@ test.describe('touch', () => {
         }
         const rename = panel(page).locator('.manager-rename')
         const verse = folderRow(page, 'Verse')
+        // Revealing Lead, the target, scrolls the list; collapsing Verse would then
+        // shorten it and move the rows under the second tap.
+        await panel(page)
+            .locator('.manager-entries')
+            .evaluate((list) => list.scrollTo({ top: 0, behavior: 'instant' }))
         await doubleTap(verse.locator('.manager-chevron'))
         await expect(verse.locator('.manager-name')).toHaveAttribute('aria-expanded', 'true')
         await expect(rename).toHaveCount(0)
@@ -1568,8 +1587,12 @@ test.describe('touch', () => {
         await seedGroups(page, [['Default'], ['Lead', 'Verse'], ['Outro']])
         const client = await page.context().newCDPSession(page)
         for (const row of [folderRow(page, 'Verse'), entryRow(page, 'Outro')]) {
-            const box = (await row.locator('.manager-name').boundingBox())!
+            const name = row.locator('.manager-name')
+            // Outro starts under the floating Add Group bar on a phone.
+            await name.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+            const box = (await name.boundingBox())!
             const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+            expect(await hits(name, point)).toBe(true)
             await client.send('Input.dispatchTouchEvent', {
                 type: 'touchStart',
                 touchPoints: [point],
@@ -1588,7 +1611,7 @@ test.describe('touch', () => {
 })
 
 test('stages get folders too when dynamic stages are on', async ({ page }) => {
-    await seedGroups(page, [['Default']])
+    await seedGroups(page, [['Default'], ['Other']])
     await page.evaluate(() => {
         window.editorTest.settings.showStages = true
     })
