@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { GroupId, GroupObject } from '../../../../../chart/groups'
+import type { GroupId } from '../../../../../chart/groups'
 import { pushState, state } from '../../../../../history'
 import { groups } from '../../../../../history/groups'
 import { i18n } from '../../../../../i18n'
 import NameField from '../../../../../modals/form/NameField.vue'
 import OptionalNumberField from '../../../../../modals/form/OptionalNumberField.vue'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
-import { groupEditLabel } from '../../../../headerLabels'
+import type { GroupEditKey } from '../../../../headerLabelText'
+import { groupEditOperation } from '../../../../headerLabels'
 import { notify } from '../../../../notification'
 import { normalizeName } from '../../../../workspace/manager/model'
 
@@ -15,7 +16,7 @@ const props = defineProps<{
     groupId: GroupId
 }>()
 
-const createModel = <K extends keyof GroupObject>(key: K) =>
+const createModel = <K extends GroupEditKey>(key: K) =>
     computed({
         get: () => {
             const object = groups.value.get(props.groupId)
@@ -27,18 +28,18 @@ const createModel = <K extends keyof GroupObject>(key: K) =>
             const object = groups.value.get(props.groupId)
             if (!object) throw new Error('Unexpected missing group')
 
-            const label = groupEditLabel(object, key, value)
+            const operation = groupEditOperation(props.groupId, object, key, value)
             const newObject = { ...object, [key]: value }
 
             const newGroups = new Map(groups.value)
             newGroups.set(props.groupId, newObject)
 
-            pushState(label, {
+            pushState(operation, {
                 ...state.value,
                 groups: newGroups,
             })
 
-            notify(label)
+            notify(() => operation.fallback.text)
         },
     })
 

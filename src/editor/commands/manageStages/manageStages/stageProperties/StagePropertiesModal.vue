@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { StageId, StageObject, Stages } from '../../../../../chart/stages'
+import type { StageId, Stages } from '../../../../../chart/stages'
 import { pushState, state } from '../../../../../history'
 import { stages } from '../../../../../history/stages'
 import { i18n } from '../../../../../i18n'
@@ -9,7 +9,8 @@ import IsFromStartField from '../../../../../modals/form/IsFromStartField.vue'
 import IsUntilEndField from '../../../../../modals/form/IsUntilEndField.vue'
 import NameField from '../../../../../modals/form/NameField.vue'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
-import { stageEditLabel } from '../../../../headerLabels'
+import type { StageEditKey } from '../../../../headerLabelText'
+import { stageEditOperation } from '../../../../headerLabels'
 import { notify } from '../../../../notification'
 import { normalizeName } from '../../../../workspace/manager/model'
 
@@ -17,7 +18,7 @@ const props = defineProps<{
     stageId: StageId
 }>()
 
-const createModel = <K extends keyof StageObject>(key: K) =>
+const createModel = <K extends StageEditKey>(key: K) =>
     computed({
         get: () => {
             const object = stages.value.get(props.stageId)
@@ -29,18 +30,18 @@ const createModel = <K extends keyof StageObject>(key: K) =>
             const object = stages.value.get(props.stageId)
             if (!object) throw new Error('Unexpected missing stage')
 
-            const label = stageEditLabel(object, key, value)
+            const operation = stageEditOperation(props.stageId, object, key, value)
             const newObject = { ...object, [key]: value }
 
             const newStages: Stages = new Map(stages.value)
             newStages.set(props.stageId, newObject)
 
-            pushState(label, {
+            pushState(operation, {
                 ...state.value,
                 stages: newStages,
             })
 
-            notify(label)
+            notify(() => operation.fallback.text)
         },
     })
 
