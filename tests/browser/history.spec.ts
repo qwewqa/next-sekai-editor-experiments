@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
 import { confirmWhenReady } from './confirmWhenReady'
-import { installEditorFixture, waitForStartup } from './editorFixture'
+import { closePage, installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
 // History across loads (Part 1 §1.3.8, §1.8, Step 4's spec migration): today's auto save is
@@ -318,7 +318,7 @@ test('closing before the flush keeps colored notes, connectors and chart metadat
     expect(beforeClose.purple).toBeGreaterThan(100)
     page.on('dialog', (dialog) => void dialog.accept())
     const context = page.context()
-    await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
+    await closePage(page, { runBeforeUnload: true })
     const reopened = await context.newPage()
     await reopened.goto('/')
     await opened(reopened)
@@ -380,7 +380,7 @@ test('a closed tab keeps the default guide color, without adding it to exported 
     })
     page.on('dialog', (dialog) => void dialog.accept())
     const context = page.context()
-    await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
+    await closePage(page, { runBeforeUnload: true })
     const reopened = await context.newPage()
     await reopened.goto('/')
     await opened(reopened)
@@ -495,7 +495,7 @@ for (const { label, crash } of [
             )
         })
         page.on('dialog', (dialog) => void dialog.accept())
-        await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload: true })])
+        await closePage(page, { runBeforeUnload: true })
 
         // A new tab continues it, and the user goes on there.
         const other = await context.newPage()
@@ -531,7 +531,7 @@ for (const { label, crash } of [
         // Without handlers, only the flush stores it: about 1 s after the edit.
         if (crash) await other.waitForTimeout(2500)
         other.on('dialog', (dialog) => void dialog.accept())
-        await Promise.all([other.waitForEvent('close'), other.close({ runBeforeUnload: !crash })])
+        await closePage(other, { runBeforeUnload: !crash })
 
         const reopened = await context.newPage()
         await reopened.goto('/')

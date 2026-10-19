@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // The support gate, the startup gate and safe mode in a real browser (Part 1 §1.6.10, §1.4.2).
@@ -358,11 +359,7 @@ test.describe('safe mode', () => {
         await dialog.getByRole('button', { name: 'Cancel' }).click()
         await expect(page).toHaveURL(/\?safe$/)
         await leave(page).click()
-        await page.waitForTimeout(400)
-        await page
-            .getByRole('dialog', { name: 'Changes Not Stored' })
-            .getByRole('button', { name: 'Leave Anyway' })
-            .click()
+        await confirmWhenReady(dialog.getByRole('button', { name: 'Leave Anyway' }), dialog)
         await expect(page).toHaveURL(/\/$/)
     })
 

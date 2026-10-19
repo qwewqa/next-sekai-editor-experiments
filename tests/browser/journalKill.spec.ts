@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { StorageStatus } from '../../src/local/worker/core'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { closePage, installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // The journal kill tests (Part 1 §1.6.4 #7, Step 3b's exit): edits that only the journal holds
 // (flushes held, as a kill leaves them), then the tab killed, then a new visit whose
@@ -250,7 +250,7 @@ const headerIds = (page: Page, root: string) =>
     }, root)
 
 const killByClose = async (page: Page) => {
-    await page.close()
+    await closePage(page, { runBeforeUnload: false })
 }
 
 /** Chromium's mobile kill: the journal written on hidden, then the renderer gone. */

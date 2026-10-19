@@ -1,4 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
+import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
 // Step 4's UI (Part 1 §1.4.3, §1.3.4, §1.4.1, §1.4.9, §1.4.14): the load notices in the start-up
@@ -123,7 +125,7 @@ test.describe('load notices in the start-up pill', () => {
         await edit(page, 990)
         await bind(page, 'coconut.nxsp')
         await settled(page)
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
         await expect(pill(next)).toContainText('Next SEKAI Editor')
@@ -149,7 +151,7 @@ test.describe('load notices in the start-up pill', () => {
             },
             { stored: JSON.stringify(legacyColors.autoSave), prefix },
         )
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
         await expect(pill(next)).toContainText(/Continued ".+" from auto save\./)
@@ -160,7 +162,7 @@ test.describe('load notices in the start-up pill', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
         await expect(pill(next)).toContainText(
@@ -373,7 +375,7 @@ test.describe('the status bar label', () => {
         await edit(page, 990)
         await bind(page, 'coconut.nxsp')
         await settled(page)
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
         // The displayed name is the file's stem, so the file name stands alone.
@@ -508,7 +510,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
         expect(await lifeOf(next)).toBe(990)
@@ -547,8 +549,10 @@ test.describe('the not-stored prompt', () => {
         await going
         expect(await lifeOf(page)).toBe(990)
         const leaving = run(page, 'reset')
-        await page.waitForTimeout(400)
-        await prompt(page).getByRole('button', { name: 'Leave Anyway' }).click()
+        await confirmWhenReady(
+            prompt(page).getByRole('button', { name: 'Leave Anyway' }),
+            prompt(page),
+        )
         await leaving
         await expect.poll(() => lifeOf(page)).toBe(1000)
         // Nothing was stored, so the notice is plain.
@@ -572,9 +576,8 @@ test.describe('the not-stored prompt', () => {
         await visit(page)
         await edit(page, 990)
         const going = run(page, 'reset')
-        await page.waitForTimeout(400)
         const download = page.waitForEvent('download')
-        await prompt(page).getByRole('button', { name: 'Save' }).click()
+        await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
         // An unbound session's Save asks for its file first (§1.4.7).
         const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
         await save.getByRole('button', { name: 'Save', exact: true }).click()
@@ -685,7 +688,7 @@ test.describe('Settings › Local Data', () => {
             await visit(page)
             await edit(page, 990)
             await hide(page)
-            await page.close({ runBeforeUnload: false })
+            await closePage(page, { runBeforeUnload: false })
             const later = await context.newPage()
             await visit(later)
             return later
@@ -819,11 +822,10 @@ test.describe('Settings › Local Data', () => {
             await dialog.getByRole('button', { name: 'Cancel' }).click()
             await expect(autoSave).toHaveCount(1)
             await autoSave.getByRole('button', { name: 'Discard…' }).click()
-            await later.waitForTimeout(400)
-            await later
-                .getByRole('dialog', { name: 'Discard' })
-                .getByRole('button', { name: 'Discard', exact: true })
-                .click()
+            await confirmWhenReady(
+                dialog.getByRole('button', { name: 'Discard', exact: true }),
+                dialog,
+            )
             await expect(later.locator('[data-recovery-row="autoSave"]')).toHaveCount(0)
             expect(
                 await later.evaluate(() =>

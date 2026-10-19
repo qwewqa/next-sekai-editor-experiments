@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { damagedFile } from '../local/open/files'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 import {
     chainOf,
     edit,
@@ -113,12 +113,18 @@ test('a kill right after the unlink, with a pending journal, comes back unlinked
         Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
         document.dispatchEvent(new Event('visibilitychange'))
     })
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
 
     const next = await context.newPage()
     await next.goto('/')
     await waitForStartup(next)
-    const { chains } = await rows(next, ['chains'])
+    const { chains, entries } = await rows(next, ['chains', 'entries'])
+    // The journal was replayed: a load that skipped it would leave the chain as it was.
+    expect(
+        entries!.some(
+            (row) => row.value.sessionId === unlinked.head && row.value.kind === 'recovered',
+        ),
+    ).toBe(true)
     const chain = chains!.map((row) => row.value).find((row) => row.chainId === unlinked.chainId)!
     expect(chain.docId).toBe(unlinked.docId)
     expect(chain.file).toBeUndefined()

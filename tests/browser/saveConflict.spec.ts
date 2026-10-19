@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 import {
     chainOf,
     edit,
@@ -210,7 +210,7 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
         localStorage.removeItem('nse.test.savePause')
         localStorage.removeItem(`sonolus-next-sekai-editor.saving.${chainId}`)
     }, String(chainId))
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
 
     const next = await context.newPage()
     await next.goto('/')

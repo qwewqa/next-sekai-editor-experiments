@@ -4,7 +4,7 @@ import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
-import { installTestPlatform, waitForStartup } from './editorFixture'
+import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 
 // Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that
@@ -698,7 +698,7 @@ test('opening a file whose session a dead tab left a journal for: Restore applie
         Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
         document.dispatchEvent(new Event('visibilitychange'))
     })
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
 
     await openFile(other, 'coconut.nxsp')
     await expect(
