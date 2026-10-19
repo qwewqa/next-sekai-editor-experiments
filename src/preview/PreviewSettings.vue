@@ -449,7 +449,7 @@ const onPlacementChange = () => {
                                 @click="blurPointerClick"
                             />
                             <span
-                                class="preview-segment flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-ghost-press"
+                                class="preview-segment flex h-9 items-center justify-center rounded-full tabular-nums transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-press"
                             >
                                 {{ label }}
                             </span>
@@ -529,7 +529,7 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="preview-field field cursor-pointer appearance-none pr-9"
+                            class="preview-field btn btn-secondary cursor-pointer appearance-none pr-9"
                         >
                             <option
                                 v-for="[label, value] in previewTransportOptions"
@@ -546,10 +546,10 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="pl-4 pr-9"
+                            class="pl-4 pr-9 group-active:text-fg-strong"
                         />
                         <span
-                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center"
+                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-fg-strong"
                             aria-hidden="true"
                         >
                             <ChevronIcon direction="down" />
@@ -568,7 +568,7 @@ const onPlacementChange = () => {
                             v-model="positionField"
                             :aria-labelledby="`${id}-placement`"
                             :title="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="preview-field field cursor-pointer appearance-none pr-9"
+                            class="preview-field btn btn-secondary cursor-pointer appearance-none pr-9"
                             @change="onPlacementChange"
                         >
                             <option
@@ -581,10 +581,10 @@ const onPlacementChange = () => {
                         </select>
                         <SelectValue
                             :value="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="pl-4 pr-9"
+                            class="pl-4 pr-9 group-active:text-fg-strong"
                         />
                         <span
-                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center"
+                            class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-fg-strong"
                             aria-hidden="true"
                         >
                             <ChevronIcon direction="down" />
@@ -633,12 +633,6 @@ const onPlacementChange = () => {
     @apply block w-full truncate rounded-full px-4 py-1 text-left;
 }
 
-/* A select that draws its value in a sibling has transparent text, so its focus ring takes the
-   surface ink instead of currentColor. */
-select.preview-field:focus {
-    outline-color: rgb(var(--color-fg));
-}
-
 /* On/off fields carry the same trailing switch as form toggles. */
 .preview-toggle {
     @apply pr-12;
@@ -655,16 +649,20 @@ select.preview-field:focus {
 
 /* The switch fields and the aspect segments are faces after a hidden input, which takes the
    pointer and the focus, so the input's state steps the face with the recipes' tokens: the glow
-   on hover, a sunk neutral press, and the focus ring 2px inside in the face's ink. */
-.preview-toggle,
-.preview-segment {
+   on hover, a sunk neutral press, and the focus ring 2px inside in the face's ink. The switch
+   fields rest with a transparent edge; the segments have none until focused. */
+.preview-toggle {
     outline: 2px solid transparent;
     outline-offset: -2px;
 }
 
-.peer:focus-visible + .preview-toggle,
-.peer:focus-visible + .preview-segment {
+.peer:focus-visible + .preview-toggle {
     outline-color: currentColor;
+    outline-offset: -4px;
+}
+
+.peer:focus-visible + .preview-segment {
+    outline: 2px solid currentColor;
     outline-offset: -4px;
 }
 
@@ -679,9 +677,9 @@ select.preview-field:focus {
     @apply bg-press text-fg-strong;
 }
 
-/* High contrast: focus thickens the 2px resting edge to 4px, inward, in Highlight. The segments
-   keep the 2px outline they always had. The selectors outrank the global rules in index.css that
-   still name these classes and put the outline outside the box. */
+/* High contrast: focus thickens the switch fields' 2px resting edge to 4px, inward, in Highlight;
+   the segments draw their 2px focus edge in Highlight. The selectors outrank the global rules in
+   index.css that still name these classes and put the outline outside the box. */
 @media (forced-colors: active) {
     .peer:focus-visible + .preview-toggle {
         outline-color: Highlight;

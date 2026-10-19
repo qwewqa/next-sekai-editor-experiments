@@ -30,7 +30,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
             <div class="ml-auto flex shrink-0 items-center gap-1">
                 <button
                     type="button"
-                    class="btn btn-secondary h-7 shrink-0 rounded-full px-3"
+                    class="btn focus-out btn-secondary h-7 shrink-0 rounded-full px-3"
                     data-asset-fallback-open
                     @click="showPreviewAssets(fallback.type)"
                 >
