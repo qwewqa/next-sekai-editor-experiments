@@ -79,9 +79,7 @@ export const requestPeek = (info: PeekedInfo) => {
 export const requestRestore = async (key: EntryKey) => {
     const generation = peekSourceGeneration.value
     const historyGeneration = historyViewGeneration()
-    try {
-        await restoreEntry(key)
-    } catch (error) {
+    await restoreEntry(key, (error) => {
         if (
             generation !== peekSourceGeneration.value ||
             historyGeneration !== historyViewGeneration()
@@ -90,7 +88,7 @@ export const requestRestore = async (key: EntryKey) => {
         if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
-    }
+    })
 }
 
 /** Back to Now: leaves the peek. */
