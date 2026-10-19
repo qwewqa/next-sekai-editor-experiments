@@ -667,7 +667,8 @@ test.describe('the Timeline', () => {
         await expect(
             list(page)
                 .getByRole('option')
-                .filter({ hasText: /^Scrub/ }),
+                .filter({ hasText: /^Scrub/ })
+                .filter({ hasNot: page.locator('[data-history-group-header]') }),
         ).toHaveCount(3)
         await page.keyboard.press('ArrowLeft')
         await expect(group).toHaveAttribute('aria-expanded', 'false')
@@ -1337,7 +1338,9 @@ test.describe('touch disclosure', () => {
         await disclosure.tap()
         await expect(group).toHaveAttribute('aria-expanded', 'true')
         await expect(peekBar(page)).toHaveCount(0)
-        const child = row(page, 'Touch edit').first()
+        const child = row(page, 'Touch edit')
+            .filter({ hasNot: page.locator('[data-history-group-header]') })
+            .first()
         await child.dispatchEvent('pointerdown', {
             pointerType: 'touch',
             pointerId: 2,

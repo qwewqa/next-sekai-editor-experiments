@@ -76,6 +76,211 @@ test.afterEach(({ page }) => {
     expect(errors.get(page)).toEqual([])
 })
 
+test('unavailable group height and expansion preserve virtual offsets and the visible anchor', async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { storageWorker } =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        storageWorker!.call = new Proxy(storageWorker!.call, {
+            async apply(target, self, args) {
+                const result = await Reflect.apply(target, self, args)
+                if (args[0] !== 'readTimeline') return result
+                const timeline =
+                    result as import('../../src/local/worker/timelineHandlers').TimelinePage
+                return {
+                    ...timeline,
+                    entries: timeline.entries.map((entry, i) =>
+                        i < 2 ? { ...entry, label: 'Grouped property' } : entry,
+                    ),
+                }
+            },
+        })
+    })
+    await open(page)
+    const group = row(page, 'Grouped property')
+    const anchor = row(page, 'Property 26')
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+    expect((await group.boundingBox())!.height).toBe(44)
+    await list(page).evaluate((element) => {
+        element.scrollTop = 190
+    })
+    const before = await anchor.boundingBox()
+    const top = await list(page).evaluate((element) => element.scrollTop)
+    await page.evaluate(async () => {
+        const [{ listedEntries }, { damagedEntries, keyOf }] = await Promise.all([
+            window.editorTest.appImport<typeof import('../../src/editor/history/source')>(
+                '/src/editor/history/source.ts',
+            ),
+            window.editorTest.appImport<typeof import('../../src/editor/history/selection')>(
+                '/src/editor/history/selection.ts',
+            ),
+        ])
+        damagedEntries.value = new Set(listedEntries.value.slice(0, 2).map(keyOf))
+    })
+    await expect.poll(async () => (await group.boundingBox())!.height).toBe(80)
+    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36)
+    expect((await anchor.boundingBox())!.y).toBe(before!.y)
+    const following = row(page, 'Property 28')
+    expect(
+        await following.evaluate((element) =>
+            Number.parseFloat((element as HTMLElement).style.top),
+        ),
+    ).toBe(
+        await group.evaluate(
+            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80,
+        ),
+    )
+    await group.locator('[data-history-disclosure]').dispatchEvent('click')
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36 + 88)
+    expect((await anchor.boundingBox())!.y).toBe(before!.y)
+    expect(
+        await following.evaluate((element) =>
+            Number.parseFloat((element as HTMLElement).style.top),
+        ),
+    ).toBe(
+        await group.evaluate(
+            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 88,
+        ),
+    )
+})
+
+test('actual 220px French dock protects partial count and the complete unavailable reason', async ({
+    page,
+}) => {
+    await page.evaluate(async () => {
+        const { storageWorker } =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        storageWorker!.call = new Proxy(storageWorker!.call, {
+            async apply(target, self, args) {
+                const result = await Reflect.apply(target, self, args)
+                if (args[0] !== 'readTimeline') return result
+                const timeline =
+                    result as import('../../src/local/worker/timelineHandlers').TimelinePage
+                const first = timeline.entries[0]!
+                return {
+                    ...timeline,
+                    entries: [
+                        { ...first, label: 'ノーツを追加' },
+                        { ...timeline.entries[1]!, label: 'ノーツを追加' },
+                        { ...timeline.entries[2]!, label: 'Added 1 note', kept: false },
+                        { ...timeline.entries[3]!, label: 'Added 1 note', kept: false },
+                        { ...timeline.entries[4]!, label: 'Moved 3 notes', kept: false },
+                    ],
+                    next: { sessionId: first.sessionId, before: 0 },
+                }
+            },
+        })
+        Object.assign(window.editorTest.settings, {
+            locale: 'fr',
+            rightDockWidth: 220,
+            historyPosition: 'right',
+            propertiesPosition: 'disabled',
+            showHistory: true,
+        })
+        const { showHistoryLink } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/openHistory')
+        >('/src/editor/history/openHistory.ts')
+        showHistoryLink('timeline')
+    })
+    const dockList = page.locator('[data-history-surface="panel"] [data-history-list]')
+    await expect(dockList).toBeVisible()
+    await expect.poll(() => dockList.evaluate((element) => element.clientWidth)).toBe(220)
+    const parents = dockList
+        .getByRole('option')
+        .filter({ has: page.locator('[data-history-group-header]') })
+    await expect(parents).toHaveCount(3)
+    await expect(parents.first().locator('[data-history-group-action]')).toHaveText('ノーツを追加')
+    await expect(parents.first().locator('[data-history-group-count]')).toHaveText(
+        '2 modifications',
+    )
+    await expect(parents.last().locator('[data-history-group-count]')).toHaveText(
+        '1+ modifications',
+    )
+    await expect(parents.last().locator('[data-history-disclosure]')).toHaveCount(0)
+    await expect(parents.locator('[data-history-group-time]')).toHaveCount(0)
+    await expect(parents.locator('[data-history-group-header] > svg')).toHaveCount(0)
+    for (const parent of [parents.nth(1), parents.last()]) {
+        expect((await parent.boundingBox())!.height).toBe(80)
+        const reason = parent.locator('[data-history-flag]')
+        await expect(reason).toHaveText('supprimé pour libérer de l’espace')
+        expect(
+            await reason.evaluate((element) => ({
+                height: element.scrollHeight,
+                width: element.scrollWidth,
+                client: element.clientWidth,
+            })),
+        ).toEqual({ height: 32, width: 204, client: 204 })
+    }
+    await capture(page, '220-fr-partial-unavailable-foreign')
+    await page.emulateMedia({ forcedColors: 'active' })
+    await capture(page, '220-fr-forced-colors')
+})
+
+for (const width of [1600, 390, 320]) {
+    test.describe(`group composition at ${width}px`, () => {
+        test.use({
+            viewport: { width, height: width === 1600 ? 1000 : 844 },
+            hasTouch: width < 600,
+        })
+        test('action captions, directional aggregate and expanded members remain distinct', async ({
+            page,
+        }) => {
+            await page.evaluate(async () => {
+                const { history } = window.editorTest
+                for (const label of [
+                    'Added 1 note',
+                    'Added 1 note',
+                    'Moved 3 notes',
+                    'Moved 3 notes',
+                    'Renamed chart',
+                    'Adjusted life',
+                ])
+                    history.pushState(() => label, {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                    })
+                history.undoState()
+                history.undoState()
+                await window.nseFlushTest!.flusher.flush({ strict: true })
+            })
+            await open(page)
+            const groups = list(page)
+                .getByRole('option')
+                .filter({ has: page.locator('[data-history-group-header]') })
+            await expect(groups).toHaveCount(3)
+            const undo = row(page, 'Undid 2 steps')
+            await expect(undo.locator('[data-history-group-count]')).toHaveCount(0)
+            await expect(undo).not.toContainText('Adjusted life')
+            for (const action of ['Added 1 note', 'Moved 3 notes']) {
+                const group = row(page, action)
+                await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
+                expect(
+                    (await group.locator('[data-history-disclosure]').boundingBox())!.width,
+                ).toBe(44)
+                const caption = group.locator('[data-history-group-caption]')
+                expect(
+                    await caption.evaluate((element) => element.scrollWidth <= element.clientWidth),
+                ).toBe(true)
+            }
+            await capture(page, `${width}-groups`)
+            await undo.locator('[data-history-disclosure]').click()
+            await expect(row(page, 'Undo · Adjusted life')).toBeVisible()
+            await expect(row(page, 'Undo · Renamed chart')).toBeVisible()
+            await capture(page, `${width}-undo-expanded`)
+            if (width === 1600) {
+                await page.emulateMedia({ colorScheme: 'dark' })
+                await capture(page, `${width}-dark`)
+            }
+        })
+    })
+}
+
 for (const size of [
     { width: 520, height: 320 },
     { width: 568, height: 320 },

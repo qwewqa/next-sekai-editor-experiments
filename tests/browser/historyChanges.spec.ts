@@ -32,6 +32,7 @@ test.afterEach(({ page }) => {
 type Change =
     | { kind: 'move'; beats: number[]; lanes?: number }
     | { kind: 'add'; beats: number[]; left?: number }
+    | { kind: 'delete'; beats: number[] }
     | { kind: 'bpm'; bpm: number }
     | { kind: 'life' }
     | { kind: 'same' }
@@ -66,6 +67,10 @@ const edit = (page: Page, label: string, change: Change) =>
             const template = noteObjectOf(all[0]!)
             const transaction = createTransaction(state)
             switch (change.kind) {
+                case 'delete':
+                    for (const note of all.filter((note) => change.beats.includes(note.beat)))
+                        notes.removeNote(transaction, note)
+                    break
                 case 'move':
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
                         notes.replaceNote(transaction, note, {
@@ -543,6 +548,72 @@ test('a notice card stays clear of the adjacent spatial controls', async ({ page
     }).toPass()
 })
 
+test('equal-count action groups retain exact group, child and Restore scopes', async ({ page }) => {
+    for (const beat of [40, 50]) await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] })
+    for (const beat of [40, 50]) await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] })
+    for (const beat of [40, 50])
+        await edit(page, 'Deleted 1 note', { kind: 'delete', beats: [beat] })
+    await stored(page)
+    await openTab(page)
+    const scopes = await page.evaluate(async () => {
+        const { listedEntries } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        return listedEntries.value.slice(0, 7).map(({ sessionId, seq }) => `${sessionId}:${seq}`)
+    })
+    for (const [index, action] of ['Deleted 1 note', 'Moved 1 note', 'Added 1 note'].entries()) {
+        const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
+        await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
+        await expect(group).toHaveAttribute('aria-label', new RegExp(`${action} · 2 edits`))
+        await group.click()
+        await expect(peekLine(page)).toHaveText('2 changes')
+        expect(
+            await page.evaluate(async () => {
+                const { peekedInfo } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/selection')
+                >('/src/editor/history/selection.ts')
+                const info = peekedInfo.value!
+                return {
+                    key: info.key,
+                    oldest: info.oldest,
+                    previous: info.previous?.key,
+                    label: info.label,
+                }
+            }),
+        ).toEqual({
+            key: scopes[index * 2],
+            oldest: scopes[index * 2 + 1],
+            previous: scopes[index * 2 + 2],
+            label: `${action} · 2 edits`,
+        })
+    }
+    const added = row(page, 'Added 1 note').filter({
+        has: page.locator('[data-history-group-header]'),
+    })
+    await added.locator('[data-history-disclosure]').click()
+    const children = row(page, 'Added 1 note').filter({
+        hasNot: page.locator('[data-history-group-header]'),
+    })
+    await children.first().click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    await children.last().click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    await added.locator('[data-history-disclosure]').click()
+    await expect(added).toHaveAttribute('aria-selected', 'true')
+    await expect(peekLine(page)).toHaveText('2 changes')
+    await added.locator('[data-history-disclosure]').click()
+    await children.last().click()
+    await page.locator('[data-peek-restore]').click()
+    expect(
+        await page.evaluate(() =>
+            [...window.editorTest.history.state.value.store.slides.note.values()]
+                .flat()
+                .filter(({ beat }) => beat === 40 || beat === 50)
+                .map(({ beat }) => beat),
+        ),
+    ).toEqual([40])
+})
+
 test('group disclosure preserves scope and selecting its newest child changes the baseline', async ({
     page,
 }) => {
@@ -556,7 +627,9 @@ test('group disclosure preserves scope and selecting its newest child changes th
     await group.locator('[data-history-disclosure]').click()
     await expect(group).toHaveAttribute('aria-selected', 'true')
     await expect(peekLine(page)).toHaveText('3 changes')
-    const child = row(page, 'Added 1 Note').first()
+    const child = row(page, 'Added 1 Note')
+        .filter({ hasNot: page.locator('[data-history-group-header]') })
+        .first()
     await child.click()
     await expect(peekLine(page)).toHaveText('1 change')
     await group.locator('[data-history-disclosure]').click()
@@ -600,7 +673,10 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
     const bounds = await page.locator('[data-peek-main]').boundingBox()
     const lower = await page.locator('[data-peek-navigation]').boundingBox()
     await group.locator('[data-history-disclosure]').click()
-    await row(page, 'Add').first().click()
+    await row(page, 'Add')
+        .filter({ hasNot: page.locator('[data-history-group-header]') })
+        .first()
+        .click()
     await expect
         .poll(() =>
             page.evaluate(() => (window as unknown as { diffGates: unknown[] }).diffGates.length),
@@ -672,8 +748,13 @@ test('net-zero runs retain their real steps and show an equal comparison', async
     await expect(peekLine(page)).toHaveText('No changes')
     expect((await changes(page)).dimmed).toBe(false)
     await group.locator('[data-history-disclosure]').click()
-    await expect(row(page, 'Adjust')).toHaveCount(2)
-    await row(page, 'Adjust').first().click()
+    await expect(
+        row(page, 'Adjust').filter({ hasNot: page.locator('[data-history-group-header]') }),
+    ).toHaveCount(2)
+    await row(page, 'Adjust')
+        .filter({ hasNot: page.locator('[data-history-group-header]') })
+        .first()
+        .click()
     await expect(peekLine(page)).toHaveText('Adjust')
 })
 

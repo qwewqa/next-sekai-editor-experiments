@@ -32,6 +32,7 @@ import FlagIcon from './FlagIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
+import { heightOf, isCountedParent, presentRow } from './rowPresentation'
 import {
     buildRows,
     previousOf,
@@ -147,9 +148,6 @@ const DIVIDER = 32
 // The list's padding: 4 px above the first row, 8 px below the last.
 const PAD_TOP = 4
 const PAD_BOTTOM = 8
-// The gap row is a row high.
-const heightOf = (row: Row) =>
-    row.type === 'header' ? HEADER : row.type === 'divider' ? DIVIDER : rowHeight.value
 const geometry = computed(() => {
     let y = PAD_TOP
     const offsets = rows.value.map((row) => {
@@ -798,24 +796,14 @@ watch(
 // --- Text
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
-const labelOf = (row: EntryRow) => {
-    const { kind, label } = row.entry
-    const strings = i18n.value
-    if (row.members.length > 1 && !row.child) {
-        const count = `${row.members.length}${row.partial ? '+' : ''}`
-        return interpolateRaw(
-            kind === 'undo'
-                ? strings.history.undidSteps
-                : kind === 'redo'
-                  ? strings.history.redidSteps
-                  : strings.history.edits,
-            count,
-        )
-    }
-    if (kind === 'undo') return `${strings.commands.undo.title} · ${label}`
-    if (kind === 'redo') return `${strings.commands.redo.title} · ${label}`
-    return label
-}
+const presentationOf = (row: EntryRow) =>
+    presentRow(row, {
+        ...i18n.value.history,
+        undo: i18n.value.commands.undo.title,
+        redo: i18n.value.commands.redo.title,
+    })
+
+const labelOf = (row: EntryRow) => presentationOf(row).full
 
 const flagTextOf = (row: EntryRow) =>
     row.flags.damaged
@@ -826,9 +814,10 @@ const flagTextOf = (row: EntryRow) =>
 
 const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
-// Under about 340 px a flag keeps only its icon, and rows drop the seconds and the Δ count; the
-// text and the full time are still the name and the tooltip.
+// Narrow rows omit seconds and note deltas; full times remain in their names.
 const narrow = computed(() => width.value > 0 && width.value < 340)
+const parentTime = computed(() => width.value >= 300)
+const parentIcon = computed(() => width.value >= 280)
 
 const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
 
@@ -979,6 +968,7 @@ defineExpose({
                             'timeline-row-selected': cursorId === row.id,
                             'timeline-row-disabled': !row.selectable,
                             'timeline-row-child': row.child,
+                            'timeline-row-counted': isCountedParent(row),
                         }"
                         :aria-selected="cursorId === row.id"
                         :aria-disabled="row.selectable ? undefined : true"
@@ -991,7 +981,7 @@ defineExpose({
                         :aria-posinset="positions.map.get(row.id)"
                         :aria-setsize="positions.size"
                         :title="titleOf(row)"
-                        :style="{ top: `${top}px`, height: `${rowHeight}px` }"
+                        :style="{ top: `${top}px`, height: `${heightOf(row)}px` }"
                         @click="onRowClick(row)"
                         @contextmenu="onContextMenu($event, row)"
                         @pointerdown="onRowPointerdown($event, row)"
@@ -999,39 +989,88 @@ defineExpose({
                         @pointerup="cancelLongPress"
                         @pointercancel="cancelLongPress"
                     >
-                        <KindIcon :kind="row.entry.kind" />
-                        <span v-if="row.selectable || !narrow" class="min-w-0 flex-1 truncate">{{
-                            labelOf(row)
-                        }}</span>
-                        <button
-                            v-if="row.members.length > 1 && !row.child"
-                            type="button"
-                            class="flex size-11 shrink-0 items-center justify-center rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
-                            :aria-label="labelOf(row)"
-                            :aria-expanded="expandedGroups.has(row.id)"
-                            data-history-disclosure
-                            @pointerdown.stop="cancelLongPress"
-                            @contextmenu.stop.prevent
-                            @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
-                        >
-                            <ChevronIcon
-                                :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
-                            />
-                        </button>
-                        <!-- A removed or damaged row says why; the label gives way to it. -->
-                        <span v-if="flagTextOf(row)" class="timeline-flag flex-1" data-history-flag>
-                            <FlagIcon :kind="flagKindOf(row)" />
-                            <span class="leading-tight">{{ flagTextOf(row) }}</span>
-                        </span>
-                        <span
-                            v-if="row.selectable && deltaOf(row)"
-                            class="timeline-count shrink-0"
-                            :class="{ hidden: narrow }"
-                            >{{ deltaOf(row) }}</span
-                        >
-                        <span v-if="row.selectable || !narrow" class="timeline-time shrink-0">{{
-                            timeOf(row)
-                        }}</span>
+                        <template v-if="isCountedParent(row)">
+                            <div class="timeline-group-header" data-history-group-header>
+                                <KindIcon v-if="parentIcon" :kind="row.entry.kind" />
+                                <div class="min-w-0 flex-1 py-1">
+                                    <div class="truncate leading-5" data-history-group-action>
+                                        {{ presentationOf(row).main }}
+                                    </div>
+                                    <div
+                                        v-if="
+                                            presentationOf(row).count ||
+                                            (row.selectable && parentTime)
+                                        "
+                                        class="flex whitespace-nowrap text-xs leading-4"
+                                        data-history-group-caption
+                                    >
+                                        <span
+                                            v-if="presentationOf(row).count"
+                                            class="shrink-0"
+                                            data-history-group-count
+                                            >{{ presentationOf(row).count }}</span
+                                        >
+                                        <span
+                                            v-if="row.selectable && parentTime"
+                                            class="shrink-0 tabular-nums"
+                                            data-history-group-time
+                                            ><template v-if="presentationOf(row).count"
+                                                >&nbsp;· </template
+                                            >{{ timeOf(row) }}</span
+                                        >
+                                    </div>
+                                </div>
+                                <button
+                                    v-if="row.members.length > 1 && !row.child"
+                                    type="button"
+                                    class="flex size-11 shrink-0 items-center justify-center rounded-full outline-offset-[-3px] focus-visible:outline focus-visible:outline-2"
+                                    :aria-label="labelOf(row)"
+                                    :aria-expanded="expandedGroups.has(row.id)"
+                                    data-history-disclosure
+                                    @pointerdown.stop="cancelLongPress"
+                                    @contextmenu.stop.prevent
+                                    @click.stop="toggleGroup(row, !expandedGroups.has(row.id))"
+                                >
+                                    <ChevronIcon
+                                        :direction="expandedGroups.has(row.id) ? 'down' : 'right'"
+                                    />
+                                </button>
+                            </div>
+                            <span
+                                v-if="flagTextOf(row)"
+                                class="timeline-group-reason timeline-flag"
+                                data-history-flag
+                            >
+                                <FlagIcon :kind="flagKindOf(row)" />
+                                <span>{{ flagTextOf(row) }}</span>
+                            </span>
+                        </template>
+                        <template v-else>
+                            <KindIcon :kind="row.entry.kind" />
+                            <span
+                                v-if="row.selectable || !narrow"
+                                class="min-w-0 flex-1 truncate"
+                                >{{ labelOf(row) }}</span
+                            >
+                            <!-- A removed or damaged row says why; the label gives way to it. -->
+                            <span
+                                v-if="flagTextOf(row)"
+                                class="timeline-flag flex-1"
+                                data-history-flag
+                            >
+                                <FlagIcon :kind="flagKindOf(row)" />
+                                <span class="leading-tight">{{ flagTextOf(row) }}</span>
+                            </span>
+                            <span
+                                v-if="row.selectable && deltaOf(row)"
+                                class="timeline-count shrink-0"
+                                :class="{ hidden: narrow }"
+                                >{{ deltaOf(row) }}</span
+                            >
+                            <span v-if="row.selectable || !narrow" class="timeline-time shrink-0">{{
+                                timeOf(row)
+                            }}</span>
+                        </template>
                     </div>
                 </template>
 
@@ -1150,6 +1189,18 @@ defineExpose({
 <style scoped>
 .timeline-row {
     @apply absolute inset-x-2 flex select-none items-center gap-2 rounded-full px-3 text-sm;
+}
+
+.timeline-row-counted {
+    @apply block p-0;
+}
+
+.timeline-group-header {
+    @apply flex h-11 items-center gap-2 px-3;
+}
+
+.timeline-group-reason.timeline-flag {
+    @apply h-8 items-start px-3 leading-4;
 }
 
 .timeline-row-child {
