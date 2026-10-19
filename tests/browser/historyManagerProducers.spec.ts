@@ -318,7 +318,7 @@ for (const domain of ['group', 'stage'] as const) {
         page,
     }) => {
         await page.evaluate(async (domain) => {
-            const { appImport, history } = window.editorTest
+            const { appImport } = window.editorTest
             const groups = await appImport<
                 typeof import('../../src/editor/workspace/manager/groups')
             >('/src/editor/workspace/manager/groups.ts')

@@ -59,7 +59,7 @@ test('BGM operations distinguish offset, file and compound changes including equ
 })
 
 test('group property values distinguish clear from zero and retain typed target identity', () => {
-    const old = { name: '12{1}<b>??', forceNoteSpeed: 8.123456789012345 }
+    const old = { name: '12{1}<b>??', forceNoteSpeed: 8.123456789012344 }
     const cleared = capture(groupEditInput(7, old, 'forceNoteSpeed', undefined))
     assert.deepEqual(cleared.data, {
         target: { kind: 'group', id: 7, name: { text: old.name } },
