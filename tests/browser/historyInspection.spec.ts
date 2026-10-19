@@ -349,7 +349,10 @@ const captureContours = async (page: Page, testInfo: TestInfo, state: string) =>
             await navigation.evaluate((element, radius) => {
                 element.style.borderRadius = `${radius}px`
             }, radius)
-            await page.screenshot({ path: testInfo.outputPath(`bar-${state}-radius${radius}.png`) })
+            await page.screenshot({
+                path: testInfo.outputPath(`bar-${state}-radius${radius}.png`),
+                animations: 'disabled',
+            })
         }
     } finally {
         await navigation.evaluate((element) => {
