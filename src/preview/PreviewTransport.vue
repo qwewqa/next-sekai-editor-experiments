@@ -142,7 +142,7 @@ const stripStyle = computed(() => ({
             v-if="!persistent"
             ref="toggle"
             type="button"
-            class="preview-transport-toggle pointer-events-auto absolute inset-0 h-full w-full touch-pan-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+            class="preview-transport-toggle focus-ring pointer-events-auto absolute inset-0 h-full w-full touch-pan-y text-white"
             :aria-label="visible ? i18n.preview.transport.hide : i18n.preview.transport.show"
             :title="visible ? i18n.preview.transport.hide : i18n.preview.transport.show"
             :aria-expanded="visible"
@@ -184,7 +184,7 @@ const stripStyle = computed(() => ({
         >
             <button
                 type="button"
-                class="transport-button transport-play"
+                class="transport-button transport-play btn btn-secondary"
                 :aria-label="isPlaying ? i18n.preview.transport.pause : i18n.preview.transport.play"
                 :title="isPlaying ? i18n.preview.transport.pause : i18n.preview.transport.play"
                 @click="play"
@@ -205,8 +205,8 @@ const stripStyle = computed(() => ({
                     v-for="step in steps"
                     :key="step"
                     type="button"
-                    class="transport-button transport-step touch-none select-none tabular-nums"
-                    :class="{ 'is-held': activeStep === step }"
+                    class="transport-button transport-step btn btn-secondary touch-none select-none tabular-nums"
+                    :class="{ 'is-pressed': activeStep === step }"
                     :aria-label="stepLabel(step)"
                     :title="stepTitle(step)"
                     @pointerdown="onPointerDown($event, step)"
@@ -227,8 +227,8 @@ const stripStyle = computed(() => ({
                     v-for="step in [-settings.previewStepSize]"
                     :key="step"
                     type="button"
-                    class="transport-button transport-chevron touch-none select-none"
-                    :class="{ 'is-held': activeStep === step }"
+                    class="transport-button transport-chevron btn btn-secondary touch-none select-none"
+                    :class="{ 'is-pressed': activeStep === step }"
                     :aria-label="stepLabel(step)"
                     :title="stepTitle(step)"
                     @pointerdown="onPointerDown($event, step)"
@@ -244,7 +244,7 @@ const stripStyle = computed(() => ({
                 </button>
                 <button
                     type="button"
-                    class="transport-button transport-size tabular-nums"
+                    class="transport-button transport-size btn btn-secondary tabular-nums"
                     :aria-label="stepSizeLabel"
                     :title="stepSizeLabel"
                     @click="cycleStepSize"
@@ -255,8 +255,8 @@ const stripStyle = computed(() => ({
                     v-for="step in [settings.previewStepSize]"
                     :key="step"
                     type="button"
-                    class="transport-button transport-chevron touch-none select-none"
-                    :class="{ 'is-held': activeStep === step }"
+                    class="transport-button transport-chevron btn btn-secondary touch-none select-none"
+                    :class="{ 'is-pressed': activeStep === step }"
                     :aria-label="stepLabel(step)"
                     :title="stepTitle(step)"
                     @pointerdown="onPointerDown($event, step)"
@@ -276,12 +276,9 @@ const stripStyle = computed(() => ({
 </template>
 
 <style scoped>
+/* Colour, hover, press and focus come from the btn recipes in the template. */
 .transport-button {
-    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-button text-xs shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent;
-}
-
-.transport-button.is-held {
-    @apply bg-accent text-on-accent;
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs;
 }
 
 /* The time follows Play; it is Meta text and keeps its width as it changes. */

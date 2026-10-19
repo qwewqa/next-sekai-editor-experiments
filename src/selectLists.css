@@ -158,6 +158,11 @@
             color: transparent;
         }
 
+        /* The text is transparent, so a ring in currentColor would be too: it takes the surface ink. */
+        html:not([data-native-lists]) select:has(~ .select-value):focus-visible {
+            outline-color: rgb(var(--color-fg));
+        }
+
         /* Dimmed as a disabled system select is, value and all. */
         html:not([data-native-lists]) select:disabled:has(~ .select-value),
         html:not([data-native-lists]) select:disabled ~ .select-value {
