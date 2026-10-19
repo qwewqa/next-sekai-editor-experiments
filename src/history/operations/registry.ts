@@ -197,9 +197,11 @@ export const operationCodecs = {
     'nse.dynamicStages.enable': object({}),
     'nse.owner.create': refine(
         object({ target: ownerReference, destination, gathered: count }),
-        ({ target, destination: to }) =>
-            !to ||
-            ((target.kind === 'group' || target.kind === 'stage') && inDomain(target.kind, to)),
+        ({ target, destination: to, gathered }) =>
+            ((target.kind !== 'group' && target.kind !== 'stage') || gathered === 0) &&
+            (!to ||
+                ((target.kind === 'group' || target.kind === 'stage') &&
+                    inDomain(target.kind, to))),
     ),
     'nse.owner.rename': object({ target: ownerReference, before: nameText, after: nameText }),
     'nse.owner.set': ownerSet,

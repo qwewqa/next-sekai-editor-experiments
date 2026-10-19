@@ -52,10 +52,20 @@ const context = (value: unknown): value is RecoveryContext => {
         !count.is(value.headIndex) ||
         value.headIndex > value.dropped.length ||
         value.dropped.length > RECOVERY_CONTEXT_ITEMS ||
+        value.omitted > Number.MAX_SAFE_INTEGER - value.dropped.length ||
         !value.dropped.every(description)
     )
         return false
     return jsonBytes(value.dropped) <= RECOVERY_CONTEXT_BYTES
+}
+
+export const captureRecoveryContext = (value: unknown): RecoveryContext => {
+    const captured = captureJson(value, {
+        bytes: OPERATION_WIRE_BYTES + RECOVERY_CONTEXT_BYTES + 2048,
+        depth: OPERATION_WIRE_DEPTH + 3,
+    })
+    if (!context(captured)) throw new OperationDataError('Invalid recovery context')
+    return captured
 }
 
 export const captureStep = (value: unknown): UndoableStep => {
