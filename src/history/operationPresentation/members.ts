@@ -7,10 +7,12 @@ import {
 } from '../operations'
 import type { OperationMember } from './types'
 
+// Shared init descriptions use entry projection unless a bare step carries recovery context.
 export const isEntryDescription = (
     description: EntryDescription | UndoableStep,
 ): description is EntryDescription =>
     'step' in description ||
+    (description.kind === 'init' && !('recoveryContext' in description)) ||
     (description.kind !== 'init' && description.kind !== 'edit' && description.kind !== 'restore')
 
 export const captureOperationMember = (member: OperationMember): OperationMember =>

@@ -26,6 +26,7 @@ import {
     fieldCodecs,
     fieldSubjects,
     operationCodecs,
+    type EntryDescription,
     type FieldId,
     type FieldValue,
     type NativeOperationInput,
@@ -570,6 +571,104 @@ test('singleton named owners and uniform reference values qualify only colliding
     )
     assert(a && b)
     assert.notEqual(renderOperationRecipe(a, en), renderOperationRecipe(b, en))
+})
+
+test('full Timeline carriers project every coarse kind while bare initial steps retain context', () => {
+    const recoveryContext = {
+        head: { kind: 'init' as const, operation: null },
+        headIndex: 0,
+        dropped: [],
+        omitted: 0,
+    }
+    for (const operation of [
+        null,
+        { id: 'future', fallback: { locale: 'xx', text: '{0}|<literal>' } },
+        { id: 'future', fallback: { locale: 'xx', text: 17 } },
+    ]) {
+        const edit = captureStep({ kind: 'edit', operation, recoveryContext })
+        const restore = captureStep({ kind: 'restore', operation, recoveryContext })
+        const descriptions: EntryDescription[] = [
+            { kind: 'init', operation },
+            { kind: 'continue', operation },
+            { kind: 'save', operation },
+            { kind: 'export', operation },
+            { kind: 'recovered', operation, recoveryContext },
+            { kind: 'edit', step: edit },
+            { kind: 'restore', step: restore },
+            { kind: 'undo', step: edit },
+            { kind: 'redo', step: restore },
+        ]
+        for (const description of descriptions) {
+            for (const snapshot of ['abc123', new Uint8Array([1, 2, 3])]) {
+                const entry = {
+                    ...description,
+                    sessionId: 'session',
+                    seq: 0,
+                    time: 123,
+                    kept: true,
+                    noteCount: 2,
+                    snapshot,
+                    device: { id: 'device', name: 'Desktop' },
+                    previous: { sessionId: 'old', seq: 3, snapshot: 'old-root' },
+                }
+                // Timeline recipeOfRow passes full entries through this member projection.
+                const members = [entry].reverse().map((item) => ({
+                    description: item,
+                    id: `${item.sessionId}:${item.seq}`,
+                    time: item.time,
+                }))
+                const selected = captureOperationRecipe(members)
+                assert.deepEqual(
+                    selected.members[0]?.description,
+                    captureEntryDescription(description),
+                )
+                assert.equal(selected.members[0]?.id, 'session:0')
+                assert.equal(selected.members[0]?.time, 123)
+                assert(Object.isFrozen(selected.members[0]?.description))
+                for (const locale of locales) {
+                    const ctx = context(locale)
+                    assert.equal(
+                        renderOperationRecipe(selected, ctx),
+                        describeEntry(description, ctx),
+                    )
+                    const details = operationDetails(selected, ctx)
+                    assert.equal(
+                        !!details.recovery,
+                        description.kind === 'recovered' || !!description.step,
+                    )
+                }
+                if (description.kind === 'init' && operation === null)
+                    assert.equal(renderOperationRecipe(selected, en), 'Initial state')
+            }
+        }
+        for (const kind of ['init', 'edit', 'restore'] as const) {
+            for (const withContext of [false, true]) {
+                const step = captureStep({
+                    kind,
+                    operation,
+                    ...(withContext ? { recoveryContext } : {}),
+                })
+                const selected = captureOperationRecipe([{ description: step }])
+                assert.deepEqual(selected.members[0]?.description, step)
+                assert.equal(!!operationDetails(selected, en).recovery, withContext)
+                assert.equal(renderOperationRecipe(selected, en), describeStep(step, en))
+            }
+        }
+    }
+    assert.throws(() =>
+        captureStep({ kind: 'init', operation: null, snapshot: new Uint8Array([1]) }),
+    )
+    assert.throws(() =>
+        captureOperationRecipe([
+            {
+                description: {
+                    kind: 'init',
+                    operation: null,
+                    recoveryContext: undefined,
+                },
+            },
+        ]),
+    )
 })
 
 test('actual recovered events retain one immutable ordered context without a pushed step', () => {
