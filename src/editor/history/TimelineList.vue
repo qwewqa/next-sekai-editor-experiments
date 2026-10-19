@@ -1012,7 +1012,7 @@ defineExpose({
                                         >
                                         <span
                                             v-if="row.selectable && parentTime"
-                                            class="shrink-0 tabular-nums"
+                                            class="min-w-0 truncate tabular-nums"
                                             data-history-group-time
                                             ><template v-if="presentationOf(row).count"
                                                 >&nbsp;· </template
@@ -1020,6 +1020,12 @@ defineExpose({
                                         >
                                     </div>
                                 </div>
+                                <span
+                                    v-if="row.selectable && deltaOf(row)"
+                                    class="timeline-count shrink-0"
+                                    :class="{ hidden: narrow }"
+                                    >{{ deltaOf(row) }}</span
+                                >
                                 <button
                                     v-if="row.members.length > 1 && !row.child"
                                     type="button"

@@ -100,7 +100,9 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
         })
     })
     await open(page)
-    const group = row(page, 'Grouped property')
+    const group = row(page, 'Grouped property').filter({
+        has: page.locator('[data-history-group-header]'),
+    })
     const anchor = row(page, 'Property 26')
     await expect(group).toHaveAttribute('aria-expanded', 'false')
     expect((await group.boundingBox())!.height).toBe(44)
