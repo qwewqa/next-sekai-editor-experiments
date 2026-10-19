@@ -50,10 +50,17 @@ const choice =
 </template>
 
 <style scoped>
-/* The face is under 32px, so the focus ring sits 1px outside it, in the surface's ink (the
-   `focus-out` rule, which cannot reach a sibling of the focused radio). */
+/* The hidden radio takes focus, so its segment draws the ring: 2px, 2px inside the face, in the
+   face's own ink, as the control recipes and the form segments do. High contrast paints it in
+   Highlight. */
 .peer:focus-visible + .chooser-mode-segment {
-    outline: 2px solid rgb(var(--color-fg));
-    outline-offset: 1px;
+    outline: 2px solid currentColor;
+    outline-offset: -4px;
+}
+
+@media (forced-colors: active) {
+    .peer:focus-visible + .chooser-mode-segment {
+        outline-color: Highlight;
+    }
 }
 </style>
