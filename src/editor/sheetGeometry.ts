@@ -14,7 +14,8 @@ export const getSheetGeometry = ({
 }: SheetGeometryInput) => {
     const inset = rem / 2
     if (height < 500 && width > height) {
-        const top = Math.max(60, peekClearance + 4)
+        // 8 px under the peek stack, the stack's own rhythm.
+        const top = Math.max(60, peekClearance + 8)
         return {
             side: 'right' as const,
             width: Math.min(22 * rem, width * 0.62),
@@ -36,11 +37,15 @@ export const getSheetGeometry = ({
 
 export const HISTORY_MIN_BODY = 116
 
-/** Tiny primary bars need an actual measurement because their date can wrap. */
-export const prospectivePeekClearance = (width: number, measured = 0, rem = 16) =>
+/**
+ * The peek stack's bottom before it is shown: its 84 px under its top inset, the strip's own when
+ * known (8 or 28 px), else the inset its width class usually takes. Tiny primary bars need an actual
+ * measurement.
+ */
+export const prospectivePeekClearance = (width: number, measured = 0, rem = 16, inset?: number) =>
     width < 300 && measured <= 0
         ? undefined
-        : Math.max(measured, (92 / 16 + (width < 640 ? 1.75 : 0.5)) * rem)
+        : Math.max(measured, (84 / 16) * rem + (inset ?? (width < 640 ? 1.75 : 0.5) * rem))
 
 export const historySheetFits = (input: SheetGeometryInput, chrome: number) =>
     getSheetGeometry(input).height - chrome >= HISTORY_MIN_BODY
