@@ -476,15 +476,18 @@ test('persisted recovery head position survives demotion and newest-context trim
             ),
         )
         const sources = recoverySources(prior)
+        assert.equal(sources.headIndex, headIndex)
         const ordered = [...sources.dropped]
         ordered.splice(sources.headIndex, 0, sources.head)
+        const expected = [...optional]
+        expected.splice(headIndex, 0, head)
         const next = createRecoveryContext(step(200), ordered, ordered.length, sources.omitted)
         assert.equal(next.omitted, 1)
         assert.equal(next.headIndex, 64)
         assert(
             equalJson(
                 next.dropped as unknown as JsonValue,
-                ordered.slice(1) as unknown as JsonValue,
+                expected.slice(1) as unknown as JsonValue,
             ),
         )
         assert.equal(
