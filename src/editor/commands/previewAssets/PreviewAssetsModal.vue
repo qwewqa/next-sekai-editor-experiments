@@ -218,8 +218,8 @@ const storedText = computed(() => storedLine(strings.value.stored, summary.value
 // While the shown tab's chooser is open, its Cancel and Use are the actions: the footer goes.
 const choosing = computed(() => isAssetTab(active.value) && choosers[active.value].open.value)
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40'
+// Both rewrite every type's source in one press, so they are quiet red, not neutral.
+const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
@@ -241,7 +241,7 @@ const buttonClass =
                     :key="item"
                     type="button"
                     role="tab"
-                    class="preview-assets-tab group flex shrink-0 items-center focus-visible:outline-none"
+                    class="preview-assets-tab flex shrink-0 items-center"
                     :class="{ 'preview-assets-tab-active': item === active }"
                     :data-preview-assets-tab="item"
                     :aria-label="tabName(item)"
@@ -253,7 +253,7 @@ const buttonClass =
                 >
                     <!-- The band's height is the hit area; the pill carries hover, press and focus. -->
                     <span
-                        class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-fg group-active:bg-accent group-active:text-on-accent"
+                        class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors"
                     >
                         <span class="preview-assets-tab-label relative whitespace-nowrap">
                             <AssetGlyph
@@ -359,10 +359,25 @@ const buttonClass =
     }
 }
 
+/* The pill is the face: the tab's hover, press and focus step it with the band's tokens. */
 @media (hover: hover) {
     .preview-assets-tab:not(.preview-assets-tab-active):not(:active):hover
         .preview-assets-tab-pill {
-        @apply bg-header-hover;
+        @apply bg-band-hover;
     }
+}
+
+.preview-assets-tab:active .preview-assets-tab-pill {
+    @apply bg-band-press text-fg-strong;
+}
+
+/* The ring is the pill's, so the button itself draws none. */
+.preview-assets-tab:focus-visible {
+    outline: none;
+}
+
+.preview-assets-tab:focus-visible .preview-assets-tab-pill {
+    outline: 2px solid currentColor;
+    outline-offset: -4px;
 }
 </style>

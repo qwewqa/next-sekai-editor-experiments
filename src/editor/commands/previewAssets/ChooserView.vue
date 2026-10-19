@@ -133,10 +133,9 @@ watch(serverPhase, async (now, before) => {
 const alsoText = (option: (typeof also.value)[number]) =>
     interpolateRaw(strings.value.alsoFile, typeNoun(option.type), option.title)
 
-const baseClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40'
-const buttonClass = `${baseClass} bg-button active:bg-accent active:text-on-accent`
-const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button active:text-fg`
+const baseClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
+const buttonClass = `${baseClass} btn-secondary`
+const primaryClass = `${baseClass} btn-primary`
 </script>
 
 <template>
@@ -226,11 +225,11 @@ const primaryClass = `${baseClass} bg-accent text-on-accent active:bg-button act
                 <label
                     v-for="option in also"
                     :key="option.type"
-                    class="relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:active]:bg-accent has-[:active]:text-on-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fg [@media(hover:hover)]:hover:bg-band-hover"
+                    class="focus-edge relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 transition-colors has-[:active]:!bg-ghost-press has-[:active]:!text-fg-strong has-[:focus-visible]:outline-fg [@media(hover:hover)]:hover:bg-band-hover"
                 >
                     <input
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none"
+                        class="peer absolute inset-0 size-full cursor-pointer opacity-0"
                         :checked="option.ticked"
                         :disabled="phase === 'working'"
                         :data-chooser-also-type="option.type"

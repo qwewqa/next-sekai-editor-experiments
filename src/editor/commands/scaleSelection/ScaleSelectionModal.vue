@@ -92,7 +92,7 @@ onUnmounted(() => {
                         <input
                             ref="input"
                             v-model="factor"
-                            class="w-full appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors hover:shadow-accent focus:ring-2 focus:ring-fg active:bg-accent active:text-on-accent"
+                            class="field w-full appearance-none rounded-full px-4 py-1"
                             type="number"
                             min="0"
                             step="0.1"
@@ -108,14 +108,14 @@ onUnmounted(() => {
                 <div class="mt-4 flex justify-end gap-2">
                     <button
                         type="button"
-                        class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         @click="cancel"
                     >
                         {{ i18n.modals.confirm.cancel }}
                     </button>
                     <button
                         type="submit"
-                        class="h-9 min-w-24 max-w-full truncate rounded-full bg-accent px-4 text-on-accent shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-button active:text-fg disabled:pointer-events-none disabled:opacity-40"
+                        class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         :disabled="!session?.valid"
                     >
                         {{ i18n.commands.scaleSelection.apply }}
