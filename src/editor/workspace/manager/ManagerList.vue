@@ -19,7 +19,7 @@ import {
     type FolderTreeRef,
 } from '../../../chart/folders'
 import { refuseWhilePeeking } from '../../../history/peek'
-import { isPeeking } from '../../../history/stack'
+import { isPeeking, stackGeneration } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import { modals, showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
@@ -827,9 +827,22 @@ const bulkHidden = computed(() => selectedIds.value.some((id) => !scope.value.is
 const editLifetime = new AbortController()
 onUnmounted(() => editLifetime.abort())
 
+const continueDeleteFocus = async (model: ManagerModel<T>, generation: number, focus: () => void) => {
+    const isOriginCurrent = () => model === props.model && generation === stackGeneration() && !editLifetime.signal.aborted && !isPeeking.value
+    if (!isOriginCurrent()) return
+    const guard = createAsyncEditGuard(editLifetime.signal)
+    try {
+        await nextTick()
+        if (guard.isCurrent() && isOriginCurrent()) focus()
+    } finally {
+        guard.dispose()
+    }
+}
+
 const onBulkDelete = async (keyboard = false) => {
     if (refused()) return
     const model = props.model
+    const generation = stackGeneration()
     const guard = createAsyncEditGuard(editLifetime.signal)
     try {
     const ids = new Set(selectedIds.value)
@@ -868,8 +881,9 @@ const onBulkDelete = async (keyboard = false) => {
     model.removeMany(ids, folderIds)
     stopSelecting()
     if (!keyboard) return
-    await nextTick()
-    if (!root.value?.contains(document.activeElement)) focusAfterDelete(index, '.manager-name')
+    await continueDeleteFocus(model, generation, () => {
+        if (!root.value?.contains(document.activeElement)) focusAfterDelete(index, '.manager-name')
+    })
     } finally {
         guard.dispose()
     }
@@ -1903,19 +1917,23 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
             }
             return
         }
-        case 'ungroup':
+        case 'ungroup': {
+            const model = props.model
+            const generation = stackGeneration()
             if (key.type === 'folder') folders.value.ungroup(key.id)
             if (!keyboard) return
-            await nextTick()
-            focusAfterDelete(index)
+            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
             return
-        case 'delete':
-            if (key.type === 'entry') props.model.remove(key.id)
-            else await folders.value.remove(key.id, editLifetime.signal)
+        }
+        case 'delete': {
+            const model = props.model
+            const generation = stackGeneration()
+            if (key.type === 'entry') model.remove(key.id)
+            else if (!await folders.value.remove(key.id, editLifetime.signal)) return
             if (!keyboard) return
-            await nextTick()
-            focusAfterDelete(index)
+            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
             return
+        }
     }
 }
 

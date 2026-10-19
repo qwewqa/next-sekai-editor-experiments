@@ -410,7 +410,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         async remove(id: FolderId, signal?: AbortSignal) {
             const guard = createAsyncEditGuard(signal)
             try {
-            if (!guard.isCurrent()) return
+            if (!guard.isCurrent() || !config.folders().has(id)) return false
             const name = folderName(id)
             const ids = new Set(members(id))
             const objects = [...ids].reduce((sum, member) => sum + (ownedCounts(config.owner).get(member as unknown as number) ?? 0), 0)
@@ -427,9 +427,9 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                     confirm: () => i18n.value.modals.confirm.delete,
                     destructive: true,
                 })
-                if (!confirmed || !config.folders().has(id)) return
+                if (!confirmed || !config.folders().has(id)) return false
             }
-            if (!guard.isCurrent()) return
+            if (!guard.isCurrent()) return false
             const target = reference(id)
             const removed = counts([...ids].filter((member) => config.entries().has(member)).length, config.folders().has(id) ? 1 : 0)
             const next = removeEntriesFromTree(removeFolderFromTree(tree(), id), ids)
@@ -447,6 +447,7 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                     hovered: [],
                     creating: [],
                 }
+            return true
             } finally {
                 guard.dispose()
             }

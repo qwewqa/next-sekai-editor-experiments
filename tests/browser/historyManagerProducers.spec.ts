@@ -6,6 +6,7 @@ declare global {
     interface Window {
         managerOperations: NativeOperation[]
         managerWaveforms: { created: string[]; revoked: string[] }
+        managerDeleteFocusCalls: number
     }
 }
 
@@ -358,6 +359,78 @@ test('Initial Life still opens read-only while peeking and cannot commit its dia
     expect(await operations(page)).toEqual([])
     expect(await page.evaluate(() => window.editorTest.history.liveState.value.initialLife)).toBe(1000)
 })
+
+test('a missing folder removal returns false without changing chart state or recording an action', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { groupFolderOps } = await appImport<typeof import('../../src/editor/workspace/manager/groups')>('/src/editor/workspace/manager/groups.ts')
+        const { stageFolderOps } = await appImport<typeof import('../../src/editor/workspace/manager/stages')>('/src/editor/workspace/manager/stages.ts')
+        const before = history.liveState.value
+        const missing = 999999 as never
+        return {
+            group: await groupFolderOps.remove(missing),
+            stage: await stageFolderOps.remove(missing),
+            unchanged: before === history.liveState.value,
+            operations: window.managerOperations,
+        }
+    })
+    expect(result).toEqual({ group: false, stage: false, unchanged: true, operations: [] })
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+for (const outcome of ['cancel', 'reset', 'membershipChanged'] as const) {
+    test(`keyboard folder removal ${outcome} does not refocus a manager row or delete unconfirmed owners`, async ({ page }) => {
+        const member = await page.evaluate(async () => {
+            const { history, appImport, settings } = window.editorTest
+            const { groupFolderOps } = await appImport<typeof import('../../src/editor/workspace/manager/groups')>('/src/editor/workspace/manager/groups.ts')
+            const id = [...history.liveState.value.groups.keys()][0]!
+            groupFolderOps.create(new Set([id]))
+            settings.showGroups = true
+            return id
+        })
+        const more = page.locator('#workspace-panel-groups .manager-folder-row .manager-more')
+        await more.focus()
+        await page.keyboard.press('Enter')
+        await page.getByRole('menuitem', { name: /^Delete/ }).focus()
+        await page.keyboard.press('Enter')
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible()
+        const before = await page.evaluate(async ({ outcome, member }) => {
+            const { history, fixtures, appImport, nextTick } = window.editorTest
+            if (outcome === 'reset') {
+                history.resetState(false, structuredClone(fixtures.notes), 0, { sourceName: 'replacement.json' })
+            } else if (outcome === 'membershipChanged') {
+                const { groupFolderOps } = await appImport<typeof import('../../src/editor/workspace/manager/groups')>('/src/editor/workspace/manager/groups.ts')
+                const folder = [...history.liveState.value.groupFolders.keys()][0]!
+                const newcomer = [...history.liveState.value.groups.keys()].find((id) => id !== member)!
+                groupFolderOps.placeEntry(member as never, { folder: undefined })
+                groupFolderOps.placeEntry(newcomer, { folder })
+            }
+            await nextTick()
+            const focus = HTMLElement.prototype.focus
+            window.managerDeleteFocusCalls = 0
+            HTMLElement.prototype.focus = function (this: HTMLElement, ...args: Parameters<HTMLElement['focus']>) {
+                if (this.matches('#workspace-panel-groups .manager-more, #workspace-panel-groups .manager-name')) window.managerDeleteFocusCalls++
+                focus.apply(this, args)
+            }
+            window.managerOperations = []
+            return {
+                owners: [...history.liveState.value.groups.keys()],
+                notes: [...history.liveState.value.store.slides.note.values()].flat().length,
+            }
+        }, { outcome, member })
+        await dialog.getByRole('button', { name: outcome === 'cancel' ? 'Cancel' : 'Delete', exact: true }).focus()
+        await page.keyboard.press('Enter')
+        await expect(dialog).toHaveCount(0)
+        await page.evaluate(() => window.editorTest.nextTick())
+        expect(await page.evaluate(() => ({
+            owners: [...window.editorTest.history.liveState.value.groups.keys()],
+            notes: [...window.editorTest.history.liveState.value.store.slides.note.values()].flat().length,
+            operations: window.managerOperations,
+            focusCalls: window.managerDeleteFocusCalls,
+        }))).toEqual({ ...before, operations: [], focusCalls: 0 })
+    })
+}
 
 test('named operations retain literal historical names after later rename and delete', async ({ page }) => {
     const result = await page.evaluate(async () => {
