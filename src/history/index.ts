@@ -129,12 +129,14 @@ export const openStoredState = (
  * Starts a new session with a whole state brought in (a journal opened from Local Data, §1.6.7):
  * stored at once, as an import is.
  */
-export const openState = (state: State, descriptor?: Partial<SessionDescriptor>) =>
+export const openState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
     openPreparedState(state, descriptor, true, 'recovery')
+}
 
 /** Installs one prepared file-import state with the ordinary clean import semantics. */
-export const resetImportedState = (state: State, descriptor?: Partial<SessionDescriptor>) =>
+export const resetImportedState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
     openPreparedState(state, descriptor, false, 'import')
+}
 
 const openPreparedState = (
     state: State,

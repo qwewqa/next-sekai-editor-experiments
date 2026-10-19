@@ -321,9 +321,9 @@ const openRequestedProject = async (
         cancel()
         const descriptor = createSessionDescriptor({ sourceName: file.name })
         if (
-            request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () =>
-                openState(live, descriptor),
-            )
+            request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () => {
+                openState(live, descriptor)
+            })
         )
             notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
         return
@@ -408,7 +408,7 @@ const openRequestedProject = async (
         },
     })
     if (!committing) cancel()
-    if (!stored || stored.kind !== 'stored' || !stored.shown || !request.isCurrent()) return
+    if (stored?.kind !== 'stored' || !stored.shown || !request.isCurrent()) return
 
     // A file this browser wrote confirms that its downloads work (§1.3.4); no other row changes.
     const device = opened.project?.revision?.device.id

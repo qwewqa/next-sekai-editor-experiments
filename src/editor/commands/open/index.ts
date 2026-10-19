@@ -343,7 +343,7 @@ const tryImportSus = (buffer: ArrayBuffer) => {
 const resetImported = (request: SwitchRequest, chart: Chart, offset: number, file: File) => {
     const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
     const state = createState(chart, offset)
-    return request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () =>
-        resetImportedState(state, descriptor),
-    )
+    return request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () => {
+        resetImportedState(state, descriptor)
+    })
 }

@@ -126,7 +126,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
     try {
         for (let n = 0; n < job.batches; n++) {
             await testDelay()
-            if (!(await unchanged(source, false))) return stop()
+            if (!(await unchanged(source, false))) return await stop()
             let outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
             if (outcome.kind === 'notOpened') {
                 // A restarted worker: the file is read again, under the same plan.
@@ -140,7 +140,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
                     },
                     { timeoutMs: BATCH_TIMEOUT_MS },
                 )
-                if (resumed.kind !== 'resumed') return stop()
+                if (resumed.kind !== 'resumed') return await stop()
                 id = resumed.id
                 outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
             }
@@ -151,10 +151,10 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
                     return { kind: 'stopped' }
                 case 'notOpened':
                 case 'readError':
-                    return stop()
+                    return await stop()
                 case 'damaged': {
                     // Only a hash failure with the fingerprint unchanged is damage (r12-freeze2 S8).
-                    if (!(await unchanged(source, true))) return stop()
+                    if (!(await unchanged(source, true))) return await stop()
                     const first = unlinkedAs === undefined
                     unlinkedAs ??= (job.newId ?? (() => crypto.randomUUID()))()
                     const record = await worker.call('openUnlink', {

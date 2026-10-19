@@ -212,10 +212,10 @@ export const openStored = async (
         if (how.mode === 'resume') how.lock.release()
         else how.parentLock?.release()
     }
-    let transferred = false
+    const ownership = { transferred: false }
     let own: HeldLock | undefined
     const handoff = () => {
-        transferred = true
+        ownership.transferred = true
         onTransferred?.()
     }
     try {
@@ -383,7 +383,7 @@ export const openStored = async (
                         (!request || request.isCurrent()),
                 })
             } finally {
-                if (transferred && destinationMatches()) {
+                if (ownership.transferred && destinationMatches()) {
                     // Export's target and name are the chain's; a fork keeps only the partial flag (§1.4.8).
                     restoreExportMemory(fork ? { partialImport: chain.partialImport } : chain)
                     writeTabRecord({
@@ -395,15 +395,20 @@ export const openStored = async (
                     onDestination?.()
                 }
             }
-            if (!transferred || !destinationMatches() || (request && !request.isCurrent())) return
+            if (
+                !ownership.transferred ||
+                !destinationMatches() ||
+                (request && !request.isCurrent())
+            )
+                return
             if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
             onShown?.(leaving)
         }
         if (request) request.publish({ state: shown, sessionId: id, reset: false }, publish)
         else publish()
-        return transferred ? shown : undefined
+        return ownership.transferred ? shown : undefined
     } finally {
-        if (!transferred) {
+        if (!ownership.transferred) {
             own?.release()
             if (!keepUnshownLock) releaseAll()
         }

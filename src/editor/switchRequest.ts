@@ -43,7 +43,7 @@ export const createSwitchRequest = () => {
     const stopSession = watch(
         () => session.value.sessionId,
         (id) => {
-            if (!publishing || id !== publishing.sessionId) invalidate()
+            if (id !== publishing?.sessionId) invalidate()
         },
         { flush: 'sync' },
     )
@@ -121,7 +121,9 @@ export const createSwitchRequest = () => {
         observeAbort(signal: AbortSignal) {
             signal.addEventListener('abort', cancel, { once: true })
             if (signal.aborted) cancel()
-            return () => signal.removeEventListener('abort', cancel)
+            return () => {
+                signal.removeEventListener('abort', cancel)
+            }
         },
         retainUntil(task: Promise<unknown>) {
             retained++

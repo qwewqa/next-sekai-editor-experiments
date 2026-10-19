@@ -4,7 +4,9 @@ import { captureEntryDescription, captureName } from '../../../src/history/opera
 import { DB_NAME, hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { keyText } from '../../../src/local/kv/keys'
+import { webLockService } from '../../../src/local/locks'
 import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/local/nxsp'
+import { startImport } from '../../../src/local/open/importLoop'
 import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
 import { carries, type ChainRow } from '../../../src/local/save/model'
@@ -17,6 +19,7 @@ import {
     type ReplayEntry,
     type StackBlockRow,
 } from '../../../src/local/timeline'
+import { StorageWorker } from '../../../src/local/worker/client'
 import type { WorkerContext } from '../../../src/local/worker/handlers'
 import { openHandlers } from '../../../src/local/worker/openHandlers'
 import { peekHandlers } from '../../../src/local/worker/peekHandlers'
@@ -522,4 +525,49 @@ test('a refused media Blob preserves the imported history and reports missing me
         assert.ok(storedRecords(s.world, fromHex16(hash)))
         assert.equal((await s.run(() => s.peek.readSnapshotVerified(hash))).kind, 'found')
     }
+})
+
+test('a stopped import settles abandonment before its final read cleanup', async (t) => {
+    const worker = new StorageWorker(
+        { url: 'unused.js', type: 'classic', blobRestart: false },
+        { appVersion: 'test', flags: {}, test: true },
+    )
+    const calls: string[] = []
+    let finishAbandon!: () => void
+    const abandonGate = new Promise<void>((resolve) => {
+        finishAbandon = resolve
+    })
+    let reachedAbandon!: () => void
+    const abandoning = new Promise<void>((resolve) => {
+        reachedAbandon = resolve
+    })
+    t.mock.method(worker, 'call', async (name: string) => {
+        calls.push(name)
+        if (name === 'openBatch') return { kind: 'readError' }
+        if (name === 'openAbandon') {
+            reachedAbandon()
+            await abandonGate
+            calls.push('abandon settled')
+            return true
+        }
+        if (name === 'openDrop') return true
+        throw new Error(`Unexpected call: ${name}`)
+    })
+    const job = startImport({
+        worker,
+        locks: webLockService,
+        sessionId: 'delayed-abandon',
+        chainId: 'delayed-chain',
+        id: 'delayed-read',
+        batches: 1,
+        source: { file: new Blob() },
+        appVersion: 'test',
+    })
+    await abandoning
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    const beforeSettlement = [...calls]
+    finishAbandon()
+    assert.deepEqual(await job, { kind: 'stopped' })
+    assert.deepEqual(beforeSettlement, ['openBatch', 'openAbandon'])
+    assert.deepEqual(calls, ['openBatch', 'openAbandon', 'abandon settled', 'openDrop'])
 })

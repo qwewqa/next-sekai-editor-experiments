@@ -199,7 +199,7 @@ export const storeAndShow = async (
     const docId = open.identity && project ? project.id : newId()
     const lineageId = project?.lineageId ?? newId()
     const lock = holdSessionLock(deps.locks, sessionId)
-    let transferred = false
+    const ownership = { transferred: false }
     let job: Promise<ImportOutcome> | undefined
     let kept: Promise<Blob | undefined> | undefined
     let damaged: { record: Record<string, unknown>; first: boolean } | undefined
@@ -219,7 +219,7 @@ export const storeAndShow = async (
             open.handle
                 ? { file: open.file, handle: open.handle, ...(copy ? { copy } : {}) }
                 : undefined,
-            () => transferred && request.isCurrent(),
+            () => ownership.transferred && request.isCurrent(),
         )
     }
     try {
@@ -241,7 +241,7 @@ export const storeAndShow = async (
             { timeoutMs: 120_000 },
         )
         if (stored.kind !== 'stored') throw new Error('The opened file is no longer read')
-        if (!open.bind) retainBytes()
+        if (!open.bind) void retainBytes()
         if (stored.batches > 0)
             job = startImport({
                 worker: deps.worker,
@@ -284,7 +284,7 @@ export const storeAndShow = async (
                     keepUnshownLock: true,
                     canShow: () => sessionContext() === owner,
                     onTransferred: () => {
-                        transferred = true
+                        ownership.transferred = true
                     },
                     onShown: (leaving) => {
                         if (leaving)
@@ -315,20 +315,20 @@ export const storeAndShow = async (
             kind: 'stored',
             sessionId,
             chainId,
-            shown: transferred,
+            shown: ownership.transferred,
             ...(state ? { state } : {}),
             ...(job ? { import: job } : {}),
         }
     } finally {
         // An unshown committed import keeps its session lock until its batches settle.
-        if (!transferred) await job
-        if (!transferred) await kept
+        if (!ownership.transferred) await job
+        if (!ownership.transferred) await kept
         if (!job) await deps.worker.call('openDrop', open.read.id).catch(() => undefined)
         else
             void job.finally(() =>
                 deps.worker.call('openDrop', open.read.id).catch(() => undefined),
             )
-        if (!transferred) lock.release()
+        if (!ownership.transferred) lock.release()
     }
 }
 
