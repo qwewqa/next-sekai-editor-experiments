@@ -206,10 +206,8 @@ test('final journal cap trims optional whole descriptions and preserves last-goo
     same(kept.stack.context.head, head)
     assert.equal(kept.stack.context.omitted + kept.stack.context.dropped.length, dropped.length)
     assert.equal(kept.stack.context.headIndex, Math.max(0, 10 - kept.stack.context.omitted))
-    assert.equal(
-        store.writeWhole({ ...base, seq: 2, levelDataGz: 'z'.repeat(JOURNAL_KEY_LIMIT) }),
-        false,
-    )
+    const oversized = { ...base, seq: 2, levelDataGz: 'z'.repeat(JOURNAL_KEY_LIMIT) }
+    assert.equal(store.writeWhole(oversized), false)
     assert.equal(storage.getItem('nse.journal.budget'), keptText)
     same(
         captureStep({
