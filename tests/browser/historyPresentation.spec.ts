@@ -140,6 +140,8 @@ for (const action of ['Home', 'Tab', 'outside', 'blur'] as const)
         await page.setViewportSize({ width: 390, height: 844 })
         await seedNativeLifeGroup(page, true)
         await open(page)
+        // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+        await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
         await page.keyboard.press('ArrowDown')
         const group = row(page, 'Changed Initial Life')
         await expect(group).toBeFocused()
@@ -181,6 +183,8 @@ test('Details completion leaves a newer modal focused', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
+    // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
@@ -210,6 +214,8 @@ test('Details uses a surviving row when its removed opener has no native return 
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
+    // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
@@ -842,7 +848,7 @@ test('treegrid native controls, cell navigation and metadata focus preserve the 
     await page.keyboard.press('Enter')
     await expect(group).toHaveAttribute('aria-expanded', 'true')
     expect(await selected(page)).toEqual(before)
-    await expect(list(page).locator('[data-history-count-detail]')).toHaveText('2 steps')
+    await expect(group.locator('[data-history-group-count]')).toHaveText('2 steps')
     await expect(list(page).getByRole('option')).toHaveCount(0)
     await expect(group.getByRole('gridcell')).toHaveCount(2)
     await page.keyboard.press('ArrowRight')
@@ -875,6 +881,8 @@ test('unavailable Details is keyboard reachable at Now and source replacement di
     await open(page)
     const group = row(page, 'Changed Initial Life')
     const now = list(page).getByRole('row', { name: /^Now/ })
+    // Opening lands focus on Now asynchronously; wait for it before moving focus ourselves.
+    await expect(now).toBeFocused()
     await now.focus()
     await page.keyboard.press('ArrowDown')
     await expect(group).toBeFocused()
@@ -893,7 +901,7 @@ test('unavailable Details is keyboard reachable at Now and source replacement di
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
     await expect(details).toBeVisible()
     await expect(details.locator('[data-operation-count]').first()).toHaveText('2 steps')
-    await expect(details.locator('[data-operation-children] > details')).toHaveCount(2)
+    await expect(details.locator('[data-operation-children] details')).toHaveCount(2)
     expect(await selected(page)).toEqual(before)
     await page.keyboard.press('Escape')
     await expect(details).toHaveCount(0)
@@ -936,7 +944,7 @@ test('selected Details keeps exact members and request identity while text reloc
     await row(page, 'Changed Initial Life').click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Details', exact: true }).click()
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
-    await expect(details.locator('[data-operation-children] > details')).toHaveCount(2)
+    await expect(details.locator('[data-operation-children] details')).toHaveCount(2)
     await details.locator('summary').first().click()
     await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
         1,
@@ -964,7 +972,7 @@ test('selected Details keeps exact members and request identity while text reloc
             )
         }),
     ).toBe(true)
-    await expect(page.locator('[data-operation-children] > details')).toHaveCount(2)
+    await expect(page.locator('[data-operation-children] details')).toHaveCount(2)
 })
 
 test.describe('touch metadata actions', () => {
@@ -1092,7 +1100,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
     await expect(group).toHaveAttribute('aria-expanded', 'true')
     await expect
         .poll(() => list(page).evaluate((element) => element.scrollTop))
-        .toBe(top + 36 + 188)
+        .toBe(top + 36 + 160)
     expect((await anchor.boundingBox())!.y).toBe(before!.y)
     expect(
         await following.evaluate((element) =>
@@ -1100,7 +1108,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
         ),
     ).toBe(
         await group.evaluate(
-            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 188,
+            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 160,
         ),
     )
 })
@@ -1178,9 +1186,10 @@ test('actual 220px French dock protects partial count and the complete unavailab
     await expect(
         dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) }),
     ).toHaveCount(2)
+    await expect(parents.first()).toBeVisible()
     await expect(parents.first()).toHaveAttribute('aria-label', /2 étapes/)
     await expect(parents.last()).toHaveAttribute('aria-label', /1\+ étape/)
-    await expect(parents.first().locator('[data-history-group-count]')).toHaveText('')
+    await expect(parents.first().locator('[data-history-group-count]')).toHaveText('2 étapes')
     await expect(parents.last().locator('[data-history-group-count]')).toHaveText(/1\+ étape/)
     await expect(parents.last().locator('[data-history-group-count]')).toBeVisible()
     await expect(parents.last().locator('[data-history-disclosure]')).toHaveCount(0)
@@ -1195,7 +1204,7 @@ test('actual 220px French dock protects partial count and the complete unavailab
                 width: element.scrollWidth,
                 client: element.clientWidth,
             })),
-        ).toEqual({ height: 32, width: 204, client: 204 })
+        ).toEqual({ height: 32, width: 208, client: 208 })
     }
     await capture(page, '220-fr-partial-unavailable-foreign')
     await page.emulateMedia({ forcedColors: 'active' })
@@ -1292,13 +1301,43 @@ for (const width of [1600, 390, 320]) {
             for (const action of ['Added 2 notes', 'Moved notes']) {
                 const group = row(page, action)
                 await expect(group.locator('[data-history-group-count]')).toHaveText('2 steps')
-                expect(
-                    (await group.locator('[data-history-disclosure]').boundingBox())!.width,
-                ).toBe(44)
-                const caption = group.locator('[data-history-group-caption]')
-                expect(
-                    await caption.evaluate((element) => element.scrollWidth <= element.clientWidth),
-                ).toBe(true)
+                const disclosure = group.locator('[data-history-disclosure]')
+                // The visual box is 36 px square; its ::before keeps the 44 px vertical hit (probed 3 px inside
+                // and 5.5 px outside each edge, because hit testing snaps by half a pixel).
+                const { box, hits } = await disclosure.evaluate((element) => {
+                    const { x, y, width: w, height: h } = element.getBoundingClientRect()
+                    const at = (px: number, py: number) =>
+                        document.elementFromPoint(px, py)?.closest('[data-history-disclosure]') ===
+                        element
+                    return {
+                        box: [w, h],
+                        hits: {
+                            top: at(x + w / 2, y - 3),
+                            bottom: at(x + w / 2, y + h + 3),
+                            left: at(x + 0.5, y + h / 2),
+                            right: at(x + w - 0.5, y + h / 2),
+                            aboveHit: at(x + w / 2, y - 5.5),
+                            belowHit: at(x + w / 2, y + h + 5.5),
+                        },
+                    }
+                })
+                expect(box).toEqual([36, 36])
+                expect(hits).toEqual({
+                    top: true,
+                    bottom: true,
+                    left: true,
+                    right: true,
+                    aboveHit: false,
+                    belowHit: false,
+                })
+                // The caption is display: contents (both widths 0), so check the real spans. The time never
+                // shrinks; the count gives way first at 320 (F20), so it is asserted at the other widths.
+                const fits = (selector: string) =>
+                    group
+                        .locator(selector)
+                        .evaluate((element) => element.scrollWidth <= element.clientWidth)
+                expect(await fits('[data-history-group-time]')).toBe(true)
+                if (width !== 320) expect(await fits('[data-history-group-count]')).toBe(true)
             }
             await capture(page, `${width}-groups`)
             await undo.locator('[data-history-disclosure]').click()
@@ -1327,7 +1366,7 @@ for (const width of [1600, 390, 320]) {
                     secondary: navigation.height,
                 }
             })
-            expect(geometry).toEqual({ primary: 52, gap: 8, secondary: 32 })
+            expect(geometry).toEqual({ primary: 44, gap: 8, secondary: 32 })
             await capture(page, `${width}-active-peek-bars`)
         })
     })
@@ -1377,7 +1416,7 @@ for (const size of [
                 await viewChart(page).click()
                 await expect(presentation(page)).toHaveCount(0)
                 expect(await selected(page)).toEqual(before)
-                await expect(page.locator('[data-peek-main] button').first()).toBeFocused()
+                await expect(page.locator('[data-peek-back]')).toBeFocused()
                 await capture(
                     page,
                     `${size.width}-${size.height}-${filtered ? 'filtered' : 'all'}-chart`,
@@ -1754,15 +1793,29 @@ test('filter-driven promotion retains an open Go To chooser, while window resize
     await page.setViewportSize({ width: 667, height: 350 })
     await open(page)
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
+    // At 350 px the filtered list still fits a sheet: the filter alone does not promote.
+    await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
+    const sheetGoTo = page.locator('[data-history-goto]')
+    await sheetGoTo.getByRole('radio', { name: 'Saves and Exports', exact: true }).click()
+    await expect(
+        sheetGoTo.getByRole('radio', { name: 'Saves and Exports', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true')
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
+    await sheetGoTo.getByRole('radio', { name: 'All', exact: true }).click()
+    await page.setViewportSize({ width: 667, height: 330 })
+    await expect(sheetGoTo).toHaveCount(0)
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
     await presentation(page).getByRole('button', { name: 'Go To', exact: true }).click()
     const goTo = page.locator('[data-history-goto]')
+    await goTo.getByRole('radio', { name: 'All', exact: true }).click()
+    await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'sheet')
     await goTo.getByRole('radio', { name: 'Saves and Exports', exact: true }).click()
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
     await expect(goTo).toHaveCount(1)
     await expect(goTo.getByRole('radio', { name: 'Saves and Exports', exact: true })).toBeFocused()
     expect(await goTo.evaluate((element) => !!element.closest('dialog[open]'))).toBe(true)
     await capture(page, '667-filter-promotion-goto')
-    await page.setViewportSize({ width: 668, height: 350 })
+    await page.setViewportSize({ width: 668, height: 330 })
     await expect(goTo).toHaveCount(0)
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
 })
@@ -1822,10 +1875,10 @@ test('520×320 uses identical fine and coarse History geometry and preserves Sho
                         document.querySelector('[data-peek-main]')!.getBoundingClientRect().top,
                 }
             })
-            expect(chart.main).toBe(52)
+            expect(chart.main).toBe(44)
             expect(chart.navigation).toBe(32)
             expect(chart.gap).toBe(8)
-            expect(chart.stack).toBe(92)
+            expect(chart.stack).toBe(84)
             const clearance = await page.evaluate(async () => {
                 const { appImport, view } = window.editorTest
                 const [{ changeBand }, { peekClearance }, { prospectivePeekClearance }] =
@@ -1849,7 +1902,7 @@ test('520×320 uses identical fine and coarse History geometry and preserves Sho
                     prospective: prospectivePeekClearance(view.w),
                 }
             })
-            expect(clearance.actual).toBe(120)
+            expect(clearance.actual).toBe(112)
             expect(clearance.published).toBe(clearance.actual)
             expect(clearance.band).toBe(clearance.actual)
             expect(clearance.prospective).toBe(clearance.actual)
