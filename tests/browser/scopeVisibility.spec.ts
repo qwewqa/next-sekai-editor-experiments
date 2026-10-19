@@ -276,6 +276,21 @@ test('visibility masks keep the authoring target, history and the status bar tar
     page,
 }) => {
     const status = page.locator('[data-status-bar]')
+    const expectCurrentScope = async (tab: 'groups' | 'stages', path: string, count: string) => {
+        await status
+            .getByTitle(tab === 'groups' ? 'Manage Groups' : 'Manage Stages', { exact: true })
+            .click()
+        const disclosure = page.locator(`#workspace-panel-${tab} [data-manager-current]`)
+        await expect(disclosure).toHaveAttribute('open', '')
+        const fullPath = disclosure.locator('[data-manager-current-path]')
+        await fullPath.scrollIntoViewIfNeeded()
+        await expect(fullPath).toBeInViewport({ ratio: 1 })
+        await expect(fullPath).toHaveText(path)
+        const fullCount = disclosure.locator('[data-manager-current-count]')
+        await fullCount.scrollIntoViewIfNeeded()
+        await expect(fullCount).toBeInViewport({ ratio: 1 })
+        await expect(fullCount).toHaveText(count)
+    }
     await expect(status).toContainText('All Groups')
     await expect(status).not.toContainText('1/2')
 
@@ -287,10 +302,8 @@ test('visibility masks keep the authoring target, history and the status bar tar
     await settle(page)
     expect(await page.evaluate(() => window.editorTest.view.groupId)).toBe(1)
     await expect(status).toContainText('Default')
-    const stageCount = status.getByTitle('1/2 Stages Shown', { exact: true })
-    await expect(stageCount).toBeVisible()
-    await expect(stageCount).toContainText('1/2')
-    await expect(status).toContainText(/All Stages\s*· 1\/2/)
+    await expect(status).toContainText('All Stages')
+    await expectCurrentScope('stages', 'All Stages', '1/2 Stages Shown')
     await expect(status.getByTitle(/Groups Shown/)).toHaveCount(0)
 
     // Hiding the default group does not move new notes elsewhere.
@@ -300,9 +313,10 @@ test('visibility masks keep the authoring target, history and the status bar tar
     await setGroupShown(page, 1, false)
     await settle(page)
     await expect(status).toContainText('All Groups')
-    await expect(status.getByTitle('1/2 Groups Shown', { exact: true })).toBeVisible()
+    await expectCurrentScope('groups', 'All Groups', '1/2 Groups Shown')
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 
+    await page.locator('.chart-pane').focus()
     await page.keyboard.press('a')
     const noteFace = page
         .locator('.chart-pane [data-editor-toolbar]')
@@ -324,6 +338,7 @@ test('visibility masks keep the authoring target, history and the status bar tar
         'full',
     )
     await expect(status.getByTitle(/Groups Shown/)).toHaveCount(0)
+    await expectCurrentScope('groups', 'All Groups', '2/2 Groups Shown')
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(true)
 })
 

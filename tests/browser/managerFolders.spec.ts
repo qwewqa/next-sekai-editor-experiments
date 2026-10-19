@@ -102,6 +102,15 @@ const tree = (page: Page) =>
     })
 
 const panel = (page: Page) => page.locator('#workspace-panel-groups')
+const currentGroup = async (page: Page) => {
+    await page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true }).click()
+    const disclosure = panel(page).locator('[data-manager-current]')
+    await expect(disclosure).toHaveAttribute('open', '')
+    const path = disclosure.locator('[data-manager-current-path]')
+    await path.scrollIntoViewIfNeeded()
+    await expect(path).toBeInViewport({ ratio: 1 })
+    return disclosure
+}
 
 const nameButton = (scope: Locator, name: string) =>
     scope.locator('.manager-name').filter({
@@ -1222,9 +1231,11 @@ test('pickers group options by folder and the status bar names shared names by f
     await page.evaluate(() => {
         window.editorTest.view.groupId = 1002 as never
     })
-    await expect(page.locator('.status-chip').filter({ hasText: 'Lead' })).toHaveText(
-        /Chorus › Lead/,
-    )
+    await expect(
+        page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true }),
+    ).toContainText(/Chorus › Lead/)
+    const disclosure = await currentGroup(page)
+    await expect(disclosure.locator('[data-manager-current-path]')).toHaveText('Chorus › Lead')
 })
 
 test('the folder holding the target names it and marks the line through it', async ({ page }) => {
@@ -1235,7 +1246,7 @@ test('the folder holding the target names it and marks the line through it', asy
         ['Echo', 'Verse'],
         ['Bass', 'Chorus'],
     ])
-    const groupChip = page.locator('.status-chip').filter({ hasText: 'Group' })
+    const groupChip = page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true })
     const verse = folderRow(page, 'Verse')
     const marked = (name: string) =>
         panel(page)
@@ -1258,7 +1269,10 @@ test('the folder holding the target names it and marks the line through it', asy
         /.*/,
     )
     // The status bar always leads with the folder.
-    await expect(groupChip).toHaveText('Verse › Fill Group')
+    await expect(groupChip).toContainText('Verse › Fill')
+    await expect((await currentGroup(page)).locator('[data-manager-current-path]')).toHaveText(
+        'Verse › Fill',
+    )
     // A short stretch of line marks the target's pill, and only there.
     expect(await marked('Fill')).not.toBe('none')
     expect(await marked('Lead')).toBe('none')
@@ -1276,7 +1290,10 @@ test('the folder holding the target names it and marks the line through it', asy
         window.editorTest.view.groupId = 1 as never
     })
     await expect(panel(page).locator('.manager-name[aria-description]')).toHaveCount(0)
-    await expect(groupChip).toHaveText('Default Group')
+    await expect(groupChip.locator('[data-status-part="name"]')).toHaveText('Default')
+    await expect((await currentGroup(page)).locator('[data-manager-current-path]')).toHaveText(
+        'Default',
+    )
 })
 
 test('the folder line and its target mark keep showing in high contrast', async ({ page }) => {
@@ -1360,7 +1377,7 @@ test('the current row keeps a mark in high contrast', async ({ page }) => {
 test.describe('touch', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-    test('a narrow status bar keeps the target above its shortened folder and exact count', async ({
+    test('a narrow status path discloses its full folder, target and exact count', async ({
         page,
     }) => {
         await seedGroups(page, [['Default'], ['Lead Synth Layer', 'An Extremely Long Folder Name']])
@@ -1369,49 +1386,49 @@ test.describe('touch', () => {
             view.groupId = 2 as never
             view.groupVisibility = new Map([[1, 'hidden']]) as never
         })
-        const chip = page.locator('.status-chip').filter({ hasText: 'Group' })
-        await expect(chip).toContainText('· 1/2')
+        const chip = page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true })
+        await expect(chip.locator('[data-status-count]')).toHaveCount(0)
         const parts = await chip.evaluate((element) => {
             const box = element.getBoundingClientRect()
             const folder = element.querySelector<HTMLElement>('.status-folder')!
             const name = element.querySelector<HTMLElement>('[data-status-part="name"]')!
-            const count = element.querySelector<HTMLElement>('[data-status-count]')!
             const prefix = document.createRange()
             prefix.setStart(name.firstChild!, 0)
-            prefix.setEnd(name.firstChild!, 4)
+            prefix.setEnd(name.firstChild!, 2)
             const nameBox = name.getBoundingClientRect()
             const folderBox = folder.getBoundingClientRect()
-            const countBox = count.getBoundingClientRect()
             const folderPrefix = document.createRange()
             folderPrefix.setStart(folder.firstChild!, 0)
-            folderPrefix.setEnd(folder.firstChild!, 'An Extremely'.length)
+            folderPrefix.setEnd(folder.firstChild!, 2)
             return {
                 folderTruncated: folder.scrollWidth > folder.clientWidth,
-                folderWidth: folder.clientWidth,
                 folderVisible:
                     folderPrefix.getBoundingClientRect().left >= folderBox.left &&
-                    folderPrefix.getBoundingClientRect().right <= folderBox.right - 12,
-                nameWidth: name.clientWidth,
-                nameVisible: prefix.getBoundingClientRect().right <= nameBox.right - 12,
-                separateLines: nameBox.bottom <= folderBox.top,
-                folderBeforeCount: folderBox.right <= countBox.left,
-                countInside: countBox.right <= box.right + 0.5,
-                countWhole: count.scrollWidth <= count.clientWidth,
-                countWidth: countBox.width,
+                    folderPrefix.getBoundingClientRect().right <= folderBox.right,
+                nameVisible: prefix.getBoundingClientRect().right <= nameBox.right,
+                sameLine: Math.abs(nameBox.y - folderBox.y) < 0.5,
+                folderBeforeName: folderBox.right <= nameBox.left,
+                inside: folderBox.left >= box.left && nameBox.right <= box.right,
+                height: box.height,
             }
         })
         expect(parts.folderTruncated).toBe(true)
         expect(parts.folderVisible).toBe(true)
-        expect(parts.nameWidth).toBeGreaterThan(48)
         expect(parts.nameVisible).toBe(true)
-        expect(parts.separateLines).toBe(true)
-        expect(parts.folderBeforeCount).toBe(true)
-        expect(parts.countInside).toBe(true)
-        expect(parts.countWhole).toBe(true)
-        expect(parts.countWidth).toBeGreaterThan(0)
-        // The status bar's division, not the toolbar's.
+        expect(parts.sameLine).toBe(true)
+        expect(parts.folderBeforeName).toBe(true)
+        expect(parts.inside).toBe(true)
+        expect(parts.height).toBe(32)
+        const disclosure = await currentGroup(page)
+        const path = disclosure.locator('[data-manager-current-path]')
+        await expect(path).toHaveText('An Extremely Long Folder Name › Lead Synth Layer')
+        const count = disclosure.locator('[data-manager-current-count]')
+        await count.scrollIntoViewIfNeeded()
+        await expect(count).toBeInViewport({ ratio: 1 })
+        await expect(count).toHaveText('1/2 Groups Shown')
+        expect(await path.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
         const bar = chip.locator('..')
-        await expect(bar.getByText('1/4', { exact: true })).toBeInViewport()
+        await expect(bar.locator('[data-status-division]')).toHaveCount(0)
     })
 
     test('double taps on a chevron or across controls never rename', async ({ page }) => {
